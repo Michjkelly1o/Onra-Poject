@@ -401,7 +401,7 @@ function BasicInformationStep({
                     className={cn(
                         "px-4 py-[10px] rounded-[8px] text-[16px] font-semibold transition-all",
                         canContinue
-                            ? "bg-[#c4edd6] text-[#0c2d34] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]"
+                            ? "bg-[#c4edd6] text-[#0c2d34] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]"
                             : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed",
                     )}
                 >

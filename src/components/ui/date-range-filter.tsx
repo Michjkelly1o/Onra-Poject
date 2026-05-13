@@ -291,7 +291,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                 className={cn(
                     "flex items-center gap-[8px] h-[40px] px-[14px]",
                     "bg-white border-1 border-[#d0d5dd] rounded-[8px] whitespace-nowrap",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
                 )}
             >

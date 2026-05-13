@@ -522,63 +522,6 @@ const PACKAGES = [
     { id: "p4", name: "40 Class Package", active: 4,  enabled: false },
 ];
 
-// ─── Membership/Package filter dropdown ───────────────────────────────────────
-
-type ItemFilter = "enabled" | "disabled" | null;
-
-const ITEM_FILTER_OPTIONS: { value: ItemFilter; label: string }[] = [
-    { value: null,       label: "All" },
-    { value: "enabled",  label: "Only enabled" },
-    { value: "disabled", label: "Only disabled" },
-];
-
-function ItemFilterDropdown({ active, onChange }: {
-    active: ItemFilter;
-    onChange: (f: ItemFilter) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-
-    return (
-        <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={
-                    <div className="relative">
-                        <FilterLines className="w-4 h-4" />
-                        {active !== null && (
-                            <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#47b881] border border-white" />
-                        )}
-                    </div>
-                }
-                onClick={() => setOpen(p => !p)}>
-                Filter
-            </Button>
-
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
-                    {ITEM_FILTER_OPTIONS.map(opt => (
-                        <button key={String(opt.value)} type="button"
-                            onClick={() => { onChange(opt.value); setOpen(false); }}
-                            className={cn(
-                                "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                active === opt.value
-                                    ? "bg-[#f9fafb] text-[#101828]"
-                                    : "text-[#344054] hover:bg-[#f9fafb]",
-                            )}>
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
 
 // ─── Filter panel (right slide-in — classes tab) ──────────────────────────────
 
@@ -715,45 +658,42 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
 
 type ModalAction = "archive" | "deactivate" | "recover" | "reactivate" | "delete";
 
+const DESTRUCTIVE_ACTIONS = new Set<ModalAction>(["deactivate", "delete"]);
+
 const MODAL_CONFIG: Record<ModalAction, {
     iconBg: string; IconComp: React.ElementType; iconColor: string;
     title: string; description: string;
-    confirmLabel: string; confirmClass: string;
+    confirmLabel: string;
 }> = {
     archive: {
         iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
         title: "Archive this class template?",
         description: "Are you sure you want to archive this class template? This will archive all of class template access.",
         confirmLabel: "Archive",
-        confirmClass: "bg-[#c4edd6] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]",
     },
     deactivate: {
         iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
         title: "Deactivate this class template?",
         description: "Are you sure you want to deactivate this class template? This will deactivate access to all classes associated with it.",
         confirmLabel: "Deactivate",
-        confirmClass: "bg-[#d92d20] text-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318]",
     },
     recover: {
         iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
         title: "Recover this class template?",
         description: "Are you sure you want to recover this class template from archive? This will enable all of class template access.",
         confirmLabel: "Recover",
-        confirmClass: "bg-[#c4edd6] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]",
     },
     reactivate: {
         iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
         title: "Reactivate this class template?",
         description: "Are you sure you want to reactivate this class template? This will restore access to all classes associated with it.",
         confirmLabel: "Reactivate",
-        confirmClass: "bg-[#c4edd6] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]",
     },
     delete: {
         iconBg: "bg-[#fee4e2]", IconComp: Trash02, iconColor: "text-[#d92d20]",
         title: "Delete this class template?",
         description: "Are you sure you want to delete this class template? This action cannot be undone.",
         confirmLabel: "Delete",
-        confirmClass: "bg-[#d92d20] text-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318]",
     },
 };
 
@@ -785,14 +725,12 @@ function ActionModal({ action, onConfirm, onCancel }: {
 
                 {/* Actions */}
                 <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <button type="button" onClick={onCancel}
-                        className="flex-1 py-[10px] border border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
                         Cancel
-                    </button>
-                    <button type="button" onClick={onConfirm}
-                        className={cn("flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold transition-colors", cfg.confirmClass)}>
+                    </Button>
+                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
                         {cfg.confirmLabel}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -898,8 +836,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
     const [pageSize, setPageSize] = useState(10);
     const [filterOpen, setFilterOpen] = useState(false);
     const [appliedFilter, setAppliedFilter] = useState<ClassFilter>(EMPTY_FILTER);
-    const [membershipFilter, setMembershipFilter] = useState<ItemFilter>(null);
-    const [packageFilter, setPackageFilter] = useState<ItemFilter>(null);
 
     // Sessions for this template are derived live from the shared store — when a
     // class is added/cancelled/edited in the schedule module, it reflects here too.
@@ -924,21 +860,11 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
     const filteredMemberships = MEMBERSHIPS
         .filter(m => applicable.includes(m.id))
-        .filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
-        .filter(m => {
-            if (membershipFilter === null) return true;
-            if (membershipFilter === "enabled") return m.enabled;
-            return !m.enabled;
-        });
+        .filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
 
     const filteredPackages = PACKAGES
         .filter(p => applicable.includes(p.id))
-        .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
-        .filter(p => {
-            if (packageFilter === null) return true;
-            if (packageFilter === "enabled") return p.enabled;
-            return !p.enabled;
-        });
+        .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
     // Sort comparators per table
     const STATUS_ORDER: Record<SessionStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
@@ -953,7 +879,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
     type Item = { name: string; enabled: boolean; active: number };
     const itemComparators: Record<string, (a: Item, b: Item) => number> = {
         name: (a, b) => a.name.localeCompare(b.name),
-        status: (a, b) => Number(a.enabled) - Number(b.enabled),
         active: (a, b) => a.active - b.active,
     };
     const { sorted: sortedSessions, sortKey: sessionSortKeyState, sortDir: sessionSortDir, toggle: toggleSessionSort } =
@@ -979,8 +904,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
         setSearch("");
         setPage(1);
         setAppliedFilter(EMPTY_FILTER);
-        setMembershipFilter(null);
-        setPackageFilter(null);
     }
 
     return (
@@ -1033,12 +956,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                             Filter
                         </Button>
                     )}
-                    {tab === "memberships" && (
-                        <ItemFilterDropdown active={membershipFilter} onChange={v => { setMembershipFilter(v); setPage(1); }} />
-                    )}
-                    {tab === "packages" && (
-                        <ItemFilterDropdown active={packageFilter} onChange={v => { setPackageFilter(v); setPage(1); }} />
-                    )}
                 </div>
 
                 {/* Table content — relative so empty states can use absolute centering */}
@@ -1069,9 +986,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                             <th className={TH}>
                                                 <SortableHeader sortKey="name" currentSort={membershipSortKey} dir={membershipSortDir} onSort={toggleMembershipSort}>Name</SortableHeader>
                                             </th>
-                                            <th className={TH}>
-                                                <SortableHeader sortKey="status" currentSort={membershipSortKey} dir={membershipSortDir} onSort={toggleMembershipSort}>Status</SortableHeader>
-                                            </th>
                                             <th className={cn(TH, "text-right")}>
                                                 <SortableHeader sortKey="active" currentSort={membershipSortKey} dir={membershipSortDir} onSort={toggleMembershipSort} align="right">Active members</SortableHeader>
                                             </th>
@@ -1088,14 +1002,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                         </div>
                                                         <span className="font-medium text-[#101828]">{m.name}</span>
                                                     </div>
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-                                                        m.enabled
-                                                            ? "bg-[#ecfdf3] border border-[#abefc6] text-[#067647]"
-                                                            : "bg-[#f9fafb] border border-[#e4e7ec] text-[#667085]")}>
-                                                        {m.enabled ? "Enabled" : "Disabled"}
-                                                    </span>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
                                                 <td className={TD}><ViewDetailsAction /></td>
@@ -1125,9 +1031,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                             <th className={TH}>
                                                 <SortableHeader sortKey="name" currentSort={packageSortKey} dir={packageSortDir} onSort={togglePackageSort}>Name</SortableHeader>
                                             </th>
-                                            <th className={TH}>
-                                                <SortableHeader sortKey="status" currentSort={packageSortKey} dir={packageSortDir} onSort={togglePackageSort}>Status</SortableHeader>
-                                            </th>
                                             <th className={cn(TH, "text-right")}>
                                                 <SortableHeader sortKey="active" currentSort={packageSortKey} dir={packageSortDir} onSort={togglePackageSort} align="right">Active packages</SortableHeader>
                                             </th>
@@ -1144,14 +1047,6 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                         </div>
                                                         <span className="font-medium text-[#101828]">{p.name}</span>
                                                     </div>
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-                                                        p.enabled
-                                                            ? "bg-[#ecfdf3] border border-[#abefc6] text-[#067647]"
-                                                            : "bg-[#f9fafb] border border-[#e4e7ec] text-[#667085]")}>
-                                                        {p.enabled ? "Enabled" : "Disabled"}
-                                                    </span>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
                                                 <td className={TD}><ViewDetailsAction /></td>

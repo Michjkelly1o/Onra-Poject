@@ -52,8 +52,8 @@ function diffMinutes(start: string, end: string): number {
 
 function ClassStatusBadge({ status }: { status: ClassInstance["status"] }) {
     const styles: Record<ClassInstance["status"], string> = {
-        Upcoming:  "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#344054]",
-        Ongoing:   "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
+        Upcoming: "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#344054]",
+        Ongoing: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
         Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
         Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
@@ -344,14 +344,12 @@ function CancelBookingModal({ open, count, sampleName, defaultRefund = true, onC
                 </div>
                 {/* Actions */}
                 <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <button type="button" onClick={onClose}
-                        className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button type="button" onClick={() => onConfirm(refund)}
-                        className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#d92d20] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318] transition-colors">
+                    </Button>
+                    <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(refund)}>
                         Yes, cancel booking
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -403,14 +401,12 @@ function CancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm
                     </>
                 )}
                 <div className={cn("flex gap-3 px-6 pb-6", bookedCount > 0 ? "pt-6" : "pt-5")}>
-                    <button type="button" onClick={onClose}
-                        className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button type="button" onClick={() => onConfirm(true)}
-                        className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#d92d20] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318] transition-colors">
+                    </Button>
+                    <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
                         Yes, cancel class
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -461,12 +457,14 @@ function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
                             className="w-full h-10 pl-10 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
-                    <button type="button"
+                    <Button
+                        variant="secondary-gray"
+                        size="icon"
                         onClick={() => router.push(`/customers/new?returnTo=${encodeURIComponent(window.location.pathname + "?openAddCustomer=1")}`)}
-                        className="w-10 h-10 flex items-center justify-center border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors"
-                        title="Create new customer">
+                        title="Create new customer"
+                    >
                         <Plus className="w-5 h-5 text-[#344054]" />
-                    </button>
+                    </Button>
                 </div>
                 {/* Customer list */}
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -489,11 +487,9 @@ function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
                                         {c.planKind === null ? <NoPlanBadge /> : <PlanBadge kind={c.planKind} />}
                                     </div>
                                     {/* Add button */}
-                                    <button type="button" onClick={() => onAdd(c)}
-                                        className="h-10 px-3 inline-flex items-center justify-center gap-1.5 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                                        <Plus className="w-4 h-4" />
+                                    <Button variant="secondary-gray" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => onAdd(c)}>
                                         Add to class
-                                    </button>
+                                    </Button>
                                 </div>
                             ))}
                         </div>
@@ -695,14 +691,12 @@ function RemoveBookingModal({ open, count, sampleName, defaultRefund = true, onC
                 </div>
                 {/* Actions */}
                 <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <button type="button" onClick={onClose}
-                        className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button type="button" onClick={() => onConfirm(refund)}
-                        className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#d92d20] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318] transition-colors">
+                    </Button>
+                    <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(refund)}>
                         Yes, remove booking
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -736,31 +730,23 @@ function BulkActionBar({ variant, count, onClear, onCancel, onRemove, onPresent,
                 <div className="flex items-center gap-3">
                     {variant === "upcoming" && (
                         <>
-                            <button type="button" onClick={onCancel}
-                                className="flex items-center gap-1 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
-                                <SlashCircle01 className="w-5 h-5 text-[#667085]" />
-                                <span className="px-0.5">Cancel</span>
-                            </button>
-                            <button type="button" onClick={onRemove}
-                                className="flex items-center gap-1 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#b42318] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#fef3f2] transition-colors">
-                                <Trash02 className="w-5 h-5 text-[#b42318]" />
-                                <span className="px-0.5">Remove</span>
-                            </button>
+                            <Button variant="secondary-gray" size="sm" leftIcon={<SlashCircle01 className="w-5 h-5 text-[#667085]" />} onClick={onCancel}>
+                                Cancel
+                            </Button>
+                            <Button variant="secondary-gray" size="sm" className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]" leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />} onClick={onRemove}>
+                                Remove
+                            </Button>
                         </>
                     )}
                     {variant === "ongoing" && (
-                        <button type="button" onClick={onPresent}
-                            className="flex items-center gap-1 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#067647] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#ecfdf3] transition-colors">
-                            <CheckCircle className="w-5 h-5 text-[#067647]" />
-                            <span className="px-0.5">Mark present</span>
-                        </button>
+                        <Button variant="secondary-gray" size="sm" className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]" leftIcon={<CheckCircle className="w-5 h-5 text-[#067647]" />} onClick={onPresent}>
+                            Mark present
+                        </Button>
                     )}
                     {variant === "reviews" && (
-                        <button type="button" onClick={onDelete}
-                            className="flex items-center gap-1 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#b42318] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#fef3f2] transition-colors">
-                            <Trash02 className="w-5 h-5 text-[#b42318]" />
-                            <span className="px-0.5">Delete review</span>
-                        </button>
+                        <Button variant="secondary-gray" size="sm" className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]" leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />} onClick={onDelete}>
+                            Delete review
+                        </Button>
                     )}
                 </div>
             </div>
@@ -800,14 +786,12 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <button type="button" onClick={onClose}
-                        className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button type="button" onClick={onConfirm}
-                        className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#d92d20] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318] transition-colors">
+                    </Button>
+                    <Button variant="destructive" size="lg" className="flex-1" onClick={onConfirm}>
                         {isBulk ? "Yes, delete reviews" : "Yes, delete review"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -1027,9 +1011,9 @@ function LeftPanel({ ci, isUpcoming, isOngoing, isCancelled, isCompleted, canCan
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const BASE_TABS: { id: DetailTab; label: string }[] = [
-    { id: "booked",     label: "Booked" },
+    { id: "booked", label: "Booked" },
     { id: "waitlisted", label: "Waitlisted" },
-    { id: "cancelled",  label: "Cancelled" },
+    { id: "cancelled", label: "Cancelled" },
 ];
 const COMPLETED_TABS: { id: DetailTab; label: string }[] = [
     ...BASE_TABS,
@@ -1137,8 +1121,8 @@ export default function ClassDetailPage() {
         position: (a, b) => (a.waitlistPosition ?? 99) - (b.waitlistPosition ?? 99),
         status: (a, b) => Number(b.refundCreditIssued ?? false) - Number(a.refundCreditIssued ?? false),
     };
-    const { sorted: sortedBooked,    sortKey: bookedSortKey,    sortDir: bookedSortDir,    toggle: toggleBookedSort    } = useSort(filteredBooked,    bookingComparators);
-    const { sorted: sortedWaitlist,  sortKey: waitlistSortKey,  sortDir: waitlistSortDir,  toggle: toggleWaitlistSort  } = useSort(filteredWaitlist,  bookingComparators);
+    const { sorted: sortedBooked, sortKey: bookedSortKey, sortDir: bookedSortDir, toggle: toggleBookedSort } = useSort(filteredBooked, bookingComparators);
+    const { sorted: sortedWaitlist, sortKey: waitlistSortKey, sortDir: waitlistSortDir, toggle: toggleWaitlistSort } = useSort(filteredWaitlist, bookingComparators);
     const { sorted: sortedCancelled, sortKey: cancelledSortKey, sortDir: cancelledSortDir, toggle: toggleCancelledSort } = useSort(filteredCancelled, bookingComparators);
 
     if (!classInstance) {
@@ -1360,12 +1344,12 @@ export default function ClassDetailPage() {
     const hasActiveFilter = tab === "reviews" ? hasActiveReviewFilter : hasActiveBookingFilter;
     const tabTotal = tab === "booked" ? bookedCount
         : tab === "waitlisted" ? waitlistCount
-        : tab === "cancelled" ? cancelledCount
-        : visibleRatings.length;
+            : tab === "cancelled" ? cancelledCount
+                : visibleRatings.length;
 
     const currentSortKey = tab === "booked" ? bookedSortKey : tab === "waitlisted" ? waitlistSortKey : tab === "cancelled" ? cancelledSortKey : null;
     const currentSortDir: SortDir = tab === "booked" ? bookedSortDir : tab === "waitlisted" ? waitlistSortDir : tab === "cancelled" ? cancelledSortDir : "desc";
-    const currentToggleSort = tab === "booked" ? toggleBookedSort : tab === "waitlisted" ? toggleWaitlistSort : tab === "cancelled" ? toggleCancelledSort : () => {};
+    const currentToggleSort = tab === "booked" ? toggleBookedSort : tab === "waitlisted" ? toggleWaitlistSort : tab === "cancelled" ? toggleCancelledSort : () => { };
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -1398,8 +1382,8 @@ export default function ClassDetailPage() {
                                     const badge = t.id === "booked"
                                         ? `${bookedCount}/${ci.capacity}`
                                         : t.id === "waitlisted" ? String(waitlistCount)
-                                        : t.id === "cancelled" ? String(cancelledCount)
-                                        : String(visibleRatings.length);
+                                            : t.id === "cancelled" ? String(cancelledCount)
+                                                : String(visibleRatings.length);
                                     return (
                                         <button key={t.id} type="button" onClick={() => handleTabChange(t.id)}
                                             className={cn(
@@ -1421,7 +1405,7 @@ export default function ClassDetailPage() {
                             <div className="shrink-0 px-6 pt-5">
                                 <div className="flex bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1">
                                     {([
-                                        { id: "ratings" as const,      label: "Rating & reviews" },
+                                        { id: "ratings" as const, label: "Rating & reviews" },
                                         { id: "deletion-log" as const, label: "Deletion log" },
                                     ]).map(s => (
                                         <button key={s.id} type="button"
@@ -1565,13 +1549,13 @@ export default function ClassDetailPage() {
                                         <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
                                             <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{
                                                 tab === "booked" ? "No customers booked"
-                                                : tab === "waitlisted" ? "No one on the waitlist"
-                                                : "No cancellations"
+                                                    : tab === "waitlisted" ? "No one on the waitlist"
+                                                        : "No cancellations"
                                             }</p>
                                             <p className="text-[14px] text-[#475467] leading-[20px]">{
                                                 tab === "booked" ? "Customers who book this class will appear here."
-                                                : tab === "waitlisted" ? "When the class fills up, new bookings join the waitlist."
-                                                : "Cancelled bookings for this class will appear here."
+                                                    : tab === "waitlisted" ? "When the class fills up, new bookings join the waitlist."
+                                                        : "Cancelled bookings for this class will appear here."
                                             }</p>
                                         </div>
                                     </div>
@@ -1844,14 +1828,12 @@ export default function ClassDetailPage() {
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 pt-6 pb-6">
-                            <button type="button" onClick={() => setBulkPresentOpen(false)}
-                                className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                            <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setBulkPresentOpen(false)}>
                                 Cancel
-                            </button>
-                            <button type="button" onClick={handleBulkPresent}
-                                className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#658774] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#3b5446] transition-colors">
+                            </Button>
+                            <Button variant="primary" size="lg" className="flex-1 bg-[#658774] text-white hover:bg-[#3b5446] active:bg-[#3b5446]" onClick={handleBulkPresent}>
                                 Yes, mark present
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

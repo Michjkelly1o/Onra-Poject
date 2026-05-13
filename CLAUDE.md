@@ -28,6 +28,24 @@ Interactive prototype of the Onra Studio fitness studio management SaaS. Built f
 
 ---
 
+## Build Conventions
+
+These rules apply to every module built — follow consistently so the prototype stays internally coherent.
+
+1. **Always use the `<Button>` component** — every button generated from a Figma layout, MCP-produced screen, or new UI must use [`<Button>` from `src/components/ui/button.tsx`](src/components/ui/button.tsx). Never write raw `<button>` with hardcoded shadow / border / hover styles when a Button variant fits. For one-off text or background colour tweaks (e.g. red text on a secondary-gray bg), pass `className=` overrides on top of the variant. The same applies to dropdown trigger buttons — they should match the Button shadow stack even when custom layout is needed.
+
+2. **Create / Edit views are full-page screens, not modals** — when capturing new data (new class template, new schedule, new customer, new staff member, etc.) navigate to a dedicated route like `/class-types/new` or `/class-types/[id]/edit`. Same pattern for editing an existing record. Modals are reserved for confirmations and quick toggles, not for multi-field data entry.
+
+3. **State-changing actions are modals** — `Delete`, `Deactivate`, `Recover`, `Reactivate`, `Archive`, `Cancel`, `Remove` and similar single-step actions use a centered confirmation modal with a Cancel + Confirm action pair. Destructive actions use `variant="destructive"`; reversible/positive actions use `variant="primary"`.
+
+4. **Every action emits a toast notification** — every CRUD or state-change action (create / update / delete / archive / cancel / restore / mark present / etc.) must trigger a toast confirming success (and surface failure if it can fail). Use the project Toast component (`src/components/ui/Toast.tsx`) and the store's `showToast(...)` action.
+
+5. **Table + pagination share a 24px horizontal padding wrapper** — wrap every table together with its pagination row in a single container with `px-6` (24px left + right padding) so the table edges align with the page chrome. Follow the existing pattern in `/class-types/[id]` and `/schedule/[classId]`.
+
+6. **Actions must actually work and propagate** — every action (button click, form submit, filter, sort, search) must update real state and reflect in related modules. No stub handlers, no `console.log` placeholders. Mutations go through the Zustand store so dependent views (dashboard, class detail, customer profile, schedule list, etc.) all update in the same render cycle.
+
+---
+
 ## Tech Stack
 - **Framework:** Next.js 14 (App Router)
 - **Styling:** Tailwind CSS + shadcn/ui + custom DS components

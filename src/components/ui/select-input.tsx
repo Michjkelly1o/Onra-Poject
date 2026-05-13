@@ -83,7 +83,7 @@ export function SelectInput({
                     "flex items-center gap-[8px] w-full h-[40px]",
                     "bg-white border-1 border-[#d0d5dd] rounded-[8px]",
                     "px-[12px]",
-                    "shadow-[0px_1px_1px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]",
                     "transition-all",
                 )}

@@ -114,7 +114,7 @@ function SimpleSelect({ label, value, options, onChange, disabled = false }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(p => !p)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] bg-white",
                     disabled ? "cursor-not-allowed text-[#98a2b3] bg-[#f9fafb]" : "text-[#101828] hover:border-[#7ba08c]",
                     open && "ring-2 ring-[#aad4bd] border-[#7ba08c]")}>
                 <span className="flex-1 text-left">{value || label}</span>
@@ -157,7 +157,7 @@ function TemplateDropdown({ templates, value, onChange, disabled = false }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => !disabled && setOpen(p => !p)} disabled={disabled}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
                         ? "bg-[#f9fafb] border-[#d0d5dd] cursor-not-allowed text-[#667085]"
                         : cn("bg-white border-[#d0d5dd]", selected ? "text-[#101828]" : "text-[#667085]", open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]"))}>
@@ -227,7 +227,7 @@ function LocationDropdown({ classCapacity, value, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     selectedRoom ? "text-[#101828]" : "text-[#667085]",
                     open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
                 <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
@@ -369,7 +369,7 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                         </div>
                         <button type="button" onClick={() => onDeleteSlot(i)} disabled={i === 0}
                             className={cn(
-                                "w-11 h-11 flex items-center justify-center rounded-[8px] border bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] shrink-0 transition-colors",
+                                "w-11 h-11 flex items-center justify-center rounded-[8px] border-1 bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] shrink-0 transition-colors",
                                 i === 0
                                     ? "border-[#e4e7ec] text-[#fecdca] cursor-not-allowed"
                                     : "border-[#e4e7ec] text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b]"
@@ -380,7 +380,7 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                 ))}
             </div>
             <button type="button" onClick={onAddSlot}
-                className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors">
                 <Plus className="w-5 h-5" />
                 <span className="px-0.5">Add time slot</span>
             </button>
@@ -588,7 +588,7 @@ function TimeDropdown({ value, onChange, unavailable = [], placeholder = "Select
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     value ? "text-[#101828]" : "text-[#667085]",
                     open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
                 <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />

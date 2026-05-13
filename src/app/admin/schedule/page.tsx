@@ -285,14 +285,12 @@ function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onCo
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <button type="button" onClick={onClose}
-                        className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button type="button" onClick={onConfirm}
-                        className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#d92d20] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318] transition-colors">
+                    </Button>
+                    <Button variant="destructive" size="lg" className="flex-1" onClick={onConfirm}>
                         Yes, cancel class
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -384,7 +382,7 @@ function LocationDropdown({ value, onChange, branchLabel }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] text-[#344054] font-medium hover:bg-[#f9fafb] transition-colors">
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] text-[#344054] font-medium hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
                 <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
                 <span className="flex-1 text-left truncate">{display}</span>
                 <ChevronDown className="w-4 h-4 text-[#667085]" />
@@ -428,7 +426,7 @@ function FilterDropdown({ label, value, options, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
                 {selected?.initials && (
                     <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                         style={{ backgroundColor: selected.color }}>

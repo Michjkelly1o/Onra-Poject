@@ -106,7 +106,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
             <button type="button" disabled={disabled}
                 onClick={() => { setPending(value); if (value) { const d = parseISO(value); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); } setOpen(p => !p); }}
                 className={cn(
-                    "flex items-center gap-2 w-full h-10 px-[14px] border rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    "flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
                         ? "bg-[#f9fafb] border-[#d0d5dd] cursor-not-allowed"
                         : cn("bg-white border-[#d0d5dd]", value ? "text-[#101828]" : "text-[#667085]", open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")
@@ -145,7 +145,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                 </span>
                             </div>
                             <button type="button" onClick={handleToday}
-                                className="h-9 px-4 border border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] shrink-0 transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                className="h-9 px-4 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] shrink-0 transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
                                 Today
                             </button>
                         </div>

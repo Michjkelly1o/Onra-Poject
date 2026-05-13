@@ -37,12 +37,12 @@ const buttonVariants = cva(
                 // bg: secondary/200 #c4edd6 | hover: secondary/300 #aad4bd | fg: black
                 primary: [
                     "bg-[#c4edd6] border-1 border-white/[0.12] text-[#0c2d34]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#aad4bd] active:bg-[#92baa4]",
                 ],
                 default: [
                     "bg-[#c4edd6] border-1 border-white/[0.12] text-[#0c2d34]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#aad4bd] active:bg-[#92baa4]",
                 ],
 
@@ -50,17 +50,17 @@ const buttonVariants = cva(
                 // bg: white | border: #d0d5dd | fg: #344054
                 "secondary-gray": [
                     "bg-white border-1 border-[#d0d5dd] text-[#344054]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#f9fafb] hover:text-[#18212f] active:bg-[#f2f4f7]",
                 ],
                 outline: [
                     "bg-white border-1 border-[#d0d5dd] text-[#344054]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#f9fafb] hover:text-[#18212f] active:bg-[#f2f4f7]",
                 ],
                 secondary: [
                     "bg-white border-1 border-[#d0d5dd] text-[#344054]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#f9fafb] hover:text-[#18212f] active:bg-[#f2f4f7]",
                 ],
 
@@ -79,7 +79,7 @@ const buttonVariants = cva(
                 // bg: #d92c20 | hover: #b32218 | fg: white
                 destructive: [
                     "bg-[#d92c20] border-1 border-white/[0.12] text-white",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#b32218] active:bg-[#901f17]",
                 ],
 
@@ -87,7 +87,7 @@ const buttonVariants = cva(
                 // bg: white | border: #fca19b | fg: #b32218 | hover bg: #fef2f1
                 "destructive-secondary": [
                     "bg-white border-1 border-[#fca19b] text-[#b32218]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#fef2f1] hover:text-[#901f17] active:bg-[#fee3e1]",
                 ],
 
