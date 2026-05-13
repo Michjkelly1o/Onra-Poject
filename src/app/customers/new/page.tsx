@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { XClose, Check, ChevronDown, SearchMd } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -153,6 +153,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NewCustomerPage() {
+    return (
+        <Suspense fallback={null}>
+            <NewCustomerInner />
+        </Suspense>
+    );
+}
+
+function NewCustomerInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const returnTo = searchParams.get("returnTo");

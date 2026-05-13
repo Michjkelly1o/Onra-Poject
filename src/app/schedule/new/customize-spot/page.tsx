@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Settings03, ChevronUp, ChevronDown, AlertCircle } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -126,6 +126,14 @@ function BlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CustomizeSpotPage() {
+    return (
+        <Suspense fallback={null}>
+            <CustomizeSpotInner />
+        </Suspense>
+    );
+}
+
+function CustomizeSpotInner() {
     const router     = useRouter();
     const params     = useSearchParams();
     // Room capacity from URL — total spots is fixed at this value
