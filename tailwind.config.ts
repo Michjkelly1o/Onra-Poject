@@ -9,6 +9,12 @@ const config: Config = {
 	],
 	theme: {
 		extend: {
+			borderWidth: {
+				// Project convention: every button uses `border-1` (1px) explicitly,
+				// even when the colour is transparent, so hover/active states never
+				// shift the box. Standard Tailwind's `border` is also 1px.
+				'1': '1px',
+			},
 			colors: {
 				brand: {
 					'25': '#fafeff', '50': '#e9fbff', '100': '#dbf8ff', '200': '#ccf6ff', 

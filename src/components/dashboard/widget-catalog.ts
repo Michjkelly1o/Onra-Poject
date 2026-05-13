@@ -1,0 +1,37 @@
+export type WidgetCategory = "Finance" | "Memberships" | "Classes";
+
+export interface WidgetMeta {
+    id: string;
+    title: string;
+    description: string;
+    category: WidgetCategory;
+}
+
+export const WIDGET_CATALOG: WidgetMeta[] = [
+    // Finance
+    { id: "payments-collected",  title: "Payments collected over time",     description: "Total payments received across the selected period.",          category: "Finance" },
+    { id: "payments-status",     title: "Payments over time with status",    description: "Overview of paid and failed payments over time.",              category: "Finance" },
+    { id: "payments-by-method",  title: "Payments collected by method",      description: "Breakdown of payments by payment method.",                    category: "Finance" },
+    { id: "payments-by-source",  title: "Payments collected by source",      description: "Revenue grouped by sales source or purchase channel.",        category: "Finance" },
+    { id: "revenue-overview",    title: "Revenue overview",                  description: "Total revenue overtime",                                      category: "Finance" },
+    { id: "sales-by-product",    title: "Sales by product",                  description: "Total sales by product overtime",                             category: "Finance" },
+    // Memberships
+    { id: "active-memberships",  title: "Active memberships",                description: "Total customers with valid packages or remaining credits.",    category: "Memberships" },
+    { id: "active-subscriptions",title: "Active subscriptions",              description: "Total customers with ongoing auto-renew plans.",               category: "Memberships" },
+    { id: "active-credits",      title: "Active credit packages",            description: "Total customers with remaining class credits.",                category: "Memberships" },
+    { id: "top-memberships",     title: "Top 5 memberships & packages",      description: "Best-selling plans based on total purchases.",                 category: "Memberships" },
+    { id: "memberships-sold",    title: "Membership & packages unit sold",   description: "Total units sold across all plans.",                           category: "Memberships" },
+    // Classes
+    { id: "class-bookings",      title: "Class bookings",                    description: "Total bookings over time",                                    category: "Classes" },
+    { id: "bookings-by-source",  title: "Bookings by source",                description: "See where your bookings are coming from.",                    category: "Classes" },
+    { id: "bookings-vs-visits",  title: "Bookings vs visits",                description: "Compare total bookings with actual visits over time.",        category: "Classes" },
+    { id: "attendance-overview", title: "Attendance overview",               description: "Track attendance rate, cancellations, and no-shows.",         category: "Classes" },
+    { id: "class-by-popularity", title: "Class by popularity",               description: "Class popularity overtime",                                   category: "Classes" },
+];
+
+export const DEFAULT_ACTIVE_WIDGETS = [
+    "revenue-overview",
+    "attendance-overview",
+    "sales-by-product",
+    "class-by-popularity",
+];

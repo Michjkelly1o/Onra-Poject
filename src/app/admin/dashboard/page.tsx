@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
     CurrencyDollar,
     Users01,
@@ -11,9 +11,10 @@ import {
     MarkerPin01,
     CalendarCheck01,
     CreditCard02,
-    ChevronDown,
-    Calendar,
     User01,
+    Building01,
+    UserCheck01,
+    RefreshCw04,
     BarChartSquare01,
     Plus,
     DownloadCloud01,
@@ -21,18 +22,17 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import {
-    BarChart, Bar, LineChart, Line,
-    XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer,
-} from "recharts";
+import { useAppStore } from "@/lib/store";
+import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
+import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
+import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
+import { DEFAULT_ACTIVE_WIDGETS } from "@/components/dashboard/widget-catalog";
 
 // ── Types ──
-type ClassType = "Mat Pilates" | "Reformer Pilates" | "Barre" | "Roller Release";
-
 interface ScheduleClass {
     id: string;
-    type: ClassType;
+    type: string;
     time: string;
     endTime: string;
     instructor: string;
@@ -41,6 +41,35 @@ interface ScheduleClass {
     color: string;
     accentColor: string;
     bgColor: string;
+}
+
+interface TimeSlot {
+    time: string;
+    meridiem: "AM" | "PM";
+    classes: ScheduleClass[];
+}
+
+const CATEGORY_PALETTE: Record<string, { accent: string; bg: string }> = {
+    Pilates:  { accent: "#92baa4", bg: "#e9fff3" },
+    Barre:    { accent: "#92d1de", bg: "#e0f9f4" },
+    Recovery: { accent: "#9ea093", bg: "#f1f2ed" },
+    Yoga:     { accent: "#f79009", bg: "#fdf3e9" },
+};
+const FALLBACK_PALETTE = { accent: "#b892ba", bg: "#f7f3f7" };
+
+function formatEndTime12h(h24: string): string {
+    const [hStr, mStr] = h24.split(":");
+    const h = Number(hStr);
+    const m = Number(mStr);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
+}
+
+function abbreviateInstructor(fullName: string): string {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length < 2) return fullName;
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
 interface ActivityItem {
@@ -52,57 +81,6 @@ interface ActivityItem {
 }
 
 // ── Mock Data for Dashboard ──
-const todayClasses: ScheduleClass[] = [
-    {
-        id: "c1",
-        type: "Reformer Pilates",
-        time: "10:00",
-        endTime: "11:00 AM",
-        instructor: "Sara A.",
-        location: "Reformer Studio",
-        occupancy: "12/16",
-        color: "#b892ba",
-        accentColor: "#b892ba",
-        bgColor: "bg-[#f7f3f7]",
-    },
-    {
-        id: "c2",
-        type: "Mat Pilates",
-        time: "10:30",
-        endTime: "11:30 AM",
-        instructor: "Liam C.",
-        location: "Reformer Studio",
-        occupancy: "12/16",
-        color: "#92baa4",
-        accentColor: "#92baa4",
-        bgColor: "bg-[#e9fff3]",
-    },
-    {
-        id: "c3",
-        type: "Barre",
-        time: "10:30",
-        endTime: "11:30 AM",
-        instructor: "Maya J.",
-        location: "Reformer Studio",
-        occupancy: "12/16",
-        color: "#92d1de",
-        accentColor: "#92d1de",
-        bgColor: "bg-[#f0fdf9]",
-    },
-    {
-        id: "c4",
-        type: "Roller Release",
-        time: "12:00",
-        endTime: "1:00 PM",
-        instructor: "Liam C.",
-        location: "Reformer Studio",
-        occupancy: "8/10",
-        color: "#9ea093",
-        accentColor: "#9ea093",
-        bgColor: "bg-[#f1f2ed]",
-    },
-];
-
 const recentActivity: ActivityItem[] = [
     {
         id: "a1",
@@ -146,6 +124,34 @@ const recentActivity: ActivityItem[] = [
         description: "Renewed Unlimited Monthly membership",
         icon: CreditCard02,
     },
+    {
+        id: "a7",
+        name: "Lena Torres",
+        timeAgo: "6 hr ago",
+        description: "Checked in to Barre class",
+        icon: UserCheck01,
+    },
+    {
+        id: "a8",
+        name: "James Kim",
+        timeAgo: "7 hr ago",
+        description: "Purchased the 5-Class Pack",
+        icon: CreditCard02,
+    },
+    {
+        id: "a9",
+        name: "Sofia Reyes",
+        timeAgo: "8 hr ago",
+        description: "Auto-renewed Unlimited Monthly",
+        icon: RefreshCw04,
+    },
+    {
+        id: "a10",
+        name: "Omar Hassan",
+        timeAgo: "9 hr ago",
+        description: "Booked Reformer Pilates for Friday",
+        icon: CalendarCheck01,
+    },
 ];
 
 const metrics = [
@@ -183,206 +189,44 @@ const metrics = [
     },
 ];
 
-// ── Performance Tab Mock Data ──
-
-const revenueChartData = [
-    { date: "Feb 22", revenue: 480, lastWeek: 640 },
-    { date: "Feb 23", revenue: 540, lastWeek: 610 },
-    { date: "Feb 24", revenue: 600, lastWeek: 630 },
-    { date: "Feb 25", revenue: 680, lastWeek: 615 },
-    { date: "Feb 26", revenue: 760, lastWeek: 595 },
-    { date: "Feb 27", revenue: 830, lastWeek: 605 },
-    { date: "Feb 28", revenue: 910, lastWeek: 610 },
-];
-
-const attendanceChartData = [
-    { date: "Feb 22", visits: 22, cancellations: 8, noShow: 3 },
-    { date: "Feb 23", visits: 18, cancellations: 30, noShow: 4 },
-    { date: "Feb 24", visits: 12, cancellations: 10, noShow: 2 },
-    { date: "Feb 25", visits: 35, cancellations: 6, noShow: 3 },
-    { date: "Feb 26", visits: 25, cancellations: 22, noShow: 2 },
-    { date: "Feb 27", visits: 28, cancellations: 24, noShow: 3 },
-    { date: "Feb 28", visits: 22, cancellations: 20, noShow: 2 },
-];
-
-const salesChartData = [
-    { date: "Feb 22", membership: 28, package: 8 },
-    { date: "Feb 23", membership: 18, package: 12 },
-    { date: "Feb 24", membership: 15, package: 5 },
-    { date: "Feb 25", membership: 10, package: 8 },
-    { date: "Feb 26", membership: 30, package: 10 },
-    { date: "Feb 27", membership: 35, package: 42 },
-    { date: "Feb 28", membership: 8, package: 5 },
-];
-
-const topClasses = [
-    { name: "Reformer Pilates", instructor: "Sara Al-Rashid", color: "#b892ba", bookings: 142, occupancy: 89 },
-    { name: "Mat Pilates", instructor: "Liam Chen", color: "#92baa4", bookings: 98, occupancy: 78 },
-    { name: "Barre", instructor: "Maya Johnson", color: "#92d1de", bookings: 87, occupancy: 72 },
-    { name: "Roller Release", instructor: "Liam Chen", color: "#9ea093", bookings: 45, occupancy: 65 },
-];
 
 
-// ── Performance Tab Components ──
+// ── Performance Tab ───────────────────────────────────────────────────────────
 
-const ChartTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
+function PerformanceTab({
+    activeWidgets,
+    onRemoveWidget,
+    onOpenModal,
+}: {
+    activeWidgets: string[];
+    onRemoveWidget: (id: string) => void;
+    onOpenModal: () => void;
+}) {
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[120px]">
-            <p className="font-semibold text-[#101828] mb-1.5">{label}</p>
-            {payload.map((p: any) => (
-                <p key={p.dataKey} className="flex items-center gap-1.5 mb-0.5" style={{ color: p.color }}>
-                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-[#475467]">{p.name}:</span>
-                    <span className="font-medium text-[#101828]">{p.value}</span>
-                </p>
+        <div className="grid grid-cols-2 gap-6">
+            {activeWidgets.map(id => (
+                <DashboardWidgetCard
+                    key={id}
+                    widgetId={id}
+                    action="kebab"
+                    onRemove={() => onRemoveWidget(id)}
+                />
             ))}
-        </div>
-    );
-};
 
-function PerformanceTab() {
-    return (
-        <div className="flex flex-col gap-6">
-
-            {/* Row 1 — Revenue overview + Attendance overview */}
-            <div className="grid grid-cols-2 gap-6">
-
-                {/* Revenue overview */}
-                <div className="bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                    <div>
-                        <p className="font-semibold text-base text-[#101828]">Revenue overview</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Total revenue overtime</p>
-                    </div>
-                    <div className="flex items-center gap-4 justify-end">
-                        {[{ color: "#92d1de", label: "Net revenue" }, { color: "#aad4bd", label: "Net revenue last week" }].map(l => (
-                            <div key={l.label} className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
-                                <span className="text-xs text-[#667085]">{l.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="h-[240px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={revenueChartData}>
-                                <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#667085", dy: 8, fontSize: 11 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 11 }} width={36} domain={[0, 1200]} ticks={[0, 200, 400, 600, 800, 1000]} />
-                                <Tooltip content={<ChartTooltip />} />
-                                <Line type="monotone" dataKey="revenue" name="Net revenue" stroke="#92d1de" strokeWidth={2} dot={false} />
-                                <Line type="monotone" dataKey="lastWeek" name="Last week" stroke="#aad4bd" strokeWidth={2} dot={false} strokeDasharray="4 2" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+            {/* Add widget entry point */}
+            <button
+                type="button"
+                onClick={onOpenModal}
+                className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+            >
+                <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                    <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
                 </div>
-
-                {/* Attendance overview */}
-                <div className="bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                    <div>
-                        <p className="font-semibold text-base text-[#101828]">Attendance overview</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Track attendance rate, cancellations, and no-shows across all classes.</p>
-                    </div>
-                    <div className="flex items-center gap-4 justify-end">
-                        {[{ color: "#b892ba", label: "Total visits" }, { color: "#c4edd6", label: "Total cancellations" }, { color: "#92d1de", label: "Total no show" }].map(l => (
-                            <div key={l.label} className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
-                                <span className="text-xs text-[#667085]">{l.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="h-[100%]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={attendanceChartData} barGap={2} barCategoryGap="30%">
-                                <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#667085", dy: 8, fontSize: 11 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 11 }} width={28} domain={[0, 50]} ticks={[0, 10, 20, 30, 40, 50]} />
-                                <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                                <Bar dataKey="visits" name="Total visits" fill="#b892ba" radius={[3, 3, 0, 0]} maxBarSize={10} />
-                                <Bar dataKey="cancellations" name="Cancellations" fill="#c4edd6" radius={[3, 3, 0, 0]} maxBarSize={10} />
-                                <Bar dataKey="noShow" name="No show" fill="#92d1de" radius={[3, 3, 0, 0]} maxBarSize={10} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                <div className="text-center">
+                    <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                    <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
                 </div>
-            </div>
-
-            {/* Row 2 — Sales by product + Class by popularity */}
-            <div className="grid grid-cols-2 gap-6">
-
-                {/* Sales by product */}
-                <div className="bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                    <div>
-                        <p className="font-semibold text-base text-[#101828]">Sales by product</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Total sales by product overtime</p>
-                    </div>
-                    <div className="flex items-center gap-4 justify-end">
-                        {[{ color: "#c4edd6", label: "Membership" }, { color: "#92d1de", label: "Class package" }].map(l => (
-                            <div key={l.label} className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
-                                <span className="text-xs text-[#667085]">{l.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="h-[100%]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={salesChartData} barGap={3} barCategoryGap="30%">
-                                <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#667085", dy: 8, fontSize: 11 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 11 }} width={28} domain={[0, 50]} ticks={[0, 10, 20, 30, 40, 50]} />
-                                <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                                <Bar dataKey="membership" name="Membership" fill="#c4edd6" radius={[3, 3, 0, 0]} maxBarSize={10} />
-                                <Bar dataKey="package" name="Class package" fill="#92d1de" radius={[3, 3, 0, 0]} maxBarSize={10} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Class by popularity */}
-                <div className="bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-4">
-                    <div>
-                        <p className="font-semibold text-base text-[#101828]">Class by popularity</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Class popularity overtime</p>
-                    </div>
-                    <div className="flex flex-col gap-0">
-                        {topClasses.map((cls, idx) => (
-                            <div key={cls.name} className={cn("flex items-center gap-3 py-3", idx < topClasses.length - 1 && "border-b border-[#f9fafb]")}>
-                                {/* Color thumbnail */}
-                                <div className="w-12 h-12 rounded-md flex-shrink-0 border border-[#e4e7ec] overflow-hidden" style={{ backgroundColor: cls.color + "40" }}>
-                                    <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${cls.color}80, ${cls.color}20)` }} />
-                                </div>
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-sm text-[#101828] truncate">{cls.name}</p>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                        <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
-                                        <span className="text-xs text-[#667085]">{cls.instructor}</span>
-                                    </div>
-                                </div>
-                                {/* Stats */}
-                                <div className="text-right flex-shrink-0">
-                                    <p className="text-xs text-[#667085]">{cls.bookings} bookings</p>
-                                    <p className="text-xs font-medium text-[#475467] mt-0.5">{cls.occupancy}% occupancy</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Row 3 — Add widget placeholder (left only) */}
-            <div className="grid grid-cols-2 gap-6">
-                <button className="border-2 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group">
-                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
-                    </div>
-                    <div className="text-center">
-                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
-                    </div>
-                </button>
-                <div /> {/* empty right cell */}
-            </div>
-
+            </button>
         </div>
     );
 }
@@ -392,10 +236,8 @@ function PerformanceTab() {
 function ClassScheduleCard({ cls }: { cls: ScheduleClass }) {
     return (
         <div
-            className={cn(
-                "flex gap-4 items-center pl-5 pr-3 py-3 relative rounded-md w-full hover:opacity-90 transition-opacity cursor-pointer",
-                cls.bgColor
-            )}
+            className="flex gap-4 items-center pl-5 pr-3 py-3 relative rounded-md w-full hover:opacity-90 transition-opacity cursor-pointer"
+            style={{ backgroundColor: cls.bgColor }}
         >
             {/* Left accent bar */}
             <div
@@ -442,7 +284,7 @@ function ClassScheduleCard({ cls }: { cls: ScheduleClass }) {
 function MetricCard({ metric }: { metric: typeof metrics[0] }) {
     const Icon = metric.icon;
     return (
-        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-6 items-start justify-end min-w-0 p-6 relative rounded-2xl hover-lift">
+        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-6 items-start justify-end min-w-0 p-6 relative rounded-2xl">
             <div className="flex flex-1 flex-col gap-2 items-start min-w-0 relative">
                 <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
                     {metric.label}
@@ -499,24 +341,125 @@ function ActivityRow({ item }: { item: ActivityItem }) {
     );
 }
 
-// ── Schedule time slots ──
-const timeSlots = [
-    { time: "10:00", meridiem: "AM", classes: ["c1"] },
-    { time: "10:30", meridiem: "AM", classes: ["c2", "c3"] },
-    { time: "12:00", meridiem: "PM", classes: ["c4"] },
+// ── Report dropdown ──
+const REPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
+
+function ReportDropdown() {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    return (
+        <div ref={ref} className="relative flex-shrink-0">
+            <Button
+                variant="primary"
+                size="md"
+                leftIcon={<DownloadCloud01 className="w-4 h-4" />}
+                className="whitespace-nowrap"
+                onClick={() => setOpen(p => !p)}
+            >
+                Report
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[140px]">
+                    {REPORT_FORMATS.map(fmt => (
+                        <button
+                            key={fmt}
+                            type="button"
+                            onClick={() => setOpen(false)}
+                            className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                        >
+                            {fmt}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+const locationOptions = [
+    { value: "south", label: "Forma Studio (South)", icon: <Building01 className="w-4 h-4" /> },
+    { value: "east", label: "Forma Studio (East)", icon: <Building01 className="w-4 h-4" /> },
+    { value: "north", label: "Forma Studio (North)", icon: <Building01 className="w-4 h-4" /> },
 ];
 
-const instructorList = ["All instructors", "Sara Al-Rashid", "Maya Johnson", "Liam Chen"];
-const periodList = ["Today", "This week", "This month", "Last 30 days", "Custom range"];
+const instructorOptions = [
+    { value: "all", label: "All instructors" },
+    { value: "sara", label: "Sara Al-Rashid" },
+    { value: "maya", label: "Maya Johnson" },
+    { value: "liam", label: "Liam Chen" },
+];
+
 
 // ── Main Dashboard ──
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<"today" | "performance">("today");
-    const [instructor, setInstructor] = useState("Select instructor");
-    const [period, setPeriod] = useState("This week");
-    const [showInstructor, setShowInstructor] = useState(false);
-    const [showPeriod, setShowPeriod] = useState(false);
+    const [location, setLocation] = useState<string>("");
+    const [instructor, setInstructor] = useState("all");
+    const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
+    const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+    const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
+
+    const classInstances = useAppStore(s => s.classInstances);
+
+    // Derive today's classes. The seed data centres around end-Feb 2025, so for a
+    // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
+    // of the wall-clock date — keeping the dashboard visually populated.
+    const todayClasses = useMemo<ScheduleClass[]>(() => {
+        return [...classInstances]
+            .filter(ci => ci.status === "Upcoming" || ci.status === "Ongoing")
+            .sort((a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`))
+            .slice(0, 6)
+            .map(ci => {
+                const palette = CATEGORY_PALETTE[ci.category] ?? FALLBACK_PALETTE;
+                return {
+                    id: ci.id,
+                    type: ci.name,
+                    time: ci.startTime,
+                    endTime: formatEndTime12h(ci.endTime),
+                    instructor: abbreviateInstructor(ci.instructorName),
+                    location: ci.room,
+                    occupancy: `${ci.booked}/${ci.capacity}`,
+                    color: palette.accent,
+                    accentColor: palette.accent,
+                    bgColor: ci.coverColor || palette.bg,
+                };
+            });
+    }, [classInstances]);
+
+    // Group classes by start-time so the timeline matches the original two-column
+    // (time | classes) layout, with multiple classes stacked when they share a slot.
+    const timeSlots = useMemo<TimeSlot[]>(() => {
+        const slotMap = new Map<string, ScheduleClass[]>();
+        for (const c of todayClasses) {
+            const bucket = slotMap.get(c.time);
+            if (bucket) bucket.push(c);
+            else slotMap.set(c.time, [c]);
+        }
+        return Array.from(slotMap.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([time, classes]) => ({
+                time,
+                meridiem: (Number(time.split(":")[0]) >= 12 ? "PM" : "AM") as "AM" | "PM",
+                classes,
+            }));
+    }, [todayClasses]);
+
+    function handleAddWidget(id: string) {
+        setActiveWidgets(prev => prev.includes(id) ? prev : [...prev, id]);
+    }
+    function handleRemoveWidget(id: string) {
+        setActiveWidgets(prev => prev.filter(w => w !== id));
+    }
     const formattedDate = format(today, "EEE, dd MMM yyyy");
 
     return (
@@ -557,64 +500,31 @@ export default function AdminDashboard() {
                 </p>
 
                 {/* Location picker — always visible */}
-                <Button
-                    variant="secondary-gray"
-                    size="md"
-                    leftIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
-                    rightIcon={<ChevronDown className="w-4 h-4 text-[#667085]" />}
-                    className="w-[200px] justify-between flex-shrink-0 font-normal"
-                >
-                    <span className="flex-1 text-left truncate">Forma Studio (South)</span>
-                </Button>
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                    placeholder="Select location"
+                    options={locationOptions}
+                    value={location}
+                    onChange={setLocation}
+                    width="w-[220px]"
+                />
 
                 {/* Performance-only controls */}
                 {activeTab === "performance" && (
                     <>
-                        {/* Instructor dropdown */}
-                        <div className="relative flex-shrink-0">
-                            <Button
-                                variant="secondary-gray"
-                                size="md"
-                                leftIcon={<User01 className="w-4 h-4 text-[#667085]" />}
-                                rightIcon={<ChevronDown className="w-4 h-4 text-[#667085]" />}
-                                onClick={() => { setShowInstructor(!showInstructor); setShowPeriod(false); }}
-                                className="whitespace-nowrap"
-                            >
-                                {instructor}
-                            </Button>
-                            {showInstructor && (
-                                <div className="absolute right-0 top-full mt-1 w-[180px] bg-white border border-[#e4e7ec] rounded-lg shadow-lg z-30 overflow-hidden">
-                                    {instructorList.map((i) => (
-                                        <button key={i} onClick={() => { setInstructor(i); setShowInstructor(false); }}
-                                            className={cn("w-full text-left px-3 py-2 text-sm transition-colors", i === instructor ? "bg-[#f1f2ed] text-[#101828] font-medium" : "text-[#344054] hover:bg-[#f9fafb]")}
-                                        >{i}</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <SelectInput
+                            triggerIcon={<User01 className="w-5 h-5" />}
+                            placeholder="All instructors"
+                            options={instructorOptions}
+                            value={instructor}
+                            onChange={setInstructor}
+                            width="w-[180px]"
+                        />
 
-                        {/* Period dropdown */}
-                        <div className="relative flex-shrink-0">
-                            <Button
-                                variant="secondary-gray"
-                                size="md"
-                                leftIcon={<Calendar className="w-4 h-4 text-[#667085]" />}
-                                rightIcon={<ChevronDown className="w-4 h-4 text-[#667085]" />}
-                                onClick={() => { setShowPeriod(!showPeriod); setShowInstructor(false); }}
-                                className="whitespace-nowrap"
-                            >
-                                {period}
-                            </Button>
-                            {showPeriod && (
-                                <div className="absolute right-0 top-full mt-1 w-[160px] bg-white border border-[#e4e7ec] rounded-lg shadow-lg z-30 overflow-hidden">
-                                    {periodList.map((d) => (
-                                        <button key={d} onClick={() => { setPeriod(d); setShowPeriod(false); }}
-                                            className={cn("w-full text-left px-3 py-2 text-sm transition-colors", d === period ? "bg-[#f1f2ed] text-[#101828] font-medium" : "text-[#344054] hover:bg-[#f9fafb]")}
-                                        >{d}</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <DateRangeFilter
+                            value={period}
+                            onChange={setPeriod}
+                        />
 
                         {/* Add widget */}
                         <Button
@@ -622,19 +532,13 @@ export default function AdminDashboard() {
                             size="md"
                             leftIcon={<Plus className="w-4 h-4" />}
                             className="flex-shrink-0 whitespace-nowrap"
+                            onClick={() => setWidgetModalOpen(true)}
                         >
                             Add widget
                         </Button>
 
-                        {/* Report download — DS primary (sage green) */}
-                        <Button
-                            variant="primary"
-                            size="md"
-                            leftIcon={<DownloadCloud01 className="w-4 h-4" />}
-                            className="flex-shrink-0 whitespace-nowrap"
-                        >
-                            Report
-                        </Button>
+                        {/* Report download — with format picker */}
+                        <ReportDropdown />
                     </>
                 )}
             </div>
@@ -647,7 +551,13 @@ export default function AdminDashboard() {
             </div>
 
             {/* Performance tab */}
-            {activeTab === "performance" && <PerformanceTab />}
+            {activeTab === "performance" && (
+                <PerformanceTab
+                    activeWidgets={activeWidgets}
+                    onRemoveWidget={handleRemoveWidget}
+                    onOpenModal={() => setWidgetModalOpen(true)}
+                />
+            )}
 
             {/* Bottom Section — Classes + Activity (Today tab only) */}
             {activeTab === "today" && <div className="flex items-start gap-6">
@@ -666,7 +576,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                         {/* Date badge */}
-                        <div className="bg-[#f9fafb] border border-[#e4e7ec] flex gap-1 items-center pl-2.5 pr-3 py-1 relative rounded-full flex-shrink-0">
+                        <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] flex gap-1 items-center pl-2.5 pr-3 py-1 relative rounded-full flex-shrink-0">
                             <CalendarCheck01 size={12} className="text-[#344054]" />
                             <p className="font-medium text-sm text-[#344054] text-center whitespace-nowrap">
                                 {formattedDate}
@@ -674,48 +584,43 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    {/* Schedule Timeline */}
-                    <div className="flex flex-1 items-start min-h-0 w-full overflow-y-auto">
-                        {/* Time column */}
-                        <div className="flex flex-col items-start flex-shrink-0 w-[70px]">
-                            {timeSlots.map((slot) => (
+                    {/* Schedule Timeline — one flex row per slot keeps the divider continuous across time + cards. */}
+                    <div className="flex flex-1 flex-col min-h-0 w-full overflow-y-auto scrollbar-hide">
+                        {timeSlots.map((slot, idx) => {
+                            const isLast = idx === timeSlots.length - 1;
+                            const multi = slot.classes.length > 1;
+                            return (
                                 <div
                                     key={slot.time}
                                     className={cn(
-                                        "border-[#e4e7ec] flex gap-0 items-center justify-end px-4 w-full",
-                                        slot.classes.length > 1
-                                            ? "border-b py-8 h-[224px]"
-                                            : "border-b py-10 h-[116px]"
+                                        "flex items-stretch w-full flex-shrink-0",
+                                        !isLast && "border-b border-[#e4e7ec]"
                                     )}
                                 >
-                                    <div className="flex flex-col items-end flex-shrink-0">
-                                        <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
-                                            {slot.time}
-                                        </p>
-                                        <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
-                                            {slot.meridiem}
-                                        </p>
+                                    {/* Time cell */}
+                                    <div className="w-[70px] flex items-center justify-end px-4 py-3 flex-shrink-0">
+                                        <div className="flex flex-col items-end">
+                                            <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
+                                                {slot.time}
+                                            </p>
+                                            <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
+                                                {slot.meridiem}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Class cards cell */}
+                                    <div className={cn(
+                                        "flex flex-1 min-w-0 py-3",
+                                        multi ? "flex-col gap-4" : "items-center"
+                                    )}>
+                                        {slot.classes.map(c => (
+                                            <ClassScheduleCard key={c.id} cls={c} />
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-
-                        {/* Classes column */}
-                        <div className="flex flex-1 flex-col items-start min-w-0 relative">
-                            {/* 10:00 AM - Reformer Pilates */}
-                            <div className="border-b border-[#e4e7ec] flex gap-0 items-start pl-0 py-3 w-full flex-shrink-0">
-                                <ClassScheduleCard cls={todayClasses[0]} />
-                            </div>
-                            {/* 10:30 AM - Mat Pilates + Barre */}
-                            <div className="border-b border-[#e4e7ec] flex flex-col gap-4 items-start pl-0 py-3 w-full flex-shrink-0">
-                                <ClassScheduleCard cls={todayClasses[1]} />
-                                <ClassScheduleCard cls={todayClasses[2]} />
-                            </div>
-                            {/* 12:00 PM - Roller Release */}
-                            <div className="flex gap-0 items-start pl-0 py-3 w-full flex-shrink-0">
-                                <ClassScheduleCard cls={todayClasses[3]} />
-                            </div>
-                        </div>
+                            );
+                        })}
                     </div>
 
                     {/* Fade gradient at bottom */}
@@ -723,7 +628,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
+                <div className="bg-white border-1 border-[#e4e7ec] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
                     {/* Header */}
                     <div className="flex flex-col gap-5 items-start w-full flex-shrink-0">
                         <div className="flex gap-4 items-start w-full">
@@ -736,7 +641,7 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Activity list */}
-                    <div className="flex flex-1 flex-col gap-4 items-start min-h-0 overflow-hidden w-full">
+                    <div className="flex flex-1 flex-col gap-4 items-start min-h-0 overflow-y-auto scrollbar-hide w-full">
                         {recentActivity.map((item, idx) => (
                             <div key={item.id} className="w-full flex flex-col gap-4">
                                 <ActivityRow item={item} />
@@ -746,8 +651,19 @@ export default function AdminDashboard() {
                             </div>
                         ))}
                     </div>
+
+                    {/* Fade gradient */}
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none rounded-b-[20px]" />
                 </div>
             </div>}
+
+            <AddWidgetModal
+                open={widgetModalOpen}
+                onClose={() => setWidgetModalOpen(false)}
+                activeWidgetIds={activeWidgets}
+                onAdd={handleAddWidget}
+                onRemove={handleRemoveWidget}
+            />
         </div>
     );
 }

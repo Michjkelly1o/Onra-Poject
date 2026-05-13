@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useDataStore } from "@/lib/data-store";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { NumericInput, NumericStringInput } from "@/components/ui/NumericInput";
 import { Building2, Clock, Globe, Mail, MapPin, Phone, Plus, Save, Trash2, X, Users } from "lucide-react";
 
 export default function SettingsPage() {
@@ -214,21 +215,25 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Cancellation Window (hours)</label>
-                        <input
-                            type="number"
-                            value={studioForm.cancellation_window_hours}
-                            onChange={(e) => setStudioForm({ ...studioForm, cancellation_window_hours: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                        <NumericInput
+                            value={studioForm.cancellation_window_hours ?? 0}
+                            onChange={n => setStudioForm({ ...studioForm, cancellation_window_hours: n })}
+                            min={0}
+                            suffix="hours"
+                            className="rounded-xl"
+                            inputClassName="text-sm"
                         />
                         <p className="text-xs text-gray-400 mt-1">Credits are forfeited if cancelled within this window</p>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Booking Window (days ahead)</label>
-                        <input
-                            type="number"
-                            value={studioForm.booking_window_days}
-                            onChange={(e) => setStudioForm({ ...studioForm, booking_window_days: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                        <NumericInput
+                            value={studioForm.booking_window_days ?? 0}
+                            onChange={n => setStudioForm({ ...studioForm, booking_window_days: n })}
+                            min={0}
+                            suffix="days"
+                            className="rounded-xl"
+                            inputClassName="text-sm"
                         />
                         <p className="text-xs text-gray-400 mt-1">How far in advance members can book classes</p>
                     </div>
@@ -391,12 +396,13 @@ export default function SettingsPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Capacity</label>
-                                    <input
+                                    <NumericStringInput
                                         required
-                                        type="number"
                                         value={roomForm.capacity}
-                                        onChange={(e) => setRoomForm({ ...roomForm, capacity: e.target.value })}
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                                        onChange={v => setRoomForm({ ...roomForm, capacity: v })}
+                                        min={0}
+                                        className="rounded-xl"
+                                        inputClassName="text-sm"
                                     />
                                 </div>
                                 <div className="flex gap-3 pt-4">

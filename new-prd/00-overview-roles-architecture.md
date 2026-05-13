@@ -168,7 +168,7 @@ The MVP ships with six hardcoded roles: five staff roles and one customer role. 
 | Refunds | Yes | Yes | Up to limit | No | No |
 | Freeze / unfreeze package | Yes | Yes | Yes | No | No |
 | Cancel membership | Yes | Yes | Yes | No | No |
-| Grant free access | Yes | Yes | No | No | No |
+| Add complimentary credit | Yes | Yes | No | No | No |
 | Import customers | Yes | Yes | No | No | No |
 
 ### 4.5 Point of Sale

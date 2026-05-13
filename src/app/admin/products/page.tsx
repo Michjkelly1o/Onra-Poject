@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDataStore } from "@/lib/data-store";
 import { cn, formatCurrency } from "@/lib/utils";
+import { NumericStringInput } from "@/components/ui/NumericInput";
 import { Plus, CreditCard, Clock, Users, X, Trash2 } from "lucide-react";
 
 export default function ProductsPage() {
@@ -226,25 +227,26 @@ export default function ProductsPage() {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Price (AED)</label>
-                                    <input
+                                    <NumericStringInput
                                         required
-                                        type="number"
-                                        placeholder="950"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                                         value={formData.price}
-                                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                        onChange={v => setFormData({ ...formData, price: v })}
+                                        min={0}
+                                        step={0.01}
+                                        className="rounded-xl"
+                                        inputClassName="text-sm"
                                     />
                                 </div>
                                 {productType === "package" ? (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Credits</label>
-                                        <input
+                                        <NumericStringInput
                                             required
-                                            type="number"
-                                            placeholder="10"
-                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                                             value={formData.credits}
-                                            onChange={(e) => setFormData({ ...formData, credits: e.target.value })}
+                                            onChange={v => setFormData({ ...formData, credits: v })}
+                                            min={0}
+                                            className="rounded-xl"
+                                            inputClassName="text-sm"
                                         />
                                     </div>
                                 ) : (
@@ -266,24 +268,25 @@ export default function ProductsPage() {
                             {productType === "package" ? (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Validity (days)</label>
-                                    <input
+                                    <NumericStringInput
                                         required
-                                        type="number"
-                                        placeholder="90"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                                         value={formData.validity}
-                                        onChange={(e) => setFormData({ ...formData, validity: e.target.value })}
+                                        onChange={v => setFormData({ ...formData, validity: v })}
+                                        min={0}
+                                        suffix="days"
+                                        className="rounded-xl"
+                                        inputClassName="text-sm"
                                     />
                                 </div>
                             ) : (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Max Bookings / Period (leave empty for unlimited)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="Unlimited"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                                    <NumericStringInput
                                         value={formData.max_bookings}
-                                        onChange={(e) => setFormData({ ...formData, max_bookings: e.target.value })}
+                                        onChange={v => setFormData({ ...formData, max_bookings: v })}
+                                        min={0}
+                                        className="rounded-xl"
+                                        inputClassName="text-sm"
                                     />
                                 </div>
                             )}

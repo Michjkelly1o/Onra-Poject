@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This document defines the Customer Management module for the Onra Studio Admin Dashboard. It covers the full member profile lifecycle: viewing and managing member records, tracking packages and bookings, payment history, gift card balances, emergency contacts, waivers, refunds, membership cancellations, referrals, freeze/unfreeze controls, grant access, and bulk customer import.
+This document defines the Customer Management module for the Onra Studio Admin Dashboard. It covers the full member profile lifecycle: viewing and managing member records, tracking packages and bookings, payment history, gift card balances, emergency contacts, waivers, refunds, membership cancellations, referrals, freeze/unfreeze controls, add complimentary credit, and bulk customer import.
 
 The Customer module is the central record for everything a member has done — their purchases, bookings, attendance, payments, and relationship with the studio. Data written here connects to bookings (PRD 04), products (PRD 06), POS (PRD 05), and reports (PRD 09).
 
@@ -31,7 +31,7 @@ References: PRD 00 for role permissions and archive/delete rules. PRD 04 for boo
 | Cancel membership | Yes | Yes | Yes | No | No |
 | View referrals | Yes | Yes | Yes | No | No |
 | Freeze / unfreeze package | Yes | Yes | Yes | No | No |
-| Grant free access | Yes | Yes | Yes (limited) | No | No |
+| Add complimentary credit | Yes | Yes | Yes (limited) | No | No |
 | Remove granted access | Yes | Yes | Yes | No | No |
 | Import customers | Yes | Yes | No | No | No |
 
@@ -395,30 +395,30 @@ Frozen products show:
 
 ---
 
-## 13. Grant Access
+## 13. Add Complimentary Credit
 
 ### 13.1 Purpose
 
 An admin can grant a member free access to a class session, a package of credits, or a full product at no charge. This is used for goodwill gestures, complaint resolution, staff perks, or promotional grants. Grants are tracked separately from purchased products.
 
-### 13.2 Grant Access by Role — Limits
+### 13.2 Add Complimentary Credit by Role — Limits
 
 | Role | Grant Type | Monthly Value Limit | Monthly Grant Count Limit |
 |---|---|---|---|
 | Owner | Any type | Unlimited | Unlimited |
 | Branch Admin | Any type | AED 1,000,000 / month | 10 grants / month |
 | Operator | Single class session only | AED 200,000 / month (equivalent) | 3 grants / month |
-| Front Desk | No grant access | — | — |
+| Front Desk | No add complimentary credit | — | — |
 
 Monthly limits reset on the 1st of each calendar month.
 
 If the admin exceeds their limit: "You have reached your monthly grant limit for this role. Contact an Owner or Branch Admin to issue further grants this month."
 
-### 13.3 Grant Access Flow
+### 13.3 Add Complimentary Credit Flow
 
-Accessible from the customer profile: "Grant Access" button in the header quick actions or from the Access Grants tab.
+Accessible from the customer profile: "Add Complimentary Credit" button in the header quick actions or from the Access Grants tab.
 
-1. Click "Grant Access."
+1. Click "Add Complimentary Credit."
 2. Form appears:
    - Grant type (dropdown):
      - Single class session — one free class booking. Select which class (from today's schedule or future classes).

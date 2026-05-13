@@ -3,6 +3,15 @@
 ## Project Purpose
 Interactive prototype of the Onra Studio fitness studio management SaaS. Built for client demo purposes. All functionality must work: add, edit, delete, archive, deactivate, RBAC visibility rules, cross-module data relationships, mock data pre-seeded in Supabase, empty states when data is deleted, responsive on desktop and mobile.
 
+## Code Quality Rule
+**Every code file generated must be 100% complete and production-ready.** All output is reviewed by a secondary AI model before delivery. This means:
+- No placeholder comments like `// TODO`, `// implement later`, or `// ...`
+- No stub functions — every function must have a full, working implementation
+- No missing imports, missing types, or broken references
+- Logic must match the PRD exactly — no simplified or approximated behaviour
+- Styles must match the Figma DS exactly — no generic fallback styling
+- If a file is too large to complete in one response, say so and split it explicitly — never deliver partial files silently
+
 ## Build Strategy — Owner First
 **Always build the Owner role view first for every module.** Owner sees everything — all branches, all actions, all data. This means:
 - All Supabase tables, queries, and Zustand stores are built once and work for all roles
@@ -60,16 +69,40 @@ All demo passwords: `Demo1234!`
 ## Currency
 All monetary values use **AED (UAE Dirham)**. Format: `AED [amount]` (e.g. `AED 800`).
 
-## Responsive Breakpoints
-- Mobile: 375px+ (Front Desk check-in, Instructor attendance — primary mobile users)
-- Tablet: 768px+
-- Desktop: 1280px+ (primary for Owner, Branch Admin, Operator)
+## Responsive Breakpoints & View Targets
+
+### Admin / Staff views (Owner, Branch Admin, Operator, Front Desk)
+- Desktop-first, fully responsive
+- Primary breakpoint: 1280px+ (Owner, Branch Admin, Operator)
+- Tablet: 768px+ (Front Desk check-in, walk-in flow)
+
+### Instructor views (`/instructor/*`)
+- Desktop + mobile responsive — **mobile is the primary target**
+- Instructor primarily uses their phone on the gym floor to mark attendance, view schedule, check earnings
+- All instructor pages must be fully functional and polished at 375px
+
+### Customer / Member views (`/member/*`)
+- **Mobile-only** — rendered at max-width 400px in-browser (simulates phone)
+- Wrap the member layout in a centred 400px container with a phone-like frame
+- All member pages must be designed and tested exclusively at 375–400px width
+- No desktop layout required for customer views
+
+## Mock Data — 3 Separate Profiles
+The project uses 3 distinct mock data personas instead of a single admin user:
+
+| Profile | Roles | Primary device | Mock file |
+|---|---|---|---|
+| Admin | Owner, Branch Admin, Operator, Front Desk | Desktop | `src/data/mock/admin.ts` |
+| Instructor | Instructor | Mobile-first | `src/data/mock/instructor.ts` |
+| Customer | Member | Mobile (400px) | `src/data/mock/customer.ts` |
+
+Each mock file contains pre-seeded data relevant to that persona (classes taught, bookings made, wallet balance, etc.). The `DemoRoleSwitcher` UI widget is **hidden** — role switching is done via code/config only, not via a visible on-screen widget.
 
 ## Key Business Rules (read PRD 00 for full detail)
 - **Archive/Delete rule:** Items with usage history → Archive only. Items with zero history → Delete option appears. Booking rules → Delete only (no archive). Agreements → Archive only (never delete).
 - **Branch scope:** Owner sees all branches. Branch Admin sees assigned branches only. Operator/Front Desk/Instructor see their single branch only.
 - **Refund limits:** Owner/Branch Admin = unlimited. Operator = up to configured limit (default AED 500). Front Desk = no refund access.
-- **Grant access:** Class credits only (1 or 2 credits). Owner = unlimited. Branch Admin = 10 grants/month. Operator = 3 grants/month.
+- **Add complimentary credit:** Class credits only (1 or 2 credits). Owner = unlimited. Branch Admin = 10 grants/month. Operator = 3 grants/month.
 
 ---
 
@@ -437,7 +470,7 @@ All monetary values use **AED (UAE Dirham)**. Format: `AED [amount]` (e.g. `AED 
 - [ ] Unfreeze action: ends freeze early, recalculates expiry
 - [ ] Role: Owner/Branch Admin/Operator can freeze. Front Desk cannot.
 
-### Features — Grant Free Access
+### Features — Add Complimentary Credit
 - [ ] Grant 1 or 2 class credits to a customer at no charge (class credits only — no packages or membership periods)
 - [ ] Input: number of credits to grant (1 or 2), reason/note required
 - [ ] Credits are added directly to customer's credit balance
@@ -448,7 +481,7 @@ All monetary values use **AED (UAE Dirham)**. Format: `AED [amount]` (e.g. `AED 
 - [ ] Owner/Branch Admin/Operator/Front Desk: view + create/edit customers
 - [ ] Refunds: Owner/Branch Admin (unlimited), Operator (up to limit), Front Desk (no access)
 - [ ] Freeze/Unfreeze: Owner/Branch Admin/Operator
-- [ ] Grant access: Owner/Branch Admin/Operator (with limits)
+- [ ] Add complimentary credit: Owner/Branch Admin/Operator (with limits)
 - [ ] Import: Owner/Branch Admin only
 - [ ] Instructor: sees only their class roster (limited profile view)
 

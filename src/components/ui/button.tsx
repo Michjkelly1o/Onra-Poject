@@ -41,7 +41,7 @@ const buttonVariants = cva(
                     "hover:bg-[#aad4bd] active:bg-[#92baa4]",
                 ],
                 default: [
-                    "bg-[#c4edd6] border border-white/[0.12] text-[#0c2d34]",
+                    "bg-[#c4edd6] border-1 border-white/[0.12] text-[#0c2d34]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#aad4bd] active:bg-[#92baa4]",
                 ],

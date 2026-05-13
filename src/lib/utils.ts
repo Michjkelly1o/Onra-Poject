@@ -1,8 +1,56 @@
 import { type ClassValue, clsx } from "clsx";
+import type { ChangeEvent } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Shared convention for every `<input type="number">` in the app:
+ * placeholder "0", empty when value is 0, strips leading zeros on type
+ * (so "010" lands as "10").
+ *
+ * Usage:
+ *   <input type="number" {...numericInputProps(value, setValue)} />
+ *   <input type="number" {...numericInputProps(value, setValue, { max: 52 })} />
+ */
+export function numericInputProps(
+  value: number,
+  setValue: (n: number) => void,
+  opts?: { max?: number }
+) {
+  return {
+    placeholder: "0",
+    value: value === 0 ? "" : String(value),
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value.replace(/^0+(?=\d)/, "");
+      if (raw === "") { setValue(0); return; }
+      const num = Number(raw);
+      if (Number.isNaN(num)) return;
+      if (opts?.max !== undefined && num > opts.max) return;
+      setValue(num);
+    },
+  };
+}
+
+/**
+ * Same convention but for fields that hold the value as a string
+ * (typical for form objects where every field is a string until submit).
+ * Also keeps decimals intact, so prices like "10.50" pass through.
+ */
+export function numericStringInputProps(
+  value: string,
+  setValue: (s: string) => void
+) {
+  return {
+    placeholder: "0",
+    value: value === "0" ? "" : value,
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value.replace(/^0+(?=\d)/, "");
+      setValue(raw);
+    },
+  };
 }
 
 export function formatCurrency(amount: number): string {

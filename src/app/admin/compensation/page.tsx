@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useDataStore } from "@/lib/data-store";
 import { instructorPayRules } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
+import { TableAvatar } from "@/components/ui/avatar";
 import {
     DollarSign,
     Users,
@@ -139,9 +140,7 @@ export default function CompensationPage() {
                             >
                                 <td className="px-6 py-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
-                                            <span className="text-xs font-semibold text-brand-700">{ie.first_name[0]}{ie.last_name[0]}</span>
-                                        </div>
+                                        <TableAvatar initials={`${ie.first_name[0] ?? ""}${ie.last_name[0] ?? ""}`} size={32} />
                                         <div>
                                             <p className="text-sm font-medium text-gray-900">{ie.first_name} {ie.last_name}</p>
                                             <p className="text-xs text-gray-400">{ie.email}</p>

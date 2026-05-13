@@ -1,727 +1,1502 @@
 "use client";
 
-import { useState } from "react";
-import { useDataStore } from "@/lib/data-store";
-import { cn, formatTime } from "@/lib/utils";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
-    ChevronLeft,
-    ChevronRight,
-    Plus,
-    X,
-    Clock,
-    Users,
-    MapPin,
-    Trash2,
-    AlertCircle,
-    Copy,
-    UserCheck,
-    Save,
-    CalendarPlus,
-} from "lucide-react";
+    SearchMd, FilterLines, Plus, DotsVertical,
+    ChevronLeft, ChevronRight, Eye, Edit02, Trash01,
+    Download01, MarkerPin01, Clock, Users01, AlignLeft, XClose,
+    Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
+    ChevronDown,
+} from "@untitledui/icons";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { SelectInput } from "@/components/ui/select-input";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { TableAvatar } from "@/components/ui/avatar";
+import { Toast } from "@/components/ui/Toast";
+import { useAppStore, type ClassInstance, type ClassStatus, type ScheduleInstructor, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 6); // 6am to 7pm
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Alias for compatibility with existing code in this file
+type Instructor = ScheduleInstructor;
 
-function getWeekDates(): Date[] {
-    const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1);
-    return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        return d;
+// ─── Category colors ──────────────────────────────────────────────────────────
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Barre: { bg: "#e0f9f4", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga: { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
+    HIIT: { bg: "#fff3f2", border: "#d92d20", text: "#7a271a" },
+    Recovery: { bg: "#f0f4f8", border: "#667085", text: "#344054" },
+    default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
+};
+
+function getCategoryColor(category: string) {
+    return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.default;
+}
+
+const INSTRUCTORS: Instructor[] = SCHEDULE_INSTRUCTORS;
+
+const DAY_VIEW_DATE = "Fri, 28 Feb 2025";
+const GRID_START_HOUR = 7;  // 7 AM
+const GRID_END_HOUR = 21; // 9 PM
+const HOUR_HEIGHT = 80; // px per hour — day view
+const WEEK_HOUR_HEIGHT = 88; // px per hour — week view (user specified 88px blocks)
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEK_DAY_NAMES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+// ─── Date math helpers ────────────────────────────────────────────────────────
+
+function isoAddDays(iso: string, days: number): string {
+    const d = new Date(iso + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
+function isoToDisplay(iso: string): string {
+    const d = new Date(iso + "T00:00:00");
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return `${days[d.getDay()]}, ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function buildWeekCols(monday: string) {
+    return WEEK_DAY_NAMES.map((label, i) => {
+        const iso = isoAddDays(monday, i);
+        const date = new Date(iso + "T00:00:00");
+        return { day: label, date: String(date.getDate()), month: MONTHS_SHORT[date.getMonth()], iso, isToday: iso === "2025-02-28" };
     });
 }
 
-export default function SchedulePage() {
-    const { classInstances, classTypes, users, rooms, bookings, addClass, deleteClass, updateClass } = useDataStore();
-    const instructors = users.filter((u) => u.role === "instructor");
+function formatWeekRange(monday: string): string {
+    const d0 = new Date(monday + "T00:00:00");
+    const d6 = new Date(monday + "T00:00:00");
+    d6.setDate(d6.getDate() + 6);
+    const s = `${d0.getDate()} ${MONTHS_SHORT[d0.getMonth()]}`;
+    const e = `${d6.getDate()} ${MONTHS_SHORT[d6.getMonth()]} ${d6.getFullYear()}`;
+    return `${s} – ${e}`;
+}
 
-    const [view, setView] = useState<"week" | "month">("week");
-    const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [filterLevel, setFilterLevel] = useState<string>("all");
-    const [showSubstituteModal, setShowSubstituteModal] = useState(false);
-    const [templateSaved, setTemplateSaved] = useState(false);
-    const [showApplyTemplate, setShowApplyTemplate] = useState(false);
-    const weekDates = getWeekDates();
+function prevMonthYearStr(my: string): string {
+    const [y, m] = my.split("-").map(Number);
+    return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+}
+function nextMonthYearStr(my: string): string {
+    const [y, m] = my.split("-").map(Number);
+    return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+function formatMonthYear(my: string): string {
+    const [y, m] = my.split("-").map(Number);
+    return `${MONTHS_LONG[m - 1]} ${y}`;
+}
 
-    // Form State
-    const [formData, setFormData] = useState({
-        class_type_id: "",
-        date: new Date().toISOString().split("T")[0],
-        time: "09:00",
-        instructor_id: "",
-        room_id: ""
+function buildMonthGrid(my: string): Array<{ iso: string; num: number; current: boolean } | null> {
+    const [y, m] = my.split("-").map(Number);
+    const firstDay = new Date(y, m - 1, 1);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    // Monday-first offset
+    const offset = (firstDay.getDay() + 6) % 7;
+    return Array.from({ length: 42 }, (_, i) => {
+        const d = i - offset + 1;
+        if (d <= 0 || d > daysInMonth) return null;
+        return { iso: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, num: d, current: true };
     });
+}
 
-    const selectedInstance = selectedClassId
-        ? classInstances.find((c) => c.id === selectedClassId)
-        : null;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-    // Filter instances
-    const filteredInstances = classInstances.filter(inst => {
-        if (filterLevel === "all") return true;
-        return inst.class_type?.difficulty_level === filterLevel;
-    });
+function formatHour(h: number): string {
+    if (h === 12) return "12 PM";
+    if (h === 0) return "12 AM";
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
+}
 
-    const handleCreateClass = () => {
-        if (!formData.class_type_id || !formData.instructor_id || !formData.room_id) return;
+function timeToMinutes(t: string): number {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+}
 
-        const ct = classTypes.find(t => t.id === formData.class_type_id);
-        if (!ct) return;
+function topFromTime(startTime: string): number {
+    const mins = timeToMinutes(startTime) - GRID_START_HOUR * 60;
+    return Math.max(0, (mins * HOUR_HEIGHT) / 60);
+}
 
-        const startDateTime = new Date(`${formData.date}T${formData.time}:00`);
-        const endDateTime = new Date(startDateTime.getTime() + ct.default_duration_min * 60000);
+function heightFromTime(startTime: string, endTime: string): number {
+    const mins = timeToMinutes(endTime) - timeToMinutes(startTime);
+    return Math.max(30, (mins * HOUR_HEIGHT) / 60);
+}
 
-        addClass({
-            studio_id: "s1",
-            class_type_id: formData.class_type_id,
-            instructor_id: formData.instructor_id,
-            room_id: formData.room_id,
-            start_time: startDateTime.toISOString(),
-            end_time: endDateTime.toISOString(),
-            capacity: ct.default_capacity,
-        });
+// ─── Shared: star rating ──────────────────────────────────────────────────────
 
-        setShowAddModal(false);
-        setFormData({ class_type_id: "", date: new Date().toISOString().split("T")[0], time: "09:00", instructor_id: "", room_id: "" });
+function FilledStar({ filled }: { filled: boolean }) {
+    return (
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1.167l1.575 3.19 3.52.513-2.547 2.483.601 3.505L7 9.107l-3.149 1.751.601-3.505L1.905 4.87l3.52-.513L7 1.167z"
+                fill={filled ? "#f79009" : "none"} stroke={filled ? "#f79009" : "#d0d5dd"} strokeWidth="1.2" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
+function StarRating({ rating, count }: { rating: number; count: number }) {
+    return (
+        <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map(i => <FilledStar key={i} filled={i <= Math.round(rating)} />)}
+            </div>
+            <span className="text-[12px] text-[#667085]">{count > 0 ? `${rating.toFixed(1)} (${count} ratings)` : "0 (0 ratings)"}</span>
+        </div>
+    );
+}
+
+// ─── Shared: status badge ─────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: ClassStatus }) {
+    const styles: Record<ClassStatus, string> = {
+        Upcoming: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        Ongoing: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
+        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
+    return <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>{status}</span>;
+}
 
-    const handleDelete = (id: string) => {
-        if (confirm("Are you sure you want to cancel and delete this class?")) {
-            deleteClass(id);
-            setSelectedClassId(null);
+// ─── Shared: attendance bar ───────────────────────────────────────────────────
+
+function AttendanceBar({ booked, capacity }: { booked: number; capacity: number }) {
+    const pct = capacity > 0 ? (booked / capacity) : 0;
+    return (
+        <div className="flex items-center gap-3">
+            <div className="h-[4px] w-[80px] bg-[#e4e7ec] rounded-full overflow-hidden shrink-0">
+                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${pct * 100}%` }} />
+            </div>
+            <span className="text-[14px] text-[#344054] whitespace-nowrap">{booked}/{capacity}</span>
+        </div>
+    );
+}
+
+// ─── Shared: instructor avatar ────────────────────────────────────────────────
+
+function InstructorAvatar({ initials, color, size = 28 }: { initials: string; color: string; size?: number }) {
+    return (
+        <div className="rounded-full flex items-center justify-center shrink-0 text-white font-semibold"
+            style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.36 }}>
+            {initials}
+        </div>
+    );
+}
+
+// ─── Shared: fixed dropdown ───────────────────────────────────────────────────
+
+function FixedDropdown({ triggerRef, open, onClose, children }: {
+    triggerRef: React.RefObject<HTMLButtonElement>; open: boolean; onClose: () => void; children: React.ReactNode;
+}) {
+    const [pos, setPos] = useState({ top: 0, right: 0 });
+    const dropRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (open && triggerRef.current) {
+            const r = triggerRef.current.getBoundingClientRect();
+            setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
         }
-    };
+    }, [open, triggerRef]);
 
-    // ── Duplicate Class ──
-    const handleDuplicate = (cls: typeof classInstances[0]) => {
-        const ct = classTypes.find(t => t.id === cls.class_type_id);
-        if (!ct) return;
-        // Pre-fill form and open add modal
-        const startDate = new Date(cls.start_time);
-        // Set to tomorrow same time
-        const tomorrow = new Date(startDate);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        setFormData({
-            class_type_id: cls.class_type_id,
-            date: tomorrow.toISOString().split("T")[0],
-            time: `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`,
-            instructor_id: cls.instructor_id,
-            room_id: cls.room_id,
-        });
-        setShowAddModal(true);
-        setSelectedClassId(null);
-    };
-
-    // ── Substitute Instructor ──
-    const handleSubstitute = (classId: string, newInstructorId: string) => {
-        updateClass(classId, { instructor_id: newInstructorId });
-        setShowSubstituteModal(false);
-    };
-
-    // ── Save / Apply Weekly Template ──
-    const handleSaveTemplate = () => {
-        // Save current week's classes as a template
-        const templateClasses = classInstances.map(c => ({
-            class_type_id: c.class_type_id,
-            instructor_id: c.instructor_id,
-            room_id: c.room_id,
-            dayOfWeek: new Date(c.start_time).getDay(),
-            hour: new Date(c.start_time).getHours(),
-            minute: new Date(c.start_time).getMinutes(),
-            durationMin: (new Date(c.end_time).getTime() - new Date(c.start_time).getTime()) / 60000,
-            capacity: c.capacity,
-        }));
-        localStorage.setItem("syncfit_schedule_template", JSON.stringify(templateClasses));
-        setTemplateSaved(true);
-        setTimeout(() => setTemplateSaved(false), 3000);
-    };
-
-    const handleApplyTemplate = () => {
-        const raw = localStorage.getItem("syncfit_schedule_template");
-        if (!raw) return;
-        const templateClasses = JSON.parse(raw);
-        // Apply to next week
-        const nextMonday = new Date(weekDates[0]);
-        nextMonday.setDate(nextMonday.getDate() + 7);
-
-        templateClasses.forEach((tc: { class_type_id: string; instructor_id: string; room_id: string; dayOfWeek: number; hour: number; minute: number; durationMin: number; capacity: number }) => {
-            const classDate = new Date(nextMonday);
-            const offset = ((tc.dayOfWeek + 6) % 7); // Mon=0
-            classDate.setDate(nextMonday.getDate() + offset);
-            classDate.setHours(tc.hour, tc.minute, 0, 0);
-            const endDate = new Date(classDate.getTime() + tc.durationMin * 60000);
-
-            addClass({
-                studio_id: "s1",
-                class_type_id: tc.class_type_id,
-                instructor_id: tc.instructor_id,
-                room_id: tc.room_id,
-                start_time: classDate.toISOString(),
-                end_time: endDate.toISOString(),
-                capacity: tc.capacity,
-            });
-        });
-        setShowApplyTemplate(false);
-    };
-
-    // ── Month View ──
-    const getMonthDays = () => {
-        const now = new Date();
-        const first = new Date(now.getFullYear(), now.getMonth(), 1);
-        const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const startPad = (first.getDay() + 6) % 7; // Monday start
-        const days: (Date | null)[] = Array.from({ length: startPad }, () => null);
-        for (let d = 1; d <= last.getDate(); d++) {
-            days.push(new Date(now.getFullYear(), now.getMonth(), d));
+    useEffect(() => {
+        function h(e: MouseEvent) {
+            if (dropRef.current && !dropRef.current.contains(e.target as Node) &&
+                triggerRef.current && !triggerRef.current.contains(e.target as Node)) onClose();
         }
-        return days;
-    };
+        if (open) document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, [open, onClose, triggerRef]);
+
+    if (!open) return null;
+    return (
+        <div ref={dropRef} style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
+            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 min-w-[180px]">
+            {children}
+        </div>
+    );
+}
+
+function RowActions({ id, status, onCancel }: { id: string; status: ClassStatus; onCancel: (id: string) => void }) {
+    const router = useRouter();
+    const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const isEditable = status === "Upcoming" || status === "Ongoing";
+
+    function go(path: string) { setOpen(false); router.push(path); }
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Manage your weekly class schedule
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    {/* View Toggle */}
-                    <div className="flex bg-gray-100 rounded-xl p-1">
-                        <button
-                            onClick={() => setView("week")}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                                view === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
-                            )}
-                        >
-                            Week
+        <div className="relative">
+            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
+                <DotsVertical className="w-4 h-4 text-[#667085]" />
+            </button>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
+                {isEditable ? (
+                    <>
+                        <button type="button" onClick={() => go(`/schedule/${id}`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            <Eye className="w-4 h-4 text-[#667085]" />View details
                         </button>
-                        <button
-                            onClick={() => setView("month")}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                                view === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
-                            )}
-                        >
-                            Month
+                        <button type="button" onClick={() => go(`/schedule/${id}/edit`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            <Edit02 className="w-4 h-4 text-[#667085]" />Edit class
                         </button>
+                        <button type="button" onClick={() => { setOpen(false); onCancel(id); }} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
+                            <Trash01 className="w-4 h-4 text-[#b42318]" />Cancel class
+                        </button>
+                    </>
+                ) : (
+                    <button type="button" onClick={() => go(`/schedule/${id}`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        <Eye className="w-4 h-4 text-[#667085]" />View class details
+                    </button>
+                )}
+            </FixedDropdown>
+        </div>
+    );
+}
+
+// ─── Cancel class modal — lightweight version for admin/schedule list & popup ──
+
+function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm }: {
+    open: boolean; classInstance: ClassInstance | null; bookedCount: number;
+    onClose: () => void; onConfirm: () => void;
+}) {
+    if (!open || !classInstance) return null;
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                <button type="button" onClick={onClose}
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[#667085]" />
+                </button>
+                <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                    <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
+                        <Trash01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
-
-                    {/* Filter */}
-                    <select
-                        value={filterLevel}
-                        onChange={(e) => setFilterLevel(e.target.value)}
-                        className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-200"
-                    >
-                        <option value="all">All Levels</option>
-                        <option value="beginner">Beginner</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="advanced">Advanced</option>
-                    </select>
-
-                    {/* Template buttons */}
-                    <button
-                        onClick={handleSaveTemplate}
-                        className={cn(
-                            "flex items-center gap-1.5 px-3 py-2.5 border rounded-xl text-sm font-medium transition-all",
-                            templateSaved
-                                ? "bg-green-50 border-green-200 text-green-600"
-                                : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                        )}
-                    >
-                        <Save className="w-4 h-4" />
-                        {templateSaved ? "Saved!" : "Save Template"}
+                    <div className="flex flex-col gap-1 text-center w-full">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            <span className="font-medium text-[#344054]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
+                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and credits refunded.</>}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex gap-3 px-6 pt-6 pb-6">
+                    <button type="button" onClick={onClose}
+                        className="flex-1 py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] font-semibold text-[#344054] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                        Cancel
                     </button>
-                    <button
-                        onClick={() => setShowApplyTemplate(true)}
-                        className="flex items-center gap-1.5 px-3 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                    >
-                        <CalendarPlus className="w-4 h-4" />
-                        Apply Template
-                    </button>
-
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 gradient-bg-brand text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-glow"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Class
+                    <button type="button" onClick={onConfirm}
+                        className="flex-1 py-[10px] rounded-[8px] text-[16px] font-semibold text-white bg-[#d92d20] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#b42318] transition-colors">
+                        Yes, cancel class
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
 
-            {/* Week Navigation */}
-            <div className="flex items-center gap-4">
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <ChevronLeft className="w-4 h-4 text-gray-600" />
-                </button>
-                <h2 className="text-sm font-semibold text-gray-700">
-                    {weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} —{" "}
-                    {weekDates[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </h2>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
-                </button>
-                <button className="text-xs text-brand-600 font-medium hover:text-brand-700 ml-2">
-                    Today
-                </button>
+// ─── Empty table illustration ─────────────────────────────────────────────────
+
+function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
+    return (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-6 pointer-events-auto">
+                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                    <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
+                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-[8px] flex-1 min-w-0">
+                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                    </div>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
+                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Filter panel ─────────────────────────────────────────────────────────────
+
+type FilterState = {
+    statuses: ClassStatus[];
+    dayOfWeek: string[];
+    timeOfDay: string[];
+    locationRoom: string;
+    instructors: string[];
+    templateId: string;
+    dateFrom: string;
+    dateTo: string;
+};
+const EMPTY_FILTER: FilterState = {
+    statuses: [], dayOfWeek: [], timeOfDay: [],
+    locationRoom: "", instructors: [], templateId: "", dateFrom: "", dateTo: "",
+};
+const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Completed", "Cancelled"];
+
+const LOCATION_GROUPS = [
+    { branch: "Forma Studio (South)", rooms: ["Reformer Studio", "Mat Studio", "Barre Studio", "Studio A", "Studio B"] },
+    { branch: "Forma Studio (East)", rooms: ["Yoga Studio", "HIT Studio"] },
+];
+
+function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick}
+            className={cn("px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
+                selected ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]" : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]")}>
+            {label}
+        </button>
+    );
+}
+
+/**
+ * Room-only filter dropdown. The active branch is already chosen via the toolbar
+ * location selector, so this list scopes to that branch's rooms only — no
+ * branch headers, no cross-branch grouping. Pass `branchLabel` to filter to a
+ * single branch; omit it to fall back to a flat union of all rooms.
+ */
+function LocationDropdown({ value, onChange, branchLabel }: {
+    value: string; onChange: (v: string) => void; branchLabel?: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+
+    const rooms = branchLabel
+        ? LOCATION_GROUPS.find(g => g.branch === branchLabel)?.rooms ?? []
+        : LOCATION_GROUPS.flatMap(g => g.rooms);
+    const display = value || "All locations";
+
+    return (
+        <div ref={ref} className="relative">
+            <button type="button" onClick={() => setOpen(p => !p)}
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] text-[#344054] font-medium hover:bg-[#f9fafb] transition-colors">
+                <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                <span className="flex-1 text-left truncate">{display}</span>
+                <ChevronDown className="w-4 h-4 text-[#667085]" />
+            </button>
+            {open && (
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[300px] overflow-y-auto">
+                    <button type="button" onClick={() => { onChange(""); setOpen(false); }}
+                        className={cn("flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
+                            !value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                        All locations
+                    </button>
+                    {rooms.map(room => (
+                        <button key={room} type="button" onClick={() => { onChange(room); setOpen(false); }}
+                            className={cn("flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
+                                value === room ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                            {room}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function FilterDropdown({ label, value, options, onChange }: {
+    label: string; value: string;
+    options: { value: string; label: string; initials?: string; color?: string }[];
+    onChange: (v: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+
+    const selected = options.find(o => o.value === value);
+
+    return (
+        <div ref={ref} className="relative">
+            <button type="button" onClick={() => setOpen(p => !p)}
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                {selected?.initials && (
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: selected.color }}>
+                        {selected.initials}
+                    </div>
+                )}
+                <span className="flex-1 text-left truncate text-[#344054]">
+                    {selected?.label ?? label}
+                </span>
+                <ChevronDown className="w-4 h-4 text-[#667085]" />
+            </button>
+            {open && (
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
+                    <button type="button" onClick={() => { onChange(""); setOpen(false); }}
+                        className={cn("flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
+                            !value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                        {label}
+                    </button>
+                    {options.map(o => (
+                        <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }}
+                            className={cn("flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
+                                value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                            {o.initials && (
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                                    style={{ backgroundColor: o.color }}>
+                                    {o.initials}
+                                </div>
+                            )}
+                            {o.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel }: {
+    open: boolean;
+    onClose: () => void;
+    applied: FilterState;
+    onApply: (f: FilterState) => void;
+    templates: { id: string; name: string }[];
+    /** Branch currently selected in the toolbar — the Location filter scopes to its rooms only. */
+    branchLabel?: string;
+}) {
+    const [pending, setPending] = useState<FilterState>(EMPTY_FILTER);
+
+    useEffect(() => { if (open) setPending({ ...applied }); }, [open]); // eslint-disable-line
+    useEffect(() => {
+        function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        if (open) document.addEventListener("keydown", h);
+        return () => document.removeEventListener("keydown", h);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    function toggle<T>(arr: T[], val: T): T[] { return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]; }
+
+    const hasAny = pending.statuses.length > 0 || pending.dayOfWeek.length > 0 ||
+        pending.timeOfDay.length > 0 || !!pending.locationRoom ||
+        pending.instructors.length > 0 || !!pending.templateId ||
+        !!pending.dateFrom || !!pending.dateTo;
+
+    const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
+    const templateOptions = templates.map(t => ({ value: t.id, label: t.name }));
+
+    const Divider = () => <div className="h-px bg-[#e4e7ec]" />;
+    const SectionLabel = ({ label }: { label: string }) => (
+        <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+    );
+
+    return (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
+            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* Status */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Status" />
+                        <div className="flex flex-wrap gap-2">
+                            {ALL_STATUSES.map(s => (
+                                <FilterPill key={s} label={s} selected={pending.statuses.includes(s)}
+                                    onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
+                            ))}
+                        </div>
+                    </div>
+                    <Divider />
+
+                    {/* Custom date range */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Custom date range" />
+                        <div className="flex items-center gap-2">
+                            <DatePicker className="flex-1" value={pending.dateFrom}
+                                onChange={v => setPending(p => ({ ...p, dateFrom: v }))}
+                                placeholder="Start date" />
+                            <DatePicker className="flex-1" value={pending.dateTo}
+                                onChange={v => setPending(p => ({ ...p, dateTo: v }))}
+                                placeholder="End date" />
+                        </div>
+                    </div>
+                    <Divider />
+
+                    {/* Day of week */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Day of week" />
+                        <div className="flex flex-wrap gap-2">
+                            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                                <FilterPill key={d} label={d} selected={pending.dayOfWeek.includes(d)}
+                                    onClick={() => setPending(p => ({ ...p, dayOfWeek: toggle(p.dayOfWeek, d) }))} />
+                            ))}
+                        </div>
+                    </div>
+                    <Divider />
+
+                    {/* Time of the day */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Time of the day" />
+                        <div className="flex gap-2">
+                            {["Morning", "Afternoon", "Evening"].map(t => (
+                                <FilterPill key={t} label={t} selected={pending.timeOfDay.includes(t)}
+                                    onClick={() => setPending(p => ({ ...p, timeOfDay: toggle(p.timeOfDay, t) }))} />
+                            ))}
+                        </div>
+                    </div>
+                    <Divider />
+
+                    {/* Location — grouped by branch → rooms */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Location" />
+                        <LocationDropdown branchLabel={branchLabel} value={pending.locationRoom} onChange={v => setPending(p => ({ ...p, locationRoom: v }))} />
+                    </div>
+                    <Divider />
+
+                    {/* Instructor */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Instructor" />
+                        <FilterDropdown label="All instructors" value={pending.instructors[0] ?? ""} options={instructorOptions}
+                            onChange={v => setPending(p => ({ ...p, instructors: v ? [v] : [] }))} />
+                    </div>
+                    <Divider />
+
+                    {/* Template */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Template" />
+                        <FilterDropdown label="All templates" value={pending.templateId} options={templateOptions}
+                            onChange={v => setPending(p => ({ ...p, templateId: v }))} />
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                        onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
+                        Clear filter
+                    </Button>
+                    <Button variant="primary" size="md" disabled={!hasAny}
+                        onClick={() => { onApply(pending); onClose(); }}>
+                        Apply
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Table header/cell constants ──────────────────────────────────────────────
+
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+
+// ─── List view ────────────────────────────────────────────────────────────────
+
+function ListView({ classes, sortKey, sortDir, onSort, onCancel }: {
+    classes: ClassInstance[];
+    sortKey: string | null;
+    sortDir: SortDir;
+    onSort: (key: string) => void;
+    onCancel: (id: string) => void;
+}) {
+    if (classes.length === 0) {
+        return <div className="relative flex-1" style={{ minHeight: 300 }}><EmptyState title="No classes found" subtitle="Try adjusting your search or filters." /></div>;
+    }
+
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th className={cn(TH, "w-[160px]")}>
+                            <SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={onSort}>Date &amp; time</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[220px]")}>
+                            <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={onSort}>Class name</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="location" currentSort={sortKey} dir={sortDir} onSort={onSort}>Location</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[160px]")}>
+                            <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={onSort}>Attendance</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[160px]")}>
+                            <SortableHeader sortKey="rating" currentSort={sortKey} dir={sortDir} onSort={onSort}>Rating</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[52px]")}></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {classes.map(c => (
+                        <tr key={c.id} className="hover:bg-[#f9fafb] transition-colors">
+                            <td className={TD}>
+                                <div className="font-medium text-[#101828]">{c.date}</div>
+                                <div className="text-[13px] text-[#667085] mt-0.5">{c.displayTime}</div>
+                            </td>
+                            <td className={TD}>
+                                <div className="flex items-center gap-3">
+                                    <TableAvatar initials={c.name.split(" ").map(w => w[0]).join("").slice(0, 2)} size={36} />
+                                    <div>
+                                        <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
+                                        <div className="text-[13px] text-[#667085]">with {c.instructorName}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className={TD}>{c.location}</td>
+                            <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
+                            <td className={TD}><StarRating rating={c.rating} count={c.ratingCount} /></td>
+                            <td className={TD}><StatusBadge status={c.status} /></td>
+                            <td className={TD}><RowActions id={c.id} status={c.status} onCancel={onCancel} /></td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+// ─── Day view ─────────────────────────────────────────────────────────────────
+
+function ClassBlock({ cls, onClick, compact = false }: {
+    cls: ClassInstance;
+    onClick?: (e: React.MouseEvent) => void;
+    compact?: boolean;
+}) {
+    const colors = getCategoryColor(cls.category);
+    const top = topFromTime(cls.startTime);
+    const height = heightFromTime(cls.startTime, cls.endTime);
+    const isFull = cls.booked >= cls.capacity;
+    const [hh, mm] = cls.startTime.split(":").map(Number);
+    const displayT = `${hh > 12 ? hh - 12 : hh === 0 ? 12 : hh}:${String(mm).padStart(2, "0")} ${hh < 12 ? "AM" : "PM"}`;
+    const lastName = cls.instructorName.split(" ").slice(1).join(" ");
+    const firstInit = cls.instructorName[0];
+
+    return (
+        <div
+            style={{ position: "absolute", top, height, left: compact ? 2 : 6, right: compact ? 2 : 6, backgroundColor: colors.bg, borderLeft: `3px solid ${colors.border}` }}
+            className="rounded-[8px] p-[6px] flex flex-col gap-[2px] overflow-hidden cursor-pointer hover:brightness-95 transition-all"
+            onClick={onClick}
+        >
+            <p className="font-semibold text-[12px] leading-[16px] line-clamp-1" style={{ color: colors.text }}>{cls.name}</p>
+            <div className="flex items-center gap-1 min-w-0">
+                <InstructorAvatar initials={cls.instructorInitials} color={cls.instructorColor} size={13} />
+                <span className="text-[11px] text-[#667085] truncate shrink-0">{firstInit}. {lastName}</span>
+            </div>
+            {height > 52 && (
+                <div className="flex items-center gap-1">
+                    <Clock className="w-[10px] h-[10px] text-[#667085] shrink-0" />
+                    <span className="text-[11px] text-[#667085] whitespace-nowrap">{displayT} • {cls.booked}/{cls.capacity}</span>
+                </div>
+            )}
+            {height > 80 && isFull && (
+                <span className="text-[10px] font-semibold text-[#b42318] bg-[#fef3f2] px-1 rounded self-start">FULL</span>
+            )}
+        </div>
+    );
+}
+
+function DayView({ date, classes, onClassClick }: {
+    date: string;
+    classes: ClassInstance[];
+    onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
+}) {
+    const dayClasses = classes.filter(c => c.date === date);
+    const instructorIds = Array.from(new Set(dayClasses.map(c => c.instructorId)));
+    const allInstructors = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
+    const missingInstructors = INSTRUCTORS.filter(i => !instructorIds.includes(i.id)).slice(0, Math.max(0, 4 - allInstructors.length));
+    const columns = [...allInstructors, ...missingInstructors];
+
+    const hours = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => GRID_START_HOUR + i);
+    const gridHeight = hours.length * HOUR_HEIGHT;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes() - GRID_START_HOUR * 60;
+    const currentTop = (currentMinutes * HOUR_HEIGHT) / 60;
+    const showCurrentTime = currentMinutes > 0 && currentMinutes < (GRID_END_HOUR - GRID_START_HOUR) * 60;
+
+    return (
+        <div className="flex flex-col overflow-hidden flex-1">
+            {/* Instructor column headers */}
+            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+                <div className="w-16 shrink-0" />
+                {columns.map(instructor => {
+                    const count = dayClasses.filter(c => c.instructorId === instructor.id).length;
+                    return (
+                        <div key={instructor.id} className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[#f2f4f7]">
+                            <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
+                            <div className="min-w-0">
+                                <p className="text-[14px] font-semibold text-[#101828] truncate">{instructor.name}</p>
+                                <div className="flex items-center gap-1">
+                                    <Calendar className="w-[12px] h-[12px] text-[#667085]" />
+                                    <span className="text-[12px] text-[#667085]">{count} {count === 1 ? "class" : "classes"}</span>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+                <div className="w-6 shrink-0" />
             </div>
 
-            {/* ── WEEK VIEW ── */}
-            {view === "week" && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-soft overflow-hidden">
-                    {/* Day Headers */}
-                    <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-gray-100">
-                        <div className="p-3" />
-                        {weekDates.map((date, i) => {
-                            const isToday = date.toDateString() === new Date().toDateString();
-                            return (
-                                <div key={i} className={cn("p-3 text-center border-l border-gray-100", isToday && "bg-brand-50/50")}>
-                                    <p className="text-xs text-gray-500 font-medium">{DAYS[i]}</p>
-                                    <p className={cn("text-lg font-semibold mt-0.5", isToday ? "text-brand-600" : "text-gray-900")}>
-                                        {date.getDate()}
-                                    </p>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Time Grid */}
-                    <div className="grid grid-cols-[60px_repeat(7,1fr)] relative">
-                        {HOURS.map((hour) => (
-                            <div key={hour} className="contents">
-                                <div className="h-16 px-2 pt-1 text-right border-t border-gray-50">
-                                    <span className="text-[10px] text-gray-400 font-medium">
-                                        {hour > 12 ? `${hour - 12} PM` : hour === 12 ? "12 PM" : `${hour} AM`}
-                                    </span>
-                                </div>
-                                {Array.from({ length: 7 }, (_, dayIdx) => (
-                                    <div key={`${hour}-${dayIdx}`} className="h-16 border-l border-t border-gray-50 relative" />
-                                ))}
+            {/* Scrollable time grid */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
+                <div className="flex" style={{ minHeight: gridHeight }}>
+                    {/* Time labels */}
+                    <div className="w-16 shrink-0 flex flex-col">
+                        {hours.map(h => (
+                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                                style={{ height: HOUR_HEIGHT }}>
+                                {formatHour(h)}
                             </div>
                         ))}
-
-                        {/* Class Blocks */}
-                        {filteredInstances.map((cls) => {
-                            const startDate = new Date(cls.start_time);
-                            const dayIdx = (startDate.getDay() + 6) % 7;
-                            const startHour = startDate.getHours() + startDate.getMinutes() / 60;
-                            const endDate = new Date(cls.end_time);
-                            const endHour = endDate.getHours() + endDate.getMinutes() / 60;
-                            const duration = endHour - startHour;
-                            const top = (startHour - 6) * 64;
-                            const height = duration * 64;
-                            const isFull = cls.booked_count >= cls.capacity;
-                            const hasWaitlist = cls.waitlist_count > 0;
-
-                            if (startHour < 6 || startHour > 20) return null;
-
-                            return (
-                                <div
-                                    key={cls.id}
-                                    onClick={() => setSelectedClassId(cls.id)}
-                                    className={cn(
-                                        "absolute rounded-lg px-2 py-1.5 cursor-pointer transition-all hover:shadow-md hover:z-10 overflow-hidden group",
-                                        selectedClassId === cls.id && "ring-2 ring-brand-400 z-10"
-                                    )}
-                                    style={{
-                                        top: `${top}px`,
-                                        height: `${height}px`,
-                                        left: `calc(60px + ${dayIdx} * ((100% - 60px) / 7) + 4px)`,
-                                        width: `calc((100% - 60px) / 7 - 8px)`,
-                                        backgroundColor: `${cls.class_type?.color}15`,
-                                        borderLeft: `3px solid ${cls.class_type?.color}`,
-                                    }}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <p className="text-[11px] font-semibold leading-tight truncate" style={{ color: cls.class_type?.color }}>
-                                            {cls.class_type?.name}
-                                        </p>
-                                        {hasWaitlist && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0 mt-0.5" title="Waitlist active" />
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 truncate mt-0.5">
-                                        {cls.instructor?.first_name}
-                                    </p>
-                                    <div className="flex items-center justify-between mt-0.5">
-                                        <p className="text-[10px] text-gray-400">
-                                            {cls.booked_count}/{cls.capacity}
-                                        </p>
-                                        {isFull && <span className="text-[9px] text-red-500 font-bold uppercase">FULL</span>}
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
-                </div>
-            )}
 
-            {/* ── MONTH VIEW ── */}
-            {view === "month" && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-soft overflow-hidden">
-                    <div className="p-4 border-b border-gray-100">
-                        <h2 className="text-sm font-semibold text-gray-700">
-                            {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                        </h2>
-                    </div>
-                    <div className="grid grid-cols-7">
-                        {DAYS.map(d => (
-                            <div key={d} className="p-2 text-center text-xs font-medium text-gray-500 border-b border-gray-100">
-                                {d}
-                            </div>
+                    {/* Grid columns */}
+                    <div className="flex-1 relative">
+                        {hours.map((_, i) => (
+                            <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
                         ))}
-                        {getMonthDays().map((day, idx) => {
-                            const dayClasses = day ? filteredInstances.filter(c => {
-                                const cd = new Date(c.start_time);
-                                return cd.getDate() === day.getDate() && cd.getMonth() === day.getMonth();
-                            }) : [];
-                            const isToday = day?.toDateString() === new Date().toDateString();
-                            return (
-                                <div
-                                    key={idx}
-                                    className={cn(
-                                        "min-h-[80px] p-1.5 border-b border-r border-gray-50",
-                                        !day && "bg-gray-50/30",
-                                        isToday && "bg-brand-50/30"
-                                    )}
-                                >
-                                    {day && (
-                                        <>
-                                            <p className={cn("text-xs font-medium mb-1", isToday ? "text-brand-600" : "text-gray-700")}>
-                                                {day.getDate()}
-                                            </p>
-                                            <div className="space-y-0.5">
-                                                {dayClasses.slice(0, 3).map(c => (
-                                                    <div
-                                                        key={c.id}
-                                                        onClick={() => { setSelectedClassId(c.id); setView("week"); }}
-                                                        className="text-[9px] px-1 py-0.5 rounded cursor-pointer truncate hover:opacity-80"
-                                                        style={{ backgroundColor: `${c.class_type?.color}20`, color: c.class_type?.color }}
-                                                    >
-                                                        {c.class_type?.name}
-                                                    </div>
-                                                ))}
-                                                {dayClasses.length > 3 && (
-                                                    <p className="text-[9px] text-gray-400 text-center">+{dayClasses.length - 3} more</p>
-                                                )}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
 
-            {/* Class Detail Slide Over */}
-            {selectedInstance && (
-                <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl border-l border-gray-100 z-50 animate-slide-in-right overflow-y-auto">
-                    <div className="p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="font-bold text-lg text-gray-900">Class Details</h2>
-                            <button onClick={() => setSelectedClassId(null)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                                <X className="w-4 h-4 text-gray-500" />
-                            </button>
+                        {/* Lunch break */}
+                        <div className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
+                            style={{ top: topFromTime("12:00"), height: HOUR_HEIGHT }}>
+                            <div className="absolute inset-0 opacity-50"
+                                style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
+                            <div className="relative z-10 text-center">
+                                <p className="text-[12px] font-medium text-[#98a2b3]">Lunch Break · 12:00 – 01:00 PM</p>
+                            </div>
                         </div>
 
-                        <div className="w-full h-2 rounded-full mb-6" style={{ backgroundColor: selectedInstance.class_type?.color }} />
-
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium border uppercase tracking-wider", "bg-gray-100 text-gray-600 border-gray-200")}>
-                                        {selectedInstance.class_type?.difficulty_level?.replace("_", " ") || "All Levels"}
-                                    </span>
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900">{selectedInstance.class_type?.name}</h3>
-                                <p className="text-sm text-gray-500 mt-1">{selectedInstance.class_type?.description}</p>
+                        {/* Current time line */}
+                        {showCurrentTime && (
+                            <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#f79009] shrink-0 -ml-1.5" />
+                                <div className="flex-1 border-t-2 border-[#f79009]" />
                             </div>
+                        )}
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-50 rounded-xl p-3">
-                                    <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        <span className="text-xs font-medium">Time</span>
+                        {/* Instructor columns */}
+                        <div className="absolute inset-0 flex">
+                            {columns.map(instructor => {
+                                const instrClasses = dayClasses.filter(c => c.instructorId === instructor.id);
+                                return (
+                                    <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
+                                        {instrClasses.map(cls => (
+                                            <ClassBlock key={cls.id} cls={cls} onClick={(e) => onClassClick(cls, e)} />
+                                        ))}
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                        {formatTime(selectedInstance.start_time)} – {formatTime(selectedInstance.end_time)}
-                                    </p>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3">
-                                    <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                        <Users className="w-3.5 h-3.5" />
-                                        <span className="text-xs font-medium">Capacity</span>
-                                    </div>
-                                    <div className="flex items-baseline gap-1">
-                                        <p className="text-sm font-semibold text-gray-900">
-                                            {selectedInstance.booked_count}/{selectedInstance.capacity}
-                                        </p>
-                                        {selectedInstance.waitlist_count > 0 && (
-                                            <span className="text-xs text-orange-600 font-medium">
-                                                (+{selectedInstance.waitlist_count} WL)
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3">
-                                    <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                        <MapPin className="w-3.5 h-3.5" />
-                                        <span className="text-xs font-medium">Room</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-gray-900">{selectedInstance.room?.name}</p>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3">
-                                    <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                        <Users className="w-3.5 h-3.5" />
-                                        <span className="text-xs font-medium">Instructor</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                        {selectedInstance.instructor?.first_name} {selectedInstance.instructor?.last_name}
-                                    </p>
-                                </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Week view ────────────────────────────────────────────────────────────────
+
+// Week view — time-grid layout matching the day view approach (7 day columns)
+function weekTopFromTime(t: string): number {
+    const [h, m] = t.split(":").map(Number);
+    const mins = h * 60 + m - GRID_START_HOUR * 60;
+    return Math.max(0, (mins * WEEK_HOUR_HEIGHT) / 60);
+}
+function weekHeightFromTime(s: string, e: string): number {
+    const [sh, sm] = s.split(":").map(Number);
+    const [eh, em] = e.split(":").map(Number);
+    return Math.max(WEEK_HOUR_HEIGHT, ((eh * 60 + em) - (sh * 60 + sm)) * WEEK_HOUR_HEIGHT / 60);
+}
+
+function WeekView({ classes, weekStart, onClassClick }: {
+    classes: ClassInstance[];
+    weekStart: string;
+    onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
+}) {
+    const cols = buildWeekCols(weekStart);
+    const hours = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => GRID_START_HOUR + i);
+    const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes() - GRID_START_HOUR * 60;
+    const currentTop = (currentMinutes * WEEK_HOUR_HEIGHT) / 60;
+    const showCurrentTime = currentMinutes > 0 && currentMinutes < (GRID_END_HOUR - GRID_START_HOUR) * 60;
+
+    return (
+        <div className="flex flex-col overflow-hidden flex-1">
+            {/* Day column headers */}
+            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+                <div className="w-16 shrink-0" />
+                {cols.map(col => (
+                    <div key={col.day} className={cn("flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]")}>
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-wider", col.isToday ? "text-[#658774]" : "text-[#667085]")}>{col.day}</p>
+                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[16px] font-semibold mt-0.5",
+                            col.isToday ? "bg-[#658774] text-white" : "text-[#101828]")}>
+                            {col.date}
+                        </div>
+                    </div>
+                ))}
+                <div className="w-6 shrink-0" />
+            </div>
+
+            {/* Scrollable time grid */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
+                <div className="flex" style={{ minHeight: gridHeight }}>
+                    {/* Time labels */}
+                    <div className="w-16 shrink-0 flex flex-col">
+                        {hours.map(h => (
+                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                                style={{ height: WEEK_HOUR_HEIGHT }}>
+                                {formatHour(h)}
                             </div>
+                        ))}
+                    </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 pt-2">
-                                <button
-                                    onClick={() => handleDuplicate(selectedInstance)}
-                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                                >
-                                    <Copy className="w-3.5 h-3.5" />
-                                    Duplicate
-                                </button>
-                                <button
-                                    onClick={() => setShowSubstituteModal(true)}
-                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
-                                >
-                                    <UserCheck className="w-3.5 h-3.5" />
-                                    Sub Instructor
-                                </button>
+                    {/* Grid */}
+                    <div className="flex-1 relative">
+                        {hours.map((_, i) => (
+                            <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
+                        ))}
+
+                        {/* Lunch break */}
+                        <div className="absolute left-0 right-0 pointer-events-none"
+                            style={{ top: weekTopFromTime("12:00"), height: WEEK_HOUR_HEIGHT }}>
+                            <div className="absolute inset-0 opacity-40"
+                                style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
+                        </div>
+
+                        {/* Current time line */}
+                        {showCurrentTime && (
+                            <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#f79009] shrink-0 -ml-1" />
+                                <div className="flex-1 border-t-2 border-[#f79009]" />
                             </div>
-                            <button
-                                onClick={() => handleDelete(selectedInstance.id)}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Cancel Class
-                            </button>
+                        )}
 
-                            <div className="pt-4 border-t border-gray-100">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-semibold text-gray-700">Attendees</h4>
-                                    {selectedInstance.waitlist_count > 0 && (
-                                        <span className="flex items-center gap-1 text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded-full">
-                                            <AlertCircle className="w-3 h-3" />
-                                            {selectedInstance.waitlist_count} on Waitlist
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    {bookings
-                                        .filter((b) => b.class_instance_id === selectedInstance.id)
-                                        .map((booking) => (
-                                            <div key={booking.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center">
-                                                        <span className="text-xs font-semibold text-brand-700">
-                                                            {booking.user?.first_name?.[0]}
-                                                            {booking.user?.last_name?.[0]}
-                                                        </span>
+                        {/* Day columns */}
+                        <div className="absolute inset-0 flex">
+                            {cols.map(col => {
+                                const dayClasses = classes.filter(c => c.dateISO === col.iso);
+                                return (
+                                    <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
+                                        style={{ minHeight: gridHeight }}>
+                                        {dayClasses.map(cls => {
+                                            const top = weekTopFromTime(cls.startTime);
+                                            const height = weekHeightFromTime(cls.startTime, cls.endTime);
+                                            const colors = getCategoryColor(cls.category);
+                                            return (
+                                                <div key={cls.id}
+                                                    style={{ position: "absolute", top, height, left: 2, right: 2, backgroundColor: colors.bg, borderLeft: `3px solid ${colors.border}` }}
+                                                    className="rounded-[6px] p-[5px] flex flex-col gap-[2px] overflow-hidden cursor-pointer hover:brightness-95 transition-all"
+                                                    onClick={(e) => onClassClick(cls, e)}>
+                                                    <p className="text-[14px] font-semibold line-clamp-1 leading-[20px]" style={{ color: colors.text }}>{cls.name}</p>
+                                                    <div className="flex items-center gap-1 min-w-0">
+                                                        <InstructorAvatar initials={cls.instructorInitials} color={cls.instructorColor} size={14} />
+                                                        <span className="text-[12px] font-medium text-[#667085] truncate">{cls.instructorName.split(" ")[0][0]}. {cls.instructorName.split(" ").slice(1).join(" ")}</span>
                                                     </div>
-                                                    <span className="text-sm text-gray-700">
-                                                        {booking.user?.first_name} {booking.user?.last_name}
-                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[12px] font-medium text-[#667085]">{cls.displayTime.split(" - ")[0]}</span>
+                                                        <span className="text-[12px] font-medium text-[#98a2b3]">• {cls.booked}/{cls.capacity}</span>
+                                                    </div>
                                                 </div>
-                                                <span
-                                                    className={cn(
-                                                        "text-xs px-2 py-0.5 rounded-full font-medium",
-                                                        booking.status === "confirmed" && "bg-blue-50 text-blue-600",
-                                                        booking.status === "attended" && "bg-green-50 text-green-600",
-                                                        booking.status === "no_show" && "bg-red-50 text-red-600",
-                                                        booking.status === "cancelled" && "bg-gray-100 text-gray-500",
-                                                        booking.status === "late_cancelled" && "bg-orange-50 text-orange-600",
-                                                        booking.status === "waitlist" && "bg-yellow-50 text-yellow-600"
-                                                    )}
-                                                >
-                                                    {booking.status.replace("_", " ")}
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Month view ───────────────────────────────────────────────────────────────
+
+function MonthView({ classes, monthYear, onClassClick }: {
+    classes: ClassInstance[];
+    monthYear: string;
+    onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
+}) {
+    const grid = buildMonthGrid(monthYear);
+
+    const DAY_CLASSES: Record<string, ClassInstance[]> = {};
+    classes.forEach(c => {
+        if (!DAY_CLASSES[c.dateISO]) DAY_CLASSES[c.dateISO] = [];
+        DAY_CLASSES[c.dateISO].push(c);
+    });
+
+    function fmt12(time: string) {
+        const [h, m] = time.split(":").map(Number);
+        return `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+    }
+
+    return (
+        <div className="flex flex-col overflow-y-auto scrollbar-hide flex-1">
+            {/* Day headers */}
+            <div className="grid grid-cols-7 border-b border-[#e4e7ec] shrink-0 px-6">
+                {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map(d => (
+                    <div key={d} className="py-3 text-[11px] font-semibold text-[#667085] tracking-wider text-center">{d}</div>
+                ))}
+            </div>
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 flex-1 px-6">
+                {grid.map((day, i) => {
+                    const dayClasses: ClassInstance[] = day ? (DAY_CLASSES[day.iso] || []) : [];
+                    const isToday = day?.iso === "2025-02-28";
+                    return (
+                        <div key={i} className={cn("border-r border-b border-[#f2f4f7] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
+                            {day && (
+                                <>
+                                    {/* Date number — centered */}
+                                    <div className="flex justify-center mb-1.5">
+                                        <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold",
+                                            isToday ? "bg-[#658774] text-white" : "text-[#344054]")}>
+                                            {day.num}
+                                        </div>
+                                    </div>
+                                    {dayClasses.slice(0, 2).map(cls => {
+                                        const col = getCategoryColor(cls.category);
+                                        return (
+                                            <div key={cls.id}
+                                                className="rounded-[4px] px-1.5 py-[3px] mb-0.5 cursor-pointer hover:brightness-95 transition-all flex items-center gap-1 overflow-hidden"
+                                                style={{ backgroundColor: col.bg, borderLeft: `2px solid ${col.border}` }}
+                                                onClick={(e) => onClassClick(cls, e)}>
+                                                <span className="text-[12px] font-medium shrink-0 whitespace-nowrap" style={{ color: col.border }}>
+                                                    {fmt12(cls.startTime)}
+                                                </span>
+                                                <span className="text-[12px] font-medium truncate" style={{ color: col.text }}>
+                                                    · {cls.name}
                                                 </span>
                                             </div>
-                                        ))}
-                                    {bookings.filter((b) => b.class_instance_id === selectedInstance.id).length === 0 && (
-                                        <p className="text-sm text-gray-400 text-center py-4">No bookings yet</p>
+                                        );
+                                    })}
+                                    {dayClasses.length > 2 && (
+                                        <button type="button" className="text-[11px] text-[#667085] hover:text-[#344054] transition-colors mt-0.5">
+                                            +{dayClasses.length - 2} more
+                                        </button>
                                     )}
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ─── Class floating popup (Figma node 6715:524243) ───────────────────────────
+
+function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit, onDuplicate, onCancel }: {
+    cls: ClassInstance;
+    anchor: { x: number; y: number };
+    onClose: () => void;
+    onViewDetails: (id: string) => void;
+    onAddCustomer: (id: string) => void;
+    onEdit: (id: string) => void;
+    onDuplicate: (id: string) => void;
+    onCancel: (id: string) => void;
+}) {
+    const popupRef = useRef<HTMLDivElement>(null);
+    const WIDTH = 343;
+
+    // Position: prefer right of anchor, flip left if near right edge
+    const left = anchor.x + 12 + WIDTH > window.innerWidth - 16
+        ? Math.max(8, anchor.x - WIDTH - 12)
+        : anchor.x + 12;
+    const top = Math.min(anchor.y, window.innerHeight - 520);
+
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        function handleClick(e: MouseEvent) {
+            if (popupRef.current && !popupRef.current.contains(e.target as Node)) onClose();
+        }
+        document.addEventListener("keydown", handleKey);
+        document.addEventListener("mousedown", handleClick);
+        return () => {
+            document.removeEventListener("keydown", handleKey);
+            document.removeEventListener("mousedown", handleClick);
+        };
+    }, [onClose]);
+
+    const durationMin = (() => {
+        const [sh, sm] = cls.startTime.split(":").map(Number);
+        const [eh, em] = cls.endTime.split(":").map(Number);
+        return (eh * 60 + em) - (sh * 60 + sm);
+    })();
+    const isFull = cls.booked >= cls.capacity;
+
+    return (
+        <div ref={popupRef}
+            style={{ position: "fixed", top, left, width: WIDTH, zIndex: 9999 }}
+            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+        >
+            {/* Header: action icons inline, close is last */}
+            <div className="flex items-center justify-end gap-1 px-4 pt-4 pb-3">
+                <button type="button" title="Add customer" onClick={() => { onClose(); onAddCustomer(cls.id); }}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    <UserPlus01 className="w-5 h-5" />
+                </button>
+                <button type="button" title="Edit class" onClick={() => { onClose(); onEdit(cls.id); }}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    <Edit02 className="w-5 h-5" />
+                </button>
+                <button type="button" title="Duplicate" onClick={() => { onClose(); onDuplicate(cls.id); }}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    <Copy01 className="w-5 h-5" />
+                </button>
+                <button type="button" title="Cancel class" onClick={() => { onClose(); onCancel(cls.id); }}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#fff3f2] transition-colors text-[#d92d20]">
+                    <Trash01 className="w-5 h-5" />
+                </button>
+                <button type="button" onClick={onClose}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    <XClose className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-5 pb-2 flex flex-col gap-4">
+                {/* Cover + name + description */}
+                <div className="flex flex-col gap-3">
+                    {/* Cover image / color tile */}
+                    <div className="w-[72px] h-[72px] rounded-[10px] border-1 border-[#e4e7ec] overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{ backgroundColor: cls.coverColor }}>
+                        {cls.coverImage ? (
+                            <img src={cls.coverImage} alt={cls.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-[20px] font-bold" style={{ color: getCategoryColor(cls.category).text }}>
+                                {cls.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                            </span>
+                        )}
+                    </div>
+                    <div>
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{cls.name}</p>
+                        <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2 mt-0.5">{cls.description}</p>
+                    </div>
+                </div>
+
+                {/* Info rows */}
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[#667085] shrink-0" />
+                        <span className="text-[14px] text-[#667085]">{cls.date}</span>
+                        <span className="text-[12px] text-[#667085]">·</span>
+                        <span className="text-[14px] text-[#667085]">{cls.displayTime}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Tag01 className="w-4 h-4 text-[#667085] shrink-0" />
+                        <span className="text-[14px] text-[#667085]">{cls.category} · {cls.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
+                        <span className="text-[14px] text-[#667085]">{durationMin} min</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
+                        <span className="text-[14px] text-[#667085]">
+                            {cls.booked}/{cls.capacity}{isFull ? " (FULL)" : ""}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                        <span className="text-[14px] text-[#667085]">{cls.room}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 flex justify-end">
+                <Button variant="secondary-gray" size="md" onClick={() => { onClose(); onViewDetails(cls.id); }}>
+                    See details
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+function Pagination({ page, total, pageSize, onPage, onPageSize }: {
+    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
+}) {
+    const [sizeOpen, setSizeOpen] = useState(false);
+    const sizeRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    return (
+        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
+            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
+                <button type="button" onClick={() => setSizeOpen(p => !p)}
+                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
+                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
+                </button>
+                {sizeOpen && (
+                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
+                        {[10, 20, 30].map(s => (
+                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
+                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
+                        ))}
+                    </div>
+                )}
+                <span className="text-[14px] font-medium text-[#344054]">per page</span>
+            </div>
+            <div className="flex items-center gap-3">
+                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
+                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
+                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
+                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
+                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
+                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
+                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Export dropdown (same pattern as dashboard report button) ────────────────
+
+const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
+
+function ExportDropdown() {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+
+    return (
+        <div ref={ref} className="relative">
+            <Button variant="secondary-gray" size="md"
+                leftIcon={<Download01 className="w-4 h-4" />}
+                onClick={() => setOpen(p => !p)}>
+                Export
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[140px]">
+                    {EXPORT_FORMATS.map(fmt => (
+                        <button key={fmt} type="button" onClick={() => setOpen(false)}
+                            className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            {fmt}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+type ViewTab = "list" | "day" | "week" | "month";
+
+export default function SchedulePage() {
+    const router = useRouter();
+    const { classInstances, classTemplates, classBookings, cancelClassInstance, showToast } = useAppStore();
+    const [activeTab, setActiveTab] = useState<ViewTab>("list");
+    const [search, setSearch] = useState("");
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
+    const [dayDate, setDayDate] = useState(DAY_VIEW_DATE);
+    const [weekStart, setWeekStart] = useState("2025-02-24"); // ISO Monday
+    const [monthYear, setMonthYear] = useState("2025-02");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [location, setLocation] = useState("forma");
+    const [popup, setPopup] = useState<{ cls: ClassInstance; anchor: { x: number; y: number } } | null>(null);
+    const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+
+    const cancelTarget = cancelTargetId ? classInstances.find(c => c.id === cancelTargetId) ?? null : null;
+    const cancelTargetBookedCount = cancelTargetId
+        ? classBookings.filter(b => b.classInstanceId === cancelTargetId && b.status === "booked").length
+        : 0;
+
+    function handleConfirmCancelClass() {
+        if (!cancelTarget) return;
+        cancelClassInstance(cancelTarget.id, true);
+        const name = cancelTarget.name;
+        const date = cancelTarget.date;
+        setCancelTargetId(null);
+        showToast(
+            "Class cancelled successfully",
+            `${name} on ${date} has been cancelled and customers' credits returned.`,
+            "error", "slash"
+        );
+    }
+
+    function handleDuplicateClass(id: string) {
+        router.push(`/schedule/new?duplicateFrom=${encodeURIComponent(id)}`);
+    }
+
+    const DAY_DATES = [
+        "Mon, 24 Feb 2025", "Tue, 25 Feb 2025", "Wed, 26 Feb 2025",
+        "Thu, 27 Feb 2025", "Fri, 28 Feb 2025", "Sat, 01 Mar 2025",
+        "Sun, 02 Mar 2025",
+    ];
+
+    function prevDay() { const i = DAY_DATES.indexOf(dayDate); if (i > 0) setDayDate(DAY_DATES[i - 1]); }
+    function nextDay() { const i = DAY_DATES.indexOf(dayDate); if (i < DAY_DATES.length - 1) setDayDate(DAY_DATES[i + 1]); }
+    function prevWeek() { setWeekStart(w => isoAddDays(w, -7)); }
+    function nextWeek() { setWeekStart(w => isoAddDays(w, 7)); }
+    function prevMonth() { setMonthYear(prevMonthYearStr); }
+    function nextMonth() { setMonthYear(nextMonthYearStr); }
+
+    function handleClassClick(cls: ClassInstance, e: React.MouseEvent) {
+        e.stopPropagation();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setPopup({ cls, anchor: { x: rect.right, y: rect.top } });
+    }
+
+    const hasActiveFilter = applied.statuses.length > 0 || applied.dayOfWeek.length > 0 ||
+        applied.timeOfDay.length > 0 || !!applied.locationRoom ||
+        applied.instructors.length > 0 || !!applied.templateId ||
+        !!applied.dateFrom || !!applied.dateTo;
+
+    const filteredClasses = classInstances.filter(c => {
+        const q = search.toLowerCase();
+        if (q && !c.name.toLowerCase().includes(q) && !c.instructorName.toLowerCase().includes(q) && !c.location.toLowerCase().includes(q)) return false;
+        if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
+        if (applied.instructors.length > 0 && !applied.instructors.includes(c.instructorId)) return false;
+        if (applied.templateId && c.templateId !== applied.templateId) return false;
+        if (applied.locationRoom && c.room !== applied.locationRoom) return false;
+        if (applied.dayOfWeek.length > 0 && !applied.dayOfWeek.includes(c.dayOfWeek)) return false;
+        if (applied.timeOfDay.length > 0) {
+            const [h] = c.startTime.split(":").map(Number);
+            const slot = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
+            if (!applied.timeOfDay.includes(slot)) return false;
+        }
+        if (applied.dateFrom && c.dateISO < applied.dateFrom) return false;
+        if (applied.dateTo && c.dateISO > applied.dateTo) return false;
+        return true;
+    });
+
+    const STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
+    const listComparators: Record<string, (a: ClassInstance, b: ClassInstance) => number> = {
+        date: (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
+        name: (a, b) => a.name.localeCompare(b.name),
+        location: (a, b) => `${a.location} ${a.room}`.localeCompare(`${b.location} ${b.room}`),
+        attendance: (a, b) => (a.capacity ? a.booked / a.capacity : 0) - (b.capacity ? b.booked / b.capacity : 0),
+        rating: (a, b) => a.rating - b.rating,
+        status: (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
+    };
+    const { sorted: sortedClasses, sortKey: listSortKey, sortDir: listSortDir, toggle: toggleListSort } =
+        useSort(filteredClasses, listComparators);
+
+    // Branch labels must match LOCATION_GROUPS so the filter panel's Location dropdown
+    // can scope rooms to whichever branch is active in the toolbar.
+    const locationOptions = [
+        { value: "forma", label: "Forma Studio (South)" },
+        { value: "east",  label: "Forma Studio (East)" },
+    ];
+
+    const TAB_ITEMS: { id: ViewTab; label: string }[] = [
+        { id: "list", label: "List" },
+        { id: "day", label: "Day" },
+        { id: "week", label: "Week" },
+        { id: "month", label: "Month" },
+    ];
+
+    // Pill-style nav container matching the tab selector bg
+    function DateNav({ children }: { children: React.ReactNode }) {
+        return (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-[8px] gap-1">
+                {children}
+            </div>
+        );
+    }
+    function NavBtn({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
+        return (
+            <button type="button" onClick={onClick}
+                className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors">
+                {children}
+            </button>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-6 flex-1">
+            {/* ── Toolbar ── */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1">
+                    <p className="text-[16px] text-[#667085]">Total</p>
+                    <p className="text-[16px] font-medium text-[#101828]">{filteredClasses.length} classes</p>
+                </div>
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select studio"
+                    options={locationOptions}
+                    value={location}
+                    onChange={setLocation}
+                    width="w-[220px]"
+                />
+                <div className="relative w-[200px]">
+                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                    <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                        placeholder="Search class..."
+                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    />
+                </div>
+                <ExportDropdown />
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/schedule/new")}>Add Class</Button>
+            </div>
+
+            {/* ── View card ── */}
+            <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                {/* Tab nav row */}
+                <div className="shrink-0 relative flex items-center px-6 py-4">
+                    {/* Left: pill tabs */}
+                    <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
+                        {TAB_ITEMS.map(t => (
+                            <button key={t.id} type="button" onClick={() => setActiveTab(t.id)}
+                                className={cn("px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
+                                    activeTab === t.id
+                                        ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                        : "text-[#667085] hover:text-[#344054]")}>
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Center: date navigator — same pill bg as tabs */}
+                    {activeTab === "day" && (
+                        <DateNav>
+                            <NavBtn onClick={prevDay}><ChevronLeft className="w-4 h-4" /></NavBtn>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[152px] text-center">{dayDate}</span>
+                            <NavBtn onClick={nextDay}><ChevronRight className="w-4 h-4" /></NavBtn>
+                        </DateNav>
+                    )}
+                    {activeTab === "week" && (
+                        <DateNav>
+                            <NavBtn onClick={prevWeek}><ChevronLeft className="w-4 h-4" /></NavBtn>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[168px] text-center">{formatWeekRange(weekStart)}</span>
+                            <NavBtn onClick={nextWeek}><ChevronRight className="w-4 h-4" /></NavBtn>
+                        </DateNav>
+                    )}
+                    {activeTab === "month" && (
+                        <DateNav>
+                            <NavBtn onClick={prevMonth}><ChevronLeft className="w-4 h-4" /></NavBtn>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[130px] text-center">{formatMonthYear(monthYear)}</span>
+                            <NavBtn onClick={nextMonth}><ChevronRight className="w-4 h-4" /></NavBtn>
+                        </DateNav>
+                    )}
+
+                    {/* Right: filter */}
+                    <div className="ml-auto">
+                        <Button variant="secondary-gray" size="md"
+                            leftIcon={
+                                <div className="relative">
+                                    <FilterLines className="w-4 h-4" />
+                                    {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
                                 </div>
-                            </div>
-                        </div>
+                            }
+                            onClick={() => setFilterOpen(true)}>
+                            Filter
+                        </Button>
                     </div>
                 </div>
+
+                {/* ── Content (no extra border — views have their own header separators) ── */}
+                {activeTab === "list" && (() => {
+                    const totalPages = Math.max(1, Math.ceil(sortedClasses.length / pageSize));
+                    const clampedPage = Math.min(Math.max(1, page), totalPages);
+                    const paginatedClasses = sortedClasses.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+                    return (
+                        <>
+                            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                                {sortedClasses.length === 0 ? (
+                                    <EmptyState title="No classes scheduled" subtitle="Add a class to get started." />
+                                ) : (
+                                    <div className="px-6">
+                                        <ListView classes={paginatedClasses} sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort} onCancel={id => setCancelTargetId(id)} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="px-6 shrink-0">
+                                <Pagination
+                                    page={clampedPage} total={sortedClasses.length} pageSize={pageSize}
+                                    onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                                />
+                            </div>
+                        </>
+                    );
+                })()}
+
+                {activeTab === "day" && (
+                    <DayView date={dayDate} classes={filteredClasses} onClassClick={handleClassClick} />
+                )}
+
+                {activeTab === "week" && (
+                    <WeekView weekStart={weekStart} classes={filteredClasses} onClassClick={handleClassClick} />
+                )}
+
+                {activeTab === "month" && (
+                    <MonthView monthYear={monthYear} classes={filteredClasses} onClassClick={handleClassClick} />
+                )}
+            </div>
+
+            <FilterPanel
+                open={filterOpen} onClose={() => setFilterOpen(false)}
+                applied={applied} onApply={f => { setApplied(f); setPage(1); }}
+                templates={classTemplates.filter(t => t.status === "Active").map(t => ({ id: t.id, name: t.name }))}
+                branchLabel={locationOptions.find(o => o.value === location)?.label}
+            />
+
+            {/* Class floating popup */}
+            {popup && (
+                <ClassPopup
+                    cls={popup.cls}
+                    anchor={popup.anchor}
+                    onClose={() => setPopup(null)}
+                    onViewDetails={(id) => router.push(`/schedule/${id}`)}
+                    onAddCustomer={(id) => router.push(`/schedule/${id}?openAddCustomer=1`)}
+                    onEdit={(id) => router.push(`/schedule/${id}/edit`)}
+                    onDuplicate={handleDuplicateClass}
+                    onCancel={(id) => setCancelTargetId(id)}
+                />
             )}
 
-            {/* Substitute Instructor Modal */}
-            {showSubstituteModal && selectedInstance && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center animate-fade-in">
-                    <div className="bg-white rounded-2xl w-full max-w-md mx-4 p-6 shadow-2xl animate-scale-in">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">Substitute Instructor</h2>
-                            <button onClick={() => setShowSubstituteModal(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                                <X className="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-4">
-                            Replace <strong>{selectedInstance.instructor?.first_name} {selectedInstance.instructor?.last_name}</strong> for this class
-                        </p>
-                        <div className="space-y-2">
-                            {instructors
-                                .filter(i => i.id !== selectedInstance.instructor_id)
-                                .map(inst => (
-                                    <button
-                                        key={inst.id}
-                                        onClick={() => handleSubstitute(selectedInstance.id, inst.id)}
-                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-all text-left"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
-                                            <span className="text-xs font-semibold text-brand-700">
-                                                {inst.first_name[0]}{inst.last_name[0]}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">{inst.first_name} {inst.last_name}</p>
-                                            <p className="text-xs text-gray-500">{inst.email}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Cancel class confirmation — opens from list dropdown OR popup */}
+            <AdminCancelClassModal
+                open={!!cancelTarget}
+                classInstance={cancelTarget}
+                bookedCount={cancelTargetBookedCount}
+                onClose={() => setCancelTargetId(null)}
+                onConfirm={handleConfirmCancelClass}
+            />
 
-            {/* Apply Template Confirmation Modal */}
-            {showApplyTemplate && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
-                    <div className="bg-white rounded-2xl w-full max-w-md mx-4 p-6 shadow-2xl animate-scale-in">
-                        <h2 className="text-lg font-bold text-gray-900 mb-2">Apply Schedule Template</h2>
-                        <p className="text-sm text-gray-500 mb-6">
-                            This will copy the saved schedule template to next week. Classes will be created with the same times, instructors, and rooms.
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowApplyTemplate(false)}
-                                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleApplyTemplate}
-                                className="flex-1 py-2.5 gradient-bg-brand text-white rounded-xl text-sm font-medium hover:opacity-90"
-                            >
-                                Apply to Next Week
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Class Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
-                    <div className="bg-white rounded-2xl w-full max-w-lg mx-4 p-6 shadow-2xl animate-scale-in">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-gray-900">Add New Class</h2>
-                            <button onClick={() => setShowAddModal(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                                <X className="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Class Type</label>
-                                <select
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
-                                    value={formData.class_type_id}
-                                    onChange={(e) => setFormData({ ...formData, class_type_id: e.target.value })}
-                                >
-                                    <option value="">Select class type...</option>
-                                    {classTypes.map((ct) => (
-                                        <option key={ct.id} value={ct.id}>{ct.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
-                                        value={formData.date}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
-                                    <input
-                                        type="time"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
-                                        value={formData.time}
-                                        onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Instructor</label>
-                                <select
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
-                                    value={formData.instructor_id}
-                                    onChange={(e) => setFormData({ ...formData, instructor_id: e.target.value })}
-                                >
-                                    <option value="">Select instructor...</option>
-                                    {instructors.map((inst) => (
-                                        <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Room</label>
-                                <select
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
-                                    value={formData.room_id}
-                                    onChange={(e) => setFormData({ ...formData, room_id: e.target.value })}
-                                >
-                                    <option value="">Select room...</option>
-                                    {rooms.map((room) => (
-                                        <option key={room.id} value={room.id}>{room.name} (cap: {room.capacity})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    onClick={() => setShowAddModal(false)}
-                                    className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleCreateClass}
-                                    className="flex-1 py-2.5 gradient-bg-brand text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-                                >
-                                    Create Class
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Toast />
         </div>
     );
 }

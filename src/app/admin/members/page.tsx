@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDataStore } from "@/lib/data-store";
 import { cn, getInitials, formatDate, formatCurrency, getStatusColor } from "@/lib/utils";
+import { TableAvatar } from "@/components/ui/avatar";
 import { Search, Plus, X, Mail, Phone, CheckCircle, AlertCircle, ChevronRight, Trash2 } from "lucide-react";
 
 export default function MembersPage() {
@@ -118,11 +119,7 @@ export default function MembersPage() {
                                     >
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
-                                                    <span className="text-xs font-semibold text-brand-700">
-                                                        {getInitials(member.first_name, member.last_name)}
-                                                    </span>
-                                                </div>
+                                                <TableAvatar initials={getInitials(member.first_name, member.last_name)} size={36} />
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-900">{member.first_name} {member.last_name}</p>
                                                     <p className="text-xs text-gray-500">Joined {formatDate(member.created_at)}</p>
