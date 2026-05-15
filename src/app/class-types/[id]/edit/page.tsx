@@ -5,7 +5,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import {
     XClose, UploadCloud02, Grid01, User01,
@@ -24,13 +24,12 @@ type LocationType = "Group" | "Private" | "Semi-private";
 const CLASS_TYPES: LocationType[] = ["Group", "Private", "Semi-private"];
 const CATEGORIES = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
 
+// Built from the centralized `memberships` + `packages` seeds — the
+// "Applicable memberships" picker stays in sync with whatever products the
+// studio actually offers.
 const MEMBERSHIP_ITEMS = [
-    { id: "m1", label: "Beginner Monthly Membership",      group: "Membership" },
-    { id: "m2", label: "Advanced Monthly Membership",      group: "Membership" },
-    { id: "m3", label: "Unlimited Monthly Membership",     group: "Membership" },
-    { id: "p1", label: "1-Class Intro Package for 7 Days", group: "Class package" },
-    { id: "p2", label: "5-Class Package for One Month",    group: "Class package" },
-    { id: "p3", label: "10-Class Package for One Month",   group: "Class package" },
+    ...SEED_MEMBERSHIPS.map(m => ({ id: m.id, label: m.name, group: "Membership"   as const })),
+    ...SEED_PACKAGES   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
 ];
 
 // ─── Progress stepper ─────────────────────────────────────────────────────────
@@ -308,7 +307,9 @@ export default function EditClassTemplatePage() {
     });
 
     const [selectedMemberships, setSelectedMemberships] = useState<string[]>(
-        template?.applicableMemberships ?? ["m1", "m2", "m3", "p1", "p2", "p3"]
+        template
+            ? [...template.applicableMembershipIds, ...template.applicablePackageIds]
+            : MEMBERSHIP_ITEMS.map(m => m.id),
     );
 
     function handleToggle(itemId: string) {
@@ -321,15 +322,19 @@ export default function EditClassTemplatePage() {
 
     function handleSave() {
         if (!template) return;
+        const membershipIds = selectedMemberships.filter(x => SEED_MEMBERSHIPS.some(m => m.id === x));
+        const packageIds    = selectedMemberships.filter(x => SEED_PACKAGES   .some(p => p.id === x));
         updateClassTemplate(id, {
-            name:                 step1.name,
-            description:          step1.description,
-            locationType:         step1.classType,
-            category:             step1.category,
-            durationMin:          Number(step1.durationMin),
-            capacity:             Number(step1.capacity),
-            coverImage:           step1.coverPreview ?? undefined,
-            applicableMemberships: selectedMemberships,
+            name:                   step1.name,
+            description:            step1.description,
+            locationType:           step1.classType,
+            category:               step1.category,
+            durationMin:            Number(step1.durationMin),
+            capacity:               Number(step1.capacity),
+            coverImage:             step1.coverPreview ?? undefined,
+            applicableMembershipIds: membershipIds,
+            applicablePackageIds:    packageIds,
+            applicableMemberships:   selectedMemberships,
         });
         showToast("Class template updated successfully", "Your changes have been saved.", "success", "check");
         router.push(`/class-types/${id}`);

@@ -22,7 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
@@ -30,17 +31,26 @@ import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard"
 import { DEFAULT_ACTIVE_WIDGETS } from "@/components/dashboard/widget-catalog";
 
 // ── Types ──
+// `ScheduleClass` here is the dashboard-local shape that powers both the
+// time-slot grouping (left column shows the 12h hour label) and the LG card
+// render. It carries everything ScheduleClassCard needs plus the meridiem
+// for the column header.
 interface ScheduleClass {
     id: string;
-    type: string;
-    time: string;
+    name: string;
+    /** 24h "10:00" — used both for slot grouping and inside the card. */
+    startTime: string;
     endTime: string;
-    instructor: string;
-    location: string;
-    occupancy: string;
-    color: string;
-    accentColor: string;
-    bgColor: string;
+    /** Pre-formatted "10:00 - 11:00 AM" for the card. */
+    displayTime: string;
+    instructorName: string;
+    instructorInitials: string;
+    instructorColor: string;
+    instructorImageUrl?: string;
+    room: string;
+    booked: number;
+    capacity: number;
+    color: { bg: string; border: string; text: string };
 }
 
 interface TimeSlot {
@@ -49,28 +59,15 @@ interface TimeSlot {
     classes: ScheduleClass[];
 }
 
-const CATEGORY_PALETTE: Record<string, { accent: string; bg: string }> = {
-    Pilates:  { accent: "#92baa4", bg: "#e9fff3" },
-    Barre:    { accent: "#92d1de", bg: "#e0f9f4" },
-    Recovery: { accent: "#9ea093", bg: "#f1f2ed" },
-    Yoga:     { accent: "#f79009", bg: "#fdf3e9" },
+// Resolved hex triple per category — kept in sync with the schedule page's
+// CATEGORY_COLORS (Pilates/Barre/Yoga/Roller Release).
+const CATEGORY_PALETTE: Record<string, { bg: string; border: string; text: string }> = {
+    Pilates:          { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Barre:            { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga:             { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
+    "Roller Release": { bg: "#f0fcf9", border: "#0e9384", text: "#125d56" },
 };
-const FALLBACK_PALETTE = { accent: "#b892ba", bg: "#f7f3f7" };
-
-function formatEndTime12h(h24: string): string {
-    const [hStr, mStr] = h24.split(":");
-    const h = Number(hStr);
-    const m = Number(mStr);
-    const period = h >= 12 ? "PM" : "AM";
-    const h12 = h % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
-}
-
-function abbreviateInstructor(fullName: string): string {
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length < 2) return fullName;
-    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-}
+const FALLBACK_PALETTE = { bg: "#f7f3f7", border: "#b892ba", text: "#4a1fb8" };
 
 interface ActivityItem {
     id: string;
@@ -232,54 +229,9 @@ function PerformanceTab({
 }
 
 // ── Sub-components ──
-
-function ClassScheduleCard({ cls }: { cls: ScheduleClass }) {
-    return (
-        <div
-            className="flex gap-4 items-center pl-5 pr-3 py-3 relative rounded-md w-full hover:opacity-90 transition-opacity cursor-pointer"
-            style={{ backgroundColor: cls.bgColor }}
-        >
-            {/* Left accent bar */}
-            <div
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-[6px] h-[90px] rounded-tl-3xl rounded-bl-lg"
-                style={{ backgroundColor: cls.accentColor }}
-            />
-
-            {/* Content */}
-            <div className="flex flex-col gap-1 items-start flex-1 pl-1">
-                <p className="font-medium text-sm text-[#101828] whitespace-nowrap">
-                    {cls.type}
-                </p>
-                <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
-                    {cls.time} - {cls.endTime}
-                </p>
-                <div className="flex gap-2 items-center">
-                    {/* Instructor */}
-                    <div className="flex gap-1 items-center">
-                        <div className="w-4 h-4 rounded-full bg-[#e0e0e0] overflow-hidden flex-shrink-0">
-                            <div className="w-full h-full bg-gradient-to-br from-brand-300 to-brand-500 rounded-full" />
-                        </div>
-                        <span className="text-sm text-[#667085]">{cls.instructor}</span>
-                    </div>
-                    {/* Divider */}
-                    <div className="w-px h-3 bg-[#d0d5dd]" />
-                    {/* Location */}
-                    <div className="flex gap-1 items-center">
-                        <MarkerPin01 size={16} className="text-[#667085]" />
-                        <span className="text-sm text-[#667085]">{cls.location}</span>
-                    </div>
-                    {/* Divider */}
-                    <div className="w-px h-3 bg-[#d0d5dd]" />
-                    {/* Occupancy */}
-                    <div className="flex gap-1 items-center">
-                        <Users01 size={16} className="text-[#667085]" />
-                        <span className="text-sm text-[#667085]">{cls.occupancy}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Today's-classes uses the shared ScheduleClassCard (size=lg) — see
+// src/components/schedule/ScheduleClassCard.tsx. The dashboard-local card was
+// removed when the DS variants landed.
 
 function MetricCard({ metric }: { metric: typeof metrics[0] }) {
     const Icon = metric.icon;
@@ -409,13 +361,13 @@ export default function AdminDashboard() {
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
 
-    const classInstances = useAppStore(s => s.classInstances);
+    const classSchedules = useAppStore(s => s.classSchedules);
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
     // of the wall-clock date — keeping the dashboard visually populated.
     const todayClasses = useMemo<ScheduleClass[]>(() => {
-        return [...classInstances]
+        return [...classSchedules]
             .filter(ci => ci.status === "Upcoming" || ci.status === "Ongoing")
             .sort((a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`))
             .slice(0, 6)
@@ -423,27 +375,30 @@ export default function AdminDashboard() {
                 const palette = CATEGORY_PALETTE[ci.category] ?? FALLBACK_PALETTE;
                 return {
                     id: ci.id,
-                    type: ci.name,
-                    time: ci.startTime,
-                    endTime: formatEndTime12h(ci.endTime),
-                    instructor: abbreviateInstructor(ci.instructorName),
-                    location: ci.room,
-                    occupancy: `${ci.booked}/${ci.capacity}`,
-                    color: palette.accent,
-                    accentColor: palette.accent,
-                    bgColor: ci.coverColor || palette.bg,
+                    name: ci.name,
+                    startTime: ci.startTime,
+                    endTime: ci.endTime,
+                    displayTime: ci.displayTime,
+                    instructorName: ci.instructorName,
+                    instructorInitials: ci.instructorInitials,
+                    instructorColor: ci.instructorColor,
+                    instructorImageUrl: SCHEDULE_INSTRUCTORS.find(i => i.id === ci.instructorId)?.imageUrl,
+                    room: ci.room,
+                    booked: ci.booked,
+                    capacity: ci.capacity,
+                    color: palette,
                 };
             });
-    }, [classInstances]);
+    }, [classSchedules]);
 
     // Group classes by start-time so the timeline matches the original two-column
     // (time | classes) layout, with multiple classes stacked when they share a slot.
     const timeSlots = useMemo<TimeSlot[]>(() => {
         const slotMap = new Map<string, ScheduleClass[]>();
         for (const c of todayClasses) {
-            const bucket = slotMap.get(c.time);
+            const bucket = slotMap.get(c.startTime);
             if (bucket) bucket.push(c);
-            else slotMap.set(c.time, [c]);
+            else slotMap.set(c.startTime, [c]);
         }
         return Array.from(slotMap.entries())
             .sort(([a], [b]) => a.localeCompare(b))
@@ -615,7 +570,23 @@ export default function AdminDashboard() {
                                         multi ? "flex-col gap-4" : "items-center"
                                     )}>
                                         {slot.classes.map(c => (
-                                            <ClassScheduleCard key={c.id} cls={c} />
+                                            <ScheduleClassCard key={c.id}
+                                                size="lg"
+                                                cls={{
+                                                    name: c.name,
+                                                    color: c.color,
+                                                    startTime: c.startTime,
+                                                    endTime: c.endTime,
+                                                    displayTime: c.displayTime,
+                                                    instructorName: c.instructorName,
+                                                    instructorInitials: c.instructorInitials,
+                                                    instructorColor: c.instructorColor,
+                                                    instructorImageUrl: c.instructorImageUrl,
+                                                    room: c.room,
+                                                    booked: c.booked,
+                                                    capacity: c.capacity,
+                                                }}
+                                            />
                                         ))}
                                     </div>
                                 </div>

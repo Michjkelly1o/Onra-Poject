@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, CLASS_CATEGORIES, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES } from "@/lib/store";
 import {
     XClose, UploadCloud02, Grid01, User01,
     ClockFastForward, Users01,
@@ -21,14 +21,11 @@ type LocationType   = "Group" | "Private" | "Semi-private";
 const CLASS_TYPES: LocationType[] = ["Group", "Private", "Semi-private"];
 const CATEGORIES = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
 
-// Membership items for step 2
+// Membership items for step 2 — sourced from the centralized `memberships` +
+// `packages` seeds so the picker is always in sync with the studio catalog.
 const MEMBERSHIP_ITEMS = [
-    { id: "m1", label: "Beginner Monthly Membership",      group: "Membership",    enabled: true  },
-    { id: "m2", label: "Advanced Monthly Membership",      group: "Membership",    enabled: true  },
-    { id: "m3", label: "Unlimited Monthly Membership",     group: "Membership",    enabled: false },
-    { id: "p1", label: "1-Class Intro Package for 7 Days", group: "Class package", enabled: true  },
-    { id: "p2", label: "5-Class Package for One Month",    group: "Class package", enabled: false },
-    { id: "p3", label: "10-Class Package for One Month",   group: "Class package", enabled: true  },
+    ...SEED_MEMBERSHIPS.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const, enabled: m.status === "active" })),
+    ...SEED_PACKAGES   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const, enabled: p.status === "active" })),
 ];
 
 type MembershipFilterValue = "enabled" | "disabled" | null;
@@ -552,16 +549,22 @@ export default function NewClassTemplatePage() {
     const { addClassTemplate, showToast } = useAppStore();
 
     function handleCreate() {
+        const cat = CLASS_CATEGORIES.find(c => c.name === step1.category);
+        const membershipIds = selectedMemberships.filter(x => SEED_MEMBERSHIPS.some(m => m.id === x));
+        const packageIds    = selectedMemberships.filter(x => SEED_PACKAGES   .some(p => p.id === x));
         addClassTemplate({
             name: step1.name,
             description: step1.description,
+            categoryId: cat?.id ?? "",
             category: step1.category,
             locationType: step1.classType,
             durationMin: Number(step1.durationMin),
             capacity: Number(step1.capacity),
             status: "Active",
             coverImage: step1.coverPreview ?? undefined,
-            coverColor: "#e9fff3",
+            coverColor: cat?.color_hex ?? "#e9fff3",
+            applicableMembershipIds: membershipIds,
+            applicablePackageIds: packageIds,
             applicableMemberships: selectedMemberships,
         });
         showToast(

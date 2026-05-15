@@ -7,7 +7,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, type PurchaseLineItem } from "@/lib/store";
+import { useAppStore, PAYMENT_METHODS, type PurchaseLineItem } from "@/lib/store";
 
 // ─── POS Checkout — Figma 5087:126203 + 5087:126928 ──────────────────────────
 //
@@ -30,10 +30,14 @@ export const dynamic = "force-dynamic";
 
 type PaymentMethod = "cash" | "card" | "applepay";
 
-const SAVED_CARDS = [
-    { id: "card_master_1234", brand: "Master Card", last4: "1234" },
-    { id: "card_visa_1234", brand: "Visa", last4: "1234" },
-];
+// Sourced from the centralized `payment_methods` seed. The seed shape is
+// snake_case (DB-ready); we surface only the display fields the card picker UI
+// needs (id / brand / last4) without a renaming layer.
+const SAVED_CARDS = PAYMENT_METHODS.map(pm => ({
+    id: pm.id,
+    brand: pm.brand,
+    last4: pm.last4,
+}));
 
 export default function CheckoutPage() {
     return (

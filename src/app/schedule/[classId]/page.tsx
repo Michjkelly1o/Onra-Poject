@@ -5,14 +5,14 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
     UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
-    Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package,
+    Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package, SwitchHorizontal01,
 } from "@untitledui/icons";
 import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
 import type { PurchaseLineItem } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { useAppStore, type ClassInstance, type ClassBooking, type Customer } from "@/lib/store";
+import { useAppStore, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES, type ClassInstance, type ClassBooking, type Customer } from "@/lib/store";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, planKindFromName, cancellationBadgeKind } from "@/components/ui/badge";
@@ -503,20 +503,71 @@ function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
     );
 }
 
+// ─── Plan icons (skeuomorphic, matching Figma cart-panel rows) ──────────────
+// Both badges share the same skeuomorphic chrome (1.47px white/12 border, soft
+// sage outer glow, inset top-left highlight) — only the inner tint + icon
+// change so membership cards visually parallel credit-package cards.
+//
+//   Membership → indigo-100 bg + CreditCard02 (Figma 2849:53013)
+//   Package    → secondary-200 bg + Package    (Figma 6379:54781)
+function PlanIconBadge({ kind, size = 40 }: { kind: "membership" | "package"; size?: 40 | 32 }) {
+    const inner = size === 40 ? 24 : 20;
+    const tint = kind === "membership"
+        ? { bg: "bg-[#e0eaff]", icon: "text-[#3538cd]" }
+        : { bg: "bg-[#c4edd6]", icon: "text-[#658774]" };
+    const Icon = kind === "membership" ? CreditCard02 : Package;
+    return (
+        <div
+            className={cn(
+                "relative shrink-0 border-1 border-white/12 rounded-[8.84px] flex items-center justify-center backdrop-blur-[4.85px]",
+                "shadow-[0px_1.94px_1.94px_rgba(0,0,0,0.04),-3.88px_5.82px_11.63px_rgba(224,248,164,0.08),5.82px_5.82px_11.63px_rgba(224,248,164,0.06),0px_1.94px_11.63px_rgba(224,248,164,0.12)]",
+                tint.bg,
+            )}
+            style={{ width: size, height: size }}
+        >
+            <Icon className={tint.icon} style={{ width: inner, height: inner }} />
+            <div className="absolute inset-0 pointer-events-none rounded-[8.84px] shadow-[inset_2.5px_2.5px_3.33px_0px_rgba(255,255,255,0.2)]" />
+        </div>
+    );
+}
+
+// Back-compat shims so the existing call sites read naturally.
+function PackageIconBadge({ size = 40 }: { size?: 40 | 32 } = {}) {
+    return <PlanIconBadge kind="package" size={size} />;
+}
+function MembershipIconBadge({ size = 40 }: { size?: 40 | 32 } = {}) {
+    return <PlanIconBadge kind="membership" size={size} />;
+}
+
 // ─── Payment confirmation modal — Figma 4011:48148 ────────────────────────────
 // Shown after admin picks a customer in AddCustomerModal. Two variants:
 //   • Customer has plan → existing plan card + Confirm payment enabled
 //   • Customer has no plan → "Buy packages" + Select membership card + Confirm disabled
-function PaymentConfirmationModal({ open, customer, classInstance, onClose, onConfirm, onSelectMembership }: {
+//
+// Multi-package: when `customer.packageIds` has 2+ entries, the plan card
+// turns into a radio list so admin picks which package's credit will fund
+// this booking. The selected planId flows back via onConfirm(planId).
+function PaymentConfirmationModal({ open, customer, classInstance, onClose, onConfirm, onSelectMembership, onSwitchCustomer }: {
     open: boolean;
     customer: Customer | null;
     classInstance: ClassInstance | null;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm: (planId?: string) => void;
     onSelectMembership: () => void;
+    onSwitchCustomer: () => void;
 }) {
+    // Track which package the admin picked (multi-package customers only).
+    // Defaults to the first package; re-syncs whenever the customer changes.
+    const initialPackageId = customer?.planKind === "package" ? customer.packageIds?.[0] : undefined;
+    const [selectedPackageId, setSelectedPackageId] = useState<string | undefined>(initialPackageId);
+    useEffect(() => { setSelectedPackageId(initialPackageId); }, [initialPackageId]);
+
     if (!open || !customer || !classInstance) return null;
     const hasPlan = customer.planKind !== null;
+    const customerPackages = (customer.packageIds ?? [])
+        .map(id => SEED_PACKAGES.find(p => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => !!p);
+    const hasMultiplePackages = customer.planKind === "package" && customerPackages.length > 1;
     const planSubtitle = customer.planKind === "membership"
         ? "Unlimited access • Active"
         : customer.planKind === "package"
@@ -542,10 +593,12 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
 
                 {/* Body — scrollable. Section dividers inside are inset 24px each side. */}
                 <div className="flex-1 overflow-y-auto flex flex-col">
-                    {/* Customer section */}
+                    {/* Customer section — clicking the row swaps the customer
+                        via onSwitchCustomer (re-opens AddCustomerModal). */}
                     <div className="flex flex-col gap-4 px-6 py-5">
                         <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Customer</p>
-                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full">
+                        <button type="button" onClick={onSwitchCustomer}
+                            className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full text-left hover:bg-[#f9fafb] transition-colors">
                             <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={40} />
                             <div className="flex-1 min-w-0 flex items-center gap-4">
                                 <div className="flex flex-col">
@@ -554,8 +607,8 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                 </div>
                                 {customer.planKind === null ? <NoPlanBadge /> : <PlanBadge kind={customer.planKind} />}
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#667085] shrink-0" />
-                        </div>
+                            <SwitchHorizontal01 className="w-5 h-5 text-[#667085] shrink-0" />
+                        </button>
                     </div>
 
                     <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
@@ -609,15 +662,43 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                     Purchase new
                                 </button>
                             </div>
-                            <div className="flex items-start gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
-                                <div className="w-10 h-10 rounded-[8px] bg-[#e0eaff] flex items-center justify-center shrink-0">
-                                    <CreditCard02 className="w-5 h-5 text-[#3538cd]" />
+                            {hasMultiplePackages ? (
+                                // Multi-package customers pick which package
+                                // funds the booking — radio on the right.
+                                <div className="flex flex-col gap-2">
+                                    {customerPackages.map(pkg => {
+                                        const selected = selectedPackageId === pkg.id;
+                                        return (
+                                            <button key={pkg.id} type="button" onClick={() => setSelectedPackageId(pkg.id)}
+                                                className={cn(
+                                                    "flex items-center gap-3 p-4 rounded-[12px] text-left transition-colors w-full",
+                                                    selected ? "border-2 border-[#658774] bg-[#f5fffa]" : "border-1 border-[#e4e7ec] bg-white hover:bg-[#f9fafb]",
+                                                )}>
+                                                <PackageIconBadge />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[14px] font-medium text-[#101828] truncate">{pkg.name}</p>
+                                                    <p className="text-[14px] text-[#667085]">{pkg.credits} credit{pkg.credits === 1 ? "" : "s"} • Active</p>
+                                                </div>
+                                                <div className={cn(
+                                                    "w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-1",
+                                                    selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                                )}>
+                                                    {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[14px] font-medium text-[#101828]">{customer.planName}</p>
-                                    <p className="text-[14px] text-[#667085]">{planSubtitle}</p>
+                            ) : (
+                                // Single-plan customers (membership OR 1 package) — non-selectable card.
+                                <div className="flex items-start gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+                                    {customer.planKind === "membership" ? <MembershipIconBadge /> : <PackageIconBadge />}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-medium text-[#101828]">{customer.planName}</p>
+                                        <p className="text-[14px] text-[#667085]">{planSubtitle}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
@@ -641,7 +722,7 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button variant="primary" size="lg" className="flex-1" disabled={!hasPlan} onClick={onConfirm}>
+                    <Button variant="primary" size="lg" className="flex-1" disabled={!hasPlan} onClick={() => onConfirm(selectedPackageId)}>
                         Confirm payment
                     </Button>
                 </div>
@@ -748,19 +829,38 @@ type PosProduct = {
     priceAed: number;
 };
 
+// Sourced from centralized seeds (`memberships`, `packages`) — single source of
+// truth shared with `class-types/[id]` "Applicable plans" tab. Display strings
+// (primaryMeta/secondaryMeta) are derived from the seed columns at module load.
 const POS_PRODUCTS: PosProduct[] = [
-    { id: "m1", type: "membership", name: "Beginner Monthly Membership", primaryMeta: "10 Credits",   secondaryMeta: "1 Month", priceAed: 1200 },
-    { id: "m2", type: "membership", name: "Advanced Monthly Membership", primaryMeta: "20 Credits",   secondaryMeta: "1 Month", priceAed: 1500 },
-    { id: "m3", type: "membership", name: "Unlimited Monthly Membership",primaryMeta: "Unlimited",    secondaryMeta: "1 Month", priceAed: 2800 },
-    { id: "p1", type: "package",    name: "1-Class Intro Package for 7 Days", primaryMeta: "1 Class",  secondaryMeta: "7 Days",  priceAed: 170  },
-    { id: "p2", type: "package",    name: "5-Class Package for One Month",    primaryMeta: "5 Credits",secondaryMeta: "1 Month", priceAed: 750  },
-    { id: "p3", type: "package",    name: "10-Class Package for One Month",   primaryMeta: "10 Credits", secondaryMeta: "1 Month", priceAed: 1390 },
+    ...SEED_MEMBERSHIPS.filter(m => m.status === "active").map<PosProduct>(m => ({
+        id: m.id,
+        type: "membership",
+        name: m.name,
+        primaryMeta: m.credits === "unlimited" ? "Unlimited" : `${m.credits} Credits`,
+        secondaryMeta: `${m.duration_months} Month${m.duration_months === 1 ? "" : "s"}`,
+        priceAed: m.price_aed,
+    })),
+    ...SEED_PACKAGES.filter(p => p.status === "active").map<PosProduct>(p => ({
+        id: p.id,
+        type: "package",
+        name: p.name,
+        primaryMeta: p.credits === 1 ? "1 Class" : `${p.credits} Credits`,
+        secondaryMeta: `${p.validity_days} Days`,
+        priceAed: p.price_aed,
+    })),
 ];
 
-function POSModal({ open, onClose, onContinue }: {
+function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds, applicablePackageIds }: {
     open: boolean;
     onClose: () => void;
     onContinue: (cart: Record<string, number>) => void;
+    /** Current customer — drives the membership↔package mutex (a customer
+     *  with a membership can't add packages until they cancel; same the other way). */
+    customer: Customer | null;
+    /** From the class template — only show products that apply to this class. */
+    applicableMembershipIds: string[];
+    applicablePackageIds: string[];
 }) {
     /** Map of productId → quantity. Empty cart = {}. */
     const [cart, setCart] = useState<Record<string, number>>({});
@@ -770,9 +870,23 @@ function POSModal({ open, onClose, onContinue }: {
 
     if (!open) return null;
 
-    const hasMembership = POS_PRODUCTS.some(p => p.type === "membership" && (cart[p.id] ?? 0) > 0);
-    const hasPackage    = POS_PRODUCTS.some(p => p.type === "package"    && (cart[p.id] ?? 0) > 0);
+    // Apply the class-template "Applicable plans" filter — only show the
+    // memberships/packages the class accepts. (The full POS module later
+    // will list everything; this is the class-scoped mini-POS.)
+    const applicableProducts = POS_PRODUCTS.filter(p =>
+        p.type === "membership"
+            ? applicableMembershipIds.includes(p.id)
+            : applicablePackageIds.includes(p.id),
+    );
+
+    const hasMembership = applicableProducts.some(p => p.type === "membership" && (cart[p.id] ?? 0) > 0);
+    const hasPackage    = applicableProducts.some(p => p.type === "package"    && (cart[p.id] ?? 0) > 0);
     const cartIsEmpty   = !hasMembership && !hasPackage;
+
+    // Customer's existing plan kind — drives mutex *across* sessions, not just within the cart.
+    // Rule: customer can hold 1 membership OR multiple packages, never both.
+    const customerHasMembership = customer?.planKind === "membership";
+    const customerHasPackage    = customer?.planKind === "package";
 
     function handleAdd(p: PosProduct) {
         setCart(prev => ({ ...prev, [p.id]: 1 }));
@@ -795,6 +909,11 @@ function POSModal({ open, onClose, onContinue }: {
     function isCardDisabled(p: PosProduct) {
         const qty = cart[p.id] ?? 0;
         if (qty > 0) return false;                  // already in cart — keep stepper alive
+        // Customer-plan mutex (cross-session): if they already own a membership,
+        // they can't buy packages until they cancel — and vice versa.
+        if (p.type === "package"    && customerHasMembership) return true;
+        if (p.type === "membership" && customerHasPackage)    return true;
+        // In-cart mutex (within this session).
         if (p.type === "membership" && hasPackage) return true;
         if (p.type === "membership" && hasMembership) return true;   // 1 membership max
         if (p.type === "package" && hasMembership) return true;
@@ -815,25 +934,32 @@ function POSModal({ open, onClose, onContinue }: {
                 <div className="h-5 shrink-0" />
                 <div className="h-px w-full bg-[#e4e7ec]" />
 
-                {/* Body — 3-col grid of POS cards */}
+                {/* Body — 3-col grid of POS cards (filtered by class template applicable plans) */}
                 <div className="flex-1 overflow-y-auto px-6 py-5">
-                    <div className="grid grid-cols-3 gap-4">
-                        {POS_PRODUCTS.map(p => (
-                            <ProductPosCard
-                                key={p.id}
-                                type={p.type}
-                                name={p.name}
-                                primaryMeta={p.primaryMeta}
-                                secondaryMeta={p.secondaryMeta}
-                                price={`AED ${p.priceAed.toLocaleString()}`}
-                                quantity={cart[p.id] ?? 0}
-                                disabled={isCardDisabled(p)}
-                                onAdd={() => handleAdd(p)}
-                                onIncrement={() => handleIncrement(p)}
-                                onDecrement={() => handleDecrement(p)}
-                            />
-                        ))}
-                    </div>
+                    {applicableProducts.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 gap-2">
+                            <p className="text-[16px] font-medium text-[#101828]">No applicable plans</p>
+                            <p className="text-[14px] text-[#667085]">This class template doesn&rsquo;t accept any memberships or packages yet.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-3 gap-4">
+                            {applicableProducts.map(p => (
+                                <ProductPosCard
+                                    key={p.id}
+                                    type={p.type}
+                                    name={p.name}
+                                    primaryMeta={p.primaryMeta}
+                                    secondaryMeta={p.secondaryMeta}
+                                    price={`AED ${p.priceAed.toLocaleString()}`}
+                                    quantity={cart[p.id] ?? 0}
+                                    disabled={isCardDisabled(p)}
+                                    onAdd={() => handleAdd(p)}
+                                    onIncrement={() => handleIncrement(p)}
+                                    onDecrement={() => handleDecrement(p)}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -1646,10 +1772,10 @@ export default function ClassDetailPage() {
     const params = useParams();
     const classId = String(params.classId);
     const {
-        classInstances, classBookings, classRatings,
+        classSchedules, classBookings, classRatings,
         customers: allCustomers,
         currentRole,
-        cancelClassInstance, cancelClassBooking, cancelClassBookings,
+        cancelClassSchedule, cancelClassBooking, cancelClassBookings,
         removeClassBooking, removeClassBookings,
         updateAttendance, deleteClassRating,
         showToast,
@@ -1660,9 +1786,17 @@ export default function ClassDetailPage() {
     const canApplyCustomDiscount = currentRole === "admin";
     const customerById = useMemo(() => new Map(allCustomers.map(c => [c.id, c])), [allCustomers]);
 
-    const classInstance = classInstances.find(c => c.id === classId);
-    const allBookings = classBookings.filter(b => b.classInstanceId === classId);
+    const classInstance = classSchedules.find(c => c.id === classId);
+    const allBookings = classBookings.filter(b => b.classScheduleId === classId);
     const classIsCancelled = classInstance?.status === "Cancelled";
+
+    // The class-scoped POS catalog is filtered by the underlying template's
+    // applicable plans (per CLAUDE.md mini-POS rule). Pull the template once
+    // and pass the id lists down to POSModal.
+    const classTemplates = useAppStore(s => s.classTemplates);
+    const classTemplate = classTemplates.find(t => t.id === classInstance?.templateId);
+    const applicableMembershipIds = classTemplate?.applicableMembershipIds ?? [];
+    const applicablePackageIds    = classTemplate?.applicablePackageIds    ?? [];
 
     // When the class itself is cancelled, the Booked tab shows the bookings that
     // existed at the moment of class-cancellation (i.e. cancellationReason === "Class cancelled").
@@ -1753,11 +1887,17 @@ export default function ClassDetailPage() {
     const [appliedReviewFilter, setAppliedReviewFilter] = useState<ReviewFilter>(EMPTY_REVIEW_FILTER);
     const [reviewFilterOpen, setReviewFilterOpen] = useState(false);
 
+    // Resolve a customer's display name lazily via the customers store (no copies on booking rows).
+    const customerName = (id: string): string => {
+        const c = customerById.get(id);
+        return c ? `${c.firstName} ${c.lastName}` : "";
+    };
+
     // Filter helper — applies search + applied filter to a list of bookings
     const filterBookings = (list: ClassBooking[]): ClassBooking[] => {
         const q = search.toLowerCase();
         return list.filter(b => {
-            if (q && !b.customerName.toLowerCase().includes(q)) return false;
+            if (q && !customerName(b.customerId).toLowerCase().includes(q)) return false;
             if (appliedFilter.plans.length > 0 && !appliedFilter.plans.includes(planKindFromName(b.planName))) return false;
             if (appliedFilter.startDate && b.bookingTime.slice(0, 10) < appliedFilter.startDate) return false;
             if (appliedFilter.endDate && b.bookingTime.slice(0, 10) > appliedFilter.endDate) return false;
@@ -1771,7 +1911,7 @@ export default function ClassDetailPage() {
 
     // Sort comparators
     const bookingComparators: Record<string, (a: ClassBooking, b: ClassBooking) => number> = {
-        name: (a, b) => a.customerName.localeCompare(b.customerName),
+        name: (a, b) => customerName(a.customerId).localeCompare(customerName(b.customerId)),
         booking: (a, b) => a.bookingTime.localeCompare(b.bookingTime),
         plan: (a, b) => a.planName.localeCompare(b.planName),
         spot: (a, b) => {
@@ -1831,7 +1971,7 @@ export default function ClassDetailPage() {
     }
 
     function handleCancelClass(refund: boolean) {
-        cancelClassInstance(ci.id, refund);
+        cancelClassSchedule(ci.id, refund);
         setCancelClassOpen(false);
         showToast(
             "Class cancelled successfully",
@@ -1919,7 +2059,7 @@ export default function ClassDetailPage() {
     function handleDeleteReview() {
         if (!deleteReviewTarget) return;
         deleteClassRating(deleteReviewTarget.id, "Alex Owen");
-        const name = deleteReviewTarget.customerName;
+        const name = customerName(deleteReviewTarget.customerId);
         setDeleteReviewTarget(null);
         setSelectedIds(prev => { const n = new Set(prev); n.delete(deleteReviewTarget!.id); return n; });
         showToast(
@@ -1942,19 +2082,27 @@ export default function ClassDetailPage() {
         );
     }
 
-    /** Inserts a booking record for `c` on this class — `status` differentiates booked vs waitlisted. */
-    function insertBooking(c: Customer, status: "booked" | "waitlisted") {
+    /** Inserts a booking record for `c` on this class — `status` differentiates booked vs waitlisted.
+     *  `pickedPlanId` is the package the admin chose in PaymentConfirmation for
+     *  multi-package customers; falls back to the customer's first available plan. */
+    function insertBooking(c: Customer, status: "booked" | "waitlisted", pickedPlanId?: string) {
         useAppStore.setState(state => {
-            const planId = c.planKind === "membership" ? "m1" : c.planKind === "package" ? "p1" : "";
+            const planId = c.planKind === "membership"
+                ? c.membershipId ?? ""
+                : c.planKind === "package"
+                    ? pickedPlanId ?? c.packageIds?.[0] ?? ""
+                    : "";
+            const planName = c.planKind === "package" && pickedPlanId
+                ? SEED_PACKAGES.find(p => p.id === pickedPlanId)?.name ?? c.planName ?? "No plan"
+                : c.planName ?? "No plan";
             const newBooking: ClassBooking = {
                 id: `b-${Date.now()}`,
-                classInstanceId: ci.id,
+                classScheduleId: ci.id,
                 customerId: c.id,
-                customerName: `${c.firstName} ${c.lastName}`,
-                customerInitials: c.initials,
-                customerColor: "#e0e0e0",
+                branchId: c.branchId,
                 planId,
-                planName: c.planName ?? "No plan",
+                planName,
+                planKindUsed: c.planKind ?? undefined,
                 bookingTime: new Date().toISOString(),
                 status,
                 attendanceStatus: "pending",
@@ -1962,9 +2110,9 @@ export default function ClassDetailPage() {
             };
             return {
                 classBookings: [...state.classBookings, newBooking],
-                classInstances: status === "booked"
-                    ? state.classInstances.map(inst => inst.id === ci.id ? { ...inst, booked: inst.booked + 1 } : inst)
-                    : state.classInstances,
+                classSchedules: status === "booked"
+                    ? state.classSchedules.map(inst => inst.id === ci.id ? { ...inst, booked: inst.booked + 1 } : inst)
+                    : state.classSchedules,
             };
         });
     }
@@ -1975,9 +2123,14 @@ export default function ClassDetailPage() {
         setPaymentCustomer(c);
     }
 
+    // For multi-package customers, this captures which package the admin
+    // picked in the modal so the booking is written against the right plan.
+    const [confirmPlanId, setConfirmPlanId] = useState<string | undefined>(undefined);
+
     /** PaymentConfirmation "Confirm payment" — branches on class capacity. */
-    function handleConfirmPayment() {
+    function handleConfirmPayment(planId?: string) {
         if (!paymentCustomer) return;
+        setConfirmPlanId(planId);
         const isFull = ci.booked >= ci.capacity;
         if (isFull) {
             setCapacityFullCustomer(paymentCustomer);
@@ -1990,21 +2143,30 @@ export default function ClassDetailPage() {
         setPaymentCustomer(null);
     }
 
+    /** Customer card → switch icon: re-open AddCustomerModal so admin can
+     *  pick a different customer for this booking. */
+    function handleSwitchCustomer() {
+        setPaymentCustomer(null);
+        setAddCustomerOpen(true);
+    }
+
     /** AddCustomerConfirmationModal "Add to booked" — final commit. */
     function handleConfirmAdd() {
         if (!confirmAddCustomer) return;
-        insertBooking(confirmAddCustomer, "booked");
+        insertBooking(confirmAddCustomer, "booked", confirmPlanId);
         const name = `${confirmAddCustomer.firstName} ${confirmAddCustomer.lastName}`;
         setConfirmAddCustomer(null);
+        setConfirmPlanId(undefined);
         showToast("Customer added", `${name} has been added to ${ci.name}.`, "success", "check");
     }
 
     /** RoomCapacityModal "Add to waitlist". */
     function handleAddToWaitlist() {
         if (!capacityFullCustomer) return;
-        insertBooking(capacityFullCustomer, "waitlisted");
+        insertBooking(capacityFullCustomer, "waitlisted", confirmPlanId);
         const name = `${capacityFullCustomer.firstName} ${capacityFullCustomer.lastName}`;
         setCapacityFullCustomer(null);
+        setConfirmPlanId(undefined);
         showToast("Added to waitlist", `${name} has been placed on the ${ci.name} waitlist.`, "success", "check");
     }
 
@@ -2043,7 +2205,7 @@ export default function ClassDetailPage() {
     function handleProceedToPayment(items: PurchaseLineItem[], discountPercent: number, promoCode?: string) {
         if (!checkoutCustomer) return;
         setPendingPurchase({
-            classInstanceId: ci.id,
+            classScheduleId: ci.id,
             customerId: checkoutCustomer.id,
             items,
             discountPercent,
@@ -2061,14 +2223,14 @@ export default function ClassDetailPage() {
     const bookedIndexById = new Map(bookedBookings.map((b, i) => [b.id, i]));
 
     // Reviews & Rating data
-    const allRatings = classRatings.filter(r => r.classInstanceId === ci.id);
+    const allRatings = classRatings.filter(r => r.classScheduleId === ci.id);
     const visibleRatings = allRatings.filter(r => !r.deletedAt);
     const deletedRatings = allRatings.filter(r => !!r.deletedAt);
     const reviewsListRaw = reviewsSubTab === "ratings" ? visibleRatings : deletedRatings;
     const reviewsList = reviewsListRaw.filter(r => {
         if (search) {
             const q = search.toLowerCase();
-            if (!r.customerName.toLowerCase().includes(q) && !r.comment.toLowerCase().includes(q)) return false;
+            if (!customerName(r.customerId).toLowerCase().includes(q) && !r.comment.toLowerCase().includes(q)) return false;
         }
         if (appliedReviewFilter.startDate && r.submittedAt.slice(0, 10) < appliedReviewFilter.startDate) return false;
         if (appliedReviewFilter.endDate && r.submittedAt.slice(0, 10) > appliedReviewFilter.endDate) return false;
@@ -2248,7 +2410,7 @@ export default function ClassDetailPage() {
                                                     <tr key={r.id} className="hover:bg-[#f9fafb] transition-colors">
                                                         {reviewsSubTab === "ratings" && (
                                                             <td className={TD}>
-                                                                <CheckboxCell ariaLabel={`Select review by ${r.customerName}`}
+                                                                <CheckboxCell ariaLabel={`Select review by ${customerName(r.customerId)}`}
                                                                     checked={selectedIds.has(r.id)}
                                                                     onChange={next => setSelectedIds(prev => {
                                                                         const n = new Set(prev);
@@ -2259,9 +2421,9 @@ export default function ClassDetailPage() {
                                                         )}
                                                         <td className={TD}>
                                                             <div className="flex items-center gap-3">
-                                                                <TableAvatar initials={r.customerInitials} imageUrl={customerById.get(r.customerId)?.imageUrl} size={40} />
+                                                                <TableAvatar initials={customerById.get(r.customerId)?.initials ?? ""} imageUrl={customerById.get(r.customerId)?.imageUrl} size={40} />
                                                                 <div>
-                                                                    <div className="text-[14px] font-medium text-[#101828]">{r.customerName}</div>
+                                                                    <div className="text-[14px] font-medium text-[#101828]">{customerName(r.customerId)}</div>
                                                                     <div className="text-[13px] text-[#667085]">{fmtBookingTime(r.submittedAt)}</div>
                                                                 </div>
                                                             </div>
@@ -2388,7 +2550,7 @@ export default function ClassDetailPage() {
                                                                 {showCheckbox && (
                                                                     <td className={TD}>
                                                                         <CheckboxCell
-                                                                            ariaLabel={`Select ${b.customerName}`}
+                                                                            ariaLabel={`Select ${customerName(b.customerId)}`}
                                                                             checked={isSelected}
                                                                             onChange={next => setSelectedIds(prev => {
                                                                                 const n = new Set(prev);
@@ -2400,10 +2562,10 @@ export default function ClassDetailPage() {
                                                                 )}
                                                                 <td className={TD}>
                                                                     <div className="flex items-center gap-3">
-                                                                        <TableAvatar initials={b.customerInitials} imageUrl={customerById.get(b.customerId)?.imageUrl} size={40} />
+                                                                        <TableAvatar initials={customerById.get(b.customerId)?.initials ?? ""} imageUrl={customerById.get(b.customerId)?.imageUrl} size={40} />
                                                                         <div>
-                                                                            <div className="text-[14px] font-medium text-[#101828]">{b.customerName}</div>
-                                                                            <div className="text-[13px] text-[#667085]">{b.customerName.toLowerCase().replace(/\s+/g, ".")}@email.com</div>
+                                                                            <div className="text-[14px] font-medium text-[#101828]">{customerName(b.customerId)}</div>
+                                                                            <div className="text-[13px] text-[#667085]">{customerById.get(b.customerId)?.email ?? ""}</div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
@@ -2515,7 +2677,7 @@ export default function ClassDetailPage() {
             <CancelBookingModal
                 open={!!cancelBookingTarget}
                 count={1}
-                sampleName={cancelBookingTarget?.customerName ?? ""}
+                sampleName={cancelBookingTarget ? customerName(cancelBookingTarget.customerId) : ""}
                 defaultRefund={cancelDefaultRefund}
                 onClose={() => setCancelBookingTarget(null)}
                 onConfirm={handleCancelBooking}
@@ -2523,7 +2685,7 @@ export default function ClassDetailPage() {
             <RemoveBookingModal
                 open={!!removeBookingTarget}
                 count={1}
-                sampleName={removeBookingTarget?.customerName ?? ""}
+                sampleName={removeBookingTarget ? customerName(removeBookingTarget.customerId) : ""}
                 defaultRefund={cancelDefaultRefund}
                 onClose={() => setRemoveBookingTarget(null)}
                 onConfirm={handleRemoveBooking}
@@ -2558,6 +2720,7 @@ export default function ClassDetailPage() {
                 onClose={() => setPaymentCustomer(null)}
                 onConfirm={handleConfirmPayment}
                 onSelectMembership={handleSelectMembership}
+                onSwitchCustomer={handleSwitchCustomer}
             />
 
             <AddCustomerConfirmationModal
@@ -2576,6 +2739,9 @@ export default function ClassDetailPage() {
                 open={posOpen}
                 onClose={() => setPosOpen(false)}
                 onContinue={handlePosContinue}
+                customer={paymentCustomer ?? checkoutCustomer}
+                applicableMembershipIds={applicableMembershipIds}
+                applicablePackageIds={applicablePackageIds}
             />
 
             <CheckoutConfirmationModal
@@ -2623,7 +2789,7 @@ export default function ClassDetailPage() {
             <DeleteReviewModal
                 open={!!deleteReviewTarget}
                 count={1}
-                sampleName={deleteReviewTarget?.customerName ?? ""}
+                sampleName={deleteReviewTarget ? customerName(deleteReviewTarget.customerId) : ""}
                 onClose={() => setDeleteReviewTarget(null)}
                 onConfirm={handleDeleteReview}
             />

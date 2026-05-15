@@ -706,13 +706,13 @@ function CsBlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
 export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const router  = useRouter();
     const searchParams = useSearchParams();
-    const { classTemplates, classInstances, addClassInstances, updateClassInstance, showToast } = useAppStore();
+    const { classTemplates, classSchedules, addClassSchedules, updateClassSchedule, showToast } = useAppStore();
 
     const isEditing = !!editingId;
-    const editing = editingId ? classInstances.find(c => c.id === editingId) : undefined;
+    const editing = editingId ? classSchedules.find(c => c.id === editingId) : undefined;
     // When ?duplicateFrom={id} is set, we pre-fill the new-class form from that source class.
     const duplicateFromId = !isEditing ? searchParams.get("duplicateFrom") : null;
-    const duplicateSource = duplicateFromId ? classInstances.find(c => c.id === duplicateFromId) : undefined;
+    const duplicateSource = duplicateFromId ? classSchedules.find(c => c.id === duplicateFromId) : undefined;
     const isDuplicating = !!duplicateSource;
     // Treat editing AND duplicating as "we have a source class" for pre-fill purposes; only `isEditing` gates the 2-step / disabled-template behaviour.
     const sourceClass: ClassInstance | undefined = editing ?? duplicateSource;
@@ -769,7 +769,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const unavailableTimes = useMemo((): string[] => {
         if (!instructorId || !selectedDate) return [];
         const blocked: string[] = [];
-        classInstances.forEach(inst => {
+        classSchedules.forEach(inst => {
             if (inst.instructorId !== instructorId || inst.dateISO !== selectedDate) return;
             const [sh, sm] = inst.startTime.split(":").map(Number);
             const [eh, em] = inst.endTime.split(":").map(Number);
@@ -778,7 +778,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             }
         });
         return blocked;
-    }, [instructorId, selectedDate, classInstances]);
+    }, [instructorId, selectedDate, classSchedules]);
 
     // When template is selected — populate fields
     function handleSelectTemplate(id: string) {
@@ -943,7 +943,9 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     function handleCreate() {
         const instances: Omit<ClassInstance, "id">[] = [];
         const instName     = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
-        const room         = BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === locationId);
+        const branchGroup  = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
+        const room         = branchGroup?.rooms.find(r => r.id === locationId);
+        const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
         const now          = new Date().toISOString();
 
         if (repeat === "Does not repeat" && selectedDate) {
@@ -952,9 +954,11 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
             instances.push({
                 templateId, name, description: desc, category,
+                branchId,
                 instructorId, instructorName: instName?.name ?? "",
                 instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
-                location: "FitLab South", room: room?.name ?? "",
+                location: branchGroup?.branch ?? "FitLab South",
+                roomId: locationId, room: room?.name ?? "",
                 date: `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
                 dateISO: selectedDate, dayOfWeek: days[d.getDay()],
                 startTime, endTime,
@@ -974,9 +978,11 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 const dateISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
                 instances.push({
                     templateId, name, description: desc, category,
+                    branchId,
                     instructorId, instructorName: instName?.name ?? "",
                     instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
-                    location: "FitLab South", room: room?.name ?? "",
+                    location: branchGroup?.branch ?? "FitLab South",
+                    roomId: locationId, room: room?.name ?? "",
                     date: dateLabel, dateISO,
                     dayOfWeek: dayStr,
                     startTime: p.startTime, endTime: p.endTime,
@@ -989,7 +995,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             }
         }
 
-        addClassInstances(instances);
+        addClassSchedules(instances);
         if (isDuplicating) {
             showToast(
                 instances.length === 1 ? "Class duplicated successfully" : `${instances.length} classes duplicated successfully`,
@@ -1011,14 +1017,17 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     function handleSaveEdit() {
         if (!editingId || !editing) return;
         const instName = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
-        const room = BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === locationId);
-        updateClassInstance(editingId, {
+        const branchGroup  = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
+        const room         = branchGroup?.rooms.find(r => r.id === locationId);
+        const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
+        updateClassSchedule(editingId, {
             templateId, name, description: desc, category,
+            branchId,
             instructorId,
             instructorName: instName?.name ?? editing.instructorName,
             instructorInitials: instName?.initials ?? editing.instructorInitials,
             instructorColor: instName?.color ?? editing.instructorColor,
-            room: room?.name ?? editing.room,
+            roomId: locationId, room: room?.name ?? editing.room,
             capacity,
             equipment, spotSelectionEnabled: spotEnabled,
             coverColor: coverCol,

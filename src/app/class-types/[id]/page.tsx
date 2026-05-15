@@ -9,7 +9,7 @@ import {
     CreditCard01, Package, Calendar, AlignLeft,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
@@ -527,19 +527,9 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
 }
 
 // ─── Membership / Package list data ──────────────────────────────────────────
-
-const MEMBERSHIPS = [
-    { id: "m1", name: "Beginner Monthly Membership",   active: 8,  enabled: true  },
-    { id: "m2", name: "Advanced Monthly Membership",   active: 6,  enabled: true  },
-    { id: "m3", name: "Unlimited Monthly Membership",  active: 4,  enabled: false },
-];
-
-const PACKAGES = [
-    { id: "p1", name: "10 Class Package", active: 8,  enabled: true  },
-    { id: "p2", name: "20 Class Package", active: 0,  enabled: false },
-    { id: "p3", name: "30 Class Package", active: 4,  enabled: true  },
-    { id: "p4", name: "40 Class Package", active: 4,  enabled: false },
-];
+// Sourced from centralized seeds (`memberships`, `packages`) — single source of
+// truth shared with the POS catalog. `active` count is derived live from the
+// `customers` store at render time, so it stays in sync with plan changes.
 
 
 // ─── Filter panel (right slide-in — classes tab) ──────────────────────────────
@@ -861,11 +851,11 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
     // Sessions for this template are derived live from the shared store — when a
     // class is added/cancelled/edited in the schedule module, it reflects here too.
-    const classInstances = useAppStore(s => s.classInstances);
+    const classSchedules = useAppStore(s => s.classSchedules);
     const classBookings = useAppStore(s => s.classBookings);
-    const cancelClassInstance = useAppStore(s => s.cancelClassInstance);
+    const cancelClassSchedule = useAppStore(s => s.cancelClassSchedule);
     const showToast = useAppStore(s => s.showToast);
-    const allSessions: Session[] = classInstances
+    const allSessions: Session[] = classSchedules
         .filter(ci => ci.templateId === template.id)
         .map(instanceToSession);
 
@@ -878,9 +868,9 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
     }
     function handleConfirmCancel() {
         if (!cancelSessionId) return;
-        const target = classInstances.find(ci => ci.id === cancelSessionId);
+        const target = classSchedules.find(ci => ci.id === cancelSessionId);
         if (!target) { setCancelSessionId(null); return; }
-        cancelClassInstance(target.id, true);
+        cancelClassSchedule(target.id, true);
         setCancelSessionId(null);
         showToast(
             "Class cancelled successfully",
@@ -888,9 +878,9 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
             "error", "slash"
         );
     }
-    const cancelTarget = cancelSessionId ? classInstances.find(ci => ci.id === cancelSessionId) ?? null : null;
+    const cancelTarget = cancelSessionId ? classSchedules.find(ci => ci.id === cancelSessionId) ?? null : null;
     const cancelTargetBookedCount = cancelSessionId
-        ? classBookings.filter(b => b.classInstanceId === cancelSessionId && b.status === "booked").length
+        ? classBookings.filter(b => b.classScheduleId === cancelSessionId && b.status === "booked").length
         : 0;
 
     const hasActiveFilter =
@@ -905,15 +895,38 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
         return matchSearch && matchStatus;
     });
 
-    const applicable = template.applicableMemberships;
+    const applicableMembershipIds = template.applicableMembershipIds;
+    const applicablePackageIds    = template.applicablePackageIds;
 
-    const filteredMemberships = MEMBERSHIPS
-        .filter(m => applicable.includes(m.id))
-        .filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
+    // Map each plan id to # of customers currently holding it (live derivation
+    // from the customers store keeps "active" in sync when plans are purchased
+    // or cancelled in POS/checkout flows).
+    const customers = useAppStore(s => s.customers);
+    const activeByPlanName = new Map<string, number>();
+    for (const c of customers) {
+        if (!c.planName) continue;
+        activeByPlanName.set(c.planName, (activeByPlanName.get(c.planName) ?? 0) + 1);
+    }
 
-    const filteredPackages = PACKAGES
-        .filter(p => applicable.includes(p.id))
-        .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredMemberships = SEED_MEMBERSHIPS
+        .filter(m => applicableMembershipIds.includes(m.id))
+        .filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
+        .map(m => ({
+            id: m.id,
+            name: m.name,
+            active: activeByPlanName.get(m.name) ?? 0,
+            enabled: m.status === "active",
+        }));
+
+    const filteredPackages = SEED_PACKAGES
+        .filter(p => applicablePackageIds.includes(p.id))
+        .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+        .map(p => ({
+            id: p.id,
+            name: p.name,
+            active: activeByPlanName.get(p.name) ?? 0,
+            enabled: p.status === "active",
+        }));
 
     // Sort comparators per table
     const STATUS_ORDER: Record<SessionStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };

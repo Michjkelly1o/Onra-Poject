@@ -17,6 +17,7 @@ import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableH
 import { TableAvatar } from "@/components/ui/avatar";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore, type ClassInstance, type ClassStatus, type ScheduleInstructor, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 
 // Alias for compatibility with existing code in this file
 type Instructor = ScheduleInstructor;
@@ -24,12 +25,13 @@ type Instructor = ScheduleInstructor;
 // ─── Category colors ──────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
-    Barre: { bg: "#e0f9f4", border: "#4b8c9a", text: "#1b4c56" },
-    Yoga: { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
-    HIIT: { bg: "#fff3f2", border: "#d92d20", text: "#7a271a" },
-    Recovery: { bg: "#f0f4f8", border: "#667085", text: "#344054" },
-    default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
+    Pilates:          { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Barre:            { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga:             { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
+    "Roller Release": { bg: "#f0fcf9", border: "#0e9384", text: "#125d56" },
+    HIIT:             { bg: "#fff3f2", border: "#d92d20", text: "#7a271a" },
+    Recovery:         { bg: "#f0f4f8", border: "#667085", text: "#344054" },
+    default:          { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
 };
 
 function getCategoryColor(category: string) {
@@ -38,7 +40,20 @@ function getCategoryColor(category: string) {
 
 const INSTRUCTORS: Instructor[] = SCHEDULE_INSTRUCTORS;
 
-const DAY_VIEW_DATE = "Fri, 28 Feb 2025";
+// Demo "today" anchor — every other date default is derived from this.
+// Update once and the day/week/month tabs all reflow.
+const TODAY_ISO = "2026-05-15";
+function isoToMonday(iso: string): string {
+    // Parse as UTC so positive-UTC timezones (e.g. UAE +4) don't shift days.
+    const d = new Date(iso + "T00:00:00Z");
+    // JS getUTCDay() → 0=Sun..6=Sat; convert to Mon=0..Sun=6
+    const delta = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - delta);
+    return d.toISOString().slice(0, 10);
+}
+const TODAY_MONDAY_ISO = isoToMonday(TODAY_ISO);
+const TODAY_MONTH_YEAR = TODAY_ISO.slice(0, 7);
+const DAY_VIEW_DATE = TODAY_ISO;
 const GRID_START_HOUR = 7;  // 7 AM
 const GRID_END_HOUR = 21; // 9 PM
 const HOUR_HEIGHT = 80; // px per hour — day view
@@ -51,22 +66,28 @@ const WEEK_DAY_NAMES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 // ─── Date math helpers ────────────────────────────────────────────────────────
 
 function isoAddDays(iso: string, days: number): string {
-    const d = new Date(iso + "T00:00:00");
-    d.setDate(d.getDate() + days);
+    // UTC arithmetic so the date string is timezone-stable. Parsing as local
+    // and then calling toISOString() rolls the day backwards in any positive
+    // UTC-offset timezone (e.g. UAE +4 — "2026-05-15" + 1 day collapsed to
+    // "2026-05-15" instead of advancing).
+    const d = new Date(iso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + days);
     return d.toISOString().slice(0, 10);
 }
 
 function isoToDisplay(iso: string): string {
-    const d = new Date(iso + "T00:00:00");
+    // Match store's dateLabelFromISO format exactly ("Fri, 15 May 2026") —
+    // the day-view classes filter uses string equality on this label.
+    const d = new Date(iso + "T00:00:00Z");
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return `${days[d.getDay()]}, ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+    return `${days[d.getUTCDay()]}, ${String(d.getUTCDate()).padStart(2, "0")} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 function buildWeekCols(monday: string) {
     return WEEK_DAY_NAMES.map((label, i) => {
         const iso = isoAddDays(monday, i);
         const date = new Date(iso + "T00:00:00");
-        return { day: label, date: String(date.getDate()), month: MONTHS_SHORT[date.getMonth()], iso, isToday: iso === "2025-02-28" };
+        return { day: label, date: String(date.getDate()), month: MONTHS_SHORT[date.getMonth()], iso, isToday: iso === TODAY_ISO };
     });
 }
 
@@ -677,41 +698,34 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel }: {
 
 // ─── Day view ─────────────────────────────────────────────────────────────────
 
-function ClassBlock({ cls, onClick, compact = false }: {
+function ClassBlock({ cls, onClick }: {
     cls: ClassInstance;
     onClick?: (e: React.MouseEvent) => void;
-    compact?: boolean;
 }) {
     const colors = getCategoryColor(cls.category);
     const top = topFromTime(cls.startTime);
     const height = heightFromTime(cls.startTime, cls.endTime);
-    const isFull = cls.booked >= cls.capacity;
-    const [hh, mm] = cls.startTime.split(":").map(Number);
-    const displayT = `${hh > 12 ? hh - 12 : hh === 0 ? 12 : hh}:${String(mm).padStart(2, "0")} ${hh < 12 ? "AM" : "PM"}`;
-    const lastName = cls.instructorName.split(" ").slice(1).join(" ");
-    const firstInit = cls.instructorName[0];
 
     return (
-        <div
-            style={{ position: "absolute", top, height, left: compact ? 2 : 6, right: compact ? 2 : 6, backgroundColor: colors.bg, borderLeft: `3px solid ${colors.border}` }}
-            className="rounded-[8px] p-[6px] flex flex-col gap-[2px] overflow-hidden cursor-pointer hover:brightness-95 transition-all"
+        <ScheduleClassCard
+            size="md"
+            cls={{
+                name: cls.name,
+                color: colors,
+                startTime: cls.startTime,
+                endTime: cls.endTime,
+                displayTime: cls.displayTime,
+                instructorName: cls.instructorName,
+                instructorInitials: cls.instructorInitials,
+                instructorColor: cls.instructorColor,
+                instructorImageUrl: SCHEDULE_INSTRUCTORS.find(i => i.id === cls.instructorId)?.imageUrl,
+                room: cls.room,
+                booked: cls.booked,
+                capacity: cls.capacity,
+            }}
+            absolute={{ top, height }}
             onClick={onClick}
-        >
-            <p className="font-semibold text-[12px] leading-[16px] line-clamp-1" style={{ color: colors.text }}>{cls.name}</p>
-            <div className="flex items-center gap-1 min-w-0">
-                <InstructorAvatar initials={cls.instructorInitials} color={cls.instructorColor} size={13} />
-                <span className="text-[11px] text-[#667085] truncate shrink-0">{firstInit}. {lastName}</span>
-            </div>
-            {height > 52 && (
-                <div className="flex items-center gap-1">
-                    <Clock className="w-[10px] h-[10px] text-[#667085] shrink-0" />
-                    <span className="text-[11px] text-[#667085] whitespace-nowrap">{displayT} • {cls.booked}/{cls.capacity}</span>
-                </div>
-            )}
-            {height > 80 && isFull && (
-                <span className="text-[10px] font-semibold text-[#b42318] bg-[#fef3f2] px-1 rounded self-start">FULL</span>
-            )}
-        </div>
+        />
     );
 }
 
@@ -905,20 +919,21 @@ function WeekView({ classes, weekStart, onClassClick }: {
                                             const height = weekHeightFromTime(cls.startTime, cls.endTime);
                                             const colors = getCategoryColor(cls.category);
                                             return (
-                                                <div key={cls.id}
-                                                    style={{ position: "absolute", top, height, left: 2, right: 2, backgroundColor: colors.bg, borderLeft: `3px solid ${colors.border}` }}
-                                                    className="rounded-[6px] p-[5px] flex flex-col gap-[2px] overflow-hidden cursor-pointer hover:brightness-95 transition-all"
-                                                    onClick={(e) => onClassClick(cls, e)}>
-                                                    <p className="text-[14px] font-semibold line-clamp-1 leading-[20px]" style={{ color: colors.text }}>{cls.name}</p>
-                                                    <div className="flex items-center gap-1 min-w-0">
-                                                        <InstructorAvatar initials={cls.instructorInitials} color={cls.instructorColor} size={14} />
-                                                        <span className="text-[12px] font-medium text-[#667085] truncate">{cls.instructorName.split(" ")[0][0]}. {cls.instructorName.split(" ").slice(1).join(" ")}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-[12px] font-medium text-[#667085]">{cls.displayTime.split(" - ")[0]}</span>
-                                                        <span className="text-[12px] font-medium text-[#98a2b3]">• {cls.booked}/{cls.capacity}</span>
-                                                    </div>
-                                                </div>
+                                                <ScheduleClassCard key={cls.id}
+                                                    size="sm"
+                                                    cls={{
+                                                        name: cls.name, color: colors,
+                                                        startTime: cls.startTime, endTime: cls.endTime, displayTime: cls.displayTime,
+                                                        instructorName: cls.instructorName,
+                                                        instructorInitials: cls.instructorInitials,
+                                                        instructorColor: cls.instructorColor,
+                                                        instructorImageUrl: SCHEDULE_INSTRUCTORS.find(i => i.id === cls.instructorId)?.imageUrl,
+                                                        room: cls.room,
+                                                        booked: cls.booked, capacity: cls.capacity,
+                                                    }}
+                                                    absolute={{ top, height }}
+                                                    onClick={(e) => onClassClick(cls, e)}
+                                                />
                                             );
                                         })}
                                     </div>
@@ -947,11 +962,6 @@ function MonthView({ classes, monthYear, onClassClick }: {
         DAY_CLASSES[c.dateISO].push(c);
     });
 
-    function fmt12(time: string) {
-        const [h, m] = time.split(":").map(Number);
-        return `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
-    }
-
     return (
         <div className="flex flex-col overflow-y-auto scrollbar-hide flex-1">
             {/* Day headers */}
@@ -964,7 +974,7 @@ function MonthView({ classes, monthYear, onClassClick }: {
             <div className="grid grid-cols-7 flex-1 px-6">
                 {grid.map((day, i) => {
                     const dayClasses: ClassInstance[] = day ? (DAY_CLASSES[day.iso] || []) : [];
-                    const isToday = day?.iso === "2025-02-28";
+                    const isToday = day?.iso === TODAY_ISO;
                     return (
                         <div key={i} className={cn("border-r border-b border-[#f2f4f7] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
                             {day && (
@@ -976,27 +986,28 @@ function MonthView({ classes, monthYear, onClassClick }: {
                                             {day.num}
                                         </div>
                                     </div>
-                                    {dayClasses.slice(0, 2).map(cls => {
-                                        const col = getCategoryColor(cls.category);
-                                        return (
-                                            <div key={cls.id}
-                                                className="rounded-[4px] px-1.5 py-[3px] mb-0.5 cursor-pointer hover:brightness-95 transition-all flex items-center gap-1 overflow-hidden"
-                                                style={{ backgroundColor: col.bg, borderLeft: `2px solid ${col.border}` }}
-                                                onClick={(e) => onClassClick(cls, e)}>
-                                                <span className="text-[12px] font-medium shrink-0 whitespace-nowrap" style={{ color: col.border }}>
-                                                    {fmt12(cls.startTime)}
-                                                </span>
-                                                <span className="text-[12px] font-medium truncate" style={{ color: col.text }}>
-                                                    · {cls.name}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                    {dayClasses.length > 2 && (
-                                        <button type="button" className="text-[11px] text-[#667085] hover:text-[#344054] transition-colors mt-0.5">
-                                            +{dayClasses.length - 2} more
-                                        </button>
-                                    )}
+                                    <div className="flex flex-col gap-0.5">
+                                        {dayClasses.slice(0, 2).map(cls => {
+                                            const col = getCategoryColor(cls.category);
+                                            return (
+                                                <ScheduleClassCard key={cls.id}
+                                                    size="xs"
+                                                    cls={{
+                                                        name: cls.name, color: col,
+                                                        startTime: cls.startTime, endTime: cls.endTime,
+                                                        instructorName: cls.instructorName,
+                                                        instructorInitials: cls.instructorInitials,
+                                                        instructorColor: cls.instructorColor,
+                                                        booked: cls.booked, capacity: cls.capacity,
+                                                    }}
+                                                    onClick={(e) => onClassClick(cls, e)}
+                                                />
+                                            );
+                                        })}
+                                        {dayClasses.length > 2 && (
+                                            <ScheduleMorePill count={dayClasses.length - 2} />
+                                        )}
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -1222,28 +1233,30 @@ type ViewTab = "list" | "day" | "week" | "month";
 
 export default function SchedulePage() {
     const router = useRouter();
-    const { classInstances, classTemplates, classBookings, cancelClassInstance, showToast } = useAppStore();
+    const { classSchedules, classTemplates, classBookings, cancelClassSchedule, showToast } = useAppStore();
     const [activeTab, setActiveTab] = useState<ViewTab>("list");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
-    const [dayDate, setDayDate] = useState(DAY_VIEW_DATE);
-    const [weekStart, setWeekStart] = useState("2025-02-24"); // ISO Monday
-    const [monthYear, setMonthYear] = useState("2025-02");
+    // Day view tracks an ISO date so prev/next can walk freely. Display label
+    // is derived at render time via isoToDisplay().
+    const [dayDateISO, setDayDateISO] = useState(DAY_VIEW_DATE);
+    const [weekStart, setWeekStart] = useState(TODAY_MONDAY_ISO); // ISO Monday
+    const [monthYear, setMonthYear] = useState(TODAY_MONTH_YEAR);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [location, setLocation] = useState("forma");
     const [popup, setPopup] = useState<{ cls: ClassInstance; anchor: { x: number; y: number } } | null>(null);
     const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
-    const cancelTarget = cancelTargetId ? classInstances.find(c => c.id === cancelTargetId) ?? null : null;
+    const cancelTarget = cancelTargetId ? classSchedules.find(c => c.id === cancelTargetId) ?? null : null;
     const cancelTargetBookedCount = cancelTargetId
-        ? classBookings.filter(b => b.classInstanceId === cancelTargetId && b.status === "booked").length
+        ? classBookings.filter(b => b.classScheduleId === cancelTargetId && b.status === "booked").length
         : 0;
 
     function handleConfirmCancelClass() {
         if (!cancelTarget) return;
-        cancelClassInstance(cancelTarget.id, true);
+        cancelClassSchedule(cancelTarget.id, true);
         const name = cancelTarget.name;
         const date = cancelTarget.date;
         setCancelTargetId(null);
@@ -1258,14 +1271,8 @@ export default function SchedulePage() {
         router.push(`/schedule/new?duplicateFrom=${encodeURIComponent(id)}`);
     }
 
-    const DAY_DATES = [
-        "Mon, 24 Feb 2025", "Tue, 25 Feb 2025", "Wed, 26 Feb 2025",
-        "Thu, 27 Feb 2025", "Fri, 28 Feb 2025", "Sat, 01 Mar 2025",
-        "Sun, 02 Mar 2025",
-    ];
-
-    function prevDay() { const i = DAY_DATES.indexOf(dayDate); if (i > 0) setDayDate(DAY_DATES[i - 1]); }
-    function nextDay() { const i = DAY_DATES.indexOf(dayDate); if (i < DAY_DATES.length - 1) setDayDate(DAY_DATES[i + 1]); }
+    function prevDay() { setDayDateISO(d => isoAddDays(d, -1)); }
+    function nextDay() { setDayDateISO(d => isoAddDays(d,  1)); }
     function prevWeek() { setWeekStart(w => isoAddDays(w, -7)); }
     function nextWeek() { setWeekStart(w => isoAddDays(w, 7)); }
     function prevMonth() { setMonthYear(prevMonthYearStr); }
@@ -1282,7 +1289,7 @@ export default function SchedulePage() {
         applied.instructors.length > 0 || !!applied.templateId ||
         !!applied.dateFrom || !!applied.dateTo;
 
-    const filteredClasses = classInstances.filter(c => {
+    const filteredClasses = classSchedules.filter(c => {
         const q = search.toLowerCase();
         if (q && !c.name.toLowerCase().includes(q) && !c.instructorName.toLowerCase().includes(q) && !c.location.toLowerCase().includes(q)) return false;
         if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
@@ -1394,7 +1401,7 @@ export default function SchedulePage() {
                     {activeTab === "day" && (
                         <DateNav>
                             <NavBtn onClick={prevDay}><ChevronLeft className="w-4 h-4" /></NavBtn>
-                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[152px] text-center">{dayDate}</span>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[152px] text-center">{isoToDisplay(dayDateISO)}</span>
                             <NavBtn onClick={nextDay}><ChevronRight className="w-4 h-4" /></NavBtn>
                         </DateNav>
                     )}
@@ -1455,7 +1462,7 @@ export default function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView date={dayDate} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <DayView date={isoToDisplay(dayDateISO)} classes={filteredClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "week" && (

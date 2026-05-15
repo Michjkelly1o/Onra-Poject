@@ -105,16 +105,29 @@ All monetary values use **AED (UAE Dirham)**. Format: `AED [amount]` (e.g. `AED 
 - All member pages must be designed and tested exclusively at 375–400px width
 - No desktop layout required for customer views
 
-## Mock Data — 3 Separate Profiles
-The project uses 3 distinct mock data personas instead of a single admin user:
+## Mock Data Convention — One File per Future Supabase Table
 
-| Profile | Roles | Primary device | Mock file |
-|---|---|---|---|
-| Admin | Owner, Branch Admin, Operator, Front Desk | Desktop | `src/data/mock/admin.ts` |
-| Instructor | Instructor | Mobile-first | `src/data/mock/instructor.ts` |
-| Customer | Member | Mobile (400px) | `src/data/mock/customer.ts` |
+The prototype's mock data lives in [src/data/mock/](src/data/mock/) and is structured as **one file per future Supabase table**. Each file maps 1-to-1 to an eventual `INSERT` statement so migrating to Supabase is a CSV/SQL export — no data reshaping needed.
 
-Each mock file contains pre-seeded data relevant to that persona (classes taught, bookings made, wallet balance, etc.). The `DemoRoleSwitcher` UI widget is **hidden** — role switching is done via code/config only, not via a visible on-screen widget.
+### Rules
+1. **Snake_case columns.** Seed files use snake_case field names matching the future Postgres schema (`branch_id`, `class_schedule_id`, `plan_kind_used`, `created_at`). Camel-cased prototype types live in [src/lib/store.ts](src/lib/store.ts) and are translated via adapter functions at boot.
+2. **FK by id only — no denormalized name copies on dependent rows.** A `class_bookings` row stores `customer_id`, never `customer_name`/`customer_initials`/`customer_color`. Consumers look the customer up via the `customers` store at render time. Same rule for `class_ratings`. (Schedule rows still carry denormalized template/instructor display strings for fast list rendering — those are derived at store-boot time from the FK ids, not authored in the seed.)
+3. **No `active`/`booked` counters baked into product seeds.** Counts are derived live (e.g. "active members per membership" is computed from the `customers` store via `planName` match). Only `class_schedule` rows carry pre-computed `booked`/`rating_count` because those are conventionally denormalized in Postgres too.
+4. **Centralized barrel.** Every seed + type is re-exported from [src/data/mock/index.ts](src/data/mock/index.ts). Consumers import from `@/data/mock` (raw seeds) or `@/lib/store` (camelCase prototype shape with derived joins).
+5. **Single source of truth for products.** [memberships.ts](src/data/mock/memberships.ts) + [packages.ts](src/data/mock/packages.ts) + [payment_methods.ts](src/data/mock/payment_methods.ts) feed the POS catalog, the class-types "Applicable plans" tab, the checkout card picker, and any future analytics — no inline `POS_PRODUCTS`/`SAVED_CARDS`/`MEMBERSHIPS` arrays anywhere else.
+
+### Current tables (13)
+Foundation: `roles`, `branches`, `class_categories` → Locations & people: `rooms`, `staff_profiles`, `users`, `user_role_assignments` → Customers: `customers` → Products: `memberships`, `packages`, `payment_methods` → Catalog: `class_templates` → Schedule: `class_schedule` → Bookings: `class_bookings`, `class_ratings`.
+
+### Adding a new table
+1. Add the TypeScript interface to [src/data/mock/_types.ts](src/data/mock/_types.ts) with snake_case fields + a `+later:` comment block for future-module columns.
+2. Create the seed file (e.g. `transactions.ts`). Use `+later:` placeholders for columns that depend on yet-unbuilt modules so they're easy to add when those modules ship.
+3. Re-export the type + seed from [src/data/mock/index.ts](src/data/mock/index.ts) (respect dependency order — Foundation → Locations → Products → Catalog → Schedule → Bookings).
+4. Wire into [src/lib/store.ts](src/lib/store.ts): import the seed, add a `*FromSeed` adapter if consumers need the camelCase shape, and seed initial state from `INITIAL_*`.
+5. Patch any inline arrays in consumer pages to import from the seed barrel.
+
+### Demo personas
+The original "3 mock files per persona" approach (admin.ts / instructor.ts / customer.ts) was retired in favour of the table-per-file pattern above — same seeds drive every role-scoped view. Role switching still goes through code/config (the `DemoRoleSwitcher` UI widget is hidden).
 
 ## Key Business Rules (read PRD 00 for full detail)
 - **Archive/Delete rule:** Items with usage history → Archive only. Items with zero history → Delete option appears. Booking rules → Delete only (no archive). Agreements → Archive only (never delete).
