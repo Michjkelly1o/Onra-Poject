@@ -1341,32 +1341,38 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
                                             <p className="text-[18px] font-semibold text-[#101828]">Recurring ends</p>
+                                            {/* "No end date" pins the schedule to a single week → drop Date + Repeat every entirely.
+                                                "End on date" / "End after" → keep both inputs in their 2-column row. */}
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col gap-1.5">
                                                     <label className={labelCls}>End condition</label>
                                                     <SimpleSelect label="Select end" value={repeatEnd} options={REPEAT_END as unknown as string[]} onChange={v => setRepeatEnd(v as typeof repeatEnd)} />
                                                 </div>
-                                                {repeatEnd === "End after" ? (
+                                                {repeatEnd === "End after" && (
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className={labelCls}>Number of classes</label>
                                                         <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
                                                     </div>
-                                                ) : (
+                                                )}
+                                                {repeatEnd === "End on date" && (
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className={labelCls}>Date</label>
-                                                        <DatePicker value={endDate} onChange={setEndDate} disabled={repeatEnd === "No end date"} />
+                                                        <DatePicker value={endDate} onChange={setEndDate} />
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className={labelCls}>Repeat every</label>
-                                                <NumericInput
-                                                    value={repeatEnd === "No end date" ? 1 : repeatEvery}
-                                                    onChange={setRepeatEvery}
-                                                    min={1} max={52} suffix="week"
-                                                    disabled={repeatEnd === "No end date"}
-                                                />
-                                            </div>
+                                            {repeatEnd !== "No end date" && (
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className={labelCls}>Repeat every</label>
+                                                        <NumericInput
+                                                            value={repeatEvery}
+                                                            onChange={setRepeatEvery}
+                                                            min={1} max={52} suffix="week"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

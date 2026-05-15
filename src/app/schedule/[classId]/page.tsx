@@ -3,9 +3,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-    XClose, ChevronLeft, SearchMd, FilterLines, DotsVertical, AlignLeft,
-    UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus,
+    XClose, ChevronLeft, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
+    UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
+    Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package,
 } from "@untitledui/icons";
+import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
+import type { PurchaseLineItem } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
@@ -494,6 +497,624 @@ function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
                             ))}
                         </div>
                     )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Payment confirmation modal — Figma 4011:48148 ────────────────────────────
+// Shown after admin picks a customer in AddCustomerModal. Two variants:
+//   • Customer has plan → existing plan card + Confirm payment enabled
+//   • Customer has no plan → "Buy packages" + Select membership card + Confirm disabled
+function PaymentConfirmationModal({ open, customer, classInstance, onClose, onConfirm, onSelectMembership }: {
+    open: boolean;
+    customer: Customer | null;
+    classInstance: ClassInstance | null;
+    onClose: () => void;
+    onConfirm: () => void;
+    onSelectMembership: () => void;
+}) {
+    if (!open || !customer || !classInstance) return null;
+    const hasPlan = customer.planKind !== null;
+    const planSubtitle = customer.planKind === "membership"
+        ? "Unlimited access • Active"
+        : customer.planKind === "package"
+            ? "Credits available • Active"
+            : "";
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-start gap-4 px-6 pt-6">
+                    <div className="flex-1 flex flex-col gap-1 min-w-0">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Payment confirmation</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">Review customer details and complete the payment to finalize this booking.</p>
+                    </div>
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="h-5 shrink-0" />
+                {/* Header → body divider runs edge-to-edge (no horizontal gap). */}
+                <div className="h-px bg-[#e4e7ec] shrink-0" />
+
+                {/* Body — scrollable. Section dividers inside are inset 24px each side. */}
+                <div className="flex-1 overflow-y-auto flex flex-col">
+                    {/* Customer section */}
+                    <div className="flex flex-col gap-4 px-6 py-5">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Customer</p>
+                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full">
+                            <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={40} />
+                            <div className="flex-1 min-w-0 flex items-center gap-4">
+                                <div className="flex flex-col">
+                                    <p className="text-[14px] font-medium text-[#101828] truncate">{customer.firstName} {customer.lastName}</p>
+                                    <p className="text-[14px] text-[#475467] truncate">{customer.email}</p>
+                                </div>
+                                {customer.planKind === null ? <NoPlanBadge /> : <PlanBadge kind={customer.planKind} />}
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-[#667085] shrink-0" />
+                        </div>
+                    </div>
+
+                    <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
+
+                    {/* Detail class section */}
+                    <div className="flex flex-col gap-4 px-6 py-5">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Detail class</p>
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="w-16 h-16 rounded-[8px] border-1 border-[#e4e7ec] overflow-hidden shrink-0 bg-white">
+                                {classInstance.coverImage
+                                    ? <img src={classInstance.coverImage} alt={classInstance.name} className="w-full h-full object-cover" />
+                                    : <div className="w-full h-full" style={{ backgroundColor: classInstance.coverColor }} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[14px] font-medium text-[#101828]">{classInstance.name}</p>
+                                <p className="text-[14px] text-[#475467]">{classInstance.date} • {classInstance.displayTime}</p>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                    <div className="w-4 h-4 rounded-full overflow-hidden bg-[#e0e0e0] shrink-0 flex items-center justify-center">
+                                        <span className="text-[8px] font-semibold text-white" style={{ backgroundColor: classInstance.instructorColor }}>
+                                            {classInstance.instructorInitials}
+                                        </span>
+                                    </div>
+                                    <p className="text-[12px] text-[#667085]">{classInstance.instructorName.split(" ")[0]} {classInstance.instructorName.split(" ").slice(-1)[0][0]}.</p>
+                                </div>
+                            </div>
+                            <p className="text-[14px] font-medium text-[#101828] whitespace-nowrap">1 credit</p>
+                        </div>
+                    </div>
+
+                    <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
+
+                    {/* Spot section */}
+                    <div className="flex flex-col gap-4 px-6 py-5">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Spot</p>
+                        <div className="flex items-center gap-4 p-4 bg-[#e9fff3] border-1 border-[#7ba08c] rounded-[12px]">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
+                            <p className="text-[14px] text-[#475467] flex-1">A spot will be auto assigned to this customer.</p>
+                        </div>
+                    </div>
+
+                    <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
+
+                    {/* Select plan section — variants */}
+                    <div className="flex flex-col px-6 py-5">
+                    {hasPlan ? (
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-4">
+                                <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Select plan</p>
+                                <button type="button" onClick={onSelectMembership} className="flex items-center gap-2 text-[16px] font-semibold text-[#475467] hover:text-[#344054] transition-colors">
+                                    <ShoppingBag03 className="w-5 h-5" />
+                                    Purchase new
+                                </button>
+                            </div>
+                            <div className="flex items-start gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+                                <div className="w-10 h-10 rounded-[8px] bg-[#e0eaff] flex items-center justify-center shrink-0">
+                                    <CreditCard02 className="w-5 h-5 text-[#3538cd]" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[14px] font-medium text-[#101828]">{customer.planName}</p>
+                                    <p className="text-[14px] text-[#667085]">{planSubtitle}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Buy packages</p>
+                            <button type="button" onClick={onSelectMembership}
+                                className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full text-left hover:bg-[#f9fafb] transition-colors">
+                                <div className="w-10 h-10 rounded-[6px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0 shadow-[0px_1px_1px_rgba(0,0,0,0.04)]">
+                                    <ShoppingBag03 className="w-5 h-5 text-[#475467]" />
+                                </div>
+                                <p className="flex-1 text-[16px] font-medium text-[#344054]">Select membership</p>
+                                <ChevronRight className="w-5 h-5 text-[#667085] shrink-0" />
+                            </button>
+                        </div>
+                    )}
+                    </div>
+                </div>
+
+                {/* Footer — body→footer divider runs edge-to-edge (no horizontal gap). */}
+                <div className="h-px bg-[#e4e7ec] shrink-0" />
+                <div className="flex gap-3 px-6 pt-6 pb-6 shrink-0">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" size="lg" className="flex-1" disabled={!hasPlan} onClick={onConfirm}>
+                        Confirm payment
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Room capacity reached modal — Figma 4029:35699 ───────────────────────────
+function RoomCapacityModal({ open, onClose, onConfirm }: {
+    open: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                <button type="button" onClick={onClose}
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[#667085]" />
+                </button>
+                <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                    <div className="w-12 h-12 rounded-full bg-[#fef0c7] flex items-center justify-center shrink-0">
+                        <Users01 className="w-6 h-6 text-[#dc6803]" />
+                    </div>
+                    <div className="flex flex-col gap-1 text-center w-full">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Room capacity limit reached</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            This booking exceeds the room capacity. The client will be placed on the waitlist.
+                        </p>
+                    </div>
+                </div>
+                <div className="flex gap-3 px-6 pt-6 pb-6">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" size="lg" className="flex-1 bg-[#fdb022] text-[#101828] hover:bg-[#f79009] active:bg-[#dc6803]" onClick={onConfirm}>
+                        Add to waitlist
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Add-customer confirmation modal — Figma 6717:714841 ──────────────────────
+// Shown when the class has open capacity and admin clicked "Confirm payment".
+// Last sanity-check before the booking is actually written.
+function AddCustomerConfirmationModal({ open, onClose, onConfirm }: {
+    open: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                <button type="button" onClick={onClose}
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[#667085]" />
+                </button>
+                <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                    <div className="w-12 h-12 rounded-full bg-[#d7ffe9] flex items-center justify-center shrink-0">
+                        <Users01 className="w-6 h-6 text-[#658774]" />
+                    </div>
+                    <div className="flex flex-col gap-1 text-center w-full">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Add customer to this class?</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            The customer will be added to this class and their balance may be updated accordingly.
+                        </p>
+                    </div>
+                </div>
+                <div className="flex gap-3 px-6 pt-6 pb-6">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" size="lg" className="flex-1" onClick={onConfirm}>
+                        Add to booked
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Point of sale modal — Figma 4029:71676 ───────────────────────────────────
+// Shortcut from the schedule module's Payment confirmation when the customer
+// has no plan (or admin clicked "Purchase new" to upgrade). Renders 3 memberships
+// + 3 credit packages in a 3-column grid using <ProductPosCard>. After Continue,
+// the user-promised "Checkout confirmation modal" picks up the cart.
+//
+// Business rule (per CLAUDE.md and user instruction):
+//   • A customer can have 1 membership OR multiple credit packages — never both.
+//   • The card whose type conflicts with what's already in the cart is disabled.
+type PosProduct = {
+    id: string;
+    type: ProductPosCardType;
+    name: string;
+    primaryMeta: string;
+    secondaryMeta: string;
+    priceAed: number;
+};
+
+const POS_PRODUCTS: PosProduct[] = [
+    { id: "m1", type: "membership", name: "Beginner Monthly Membership", primaryMeta: "10 Credits",   secondaryMeta: "1 Month", priceAed: 1200 },
+    { id: "m2", type: "membership", name: "Advanced Monthly Membership", primaryMeta: "20 Credits",   secondaryMeta: "1 Month", priceAed: 1500 },
+    { id: "m3", type: "membership", name: "Unlimited Monthly Membership",primaryMeta: "Unlimited",    secondaryMeta: "1 Month", priceAed: 2800 },
+    { id: "p1", type: "package",    name: "1-Class Intro Package for 7 Days", primaryMeta: "1 Class",  secondaryMeta: "7 Days",  priceAed: 170  },
+    { id: "p2", type: "package",    name: "5-Class Package for One Month",    primaryMeta: "5 Credits",secondaryMeta: "1 Month", priceAed: 750  },
+    { id: "p3", type: "package",    name: "10-Class Package for One Month",   primaryMeta: "10 Credits", secondaryMeta: "1 Month", priceAed: 1390 },
+];
+
+function POSModal({ open, onClose, onContinue }: {
+    open: boolean;
+    onClose: () => void;
+    onContinue: (cart: Record<string, number>) => void;
+}) {
+    /** Map of productId → quantity. Empty cart = {}. */
+    const [cart, setCart] = useState<Record<string, number>>({});
+
+    // Reset cart whenever the modal closes so a fresh open starts empty.
+    useEffect(() => { if (!open) setCart({}); }, [open]);
+
+    if (!open) return null;
+
+    const hasMembership = POS_PRODUCTS.some(p => p.type === "membership" && (cart[p.id] ?? 0) > 0);
+    const hasPackage    = POS_PRODUCTS.some(p => p.type === "package"    && (cart[p.id] ?? 0) > 0);
+    const cartIsEmpty   = !hasMembership && !hasPackage;
+
+    function handleAdd(p: PosProduct) {
+        setCart(prev => ({ ...prev, [p.id]: 1 }));
+    }
+    function handleIncrement(p: PosProduct) {
+        // Memberships are capped at 1 (single-purchase rule).
+        if (p.type === "membership") return;
+        setCart(prev => ({ ...prev, [p.id]: (prev[p.id] ?? 0) + 1 }));
+    }
+    function handleDecrement(p: PosProduct) {
+        setCart(prev => {
+            const next = (prev[p.id] ?? 0) - 1;
+            const copy = { ...prev };
+            if (next <= 0) delete copy[p.id];
+            else copy[p.id] = next;
+            return copy;
+        });
+    }
+
+    function isCardDisabled(p: PosProduct) {
+        const qty = cart[p.id] ?? 0;
+        if (qty > 0) return false;                  // already in cart — keep stepper alive
+        if (p.type === "membership" && hasPackage) return true;
+        if (p.type === "membership" && hasMembership) return true;   // 1 membership max
+        if (p.type === "package" && hasMembership) return true;
+        return false;
+    }
+
+    return (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[16px] w-full max-w-[1080px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-start gap-4 px-6 pt-6">
+                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Point of sale</p>
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="h-5 shrink-0" />
+                <div className="h-px w-full bg-[#e4e7ec]" />
+
+                {/* Body — 3-col grid of POS cards */}
+                <div className="flex-1 overflow-y-auto px-6 py-5">
+                    <div className="grid grid-cols-3 gap-4">
+                        {POS_PRODUCTS.map(p => (
+                            <ProductPosCard
+                                key={p.id}
+                                type={p.type}
+                                name={p.name}
+                                primaryMeta={p.primaryMeta}
+                                secondaryMeta={p.secondaryMeta}
+                                price={`AED ${p.priceAed.toLocaleString()}`}
+                                quantity={cart[p.id] ?? 0}
+                                disabled={isCardDisabled(p)}
+                                onAdd={() => handleAdd(p)}
+                                onIncrement={() => handleIncrement(p)}
+                                onDecrement={() => handleDecrement(p)}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[#e4e7ec] shrink-0">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                        Back
+                    </Button>
+                    <Button variant="primary" size="lg" className="flex-1" disabled={cartIsEmpty} onClick={() => onContinue(cart)}>
+                        Continue
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Checkout confirmation modal — Figma 4029:83208 ───────────────────────────
+// Shown after POS "Continue" with the resolved cart. Admin reviews the line
+// items, optionally applies a promo code or a custom % discount, and proceeds
+// to the dedicated /checkout payment route.
+function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCart, onProceed, canApplyCustomDiscount }: {
+    open: boolean;
+    customer: Customer | null;
+    items: PurchaseLineItem[];
+    onClose: () => void;
+    /** Called when the user empties the cart via the qty stepper — they should return to POSModal to re-shop. */
+    onBackToCart: () => void;
+    onProceed: (finalItems: PurchaseLineItem[], discountPercent: number, promoCode?: string) => void;
+    /** Owner / Branch Admin only — per business rule, other roles can't apply ad-hoc discounts. */
+    canApplyCustomDiscount: boolean;
+}) {
+    // Local-editable copy of the cart (qty steppers can mutate before proceed).
+    const [lineItems, setLineItems] = useState<PurchaseLineItem[]>(items);
+    const [promoCode, setPromoCode] = useState("");
+    const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+    const [customDiscountChecked, setCustomDiscountChecked] = useState(false);
+    const [customDiscountInput, setCustomDiscountInput] = useState("");
+    const [appliedCustomDiscount, setAppliedCustomDiscount] = useState<number | null>(null);
+
+    // Reset state when the modal re-opens with a fresh cart.
+    useEffect(() => {
+        if (open) {
+            setLineItems(items);
+            setPromoCode("");
+            setAppliedPromo(null);
+            setCustomDiscountChecked(false);
+            setCustomDiscountInput("");
+            setAppliedCustomDiscount(null);
+        }
+    }, [open, items]);
+
+    if (!open || !customer) return null;
+
+    const subtotal = lineItems.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+    // Promo is a flat 20% in this prototype (matches Figma "FREE20"). Custom
+    // discount overrides the promo when present.
+    const promoPercent = appliedPromo ? 20 : 0;
+    const discountPercent = appliedCustomDiscount ?? promoPercent;
+    const discountAmount = Math.round(subtotal * (discountPercent / 100));
+    const taxRate = 10;
+    const taxAmount = Math.round((subtotal - discountAmount) * (taxRate / 100));
+    const total = subtotal - discountAmount + taxAmount;
+
+    function incrementQty(idx: number) {
+        setLineItems(prev => prev.map((it, i) => i === idx
+            ? { ...it, quantity: it.productType === "membership" ? 1 : it.quantity + 1 }
+            : it));
+    }
+    function decrementQty(idx: number) {
+        const target = lineItems[idx];
+        if (!target) return;
+        // If decrementing the only remaining line item to zero, bounce back to the
+        // POS picker rather than leaving the user stranded on an empty checkout.
+        if (lineItems.length === 1 && target.quantity === 1) {
+            onBackToCart();
+            return;
+        }
+        setLineItems(prev => prev.flatMap((it, i) => {
+            if (i !== idx) return [it];
+            const next = it.quantity - 1;
+            if (next <= 0) return [];
+            return [{ ...it, quantity: next }];
+        }));
+    }
+
+    function handleApplyPromo() {
+        const code = promoCode.trim().toUpperCase();
+        if (!code) return;
+        setAppliedPromo(code);
+        // If a custom discount was active, the promo takes precedence (single-discount UX).
+        if (customDiscountChecked) {
+            setCustomDiscountChecked(false);
+            setAppliedCustomDiscount(null);
+        }
+    }
+    function handleApplyCustomDiscount() {
+        const pct = Math.min(100, Math.max(0, Number(customDiscountInput) || 0));
+        if (pct <= 0) return;
+        setAppliedCustomDiscount(pct);
+        if (appliedPromo) setAppliedPromo(null);
+    }
+    function handleCustomDiscountToggle() {
+        const next = !customDiscountChecked;
+        setCustomDiscountChecked(next);
+        if (!next) {
+            setAppliedCustomDiscount(null);
+            setCustomDiscountInput("");
+        }
+    }
+
+    function handleProceed() {
+        if (lineItems.length === 0) return;
+        onProceed(lineItems, discountPercent, appliedPromo ?? undefined);
+    }
+
+    return (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-start gap-4 px-6 pt-6">
+                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Checkout confirmation</p>
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="h-5 shrink-0" />
+                <div className="h-px w-full bg-[#e4e7ec]" />
+
+                {/* Body — scrollable. Customer + Products sections. */}
+                <div className="flex-1 overflow-y-auto flex flex-col">
+                    {/* Customer */}
+                    <div className="flex flex-col gap-4 px-6 py-5 border-b border-[#e4e7ec]">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Customer</p>
+                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full">
+                            <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={40} />
+                            <div className="flex-1 min-w-0 flex flex-col">
+                                <p className="text-[14px] font-medium text-[#101828] truncate">{customer.firstName} {customer.lastName}</p>
+                                <p className="text-[14px] text-[#475467] truncate">{customer.email}</p>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-[#667085] shrink-0" />
+                        </div>
+                    </div>
+
+                    {/* Products list */}
+                    <div className="flex flex-col gap-4 px-6 py-5">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Products</p>
+                        <div className="flex flex-col gap-3">
+                            {lineItems.map((it, idx) => (
+                                <div key={it.productId} className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+                                    <div className={cn(
+                                        "w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0 shadow-[inset_2px_2px_3px_rgba(255,255,255,0.2)]",
+                                        it.productType === "membership" ? "bg-[#e0eaff]" : "bg-[#c4edd6]"
+                                    )}>
+                                        {it.productType === "membership"
+                                            ? <CreditCard02 className="w-5 h-5 text-[#3538cd]" />
+                                            : <Package className="w-5 h-5 text-[#658774]" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                        <p className="text-[14px] font-medium text-[#101828] truncate">{it.name}</p>
+                                        <div className="flex items-center gap-1.5 text-[14px] font-medium">
+                                            <span className="text-[#658774]">AED {it.unitPrice}</span>
+                                        </div>
+                                    </div>
+                                    <div className="border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
+                                        <button type="button" onClick={() => decrementQty(idx)} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] transition-colors">
+                                            <Minus className="w-[18px] h-[18px]" />
+                                        </button>
+                                        <span className="text-[12px] font-semibold text-[#101828] min-w-[16px] text-center">{it.quantity}</span>
+                                        <button type="button" onClick={() => incrementQty(idx)} disabled={it.productType === "membership"} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                                            <Plus className="w-[18px] h-[18px]" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sticky footer panel — discount controls + totals + buttons */}
+                <div className="bg-[#f8f8f6] border-t border-[#e4e7ec] flex flex-col gap-5 px-6 py-6 shrink-0">
+                    <div className="flex flex-col gap-3">
+                        {customDiscountChecked ? (
+                            // Custom discount input (replaces promo input when admin opts in)
+                            <>
+                                <div className="flex items-end gap-3">
+                                    <div className="flex flex-col gap-1.5 flex-1">
+                                        <label className="text-[14px] font-medium text-[#344054]">Custom discount</label>
+                                        <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                            <input type="number" min="0" max="100" value={customDiscountInput}
+                                                onChange={e => setCustomDiscountInput(e.target.value.replace(/^0+(?=\d)/, ""))}
+                                                placeholder="0"
+                                                className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none" />
+                                            <span className="text-[16px] text-[#667085] ml-2">%</span>
+                                        </div>
+                                    </div>
+                                    <Button variant="secondary-gray" size="md" onClick={handleApplyCustomDiscount}>Apply</Button>
+                                </div>
+                            </>
+                        ) : (
+                            // Promo code input (default)
+                            <>
+                                <div className="flex items-end gap-3">
+                                    <div className="flex flex-col gap-1.5 flex-1">
+                                        <label className="text-[14px] font-medium text-[#344054]">Promo code</label>
+                                        <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                            <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
+                                            <input type="text" value={promoCode}
+                                                onChange={e => setPromoCode(e.target.value)}
+                                                placeholder="Enter promo code"
+                                                className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
+                                        </div>
+                                    </div>
+                                    <Button variant="secondary-gray" size="md" onClick={handleApplyPromo}>Apply</Button>
+                                </div>
+                                {appliedPromo && (
+                                    <div className="flex flex-col gap-1.5">
+                                        <p className="text-[14px] text-[#667085]">Applied promo</p>
+                                        <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
+                                            <span className="flex-1 text-[14px] font-medium text-[#344054]">{appliedPromo}</span>
+                                            <button type="button" onClick={() => setAppliedPromo(null)} className="text-[#667085] hover:text-[#101828]">
+                                                <XClose className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Apply custom discount checkbox — Owner/Branch Admin only */}
+                        {canApplyCustomDiscount && (
+                            <button type="button" onClick={handleCustomDiscountToggle} className="flex items-start gap-2 text-left">
+                                <span className={cn(
+                                    "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center mt-0.5 shrink-0 transition-colors",
+                                    customDiscountChecked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]"
+                                )}>
+                                    {customDiscountChecked && <Check className="w-3 h-3 text-white" />}
+                                </span>
+                                <span className="text-[14px] font-medium text-[#344054]">Apply custom discount</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Detail payment */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#101828]">Detail payment</p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-[14px] text-[#667085]">Subtotal</p>
+                            <p className="text-[16px] font-medium text-[#101828]">AED {subtotal.toLocaleString()}</p>
+                        </div>
+                        {discountPercent > 0 && (
+                            <div className="flex items-center justify-between">
+                                <p className="text-[14px] text-[#667085]">
+                                    {appliedCustomDiscount !== null
+                                        ? <>Discount (<span className="font-medium text-[#101828]">{discountPercent}%</span>)</>
+                                        : <>Promo code (<span className="font-medium text-[#101828]">{appliedPromo}</span>)</>
+                                    }
+                                </p>
+                                <p className="text-[16px] font-medium text-[#d92d20]">-AED {discountAmount.toLocaleString()}</p>
+                            </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                            <p className="text-[14px] text-[#667085]">Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</p>
+                            <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
+                        </div>
+                        <div className="h-px w-full bg-[#e4e7ec] my-1" />
+                        <div className="flex items-center justify-between">
+                            <p className="text-[14px] font-semibold text-[#101828]">Total</p>
+                            <p className="text-[16px] font-semibold text-[#101828]">AED {total.toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    {/* Footer buttons */}
+                    <div className="flex gap-3">
+                        <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                            Back
+                        </Button>
+                        <Button variant="primary" size="lg" className="flex-1" disabled={lineItems.length === 0} onClick={handleProceed}>
+                            Proceed to payment
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1027,11 +1648,16 @@ export default function ClassDetailPage() {
     const {
         classInstances, classBookings, classRatings,
         customers: allCustomers,
+        currentRole,
         cancelClassInstance, cancelClassBooking, cancelClassBookings,
         removeClassBooking, removeClassBookings,
         updateAttendance, deleteClassRating,
         showToast,
     } = useAppStore();
+    // Custom discount is gated to Owner / Branch Admin per business rules. The
+    // prototype's `UserRole` type only differentiates "admin" today; we use that
+    // bucket to mean "back-office staff with discounting authority".
+    const canApplyCustomDiscount = currentRole === "admin";
     const customerById = useMemo(() => new Map(allCustomers.map(c => [c.id, c])), [allCustomers]);
 
     const classInstance = classInstances.find(c => c.id === classId);
@@ -1073,17 +1699,52 @@ export default function ClassDetailPage() {
     const [bulkPresentOpen, setBulkPresentOpen] = useState(false);
     const [bulkDeleteReviewsOpen, setBulkDeleteReviewsOpen] = useState(false);
     const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+    // Add-customer flow staging:
+    //   • paymentCustomer       — selected on the AddCustomer list, sitting in the Payment confirmation modal
+    //   • confirmAddCustomer    — has open capacity, awaiting final "Add to booked" click
+    //   • capacityFullCustomer  — class is full, awaiting waitlist confirmation
+    //   • posOpen               — POS modal visible (after "Purchase new" / "Select membership")
+    const [paymentCustomer, setPaymentCustomer] = useState<Customer | null>(null);
+    const [confirmAddCustomer, setConfirmAddCustomer] = useState<Customer | null>(null);
+    const [capacityFullCustomer, setCapacityFullCustomer] = useState<Customer | null>(null);
+    const [posOpen, setPosOpen] = useState(false);
+    /** Items resolved from the POS cart, held in state for the CheckoutConfirmationModal. */
+    const [checkoutItems, setCheckoutItems] = useState<PurchaseLineItem[] | null>(null);
+    /** The customer this checkout is for — may differ from the schedule's bookable customer if shopping for another. */
+    const [checkoutCustomer, setCheckoutCustomer] = useState<Customer | null>(null);
     // Re-open the Add Customer modal automatically when returning from /customers/new
     // (the new-customer page appends ?openAddCustomer=1 to the returnTo path).
     const searchParams = useSearchParams();
     useEffect(() => {
         if (searchParams.get("openAddCustomer") === "1") {
             setAddCustomerOpen(true);
-            // strip the param so refreshes don't keep re-opening it
             const url = new URL(window.location.href);
             url.searchParams.delete("openAddCustomer");
             window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
         }
+    }, [searchParams]);
+
+    // Post-purchase return: /checkout pushes us back with ?paymentSuccess=1&customerId=…
+    // We re-open the Payment confirmation modal for the same customer (with the
+    // newly-purchased plan now visible), clear the transient pendingPurchase
+    // slice, and fire the success toast.
+    useEffect(() => {
+        if (searchParams.get("paymentSuccess") === "1") {
+            const customerId = searchParams.get("customerId");
+            const customer = customerId ? allCustomers.find(c => c.id === customerId) ?? null : null;
+            if (customer) setPaymentCustomer(customer);
+            useAppStore.getState().setPendingPurchase(null);
+            showToast(
+                "Transaction complete",
+                "The payment was successful and the record is saved.",
+                "success", "check"
+            );
+            const url = new URL(window.location.href);
+            url.searchParams.delete("paymentSuccess");
+            url.searchParams.delete("customerId");
+            window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
     // Reviews & Rating tab state
@@ -1281,9 +1942,9 @@ export default function ClassDetailPage() {
         );
     }
 
-    function handleAddCustomer(c: Customer) {
+    /** Inserts a booking record for `c` on this class — `status` differentiates booked vs waitlisted. */
+    function insertBooking(c: Customer, status: "booked" | "waitlisted") {
         useAppStore.setState(state => {
-            const isFull = ci.booked >= ci.capacity;
             const planId = c.planKind === "membership" ? "m1" : c.planKind === "package" ? "p1" : "";
             const newBooking: ClassBooking = {
                 id: `b-${Date.now()}`,
@@ -1295,19 +1956,102 @@ export default function ClassDetailPage() {
                 planId,
                 planName: c.planName ?? "No plan",
                 bookingTime: new Date().toISOString(),
-                status: isFull ? "waitlisted" : "booked",
+                status,
                 attendanceStatus: "pending",
-                ...(isFull ? { waitlistPosition: waitlistBookings.length + 1 } : {}),
+                ...(status === "waitlisted" ? { waitlistPosition: waitlistBookings.length + 1 } : {}),
             };
             return {
                 classBookings: [...state.classBookings, newBooking],
-                classInstances: isFull
-                    ? state.classInstances
-                    : state.classInstances.map(inst => inst.id === ci.id ? { ...inst, booked: inst.booked + 1 } : inst),
+                classInstances: status === "booked"
+                    ? state.classInstances.map(inst => inst.id === ci.id ? { ...inst, booked: inst.booked + 1 } : inst)
+                    : state.classInstances,
             };
         });
+    }
+
+    /** AddCustomerModal row's "Add to class" — moves the flow into the payment-confirmation step. */
+    function handleSelectCustomer(c: Customer) {
         setAddCustomerOpen(false);
-        showToast("Customer added", `${c.firstName} ${c.lastName} has been added to ${ci.name}.`, "success", "check");
+        setPaymentCustomer(c);
+    }
+
+    /** PaymentConfirmation "Confirm payment" — branches on class capacity. */
+    function handleConfirmPayment() {
+        if (!paymentCustomer) return;
+        const isFull = ci.booked >= ci.capacity;
+        if (isFull) {
+            setCapacityFullCustomer(paymentCustomer);
+            setPaymentCustomer(null);
+            return;
+        }
+        // Capacity available — show the "Add customer to this class?" confirmation
+        // before actually writing the booking.
+        setConfirmAddCustomer(paymentCustomer);
+        setPaymentCustomer(null);
+    }
+
+    /** AddCustomerConfirmationModal "Add to booked" — final commit. */
+    function handleConfirmAdd() {
+        if (!confirmAddCustomer) return;
+        insertBooking(confirmAddCustomer, "booked");
+        const name = `${confirmAddCustomer.firstName} ${confirmAddCustomer.lastName}`;
+        setConfirmAddCustomer(null);
+        showToast("Customer added", `${name} has been added to ${ci.name}.`, "success", "check");
+    }
+
+    /** RoomCapacityModal "Add to waitlist". */
+    function handleAddToWaitlist() {
+        if (!capacityFullCustomer) return;
+        insertBooking(capacityFullCustomer, "waitlisted");
+        const name = `${capacityFullCustomer.firstName} ${capacityFullCustomer.lastName}`;
+        setCapacityFullCustomer(null);
+        showToast("Added to waitlist", `${name} has been placed on the ${ci.name} waitlist.`, "success", "check");
+    }
+
+    /** PaymentConfirmation "Purchase new" / "Select membership" — opens the POS modal. */
+    function handleSelectMembership() {
+        // Hold the paymentCustomer in memory while POS is open; the user goes through
+        // checkout (will be wired in the upcoming Checkout confirmation screen) and
+        // then returns to the Payment confirmation with their new plan.
+        setPosOpen(true);
+    }
+
+    /** POSModal "Continue" — resolve cart against the catalog and open Checkout confirmation. */
+    function handlePosContinue(cart: Record<string, number>) {
+        // Resolve productId→qty into rich PurchaseLineItem rows for downstream screens.
+        const items: PurchaseLineItem[] = POS_PRODUCTS
+            .filter(p => (cart[p.id] ?? 0) > 0)
+            .map(p => ({
+                productId: p.id,
+                productType: p.type as "membership" | "package",
+                name: p.name,
+                unitPrice: p.priceAed,
+                quantity: cart[p.id],
+            }));
+        if (items.length === 0) return;
+        // The checkout is always for the customer currently in the payment-confirmation step
+        // (the one we routed here from "Purchase new" / "Select membership").
+        const customer = paymentCustomer ?? confirmAddCustomer ?? checkoutCustomer;
+        if (!customer) return;
+        setCheckoutCustomer(customer);
+        setCheckoutItems(items);
+        setPosOpen(false);
+    }
+
+    /** CheckoutConfirmationModal "Proceed to payment" — stash purchase in store + navigate to /checkout. */
+    const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
+    function handleProceedToPayment(items: PurchaseLineItem[], discountPercent: number, promoCode?: string) {
+        if (!checkoutCustomer) return;
+        setPendingPurchase({
+            classInstanceId: ci.id,
+            customerId: checkoutCustomer.id,
+            items,
+            discountPercent,
+            promoCode,
+        });
+        setCheckoutItems(null);
+        // Keep paymentCustomer set so the modal re-opens after the receipt flow returns.
+        router.push(`/schedule/${ci.id}/checkout`);
     }
 
     const bookedCount = bookedBookings.length;
@@ -1804,7 +2548,44 @@ export default function ClassDetailPage() {
                 open={addCustomerOpen}
                 existingCustomerIds={existingCustomerIds}
                 onClose={() => setAddCustomerOpen(false)}
-                onAdd={handleAddCustomer}
+                onAdd={handleSelectCustomer}
+            />
+
+            <PaymentConfirmationModal
+                open={paymentCustomer !== null}
+                customer={paymentCustomer}
+                classInstance={classInstance}
+                onClose={() => setPaymentCustomer(null)}
+                onConfirm={handleConfirmPayment}
+                onSelectMembership={handleSelectMembership}
+            />
+
+            <AddCustomerConfirmationModal
+                open={confirmAddCustomer !== null}
+                onClose={() => setConfirmAddCustomer(null)}
+                onConfirm={handleConfirmAdd}
+            />
+
+            <RoomCapacityModal
+                open={capacityFullCustomer !== null}
+                onClose={() => setCapacityFullCustomer(null)}
+                onConfirm={handleAddToWaitlist}
+            />
+
+            <POSModal
+                open={posOpen}
+                onClose={() => setPosOpen(false)}
+                onContinue={handlePosContinue}
+            />
+
+            <CheckoutConfirmationModal
+                open={checkoutItems !== null}
+                customer={checkoutCustomer}
+                items={checkoutItems ?? []}
+                canApplyCustomDiscount={canApplyCustomDiscount}
+                onClose={() => { setCheckoutItems(null); setPosOpen(true); }}
+                onBackToCart={() => { setCheckoutItems(null); setPosOpen(true); }}
+                onProceed={handleProceedToPayment}
             />
 
             {/* Bulk mark-present confirmation */}

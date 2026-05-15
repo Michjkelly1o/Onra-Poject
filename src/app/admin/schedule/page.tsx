@@ -1316,7 +1316,7 @@ export default function SchedulePage() {
     // can scope rooms to whichever branch is active in the toolbar.
     const locationOptions = [
         { value: "forma", label: "Forma Studio (South)" },
-        { value: "east",  label: "Forma Studio (East)" },
+        { value: "east", label: "Forma Studio (East)" },
     ];
 
     const TAB_ITEMS: { id: ViewTab; label: string }[] = [
@@ -1344,7 +1344,10 @@ export default function SchedulePage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 flex-1">
+        // No flex-1 — the page root hugs its content (toolbar + 760px View card) so
+        // there's no trailing empty space below the table when the screen is taller
+        // than the content.
+        <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1370,8 +1373,8 @@ export default function SchedulePage() {
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/schedule/new")}>Add Class</Button>
             </div>
 
-            {/* ── View card ── */}
-            <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            {/* ── View card ── Fixed 760px tall so tabs/table/pagination layout is predictable. */}
+            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}

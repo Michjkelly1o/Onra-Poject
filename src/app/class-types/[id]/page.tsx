@@ -211,10 +211,21 @@ function FixedDropdown({ triggerRef, open, onClose, children }: {
     );
 }
 
-function RowActions({ status }: { status: SessionStatus }) {
+function RowActions({ status, onView, onEdit, onCancel }: {
+    status: SessionStatus;
+    onView: () => void;
+    onEdit: () => void;
+    onCancel: () => void;
+}) {
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
+    // Match the schedule list-view rules: cancellable + editable only while still upcoming/ongoing.
     const isEditable = status === "Upcoming" || status === "Ongoing";
+
+    function go(handler: () => void) {
+        setOpen(false);
+        handler();
+    }
 
     return (
         <div className="relative">
@@ -225,21 +236,21 @@ function RowActions({ status }: { status: SessionStatus }) {
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
                 {isEditable ? (
                     <>
-                        <button type="button" onClick={() => setOpen(false)}
+                        <button type="button" onClick={() => go(onView)}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             <Eye className="w-4 h-4 text-[#667085]" />View details
                         </button>
-                        <button type="button" onClick={() => setOpen(false)}
+                        <button type="button" onClick={() => go(onEdit)}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             <Edit02 className="w-4 h-4 text-[#667085]" />Edit class
                         </button>
-                        <button type="button" onClick={() => setOpen(false)}
+                        <button type="button" onClick={() => go(onCancel)}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
                             <Trash01 className="w-4 h-4 text-[#b42318]" />Cancel class
                         </button>
                     </>
                 ) : (
-                    <button type="button" onClick={() => setOpen(false)}
+                    <button type="button" onClick={() => go(onView)}
                         className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                         <Eye className="w-4 h-4 text-[#667085]" />View class details
                     </button>
@@ -425,11 +436,14 @@ function LeftPanel({
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
-function SessionsTable({ sessions, sortKey, sortDir, onSort }: {
+function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEditSession, onCancelSession }: {
     sessions: Session[];
     sortKey: string | null;
     sortDir: SortDir;
     onSort: (key: string) => void;
+    onViewSession: (id: string) => void;
+    onEditSession: (id: string) => void;
+    onCancelSession: (id: string) => void;
 }) {
     if (sessions.length === 0) {
         return (
@@ -497,7 +511,12 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort }: {
                                 <SessionBadge status={s.status} />
                             </td>
                             <td className={TD}>
-                                <RowActions status={s.status} />
+                                <RowActions
+                                    status={s.status}
+                                    onView={() => onViewSession(s.id)}
+                                    onEdit={() => onEditSession(s.id)}
+                                    onCancel={() => onCancelSession(s.id)}
+                                />
                             </td>
                         </tr>
                     ))}
@@ -830,19 +849,49 @@ const TABS: { id: RightTab; label: string }[] = [
 ];
 
 function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTemplate }) {
+    const router = useRouter();
     const [tab, setTab] = useState<RightTab>("classes");
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [filterOpen, setFilterOpen] = useState(false);
     const [appliedFilter, setAppliedFilter] = useState<ClassFilter>(EMPTY_FILTER);
+    // Cancel-class confirmation flow (mirrors the schedule list page's flow).
+    const [cancelSessionId, setCancelSessionId] = useState<string | null>(null);
 
     // Sessions for this template are derived live from the shared store — when a
     // class is added/cancelled/edited in the schedule module, it reflects here too.
     const classInstances = useAppStore(s => s.classInstances);
+    const classBookings = useAppStore(s => s.classBookings);
+    const cancelClassInstance = useAppStore(s => s.cancelClassInstance);
+    const showToast = useAppStore(s => s.showToast);
     const allSessions: Session[] = classInstances
         .filter(ci => ci.templateId === template.id)
         .map(instanceToSession);
+
+    /** Row dropdown handlers — route to the schedule module so we share its full pages. */
+    function handleViewSession(id: string) {
+        router.push(`/schedule/${id}`);
+    }
+    function handleEditSession(id: string) {
+        router.push(`/schedule/${id}/edit`);
+    }
+    function handleConfirmCancel() {
+        if (!cancelSessionId) return;
+        const target = classInstances.find(ci => ci.id === cancelSessionId);
+        if (!target) { setCancelSessionId(null); return; }
+        cancelClassInstance(target.id, true);
+        setCancelSessionId(null);
+        showToast(
+            "Class cancelled successfully",
+            `${target.name} on ${target.date} has been cancelled and customers' credits returned.`,
+            "error", "slash"
+        );
+    }
+    const cancelTarget = cancelSessionId ? classInstances.find(ci => ci.id === cancelSessionId) ?? null : null;
+    const cancelTargetBookedCount = cancelSessionId
+        ? classBookings.filter(b => b.classInstanceId === cancelSessionId && b.status === "booked").length
+        : 0;
 
     const hasActiveFilter =
         appliedFilter.statuses.length > 0 || appliedFilter.startDate ||
@@ -963,7 +1012,15 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                     {tab === "classes" && (
                         hasData && filteredSessions.length > 0 ? (
                             <div className="px-6">
-                                <SessionsTable sessions={paginatedSessions} sortKey={sessionSortKeyState} sortDir={sessionSortDir} onSort={toggleSessionSort} />
+                                <SessionsTable
+                                    sessions={paginatedSessions}
+                                    sortKey={sessionSortKeyState}
+                                    sortDir={sessionSortDir}
+                                    onSort={toggleSessionSort}
+                                    onViewSession={handleViewSession}
+                                    onEditSession={handleEditSession}
+                                    onCancelSession={setCancelSessionId}
+                                />
                             </div>
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1086,6 +1143,41 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                 applied={appliedFilter}
                 onApply={f => { setAppliedFilter(f); setPage(1); }}
             />
+
+            {/* Cancel-class confirmation — mirrors the schedule list-view dialog. */}
+            {cancelTarget && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-[#0c111d]/60" onClick={() => setCancelSessionId(null)} />
+                    <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                        <button type="button" onClick={() => setCancelSessionId(null)}
+                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
+                            <XClose className="w-6 h-6 text-[#667085]" />
+                        </button>
+                        <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                            <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
+                                <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
+                            </div>
+                            <div className="flex flex-col gap-1 text-center w-full">
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
+                                <p className="text-[14px] text-[#475467] leading-[20px]">
+                                    {cancelTarget.name} on {cancelTarget.date} will be cancelled
+                                    {cancelTargetBookedCount > 0
+                                        ? <>, and credits will be refunded to {cancelTargetBookedCount} booked customer{cancelTargetBookedCount === 1 ? "" : "s"}.</>
+                                        : <>. This action cannot be undone.</>}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 pt-6 pb-6">
+                            <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setCancelSessionId(null)}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" size="lg" className="flex-1" onClick={handleConfirmCancel}>
+                                Yes, cancel class
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

@@ -132,6 +132,30 @@ export interface ClassRating {
     deletedBy?: string;
 }
 
+// ─── POS / Purchase flow ──────────────────────────────────────────────────────
+
+/** A line item in a POS cart. Resolved against the inline POS_PRODUCTS catalog. */
+export interface PurchaseLineItem {
+    productId: string;
+    /** "membership" | "package" — drives the post-purchase customer.planKind. */
+    productType: "membership" | "package";
+    name: string;
+    /** Single-unit price in AED. */
+    unitPrice: number;
+    quantity: number;
+}
+
+/** Transient state that survives navigation from the schedule modal → /checkout route. */
+export interface PendingPurchase {
+    classInstanceId: string;
+    customerId: string;
+    items: PurchaseLineItem[];
+    /** Promo / custom-discount percentage applied at checkout. 0 = none. */
+    discountPercent: number;
+    /** Optional promo code text (display only). */
+    promoCode?: string;
+}
+
 // ─── Schedule mock data ───────────────────────────────────────────────────────
 
 export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = [
@@ -564,6 +588,11 @@ interface AppState {
     updateAttendance: (bookingId: string, status: ClassBooking["attendanceStatus"]) => void;
     deleteClassRating: (id: string, deletedBy: string) => void;
     addCustomer: (customer: Omit<Customer, "id" | "createdAt" | "initials"> & { initials?: string }) => string;
+    /** Transient purchase state for the POS → Checkout → Receipt flow. */
+    pendingPurchase: PendingPurchase | null;
+    setPendingPurchase: (purchase: PendingPurchase | null) => void;
+    /** Applies a completed purchase: updates customer planKind/planName per business rule. */
+    applyPurchase: (customerId: string, items: PurchaseLineItem[]) => void;
     showToast: (title: string, message: string, type?: "success" | "error", icon?: ToastData["icon"]) => void;
     clearToast: () => void;
 }
@@ -577,9 +606,32 @@ export const useAppStore = create<AppState>((set) => ({
     classBookings: INITIAL_CLASS_BOOKINGS,
     classRatings: INITIAL_CLASS_RATINGS,
     customers: INITIAL_CUSTOMERS,
+    pendingPurchase: null,
     toast: null,
 
     setRole: (role) => set({ currentRole: role }),
+    setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
+    applyPurchase: (customerId, items) =>
+        set((state) => {
+            // Business rule (per CLAUDE.md): a customer can have 1 membership OR
+            // multiple credit packages — never both. POSModal enforces the cart side;
+            // here we just record the outcome on the customer record so subsequent
+            // PaymentConfirmation modals show the right plan kind/name.
+            const membership = items.find(it => it.productType === "membership");
+            const packageItems = items.filter(it => it.productType === "package");
+            const planKind: Customer["planKind"] = membership ? "membership" : packageItems.length > 0 ? "package" : null;
+            const planName = membership?.name
+                ?? (packageItems.length === 1
+                    ? packageItems[0].name
+                    : packageItems.length > 1
+                        ? `${packageItems.reduce((sum, p) => sum + p.quantity, 0)} credit packages`
+                        : undefined);
+            return {
+                customers: state.customers.map(c =>
+                    c.id === customerId ? { ...c, planKind, planName } : c
+                ),
+            };
+        }),
     setCurrentUser: (user) => set({ currentUser: user, currentRole: user.role }),
     toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
