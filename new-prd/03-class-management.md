@@ -1,9 +1,10 @@
 # PRD 03 — Class Management (Class Templates + Schedule)
 
-> **Last updated:** 2026-05-12. Incorporates the "Brief for class schedule module" which adds
+> **Last updated:** 2026-05-22. Incorporates the "Brief for class schedule module" which adds
 > step-by-step create/edit flows, state-specific action rules, UI component reuse rules,
 > add-customer logic, and cross-module sync requirements. Brief takes precedence over earlier
-> PRD sections where they conflict.
+> PRD sections where they conflict. Section 9 now also specifies **scheduling conflict
+> prevention** — how the Add/Edit Class flow stops an instructor or room being double-booked.
 
 ---
 
@@ -197,6 +198,63 @@ Reuses the same 3-column layout: Steps sidebar (260px) | Form (flex-1) | Live pr
    - Updates live as user changes repeat settings
 
 **Publish/Create button** → creates all class instances → toast "X classes created." → navigate to schedule list
+
+---
+
+### Step 3 — Scheduling Conflict Prevention
+
+A class can never be scheduled into a slot that would double-book an **instructor** or a
+**room**. This is enforced **inside the Step 3 time pickers** — there is **no error toast and no
+blocking popup**. Instead, any start time that would cause a conflict is **disabled** in the
+time-slot dropdown (greyed out with an "Unavailable" tag), so the admin can only ever pick a
+free slot. The same rules apply when editing/rescheduling a class (`/schedule/[classId]/edit`).
+
+**What counts as a conflict**
+
+A candidate start time `T` for a class of length `duration` conflicts with an existing class
+when **all** of the following are true:
+
+1. It falls on the **same calendar date**.
+2. It shares the **same instructor** OR the **same room** as the existing class.
+3. The new class window `[T, T + duration)` **overlaps** the existing window `[start, end)` —
+   i.e. `start − duration < T < end`. (Back-to-back classes that only touch at the edge — one
+   ends exactly when the next begins — do **not** conflict.)
+
+Matching detail:
+- The existing class is matched on **instructor id**, and on **room** by id *and* by room name
+  (room name is matched too so a clash is still caught against pre-seeded classes, whose room
+  ids live in a different namespace from the form's).
+- A **cancelled** class is ignored — it no longer occupies its instructor or room.
+- When editing a class, that class never conflicts with **its own** record.
+
+**Conflict cases covered**
+
+| Scenario | Result |
+|---|---|
+| New schedule, instructor free, room free, new date/time | Allowed — slot selectable |
+| Same instructor, same date + time, **different** room | Slot disabled — instructor double-booked |
+| Same room, same date + time, **different** instructor | Slot disabled — room double-booked |
+| Identical class re-created (same instructor, room, date, time, template) | Slot disabled — already scheduled |
+| Instructor already booked at that date/time, assigned as a **substitute** elsewhere | Slot disabled — instructor double-booked |
+
+**Recurring classes**
+
+For a recurring series, the conflict check runs against **every occurrence date** the series
+generates — across all selected weekdays and all weeks — for every end condition (`No end
+date`, `End on date`, `End after`). A given weekday's time slot is disabled if **any** single
+occurrence of that weekday across the series would conflict.
+
+**Notes**
+
+- Start times are always offered on a **15-minute grid**; class **duration** may be any length
+  (e.g. a 50-minute class from a custom template). The conflict scan is grid-correct for
+  non-15-minute durations — it does not assume the duration is a multiple of 15.
+- All date math is **timezone-independent** — an occurrence's calendar date never shifts with
+  the viewer's timezone, so the dates a class is created on always match the dates the conflict
+  scan checks.
+- If a conflict arises **after** a time was already picked (e.g. the admin picks a time, then
+  assigns an instructor who is already booked for that slot), the picked time is cleared
+  automatically, so a double-booking can never be submitted.
 
 ---
 

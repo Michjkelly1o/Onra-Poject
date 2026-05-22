@@ -57,8 +57,8 @@ const BRANCH_ROOMS = [
     {
         branch: "Forma Studio (East)",
         rooms: [
-            { id: "r5", name: "Yoga Studio",  capacity: 10, usedByOther: true  },
-            { id: "r6", name: "HIIT Studio",  capacity: 8,  usedByOther: true  },
+            { id: "r5", name: "Yoga Studio",  capacity: 10, usedByOther: false },
+            { id: "r6", name: "HIIT Studio",  capacity: 8,  usedByOther: false },
             { id: "r7", name: "Power Studio", capacity: 15, usedByOther: false },
         ],
     },
@@ -67,6 +67,38 @@ const BRANCH_ROOMS = [
 const REPEAT_OPTIONS = ["Does not repeat", "Repeat weekly"] as const;
 const REPEAT_END     = ["No end date", "End on date", "End after"] as const;
 const WEEK_DAYS      = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+// ─── Calendar-date helpers (timezone-independent) ────────────────────────────
+// `selectedDate`, `endDate` and a class's `dateISO` are all plain "YYYY-MM-DD"
+// calendar dates with no timezone attached. Every weekday lookup and day-offset
+// here anchors them at UTC midnight, so the result never drifts with the
+// viewer's timezone — and lines up exactly with getBusinessHours(), the seed
+// adapters, and the conflict scanners below, which all use the same UTC anchor.
+// (Mixing `new Date(iso)` — parsed as UTC — with `.getDay()`/`.getDate()` — read
+// in local time — silently shifts the date by a day in negative-offset zones;
+// these helpers exist so no call-site does that.)
+const ISO_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const ISO_MONTHS   = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** Weekday index (0 = Sun) of a "YYYY-MM-DD" calendar date. */
+function isoWeekday(iso: string): number {
+    return new Date(iso + "T00:00:00Z").getUTCDay();
+}
+/** Add `days` (may be negative) to a "YYYY-MM-DD" date → a "YYYY-MM-DD" date. */
+function addDaysISO(iso: string, days: number): string {
+    const d = new Date(iso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+/** "Fri, 22 May 2026" display label for a "YYYY-MM-DD" date. */
+function isoDateLabel(iso: string): string {
+    const d = new Date(iso + "T00:00:00Z");
+    return `${ISO_WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${ISO_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+/** "Fri" short weekday label for a "YYYY-MM-DD" date. */
+function isoDayOfWeek(iso: string): string {
+    return ISO_WEEKDAYS[isoWeekday(iso)];
+}
 
 // ─── Category colors (same as schedule page) ─────────────────────────────────
 
@@ -869,7 +901,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const [repeatEvery, setRepeatEvery] = useState(1);
     const [repeatEnd, setRepeatEnd] = useState<typeof REPEAT_END[number]>("No end date");
     const [endDate,   setEndDate]   = useState("");
-    const [endAfter,  setEndAfter]  = useState(8);
+    const [endAfter,  setEndAfter]  = useState(0);
     const [selectedDate, setSelectedDate] = useState(editing?.dateISO ?? "");
     const [startTime, setStartTime] = useState(editing?.startTime ?? "");
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -888,20 +920,107 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
 
     const activeTemplates = classTemplates.filter(t => t.status === "Active");
 
-    // Unavailable time slots for selected instructor on selected date
-    const unavailableTimes = useMemo((): string[] => {
-        if (!instructorId || !selectedDate) return [];
+    // ─── Conflict scan ─────────────────────────────────────────────────────
+    // Given a list of dates, return every start-time slot that would
+    // double-book the picked INSTRUCTOR or ROOM. Duration-aware: a slot is
+    // barred whenever a class of the new class's length, starting there, would
+    // run into an existing booking. The class being edited never conflicts
+    // with its own record.
+    function blockedSlotsForDates(dateList: string[]): string[] {
+        if (dateList.length === 0 || (!instructorId && !locationId)) return [];
+        const dateSet = new Set(dateList);
+        // Resolve the picked room's display name so a room clash is caught even
+        // against seeded classes: the form's room ids (r1–r7) live in a
+        // different namespace from the seed room ids, but the room *name* is
+        // denormalized onto every schedule (form-created and seeded alike), so
+        // name is the one key that matches across both.
+        const selectedRoomName = locationId
+            ? BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === locationId)?.name
+            : undefined;
         const blocked: string[] = [];
-        classSchedules.forEach(inst => {
-            if (inst.instructorId !== instructorId || inst.dateISO !== selectedDate) return;
-            const [sh, sm] = inst.startTime.split(":").map(Number);
-            const [eh, em] = inst.endTime.split(":").map(Number);
-            for (let mins = sh*60+sm; mins < eh*60+em; mins += 15) {
-                blocked.push(`${String(Math.floor(mins/60)).padStart(2,"0")}:${String(mins%60).padStart(2,"0")}`);
+        classSchedules.forEach(ex => {
+            if (!dateSet.has(ex.dateISO)) return;
+            if (editingId && ex.id === editingId) return;
+            // A cancelled class no longer occupies its instructor or room.
+            if (ex.status === "Cancelled") return;
+            const sameInstructor = !!instructorId && ex.instructorId === instructorId;
+            const sameRoom       = !!locationId && (
+                ex.roomId === locationId ||
+                (!!selectedRoomName && ex.room === selectedRoomName)
+            );
+            if (!sameInstructor && !sameRoom) return;
+            const [sh, sm] = ex.startTime.split(":").map(Number);
+            const [eh, em] = ex.endTime.split(":").map(Number);
+            const busyStart = sh * 60 + sm;
+            const busyEnd   = eh * 60 + em;
+            // Block every candidate start T on the 15-min slot grid where the
+            // new class [T, T+duration) would overlap this booking
+            // [busyStart, busyEnd) — i.e. busyStart-duration < T < busyEnd.
+            //
+            // The first blocked T is snapped DOWN to the 15-min grid. The slot
+            // dropdowns only ever offer grid-aligned times (buildTimeSlots
+            // steps by 15), so if `duration` isn't a multiple of 15 — which a
+            // custom template can easily be, e.g. a 50-min class — anchoring
+            // the loop at `busyStart - duration + 15` lands every generated
+            // time OFF the grid, none match a real slot, and nothing gets
+            // disabled. Snapping to the grid keeps the conflict scan correct
+            // for any class length.
+            const firstBlocked = Math.floor((busyStart - duration) / 15) * 15 + 15;
+            for (let mins = firstBlocked; mins < busyEnd; mins += 15) {
+                if (mins < 0) continue;
+                blocked.push(`${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`);
             }
         });
         return blocked;
-    }, [instructorId, selectedDate, classSchedules]);
+    }
+
+    // Single-date path — slots barred on the picked date.
+    const unavailableTimes = useMemo(
+        () => blockedSlotsForDates(selectedDate ? [selectedDate] : []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [instructorId, locationId, selectedDate, classSchedules, editingId, duration],
+    );
+
+    // Recurring path — slots barred per selected weekday, checked against
+    // EVERY occurrence date that weekday hits across the series (not just the
+    // anchor week), so a recurring class can't double-book on any week.
+    const blockedSlotsByDay = useMemo((): Record<string, string[]> => {
+        const result: Record<string, string[]> = {};
+        if (repeat !== "Repeat weekly" || !selectedDate || selectedDays.length === 0) return result;
+        const dayNum: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+        const base = new Date(selectedDate + "T00:00:00Z");
+        const baseDow = base.getUTCDay();
+        const step = Math.max(1, repeatEvery);
+        let limitTime = Infinity;
+        if (repeatEnd === "End on date" && endDate) {
+            limitTime = new Date(endDate + "T23:59:59Z").getTime();
+        } else if (repeatEnd === "No end date") {
+            const l = new Date(base);
+            l.setUTCDate(base.getUTCDate() + ((7 - baseDow) % 7));
+            limitTime = l.getTime() + 86_400_000;
+        }
+        // "End after N" caps the whole series — over-approximate by letting
+        // each weekday reach N occurrences (extra dates only ever bar more).
+        const perDayCap = repeatEnd === "End after" ? Math.max(1, endAfter) : 520;
+        for (const day of selectedDays) {
+            const dow = dayNum[day];
+            if (dow === undefined) continue;
+            const dates: string[] = [];
+            for (let week = 0; week < 520 && dates.length < perDayCap; week += step) {
+                const d = new Date(base);
+                d.setUTCDate(base.getUTCDate() + ((dow - baseDow + 7) % 7) + week * 7);
+                if (d.getTime() > limitTime) break;
+                if (d.getTime() < base.getTime()) continue;
+                dates.push(d.toISOString().slice(0, 10));
+            }
+            result[day] = blockedSlotsForDates(dates);
+        }
+        return result;
+    }, [
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        repeat, selectedDate, selectedDays, repeatEnd, endDate, endAfter, repeatEvery,
+        classSchedules, instructorId, locationId, duration, editingId,
+    ]);
 
     // When template is selected — populate fields
     function handleSelectTemplate(id: string) {
@@ -1009,6 +1128,13 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         if (!singleDateSlots.includes(startTime)) setStartTime("");
     }, [singleDateSlots]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Clear a picked start time the instant it becomes a conflict — e.g. the
+    // admin picks a time, then assigns an instructor or room already booked
+    // for that slot. Stops the form from ever submitting a double-booking.
+    useEffect(() => {
+        if (startTime && unavailableTimes.includes(startTime)) setStartTime("");
+    }, [unavailableTimes]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Same idea for the repeat-weekly path — drop any slot whose start is no
     // longer in its weekday's window (or whose weekday is now closed).
     useEffect(() => {
@@ -1058,13 +1184,11 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // anchor date (e.g. picking Fri 15 May 2026 ticks "Fri" if it isn't already).
     useEffect(() => {
         if (repeat !== "Repeat weekly" || !selectedDate) return;
-        const dow = new Date(selectedDate).getDay();
-        const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        const dayLabel = dayMap[dow];
+        const dayLabel = isoDayOfWeek(selectedDate);
         setSelectedDays(prev => {
             if (prev.includes(dayLabel)) return prev;
-            const start = "09:00";
-            setDaySlots(ds => ({ ...ds, [dayLabel]: ds[dayLabel] ?? [{ start, end: calcEndTime(start, duration) }] }));
+            // New day rows start with an empty time slot — no auto-selected time.
+            setDaySlots(ds => ({ ...ds, [dayLabel]: ds[dayLabel] ?? [{ start: "", end: "" }] }));
             return [...prev, dayLabel];
         });
     }, [selectedDate, repeat, duration]);
@@ -1080,8 +1204,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         setSelectedDays(prev => {
             const next = prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day];
             if (!prev.includes(day)) {
-                const start = "09:00";
-                setDaySlots(ds => ({ ...ds, [day]: ds[day] ?? [{ start, end: calcEndTime(start, duration) }] }));
+                // New day rows start with an empty time slot — no auto-selected time.
+                setDaySlots(ds => ({ ...ds, [day]: ds[day] ?? [{ start: "", end: "" }] }));
             }
             return next;
         });
@@ -1106,45 +1230,45 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     }
 
     // Generate preview of recurring classes
-    type PreviewItem = { date: Date; startTime: string; endTime: string };
+    type PreviewItem = { dateISO: string; startTime: string; endTime: string };
     function generatePreview(): PreviewItem[] {
         if (repeat === "Does not repeat" || !selectedDays.length) return [];
         const out: PreviewItem[] = [];
         const hardCap = repeatEnd === "End after" ? Math.max(1, endAfter) : 365;
-        // Anchor on the selected start date if provided; otherwise tomorrow
-        const base = selectedDate ? new Date(selectedDate) : (() => { const t = new Date(); t.setDate(t.getDate()+1); return t; })();
-        base.setHours(0,0,0,0);
+        // Anchor on the selected start date if provided; otherwise tomorrow.
+        // Every date below is a plain "YYYY-MM-DD" string advanced via
+        // addDaysISO (UTC-anchored), so the occurrence dates generated here are
+        // byte-for-byte the same dates blockedSlotsByDay scans for conflicts —
+        // no local-vs-UTC drift can split the two apart.
+        const baseISO = selectedDate || addDaysISO(todayISO(), 1);
+        const baseDow = isoWeekday(baseISO);
         // A slot whose first occurrence lands on today but already passed the
         // current time can't run today — it's only scheduled from its next
         // recurrence onward, so it's dropped from today's preview + creation.
-        const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+        const today = todayISO();
         const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
         const dayMap: Record<string, number> = { Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6,Sun:0 };
         let count = 0;
-        // Effective date cap:
+        // Effective date cap — an inclusive "YYYY-MM-DD" upper bound:
         //  - "End on date"  → user-picked end
-        //  - "No end date"  → end of the calendar week containing `base` (Sun, end-of-day)
+        //  - "No end date"  → Sunday of the calendar week containing `base`
         //  - "End after"    → no date cap; the count cap (hardCap) does the work
-        let limit: Date | null = null;
+        let limitISO: string | null = null;
         if (repeatEnd === "End on date" && endDate) {
-            limit = new Date(endDate);
+            limitISO = endDate;
         } else if (repeatEnd === "No end date") {
-            limit = new Date(base);
-            const daysUntilSunday = (7 - base.getDay()) % 7;
-            limit.setDate(base.getDate() + daysUntilSunday);
+            limitISO = addDaysISO(baseISO, (7 - baseDow) % 7);
         }
-        if (limit) limit.setHours(23,59,59,999);
         const step = Math.max(1, repeatEvery);
         for (let week = 0; week < 260 && count < hardCap; week += step) {
             for (const day of WEEK_DAYS) {
                 if (!selectedDays.includes(day)) continue;
-                const d = new Date(base);
-                const diff = ((dayMap[day] - base.getDay() + 7) % 7) + week * 7;
-                d.setDate(base.getDate() + diff);
-                if (limit && d > limit) continue;
-                if (d < base) continue;
-                const slots = daySlots[day] ?? [{ start: "09:00", end: calcEndTime("09:00", duration) }];
-                const isToday = d.getTime() === todayMid.getTime();
+                const diff = ((dayMap[day] - baseDow + 7) % 7) + week * 7;
+                const dISO = addDaysISO(baseISO, diff);
+                if (limitISO && dISO > limitISO) continue;
+                if (dISO < baseISO) continue;
+                const slots = daySlots[day] ?? [{ start: "", end: "" }];
+                const isToday = dISO === today;
                 for (const s of slots) {
                     if (count >= hardCap) break;
                     // Skip slots the admin hasn't picked a time for yet.
@@ -1154,15 +1278,11 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                         const [sh, sm] = s.start.split(":").map(Number);
                         if (sh * 60 + sm < nowMin) continue;
                     }
-                    out.push({ date: new Date(d), startTime: s.start, endTime: s.end });
+                    out.push({ dateISO: dISO, startTime: s.start, endTime: s.end });
                     count++;
                 }
             }
-            if (limit) {
-                const nextBase = new Date(base);
-                nextBase.setDate(base.getDate() + (week + step) * 7);
-                if (nextBase > limit) break;
-            }
+            if (limitISO && addDaysISO(baseISO, (week + step) * 7) > limitISO) break;
         }
         return out;
     }
@@ -1173,12 +1293,13 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
         const months = new Map<string, { label: string; days: Map<number, string[]> }>();
         for (const item of previewItems) {
-            const key = `${item.date.getFullYear()}-${item.date.getMonth()}`;
+            const d = new Date(item.dateISO + "T00:00:00Z");
+            const year = d.getUTCFullYear(), monthIdx = d.getUTCMonth(), day = d.getUTCDate();
+            const key = `${year}-${monthIdx}`;
             if (!months.has(key)) {
-                months.set(key, { label: `${MONTHS_LONG[item.date.getMonth()]} ${item.date.getFullYear()}`, days: new Map() });
+                months.set(key, { label: `${MONTHS_LONG[monthIdx]} ${year}`, days: new Map() });
             }
             const m = months.get(key)!;
-            const day = item.date.getDate();
             if (!m.days.has(day)) m.days.set(day, []);
             m.days.get(day)!.push(fmtSlotRange(item.startTime, item.endTime));
         }
@@ -1210,9 +1331,6 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         const typedClassType = classType as "Group" | "Private" | "Semi-private";
 
         if (repeat === "Does not repeat" && selectedDate) {
-            const d = new Date(selectedDate);
-            const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
             instances.push({
                 templateId, name, description: desc, category,
                 branchId,
@@ -1220,8 +1338,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
                 location: branchGroup?.branch ?? "FitLab South",
                 roomId: locationId, room: room?.name ?? "",
-                date: `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
-                dateISO: selectedDate, dayOfWeek: days[d.getDay()],
+                date: isoDateLabel(selectedDate),
+                dateISO: selectedDate, dayOfWeek: isoDayOfWeek(selectedDate),
                 startTime, endTime,
                 displayTime: `${startTime} – ${endTime}`,
                 booked: 0, capacity,
@@ -1232,13 +1350,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 coverColor: coverCol, coverImage: coverImage || undefined,
             });
         } else {
-            const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
             for (const p of previewItems) {
-                const d = p.date;
-                const dayStr = dayNames[d.getDay()];
-                const dateLabel = `${dayStr}, ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-                const dateISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
                 instances.push({
                     templateId, name, description: desc, category,
                     branchId,
@@ -1246,8 +1358,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                     instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
                     location: branchGroup?.branch ?? "FitLab South",
                     roomId: locationId, room: room?.name ?? "",
-                    date: dateLabel, dateISO,
-                    dayOfWeek: dayStr,
+                    date: isoDateLabel(p.dateISO), dateISO: p.dateISO,
+                    dayOfWeek: isoDayOfWeek(p.dateISO),
                     startTime: p.startTime, endTime: p.endTime,
                     displayTime: `${p.startTime} – ${p.endTime}`,
                     booked: 0, capacity,
@@ -1297,13 +1409,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         );
         let datePatch: Partial<typeof editing> = {};
         if (dateChanged && selectedDate && startTime) {
-            const d = new Date(selectedDate);
-            const days   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
             datePatch = {
-                date: `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
+                date: isoDateLabel(selectedDate),
                 dateISO: selectedDate,
-                dayOfWeek: days[d.getDay()],
+                dayOfWeek: isoDayOfWeek(selectedDate),
                 startTime,
                 endTime,
                 displayTime: `${startTime} – ${endTime}`,
@@ -1367,11 +1476,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     //   3. null → preview row falls back to the "Date & time" placeholder.
     const previewDateTimeLabel = (() => {
         if (selectedDate && startTime) {
-            const d = new Date(selectedDate + "T00:00:00");
-            const days   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-            const dateLabel = `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-            return `${dateLabel} · ${startTime}`;
+            return `${isoDateLabel(selectedDate)} · ${startTime}`;
         }
         if (isEditing && editing) {
             return `${editing.date} · ${editing.displayTime}`;
@@ -1799,9 +1904,9 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                             <div className="flex flex-col gap-4">
                                                 {WEEK_DAYS.filter(d => selectedDays.includes(d)).map(day => (
                                                     <TimeSlotRow key={day} day={day}
-                                                        slots={daySlots[day] ?? [{ start: "09:00", end: calcEndTime("09:00", duration) }]}
+                                                        slots={daySlots[day] ?? [{ start: "", end: "" }]}
                                                         availableSlots={repeatSlotsByDay[day]}
-                                                        unavailable={unavailableTimes}
+                                                        unavailable={blockedSlotsByDay[day] ?? []}
                                                         duration={duration}
                                                         onChange={(i, field, val) => updateSlot(day, i, field, val)}
                                                         onAddSlot={() => addSlot(day)}
