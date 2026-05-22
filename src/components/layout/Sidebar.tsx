@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
@@ -48,7 +49,7 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Memberships & packages", href: "/admin/products" },
             { label: "Gift cards", href: "/admin/products/gift-cards" },
-            { label: "Promo codes", href: "/admin/products/promo-codes" },
+            { label: "Promo", href: "/admin/products/promo-codes" },
         ],
     },
     { label: "Marketing", href: "/admin/marketing", icon: Announcement01, permission: "manage_marketing" },
@@ -82,6 +83,60 @@ const NAV_ITEMS: NavItemDef[] = [
         ],
     },
 ];
+
+// Among a parent's children, pick the SINGLE child whose href is the longest
+// prefix-match of `pathname`. Prevents the active highlight from doubling up
+// when one child's href is a prefix of another's (e.g. `/admin/products` and
+// `/admin/products/gift-cards` — without this both rows would light up when
+// the user is on the gift-cards page).
+function activeChildHrefFor(children: { href: string }[] | undefined, pathname: string): string | null {
+    if (!children) return null;
+    let bestHref: string | null = null;
+    let bestLen = -1;
+    for (const c of children) {
+        const matches = pathname === c.href || pathname.startsWith(c.href + "/");
+        if (matches && c.href.length > bestLen) {
+            bestHref = c.href;
+            bestLen = c.href.length;
+        }
+    }
+    return bestHref;
+}
+
+// When the sidebar is collapsed, nav rows are icon-only — this wraps a row and
+// shows the menu name in a tooltip on hover. The tooltip is portalled to
+// `document.body` with fixed positioning so it escapes the nav's `overflow`
+// clipping. When `enabled` is false (expanded sidebar) it renders the row as-is.
+function SlimNavItem({ label, enabled, children }: {
+    label: string; enabled: boolean; children: React.ReactNode;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [tip, setTip] = useState<{ top: number; left: number } | null>(null);
+
+    if (!enabled) return <>{children}</>;
+
+    return (
+        <div
+            ref={ref}
+            onMouseEnter={() => {
+                const r = ref.current?.getBoundingClientRect();
+                if (r) setTip({ top: r.top + r.height / 2, left: r.right + 12 });
+            }}
+            onMouseLeave={() => setTip(null)}
+        >
+            {children}
+            {tip && createPortal(
+                <div
+                    style={{ position: "fixed", top: tip.top, left: tip.left, transform: "translateY(-50%)" }}
+                    className="z-[9999] whitespace-nowrap rounded-[8px] bg-[#0c111d] text-white text-[12px] font-medium leading-[18px] px-3 py-2 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] pointer-events-none"
+                >
+                    {label}
+                </div>,
+                document.body,
+            )}
+        </div>
+    );
+}
 
 export default function Sidebar() {
     const pathname = usePathname();
@@ -228,7 +283,9 @@ export default function Sidebar() {
 
                     return (
                         <div key={item.label}>
-                            {/* Parent row */}
+                            {/* Parent row — wrapped so a collapsed icon shows
+                                the menu name in a tooltip on hover. */}
+                            <SlimNavItem label={item.label} enabled={slim}>
                             {hasChildren ? (
                                 <button
                                     type="button"
@@ -266,14 +323,19 @@ export default function Sidebar() {
                                     )}
                                 </Link>
                             )}
+                            </SlimNavItem>
 
                             {/* Children — full width, text indented to align after parent icon */}
-                            {hasChildren && !slim && open && (
+                            {hasChildren && !slim && open && (() => {
+                                // Resolve once per parent so siblings with
+                                // overlapping prefixes (e.g. `/admin/products`
+                                // vs `/admin/products/gift-cards`) don't BOTH
+                                // light up — only the longest-match wins.
+                                const activeHref = activeChildHrefFor(item.children, pathname);
+                                return (
                                 <div className="mt-1 flex flex-col gap-0.5">
                                     {item.children!.map((child) => {
-                                        const childActive =
-                                            pathname === child.href ||
-                                            pathname.startsWith(child.href + "/");
+                                        const childActive = child.href === activeHref;
                                         return (
                                             <Link
                                                 key={child.href}
@@ -293,7 +355,8 @@ export default function Sidebar() {
                                         );
                                     })}
                                 </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     );
                 })}

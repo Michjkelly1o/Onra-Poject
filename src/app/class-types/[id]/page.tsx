@@ -6,15 +6,17 @@ import {
     XClose, Edit02, Archive, SlashCircle01,
     RefreshCcw01, Trash01, Trash02, DotsVertical,
     SearchMd, FilterLines, ChevronDown, Eye, Check,
-    CreditCard01, Package, Calendar, AlignLeft,
+    CreditCard01, Package, AlignLeft,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { useAppStore, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
+import { FixedDropdown } from "@/components/ui/FixedDropdown";
 
 // ─── Sort helpers ─────────────────────────────────────────────────────────────
 
@@ -173,44 +175,6 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
     );
 }
 
-// ─── Row action dropdown (fixed-position to avoid overflow clipping) ──────────
-
-function FixedDropdown({ triggerRef, open, onClose, children }: {
-    triggerRef: React.RefObject<HTMLButtonElement>;
-    open: boolean;
-    onClose: () => void;
-    children: React.ReactNode;
-}) {
-    const [pos, setPos] = useState({ top: 0, right: 0 });
-    const dropRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (open && triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-        }
-    }, [open, triggerRef]);
-
-    useEffect(() => {
-        function handler(e: MouseEvent) {
-            if (dropRef.current && !dropRef.current.contains(e.target as Node) &&
-                triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
-                onClose();
-            }
-        }
-        if (open) document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
-    }, [open, onClose, triggerRef]);
-
-    if (!open) return null;
-    return (
-        <div ref={dropRef} style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
-            className="bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 min-w-[180px]">
-            {children}
-        </div>
-    );
-}
-
 function RowActions({ status, onView, onEdit, onCancel }: {
     status: SessionStatus;
     onView: () => void;
@@ -233,7 +197,7 @@ function RowActions({ status, onView, onEdit, onCancel }: {
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
                 <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                 {isEditable ? (
                     <>
                         <button type="button" onClick={() => go(onView)}
@@ -609,18 +573,17 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Custom date range</p>
                         <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                                <input type="date" value={pending.startDate}
-                                    onChange={e => setPending(p => ({ ...p, startDate: e.target.value }))}
-                                    className="h-10 w-full pl-9 pr-3 border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
-                            </div>
-                            <div className="relative flex-1">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                                <input type="date" value={pending.endDate}
-                                    onChange={e => setPending(p => ({ ...p, endDate: e.target.value }))}
-                                    className="h-10 w-full pl-9 pr-3 border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
-                            </div>
+                            <DatePicker className="flex-1" value={pending.startDate}
+                                onChange={v => setPending(p => {
+                                    const next = { ...p, startDate: v };
+                                    if (p.endDate && v && p.endDate < v) next.endDate = "";
+                                    return next;
+                                })}
+                                placeholder="Start date" />
+                            <DatePicker className="flex-1" value={pending.endDate}
+                                onChange={v => setPending(p => ({ ...p, endDate: v }))}
+                                placeholder="End date"
+                                minDate={pending.startDate || undefined} />
                         </div>
                     </div>
                     <div className="h-px w-full bg-[#e4e7ec]" />
@@ -747,8 +710,11 @@ function ActionModal({ action, onConfirm, onCancel }: {
 }
 
 // ─── Generic row action "View details" ────────────────────────────────────────
+//
+// `onView` lets the caller route to the appropriate detail page — used by the
+// Applicable memberships / packages tabs to deep-link into /products/[id].
 
-function ViewDetailsAction() {
+function ViewDetailsAction({ onView }: { onView?: () => void }) {
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
     return (
@@ -757,8 +723,8 @@ function ViewDetailsAction() {
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
                 <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => setOpen(false)}
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
+                <button type="button" onClick={() => { setOpen(false); onView?.(); }}
                     className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                     <Eye className="w-4 h-4 text-[#667085]" />View details
                 </button>
@@ -902,13 +868,19 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
     // from the customers store keeps "active" in sync when plans are purchased
     // or cancelled in POS/checkout flows).
     const customers = useAppStore(s => s.customers);
+    // Sourced from live store state — when an admin deactivates / archives
+    // a product from /admin/products, the row disappears from this tab
+    // automatically (only `status === "active"` plans show below).
+    const allMemberships = useAppStore(s => s.memberships);
+    const allPackages = useAppStore(s => s.packages);
     const activeByPlanName = new Map<string, number>();
     for (const c of customers) {
         if (!c.planName) continue;
         activeByPlanName.set(c.planName, (activeByPlanName.get(c.planName) ?? 0) + 1);
     }
 
-    const filteredMemberships = SEED_MEMBERSHIPS
+    const filteredMemberships = allMemberships
+        .filter(m => m.status === "active")
         .filter(m => applicableMembershipIds.includes(m.id))
         .filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
         .map(m => ({
@@ -918,7 +890,8 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
             enabled: m.status === "active",
         }));
 
-    const filteredPackages = SEED_PACKAGES
+    const filteredPackages = allPackages
+        .filter(p => p.status === "active")
         .filter(p => applicablePackageIds.includes(p.id))
         .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
         .map(p => ({
@@ -1074,7 +1047,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
-                                                <td className={TD}><ViewDetailsAction /></td>
+                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${m.id}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1119,7 +1092,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
-                                                <td className={TD}><ViewDetailsAction /></td>
+                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${p.id}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1200,7 +1173,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 export default function ClassTemplateDetailPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
-    const { classTemplates, updateClassTemplate, deleteClassTemplate, showToast } = useAppStore();
+    const { classTemplates, classSchedules, updateClassTemplate, deleteClassTemplate, showToast } = useAppStore();
 
     const template = classTemplates.find(t => t.id === id);
 
@@ -1220,8 +1193,10 @@ export default function ClassTemplateDetailPage() {
         );
     }
 
-    // Mock templates ("1"-"6") have session history; newly created templates ("t-…") start empty
-    const hasData = !id.startsWith("t-");
+    // "Has data" = at least one class has actually been scheduled from this
+    // template. Drives the delete-vs-deactivate gate + the Classes-tab empty
+    // state — read live from the schedule store, not guessed from the id.
+    const hasData = classSchedules.some(s => s.templateId === id);
 
     function handleAction(action: "edit" | ModalAction) {
         if (action === "edit") {

@@ -1,390 +1,1311 @@
 "use client";
 
-import { useState } from "react";
-import { useDataStore } from "@/lib/data-store";
-import { cn, formatCurrency } from "@/lib/utils";
-import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, User as UserIcon, X, CheckCircle, Ticket } from "lucide-react";
-import { Product, RetailSale, PromoCode } from "@/types";
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Point of Sale (Module 05)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Figma:
+//   • Catalog (cart hidden): 3442:16852
+//   • Catalog + cart open:    2744:77799
+//   • Cart panel with items:  2849:53013
+//
+// Reuses heavily:
+//   • <ProductPosCard>  — already built for the mini-POS inside class schedule
+//   • <PlanIconBadge>   — same skeuomorphic chrome (cart row icons)
+//   • <Toast>           — global toast surface
+//   • The 2-step Checkout screen at /schedule/[classId]/checkout, entered via
+//     `pendingPurchase` in the store. POS sets `returnTo: "/admin/pos"` so
+//     the checkout knows to send the buyer back here on close/complete.
+//
+// What this file owns:
+//   • Tabs (All / Memberships / Packages / Gift cards)
+//   • Filter side panel (Credits range + Price range; Credits hidden on Gift cards)
+//   • Cart panel (customer picker, line items, promo, custom discount, totals)
+//   • Gift card recipient modal (fires when a gift card is added to cart)
+//
+// Out of scope for this iteration (per brief): refunds, voids, transaction
+// history, split payment, complimentary, wallet, drop-in classes, walk-in
+// sales. Those land with the Customer module and the transactions table.
+
+import { useState, useMemo, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+    XClose, SearchMd, FilterLines, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+    MarkerPin01, User01, Plus, Trash01, Sale04, ShoppingBag03, Check,
+    CreditCard02, Package, Gift01,
+} from "@untitledui/icons";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Toast } from "@/components/ui/Toast";
+import { SelectInput } from "@/components/ui/select-input";
+import { NumericStringInput } from "@/components/ui/NumericInput";
+import { TableAvatar } from "@/components/ui/avatar";
+import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
+import { PlanBadge, NoPlanBadge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { RangeSlider } from "@/components/ui/RangeSlider";
+import {
+    useAppStore,
+    MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS, BRANCHES, DEFAULT_BRANCH_ID,
+    validatePromoCode, canApplyCustomDiscount, maxCustomDiscountPct,
+    type Customer, type PurchaseLineItem,
+} from "@/lib/store";
+
+// ─── Catalog adapter ─────────────────────────────────────────────────────────
+//
+// Unified POS product shape spanning memberships, packages, gift cards.
+// `creditsValue` lets the credits-range filter sort everything in one pass
+// (gift cards get undefined and are excluded from that filter).
+
+type PosProductKind = "membership" | "package" | "gift_card";
+
+interface PosProduct {
+    id: string;
+    kind: PosProductKind;
+    name: string;
+    primaryMeta?: string;
+    secondaryMeta?: string;
+    /** Numeric price for filtering. For custom-value gift cards this is the min. */
+    priceAed: number;
+    /** Display string (handles ranges for custom-value gift cards). */
+    priceDisplay: string;
+    /** Number of credits — used by the Credits-range filter. undefined for gift cards. */
+    creditsValue?: number;
+}
+
+/** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
+function formatShortDate(iso: string): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!m) return iso;
+    return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+// Catalog is built FROM LIVE STORE STATE — memberships, packages, AND
+// gift-card designs all mutate via /admin/products(/-/gift-cards) and the
+// catalog refreshes on the next render.
+function buildCatalog(
+    memberships: typeof MEMBERSHIPS,
+    packages: typeof PACKAGES,
+    giftCardDesigns: typeof GIFT_CARD_DESIGNS,
+): PosProduct[] {
+    const out: PosProduct[] = [];
+
+    for (const m of memberships) {
+        if (m.status !== "active") continue;
+        const credits = m.credits === "unlimited" ? Infinity : m.credits;
+        out.push({
+            id: m.id,
+            kind: "membership",
+            name: m.name,
+            primaryMeta: m.credits === "unlimited" ? "Unlimited" : `${m.credits} Credits`,
+            secondaryMeta: `${m.duration_months} Month${m.duration_months === 1 ? "" : "s"}`,
+            priceAed: m.price_aed,
+            priceDisplay: `AED ${m.price_aed.toLocaleString()}`,
+            creditsValue: credits,
+        });
+    }
+
+    for (const p of packages) {
+        if (p.status !== "active") continue;
+        out.push({
+            id: p.id,
+            kind: "package",
+            name: p.name,
+            primaryMeta: p.credits === 1 ? "1 Class" : `${p.credits} Credits`,
+            secondaryMeta: `${p.validity_days} Days`,
+            priceAed: p.price_aed,
+            priceDisplay: `AED ${p.price_aed.toLocaleString()}`,
+            creditsValue: p.credits,
+        });
+    }
+
+    for (const g of giftCardDesigns) {
+        if (g.status !== "active") continue;
+        const isFixed = g.value_type === "fixed";
+        // Amount row (bank-note icon) — fixed shows the loaded value, custom
+        // shows the purchasable min–max range. No "AED" prefix: the bank-note
+        // icon already signals currency.
+        const amountMeta = isFixed
+            ? `${(g.fixed_value_aed ?? 0).toLocaleString()}`
+            : `${(g.min_value_aed ?? 0).toLocaleString()} - ${(g.max_value_aed ?? 0).toLocaleString()}`;
+        // Valid-until row (clock icon) — honours the no-expiry flag.
+        const validMeta = g.no_expiry
+            ? "No expiry"
+            : (g.valid_until_date ? formatShortDate(g.valid_until_date) : "—");
+        out.push({
+            id: g.id,
+            kind: "gift_card",
+            name: g.name,
+            primaryMeta: amountMeta,
+            secondaryMeta: validMeta,
+            priceAed: isFixed ? g.fixed_value_aed ?? 0 : g.min_value_aed ?? 0,
+            // Custom-amount cards have no single price → the card reads "Custom".
+            priceDisplay: isFixed ? `AED ${(g.fixed_value_aed ?? 0).toLocaleString()}` : "Custom",
+        });
+    }
+
+    return out;
+}
+
+// Map the unified kind to the card's visual variant.
+const KIND_TO_CARD_TYPE: Record<PosProductKind, ProductPosCardType> = {
+    membership: "membership",
+    package:    "package",
+    gift_card:  "gift-card",
+};
+
+// ─── Tabs + filter state ─────────────────────────────────────────────────────
+
+type TabId = "all" | "memberships" | "packages" | "gift-cards";
+
+const TAB_FILTER: Record<TabId, PosProductKind[] | null> = {
+    "all":          null,
+    "memberships":  ["membership"],
+    "packages":     ["package"],
+    "gift-cards":   ["gift_card"],
+};
+
+const TAB_LABEL: Record<TabId, { label: string; unit: string }> = {
+    "all":         { label: "All",         unit: "products"    },
+    "memberships": { label: "Memberships", unit: "memberships" },
+    "packages":    { label: "Packages",    unit: "packages"    },
+    "gift-cards":  { label: "Gift cards",  unit: "gift cards"  },
+};
+
+interface FilterState {
+    creditsMin?: number;
+    creditsMax?: number;
+    priceMin?: number;
+    priceMax?: number;
+}
+const EMPTY_FILTER: FilterState = {};
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function POSPage() {
-    const { products, users, recordRetailSale, promoCodes } = useDataStore();
-    const members = users.filter(u => u.role === "member");
-
-    // State
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedUser, setSelectedUser] = useState<string>("");
-    const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
-    const [checkoutStep, setCheckoutStep] = useState<"cart" | "payment" | "success">("cart");
-    const [paymentMethod, setPaymentMethod] = useState<RetailSale["payment_method"]>("card_on_file");
-    const [promoCodeInput, setPromoCodeInput] = useState("");
-    const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
-    const [promoError, setPromoError] = useState("");
-
-    // Filter Products
-    const filteredProducts = products.filter(p =>
-        p.is_active &&
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return (
+        <Suspense fallback={null}>
+            <POSInner />
+        </Suspense>
     );
+}
 
-    // Cart Actions
-    const addToCart = (product: Product) => {
+function POSInner() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const currentRole = useAppStore(s => s.currentRole);
+    const customers = useAppStore(s => s.customers);
+    const memberships = useAppStore(s => s.memberships);
+    const packages = useAppStore(s => s.packages);
+    const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
+    const promoCodes = useAppStore(s => s.promoCodes);
+    const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
+
+    // UI state
+    const [activeTab, setActiveTab] = useState<TabId>("all");
+    const [search, setSearch] = useState("");
+    const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
+    const [cartOpen, setCartOpen] = useState(false);
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
+    const hasActiveFilter = filter.creditsMin != null || filter.creditsMax != null
+        || filter.priceMin != null || filter.priceMax != null;
+
+    // Cart state — single source of truth for the right panel
+    const [cart, setCart] = useState<CartLine[]>([]);
+    const [customerId, setCustomerId] = useState<string | null>(null);
+    // Resolved cart customer — used by the gift card modal's "Sender" row
+    // and by the cart-sync effect that re-binds gift-card sender names when
+    // the customer changes.
+    const cartCustomer = useMemo(
+        () => customerId ? customers.find(c => c.id === customerId) ?? null : null,
+        [customerId, customers],
+    );
+    const [promoInput, setPromoInput] = useState("");
+    const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAed: number } | null>(null);
+    const [promoError, setPromoError] = useState<string | null>(null);
+    const [customDiscountOn, setCustomDiscountOn] = useState(false);
+    const [customDiscountPct, setCustomDiscountPct] = useState<string>("");
+    /** Once the admin clicks Apply, the input is committed here. The cart
+     *  total reads from this — typing into the input doesn't change the cart
+     *  until Apply is pressed (matches the schedule modal pattern). */
+    const [appliedCustomDiscount, setAppliedCustomDiscount] = useState<number | null>(null);
+
+    // Gift card flow — opens when a gift card is added to cart
+    const [giftCardModalDesignId, setGiftCardModalDesignId] = useState<string | null>(null);
+
+    // Rebind every gift-card line's senderName whenever the cart's customer
+    // changes (incl. cleared). Lets the admin add gift cards first and pick
+    // a customer later — sender backfills automatically — and also handles
+    // the case where the admin swaps the customer mid-sale.
+    useEffect(() => {
+        const newSender = cartCustomer ? `${cartCustomer.firstName} ${cartCustomer.lastName}`.trim() : "";
         setCart(prev => {
-            const existing = prev.find(item => item.product.id === product.id);
-            if (existing) {
-                if (existing.quantity >= product.stock_quantity) return prev; // Stock limit
-                return prev.map(item =>
-                    item.product.id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
-                );
-            }
-            return [...prev, { product, quantity: 1 }];
+            let changed = false;
+            const next = prev.map(l => {
+                if (l.kind !== "gift_card" || !l.giftCard) return l;
+                if (l.giftCard.senderName === newSender) return l;
+                changed = true;
+                return { ...l, giftCard: { ...l.giftCard, senderName: newSender } };
+            });
+            return changed ? next : prev;
         });
-    };
+    }, [cartCustomer]);
 
-    const removeFromCart = (productId: string) => {
-        setCart(prev => prev.filter(item => item.product.id !== productId));
-    };
-
-    const updateQuantity = (productId: string, delta: number) => {
-        setCart(prev => prev.map(item => {
-            if (item.product.id === productId) {
-                const newQty = item.quantity + delta;
-                if (newQty < 1) return item;
-                if (newQty > item.product.stock_quantity) return item;
-                return { ...item, quantity: newQty };
-            }
-            return item;
-        }));
-    };
-
-    const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-
-    // Promo Logic
-    const handleApplyPromo = () => {
-        setPromoError("");
-        if (!promoCodeInput) return;
-
-        const code = promoCodes.find(p => p.code === promoCodeInput.trim().toUpperCase() && p.is_active);
-
-        if (!code) {
-            setPromoError("Invalid code");
-            setAppliedPromo(null);
-            return;
-        }
-
-        // Basic validation
-        if (code.min_spend && cartTotal < code.min_spend) {
-            setPromoError(`Min spend: $${code.min_spend}`);
-            setAppliedPromo(null);
-            return;
-        }
-
-        // Check applicability (simplified)
-        if (code.applies_to !== "all" && code.applies_to !== "retail") {
-            setPromoError("Code not applicable to retail");
-            setAppliedPromo(null);
-            return;
-        }
-
-        setAppliedPromo(code);
-    };
-
-    const discountAmount = appliedPromo
-        ? appliedPromo.type === "percentage"
-            ? cartTotal * (appliedPromo.value / 100)
-            : appliedPromo.value
-        : 0;
-
-    const taxableAmount = Math.max(0, cartTotal - discountAmount);
-    const taxAmount = taxableAmount * 0.05;
-    const finalTotal = taxableAmount + taxAmount;
-
-    const handleCheckout = () => {
-        if (!selectedUser) {
-            alert("Please select a member first");
-            return;
-        }
-
-        const sale: Omit<RetailSale, "id" | "created_at"> = {
-            studio_id: "s1",
-            user_id: selectedUser,
-            total_amount: finalTotal,
-            payment_method: paymentMethod,
-            items: cart.map(item => ({
-                product_id: item.product.id,
-                quantity: item.quantity,
-                price_at_sale: item.product.price
-            }))
-        };
-
-        recordRetailSale(sale);
-        setCheckoutStep("success");
-        // Reset after delay or manual close
-    };
-
-    const resetPOS = () => {
+    // Reset POS to a blank slate when the checkout returns ?paymentSuccess=1.
+    // The toast itself was already fired by /admin/pos/checkout's
+    // handleComplete (Zustand keeps it visible across the route change), so
+    // this effect's only job is wiping the cart + filters.
+    useEffect(() => {
+        if (searchParams.get("paymentSuccess") !== "1") return;
         setCart([]);
-        setSelectedUser("");
-        setCheckoutStep("cart");
-        setSearchTerm("");
-    };
+        setCustomerId(null);
+        setPromoInput("");
+        setAppliedPromo(null);
+        setPromoError(null);
+        setCustomDiscountOn(false);
+        setCustomDiscountPct("");
+        setAppliedCustomDiscount(null);
+        router.replace("/admin/pos");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
+
+    // Catalog filtered against the active tab, search box, and filter panel.
+    const catalog = useMemo(
+        () => buildCatalog(memberships, packages, giftCardDesigns),
+        [memberships, packages, giftCardDesigns],
+    );
+    const filteredProducts = useMemo(() => {
+        const kinds = TAB_FILTER[activeTab];
+        const q = search.trim().toLowerCase();
+        return catalog.filter(p => {
+            if (kinds && !kinds.includes(p.kind)) return false;
+            if (q && !p.name.toLowerCase().includes(q)) return false;
+            if (filter.priceMin != null && p.priceAed < filter.priceMin) return false;
+            if (filter.priceMax != null && p.priceAed > filter.priceMax) return false;
+            if (p.kind !== "gift_card") {
+                const c = p.creditsValue ?? 0;
+                if (filter.creditsMin != null && c < filter.creditsMin) return false;
+                if (filter.creditsMax != null && c !== Infinity && c > filter.creditsMax) return false;
+            }
+            return true;
+        });
+    }, [catalog, activeTab, search, filter]);
+
+    // Membership ↔ package mutex (per brief rule 1 — applied to add buttons)
+    const cartHasMembership = cart.some(l => l.kind === "membership");
+    const cartHasPackage    = cart.some(l => l.kind === "package");
+
+    function isAddDisabled(p: PosProduct): boolean {
+        if (p.kind === "package"    && cartHasMembership) return true;
+        if (p.kind === "membership" && (cartHasMembership || cartHasPackage)) return true;
+        return false;
+    }
+
+    // ── Cart actions ────────────────────────────────────────────────────────
+    function handleAdd(p: PosProduct) {
+        if (p.kind === "gift_card") {
+            setGiftCardModalDesignId(p.id);
+            return;
+        }
+        setCartOpen(true);
+        setCart(prev => {
+            const existing = prev.find(l => l.productId === p.id);
+            if (existing) {
+                // Memberships cap at qty 1; packages can stack.
+                if (p.kind === "membership") return prev;
+                return prev.map(l => l.productId === p.id ? { ...l, quantity: l.quantity + 1 } : l);
+            }
+            return [...prev, {
+                lineId: `cl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                productId: p.id,
+                kind: p.kind,
+                name: p.name,
+                unitPrice: p.priceAed,
+                primaryMeta: p.primaryMeta,
+                quantity: 1,
+            }];
+        });
+    }
+
+    function handleConfirmGiftCard(data: GiftCardRecipientData) {
+        if (!giftCardModalDesignId) return;
+        // Look up the design in the LIVE store — a gift card created through
+        // the new creation flow won't exist in the static seed array.
+        const design = giftCardDesigns.find(g => g.id === giftCardModalDesignId);
+        if (!design) return;
+        const amount = design.value_type === "fixed"
+            ? (design.fixed_value_aed ?? 0)
+            : data.amount ?? 0;
+        // Sender is whatever customer is currently in the cart. May be empty
+        // if the admin opened the modal before picking one — the cart-sync
+        // effect below auto-fills senderName on every gift-card line whenever
+        // the cart's customer changes.
+        const senderName = cartCustomer ? `${cartCustomer.firstName} ${cartCustomer.lastName}`.trim() : "";
+        setCart(prev => [...prev, {
+            lineId: `cl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            productId: design.id,
+            kind: "gift_card",
+            name: design.name,
+            unitPrice: amount,
+            primaryMeta: `AED ${amount.toLocaleString()}`,
+            quantity: 1,
+            giftCard: {
+                recipientName:  data.recipientName,
+                recipientEmail: data.recipientEmail || undefined,
+                senderName,
+                message:        data.message || undefined,
+            },
+        }]);
+        setCartOpen(true);
+        setGiftCardModalDesignId(null);
+    }
+
+    function handleQty(lineId: string, delta: number) {
+        setCart(prev => prev
+            .map(l => l.lineId === lineId ? { ...l, quantity: Math.max(1, l.quantity + delta) } : l)
+            .filter(l => l.quantity > 0));
+    }
+    function handleRemove(lineId: string) {
+        setCart(prev => prev.filter(l => l.lineId !== lineId));
+    }
+
+    // ── Promo / discount / totals ───────────────────────────────────────────
+    const subtotal = cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+
+    function handleApplyPromo() {
+        setPromoError(null);
+        if (!promoInput.trim()) return;
+        const kinds = Array.from(new Set(cart.map(l => l.kind)));
+        const res = validatePromoCode(promoInput, {
+            subtotalAed: subtotal,
+            productTypes: kinds,
+        }, promoCodes);
+        if (res.ok) {
+            setAppliedPromo({ code: res.promo.code, discountAed: res.discountAed });
+            // Promo + custom discount are mutually exclusive in the schedule
+            // mini-POS flow — mirror that here so the total can't double-dip.
+            if (customDiscountOn) {
+                setCustomDiscountOn(false);
+                setCustomDiscountPct("");
+                setAppliedCustomDiscount(null);
+            }
+        } else {
+            setAppliedPromo(null);
+            setPromoError(res.reason);
+        }
+    }
+    function handleRemovePromo() { setAppliedPromo(null); setPromoInput(""); setPromoError(null); }
+
+    function handleApplyCustomDiscount() {
+        const pct = Math.min(allowedCustomPct, Math.max(0, Number(customDiscountPct) || 0));
+        if (pct <= 0) return;
+        setAppliedCustomDiscount(pct);
+        if (appliedPromo) { setAppliedPromo(null); setPromoInput(""); }
+    }
+    function handleCustomDiscountToggle(next: boolean) {
+        setCustomDiscountOn(next);
+        if (!next) {
+            setCustomDiscountPct("");
+            setAppliedCustomDiscount(null);
+        }
+    }
+
+    const promoDiscount = appliedPromo?.discountAed ?? 0;
+    const afterPromo = Math.max(0, subtotal - promoDiscount);
+    const allowedCustomPct = maxCustomDiscountPct(currentRole);
+    const customPctNum = appliedCustomDiscount ?? 0;
+    const customDiscount = Math.round(afterPromo * (customPctNum / 100));
+    const afterDiscounts = Math.max(0, afterPromo - customDiscount);
+    // Tax defaults to 0 — per-product tax rates will ship with the Tax
+    // settings module (PRD 11). Until then no tax row renders anywhere.
+    const taxRate = 0;
+    const taxAmount = Math.round(afterDiscounts * (taxRate / 100));
+    const total = afterDiscounts + taxAmount;
+
+    // ── Proceed to payment — hand off to the existing checkout screen ──────
+    function handleProceed() {
+        if (!customerId || cart.length === 0) return;
+        const items: PurchaseLineItem[] = cart.map(l => ({
+            productId:   l.productId,
+            productType: l.kind,
+            name:        l.name,
+            unitPrice:   l.unitPrice,
+            quantity:    l.quantity,
+            giftCard:    l.giftCard,
+        }));
+        // The checkout screen already lives at /schedule/[classId]/checkout.
+        // We thread `returnTo: "/admin/pos"` so it bounces back here on
+        // complete/close instead of to a class.
+        setPendingPurchase({
+            classScheduleId: "",
+            customerId,
+            items,
+            discountPercent: customPctNum,
+            promoCode: appliedPromo?.code,
+            returnTo: "/admin/pos",
+        });
+        // Dedicated POS checkout route at /pos/checkout (top-level, outside
+        // the /admin layout) so the screen renders FULL-SCREEN without the
+        // admin sidebar — matches /schedule/[classId]/checkout's pattern.
+        // The screen's handleComplete redirects back to /admin/pos with a
+        // success toast already up.
+        router.push("/pos/checkout");
+    }
+
+    // ── Branch picker options (active branches only) ────────────────────────
+    // Each option carries a MarkerPin01 glyph so the dropdown items visually
+    // echo the trigger icon — same shape as the dashboard + schedule pickers.
+    const branchOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
+        value: b.id,
+        label: b.name,
+        icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+    }));
 
     return (
-        <div className="h-[calc(100vh-6rem)] flex -mx-6 -my-6">
-            {/* Left: Product Catalog */}
-            <div className="flex-1 p-6 overflow-y-auto border-r border-gray-100 bg-gray-50/50">
-                <div className="max-w-3xl mx-auto space-y-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Retail POS</h1>
-                        <p className="text-sm text-gray-500 mt-1">Select items to add to the cart</p>
+        <div className="flex flex-col gap-6">
+            {/* The admin layout's Header already renders the page title from
+                the route; no in-page <h1> needed. */}
+
+            {/* ── Body: catalog card + cart side panel ─────────────────── */}
+            <div className="flex gap-6 items-start">
+                <div className="flex-1 min-w-0 flex flex-col gap-4">
+                    {/* Toolbar: count (left) + branch + search + cart toggle (right) */}
+                    <div className="flex items-end gap-3">
+                        <div className="flex-1 flex flex-col">
+                            <p className="text-[14px] text-[#667085]">Total</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {filteredProducts.length} {TAB_LABEL[activeTab].unit}
+                            </p>
+                        </div>
+                        <SelectInput
+                            options={branchOptions}
+                            value={branchId}
+                            onChange={setBranchId}
+                            triggerIcon={<MarkerPin01 className="w-5 h-5 text-[#667085]" />}
+                            width="w-[180px]"
+                        />
+                        <div className="relative w-[200px]">
+                            <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                                placeholder="Search product..."
+                                className="h-10 w-full pl-[38px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
+                        </div>
+                        <CartToggleButton open={cartOpen} onClick={() => setCartOpen(o => !o)} />
                     </div>
 
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search products..."
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                    {/* View card.
+                        ──────────────────────────────────────────────────────────
+                        IMPORTANT (per CLAUDE.md Build Convention #7):
+                        Bordered "view card" containers MUST have an explicit
+                        min-height — NEVER hug content. Without this the card
+                        shrinks when the grid is sparse (e.g. Gift cards tab
+                        with 3 products) and the page jumps as the filter
+                        changes. `min-h-[760px]` matches the schedule list
+                        view card so left/right edges stay aligned with the
+                        cart panel's fixed height.
+                        ────────────────────────────────────────────────────────── */}
+                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
+                        {/* Tab row */}
+                        <div className="flex items-center px-6 py-4 gap-3">
+                            <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
+                                {(Object.keys(TAB_FILTER) as TabId[]).map(id => (
+                                    <button key={id} type="button" onClick={() => setActiveTab(id)}
+                                        className={cn(
+                                            "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
+                                            activeTab === id
+                                                ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                                : "text-[#667085] hover:text-[#344054]",
+                                        )}>
+                                        {TAB_LABEL[id].label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="ml-auto">
+                                <Button variant="secondary-gray" size="md"
+                                    leftIcon={
+                                        <div className="relative">
+                                            <FilterLines className="w-4 h-4" />
+                                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
+                                        </div>
+                                    }
+                                    onClick={() => setFilterOpen(true)}>
+                                    Filter
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Product grid */}
+                        <div className="flex-1 px-6 pb-6 relative">
+                            {filteredProducts.length === 0 ? (
+                                <EmptyState
+                                    title="No products found"
+                                    subtitle="Try clearing filters or switching tabs."
+                                    icon={ShoppingBag03}
+                                />
+                            ) : (
+                                <div className={cn("grid gap-4", cartOpen ? "grid-cols-3" : "grid-cols-4")}>
+                                    {filteredProducts.map(p => {
+                                        // Sum across all cart lines (gift cards
+                                        // can spawn multiple lines from one design).
+                                        const inCartQty = cart
+                                            .filter(l => l.productId === p.id)
+                                            .reduce((sum, l) => sum + l.quantity, 0);
+                                        return (
+                                            <ProductPosCard key={p.id}
+                                                type={KIND_TO_CARD_TYPE[p.kind]}
+                                                name={p.name}
+                                                primaryMeta={p.primaryMeta}
+                                                secondaryMeta={p.secondaryMeta}
+                                                price={p.priceDisplay}
+                                                quantity={inCartQty}
+                                                quantityDisplay="badge"
+                                                disabled={isAddDisabled(p)}
+                                                onAdd={() => handleAdd(p)}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right cart panel */}
+                {cartOpen && (
+                    <PosCartPanel
+                        customers={customers}
+                        customerId={customerId} onCustomerChange={setCustomerId}
+                        lines={cart}
+                        onQty={handleQty} onRemove={handleRemove}
+                        promoInput={promoInput} onPromoInput={setPromoInput}
+                        appliedPromo={appliedPromo} onApplyPromo={handleApplyPromo} onRemovePromo={handleRemovePromo}
+                        promoError={promoError}
+                        canApplyCustomDiscount={canApplyCustomDiscount(currentRole)}
+                        customDiscountOn={customDiscountOn} onCustomDiscountToggle={handleCustomDiscountToggle}
+                        customDiscountPct={customDiscountPct} onCustomDiscountPct={setCustomDiscountPct}
+                        appliedCustomDiscount={appliedCustomDiscount}
+                        onApplyCustomDiscount={handleApplyCustomDiscount}
+                        allowedCustomPct={allowedCustomPct}
+                        subtotal={subtotal}
+                        promoDiscount={promoDiscount}
+                        customDiscount={customDiscount}
+                        taxRate={taxRate} taxAmount={taxAmount}
+                        total={total}
+                        onProceed={handleProceed}
+                        onNewCustomer={() => router.push("/customers/new?returnTo=/admin/pos")}
+                    />
+                )}
+            </div>
+
+            <PosFilterPanel
+                open={filterOpen}
+                onClose={() => setFilterOpen(false)}
+                applied={filter}
+                onApply={setFilter}
+                showCredits={activeTab !== "gift-cards"}
+            />
+
+            <GiftCardRecipientModal
+                open={giftCardModalDesignId !== null}
+                designId={giftCardModalDesignId}
+                customer={cartCustomer}
+                onClose={() => setGiftCardModalDesignId(null)}
+                onConfirm={handleConfirmGiftCard}
+            />
+
+            <Toast />
+        </div>
+    );
+}
+
+// ─── Cart toggle button (toolbar pill) ───────────────────────────────────────
+
+// The "added to cart" indicator lives on each ProductPosCard now (Figma
+// 18501:9122), so this toggle stays clean — just a label + chevron when
+// closed, icon-only when open.
+function CartToggleButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+    if (open) {
+        return (
+            <button type="button" onClick={onClick} aria-label="Hide cart"
+                className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                <ChevronRight className="w-4 h-4 text-[#344054]" />
+            </button>
+        );
+    }
+    return (
+        <button type="button" onClick={onClick}
+            className="h-10 px-3 flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+            <span>Show cart</span>
+        </button>
+    );
+}
+
+// ─── Cart line shape ─────────────────────────────────────────────────────────
+
+interface CartLine {
+    /** Local stable id so duplicate-named gift cards don't collide. */
+    lineId: string;
+    productId: string;
+    kind: PosProductKind;
+    name: string;
+    unitPrice: number;
+    primaryMeta?: string;
+    quantity: number;
+    giftCard?: PurchaseLineItem["giftCard"];
+}
+
+// ─── Cart panel ──────────────────────────────────────────────────────────────
+
+function PosCartPanel(props: {
+    customers: Customer[];
+    customerId: string | null; onCustomerChange: (id: string) => void;
+    lines: CartLine[];
+    onQty: (lineId: string, delta: number) => void;
+    onRemove: (lineId: string) => void;
+    promoInput: string; onPromoInput: (v: string) => void;
+    appliedPromo: { code: string; discountAed: number } | null;
+    onApplyPromo: () => void; onRemovePromo: () => void;
+    promoError: string | null;
+    canApplyCustomDiscount: boolean;
+    customDiscountOn: boolean; onCustomDiscountToggle: (v: boolean) => void;
+    customDiscountPct: string; onCustomDiscountPct: (v: string) => void;
+    appliedCustomDiscount: number | null;
+    onApplyCustomDiscount: () => void;
+    allowedCustomPct: number;
+    subtotal: number;
+    promoDiscount: number;
+    customDiscount: number;
+    taxRate: number; taxAmount: number;
+    total: number;
+    onProceed: () => void;
+    onNewCustomer: () => void;
+}) {
+    const cartEmpty = props.lines.length === 0;
+    // "Proceed to payment" gates: cart not empty + customer attached when any
+    // membership/package is in the cart. Gift-card-only carts still need
+    // a customer for the prototype (the brief says customer is required for
+    // membership/package; we apply the same here since the checkout screen
+    // expects one).
+    const canProceed = !cartEmpty && !!props.customerId;
+
+    return (
+        // Cart panel.
+        // ──────────────────────────────────────────────────────────────────
+        // IMPORTANT (per CLAUDE.md Build Convention #7):
+        // Cart panel is a bordered container — height is EXPLICIT, never hugs.
+        // 860px floor gives ample room for the customer picker + line items
+        // + promo/custom-discount + totals + CTA without compressing any of
+        // them. Cap at viewport-3rem on short screens so it can't push the
+        // CTA below the fold. `sticky top-6` so the cart stays anchored
+        // while the catalog scrolls.
+        // ──────────────────────────────────────────────────────────────────
+        <aside className="w-[400px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden sticky top-6 h-[860px] max-h-[calc(100vh-3rem)]">
+            {/* Customer picker */}
+            <div className="px-6 pt-6 pb-5 flex flex-col gap-3">
+                <label className="text-[14px] font-medium text-[#344054]">Add a customer</label>
+                <div className="flex items-end gap-2">
+                    <div className="flex-1 min-w-0">
+                        <CustomerPickerDropdown
+                            customers={props.customers}
+                            value={props.customerId}
+                            onChange={props.onCustomerChange}
                         />
                     </div>
+                    <button type="button" onClick={props.onNewCustomer}
+                        className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+                        <Plus className="w-5 h-5 text-[#344054]" />
+                    </button>
+                </div>
+            </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredProducts.map(product => (
-                            <button
-                                key={product.id}
-                                onClick={() => addToCart(product)}
-                                disabled={product.stock_quantity === 0}
-                                className={cn(
-                                    "text-left bg-white p-4 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md hover:border-brand-200 group relative overflow-hidden",
-                                    product.stock_quantity === 0 && "opacity-60 cursor-not-allowed"
-                                )}
-                            >
-                                <div className="absolute top-0 left-0 w-1 h-full bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
-                                <p className="text-xs text-gray-500 mt-1 truncate">{product.category}</p>
-                                <div className="flex items-center justify-between mt-3">
-                                    <span className="font-bold text-brand-600">{formatCurrency(product.price)}</span>
-                                    <span className={cn(
-                                        "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                                        product.stock_quantity > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                                    )}>
-                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : "Out of stock"}
-                                    </span>
+            <div className="mx-6 h-px bg-[#e4e7ec]" />
+
+            {/* Line items */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3 relative">
+                {cartEmpty ? (
+                    <EmptyState
+                        title="Cart is empty"
+                        subtitle="Add a product to start the transaction"
+                        icon={ShoppingBag03}
+                    />
+                ) : (
+                    props.lines.map(line => (
+                        <CartLineRow key={line.lineId} line={line}
+                            onQty={d => props.onQty(line.lineId, d)}
+                            onRemove={() => props.onRemove(line.lineId)} />
+                    ))
+                )}
+            </div>
+
+            {/* Footer — discount surface (promo OR custom), totals, CTA.
+                Pixel-matches the schedule mini-POS CheckoutConfirmationModal
+                so both surfaces feel identical. The checkbox below swaps the
+                input + Apply button between promo and custom-discount modes;
+                discounts are mutually exclusive (applying one clears the other). */}
+            <div className="bg-[#f8f8f6] border-t border-[#e4e7ec] px-6 py-6 flex flex-col gap-5 shrink-0">
+                <div className="flex flex-col gap-3">
+                    {props.customDiscountOn ? (
+                        <div className="flex items-end gap-3">
+                            <div className="flex flex-col gap-1.5 flex-1">
+                                <label className="text-[14px] font-medium text-[#344054]">Custom discount</label>
+                                <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <input type="number" min="0" max={props.allowedCustomPct} value={props.customDiscountPct}
+                                        onChange={e => props.onCustomDiscountPct(e.target.value.replace(/^0+(?=\d)/, ""))}
+                                        placeholder="0"
+                                        className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none" />
+                                    <span className="text-[16px] text-[#667085] ml-2">%</span>
+                                </div>
+                            </div>
+                            <Button variant="secondary-gray" size="md" onClick={props.onApplyCustomDiscount}>Apply</Button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex items-end gap-3">
+                                <div className="flex flex-col gap-1.5 flex-1">
+                                    <label className="text-[14px] font-medium text-[#344054]">Promo code</label>
+                                    <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
+                                        <input type="text" value={props.promoInput}
+                                            onChange={e => props.onPromoInput(e.target.value)}
+                                            placeholder="Enter promo code"
+                                            className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
+                                    </div>
+                                </div>
+                                <Button variant="secondary-gray" size="md" onClick={props.onApplyPromo}>Apply</Button>
+                            </div>
+                            {props.appliedPromo && (
+                                <div className="flex flex-col gap-1.5">
+                                    <p className="text-[14px] text-[#667085]">Applied promo</p>
+                                    <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
+                                        <span className="flex-1 text-[14px] font-medium text-[#344054]">{props.appliedPromo.code}</span>
+                                        <button type="button" onClick={props.onRemovePromo} className="text-[#667085] hover:text-[#101828]">
+                                            <XClose className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            {props.promoError && (
+                                <p className="text-[13px] text-[#b42318]">{props.promoError}</p>
+                            )}
+                        </>
+                    )}
+
+                    {/* Apply custom discount checkbox — Owner/Branch Admin only.
+                        Custom-styled to match the schedule modal exactly. */}
+                    {props.canApplyCustomDiscount && (
+                        <button type="button" onClick={() => props.onCustomDiscountToggle(!props.customDiscountOn)} className="flex items-start gap-2 text-left">
+                            <span className={cn(
+                                "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center mt-0.5 shrink-0 transition-colors",
+                                props.customDiscountOn ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]"
+                            )}>
+                                {props.customDiscountOn && <Check className="w-3 h-3 text-white" />}
+                            </span>
+                            <span className="text-[14px] font-medium text-[#344054]">Apply custom discount</span>
+                        </button>
+                    )}
+                </div>
+
+                {/* Totals */}
+                <div className="flex flex-col gap-2">
+                    <p className="text-[14px] font-medium text-[#101828]">Detail payment</p>
+                    <Row label="Subtotal" value={props.subtotal} />
+                    {props.appliedPromo && (
+                        <Row label={`Promo code (${props.appliedPromo.code})`} value={-props.promoDiscount} />
+                    )}
+                    {props.customDiscount > 0 && props.appliedCustomDiscount != null && (
+                        <Row label={`Custom discount (${props.appliedCustomDiscount}%)`} value={-props.customDiscount} />
+                    )}
+                    {props.taxRate > 0 && (
+                        <Row label={`Tax rate (${props.taxRate}%)`} value={props.taxAmount} />
+                    )}
+                </div>
+                <div className="h-px bg-[#e4e7ec]" />
+                <div className="flex items-center">
+                    <p className="flex-1 text-[18px] font-medium text-[#101828]">Total</p>
+                    <p className="text-[18px] font-semibold text-[#101828]">AED {props.total.toLocaleString()}</p>
+                </div>
+
+                <Button variant="primary" size="lg" className="w-full" disabled={!canProceed} onClick={props.onProceed}>
+                    Proceed to payment
+                </Button>
+            </div>
+        </aside>
+    );
+}
+
+function Row({ label, value }: { label: string; value: number }) {
+    const isNegative = value < 0;
+    return (
+        <div className="flex items-center">
+            <p className="flex-1 text-[14px] text-[#667085]">{label}</p>
+            <p className={cn("text-[16px] font-medium", isNegative ? "text-[#b42318]" : "text-[#101828]")}>
+                {isNegative ? "−" : ""}AED {Math.abs(value).toLocaleString()}
+            </p>
+        </div>
+    );
+}
+
+// ─── Cart line row (sage skeuomorphic icon + name + qty stepper) ─────────────
+
+function CartLineRow({ line, onQty, onRemove }: {
+    line: CartLine; onQty: (delta: number) => void; onRemove: () => void;
+}) {
+    return (
+        <div className="flex items-start gap-3">
+            <CartIcon kind={line.kind} />
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <p className="text-[14px] font-medium text-[#101828] line-clamp-2">{line.name}</p>
+                <div className="flex items-center gap-1.5 text-[14px] text-[#658774] flex-wrap">
+                    <span>AED {(line.unitPrice * line.quantity).toLocaleString()}</span>
+                    {line.primaryMeta && (
+                        <>
+                            <span className="text-[#d0d5dd]">|</span>
+                            <span>{line.primaryMeta}</span>
+                        </>
+                    )}
+                </div>
+                {line.giftCard && (
+                    <p className="text-[12px] text-[#667085] truncate">
+                        {line.giftCard.senderName
+                            ? <>From {line.giftCard.senderName}</>
+                            : <span className="text-[#dc6803]">Sender pending</span>}
+                    </p>
+                )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-2 border-1 border-[#e4e7ec] rounded-[8px] px-1.5 py-1">
+                    <button type="button" onClick={() => line.kind === "membership" || line.quantity <= 1 ? onRemove() : onQty(-1)}
+                        className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828]">
+                        <span className="text-[16px] leading-none">−</span>
+                    </button>
+                    <span className="text-[12px] font-semibold text-[#101828] min-w-[14px] text-center">{line.quantity}</span>
+                    <button type="button" disabled={line.kind === "membership"} onClick={() => onQty(+1)}
+                        className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed">
+                        <Plus className="w-[14px] h-[14px]" />
+                    </button>
+                </div>
+                <button type="button" onClick={onRemove}
+                    className="w-8 h-8 flex items-center justify-center text-[#d92d20] hover:bg-[#fef3f2] rounded-[6px] transition-colors">
+                    <Trash01 className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function CartIcon({ kind }: { kind: PosProductKind }) {
+    // Tint matches the POS card chrome so the cart row visually reads as
+    // "the same product" the buyer just clicked in the catalog.
+    const tint =
+        kind === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
+        kind === "package"    ? { bg: "bg-[#c4edd6]", color: "text-[#658774]" } :
+                                 { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
+    const Icon = kind === "membership" ? CreditCard02 : kind === "package" ? Package : Gift01;
+    return (
+        <div className={cn(
+            "relative shrink-0 w-10 h-10 border-1 border-white/12 rounded-[8.84px] flex items-center justify-center backdrop-blur-[4.85px]",
+            "shadow-[0px_1.94px_1.94px_rgba(0,0,0,0.04),-3.88px_5.82px_11.63px_rgba(224,248,164,0.08),5.82px_5.82px_11.63px_rgba(224,248,164,0.06),0px_1.94px_11.63px_rgba(224,248,164,0.12)]",
+            tint.bg,
+        )}>
+            <Icon className={cn("w-6 h-6", tint.color)} />
+            <div className="absolute inset-0 pointer-events-none rounded-[8.84px] shadow-[inset_2.5px_2.5px_3.33px_0px_rgba(255,255,255,0.2)]" />
+        </div>
+    );
+}
+
+// ─── Customer picker (search + select) ───────────────────────────────────────
+
+function CustomerPickerDropdown({ customers, value, onChange }: {
+    customers: Customer[]; value: string | null; onChange: (id: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
+    const selected = customers.find(c => c.id === value) ?? null;
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const filtered = customers.filter(c => {
+        if (!q) return true;
+        const term = q.toLowerCase();
+        return `${c.firstName} ${c.lastName}`.toLowerCase().includes(term) || c.email.toLowerCase().includes(term);
+    });
+    return (
+        <div ref={ref} className="relative">
+            <button type="button" onClick={() => setOpen(o => !o)}
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]",
+                    selected ? "text-[#101828]" : "text-[#667085]")}>
+                {selected ? (
+                    <>
+                        <TableAvatar initials={selected.initials} imageUrl={selected.imageUrl} size={24} />
+                        <span className="flex-1 text-left truncate">{selected.firstName} {selected.lastName}</span>
+                    </>
+                ) : (
+                    <>
+                        <User01 className="w-4 h-4 text-[#667085]" />
+                        <span className="flex-1 text-left">Select customer</span>
+                    </>
+                )}
+                {open ? <ChevronUp className="w-4 h-4 text-[#667085]" /> : <ChevronDown className="w-4 h-4 text-[#667085]" />}
+            </button>
+            {open && (
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 max-h-[320px] overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-[#e4e7ec]">
+                        <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search customer..." autoFocus
+                            className="w-full h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]" />
+                    </div>
+                    <div className="overflow-y-auto flex-1 py-1">
+                        {filtered.length === 0 ? (
+                            <p className="px-4 py-3 text-[14px] text-[#667085]">No matching customers.</p>
+                        ) : filtered.map(c => (
+                            <button key={c.id} type="button" onClick={() => { onChange(c.id); setOpen(false); setQ(""); }}
+                                className={cn("flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-[#f9fafb] transition-colors",
+                                    c.id === value && "bg-[#f0fff8]")}>
+                                <TableAvatar initials={c.initials} imageUrl={c.imageUrl} size={28} />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[14px] font-medium text-[#101828] truncate">{c.firstName} {c.lastName}</p>
+                                    <p className="text-[13px] text-[#667085] truncate">{c.email}</p>
                                 </div>
                             </button>
                         ))}
                     </div>
                 </div>
-            </div>
+            )}
+        </div>
+    );
+}
 
-            {/* Right: Cart & Checkout */}
-            <div className="w-96 bg-white flex flex-col shadow-2xl z-10">
-                {checkoutStep === "success" ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-                            <CheckCircle className="w-8 h-8" />
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">Sale Completed!</h2>
-                        <p className="text-sm text-gray-500 mb-6">The transaction has been recorded successfully.</p>
-                        <button
-                            onClick={resetPOS}
-                            className="w-full py-2.5 gradient-bg-brand text-white rounded-xl font-medium hover:opacity-90"
-                        >
-                            Start New Sale
-                        </button>
+// ─── Filter side panel ───────────────────────────────────────────────────────
+
+function PosFilterPanel({ open, onClose, applied, onApply, showCredits }: {
+    open: boolean; onClose: () => void;
+    applied: FilterState; onApply: (f: FilterState) => void;
+    /** Credits range only makes sense for membership/package tabs. */
+    showCredits: boolean;
+}) {
+    const [pending, setPending] = useState<FilterState>(EMPTY_FILTER);
+    useEffect(() => { if (open) setPending({ ...applied }); }, [open]); // eslint-disable-line
+    useEffect(() => {
+        function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        if (open) document.addEventListener("keydown", h);
+        return () => document.removeEventListener("keydown", h);
+    }, [open, onClose]);
+    if (!open) return null;
+    const hasAny = pending.creditsMin != null || pending.creditsMax != null
+        || pending.priceMin != null || pending.priceMax != null;
+    return (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
+            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+                    {showCredits && (
+                        <RangeSection
+                            label="Credits range"
+                            floor={0} ceiling={50}
+                            minValue={pending.creditsMin}
+                            maxValue={pending.creditsMax}
+                            onMin={v => setPending(p => ({ ...p, creditsMin: v }))}
+                            onMax={v => setPending(p => ({ ...p, creditsMax: v }))}
+                        />
+                    )}
+                    {showCredits && <div className="h-px bg-[#e4e7ec]" />}
+                    <RangeSection
+                        label="Price range"
+                        floor={0} ceiling={3000} step={50}
+                        prefix="AED "
+                        minValue={pending.priceMin}
+                        maxValue={pending.priceMax}
+                        onMin={v => setPending(p => ({ ...p, priceMin: v }))}
+                        onMax={v => setPending(p => ({ ...p, priceMax: v }))}
+                    />
+                </div>
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                        onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
+                        Clear filter
+                    </Button>
+                    <Button variant="primary" size="md" disabled={!hasAny}
+                        onClick={() => { onApply(pending); onClose(); }}>
+                        Apply
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, maxValue, onMin, onMax }: {
+    label: string;
+    floor: number; ceiling: number; step?: number;
+    /** Currency / unit prefix on the labels under the slider, e.g. "AED ". */
+    prefix?: string;
+    minValue?: number; maxValue?: number;
+    onMin: (v: number | undefined) => void;
+    onMax: (v: number | undefined) => void;
+}) {
+    // Default state: both thumbs at the floor (0), chips show the floor
+    // value as a numeric (no "—" dashes). When stored min/max are
+    // undefined we render floor/floor — "0 / 0" means "no filter set".
+    // Active state = anything other than floor/floor.
+    const sliderMin = minValue ?? floor;
+    const sliderMax = maxValue ?? floor;
+    const isActive = sliderMin !== floor || sliderMax !== floor;
+
+    function handleSliderChange(next: { min: number; max: number }) {
+        // Mirror to parent: floor → undefined (so the filter list reads "any").
+        onMin(next.min <= floor ? undefined : next.min);
+        onMax(next.max <= floor ? undefined : next.max);
+    }
+
+    return (
+        <div className="flex flex-col gap-3">
+            <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+            <div className="px-1">
+                <RangeSlider
+                    floor={floor} ceiling={ceiling} step={step}
+                    minValue={sliderMin} maxValue={sliderMax}
+                    isActive={isActive}
+                    onChange={handleSliderChange}
+                />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                    <p className="text-[12px] text-[#667085] text-center">Minimum</p>
+                    <ValueChip prefix={prefix} value={sliderMin} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <p className="text-[12px] text-[#667085] text-center">Maximum</p>
+                    <ValueChip prefix={prefix} value={sliderMax} />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ValueChip({ prefix, value }: { prefix: string; value: number }) {
+    return (
+        <div className="h-11 px-4 flex items-center justify-center border-1 border-[#e4e7ec] rounded-[12px] text-[14px] font-medium text-[#101828]">
+            {prefix}{value.toLocaleString()}
+        </div>
+    );
+}
+
+// ─── Gift card recipient modal ───────────────────────────────────────────────
+
+interface GiftCardRecipientData {
+    recipientName: string;
+    recipientEmail: string;
+    message: string;
+    amount?: number;
+}
+
+// ─── Gift card recipient modal — Figma 4232:180130 ──────────────────────────
+//
+// Recipient section: free-text name + email + (custom-only) amount + message.
+// Sender section: live-bound to the customer attached to the cart (the buyer).
+// If no customer is in the cart yet, the modal shows a placeholder + allows
+// proceeding anyway — the gift-card line in the cart auto-rebinds its sender
+// when the admin later picks a customer in the cart panel.
+//
+// (We never collect sender as a free-text input — it's always the cart's
+// customer record, so there's no risk of drift between the customer's name
+// and the name printed on the gift card.)
+
+const MESSAGE_MAX_LEN = 120;
+
+function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }: {
+    open: boolean; designId: string | null;
+    /** Currently-selected cart customer — drives the read-only sender row.
+     *  null when the admin hasn't picked one yet; the modal renders a
+     *  "sender pending" placeholder in that case. */
+    customer: Customer | null;
+    onClose: () => void;
+    onConfirm: (data: GiftCardRecipientData) => void;
+}) {
+    // Resolve against the LIVE store so gift cards created through the new
+    // creation flow open the recipient modal too (the static seed only holds
+    // the originally-bundled designs).
+    const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
+    const design = designId ? giftCardDesigns.find(g => g.id === designId) ?? null : null;
+    const isCustom = design?.value_type === "custom";
+
+    const [recipientName, setRecipientName] = useState("");
+    const [recipientEmail, setRecipientEmail] = useState("");
+    const [message, setMessage] = useState("");
+    const [amount, setAmount] = useState<string>("");
+
+    useEffect(() => {
+        if (open) {
+            setRecipientName(""); setRecipientEmail(""); setMessage("");
+            setAmount("");
+        }
+    }, [open, design?.id]);
+
+    if (!open || !design) return null;
+
+    const numericAmount = Number(amount) || 0;
+    const amountValid = !isCustom || (
+        numericAmount >= (design.min_value_aed ?? 0) &&
+        numericAmount <= (design.max_value_aed ?? Infinity)
+    );
+    const canSubmit = !!recipientName.trim() && amountValid && (!isCustom || amount !== "");
+
+    function handleSubmit() {
+        if (!canSubmit) return;
+        onConfirm({
+            recipientName: recipientName.trim(),
+            recipientEmail: recipientEmail.trim(),
+            message: message.trim(),
+            amount: isCustom ? numericAmount : undefined,
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col max-h-[90vh] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-start gap-4 px-6 pt-6 pb-5">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Gift card recipient information</p>
+                        <p className="text-[14px] text-[#475467]">Add information and amount to the recipient</p>
                     </div>
-                ) : (
-                    <>
-                        {/* Member Select */}
-                        <div className="p-4 border-b border-gray-100">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Customer</label>
-                            <select
-                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                                value={selectedUser}
-                                onChange={(e) => setSelectedUser(e.target.value)}
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="h-px bg-[#e4e7ec]" />
+
+                {/* Body — boxed sections */}
+                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+                    {/* Recipient information section */}
+                    <section className="border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-4">
+                        <p className="text-[16px] font-semibold text-[#101828]">Recipient information</p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <Field label="Recipient name">
+                                <TextInput value={recipientName} onChange={setRecipientName} placeholder="Recipient name..." />
+                            </Field>
+                            <Field label="Recipient email">
+                                <TextInput value={recipientEmail} onChange={setRecipientEmail} type="email" placeholder="Recipient email..." />
+                            </Field>
+                        </div>
+
+                        {isCustom && (
+                            <Field
+                                label="Amount"
+                                help={`Enter an amount between AED ${design.min_value_aed} and AED ${design.max_value_aed}`}
+                                helpColor={amountValid ? "muted" : "error"}
                             >
-                                <option value="">Select Member...</option>
-                                {members.map(m => (
-                                    <option key={m.id} value={m.id}>
-                                        {m.first_name} {m.last_name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                                <div className="relative">
+                                    <span className="absolute left-[14px] top-1/2 -translate-y-1/2 text-[16px] text-[#667085]">AED</span>
+                                    <NumericStringInput
+                                        value={amount} onChange={setAmount}
+                                        min={design.min_value_aed} max={design.max_value_aed}
+                                        inputClassName="pl-12"
+                                    />
+                                </div>
+                            </Field>
+                        )}
 
-                        {/* Cart Items */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {cart.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                    <ShoppingCart className="w-8 h-8 mb-2 opacity-50" />
-                                    <p className="text-sm text-center">Cart is empty</p>
-                                </div>
-                            ) : (
-                                cart.map(item => (
-                                    <div key={item.product.id} className="flex gap-3">
-                                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                                            <span className="text-xs font-bold text-gray-500">x{item.quantity}</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="text-sm font-medium text-gray-900 truncate">{item.product.name}</h4>
-                                            <p className="text-xs text-gray-500">{formatCurrency(item.product.price)} each</p>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1">
-                                            <span className="text-sm font-bold text-gray-900">
-                                                {formatCurrency(item.product.price * item.quantity)}
-                                            </span>
-                                            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-                                                <button
-                                                    onClick={() => updateQuantity(item.product.id, -1)}
-                                                    className="p-1 hover:bg-white rounded text-gray-500"
-                                                >
-                                                    <Minus className="w-3 h-3" />
-                                                </button>
-                                                <button
-                                                    onClick={() => removeFromCart(item.product.id)}
-                                                    className="p-1 hover:bg-red-50 hover:text-red-500 rounded text-gray-500"
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </button>
-                                                <button
-                                                    onClick={() => updateQuantity(item.product.id, 1)}
-                                                    className="p-1 hover:bg-white rounded text-gray-500"
-                                                >
-                                                    <Plus className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                        <Field
+                            label={<>Add personal message <span className="text-[#667085] font-normal">(optional)</span></>}
+                            help={`${message.length}/${MESSAGE_MAX_LEN}`}
+                            helpColor="muted"
+                        >
+                            <textarea
+                                value={message}
+                                onChange={e => setMessage(e.target.value.slice(0, MESSAGE_MAX_LEN))}
+                                rows={3}
+                                placeholder="e.g Happy birthday Paula! Enjoy your classes 🎉"
+                                className="w-full px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] resize-none shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            />
+                        </Field>
+                    </section>
 
-                        {/* Totals & Checkout */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-4">
-                            <div className="space-y-3 pb-4 border-b border-gray-100">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase">Promo Code</h4>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                                            placeholder="Code"
-                                            value={promoCodeInput}
-                                            onChange={(e) => setPromoCodeInput(e.target.value)}
-                                            disabled={!!appliedPromo}
-                                        />
-                                    </div>
-                                    {appliedPromo ? (
-                                        <button
-                                            onClick={() => { setAppliedPromo(null); setPromoCodeInput(""); }}
-                                            className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100"
-                                        >
-                                            Remove
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={handleApplyPromo}
-                                            className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800"
-                                        >
-                                            Apply
-                                        </button>
-                                    )}
-                                </div>
-                                {promoError && <p className="text-xs text-red-500">{promoError}</p>}
-                                {appliedPromo && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Code applied!</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm text-gray-500">
-                                    <span>Subtotal</span>
-                                    <span>{formatCurrency(cartTotal)}</span>
-                                </div>
-                                {appliedPromo && (
-                                    <div className="flex justify-between text-sm text-green-600 font-medium">
-                                        <span>Discount</span>
-                                        <span>-{formatCurrency(discountAmount)}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between text-sm text-gray-500">
-                                    <span>Tax (5%)</span>
-                                    <span>{formatCurrency(taxAmount)}</span>
-                                </div>
-                                <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
-                                    <span>Total</span>
-                                    <span>{formatCurrency(finalTotal)}</span>
+                    {/* Sender information section — live-bound to the cart's
+                        customer. Placeholder state when no customer selected
+                        (gift-card line auto-fills senderName once one is). */}
+                    <section className="border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-4">
+                        <p className="text-[16px] font-semibold text-[#101828]">Sender information</p>
+                        {customer ? (
+                            <div className="flex items-center">
+                                <p className="flex-1 text-[14px] text-[#667085]">Sender</p>
+                                <div className="flex items-center gap-2">
+                                    <TableAvatar
+                                        initials={customer.initials}
+                                        imageUrl={customer.imageUrl}
+                                        size={28}
+                                    />
+                                    <span className="text-[14px] font-medium text-[#101828]">{customer.firstName} {customer.lastName}</span>
                                 </div>
                             </div>
+                        ) : (
+                            <div className="bg-[#f9fafb] border-1 border-dashed border-[#d0d5dd] rounded-[8px] px-4 py-3 flex flex-col gap-0.5">
+                                <p className="text-[14px] font-medium text-[#344054]">No customer selected</p>
+                                <p className="text-[13px] text-[#667085]">Sender auto-fills from the customer you add to the cart.</p>
+                            </div>
+                        )}
+                    </section>
+                </div>
 
-                            {checkoutStep === "cart" ? (
-                                <button
-                                    onClick={() => setCheckoutStep("payment")}
-                                    disabled={cart.length === 0 || !selectedUser}
-                                    className="w-full py-3 gradient-bg-brand text-white rounded-xl font-bold shadow-glow hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                >
-                                    Proceed to Payment
-                                </button>
-                            ) : (
-                                <div className="space-y-3 animate-slide-up">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => setPaymentMethod("card_on_file")}
-                                            className={cn(
-                                                "p-3 rounded-xl border text-sm font-medium flex flex-col items-center gap-2 transition-all",
-                                                paymentMethod === "card_on_file"
-                                                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                            )}
-                                        >
-                                            <CreditCard className="w-5 h-5" />
-                                            Card on File
-                                        </button>
-                                        <button
-                                            onClick={() => setPaymentMethod("terminal")}
-                                            className={cn(
-                                                "p-3 rounded-xl border text-sm font-medium flex flex-col items-center gap-2 transition-all",
-                                                paymentMethod === "terminal"
-                                                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                            )}
-                                        >
-                                            <CreditCard className="w-5 h-5" />
-                                            Terminal
-                                        </button>
-                                        <button
-                                            onClick={() => setPaymentMethod("cash")}
-                                            className={cn(
-                                                "p-3 rounded-xl border text-sm font-medium flex flex-col items-center gap-2 transition-all col-span-2",
-                                                paymentMethod === "cash"
-                                                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                            )}
-                                        >
-                                            <Banknote className="w-5 h-5" />
-                                            Cash
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={handleCheckout}
-                                        className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
-                                    >
-                                        Confirm Payment
-                                    </button>
-                                    <button
-                                        onClick={() => setCheckoutStep("cart")}
-                                        className="w-full py-2 text-sm text-gray-500 font-medium hover:text-gray-700"
-                                    >
-                                        Back to Cart
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </>
-                )}
+                {/* Footer */}
+                <div className="h-px bg-[#e4e7ec]" />
+                <div className="flex gap-3 px-6 py-4 shrink-0">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
+                    <Button variant="primary" size="lg" className="flex-1" disabled={!canSubmit} onClick={handleSubmit}>
+                        Add to cart
+                    </Button>
+                </div>
             </div>
+        </div>
+    );
+}
+
+function Field({ label, help, helpColor = "muted", children }: {
+    label: React.ReactNode;
+    help?: React.ReactNode;
+    helpColor?: "muted" | "error";
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            {children}
+            {help && (
+                <p className={cn(
+                    "text-[13px]",
+                    helpColor === "error" ? "text-[#b42318]" : "text-[#667085]",
+                )}>
+                    {help}
+                </p>
+            )}
+        </div>
+    );
+}
+
+function TextInput({ value, onChange, placeholder, type = "text", icon }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode;
+}) {
+    return (
+        <div className="relative">
+            {icon && <span className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>}
+            <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+                className={cn(
+                    "w-full h-10 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    icon ? "pl-9" : "pl-3",
+                )} />
         </div>
     );
 }

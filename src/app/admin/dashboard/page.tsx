@@ -12,23 +12,24 @@ import {
     CalendarCheck01,
     CreditCard02,
     User01,
-    Building01,
     UserCheck01,
     RefreshCw04,
     BarChartSquare01,
     Plus,
     DownloadCloud01,
 } from "@untitledui/icons";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, BRANCHES, DEFAULT_BRANCH_ID } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
-import { DEFAULT_ACTIVE_WIDGETS } from "@/components/dashboard/widget-catalog";
+import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
+import { Toast } from "@/components/ui/Toast";
 
 // ── Types ──
 // `ScheduleClass` here is the dashboard-local shape that powers both the
@@ -337,11 +338,16 @@ function ReportDropdown() {
     );
 }
 
-const locationOptions = [
-    { value: "south", label: "Forma Studio (South)", icon: <Building01 className="w-4 h-4" /> },
-    { value: "east", label: "Forma Studio (East)", icon: <Building01 className="w-4 h-4" /> },
-    { value: "north", label: "Forma Studio (North)", icon: <Building01 className="w-4 h-4" /> },
-];
+// Sourced from the centralized `branches` seed so the dashboard, schedule
+// and POS branch pickers all show the same options. Inactive branches are
+// hidden (matches POS catalog behavior). Each option carries a MarkerPin01
+// glyph so dropdown items align visually with the trigger icon (Figma
+// reference: branch dropdown style shared across modules).
+const locationOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
+    value: b.id,
+    label: b.name,
+    icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+}));
 
 const instructorOptions = [
     { value: "all", label: "All instructors" },
@@ -353,8 +359,9 @@ const instructorOptions = [
 
 // ── Main Dashboard ──
 export default function AdminDashboard() {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<"today" | "performance">("today");
-    const [location, setLocation] = useState<string>("");
+    const [location, setLocation] = useState<string>(DEFAULT_BRANCH_ID);
     const [instructor, setInstructor] = useState("all");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
     const [widgetModalOpen, setWidgetModalOpen] = useState(false);
@@ -362,6 +369,7 @@ export default function AdminDashboard() {
     const today = new Date();
 
     const classSchedules = useAppStore(s => s.classSchedules);
+    const showToast = useAppStore(s => s.showToast);
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
@@ -410,10 +418,16 @@ export default function AdminDashboard() {
     }, [todayClasses]);
 
     function handleAddWidget(id: string) {
+        if (activeWidgets.includes(id)) return;
         setActiveWidgets(prev => prev.includes(id) ? prev : [...prev, id]);
+        const title = WIDGET_CATALOG.find(w => w.id === id)?.title ?? "Widget";
+        showToast("Widget added", `${title} has been added to your dashboard.`, "success", "check");
     }
     function handleRemoveWidget(id: string) {
+        if (!activeWidgets.includes(id)) return;
         setActiveWidgets(prev => prev.filter(w => w !== id));
+        const title = WIDGET_CATALOG.find(w => w.id === id)?.title ?? "Widget";
+        showToast("Widget removed", `${title} has been removed from your dashboard.`, "success", "trash");
     }
     const formattedDate = format(today, "EEE, dd MMM yyyy");
 
@@ -572,6 +586,7 @@ export default function AdminDashboard() {
                                         {slot.classes.map(c => (
                                             <ScheduleClassCard key={c.id}
                                                 size="lg"
+                                                onClick={() => router.push(`/schedule/${c.id}`)}
                                                 cls={{
                                                     name: c.name,
                                                     color: c.color,
@@ -635,6 +650,8 @@ export default function AdminDashboard() {
                 onAdd={handleAddWidget}
                 onRemove={handleRemoveWidget}
             />
+
+            <Toast />
         </div>
     );
 }

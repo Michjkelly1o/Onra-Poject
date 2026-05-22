@@ -195,6 +195,9 @@ function CustomizeSpotInner() {
     }
 
     function handleUpdate() {
+        // Apply the pending layout in place — the admin stays on the customize
+        // spot page (no redirect back to step 2) so they can keep blocking /
+        // unblocking spots and re-adjusting until they close it themselves.
         setCols(pendingCols);
         setRows(pendingRows);
         setBlocked(prev => {
@@ -208,7 +211,6 @@ function CustomizeSpotInner() {
             return next;
         });
         setSelected(null);
-        router.back();
     }
 
     function handleCancel() {

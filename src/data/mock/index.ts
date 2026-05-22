@@ -24,6 +24,7 @@ export { class_categories } from "./class_categories";
 
 // Locations & people (FK depends on Foundation seeds)
 export { rooms } from "./rooms";
+export { business_hours } from "./business_hours";
 export { staff_profiles } from "./staff_profiles";
 export { users } from "./users";
 export { user_role_assignments } from "./user_role_assignments";
@@ -34,6 +35,8 @@ export { customers } from "./customers";
 // Products & Payments (no FK deps for now — payment_methods adds customer_id later)
 export { memberships } from "./memberships";
 export { packages } from "./packages";
+export { gift_card_designs } from "./gift_card_designs";
+export { promo_codes } from "./promo_codes";
 export { payment_methods } from "./payment_methods";
 
 // Class catalog (FK → class_categories, memberships, packages)
@@ -45,3 +48,9 @@ export { class_schedule } from "./class_schedule";
 // Bookings & ratings (FK → class_schedule, customers, staff_profiles, memberships/packages)
 export { class_bookings } from "./class_bookings";
 export { class_ratings } from "./class_ratings";
+
+// Issued gift cards (FK → gift_card_designs, customers)
+export { issued_gift_cards } from "./issued_gift_cards";
+
+// Marketing (FK → branches, class_schedule, memberships/packages, promo_codes)
+export { marketing_items } from "./marketing_items";

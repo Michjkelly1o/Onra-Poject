@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
     UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
-    Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package, SwitchHorizontal01,
+    Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package, SwitchHorizontal01, AlertCircle,
 } from "@untitledui/icons";
 import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
 import type { PurchaseLineItem } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { useAppStore, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES, type ClassInstance, type ClassBooking, type Customer } from "@/lib/store";
+import { useAppStore, type ClassInstance, type ClassBooking, type Customer, type Membership as MembershipType, type Package as PackageType, type GenderAccess } from "@/lib/store";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, planKindFromName, cancellationBadgeKind } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/ui/avatar";
 import type { ClassRating } from "@/lib/store";
@@ -144,10 +145,17 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
                         <p className="text-[14px] font-medium text-[#344054]">Booking date range</p>
                         <div className="flex gap-2">
                             <div className="flex-1">
-                                <DatePicker value={pending.startDate} onChange={v => setPending(p => ({ ...p, startDate: v }))} />
+                                <DatePicker value={pending.startDate}
+                                    onChange={v => setPending(p => {
+                                        const next = { ...p, startDate: v };
+                                        if (p.endDate && v && p.endDate < v) next.endDate = "";
+                                        return next;
+                                    })} />
                             </div>
                             <div className="flex-1">
-                                <DatePicker value={pending.endDate} onChange={v => setPending(p => ({ ...p, endDate: v }))} />
+                                <DatePicker value={pending.endDate}
+                                    onChange={v => setPending(p => ({ ...p, endDate: v }))}
+                                    minDate={pending.startDate || undefined} />
                             </div>
                         </div>
                     </div>
@@ -224,10 +232,19 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                         <p className="text-[14px] font-medium text-[#344054]">Date range</p>
                         <div className="flex gap-2">
                             <div className="flex-1">
-                                <DatePicker value={pending.startDate} onChange={v => setPending(p => ({ ...p, startDate: v }))} placeholder="Start date" />
+                                <DatePicker value={pending.startDate}
+                                    onChange={v => setPending(p => {
+                                        const next = { ...p, startDate: v };
+                                        if (p.endDate && v && p.endDate < v) next.endDate = "";
+                                        return next;
+                                    })}
+                                    placeholder="Start date" />
                             </div>
                             <div className="flex-1">
-                                <DatePicker value={pending.endDate} onChange={v => setPending(p => ({ ...p, endDate: v }))} placeholder="End date" />
+                                <DatePicker value={pending.endDate}
+                                    onChange={v => setPending(p => ({ ...p, endDate: v }))}
+                                    placeholder="End date"
+                                    minDate={pending.startDate || undefined} />
                             </div>
                         </div>
                     </div>
@@ -418,9 +435,17 @@ function CancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm
 
 // ─── Add customer modal — picks an existing customer from the store ───────────
 
-function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
+function AddCustomerModal({ open, existingCustomerIds, applicableMembershipIds, applicablePackageIds, genderAccess, onClose, onAdd }: {
     open: boolean;
     existingCustomerIds: Set<string>;
+    /** From the class template — only customers whose current plan is in one
+     *  of these lists are shown. No-plan customers always appear so the
+     *  admin can walk them through POS to buy an applicable plan. */
+    applicableMembershipIds: string[];
+    applicablePackageIds: string[];
+    /** Class gender restriction — a gender-restricted class only lists
+     *  customers of the matching gender. */
+    genderAccess: GenderAccess;
     onClose: () => void;
     onAdd: (customer: Customer) => void;
 }) {
@@ -429,8 +454,32 @@ function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
     const [search, setSearch] = useState("");
     useEffect(() => { if (open) setSearch(""); }, [open]);
     if (!open) return null;
+
+    function planMatchesTemplate(c: Customer): boolean {
+        if (c.planKind === null) return true;
+        if (c.planKind === "membership") {
+            return !!c.membershipId && applicableMembershipIds.includes(c.membershipId);
+        }
+        // package — at least one of their packages must be applicable.
+        return (c.packageIds ?? []).some(id => applicablePackageIds.includes(id));
+    }
+
+    // Gender-restricted classes only accept customers of the matching gender.
+    // Customers with no gender on file can't be verified, so they're excluded
+    // from a restricted class.
+    function genderMatchesClass(c: Customer): boolean {
+        if (genderAccess === "all") return true;
+        return (c.gender ?? "").toLowerCase() === genderAccess;
+    }
+
+    const restricted = genderAccess !== "all";
+    const genderWord = genderAccess === "female" ? "female" : "male";
+
     const available = customers.filter(c =>
-        !existingCustomerIds.has(c.id) && (
+        !existingCustomerIds.has(c.id) &&
+        planMatchesTemplate(c) &&
+        genderMatchesClass(c) &&
+        (
             !search ||
             `${c.firstName} ${c.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
             c.email.toLowerCase().includes(search.toLowerCase())
@@ -444,7 +493,11 @@ function AddCustomerModal({ open, existingCustomerIds, onClose, onAdd }: {
                 <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[#e4e7ec]">
                     <div className="flex flex-col gap-1 min-w-0">
                         <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Add customer</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">Select a customer to add to this class.</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            {restricted
+                                ? `This class is open to ${genderWord} customers only — pick one to add.`
+                                : "Select a customer to add to this class."}
+                        </p>
                     </div>
                     <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                         <XClose className="w-6 h-6 text-[#667085]" />
@@ -561,18 +614,50 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
     const initialPackageId = customer?.planKind === "package" ? customer.packageIds?.[0] : undefined;
     const [selectedPackageId, setSelectedPackageId] = useState<string | undefined>(initialPackageId);
     useEffect(() => { setSelectedPackageId(initialPackageId); }, [initialPackageId]);
+    // Live plan lookups so renamed / removed plans reflect here too.
+    const allPackages = useAppStore(s => s.packages);
+    const allMemberships = useAppStore(s => s.memberships);
 
     if (!open || !customer || !classInstance) return null;
     const hasPlan = customer.planKind !== null;
     const customerPackages = (customer.packageIds ?? [])
-        .map(id => SEED_PACKAGES.find(p => p.id === id))
+        .map(id => allPackages.find(p => p.id === id))
         .filter((p): p is NonNullable<typeof p> => !!p);
     const hasMultiplePackages = customer.planKind === "package" && customerPackages.length > 1;
-    const planSubtitle = customer.planKind === "membership"
-        ? "Unlimited access • Active"
-        : customer.planKind === "package"
-            ? "Credits available • Active"
-            : "";
+
+    // ── Credit balance ──────────────────────────────────────────────────────
+    // Unlimited memberships never run out; every other plan draws on the
+    // customer's `creditsRemaining` balance. A `0` balance means the plan is
+    // exhausted — the booking can't proceed until a new plan is purchased.
+    const membership = customer.membershipId
+        ? allMemberships.find(m => m.id === customer.membershipId)
+        : undefined;
+    const isUnlimited = customer.planKind === "membership" && membership?.credits === "unlimited";
+    const creditsRemaining = customer.creditsRemaining;
+    const hasZeroCredits = hasPlan && !isUnlimited && creditsRemaining === 0;
+
+    // Plan-card subtitle — credit balance + expiry derived from the plan's
+    // duration applied to the customer's join date.
+    const planExpiry = (() => {
+        const d = new Date(customer.createdAt);
+        if (Number.isNaN(d.getTime())) return "";
+        if (customer.planKind === "membership" && membership) {
+            d.setMonth(d.getMonth() + membership.duration_months);
+        } else if (customer.planKind === "package" && customerPackages.length === 1) {
+            d.setDate(d.getDate() + customerPackages[0].validity_days);
+        } else {
+            return "";
+        }
+        return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    })();
+    const planCreditsLabel = isUnlimited
+        ? "Unlimited access"
+        : creditsRemaining != null
+            ? `${creditsRemaining} Credit${creditsRemaining === 1 ? "" : "s"}`
+            : "Active";
+    const planSubtitle = planExpiry
+        ? `${planCreditsLabel} • Expiry ${planExpiry}`
+        : planCreditsLabel;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
@@ -662,6 +747,20 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                     Purchase new
                                 </button>
                             </div>
+                            {/* Exhausted-plan warning — the customer holds an applicable
+                                plan but has 0 credits left, so a new purchase is needed. */}
+                            {hasZeroCredits && (
+                                <div className="flex items-center gap-4 p-4 rounded-[12px] bg-[#fffaeb] border-1 border-[#fedf89] shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]">
+                                    <div className="relative shrink-0 w-5 h-5">
+                                        <div className="absolute inset-[-16.67%] rounded-full border-[1.667px] border-[#dc6803] opacity-30" />
+                                        <div className="absolute inset-[-37.5%] rounded-full border-[1.667px] border-[#dc6803] opacity-10" />
+                                        <AlertCircle className="w-5 h-5 text-[#dc6803]" />
+                                    </div>
+                                    <p className="flex-1 text-[14px] text-[#475467] leading-[20px]">
+                                        This customer has an active plan for this class with 0 credit. A new plan purchase is required to continue.
+                                    </p>
+                                </div>
+                            )}
                             {hasMultiplePackages ? (
                                 // Multi-package customers pick which package
                                 // funds the booking — radio on the right.
@@ -722,7 +821,7 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button variant="primary" size="lg" className="flex-1" disabled={!hasPlan} onClick={() => onConfirm(selectedPackageId)}>
+                    <Button variant="primary" size="lg" className="flex-1" disabled={!hasPlan || hasZeroCredits} onClick={() => onConfirm(selectedPackageId)}>
                         Confirm payment
                     </Button>
                 </div>
@@ -829,27 +928,29 @@ type PosProduct = {
     priceAed: number;
 };
 
-// Sourced from centralized seeds (`memberships`, `packages`) — single source of
-// truth shared with `class-types/[id]` "Applicable plans" tab. Display strings
-// (primaryMeta/secondaryMeta) are derived from the seed columns at module load.
-const POS_PRODUCTS: PosProduct[] = [
-    ...SEED_MEMBERSHIPS.filter(m => m.status === "active").map<PosProduct>(m => ({
-        id: m.id,
-        type: "membership",
-        name: m.name,
-        primaryMeta: m.credits === "unlimited" ? "Unlimited" : `${m.credits} Credits`,
-        secondaryMeta: `${m.duration_months} Month${m.duration_months === 1 ? "" : "s"}`,
-        priceAed: m.price_aed,
-    })),
-    ...SEED_PACKAGES.filter(p => p.status === "active").map<PosProduct>(p => ({
-        id: p.id,
-        type: "package",
-        name: p.name,
-        primaryMeta: p.credits === 1 ? "1 Class" : `${p.credits} Credits`,
-        secondaryMeta: `${p.validity_days} Days`,
-        priceAed: p.price_aed,
-    })),
-];
+// Built FROM LIVE STORE STATE — memberships + packages mutate via the
+// /admin/products module and this list re-renders. Display strings
+// (primaryMeta/secondaryMeta) are derived from each row's columns.
+function buildPosProducts(memberships: MembershipType[], packages: PackageType[]): PosProduct[] {
+    return [
+        ...memberships.filter(m => m.status === "active").map<PosProduct>(m => ({
+            id: m.id,
+            type: "membership",
+            name: m.name,
+            primaryMeta: m.credits === "unlimited" ? "Unlimited" : `${m.credits} Credits`,
+            secondaryMeta: `${m.duration_months} Month${m.duration_months === 1 ? "" : "s"}`,
+            priceAed: m.price_aed,
+        })),
+        ...packages.filter(p => p.status === "active").map<PosProduct>(p => ({
+            id: p.id,
+            type: "package",
+            name: p.name,
+            primaryMeta: p.credits === 1 ? "1 Class" : `${p.credits} Credits`,
+            secondaryMeta: `${p.validity_days} Days`,
+            priceAed: p.price_aed,
+        })),
+    ];
+}
 
 function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds, applicablePackageIds }: {
     open: boolean;
@@ -864,6 +965,10 @@ function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds
 }) {
     /** Map of productId → quantity. Empty cart = {}. */
     const [cart, setCart] = useState<Record<string, number>>({});
+    // Live store-derived catalog — picks up admin mutations from /admin/products.
+    const memberships = useAppStore(s => s.memberships);
+    const packages = useAppStore(s => s.packages);
+    const posProducts = useMemo(() => buildPosProducts(memberships, packages), [memberships, packages]);
 
     // Reset cart whenever the modal closes so a fresh open starts empty.
     useEffect(() => { if (!open) setCart({}); }, [open]);
@@ -873,7 +978,7 @@ function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds
     // Apply the class-template "Applicable plans" filter — only show the
     // memberships/packages the class accepts. (The full POS module later
     // will list everything; this is the class-scoped mini-POS.)
-    const applicableProducts = POS_PRODUCTS.filter(p =>
+    const applicableProducts = posProducts.filter(p =>
         p.type === "membership"
             ? applicableMembershipIds.includes(p.id)
             : applicablePackageIds.includes(p.id),
@@ -1019,7 +1124,9 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
     const promoPercent = appliedPromo ? 20 : 0;
     const discountPercent = appliedCustomDiscount ?? promoPercent;
     const discountAmount = Math.round(subtotal * (discountPercent / 100));
-    const taxRate = 10;
+    // Tax defaults to 0 — per-product tax rates will ship with the Tax
+    // settings module (PRD 11). Until then no tax row renders anywhere.
+    const taxRate = 0;
     const taxAmount = Math.round((subtotal - discountAmount) * (taxRate / 100));
     const total = subtotal - discountAmount + taxAmount;
 
@@ -1221,10 +1328,14 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {discountAmount.toLocaleString()}</p>
                             </div>
                         )}
-                        <div className="flex items-center justify-between">
-                            <p className="text-[14px] text-[#667085]">Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</p>
-                            <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
-                        </div>
+                        {/* Tax row hidden until a product carries a tax rate
+                            (Tax settings / PRD 11 ships per-product rates). */}
+                        {taxRate > 0 && (
+                            <div className="flex items-center justify-between">
+                                <p className="text-[14px] text-[#667085]">Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</p>
+                                <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
+                            </div>
+                        )}
                         <div className="h-px w-full bg-[#e4e7ec] my-1" />
                         <div className="flex items-center justify-between">
                             <p className="text-[14px] font-semibold text-[#101828]">Total</p>
@@ -1316,44 +1427,40 @@ function BookedRowActions({ variant, onCancel, onRemove, onPresent, presentDisab
     presentDisabled?: boolean;
 }) {
     const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
     return (
         <div className="relative">
-            <button type="button" onClick={() => setOpen(p => !p)}
+            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
                 <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
-            {open && (
-                <>
-                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 top-[calc(100%+4px)] z-40 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[200px]">
-                        {variant === "upcoming" ? (
-                            <>
-                                <button type="button" onClick={() => { setOpen(false); onCancel?.(); }}
-                                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                                    <SlashCircle01 className="w-4 h-4 text-[#667085]" />
-                                    Cancel customer
-                                </button>
-                                <button type="button" onClick={() => { setOpen(false); onRemove?.(); }}
-                                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                    <Trash01 className="w-4 h-4 text-[#b42318]" />
-                                    Remove customer
-                                </button>
-                            </>
-                        ) : (
-                            <button type="button" disabled={presentDisabled} onClick={() => { setOpen(false); onPresent?.(); }}
-                                className={cn(
-                                    "flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium transition-colors",
-                                    presentDisabled
-                                        ? "text-[#98a2b3] cursor-not-allowed"
-                                        : "text-[#344054] hover:bg-[#f9fafb]"
-                                )}>
-                                <CheckCircle className={cn("w-4 h-4", presentDisabled ? "text-[#d0d5dd]" : "text-[#067647]")} />
-                                <span className={presentDisabled ? "" : "text-[#067647]"}>{presentDisabled ? "Already present" : "Present"}</span>
-                            </button>
-                        )}
-                    </div>
-                </>
-            )}
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
+                {variant === "upcoming" ? (
+                    <>
+                        <button type="button" onClick={() => { setOpen(false); onCancel?.(); }}
+                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            <SlashCircle01 className="w-4 h-4 text-[#667085]" />
+                            Cancel customer
+                        </button>
+                        <button type="button" onClick={() => { setOpen(false); onRemove?.(); }}
+                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
+                            <Trash01 className="w-4 h-4 text-[#b42318]" />
+                            Remove customer
+                        </button>
+                    </>
+                ) : (
+                    <button type="button" disabled={presentDisabled} onClick={() => { setOpen(false); onPresent?.(); }}
+                        className={cn(
+                            "flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium transition-colors",
+                            presentDisabled
+                                ? "text-[#98a2b3] cursor-not-allowed"
+                                : "text-[#344054] hover:bg-[#f9fafb]"
+                        )}>
+                        <CheckCircle className={cn("w-4 h-4", presentDisabled ? "text-[#d0d5dd]" : "text-[#067647]")} />
+                        <span className={presentDisabled ? "" : "text-[#067647]"}>{presentDisabled ? "Already present" : "Present"}</span>
+                    </button>
+                )}
+            </FixedDropdown>
         </div>
     );
 }
@@ -1549,24 +1656,20 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
 
 function ReviewRowActions({ onDelete }: { onDelete: () => void }) {
     const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
     return (
         <div className="relative">
-            <button type="button" onClick={() => setOpen(p => !p)}
+            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
                 <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
-            {open && (
-                <>
-                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 top-[calc(100%+4px)] z-40 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[180px]">
-                        <button type="button" onClick={() => { setOpen(false); onDelete(); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />
-                            Delete review
-                        </button>
-                    </div>
-                </>
-            )}
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
+                <button type="button" onClick={() => { setOpen(false); onDelete(); }}
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
+                    <Trash01 className="w-4 h-4 text-[#b42318]" />
+                    Delete review
+                </button>
+            </FixedDropdown>
         </div>
     );
 }
@@ -1677,11 +1780,15 @@ function LeftPanel({ ci, isUpcoming, isOngoing, isCancelled, isCompleted, canCan
                         <div className="grid grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1">
                                 <p className="text-[14px] text-[#667085]">Class type</p>
-                                <p className="text-[16px] font-medium text-[#101828]">Group class</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{ci.classType} class</p>
                             </div>
                             <div className="flex flex-col gap-1">
                                 <p className="text-[14px] text-[#667085]">Gender access</p>
-                                <p className="text-[16px] font-medium text-[#101828]">All genders</p>
+                                <p className="text-[16px] font-medium text-[#101828]">
+                                    {ci.genderAccess === "female" ? "Female only"
+                                        : ci.genderAccess === "male" ? "Male only"
+                                        : "All genders"}
+                                </p>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1">
@@ -1797,6 +1904,15 @@ export default function ClassDetailPage() {
     const classTemplate = classTemplates.find(t => t.id === classInstance?.templateId);
     const applicableMembershipIds = classTemplate?.applicableMembershipIds ?? [];
     const applicablePackageIds    = classTemplate?.applicablePackageIds    ?? [];
+
+    // Live POS catalog from store (mirrors POSModal subscription) so handlePosContinue
+    // can resolve cart product ids without referencing stale module constants.
+    const allMemberships = useAppStore(s => s.memberships);
+    const allPackagesForPos = useAppStore(s => s.packages);
+    const posProducts = useMemo(
+        () => buildPosProducts(allMemberships, allPackagesForPos),
+        [allMemberships, allPackagesForPos]
+    );
 
     // When the class itself is cancelled, the Booked tab shows the bookings that
     // existed at the moment of class-cancellation (i.e. cancellationReason === "Class cancelled").
@@ -2093,7 +2209,7 @@ export default function ClassDetailPage() {
                     ? pickedPlanId ?? c.packageIds?.[0] ?? ""
                     : "";
             const planName = c.planKind === "package" && pickedPlanId
-                ? SEED_PACKAGES.find(p => p.id === pickedPlanId)?.name ?? c.planName ?? "No plan"
+                ? state.packages.find(p => p.id === pickedPlanId)?.name ?? c.planName ?? "No plan"
                 : c.planName ?? "No plan";
             const newBooking: ClassBooking = {
                 id: `b-${Date.now()}`,
@@ -2181,7 +2297,7 @@ export default function ClassDetailPage() {
     /** POSModal "Continue" — resolve cart against the catalog and open Checkout confirmation. */
     function handlePosContinue(cart: Record<string, number>) {
         // Resolve productId→qty into rich PurchaseLineItem rows for downstream screens.
-        const items: PurchaseLineItem[] = POS_PRODUCTS
+        const items: PurchaseLineItem[] = posProducts
             .filter(p => (cart[p.id] ?? 0) > 0)
             .map(p => ({
                 productId: p.id,
@@ -2709,6 +2825,9 @@ export default function ClassDetailPage() {
             <AddCustomerModal
                 open={addCustomerOpen}
                 existingCustomerIds={existingCustomerIds}
+                applicableMembershipIds={applicableMembershipIds}
+                applicablePackageIds={applicablePackageIds}
+                genderAccess={ci.genderAccess}
                 onClose={() => setAddCustomerOpen(false)}
                 onAdd={handleSelectCustomer}
             />

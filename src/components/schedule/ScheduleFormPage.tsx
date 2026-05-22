@@ -10,16 +10,30 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, type ClassInstance } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, type ClassInstance, type GenderAccess } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
-import { DatePicker } from "@/components/ui/DatePicker";
+import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { genderAccessIcon } from "@/components/ui/gender-icons";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CLASS_TYPES   = ["Group", "Private", "Semi-private"] as const;
 const CATEGORIES    = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
 const GENDER_OPTIONS = ["All genders", "Female only", "Male only"];
+
+// Map between the form's gender-access label and the stored `GenderAccess`
+// enum persisted on the class schedule.
+function genderAccessFromLabel(label: string): GenderAccess {
+    if (label === "Female only") return "female";
+    if (label === "Male only")   return "male";
+    return "all";
+}
+function genderLabelFromAccess(access?: GenderAccess): string {
+    if (access === "female") return "Female only";
+    if (access === "male")   return "Male only";
+    return "All genders";
+}
 const STEPS = [
     { n: 1, label: "Class details" },
     { n: 2, label: "Location & instructor" },
@@ -339,14 +353,21 @@ const DAY_FULL: Record<string, string> = {
 
 interface TimeSlot { start: string; end: string; }
 
-function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlot }: {
+function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlot, availableSlots, duration }: {
     day: string;
     slots: TimeSlot[];
     unavailable?: string[];
     onChange: (i: number, field: "start" | "end", v: string) => void;
     onAddSlot: () => void;
     onDeleteSlot: (i: number) => void;
+    /** Branch open-hours slot list for this weekday — empty when closed. */
+    availableSlots?: string[];
+    /** Class duration (minutes) — used to block a candidate start whose run
+     *  window would overlap a sibling slot already set on this day. */
+    duration: number;
 }) {
+    const branchClosed = availableSlots !== undefined && availableSlots.length === 0;
+    const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
             <div className="flex flex-col">
@@ -354,11 +375,34 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                 <p className="text-[14px] text-[#667085]">Set schedule for this day.</p>
             </div>
             <div className="flex flex-col gap-3">
-                {slots.map((slot, i) => (
+                {slots.map((slot, i) => {
+                    // Block any candidate start whose run window [c, c+duration)
+                    // would overlap a sibling slot already set on this day — the
+                    // studio can't host two classes from this recurring series
+                    // at the same time. e.g. a 60-min class at 09:00 occupies
+                    // 09:00–10:00, so the next slot can't start 09:00–09:45 but
+                    // 10:00 is free.
+                    const otherStartMins = slots
+                        .filter((_, j) => j !== i)
+                        .map(s => s.start)
+                        .filter(Boolean)
+                        .map(toMin);
+                    const overlapBlocked = (availableSlots ?? []).filter(cand => {
+                        const c = toMin(cand);
+                        return otherStartMins.some(sj => c < sj + duration && sj < c + duration);
+                    });
+                    const rowUnavailable = [...(unavailable ?? []), ...overlapBlocked];
+                    return (
                     <div key={i} className="flex items-end gap-4">
                         <div className="flex flex-col gap-1.5 flex-1">
                             <label className="text-[14px] font-medium text-[#344054]">Start time</label>
-                            <TimeDropdown value={slot.start} onChange={v => onChange(i, "start", v)} unavailable={unavailable} placeholder="Select time" />
+                            <TimeDropdown
+                                value={slot.start} onChange={v => onChange(i, "start", v)}
+                                unavailable={rowUnavailable} placeholder="Select time"
+                                slots={availableSlots}
+                                disabled={branchClosed}
+                                emptyLabel={branchClosed ? "Branch is closed this day." : undefined}
+                            />
                         </div>
                         <div className="flex flex-col gap-1.5 flex-1">
                             <label className="text-[14px] font-medium text-[#344054]">End time</label>
@@ -377,7 +421,8 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                             <Trash01 className="w-5 h-5" />
                         </button>
                     </div>
-                ))}
+                    );
+                })}
             </div>
             <button type="button" onClick={onAddSlot}
                 className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors">
@@ -390,15 +435,24 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
 
 // ─── Preview card ─────────────────────────────────────────────────────────────
 
-function PreviewCard({ form, instructor, location, templateCapacity, roomCapacity, original }: {
+function PreviewCard({ form, instructor, location, templateCapacity, roomCapacity, effectiveCapacity, original, dateTimeLabel }: {
     form: { name: string; description: string; category: string; classType: string; gender: string; durationMin: number; capacity: number; coverColor: string; coverImage?: string; };
     instructor?: typeof SCHEDULE_INSTRUCTORS[0];
     location?: { name: string } | null;
     templateCapacity?: number;
+    /** Room's natural capacity (always the denominator on the right side
+     *  of the capacity row). */
     roomCapacity?: number;
+    /** Current "usable" capacity after spot customization (visible spots
+     *  minus blocked spots). Undefined when the admin hasn't customized,
+     *  in which case the preview falls back to `roomCapacity`. */
+    effectiveCapacity?: number;
     /** Original values for fields that can change while editing. When a field's current value
      *  differs from the original, the preview card renders an `original → current` indicator. */
     original?: { location?: string; capacity?: number; instructorName?: string; instructorColor?: string };
+    /** Resolved "date · time" label for the preview's date row. When omitted
+     *  or empty the row falls back to the "Date & time" placeholder. */
+    dateTimeLabel?: string;
 }) {
     const hasTemplate = !!form.name;
     const displayName = form.name || "Class template name";
@@ -436,7 +490,11 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
 
                     {/* Info rows */}
                     <div className="flex flex-col gap-3">
-                        <PreviewRow icon={<Calendar className="w-4 h-4 text-[#667085]" />} label="Date & time" empty={!form.name} />
+                        <PreviewRow
+                            icon={<Calendar className="w-4 h-4 text-[#667085]" />}
+                            label={dateTimeLabel || "Date & time"}
+                            empty={!dateTimeLabel}
+                        />
 
                         {/* Location — with change indicator when editing */}
                         {locationChanged && location ? (
@@ -453,27 +511,65 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                         <PreviewRow icon={<ClockFastForward className="w-4 h-4 text-[#667085]" />}
                             label={form.durationMin ? `${form.durationMin} min` : "Duration"} empty={!form.durationMin} />
 
-                        {/* Capacity — over-capacity warning OR edit change indicator OR plain row */}
-                        {templateCapacity !== undefined && roomCapacity !== undefined && roomCapacity < templateCapacity ? (
-                            <div className="flex items-center gap-2">
-                                <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                <span className="text-[14px] text-[#667085]">{templateCapacity}/{templateCapacity}</span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[#dc6803] shrink-0" />
-                                <span className="text-[14px] font-semibold text-[#dc6803]">{roomCapacity}/{roomCapacity}</span>
-                            </div>
-                        ) : capacityChanged && form.capacity ? (
-                            <div className="flex items-center gap-2">
-                                <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                <span className="text-[14px] text-[#667085] line-through">{original!.capacity}</span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[#658774] shrink-0" />
-                                <span className="text-[14px] font-semibold text-[#3b5446]">{form.capacity}</span>
-                            </div>
-                        ) : (
-                            <PreviewRow icon={<Users01 className="w-4 h-4 text-[#667085]" />}
-                                label={form.capacity ? `${form.capacity}` : "Capacity"} empty={!form.capacity} />
-                        )}
+                        {/* Capacity — three exclusive rendering branches:
+                            (a) Room cap < template cap OR admin customized spots below
+                                template cap → "templateCap/templateCap → current/roomCap"
+                                change indicator. Orange when the room caps below
+                                template (over-capacity warning); sage when only spot
+                                customization restricts further within an otherwise
+                                fitting room.
+                            (b) Editing AND form.capacity differs from original → the
+                                existing edit-change indicator.
+                            (c) Plain row showing current/roomCap (or just current
+                                when no room selected). */}
+                        {(() => {
+                            // The "current" number on the right of the row — falls back
+                            // through effective → room → form.capacity.
+                            const currentCap = effectiveCapacity ?? roomCapacity ?? form.capacity;
+                            const denomCap   = roomCapacity ?? form.capacity;
+                            const restrictedBelowTemplate =
+                                templateCapacity !== undefined &&
+                                currentCap !== undefined &&
+                                currentCap < templateCapacity;
+                            const roomBelowTemplate =
+                                templateCapacity !== undefined &&
+                                roomCapacity !== undefined &&
+                                roomCapacity < templateCapacity;
 
-                        <PreviewRow icon={<span className="w-4 h-4 text-[#667085] text-[13px]">⚧</span>}
+                            if (restrictedBelowTemplate && templateCapacity !== undefined) {
+                                // Orange when the room itself is the limit; sage when
+                                // the room fits but the admin's spot customization
+                                // restricted further.
+                                const arrowClass = roomBelowTemplate ? "text-[#dc6803]" : "text-[#658774]";
+                                const numClass   = roomBelowTemplate ? "text-[#dc6803]" : "text-[#3b5446]";
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                        <span className="text-[14px] text-[#667085]">{templateCapacity}/{templateCapacity}</span>
+                                        <ArrowRight className={cn("w-3.5 h-3.5 shrink-0", arrowClass)} />
+                                        <span className={cn("text-[14px] font-semibold", numClass)}>
+                                            {currentCap}/{denomCap ?? currentCap}
+                                        </span>
+                                    </div>
+                                );
+                            }
+                            if (capacityChanged && form.capacity) {
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                        <span className="text-[14px] text-[#667085] line-through">{original!.capacity}</span>
+                                        <ArrowRight className="w-3.5 h-3.5 text-[#658774] shrink-0" />
+                                        <span className="text-[14px] font-semibold text-[#3b5446]">{form.capacity}</span>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <PreviewRow icon={<Users01 className="w-4 h-4 text-[#667085]" />}
+                                    label={form.capacity ? `${form.capacity}` : "Capacity"} empty={!form.capacity} />
+                            );
+                        })()}
+
+                        <PreviewRow icon={genderAccessIcon(form.gender, "w-4 h-4 text-[#667085]")}
                             label={form.gender || "Gender access"} empty={!form.gender} />
 
                         {/* Instructor — with change indicator when editing */}
@@ -517,12 +613,15 @@ function PreviewRow({ icon, label, empty }: { icon: React.ReactNode; label: stri
 }
 
 // ─── Time dropdown (15-min slots) ─────────────────────────────────────────────
+// `TimeDropdown` takes a `slots` prop so the form can scope it to whatever
+// the selected branch is actually open. The hardcoded list below is the
+// last-resort fallback for callers that don't pass slots.
 
-const TIME_SLOTS: string[] = [];
+const DEFAULT_TIME_SLOTS: string[] = [];
 for (let h = 6; h <= 22; h++) {
     for (let m = 0; m < 60; m += 15) {
         if (h === 22 && m > 0) break;
-        TIME_SLOTS.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+        DEFAULT_TIME_SLOTS.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
     }
 }
 
@@ -563,11 +662,20 @@ function calcMinutes(start: string, end: string): number {
     return (eh * 60 + em) - (sh * 60 + sm);
 }
 
-function TimeDropdown({ value, onChange, unavailable = [], placeholder = "Select time", minAfter }: {
+function TimeDropdown({ value, onChange, slots, unavailable = [], placeholder = "Select time", minAfter, disabled, emptyLabel }: {
     value: string; onChange: (t: string) => void;
+    /** Selectable slots — defaults to 06:00–22:00 when not provided. The
+     *  schedule form passes branch-business-hours-derived slots so the form
+     *  and the day/week grid agree on the legal window. */
+    slots?: string[];
     unavailable?: string[]; placeholder?: string;
     minAfter?: string; // disables slots <= this value (use for end time)
+    /** Renders the trigger as non-interactive (e.g. when no date/branch is picked yet). */
+    disabled?: boolean;
+    /** Message shown in the dropdown when `slots` is empty (branch is closed). */
+    emptyLabel?: string;
 }) {
+    const visibleSlots = slots ?? DEFAULT_TIME_SLOTS;
     const [open, setOpen] = useState(false);
     const ref  = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
@@ -587,17 +695,19 @@ function TimeDropdown({ value, onChange, unavailable = [], placeholder = "Select
 
     return (
         <div ref={ref} className="relative">
-            <button type="button" onClick={() => setOpen(p => !p)}
+            <button type="button" onClick={() => { if (!disabled) setOpen(p => !p); }} disabled={disabled}
                 className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     value ? "text-[#101828]" : "text-[#667085]",
-                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
+                    disabled ? "opacity-60 cursor-not-allowed" : open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
                 <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
                 <span className="flex-1 text-left">{value ? fmtTime(value) : placeholder}</span>
                 {open ? <ChevronUp className="w-4 h-4 text-[#667085] shrink-0" /> : <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />}
             </button>
             {open && (
                 <div ref={listRef} className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 max-h-[220px] overflow-y-auto py-1">
-                    {TIME_SLOTS.map(slot => {
+                    {visibleSlots.length === 0 ? (
+                        <p className="px-4 py-3 text-[14px] text-[#667085]">{emptyLabel ?? "No time slots available."}</p>
+                    ) : visibleSlots.map(slot => {
                         const isUnavail = unavailable.includes(slot) || (minAfter !== undefined && minAfter !== "" && slot <= minAfter);
                         const isSel = value === slot;
                         return (
@@ -710,6 +820,16 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
 
     const isEditing = !!editingId;
     const editing = editingId ? classSchedules.find(c => c.id === editingId) : undefined;
+    // Reschedule gate — Upcoming classes more than 24 hrs out can move the
+    // date & time on Step 3 (3-step flow). Ongoing classes and Upcoming
+    // classes within 24 hrs stay on the 2-step flow with date/time locked.
+    const canReschedule = (() => {
+        if (!editing) return false;
+        if (editing.status !== "Upcoming") return false;
+        const startMs = new Date(`${editing.dateISO}T${editing.startTime}:00`).getTime();
+        if (!Number.isFinite(startMs)) return false;
+        return (startMs - Date.now()) > 24 * 60 * 60 * 1000;
+    })();
     // When ?duplicateFrom={id} is set, we pre-fill the new-class form from that source class.
     const duplicateFromId = !isEditing ? searchParams.get("duplicateFrom") : null;
     const duplicateSource = duplicateFromId ? classSchedules.find(c => c.id === duplicateFromId) : undefined;
@@ -724,9 +844,9 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const [templateId, setTemplateId]   = useState(sourceClass?.templateId ?? "");
     const [name,       setName]         = useState(sourceClass?.name ?? "");
     const [desc,       setDesc]         = useState(sourceClass?.description ?? "");
-    const [classType,  setClassType]    = useState("Group");
+    const [classType,  setClassType]    = useState<string>(sourceClass?.classType ?? "Group");
     const [category,   setCategory]     = useState(sourceClass?.category ?? "");
-    const [gender,     setGender]       = useState("All genders");
+    const [gender,     setGender]       = useState(genderLabelFromAccess(sourceClass?.genderAccess));
     const [duration,   setDuration]     = useState(sourceClass ? Math.max(0, calcMinutes(sourceClass.startTime, sourceClass.endTime)) : 60);
     const [capacity,   setCapacity]     = useState(sourceClass?.capacity ?? 15);
     // templateCapacity tracks the original capacity from the selected template — never changes on room selection
@@ -741,14 +861,17 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const [instructorId,  setInstructorId]  = useState(sourceClass?.instructorId ?? "");
     const [instrSearch,   setInstrSearch]   = useState("");
 
-    // Step 3
+    // Step 3 — pre-fill date + start time from the class being edited so the
+    // reschedule case (Upcoming >24hrs) opens with the existing slot already
+    // populated. Repeat / recurring options stay at their fresh defaults
+    // since edit mode targets a single instance, not a recurring config.
     const [repeat,    setRepeat]    = useState<typeof REPEAT_OPTIONS[number]>("Does not repeat");
     const [repeatEvery, setRepeatEvery] = useState(1);
     const [repeatEnd, setRepeatEnd] = useState<typeof REPEAT_END[number]>("No end date");
     const [endDate,   setEndDate]   = useState("");
     const [endAfter,  setEndAfter]  = useState(8);
-    const [selectedDate, setSelectedDate] = useState("");
-    const [startTime, setStartTime] = useState("");
+    const [selectedDate, setSelectedDate] = useState(editing?.dateISO ?? "");
+    const [startTime, setStartTime] = useState(editing?.startTime ?? "");
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [daySlots, setDaySlots]   = useState<Record<string, TimeSlot[]>>({});
 
@@ -797,6 +920,120 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     }
 
     const selectedRoom = BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === locationId);
+
+    // Resolve the seed branch_id from the picked room so we can look up
+    // business hours for it. Local BRANCH_ROOMS is the form's room dropdown
+    // source; the East branch is the only non-South one in seeds today.
+    const selectedBranchGroup = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
+    const selectedBranchId = selectedBranchGroup?.branch.includes("East")
+        ? "branch_forma_east"
+        : "branch_forma_south";
+
+    // Slots available on the picked date for the picked branch (single-date path).
+    // Capped at `close - duration` so the auto-derived end-time can't fall
+    // past the branch's closing time.
+    //
+    // When the class is scheduled for TODAY ("does not repeat" path), any slot
+    // whose start time has already passed is dropped — you can't create a
+    // class that begins in the past. Slots on a future date are unaffected.
+    const singleDateSlots = useMemo(() => {
+        if (!selectedDate || !selectedBranchGroup) return [];
+        const slots = buildTimeSlots(getBusinessHours(selectedBranchId, selectedDate), duration);
+        if (selectedDate === todayISO()) {
+            const now = new Date();
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            return slots.filter(s => {
+                const [h, m] = s.split(":").map(Number);
+                return (h * 60 + m) >= nowMinutes;
+            });
+        }
+        return slots;
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration]);
+
+    // Per-weekday slot map for the repeat-weekly path. Each selected weekday
+    // gets its own window since branches can have different hours per day —
+    // and each is capped by the class duration so a class never spills past
+    // close-time on any selected day.
+    const repeatSlotsByDay = useMemo(() => {
+        const map: Record<string, string[]> = {};
+        if (!selectedDate || !selectedBranchGroup) return map;
+        const anchor = new Date(selectedDate + "T00:00:00Z");
+        const anchorDow = anchor.getUTCDay();
+        const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+        for (const [label, dow] of Object.entries(dayMap)) {
+            const delta = (dow - anchorDow + 7) % 7;
+            const d = new Date(anchor);
+            d.setUTCDate(anchor.getUTCDate() + delta);
+            const iso = d.toISOString().slice(0, 10);
+            map[label] = buildTimeSlots(getBusinessHours(selectedBranchId, iso), duration);
+        }
+        return map;
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration]);
+
+    // True when a recurring slot's FIRST occurrence lands on today AND its
+    // start time has already passed the current live time. Drives the
+    // past-time booking warning banner — it only surfaces when the admin has
+    // actually picked such a slot, not as a permanent notice.
+    const hasPastSlotToday = useMemo(() => {
+        if (repeat !== "Repeat weekly" || !selectedDate || selectedDays.length === 0) return false;
+        const today = todayISO();
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const anchor = new Date(selectedDate + "T00:00:00Z");
+        const anchorDow = anchor.getUTCDay();
+        const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+        for (const day of selectedDays) {
+            const dow = dayMap[day];
+            if (dow === undefined) continue;
+            const delta = (dow - anchorDow + 7) % 7;
+            const d = new Date(anchor);
+            d.setUTCDate(anchor.getUTCDate() + delta);
+            if (d.toISOString().slice(0, 10) !== today) continue;
+            for (const s of (daySlots[day] ?? [])) {
+                if (!s.start) continue;
+                const [h, m] = s.start.split(":").map(Number);
+                if (h * 60 + m < nowMinutes) return true;
+            }
+        }
+        return false;
+    }, [repeat, selectedDate, selectedDays, daySlots]);
+
+    // When the date/duration/branch changes the valid slot list reshapes —
+    // any previously-picked start time outside the new window has to be
+    // cleared so the user can't submit a class that runs past close-time.
+    // The Create button gates on `startTime` being set, so clearing here also
+    // disables submission until the user re-picks a legal slot.
+    useEffect(() => {
+        if (!startTime) return;
+        if (singleDateSlots.length === 0) { setStartTime(""); return; }
+        if (!singleDateSlots.includes(startTime)) setStartTime("");
+    }, [singleDateSlots]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Same idea for the repeat-weekly path — drop any slot whose start is no
+    // longer in its weekday's window (or whose weekday is now closed).
+    useEffect(() => {
+        setDaySlots(prev => {
+            let changed = false;
+            const next: typeof prev = {};
+            for (const [day, slots] of Object.entries(prev)) {
+                const avail = repeatSlotsByDay[day];
+                if (avail === undefined) { next[day] = slots; continue; }
+                if (avail.length === 0) {
+                    // Branch is closed that weekday — empty out the row entirely.
+                    if (slots.length > 0) changed = true;
+                    next[day] = [];
+                    continue;
+                }
+                const filtered = slots.map(s => avail.includes(s.start)
+                    ? s
+                    : { start: "", end: "" }
+                );
+                if (filtered.some((s, i) => s.start !== slots[i].start)) changed = true;
+                next[day] = filtered;
+            }
+            return changed ? next : prev;
+        });
+    }, [repeatSlotsByDay]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function handleSelectRoom(roomId: string) {
         setLocationId(roomId);
@@ -860,8 +1097,9 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         }));
     }
     function addSlot(day: string) {
-        const start = "09:00";
-        setDaySlots(ds => ({ ...ds, [day]: [...(ds[day] ?? []), { start, end: calcEndTime(start, duration) }] }));
+        // Add an empty slot — the admin picks the start time themselves
+        // (no auto-selected default that might collide with an existing slot).
+        setDaySlots(ds => ({ ...ds, [day]: [...(ds[day] ?? []), { start: "", end: "" }] }));
     }
     function deleteSlot(day: string, i: number) {
         setDaySlots(ds => ({ ...ds, [day]: ds[day].filter((_, idx) => idx !== i) }));
@@ -876,6 +1114,11 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         // Anchor on the selected start date if provided; otherwise tomorrow
         const base = selectedDate ? new Date(selectedDate) : (() => { const t = new Date(); t.setDate(t.getDate()+1); return t; })();
         base.setHours(0,0,0,0);
+        // A slot whose first occurrence lands on today but already passed the
+        // current time can't run today — it's only scheduled from its next
+        // recurrence onward, so it's dropped from today's preview + creation.
+        const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+        const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
         const dayMap: Record<string, number> = { Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6,Sun:0 };
         let count = 0;
         // Effective date cap:
@@ -901,8 +1144,16 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 if (limit && d > limit) continue;
                 if (d < base) continue;
                 const slots = daySlots[day] ?? [{ start: "09:00", end: calcEndTime("09:00", duration) }];
+                const isToday = d.getTime() === todayMid.getTime();
                 for (const s of slots) {
                     if (count >= hardCap) break;
+                    // Skip slots the admin hasn't picked a time for yet.
+                    if (!s.start) continue;
+                    // Today's occurrence is skipped once its start time passes.
+                    if (isToday) {
+                        const [sh, sm] = s.start.split(":").map(Number);
+                        if (sh * 60 + sm < nowMin) continue;
+                    }
                     out.push({ date: new Date(d), startTime: s.start, endTime: s.end });
                     count++;
                 }
@@ -947,6 +1198,16 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
         const now          = new Date().toISOString();
+        // Spot-grid layout — only persisted when spot selection is enabled.
+        const spotLayout = spotEnabled
+            ? { cols: csCols, rows: csRows, blockedSpots: Array.from(csBlocked) }
+            : undefined;
+        // One shared id ties every instance of a recurring series together so
+        // "edit / duplicate one vs all" can resolve the group later.
+        const recurrenceGroupId = repeat === "Does not repeat"
+            ? undefined
+            : `rec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const typedClassType = classType as "Group" | "Private" | "Semi-private";
 
         if (repeat === "Does not repeat" && selectedDate) {
             const d = new Date(selectedDate);
@@ -964,8 +1225,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 startTime, endTime,
                 displayTime: `${startTime} – ${endTime}`,
                 booked: 0, capacity,
-                equipment, spotSelectionEnabled: spotEnabled, waitlistEnabled: true,
+                classType: typedClassType,
+                equipment, spotSelectionEnabled: spotEnabled, spotLayout, waitlistEnabled: true,
                 rating: 0, ratingCount: 0, status: "Upcoming",
+                genderAccess: genderAccessFromLabel(gender),
                 coverColor: coverCol, coverImage: coverImage || undefined,
             });
         } else {
@@ -988,8 +1251,11 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                     startTime: p.startTime, endTime: p.endTime,
                     displayTime: `${p.startTime} – ${p.endTime}`,
                     booked: 0, capacity,
-                    equipment, spotSelectionEnabled: spotEnabled, waitlistEnabled: true,
+                    classType: typedClassType,
+                    equipment, spotSelectionEnabled: spotEnabled, spotLayout, waitlistEnabled: true,
                     rating: 0, ratingCount: 0, status: "Upcoming",
+                    genderAccess: genderAccessFromLabel(gender),
+                    recurrenceGroupId,
                     coverColor: coverCol, coverImage: coverImage || undefined,
                 });
             }
@@ -1020,6 +1286,30 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         const branchGroup  = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
+
+        // ─── Date / time reschedule block ─────────────────────────────────
+        // Only emitted when canReschedule AND the user actually changed the
+        // date or start time. Mirrors the formatting used by handleCreate so
+        // the same display strings + ISO columns land on the instance.
+        const dateChanged = canReschedule && (
+            (selectedDate && selectedDate !== editing.dateISO) ||
+            (startTime    && startTime    !== editing.startTime)
+        );
+        let datePatch: Partial<typeof editing> = {};
+        if (dateChanged && selectedDate && startTime) {
+            const d = new Date(selectedDate);
+            const days   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            datePatch = {
+                date: `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`,
+                dateISO: selectedDate,
+                dayOfWeek: days[d.getDay()],
+                startTime,
+                endTime,
+                displayTime: `${startTime} – ${endTime}`,
+            };
+        }
+
         updateClassSchedule(editingId, {
             templateId, name, description: desc, category,
             branchId,
@@ -1029,11 +1319,21 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             instructorColor: instName?.color ?? editing.instructorColor,
             roomId: locationId, room: room?.name ?? editing.room,
             capacity,
+            classType: classType as "Group" | "Private" | "Semi-private",
             equipment, spotSelectionEnabled: spotEnabled,
+            spotLayout: spotEnabled
+                ? { cols: csCols, rows: csRows, blockedSpots: Array.from(csBlocked) }
+                : undefined,
+            genderAccess: genderAccessFromLabel(gender),
             coverColor: coverCol,
             coverImage: coverImage || undefined,
+            ...datePatch,
         });
-        showToast("Class updated", `${name} has been updated.`, "success", "check");
+        showToast(
+            dateChanged ? "Class rescheduled" : "Class updated",
+            `${name} has been ${dateChanged ? "rescheduled and saved" : "updated"}.`,
+            "success", "check",
+        );
         router.push(`/schedule/${editingId}`);
     }
 
@@ -1057,6 +1357,28 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         durationMin: duration, capacity, coverColor: coverCol, coverImage,
     };
 
+    // ─── Preview "Date & time" label resolution ────────────────────────────
+    //
+    // Priority order:
+    //   1. Step 3 inputs (selectedDate + startTime) — covers the live preview
+    //      while the user is rescheduling on Step 3 (or creating fresh).
+    //   2. The class being edited — covers Steps 1 & 2 in edit mode, AND the
+    //      whole 2-step locked path where the user never reaches Step 3.
+    //   3. null → preview row falls back to the "Date & time" placeholder.
+    const previewDateTimeLabel = (() => {
+        if (selectedDate && startTime) {
+            const d = new Date(selectedDate + "T00:00:00");
+            const days   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            const dateLabel = `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+            return `${dateLabel} · ${startTime}`;
+        }
+        if (isEditing && editing) {
+            return `${editing.date} · ${editing.displayTime}`;
+        }
+        return undefined;
+    })();
+
     return (
         <div className="h-screen overflow-hidden flex flex-col bg-white relative">
             {/* Header */}
@@ -1075,7 +1397,13 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 {/* Steps sidebar */}
                 <div className="w-[260px] shrink-0 flex flex-col gap-0 pt-2">
                     {(() => {
-                        const items = isEditing ? EDIT_STEPS : STEPS;
+                        // 3-step flow when creating, duplicating, OR editing
+                        // an Upcoming class >24hrs out (reschedule allowed).
+                        // 2-step flow when editing an ongoing/within-24hrs
+                        // class (date/time locked).
+                        const items = isEditing
+                            ? (canReschedule ? STEPS : EDIT_STEPS)
+                            : STEPS;
                         return items.map(s => <StepItem key={s.n} step={s} current={step} total={items.length} />);
                     })()}
                 </div>
@@ -1087,8 +1415,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                         {/* ── Step 1: Class details ── */}
                         {step === 1 && (
                             <>
-                                {/* Edit-only: Date & time read-only summary above the template selector */}
-                                {isEditing && editing && (
+                                {/* Edit-only: Date & time read-only summary above the template selector.
+                                    Hidden when canReschedule — that flow uses Step 3 for an editable
+                                    Date & time block instead. */}
+                                {isEditing && editing && !canReschedule && (
                                     <div className="flex flex-col gap-4">
                                         <p className="text-[18px] font-semibold text-[#101828]">Date &amp; time</p>
                                         <div className="grid grid-cols-2 gap-4">
@@ -1310,24 +1640,58 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                     <div className="flex flex-col gap-4">
                                         <p className="text-[18px] font-semibold text-[#101828]">Date & time</p>
 
-                                        {/* Row 1: Repeat + Date (always side-by-side) */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className={labelCls}>Repeat</label>
-                                                <SimpleSelect label="Select repeat" value={repeat} options={REPEAT_OPTIONS as unknown as string[]} onChange={v => setRepeat(v as typeof repeat)} />
-                                            </div>
+                                        {/* Row 1: Repeat + Date.
+                                            In edit mode the form targets a single class instance, so
+                                            the Repeat selector is hidden and the Date field spans the
+                                            full row — recurring config doesn't apply when rescheduling
+                                            one class. Create + Duplicate flows keep both columns. */}
+                                        {isEditing ? (
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Date</label>
-                                                <DatePicker value={selectedDate} onChange={setSelectedDate} />
+                                                <DatePicker
+                                                    value={selectedDate}
+                                                    onChange={v => {
+                                                        setSelectedDate(v);
+                                                        // Clear the recurring end-date if it now falls before the new start.
+                                                        if (endDate && v && endDate < v) setEndDate("");
+                                                    }}
+                                                    minDate={todayISO()}
+                                                />
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <label className={labelCls}>Repeat</label>
+                                                    <SimpleSelect label="Select repeat" value={repeat} options={REPEAT_OPTIONS as unknown as string[]} onChange={v => setRepeat(v as typeof repeat)} />
+                                                </div>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <label className={labelCls}>Date</label>
+                                                    <DatePicker
+                                                        value={selectedDate}
+                                                        onChange={v => {
+                                                            setSelectedDate(v);
+                                                            if (endDate && v && endDate < v) setEndDate("");
+                                                        }}
+                                                        minDate={todayISO()}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Row 2: Start time + End time (only for "Does not repeat") */}
                                         {repeat === "Does not repeat" && (
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col gap-1.5">
                                                     <label className={labelCls}>Start time</label>
-                                                    <TimeDropdown value={startTime} onChange={setStartTime} unavailable={unavailableTimes} />
+                                                    <TimeDropdown
+                                                        value={startTime} onChange={setStartTime}
+                                                        unavailable={unavailableTimes}
+                                                        slots={singleDateSlots}
+                                                        disabled={!selectedDate}
+                                                        emptyLabel={!selectedDate
+                                                            ? "Pick a date first."
+                                                            : `Branch is closed on ${new Date(selectedDate + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.`}
+                                                    />
                                                 </div>
                                                 <div className="flex flex-col gap-1.5">
                                                     <label className={labelCls}>End time</label>
@@ -1366,7 +1730,14 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                                 {repeatEnd === "End on date" && (
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className={labelCls}>Date</label>
-                                                        <DatePicker value={endDate} onChange={setEndDate} />
+                                                        {/* Must be on or after the Step-3 Date — a recurring
+                                                            series can't end before it begins. Falls back to
+                                                            today when no Step-3 Date is picked yet. */}
+                                                        <DatePicker
+                                                            value={endDate}
+                                                            onChange={setEndDate}
+                                                            minDate={selectedDate || todayISO()}
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
@@ -1412,11 +1783,26 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                     {repeat === "Repeat weekly" && selectedDays.length > 0 && (
                                         <div className="flex flex-col gap-4">
                                             <p className="text-[18px] font-semibold text-[#101828]">General schedule</p>
+
+                                            {/* Past-time booking notice — only surfaces once the admin
+                                                has actually picked a slot whose first occurrence is today
+                                                but starts before the current live time. */}
+                                            {hasPastSlotToday && (
+                                                <div className="flex items-start gap-3 p-4 rounded-[12px] bg-[#fffaeb] border-1 border-[#fedf89]">
+                                                    <AlertCircle className="w-5 h-5 text-[#dc6803] shrink-0 mt-0.5" />
+                                                    <p className="text-[14px] text-[#7a2e0e] leading-[20px]">
+                                                        A time slot you set has already passed today&apos;s time, so that class will be scheduled from its next date instead.
+                                                    </p>
+                                                </div>
+                                            )}
+
                                             <div className="flex flex-col gap-4">
                                                 {WEEK_DAYS.filter(d => selectedDays.includes(d)).map(day => (
                                                     <TimeSlotRow key={day} day={day}
                                                         slots={daySlots[day] ?? [{ start: "09:00", end: calcEndTime("09:00", duration) }]}
+                                                        availableSlots={repeatSlotsByDay[day]}
                                                         unavailable={unavailableTimes}
+                                                        duration={duration}
                                                         onChange={(i, field, val) => updateSlot(day, i, field, val)}
                                                         onAddSlot={() => addSlot(day)}
                                                         onDeleteSlot={(i) => deleteSlot(day, i)} />
@@ -1494,15 +1880,35 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                         ) : <div />}
 
                         {isEditing ? (
-                            step < 2 ? (
-                                <Button variant="primary" size="md" disabled={!canProceedStep1}
-                                    onClick={() => setStep(s => s + 1)}>
-                                    Continue
-                                </Button>
+                            // 3-step reschedule path mirrors the create-flow nav exactly —
+                            // Continue on steps 1 & 2, "Save changes" on step 3 with the
+                            // single-class date/time validity check.
+                            canReschedule ? (
+                                step < 3 ? (
+                                    <Button variant="primary" size="md"
+                                        disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
+                                        onClick={() => setStep(s => s + 1)}>
+                                        Continue
+                                    </Button>
+                                ) : (
+                                    <Button variant="primary" size="md"
+                                        disabled={!selectedDate || !startTime}
+                                        onClick={handleSaveEdit}>
+                                        Save changes
+                                    </Button>
+                                )
                             ) : (
-                                <Button variant="primary" size="md" disabled={!canProceedStep2} onClick={handleSaveEdit}>
-                                    Save changes
-                                </Button>
+                                // 2-step locked path — original behavior.
+                                step < 2 ? (
+                                    <Button variant="primary" size="md" disabled={!canProceedStep1}
+                                        onClick={() => setStep(s => s + 1)}>
+                                        Continue
+                                    </Button>
+                                ) : (
+                                    <Button variant="primary" size="md" disabled={!canProceedStep2} onClick={handleSaveEdit}>
+                                        Save changes
+                                    </Button>
+                                )
                             )
                         ) : (step < 3 ? (
                             <Button variant="primary" size="md" disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
@@ -1517,16 +1923,34 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                     </div>
                 </div>
 
-                {/* Preview card */}
-                <PreviewCard form={formContent} instructor={selectedInstructor} location={selectedRoom ? { name: selectedRoom.name } : null}
-                    templateCapacity={capacity} roomCapacity={selectedRoom?.capacity}
-                    original={isEditing && editing ? {
-                        location: editing.room,
-                        capacity: editing.capacity,
-                        instructorName: editing.instructorName,
-                        instructorColor: editing.instructorColor,
-                    } : undefined}
-                />
+                {/* Preview card.
+                    `effectiveCapacity` mirrors the spot-customization state — it's
+                    `visible spots − blocked` once the admin has customized, otherwise
+                    undefined so the preview falls back to the room cap. The visible
+                    grid is `csCols × csRows` clamped to the room cap (matching the
+                    overlay's own clamp). */}
+                {(() => {
+                    const roomCap = selectedRoom?.capacity;
+                    const visibleSpots = roomCap !== undefined
+                        ? Math.min(csCols * csRows, roomCap)
+                        : csCols * csRows;
+                    const effectiveCapacity = csCustomized
+                        ? Math.max(0, visibleSpots - csBlocked.size)
+                        : undefined;
+                    return (
+                        <PreviewCard form={formContent} instructor={selectedInstructor} location={selectedRoom ? { name: selectedRoom.name } : null}
+                            templateCapacity={capacity} roomCapacity={roomCap}
+                            effectiveCapacity={effectiveCapacity}
+                            original={isEditing && editing ? {
+                                location: editing.room,
+                                capacity: editing.capacity,
+                                instructorName: editing.instructorName,
+                                instructorColor: editing.instructorColor,
+                            } : undefined}
+                            dateTimeLabel={previewDateTimeLabel}
+                        />
+                    );
+                })()}
             </div>
 
             <Toast />
@@ -1650,8 +2074,14 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                                     });
                                                     return next;
                                                 });
+                                                // Stay on the customize-spot overlay after applying — the
+                                                // admin closes it themselves via Cancel or the back arrow.
                                                 setCsSelected(null);
-                                                setShowCustomizeSpot(false);
+                                                showToast(
+                                                    "Spot layout updated",
+                                                    "Your spot layout changes have been applied.",
+                                                    "success", "check",
+                                                );
                                             }}>
                                             Update spot
                                         </Button>

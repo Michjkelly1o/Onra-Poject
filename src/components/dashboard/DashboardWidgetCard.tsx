@@ -326,7 +326,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
     }
 }
 
-// ─── Kebab menu (··· → Remove card) ──────────────────────────────────────────
+// ─── Kebab menu (··· → Remove widget) ────────────────────────────────────────
 
 export function WidgetKebabMenu({ onRemove }: { onRemove: () => void }) {
     const [open, setOpen] = useState(false);
@@ -357,7 +357,7 @@ export function WidgetKebabMenu({ onRemove }: { onRemove: () => void }) {
                         className="flex items-center gap-2 w-full px-4 py-2.5 text-[14px] font-medium text-[#d92c20] hover:bg-[#fef2f1] transition-colors"
                     >
                         <Trash01 className="w-4 h-4 shrink-0" />
-                        Remove card
+                        Remove widget
                     </button>
                 </div>
             )}

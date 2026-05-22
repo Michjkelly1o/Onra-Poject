@@ -44,6 +44,8 @@ These rules apply to every module built — follow consistently so the prototype
 
 6. **Actions must actually work and propagate** — every action (button click, form submit, filter, sort, search) must update real state and reflect in related modules. No stub handlers, no `console.log` placeholders. Mutations go through the Zustand store so dependent views (dashboard, class detail, customer profile, schedule list, etc.) all update in the same render cycle.
 
+7. **Bordered "view card" containers MUST have an explicit min-height (or fixed height) — NEVER hug content.** Every rounded white container with a border that frames a list/grid/table (e.g. the schedule list view card, POS catalog card, class-types tabs card, member tabs card) must be sized so it stays the same height whether the inner data is sparse or full. The default is `min-h-[760px]` to match the schedule list view card; use `h-[760px]` (fixed) when the page co-locates a sibling panel that needs to align (e.g. POS cart). When in doubt: **fill, never hug.** A container that resizes with content makes the page jump every time the user filters/searches and looks broken in design review. This rule applies to: tab cards on detail pages (`/class-types/[id]`, `/customers/[id]`, etc.), schedule/POS view cards, and any future module's primary surface. Sticky side panels (POS cart) must match the same fixed height so left and right edges stay aligned.
+
 ---
 
 ## Tech Stack

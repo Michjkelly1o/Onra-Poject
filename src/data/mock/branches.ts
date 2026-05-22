@@ -13,21 +13,21 @@ import type { Branch } from "./_types";
 export const branches: Branch[] = [
     {
         id: "branch_forma_south",
-        name: "Forma Studio South",
+        name: "Forma Studio (South)",
         status: "active",
         is_main: true,
         address: "12 Marina Walk, Dubai Marina, Dubai",
     },
     {
         id: "branch_forma_east",
-        name: "Forma Studio East",
+        name: "Forma Studio (East)",
         status: "active",
         is_main: false,
         address: "8 Festival Boulevard, Dubai Festival City, Dubai",
     },
     {
         id: "branch_forma_west",
-        name: "Forma Studio West",
+        name: "Forma Studio (West)",
         status: "inactive",
         is_main: false,
         address: "32 The Greens Avenue, Emirates Living, Dubai",

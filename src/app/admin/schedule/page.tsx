@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
-import { TableAvatar } from "@/components/ui/avatar";
 import { Toast } from "@/components/ui/Toast";
-import { useAppStore, type ClassInstance, type ClassStatus, type ScheduleInstructor, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { useAppStore, getBusinessHours, getUnionBusinessHours, hourFloatFromTime, BRANCHES, ROOMS, DEFAULT_BRANCH_ID, type ClassInstance, type ClassStatus, type ScheduleInstructor, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 
 // Alias for compatibility with existing code in this file
@@ -54,10 +54,16 @@ function isoToMonday(iso: string): string {
 const TODAY_MONDAY_ISO = isoToMonday(TODAY_ISO);
 const TODAY_MONTH_YEAR = TODAY_ISO.slice(0, 7);
 const DAY_VIEW_DATE = TODAY_ISO;
-const GRID_START_HOUR = 7;  // 7 AM
-const GRID_END_HOUR = 21; // 9 PM
+// Fallback bounds — actual range is derived from business_hours per
+// view+branch, but if a branch has no hours seeded we fall back to these.
+const FALLBACK_START_HOUR = 7;  // 7 AM
+const FALLBACK_END_HOUR = 21;   // 9 PM
 const HOUR_HEIGHT = 80; // px per hour — day view
 const WEEK_HOUR_HEIGHT = 88; // px per hour — week view (user specified 88px blocks)
+
+// The toolbar's `location` state stores a branch_id directly now (matches
+// the POS module pattern). Older code paths that needed the mapping were
+// migrated to use the value as-is.
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -139,14 +145,14 @@ function timeToMinutes(t: string): number {
     return h * 60 + m;
 }
 
-function topFromTime(startTime: string): number {
-    const mins = timeToMinutes(startTime) - GRID_START_HOUR * 60;
-    return Math.max(0, (mins * HOUR_HEIGHT) / 60);
+function topFromTime(startTime: string, gridStartHour: number, hourHeight: number = HOUR_HEIGHT): number {
+    const mins = timeToMinutes(startTime) - gridStartHour * 60;
+    return Math.max(0, (mins * hourHeight) / 60);
 }
 
-function heightFromTime(startTime: string, endTime: string): number {
+function heightFromTime(startTime: string, endTime: string, hourHeight: number = HOUR_HEIGHT): number {
     const mins = timeToMinutes(endTime) - timeToMinutes(startTime);
-    return Math.max(30, (mins * HOUR_HEIGHT) / 60);
+    return Math.max(30, (mins * hourHeight) / 60);
 }
 
 // ─── Shared: star rating ──────────────────────────────────────────────────────
@@ -208,46 +214,23 @@ function InstructorAvatar({ initials, color, size = 28 }: { initials: string; co
     );
 }
 
-// ─── Shared: fixed dropdown ───────────────────────────────────────────────────
-
-function FixedDropdown({ triggerRef, open, onClose, children }: {
-    triggerRef: React.RefObject<HTMLButtonElement>; open: boolean; onClose: () => void; children: React.ReactNode;
+function RowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
+    id: string;
+    status: ClassStatus;
+    onCancel: (id: string) => void;
+    /** Always present — Duplicate is available on every class state. */
+    onDuplicate: (id: string) => void;
+    /** Only invoked on Upcoming / Ongoing rows; the parent still passes
+     *  the handler unconditionally to keep the call-site simple. */
+    onAddCustomer: (id: string) => void;
 }) {
-    const [pos, setPos] = useState({ top: 0, right: 0 });
-    const dropRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (open && triggerRef.current) {
-            const r = triggerRef.current.getBoundingClientRect();
-            setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
-        }
-    }, [open, triggerRef]);
-
-    useEffect(() => {
-        function h(e: MouseEvent) {
-            if (dropRef.current && !dropRef.current.contains(e.target as Node) &&
-                triggerRef.current && !triggerRef.current.contains(e.target as Node)) onClose();
-        }
-        if (open) document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, [open, onClose, triggerRef]);
-
-    if (!open) return null;
-    return (
-        <div ref={dropRef} style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
-            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 min-w-[180px]">
-            {children}
-        </div>
-    );
-}
-
-function RowActions({ id, status, onCancel }: { id: string; status: ClassStatus; onCancel: (id: string) => void }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
     const isEditable = status === "Upcoming" || status === "Ongoing";
 
     function go(path: string) { setOpen(false); router.push(path); }
+    function trigger(fn: () => void) { setOpen(false); fn(); }
 
     return (
         <div className="relative">
@@ -255,22 +238,41 @@ function RowActions({ id, status, onCancel }: { id: string; status: ClassStatus;
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
                 <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                {isEditable ? (
-                    <>
-                        <button type="button" onClick={() => go(`/schedule/${id}`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Eye className="w-4 h-4 text-[#667085]" />View details
-                        </button>
-                        <button type="button" onClick={() => go(`/schedule/${id}/edit`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Edit02 className="w-4 h-4 text-[#667085]" />Edit class
-                        </button>
-                        <button type="button" onClick={() => { setOpen(false); onCancel(id); }} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Cancel class
-                        </button>
-                    </>
-                ) : (
-                    <button type="button" onClick={() => go(`/schedule/${id}`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Eye className="w-4 h-4 text-[#667085]" />View class details
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
+                <button type="button" onClick={() => go(`/schedule/${id}`)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                    <Eye className="w-4 h-4 text-[#667085]" />View details
+                </button>
+
+                {/* Add customer — Upcoming / Ongoing only (you can't book
+                    a slot in a class that has already wrapped or been
+                    cancelled). */}
+                {isEditable && (
+                    <button type="button" onClick={() => trigger(() => onAddCustomer(id))}
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        <UserPlus01 className="w-4 h-4 text-[#667085]" />Add customer
+                    </button>
+                )}
+
+                {/* Edit class — same Upcoming / Ongoing gate as today. */}
+                {isEditable && (
+                    <button type="button" onClick={() => go(`/schedule/${id}/edit`)}
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit class
+                    </button>
+                )}
+
+                {/* Duplicate — available on EVERY state. Routes through the
+                    same /schedule/new?duplicateFrom= flow the popup uses. */}
+                <button type="button" onClick={() => trigger(() => onDuplicate(id))}
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                    <Copy01 className="w-4 h-4 text-[#667085]" />Duplicate
+                </button>
+
+                {/* Cancel class — destructive, Upcoming / Ongoing only. */}
+                {isEditable && (
+                    <button type="button" onClick={() => trigger(() => onCancel(id))}
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
+                        <Trash01 className="w-4 h-4 text-[#b42318]" />Cancel class
                     </button>
                 )}
             </FixedDropdown>
@@ -362,10 +364,13 @@ const EMPTY_FILTER: FilterState = {
 };
 const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Completed", "Cancelled"];
 
-const LOCATION_GROUPS = [
-    { branch: "Forma Studio (South)", rooms: ["Reformer Studio", "Mat Studio", "Barre Studio", "Studio A", "Studio B"] },
-    { branch: "Forma Studio (East)", rooms: ["Yoga Studio", "HIT Studio"] },
-];
+// Branch → room-name groups for the location filter, derived from the live
+// `branches` + `rooms` seeds so the filter always matches the room names the
+// schedule rows actually carry.
+const LOCATION_GROUPS = BRANCHES.map(b => ({
+    branch: b.name,
+    rooms: ROOMS.filter(r => r.branch_id === b.id).map(r => r.name),
+})).filter(g => g.rooms.length > 0);
 
 function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
     return (
@@ -551,11 +556,17 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel }
                         <SectionLabel label="Custom date range" />
                         <div className="flex items-center gap-2">
                             <DatePicker className="flex-1" value={pending.dateFrom}
-                                onChange={v => setPending(p => ({ ...p, dateFrom: v }))}
+                                onChange={v => setPending(p => {
+                                    // Clear the end date if it now falls before the new start.
+                                    const next = { ...p, dateFrom: v };
+                                    if (p.dateTo && v && p.dateTo < v) next.dateTo = "";
+                                    return next;
+                                })}
                                 placeholder="Start date" />
                             <DatePicker className="flex-1" value={pending.dateTo}
                                 onChange={v => setPending(p => ({ ...p, dateTo: v }))}
-                                placeholder="End date" />
+                                placeholder="End date"
+                                minDate={pending.dateFrom || undefined} />
                         </div>
                     </div>
                     <Divider />
@@ -630,12 +641,14 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── List view ────────────────────────────────────────────────────────────────
 
-function ListView({ classes, sortKey, sortDir, onSort, onCancel }: {
+function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, onAddCustomer }: {
     classes: ClassInstance[];
     sortKey: string | null;
     sortDir: SortDir;
     onSort: (key: string) => void;
     onCancel: (id: string) => void;
+    onDuplicate: (id: string) => void;
+    onAddCustomer: (id: string) => void;
 }) {
     if (classes.length === 0) {
         return <div className="relative flex-1" style={{ minHeight: 300 }}><EmptyState title="No classes found" subtitle="Try adjusting your search or filters." /></div>;
@@ -676,7 +689,19 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel }: {
                             </td>
                             <td className={TD}>
                                 <div className="flex items-center gap-3">
-                                    <TableAvatar initials={c.name.split(" ").map(w => w[0]).join("").slice(0, 2)} size={36} />
+                                    {/* Template cover thumbnail — fully rounded to match every
+                                        other in-table avatar. Falls back to initials over the
+                                        category-tinted circle when the template has no image. */}
+                                    <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-1 border-[#e4e7ec] flex items-center justify-center"
+                                        style={{ backgroundColor: c.coverColor }}>
+                                        {c.coverImage ? (
+                                            <img src={c.coverImage} alt={c.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-[12px] font-semibold" style={{ color: getCategoryColor(c.category).text }}>
+                                                {c.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div>
                                         <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
                                         <div className="text-[13px] text-[#667085]">with {c.instructorName}</div>
@@ -687,7 +712,7 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel }: {
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}><StarRating rating={c.rating} count={c.ratingCount} /></td>
                             <td className={TD}><StatusBadge status={c.status} /></td>
-                            <td className={TD}><RowActions id={c.id} status={c.status} onCancel={onCancel} /></td>
+                            <td className={TD}><RowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
                         </tr>
                     ))}
                 </tbody>
@@ -698,12 +723,13 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel }: {
 
 // ─── Day view ─────────────────────────────────────────────────────────────────
 
-function ClassBlock({ cls, onClick }: {
+function ClassBlock({ cls, onClick, gridStartHour }: {
     cls: ClassInstance;
     onClick?: (e: React.MouseEvent) => void;
+    gridStartHour: number;
 }) {
     const colors = getCategoryColor(cls.category);
-    const top = topFromTime(cls.startTime);
+    const top = topFromTime(cls.startTime, gridStartHour);
     const height = heightFromTime(cls.startTime, cls.endTime);
 
     return (
@@ -729,24 +755,33 @@ function ClassBlock({ cls, onClick }: {
     );
 }
 
-function DayView({ date, classes, onClassClick }: {
-    date: string;
+function DayView({ dateISO, classes, branchId, onClassClick }: {
+    /** ISO date the view is anchored to ("2026-05-15"). Filter is dateISO-based
+     *  so newly-created schedules surface regardless of display-string format. */
+    dateISO: string;
     classes: ClassInstance[];
+    /** Branch the view is scoped to — drives the grid's hour range. */
+    branchId: string;
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
-    const dayClasses = classes.filter(c => c.date === date);
+    const dayClasses = classes.filter(c => c.dateISO === dateISO);
     const instructorIds = Array.from(new Set(dayClasses.map(c => c.instructorId)));
     const allInstructors = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
     const missingInstructors = INSTRUCTORS.filter(i => !instructorIds.includes(i.id)).slice(0, Math.max(0, 4 - allInstructors.length));
     const columns = [...allInstructors, ...missingInstructors];
 
-    const hours = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => GRID_START_HOUR + i);
+    // Grid hour range = the branch's open hours for this weekday, rounded out
+    // to whole-hour bounds. Falls back to 7am–9pm if the branch is closed.
+    const businessHours = getBusinessHours(branchId, dateISO);
+    const gridStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open)) : FALLBACK_START_HOUR;
+    const gridEndHour   = businessHours ? Math.ceil(hourFloatFromTime(businessHours.close)) : FALLBACK_END_HOUR;
+    const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * HOUR_HEIGHT;
 
     const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes() - GRID_START_HOUR * 60;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes() - gridStartHour * 60;
     const currentTop = (currentMinutes * HOUR_HEIGHT) / 60;
-    const showCurrentTime = currentMinutes > 0 && currentMinutes < (GRID_END_HOUR - GRID_START_HOUR) * 60;
+    const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
     return (
         <div className="flex flex-col overflow-hidden flex-1">
@@ -792,7 +827,7 @@ function DayView({ date, classes, onClassClick }: {
 
                         {/* Lunch break */}
                         <div className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
-                            style={{ top: topFromTime("12:00"), height: HOUR_HEIGHT }}>
+                            style={{ top: topFromTime("12:00", gridStartHour), height: HOUR_HEIGHT }}>
                             <div className="absolute inset-0 opacity-50"
                                 style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
                             <div className="relative z-10 text-center">
@@ -815,7 +850,7 @@ function DayView({ date, classes, onClassClick }: {
                                 return (
                                     <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
                                         {instrClasses.map(cls => (
-                                            <ClassBlock key={cls.id} cls={cls} onClick={(e) => onClassClick(cls, e)} />
+                                            <ClassBlock key={cls.id} cls={cls} gridStartHour={gridStartHour} onClick={(e) => onClassClick(cls, e)} />
                                         ))}
                                     </div>
                                 );
@@ -831,9 +866,9 @@ function DayView({ date, classes, onClassClick }: {
 // ─── Week view ────────────────────────────────────────────────────────────────
 
 // Week view — time-grid layout matching the day view approach (7 day columns)
-function weekTopFromTime(t: string): number {
+function weekTopFromTime(t: string, gridStartHour: number): number {
     const [h, m] = t.split(":").map(Number);
-    const mins = h * 60 + m - GRID_START_HOUR * 60;
+    const mins = h * 60 + m - gridStartHour * 60;
     return Math.max(0, (mins * WEEK_HOUR_HEIGHT) / 60);
 }
 function weekHeightFromTime(s: string, e: string): number {
@@ -842,19 +877,36 @@ function weekHeightFromTime(s: string, e: string): number {
     return Math.max(WEEK_HOUR_HEIGHT, ((eh * 60 + em) - (sh * 60 + sm)) * WEEK_HOUR_HEIGHT / 60);
 }
 
-function WeekView({ classes, weekStart, onClassClick }: {
+function WeekView({ classes, weekStart, branchId, onClassClick }: {
     classes: ClassInstance[];
     weekStart: string;
+    /** Branch the view is scoped to — drives the grid's hour range. */
+    branchId: string;
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
     const cols = buildWeekCols(weekStart);
-    const hours = Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => GRID_START_HOUR + i);
+
+    // Grid range = widest envelope of the branch's open hours across the 7
+    // visible days (some weekdays may open earlier/close later than others).
+    const weekHours = getUnionBusinessHours([branchId], weekStart);
+    // Walk the whole week, taking the earliest open + latest close across days.
+    let openMin: string | null = null;
+    let closeMax: string | null = null;
+    for (const c of cols) {
+        const h = getBusinessHours(branchId, c.iso);
+        if (!h) continue;
+        if (openMin === null  || h.open  < openMin)  openMin  = h.open;
+        if (closeMax === null || h.close > closeMax) closeMax = h.close;
+    }
+    const gridStartHour = openMin  ? Math.floor(hourFloatFromTime(openMin))  : (weekHours ? Math.floor(hourFloatFromTime(weekHours.open))  : FALLBACK_START_HOUR);
+    const gridEndHour   = closeMax ? Math.ceil(hourFloatFromTime(closeMax))  : (weekHours ? Math.ceil(hourFloatFromTime(weekHours.close)) : FALLBACK_END_HOUR);
+    const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 
     const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes() - GRID_START_HOUR * 60;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes() - gridStartHour * 60;
     const currentTop = (currentMinutes * WEEK_HOUR_HEIGHT) / 60;
-    const showCurrentTime = currentMinutes > 0 && currentMinutes < (GRID_END_HOUR - GRID_START_HOUR) * 60;
+    const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
     return (
         <div className="flex flex-col overflow-hidden flex-1">
@@ -894,7 +946,7 @@ function WeekView({ classes, weekStart, onClassClick }: {
 
                         {/* Lunch break */}
                         <div className="absolute left-0 right-0 pointer-events-none"
-                            style={{ top: weekTopFromTime("12:00"), height: WEEK_HOUR_HEIGHT }}>
+                            style={{ top: weekTopFromTime("12:00", gridStartHour), height: WEEK_HOUR_HEIGHT }}>
                             <div className="absolute inset-0 opacity-40"
                                 style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
                         </div>
@@ -915,7 +967,7 @@ function WeekView({ classes, weekStart, onClassClick }: {
                                     <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
                                         style={{ minHeight: gridHeight }}>
                                         {dayClasses.map(cls => {
-                                            const top = weekTopFromTime(cls.startTime);
+                                            const top = weekTopFromTime(cls.startTime, gridStartHour);
                                             const height = weekHeightFromTime(cls.startTime, cls.endTime);
                                             const colors = getCategoryColor(cls.category);
                                             return (
@@ -1090,18 +1142,23 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
 
             {/* Content */}
             <div className="px-5 pb-2 flex flex-col gap-4">
-                {/* Cover + name + description */}
+                {/* Cover + name + description.
+                    Status badge anchors top-right of this section so it
+                    aligns visually with the cover-image tile on the left. */}
                 <div className="flex flex-col gap-3">
-                    {/* Cover image / color tile */}
-                    <div className="w-[72px] h-[72px] rounded-[10px] border-1 border-[#e4e7ec] overflow-hidden shrink-0 flex items-center justify-center"
-                        style={{ backgroundColor: cls.coverColor }}>
-                        {cls.coverImage ? (
-                            <img src={cls.coverImage} alt={cls.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-[20px] font-bold" style={{ color: getCategoryColor(cls.category).text }}>
-                                {cls.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
-                            </span>
-                        )}
+                    <div className="flex items-start justify-between gap-3">
+                        {/* Cover image / color tile */}
+                        <div className="w-[72px] h-[72px] rounded-[10px] border-1 border-[#e4e7ec] overflow-hidden shrink-0 flex items-center justify-center"
+                            style={{ backgroundColor: cls.coverColor }}>
+                            {cls.coverImage ? (
+                                <img src={cls.coverImage} alt={cls.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-[20px] font-bold" style={{ color: getCategoryColor(cls.category).text }}>
+                                    {cls.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                </span>
+                            )}
+                        </div>
+                        <StatusBadge status={cls.status} />
                     </div>
                     <div>
                         <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{cls.name}</p>
@@ -1245,7 +1302,7 @@ export default function SchedulePage() {
     const [monthYear, setMonthYear] = useState(TODAY_MONTH_YEAR);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [location, setLocation] = useState("forma");
+    const [location, setLocation] = useState(DEFAULT_BRANCH_ID);
     const [popup, setPopup] = useState<{ cls: ClassInstance; anchor: { x: number; y: number } } | null>(null);
     const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
@@ -1319,12 +1376,15 @@ export default function SchedulePage() {
     const { sorted: sortedClasses, sortKey: listSortKey, sortDir: listSortDir, toggle: toggleListSort } =
         useSort(filteredClasses, listComparators);
 
-    // Branch labels must match LOCATION_GROUPS so the filter panel's Location dropdown
-    // can scope rooms to whichever branch is active in the toolbar.
-    const locationOptions = [
-        { value: "forma", label: "Forma Studio (South)" },
-        { value: "east", label: "Forma Studio (East)" },
-    ];
+    // Sourced from the centralized `branches` seed — same options/order
+    // appear in the dashboard and POS branch pickers (single source of truth).
+    // Inactive branches are hidden. Each option carries a MarkerPin01 glyph
+    // so the dropdown items visually echo the trigger icon.
+    const locationOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
+        value: b.id,
+        label: b.name,
+        icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+    }));
 
     const TAB_ITEMS: { id: ViewTab; label: string }[] = [
         { id: "list", label: "List" },
@@ -1447,7 +1507,13 @@ export default function SchedulePage() {
                                     <EmptyState title="No classes scheduled" subtitle="Add a class to get started." />
                                 ) : (
                                     <div className="px-6">
-                                        <ListView classes={paginatedClasses} sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort} onCancel={id => setCancelTargetId(id)} />
+                                        <ListView
+                                            classes={paginatedClasses}
+                                            sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort}
+                                            onCancel={id => setCancelTargetId(id)}
+                                            onDuplicate={handleDuplicateClass}
+                                            onAddCustomer={id => router.push(`/schedule/${id}?openAddCustomer=1`)}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -1462,11 +1528,11 @@ export default function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView date={isoToDisplay(dayDateISO)} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <DayView dateISO={dayDateISO} branchId={location} classes={filteredClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "week" && (
-                    <WeekView weekStart={weekStart} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <WeekView weekStart={weekStart} branchId={location} classes={filteredClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "month" && (

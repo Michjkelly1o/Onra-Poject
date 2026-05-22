@@ -6,14 +6,14 @@ import { XClose, Check, ChevronDown, SearchMd } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { DatePicker } from "@/components/ui/DatePicker";
+import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { useAppStore } from "@/lib/store";
 import { SelectInput } from "@/components/ui/select-input";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STEPS = [{ n: 1, label: "Customer details" }];
-const GENDER_OPTIONS = ["Female", "Male", "Non-binary", "Prefer not to say"];
+const GENDER_OPTIONS = ["Male", "Female"];
 const COUNTRY_OPTIONS = ["United Arab Emirates", "Saudi Arabia", "Qatar", "Kuwait", "Oman", "Bahrain"];
 const STATE_OPTIONS = ["Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"];
 const CITY_OPTIONS = ["Dubai", "Abu Dhabi", "Sharjah", "Al Ain", "Ajman", "Ras Al Khaimah"];
@@ -252,7 +252,8 @@ function NewCustomerInner() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Date of birth">
-                                    <DatePicker value={dob} onChange={setDob} placeholder="DD/MM/YYYY" />
+                                    {/* DOB is always in the past — cap at today so future dates aren't selectable. */}
+                                    <DatePicker value={dob} onChange={setDob} placeholder="DD/MM/YYYY" maxDate={todayISO()} />
                                 </Field>
                                 <Field label="Gender">
                                     <SelectInput value={gender} onChange={setGender} placeholder="Select gender"

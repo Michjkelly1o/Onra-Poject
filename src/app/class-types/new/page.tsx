@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore, CLASS_CATEGORIES, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES } from "@/lib/store";
+import { useAppStore, CLASS_CATEGORIES, type Membership, type Package } from "@/lib/store";
 import {
     XClose, UploadCloud02, Grid01, User01,
     ClockFastForward, Users01,
@@ -19,14 +19,20 @@ type TemplateStatus = "Active" | "Archived" | "Inactive";
 type LocationType   = "Group" | "Private" | "Semi-private";
 
 const CLASS_TYPES: LocationType[] = ["Group", "Private", "Semi-private"];
-const CATEGORIES = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
+// Sourced from the live `class_categories` seed so the dropdown always
+// matches real categories (and resolves to a valid `categoryId` on create).
+const CATEGORIES = CLASS_CATEGORIES.map(c => c.name);
 
-// Membership items for step 2 — sourced from the centralized `memberships` +
-// `packages` seeds so the picker is always in sync with the studio catalog.
-const MEMBERSHIP_ITEMS = [
-    ...SEED_MEMBERSHIPS.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const, enabled: m.status === "active" })),
-    ...SEED_PACKAGES   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const, enabled: p.status === "active" })),
-];
+// Membership items for step 2 — built from LIVE store state so the picker
+// reflects products the admin has just added / deactivated / archived in
+// the Memberships & Packages module.
+type MembershipItem = { id: string; label: string; group: "Membership" | "Class package"; enabled: boolean };
+function buildMembershipItems(memberships: Membership[], packages: Package[]): MembershipItem[] {
+    return [
+        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const, enabled: m.status === "active" })),
+        ...packages   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const, enabled: p.status === "active" })),
+    ];
+}
 
 type MembershipFilterValue = "enabled" | "disabled" | null;
 
@@ -414,12 +420,14 @@ function BasicInformationStep({
 const GROUPS = ["Membership", "Class package"] as const;
 
 function ApplicableMembershipsStep({
+    items,
     selected,
     onToggle,
     onSelectAll,
     onBack,
     onCreate,
 }: {
+    items: MembershipItem[];
     selected: string[];
     onToggle: (id: string) => void;
     onSelectAll: () => void;
@@ -429,7 +437,7 @@ function ApplicableMembershipsStep({
     const [expanded, setExpanded] = useState(true);
     const [membershipFilter, setMembershipFilter] = useState<MembershipFilterValue>(null);
 
-    const visibleItems = MEMBERSHIP_ITEMS.filter(m => {
+    const visibleItems = items.filter(m => {
         if (membershipFilter === null) return true;
         if (membershipFilter === "enabled") return m.enabled;
         return !m.enabled;
@@ -533,6 +541,11 @@ export default function NewClassTemplatePage() {
     });
 
     const [selectedMemberships, setSelectedMemberships] = useState<string[]>([]);
+    // Live store-derived items so newly-created memberships/packages in the
+    // Memberships & Packages module appear in the picker without a refresh.
+    const allMemberships = useAppStore(s => s.memberships);
+    const allPackages = useAppStore(s => s.packages);
+    const membershipItems = buildMembershipItems(allMemberships, allPackages);
 
     function handleToggle(id: string) {
         setSelectedMemberships(prev =>
@@ -541,7 +554,7 @@ export default function NewClassTemplatePage() {
     }
 
     function handleSelectAll() {
-        const allIds = MEMBERSHIP_ITEMS.map(m => m.id);
+        const allIds = membershipItems.map(m => m.id);
         const allSelected = allIds.every(id => selectedMemberships.includes(id));
         setSelectedMemberships(allSelected ? [] : allIds);
     }
@@ -550,8 +563,8 @@ export default function NewClassTemplatePage() {
 
     function handleCreate() {
         const cat = CLASS_CATEGORIES.find(c => c.name === step1.category);
-        const membershipIds = selectedMemberships.filter(x => SEED_MEMBERSHIPS.some(m => m.id === x));
-        const packageIds    = selectedMemberships.filter(x => SEED_PACKAGES   .some(p => p.id === x));
+        const membershipIds = selectedMemberships.filter(x => allMemberships.some(m => m.id === x));
+        const packageIds    = selectedMemberships.filter(x => allPackages.some(p => p.id === x));
         addClassTemplate({
             name: step1.name,
             description: step1.description,
@@ -620,6 +633,7 @@ export default function NewClassTemplatePage() {
                             />
                         ) : (
                             <ApplicableMembershipsStep
+                                items={membershipItems}
                                 selected={selectedMemberships}
                                 onToggle={handleToggle}
                                 onSelectAll={handleSelectAll}

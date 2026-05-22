@@ -12,6 +12,13 @@ function toISO(d: Date): string {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
+/** Local-today as "YYYY-MM-DD". Exported so callers can constrain a
+ *  DatePicker to today-or-future via `minDate={todayISO()}` without
+ *  re-implementing the same conversion at every call-site. */
+export function todayISO(): string {
+    return toISO(new Date());
+}
+
 function parseISO(s: string): Date {
     const [y,m,d] = s.split("-").map(Number);
     return new Date(y, m-1, d);
@@ -39,15 +46,33 @@ function buildCells(year: number, month: number): { date: Date; cur: boolean }[]
     return cells;
 }
 
-export function DatePicker({ value, onChange, placeholder = "Select date", className, disabled = false }: {
+export function DatePicker({ value, onChange, placeholder = "Select date", className, disabled = false, minDate, maxDate }: {
     value: string;
     onChange: (iso: string) => void;
     placeholder?: string;
     className?: string;
     disabled?: boolean;
+    /** Inclusive earliest selectable date (ISO "YYYY-MM-DD"). Cells before
+     *  this date render disabled + faded. The Today button is also disabled
+     *  when today is before this date. */
+    minDate?: string;
+    /** Inclusive latest selectable date (ISO "YYYY-MM-DD"). Same treatment
+     *  as `minDate` on the upper end. */
+    maxDate?: string;
 }) {
     const today = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
-    const init = value ? parseISO(value) : today;
+    const minMs = minDate ? parseISO(minDate).getTime() : -Infinity;
+    const maxMs = maxDate ? parseISO(maxDate).getTime() :  Infinity;
+    const todayMs = today.getTime();
+    const isTodayInRange = todayMs >= minMs && todayMs <= maxMs;
+    // Open the picker at the most useful month — value's month if a value is
+    // set, otherwise today (or minDate's month when today is below it).
+    const init = (() => {
+        if (value) return parseISO(value);
+        if (todayMs < minMs && minDate) return parseISO(minDate);
+        if (todayMs > maxMs && maxDate) return parseISO(maxDate);
+        return today;
+    })();
     const [open, setOpen] = useState(false);
     const [viewYear, setViewYear] = useState(init.getFullYear());
     const [viewMonth, setViewMonth] = useState(init.getMonth());
@@ -79,9 +104,16 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
         else setViewMonth(m => m+1);
     }
 
-    function handleSelect(d: Date) { setPending(toISO(d)); }
+    function handleSelect(d: Date) {
+        // Defensive — the cell button is already disabled when out of range,
+        // but guard the path in case keyboard / programmatic clicks reach here.
+        const ms = d.getTime();
+        if (ms < minMs || ms > maxMs) return;
+        setPending(toISO(d));
+    }
 
     function handleToday() {
+        if (!isTodayInRange) return;
         const iso = toISO(today);
         setPending(iso);
         setViewYear(today.getFullYear());
@@ -144,8 +176,13 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                     {pending ? formatDisplay(pending) : ""}
                                 </span>
                             </div>
-                            <button type="button" onClick={handleToday}
-                                className="h-9 px-4 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] shrink-0 transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
+                            <button type="button" onClick={handleToday} disabled={!isTodayInRange}
+                                className={cn(
+                                    "h-9 px-4 border-1 rounded-[8px] text-[14px] font-semibold shrink-0 transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
+                                    isTodayInRange
+                                        ? "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]"
+                                        : "border-[#e4e7ec] text-[#98a2b3] bg-white cursor-not-allowed",
+                                )}>
                                 Today
                             </button>
                         </div>
@@ -166,12 +203,26 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                     {cells.slice(week*7, week*7+7).map((cell, i) => {
                                         const isSel = pendingDate && cell.date.getTime() === pendingDate.getTime();
                                         const isTdy = cell.date.getTime() === today.getTime();
+                                        // Out-of-range cells render disabled with a muted label — no hover,
+                                        // no selection. Selected colour wins over the disabled treatment
+                                        // so an already-stored value still visibly highlights even if it
+                                        // somehow falls outside (e.g. when minDate widens after the fact).
+                                        const cellMs = cell.date.getTime();
+                                        const outOfRange = cellMs < minMs || cellMs > maxMs;
                                         return (
-                                            <button key={i} type="button" onClick={() => handleSelect(cell.date)}
-                                                className={cn("relative w-[36px] h-[36px] flex items-center justify-center rounded-full transition-colors",
-                                                    isSel ? "bg-[#658774]" : isTdy ? "bg-[#f5fffa]" : "hover:bg-[#f9fafb]")}>
+                                            <button key={i} type="button"
+                                                disabled={outOfRange}
+                                                onClick={() => handleSelect(cell.date)}
+                                                className={cn(
+                                                    "relative w-[36px] h-[36px] flex items-center justify-center rounded-full transition-colors",
+                                                    isSel ? "bg-[#658774]"
+                                                        : outOfRange ? "cursor-not-allowed"
+                                                        : isTdy ? "bg-[#f5fffa]"
+                                                        : "hover:bg-[#f9fafb]",
+                                                )}>
                                                 <span className={cn("text-[14px] text-center w-[24px]",
                                                     isSel ? "font-medium text-white"
+                                                    : outOfRange ? "text-[#d0d5dd] font-normal"
                                                     : !cell.cur ? "text-[#98a2b3] font-normal"
                                                     : isTdy ? "font-medium text-[#658774]"
                                                     : "text-[#344054] font-normal")}>

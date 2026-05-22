@@ -1,300 +1,449 @@
 "use client";
 
-import { useState } from "react";
-import { useDataStore } from "@/lib/data-store";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Megaphone,
-    Ticket,
-    Plus,
-    Calendar,
-    Users,
-    Mail,
-    MessageSquare,
-    TrendingUp,
-    MousePointer,
-    Eye,
-    UserCheck,
-    AlertTriangle,
-    Star,
-    Clock
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Marketing module list view (/admin/marketing)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Figma: 5885:176274 (list view) + 5885:174980 (filter content).
+//
+// Structurally a sibling of the Promo list (/admin/products/promo-codes) — a
+// 3-column grid of banner cards. Each marketing card paints a cover image (or
+// gradient fallback) with a type badge + status badge, then the title /
+// description / attribute row (action · branches) and the valid-until row.
+//
+// State source of truth: useAppStore(s => s.marketingItems). The toolbar
+// carries a branch picker, search, a side-panel filter (Status + Marketing
+// date range), and the "Add marketing" button (creation flow ships next step).
 
-// Pre-built member segments
-const memberSegments = [
-    { id: "seg-1", name: "New Members (< 30 days)", icon: UserCheck, color: "bg-green-100 text-green-600", count: 8, description: "Joined within the last 30 days, ideal for onboarding emails" },
-    { id: "seg-2", name: "At-Risk (No visit 14d+)", icon: AlertTriangle, color: "bg-amber-100 text-amber-600", count: 12, description: "Haven't attended a class in 14+ days" },
-    { id: "seg-3", name: "VIP Members (20+ classes)", icon: Star, color: "bg-purple-100 text-purple-600", count: 15, description: "Attended 20+ classes, high engagement" },
-    { id: "seg-4", name: "Expiring Packages (< 7 days)", icon: Clock, color: "bg-red-100 text-red-600", count: 5, description: "Package expires within 7 days, renewal opportunity" },
-    { id: "seg-5", name: "Frozen Members", icon: Users, color: "bg-blue-100 text-blue-600", count: 3, description: "Currently frozen packages" },
-    { id: "seg-6", name: "Trial Members", icon: Users, color: "bg-teal-100 text-teal-600", count: 6, description: "On an introductory / trial package" },
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+    SearchMd, FilterLines, Plus, XClose, MarkerPin01, CursorBox,
+} from "@untitledui/icons";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Toast } from "@/components/ui/Toast";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SelectInput } from "@/components/ui/select-input";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { useAppStore, BRANCHES, DEFAULT_BRANCH_ID, type MarketingItem } from "@/lib/store";
+
+// ─── Status helpers ──────────────────────────────────────────────────────────
+
+type StoredStatus = MarketingItem["status"];        // active | inactive | archived
+type EffectiveStatus = StoredStatus | "expired";    // expired derived from expiry_date
+
+const STATUS_LABEL: Record<EffectiveStatus, string> = {
+    active: "Active",
+    inactive: "Inactive",
+    archived: "Archive",
+    expired: "Expired",
+};
+
+/** A marketing item reads as "Expired" the moment its `expiry_date` passes —
+ *  regardless of the stored admin status. Otherwise it shows its stored status. */
+function effectiveStatus(m: MarketingItem): EffectiveStatus {
+    if (m.expiry_date && new Date(m.expiry_date).getTime() < Date.now()) return "expired";
+    return m.status;
+}
+
+// ─── Display helpers ─────────────────────────────────────────────────────────
+
+const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
 ];
 
-export default function MarketingPage() {
-    const { promoCodes, campaigns, addPromoCode, addCampaign } = useDataStore();
-    const [isAddPromoOpen, setIsAddPromoOpen] = useState(false);
-    const [isAddCampaignOpen, setIsAddCampaignOpen] = useState(false);
+/** ISO → "20 March 2026, 12:00 AM" (UTC) for the "Valid until" row. */
+function formatValidUntil(iso?: string): string {
+    if (!iso) return "No expiry";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    let h = d.getUTCHours();
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    const mm = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
+}
 
-    // Mock form state for new entries
-    const [newPromoCode, setNewPromoCode] = useState("SPRING25");
-    const [newCampaignName, setNewCampaignName] = useState("Spring Sale");
+const TYPE_LABEL: Record<MarketingItem["type"], string> = {
+    new_class: "New class",
+    announcement: "Announcement",
+    event: "Event",
+};
 
-    const handleCreatePromo = () => {
-        addPromoCode({
-            studio_id: "s1",
-            code: newPromoCode,
-            type: "percentage",
-            value: 20,
-            applies_to: "all",
-            usage_count: 0,
-            valid_from: new Date().toISOString().split('T')[0],
-            is_active: true
-        });
-        setIsAddPromoOpen(false);
-    };
+const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
+    book_event: "Book an event",
+    buy_ticket: "Buy a ticket",
+    external_link: "External link",
+    no_action: "No action",
+};
 
-    const handleCreateCampaign = () => {
-        addCampaign({
-            studio_id: "s1",
-            name: newCampaignName,
-            type: "email",
-            status: "scheduled",
-            audience: "all_members",
-            subject: "Don't miss out!",
-            content: "Check out our latest offers...",
-            stats: { sent: 0, opened: 0, clicked: 0 },
-            created_at: new Date().toISOString()
-        });
-        setIsAddCampaignOpen(false);
-    };
+/** "All branches" when the item covers every branch, else "N branches". */
+function branchLabel(branchIds: string[] | undefined): string {
+    const n = branchIds?.length ?? 0;
+    if (n === 0 || n >= BRANCHES.length) return "All branches";
+    return `${n} ${n === 1 ? "branch" : "branches"}`;
+}
 
+// ─── Badges ──────────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: EffectiveStatus }) {
+    // Active is the only "live" state → green. Inactive / Archive / Expired
+    // share the neutral gray treatment.
+    const styles = status === "active"
+        ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
+        : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]";
     return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Page Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Marketing</h1>
-                <p className="text-gray-500 mt-2 text-lg">Manage promotions, campaigns, and audience segments.</p>
-            </div>
+        <span className={cn(
+            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
+            styles,
+        )}>
+            {STATUS_LABEL[status]}
+        </span>
+    );
+}
 
-            {/* Main Tabs */}
-            <Tabs defaultValue="campaigns" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
-                    <TabsTrigger value="campaigns" className="gap-2">
-                        <Megaphone className="w-4 h-4" />
-                        Campaigns
-                    </TabsTrigger>
-                    <TabsTrigger value="promotions" className="gap-2">
-                        <Ticket className="w-4 h-4" />
-                        Promotions
-                    </TabsTrigger>
-                    <TabsTrigger value="segments" className="gap-2">
-                        <Users className="w-4 h-4" />
-                        Segments
-                    </TabsTrigger>
-                </TabsList>
+/** Marketing-type badge — translucent dark pill on the banner top-left. */
+function TypeBadge({ type }: { type: MarketingItem["type"] }) {
+    return (
+        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium text-white bg-black/40 backdrop-blur-[8px] whitespace-nowrap">
+            {TYPE_LABEL[type]}
+        </span>
+    );
+}
 
-                {/* Campaigns Tab */}
-                <TabsContent value="campaigns" className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Recent Campaigns</h2>
-                        <Button onClick={() => setIsAddCampaignOpen(true)} className="gap-2 gradient-bg-brand">
-                            <Plus className="w-4 h-4" />
-                            Create Campaign
-                        </Button>
-                    </div>
+// ─── Marketing card (Figma 6160:197552) ──────────────────────────────────────
 
-                    {isAddCampaignOpen && (
-                        <Card className="border-brand-100 bg-brand-50/30 mb-6">
-                            <CardContent className="pt-6 flex gap-4 items-end">
-                                <div className="space-y-2 flex-1">
-                                    <Label>Campaign Name</Label>
-                                    <Input
-                                        value={newCampaignName}
-                                        onChange={(e) => setNewCampaignName(e.target.value)}
-                                        placeholder="e.g. Summer Sale"
-                                    />
-                                </div>
-                                <Button onClick={handleCreateCampaign}>Save Draft</Button>
-                                <Button variant="ghost" onClick={() => setIsAddCampaignOpen(false)}>Cancel</Button>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    <div className="grid grid-cols-1 gap-4">
-                        {campaigns.map((camp) => (
-                            <Card key={camp.id} className="hover:shadow-md transition-shadow">
-                                <CardContent className="p-6">
-                                    <div className="flex flex-col md:flex-row justify-between gap-6">
-                                        <div className="flex gap-4">
-                                            <div className={cn(
-                                                "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                                                camp.type === "email" ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600"
-                                            )}>
-                                                {camp.type === "email" ? <Mail className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-semibold text-lg">{camp.name}</h3>
-                                                    <Badge variant={
-                                                        camp.status === "sent" ? "default" :
-                                                            camp.status === "scheduled" ? "secondary" : "outline"
-                                                    }>
-                                                        {camp.status}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-sm text-gray-500 mt-1">
-                                                    {camp.status === "sent" && camp.sent_at ? `Sent on ${new Date(camp.sent_at).toLocaleDateString()}` : "Scheduled"} • Audience: {(camp.audience || "").replace('_', ' ')}
-                                                </p>
-                                                {camp.subject && (
-                                                    <p className="text-sm text-gray-600 mt-2 font-medium">Subject: &quot;{camp.subject}&quot;</p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Stats */}
-                                        <div className="flex gap-8 items-center border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-8">
-                                            <div className="text-center">
-                                                <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1 justify-center">
-                                                    <Users className="w-3 h-3" /> Sent
-                                                </p>
-                                                <p className="font-bold text-xl">{camp.stats.sent}</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1 justify-center">
-                                                    <Eye className="w-3 h-3" /> Open Rate
-                                                </p>
-                                                <p className="font-bold text-xl">
-                                                    {camp.stats.sent > 0 ? Math.round((camp.stats.opened / camp.stats.sent) * 100) : 0}%
-                                                </p>
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1 justify-center">
-                                                    <MousePointer className="w-3 h-3" /> Clicks
-                                                </p>
-                                                <p className="font-bold text-xl">
-                                                    {camp.stats.opened > 0 ? Math.round((camp.stats.clicked / camp.stats.opened) * 100) : 0}%
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-
-                {/* Promotions Tab */}
-                <TabsContent value="promotions" className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Active Promo Codes</h2>
-                        <Button onClick={() => setIsAddPromoOpen(true)} className="gap-2 gradient-bg-brand">
-                            <Plus className="w-4 h-4" />
-                            New Promo Code
-                        </Button>
-                    </div>
-
-                    {isAddPromoOpen && (
-                        <Card className="border-brand-100 bg-brand-50/30 mb-6">
-                            <CardContent className="pt-6 flex gap-4 items-end">
-                                <div className="space-y-2 flex-1">
-                                    <Label>Promo Code</Label>
-                                    <Input
-                                        value={newPromoCode}
-                                        onChange={(e) => setNewPromoCode(e.target.value.toUpperCase())}
-                                        placeholder="e.g. SUMMER25"
-                                    />
-                                </div>
-                                <Button onClick={handleCreatePromo}>Create Code</Button>
-                                <Button variant="ghost" onClick={() => setIsAddPromoOpen(false)}>Cancel</Button>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {promoCodes.map((code) => (
-                            <Card key={code.id} className={cn("transition-all hover:shadow-md", !code.is_active && "opacity-60")}>
-                                <CardHeader className="pb-2">
-                                    <div className="flex justify-between items-start">
-                                        <Badge variant={code.is_active ? "default" : "outline"} className={cn(code.is_active ? "bg-green-600" : "")}>
-                                            {code.is_active ? "Active" : "Inactive"}
-                                        </Badge>
-                                        <div className="p-2 bg-gray-100 rounded-lg">
-                                            <Ticket className="w-5 h-5 text-gray-500" />
-                                        </div>
-                                    </div>
-                                    <CardTitle className="text-2xl font-mono tracking-wider mt-2">{code.code}</CardTitle>
-                                    <CardDescription>
-                                        {code.type === "percentage" ? `${code.value}% OFF` : `$${code.value} OFF`}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between text-sm py-2 border-t border-gray-100">
-                                            <span className="text-gray-500">Applies to</span>
-                                            <span className="font-medium capitalize">{code.applies_to}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm py-2 border-t border-gray-100">
-                                            <span className="text-gray-500">Redemptions</span>
-                                            <span className="font-medium flex items-center gap-1">
-                                                <TrendingUp className="w-3 h-3 text-green-500" />
-                                                {code.usage_count}
-                                            </span>
-                                        </div>
-                                        {code.valid_until && (
-                                            <div className="flex justify-between text-sm py-2 border-t border-gray-100">
-                                                <span className="text-gray-500">Expires</span>
-                                                <span className="font-medium">{new Date(code.valid_until).toLocaleDateString()}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-
-                {/* Segments Tab */}
-                <TabsContent value="segments" className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h2 className="text-xl font-semibold">Member Segments</h2>
-                            <p className="text-sm text-gray-500 mt-1">Target specific member groups for personalized outreach</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {memberSegments.map((seg) => (
-                            <Card key={seg.id} className="hover:shadow-md transition-all group cursor-pointer">
-                                <CardContent className="p-6">
-                                    <div className="flex items-start gap-4">
-                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", seg.color)}>
-                                            <seg.icon className="w-6 h-6" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-semibold text-gray-900 text-sm">{seg.name}</h3>
-                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{seg.description}</p>
-                                            <div className="flex items-center justify-between mt-3">
-                                                <span className="text-lg font-bold text-gray-900">{seg.count} members</span>
-                                                <Button size="sm" variant="outline" className="text-xs h-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Mail className="w-3 h-3 mr-1" />
-                                                    Send Campaign
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </TabsContent>
-            </Tabs>
+function MarketingAttribute({ icon, label }: { icon: React.ReactNode; label: string }) {
+    return (
+        <div className="flex items-center gap-1 min-w-0">
+            <span className="w-4 h-4 shrink-0 text-[#667085]">{icon}</span>
+            <span className="text-[14px] text-[#667085] truncate">{label}</span>
         </div>
     );
 }
 
+function MarketingCardView({ item, onOpen }: { item: MarketingItem; onOpen: () => void }) {
+    const status = effectiveStatus(item);
+    // Active items get the deep-slate gradient fallback; inactive / archived /
+    // expired items render the muted gray gradient (Figma grayscale state).
+    const bannerClass = status === "active"
+        ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
+        : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
+
+    return (
+        <div
+            onClick={onOpen}
+            className={cn(
+                "bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
+                "transition-all duration-150",
+                "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
+            )}>
+            {/* Banner */}
+            <div className={cn("relative h-[144px] flex flex-col justify-between p-3 shrink-0 overflow-hidden", bannerClass)}>
+                {/* Cover artwork — inactive / archived / expired render grayscale */}
+                {item.cover_image_url && (
+                    <img src={item.cover_image_url} alt=""
+                        className={cn("absolute inset-0 w-full h-full object-cover", status !== "active" && "grayscale")} />
+                )}
+                {/* Dark vignette so the white text stays legible on any banner */}
+                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
+                {/* Status badge — top right */}
+                <div className="absolute top-3 right-3 z-10">
+                    <StatusBadge status={status} />
+                </div>
+                {/* Type badge — top left, in flow */}
+                <div className="relative z-10">
+                    <TypeBadge type={item.type} />
+                </div>
+                {/* Title */}
+                <p className="relative z-10 text-[20px] font-semibold text-white leading-[30px] uppercase line-clamp-2">
+                    {item.title}
+                </p>
+                <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
+            </div>
+
+            {/* Content */}
+            <div className="flex flex-col gap-4 px-4 py-5">
+                <div className="flex flex-col gap-1">
+                    <p className="text-[18px] font-medium text-[#101828] leading-7 truncate">
+                        {item.title}
+                    </p>
+                    <p className="text-[14px] text-[#667085] leading-5 line-clamp-2">
+                        {item.short_description || "—"}
+                    </p>
+                </div>
+
+                {/* Attribute row — action · branches */}
+                <div className="grid grid-cols-2 gap-x-3">
+                    <MarketingAttribute
+                        icon={<CursorBox className="w-4 h-4" />}
+                        label={ACTION_LABEL[item.action_type]}
+                    />
+                    <MarketingAttribute
+                        icon={<MarkerPin01 className="w-4 h-4" />}
+                        label={branchLabel(item.branch_ids)}
+                    />
+                </div>
+
+                {/* Dashed divider */}
+                <div className="border-t border-dashed border-[#e4e7ec]" />
+
+                {/* Valid until */}
+                <div className="flex items-center gap-1 text-[14px]">
+                    <span className="text-[#667085]">Valid until</span>
+                    <span className="font-medium text-[#101828]">{formatValidUntil(item.expiry_date)}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Filter pill (multi-select status) ───────────────────────────────────────
+
+function FilterPill({ label, selected, onClick }: {
+    label: string; selected: boolean; onClick: () => void;
+}) {
+    return (
+        <button type="button" onClick={onClick}
+            className={cn(
+                "px-4 py-2 rounded-[8px] text-[14px] font-medium border-1 transition-colors",
+                selected
+                    ? "bg-[#f5fffa] border-[#7ba08c] text-[#3b5446]"
+                    : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+            )}>
+            {label}
+        </button>
+    );
+}
+
+// ─── Filter side panel (Figma 5885:174980) ───────────────────────────────────
+
+interface MarketingFilter {
+    statuses: StoredStatus[];
+    startDate: string;
+    endDate: string;
+}
+const EMPTY_FILTER: MarketingFilter = { statuses: [], startDate: "", endDate: "" };
+
+const FILTER_STATUSES: StoredStatus[] = ["active", "inactive", "archived"];
+
+function FilterPanel({ open, applied, onClose, onApply }: {
+    open: boolean;
+    applied: MarketingFilter;
+    onClose: () => void;
+    onApply: (next: MarketingFilter) => void;
+}) {
+    const [pending, setPending] = useState<MarketingFilter>(EMPTY_FILTER);
+
+    useEffect(() => { if (open) setPending({ ...applied }); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        if (open) document.addEventListener("keydown", h);
+        return () => document.removeEventListener("keydown", h);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    const hasAny = pending.statuses.length > 0 || !!pending.startDate || !!pending.endDate;
+
+    function toggleStatus(s: StoredStatus) {
+        setPending(p => ({
+            ...p,
+            statuses: p.statuses.includes(s) ? p.statuses.filter(x => x !== s) : [...p.statuses, s],
+        }));
+    }
+
+    return (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
+            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+                    <button type="button" onClick={onClose}
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* Status — multi-select pills */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <div className="flex flex-wrap gap-2">
+                            {FILTER_STATUSES.map(s => (
+                                <FilterPill key={s} label={STATUS_LABEL[s]}
+                                    selected={pending.statuses.includes(s)}
+                                    onClick={() => toggleStatus(s)} />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-[#e4e7ec]" />
+
+                    {/* Marketing date range — filters by the item's expiry date */}
+                    <div className="flex flex-col gap-1.5">
+                        <p className="text-[14px] font-medium text-[#344054]">Marketing date range</p>
+                        <div className="flex gap-4 items-start">
+                            <div className="flex-1 min-w-0">
+                                <DatePicker
+                                    value={pending.startDate}
+                                    onChange={iso => setPending(p => ({
+                                        ...p,
+                                        startDate: iso,
+                                        // Keep end ≥ start.
+                                        endDate: p.endDate && iso && p.endDate < iso ? "" : p.endDate,
+                                    }))}
+                                    placeholder="Start date"
+                                />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <DatePicker
+                                    value={pending.endDate}
+                                    onChange={iso => setPending(p => ({ ...p, endDate: iso }))}
+                                    placeholder="End date"
+                                    minDate={pending.startDate || undefined}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                        onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
+                        Clear filter
+                    </Button>
+                    <Button variant="primary" size="md" disabled={!hasAny}
+                        onClick={() => { onApply(pending); onClose(); }}>
+                        Apply
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
+export default function MarketingListPage() {
+    const router = useRouter();
+    const marketingItems = useAppStore(s => s.marketingItems);
+
+    const [search, setSearch] = useState("");
+    // Default to the user's primary branch — matches the POS / schedule /
+    // dashboard / products / promo pickers (all seed from DEFAULT_BRANCH_ID).
+    const [locationId, setLocationId] = useState(DEFAULT_BRANCH_ID);
+    const [filter, setFilter] = useState<MarketingFilter>(EMPTY_FILTER);
+    const [filterOpen, setFilterOpen] = useState(false);
+
+    const hasActiveFilter = filter.statuses.length > 0 || !!filter.startDate || !!filter.endDate;
+
+    // Branch picker — active branches, each option carrying a MarkerPin01
+    // glyph so the dropdown matches the POS / schedule / dashboard pickers.
+    const locationOptions = useMemo(() => BRANCHES
+        .filter(b => b.status === "active")
+        .map(b => ({
+            value: b.id,
+            label: b.name,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        })), []);
+
+    // ─── Filter + search ───────────────────────────────────────────────────
+    const visible = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return marketingItems.filter(m => {
+            if (q) {
+                const hay = `${m.title} ${m.short_description}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            if (locationId) {
+                const ids = m.branch_ids ?? [];
+                // Empty branch_ids = available everywhere.
+                if (ids.length > 0 && !ids.includes(locationId)) return false;
+            }
+            if (filter.statuses.length > 0 && !filter.statuses.includes(m.status)) return false;
+            if (filter.startDate && (!m.expiry_date || m.expiry_date.slice(0, 10) < filter.startDate)) return false;
+            if (filter.endDate && (!m.expiry_date || m.expiry_date.slice(0, 10) > filter.endDate)) return false;
+            return true;
+        });
+    }, [marketingItems, search, locationId, filter]);
+
+    return (
+        <div className="flex flex-col gap-6">
+            {/* ── Toolbar ── */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1">
+                    <p className="text-[16px] text-[#667085]">Total</p>
+                    <p className="text-[16px] font-medium text-[#101828]">
+                        {visible.length} {visible.length === 1 ? "marketing" : "marketings"}
+                    </p>
+                </div>
+
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                    placeholder="Select location"
+                    options={locationOptions}
+                    value={locationId}
+                    onChange={setLocationId}
+                    width="w-[220px]"
+                />
+
+                <div className="relative w-[240px]">
+                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="Search marketing..."
+                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    />
+                </div>
+
+                <Button variant="secondary-gray" size="md"
+                    leftIcon={
+                        <div className="relative">
+                            <FilterLines className="w-4 h-4" />
+                            {hasActiveFilter && (
+                                <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border border-white" />
+                            )}
+                        </div>
+                    }
+                    onClick={() => setFilterOpen(true)}>
+                    Filter
+                </Button>
+
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                    onClick={() => router.push("/marketing/new")}>
+                    Add marketing
+                </Button>
+            </div>
+
+            {/* ── Card grid ── */}
+            {visible.length === 0 ? (
+                <div className="relative flex-1" style={{ minHeight: 400 }}>
+                    <EmptyState
+                        title={marketingItems.length === 0 ? "No marketing content yet" : "No marketing found"}
+                        subtitle={marketingItems.length === 0
+                            ? "Create your first campaign to engage your members."
+                            : "Try adjusting your search or filters."}
+                    />
+                </div>
+            ) : (
+                <div className="grid grid-cols-3 gap-4">
+                    {visible.map(m => (
+                        <MarketingCardView key={m.id} item={m}
+                            onOpen={() => router.push(`/marketing/${m.id}`)} />
+                    ))}
+                </div>
+            )}
+
+            <FilterPanel
+                open={filterOpen}
+                applied={filter}
+                onClose={() => setFilterOpen(false)}
+                onApply={setFilter}
+            />
+
+            <Toast />
+        </div>
+    );
+}

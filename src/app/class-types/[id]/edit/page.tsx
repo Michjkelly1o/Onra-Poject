@@ -5,7 +5,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAppStore, MEMBERSHIPS as SEED_MEMBERSHIPS, PACKAGES as SEED_PACKAGES } from "@/lib/store";
+import { useAppStore, CLASS_CATEGORIES, type Membership, type Package } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import {
     XClose, UploadCloud02, Grid01, User01,
@@ -22,15 +22,22 @@ import { NumericStringInput } from "@/components/ui/NumericInput";
 type LocationType = "Group" | "Private" | "Semi-private";
 
 const CLASS_TYPES: LocationType[] = ["Group", "Private", "Semi-private"];
-const CATEGORIES = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
+// Sourced from the live `class_categories` seed so the dropdown always
+// matches real categories (and resolves to a valid `categoryId` on save).
+const CATEGORIES = CLASS_CATEGORIES.map(c => c.name);
 
 // Built from the centralized `memberships` + `packages` seeds — the
 // "Applicable memberships" picker stays in sync with whatever products the
 // studio actually offers.
-const MEMBERSHIP_ITEMS = [
-    ...SEED_MEMBERSHIPS.map(m => ({ id: m.id, label: m.name, group: "Membership"   as const })),
-    ...SEED_PACKAGES   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
-];
+// Built live from store state at use-site so the picker reflects current
+// Memberships & Packages module mutations.
+type MembershipItem = { id: string; label: string; group: "Membership" | "Class package" };
+function buildMembershipItems(memberships: Membership[], packages: Package[]): MembershipItem[] {
+    return [
+        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const })),
+        ...packages   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
+    ];
+}
 
 // ─── Progress stepper ─────────────────────────────────────────────────────────
 
@@ -226,12 +233,13 @@ function BasicInformationStep({ data, onChange, onContinue }: {
 
 const GROUPS = ["Membership", "Class package"] as const;
 
-function ApplicableMembershipsStep({ selected, onToggle, onSelectAll, onBack, onSave }: {
+function ApplicableMembershipsStep({ items, selected, onToggle, onSelectAll, onBack, onSave }: {
+    items: MembershipItem[];
     selected: string[]; onToggle: (id: string) => void;
     onSelectAll: () => void; onBack: () => void; onSave: () => void;
 }) {
     const [expanded, setExpanded] = useState(true);
-    const allSelected = MEMBERSHIP_ITEMS.every(m => selected.includes(m.id));
+    const allSelected = items.every(m => selected.includes(m.id));
     return (
         <div className="bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-4">
@@ -260,7 +268,7 @@ function ApplicableMembershipsStep({ selected, onToggle, onSelectAll, onBack, on
                             {GROUPS.map(group => (
                                 <div key={group} className="flex flex-col gap-3">
                                     <p className="text-[12px] text-[#667085]">{group}</p>
-                                    {MEMBERSHIP_ITEMS.filter(m => m.group === group).map(item => (
+                                    {items.filter(m => m.group === group).map(item => (
                                         <div key={item.id} className="flex items-center gap-2">
                                             <Checkbox checked={selected.includes(item.id)} onChange={() => onToggle(item.id)} />
                                             <span className="text-[14px] font-medium text-[#101828] flex-1">{item.label}</span>
@@ -290,6 +298,10 @@ export default function EditClassTemplatePage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const { classTemplates, updateClassTemplate, showToast } = useAppStore();
+    // Live store memberships/packages — picker reflects current catalog mutations.
+    const allMemberships = useAppStore(s => s.memberships);
+    const allPackages = useAppStore(s => s.packages);
+    const membershipItems = buildMembershipItems(allMemberships, allPackages);
 
     const template = classTemplates.find(t => t.id === id);
 
@@ -309,26 +321,32 @@ export default function EditClassTemplatePage() {
     const [selectedMemberships, setSelectedMemberships] = useState<string[]>(
         template
             ? [...template.applicableMembershipIds, ...template.applicablePackageIds]
-            : MEMBERSHIP_ITEMS.map(m => m.id),
+            : membershipItems.map(m => m.id),
     );
 
     function handleToggle(itemId: string) {
         setSelectedMemberships(prev => prev.includes(itemId) ? prev.filter(x => x !== itemId) : [...prev, itemId]);
     }
     function handleSelectAll() {
-        const all = MEMBERSHIP_ITEMS.map(m => m.id);
+        const all = membershipItems.map(m => m.id);
         setSelectedMemberships(all.every(x => selectedMemberships.includes(x)) ? [] : all);
     }
 
     function handleSave() {
         if (!template) return;
-        const membershipIds = selectedMemberships.filter(x => SEED_MEMBERSHIPS.some(m => m.id === x));
-        const packageIds    = selectedMemberships.filter(x => SEED_PACKAGES   .some(p => p.id === x));
+        const membershipIds = selectedMemberships.filter(x => allMemberships.some(m => m.id === x));
+        const packageIds    = selectedMemberships.filter(x => allPackages.some(p => p.id === x));
+        // Re-resolve the category FK + banner color whenever the category
+        // changes — writing only the display name would leave a stale
+        // `categoryId` / `coverColor`.
+        const cat = CLASS_CATEGORIES.find(c => c.name === step1.category);
         updateClassTemplate(id, {
             name:                   step1.name,
             description:            step1.description,
             locationType:           step1.classType,
+            categoryId:             cat?.id ?? template.categoryId,
             category:               step1.category,
+            coverColor:             cat?.color_hex ?? template.coverColor,
             durationMin:            Number(step1.durationMin),
             capacity:               Number(step1.capacity),
             coverImage:             step1.coverPreview ?? undefined,
@@ -381,7 +399,7 @@ export default function EditClassTemplatePage() {
                     {step === 1 ? (
                         <BasicInformationStep data={step1} onChange={d => setStep1(prev => ({ ...prev, ...d }))} onContinue={() => setStep(2)} />
                     ) : (
-                        <ApplicableMembershipsStep selected={selectedMemberships} onToggle={handleToggle}
+                        <ApplicableMembershipsStep items={membershipItems} selected={selectedMemberships} onToggle={handleToggle}
                             onSelectAll={handleSelectAll} onBack={() => setStep(1)} onSave={handleSave} />
                     )}
 

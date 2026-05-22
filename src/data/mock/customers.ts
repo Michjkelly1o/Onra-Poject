@@ -40,6 +40,7 @@ export const customers: Customer[] = [
         membership_id: "mem_unlimited_monthly",
         plan_name: "Unlimited Monthly Membership",
         created_at: "2026-01-08T09:00:00Z",
+        gender: "Male",
     },
     {
         id: "cust_ava_wright",
@@ -54,6 +55,8 @@ export const customers: Customer[] = [
         membership_id: "mem_advanced_monthly",
         plan_name: "Advanced Monthly Membership",
         created_at: "2026-01-09T09:00:00Z",
+        gender: "Female",
+        credits_remaining: 12,
     },
     {
         // Multi-package customer — holds 10-Class + 5-Class. Demos the
@@ -70,6 +73,8 @@ export const customers: Customer[] = [
         package_ids: ["pkg_10_class", "pkg_5_class"],
         plan_name: "10-Class Package for One Month",
         created_at: "2026-01-10T09:00:00Z",
+        gender: "Male",
+        credits_remaining: 8,
     },
     {
         id: "cust_rosale_martin",
@@ -84,6 +89,8 @@ export const customers: Customer[] = [
         package_ids: ["pkg_10_class"],
         plan_name: "10-Class Package for One Month",
         created_at: "2026-01-11T09:00:00Z",
+        gender: "Female",
+        credits_remaining: 6,
     },
     {
         id: "cust_zahra_mahen",
@@ -98,6 +105,7 @@ export const customers: Customer[] = [
         membership_id: "mem_unlimited_monthly",
         plan_name: "Unlimited Monthly Membership",
         created_at: "2026-01-12T09:00:00Z",
+        gender: "Female",
     },
 
     // ── 5 with initials only ─────────────────────────────────────────────────
@@ -113,6 +121,8 @@ export const customers: Customer[] = [
         membership_id: "mem_beginner_monthly",
         plan_name: "Beginner Monthly Membership",
         created_at: "2026-01-13T09:00:00Z",
+        gender: "Female",
+        credits_remaining: 0,
     },
     {
         id: "cust_james_taylor",
@@ -126,6 +136,8 @@ export const customers: Customer[] = [
         package_ids: ["pkg_5_class"],
         plan_name: "5-Class Package for One Month",
         created_at: "2026-01-14T09:00:00Z",
+        gender: "Male",
+        credits_remaining: 3,
     },
     {
         id: "cust_fatima_al_sayed",
@@ -139,6 +151,7 @@ export const customers: Customer[] = [
         membership_id: "mem_unlimited_monthly",
         plan_name: "Unlimited Monthly Membership",
         created_at: "2026-01-15T09:00:00Z",
+        gender: "Female",
     },
     {
         id: "cust_lucas_brown",
@@ -151,6 +164,8 @@ export const customers: Customer[] = [
         package_ids: ["pkg_10_class"],
         plan_name: "10-Class Package for One Month",
         created_at: "2026-01-16T09:00:00Z",
+        gender: "Male",
+        credits_remaining: 10,
     },
     {
         // Intentionally no plan — the Payment confirmation "Buy packages"
@@ -163,5 +178,6 @@ export const customers: Customer[] = [
         branch_id: "branch_forma_south",
         plan_kind: null,
         created_at: "2026-01-17T09:00:00Z",
+        gender: "Female",
     },
 ];

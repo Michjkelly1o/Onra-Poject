@@ -8,7 +8,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, CLASS_CATEGORIES } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -19,13 +19,10 @@ type LocationType = "Group" | "Private" | "Semi-private";
 
 
 const ALL_STATUSES: TemplateStatus[] = ["Active", "Archived", "Inactive"];
-const ALL_CATEGORIES = [
-    "Yoga", "Pilates", "HIIT", "Strength", "Crossfit",
-    "Cycling", "Boxing", "Dance", "Barre", "Martial Arts",
-    "Meditation", "Recovery",
-];
+// Filter categories come from the live `class_categories` seed so the filter
+// only ever offers categories that real templates can actually have.
+const ALL_CATEGORIES = CLASS_CATEGORIES.map(c => c.name);
 const LOCATION_TYPES: LocationType[] = ["Group", "Private", "Semi-private"];
-const FORM_CATEGORIES = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
