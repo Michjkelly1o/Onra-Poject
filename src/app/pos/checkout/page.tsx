@@ -70,7 +70,7 @@ function POSCheckoutInner() {
     if (!pendingPurchase || !customer) return null;
 
     const { subtotal, discountAmount, taxRate, taxAmount, total } = computeTotals(
-        pendingPurchase.items, pendingPurchase.discountPercent,
+        pendingPurchase.items, pendingPurchase.discountPercent, pendingPurchase.promoDiscountAed ?? 0,
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);

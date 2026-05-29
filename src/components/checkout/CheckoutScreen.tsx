@@ -220,7 +220,7 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                     <p className="text-[14px] text-[#667085]">Subtotal</p>
                     <p className="text-[16px] font-medium text-[#101828]">AED {subtotal.toLocaleString()}</p>
                 </div>
-                {discountPercent > 0 && (
+                {discountAmount > 0 && (
                     <div className="flex items-center justify-between">
                         <p className="text-[14px] text-[#667085]">
                             {promoCode
@@ -500,7 +500,7 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <p className="text-[14px] text-[#667085]">Subtotal</p>
                             <p className="text-[16px] font-medium text-[#101828]">AED {p.subtotal.toLocaleString()}</p>
                         </div>
-                        {p.discountPercent > 0 && (
+                        {p.discountAmount > 0 && (
                             <div className="flex items-center justify-between">
                                 <p className="text-[14px] text-[#667085]">
                                     {p.promoCode
@@ -597,10 +597,15 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
     return { label, chargedTo };
 }
 
-/** Cart-line math used by both step 1 and step 2 of either checkout entry point. */
-export function computeTotals(items: PurchaseLineItem[], discountPercent: number) {
+/** Cart-line math used by both step 1 and step 2 of either checkout entry point.
+ *  `promoDiscountAed` is an optional flat AED promo discount applied ON TOP of
+ *  the custom-discount percentage. Promo + custom discount are mutually
+ *  exclusive in the POS UI, but the math handles both being present and caps
+ *  the combined discount at the subtotal. */
+export function computeTotals(items: PurchaseLineItem[], discountPercent: number, promoDiscountAed = 0) {
     const subtotal = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
-    const discountAmount = Math.round(subtotal * (discountPercent / 100));
+    const pctDiscount = Math.round(subtotal * (discountPercent / 100));
+    const discountAmount = Math.min(subtotal, pctDiscount + Math.round(promoDiscountAed));
     // Tax defaults to 0 — per-product tax rates ship with the Tax settings
     // module (PRD 11). Until then we display no tax row anywhere.
     const taxRate = 0;

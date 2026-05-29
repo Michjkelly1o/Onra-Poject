@@ -190,6 +190,14 @@ export interface PromoValidationCart {
     subtotalAed: number;
     /** Distinct product types currently in the cart. */
     productTypes: ("membership" | "package" | "gift_card")[];
+    /** Per-line breakdown. When provided, the validator restricts a promo to
+     *  only the products it targets (`applies_to_product_ids`) and computes
+     *  the discount against the eligible lines alone. Without it the check
+     *  falls back to the cart-level type list. */
+    lines?: { productId: string; kind: "membership" | "package" | "gift_card"; lineTotal: number }[];
+    /** Branch the sale happens at — gates branch-scoped promos. Empty /
+     *  undefined (e.g. "All locations") skips branch gating. */
+    branchId?: string;
 }
 
 export type PromoValidationResult =
@@ -212,30 +220,68 @@ export function validatePromoCode(
     if (!promo) return { ok: false, reason: "This promo code doesn't exist. Check the code and try again." };
     if (promo.status !== "active") return { ok: false, reason: "This promo code is no longer active." };
     if (promo.valid_until) {
-        const today = new Date().toISOString().slice(0, 10);
-        if (today > promo.valid_until) {
-            const d = new Date(promo.valid_until + "T00:00:00Z");
-            const label = `${d.getUTCDate()} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+        // `valid_until` may be a full ISO datetime ("2025-12-31T00:00:00Z")
+        // from the seed OR a bare date ("2025-12-31") from the create form —
+        // parse it directly so we never double-append a time and produce an
+        // Invalid Date (which previously rendered as "NaN undefined NaN").
+        const expiry = new Date(promo.valid_until);
+        if (!Number.isNaN(expiry.getTime()) && Date.now() > expiry.getTime()) {
+            const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            const label = `${expiry.getUTCDate()} ${MONTHS[expiry.getUTCMonth()]} ${expiry.getUTCFullYear()}`;
             return { ok: false, reason: `This promo code expired on ${label}.` };
         }
     }
     if (promo.usage_limit != null && promo.usage_count >= promo.usage_limit) {
         return { ok: false, reason: "This promo code has reached its usage limit." };
     }
-    if (promo.applies_to.length > 0 && !cart.productTypes.some(t => promo.applies_to.includes(t))) {
+    // Branch scope — empty `branch_ids` means "all branches". Only enforce
+    // when the sale carries a specific branch (POS "All locations" = skip).
+    if (promo.branch_ids && promo.branch_ids.length > 0 && cart.branchId
+        && !promo.branch_ids.includes(cart.branchId)) {
+        return { ok: false, reason: "This promo code isn't available at the selected branch." };
+    }
+
+    // Eligibility — a line qualifies when it passes BOTH the product-type
+    // filter (`applies_to`) AND the specific-product filter
+    // (`applies_to_product_ids`). Empty filters mean "applies to all". This is
+    // the gate the promo's "Applicable products" / visibility settings feed:
+    // products the admin didn't select are NOT discounted, even though they
+    // share the same type.
+    const allowedTypes = promo.applies_to ?? [];
+    const allowedProductIds = promo.applies_to_product_ids ?? [];
+    const lineEligible = (kind: "membership" | "package" | "gift_card", productId: string): boolean => {
+        if (allowedTypes.length > 0 && !allowedTypes.includes(kind)) return false;
+        if (allowedProductIds.length > 0 && !allowedProductIds.includes(productId)) return false;
+        return true;
+    };
+
+    // Eligible subtotal — with line detail the discount applies only to
+    // qualifying lines; without it we fall back to the cart-level type list.
+    let eligibleSubtotal: number;
+    if (cart.lines) {
+        eligibleSubtotal = cart.lines
+            .filter(l => lineEligible(l.kind, l.productId))
+            .reduce((s, l) => s + l.lineTotal, 0);
+    } else {
+        const typeOk = allowedTypes.length === 0 || cart.productTypes.some(t => allowedTypes.includes(t));
+        // Without line detail we can't enforce product-id targeting, so a
+        // product-scoped promo is treated as not-applicable here.
+        eligibleSubtotal = (typeOk && allowedProductIds.length === 0) ? cart.subtotalAed : 0;
+    }
+    if (eligibleSubtotal <= 0) {
         return { ok: false, reason: "This promo code doesn't apply to the items in your cart." };
     }
+
     if (promo.min_purchase_aed != null && cart.subtotalAed < promo.min_purchase_aed) {
         return { ok: false, reason: `This promo code requires a minimum purchase of AED ${promo.min_purchase_aed}.` };
     }
-    // Compute the AED discount against eligible-line subtotal. For the
-    // prototype we apply against the full subtotal — line-level allocation
-    // can come when the transactions table ships.
+    // Discount comes off the ELIGIBLE subtotal only — so a promo targeting
+    // one membership never discounts the rest of the cart.
     let discountAed = promo.discount_type === "percentage"
-        ? cart.subtotalAed * (promo.discount_value / 100)
+        ? eligibleSubtotal * (promo.discount_value / 100)
         : promo.discount_value;
     if (promo.max_discount_aed != null) discountAed = Math.min(discountAed, promo.max_discount_aed);
-    discountAed = Math.min(discountAed, cart.subtotalAed);
+    discountAed = Math.min(discountAed, eligibleSubtotal);
     return { ok: true, promo, discountAed: Math.round(discountAed * 100) / 100 };
 }
 
@@ -676,6 +722,11 @@ export interface PendingPurchase {
     items: PurchaseLineItem[];
     discountPercent: number;
     promoCode?: string;
+    /** Promo discount as a flat AED amount (promos can be percentage- OR
+     *  fixed-value, so we carry the resolved AED figure rather than a
+     *  percent). Kept separate from `discountPercent`, which is the
+     *  custom-discount lever. */
+    promoDiscountAed?: number;
     /** Where to redirect after the checkout flow completes. Defaults to the
      *  class detail page when classScheduleId is set; POS sets this to "/admin/pos". */
     returnTo?: string;

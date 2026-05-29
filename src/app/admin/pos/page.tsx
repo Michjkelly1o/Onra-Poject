@@ -222,7 +222,11 @@ function POSInner() {
         [customerId, customers],
     );
     const [promoInput, setPromoInput] = useState("");
-    const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAed: number } | null>(null);
+    /** The committed promo CODE (not the resolved amount). The discount is
+     *  re-derived live from the current cart on every render, so adding or
+     *  removing items adjusts the discount automatically — no re-click of
+     *  Apply needed. */
+    const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
     const [promoError, setPromoError] = useState<string | null>(null);
     const [customDiscountOn, setCustomDiscountOn] = useState(false);
     const [customDiscountPct, setCustomDiscountPct] = useState<string>("");
@@ -261,7 +265,7 @@ function POSInner() {
         setCart([]);
         setCustomerId(null);
         setPromoInput("");
-        setAppliedPromo(null);
+        setAppliedPromoCode(null);
         setPromoError(null);
         setCustomDiscountOn(false);
         setCustomDiscountPct("");
@@ -373,6 +377,27 @@ function POSInner() {
     // ── Promo / discount / totals ───────────────────────────────────────────
     const subtotal = cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
 
+    // Re-validate the committed promo code against the LIVE cart on every
+    // render. This is what makes the discount track the cart automatically:
+    // change the line items and the promo amount (and its validity) recompute
+    // without the admin pressing Apply again.
+    const promoEval = useMemo(() => {
+        if (!appliedPromoCode) return null;
+        const kinds = Array.from(new Set(cart.map(l => l.kind)));
+        return validatePromoCode(appliedPromoCode, {
+            subtotalAed: subtotal,
+            productTypes: kinds,
+            lines: cart.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            branchId: branchId || undefined,
+        }, promoCodes);
+    }, [appliedPromoCode, cart, subtotal, promoCodes, branchId]);
+
+    const appliedPromo = promoEval?.ok ? { code: promoEval.promo.code, discountAed: promoEval.discountAed } : null;
+    // When a code is committed but the current cart no longer satisfies it
+    // (e.g. dropped below the minimum spend, or no eligible items), surface
+    // the reason live instead of a stale discount.
+    const livePromoError = (appliedPromoCode && promoEval && !promoEval.ok) ? promoEval.reason : promoError;
+
     function handleApplyPromo() {
         setPromoError(null);
         if (!promoInput.trim()) return;
@@ -380,9 +405,11 @@ function POSInner() {
         const res = validatePromoCode(promoInput, {
             subtotalAed: subtotal,
             productTypes: kinds,
+            lines: cart.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            branchId: branchId || undefined,
         }, promoCodes);
         if (res.ok) {
-            setAppliedPromo({ code: res.promo.code, discountAed: res.discountAed });
+            setAppliedPromoCode(res.promo.code);
             // Promo + custom discount are mutually exclusive in the schedule
             // mini-POS flow — mirror that here so the total can't double-dip.
             if (customDiscountOn) {
@@ -391,17 +418,17 @@ function POSInner() {
                 setAppliedCustomDiscount(null);
             }
         } else {
-            setAppliedPromo(null);
+            setAppliedPromoCode(null);
             setPromoError(res.reason);
         }
     }
-    function handleRemovePromo() { setAppliedPromo(null); setPromoInput(""); setPromoError(null); }
+    function handleRemovePromo() { setAppliedPromoCode(null); setPromoInput(""); setPromoError(null); }
 
     function handleApplyCustomDiscount() {
         const pct = Math.min(allowedCustomPct, Math.max(0, Number(customDiscountPct) || 0));
         if (pct <= 0) return;
         setAppliedCustomDiscount(pct);
-        if (appliedPromo) { setAppliedPromo(null); setPromoInput(""); }
+        if (appliedPromoCode) { setAppliedPromoCode(null); setPromoInput(""); }
     }
     function handleCustomDiscountToggle(next: boolean) {
         setCustomDiscountOn(next);
@@ -443,6 +470,7 @@ function POSInner() {
             items,
             discountPercent: customPctNum,
             promoCode: appliedPromo?.code,
+            promoDiscountAed: promoDiscount,
             returnTo: "/admin/pos",
         });
         // Dedicated POS checkout route at /pos/checkout (top-level, outside
@@ -581,7 +609,7 @@ function POSInner() {
                         onQty={handleQty} onRemove={handleRemove}
                         promoInput={promoInput} onPromoInput={setPromoInput}
                         appliedPromo={appliedPromo} onApplyPromo={handleApplyPromo} onRemovePromo={handleRemovePromo}
-                        promoError={promoError}
+                        promoError={livePromoError}
                         canApplyCustomDiscount={canApplyCustomDiscount(currentRole)}
                         customDiscountOn={customDiscountOn} onCustomDiscountToggle={handleCustomDiscountToggle}
                         customDiscountPct={customDiscountPct} onCustomDiscountPct={setCustomDiscountPct}
