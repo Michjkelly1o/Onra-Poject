@@ -237,6 +237,9 @@ function RowActions({ status, hasHolders, onView, onEdit, onAction }: {
                     </button>
                 )}
 
+                {/* Deactivate ↔ Delete — Active rows only. Inactive/archived
+                    rows must be Reactivated/Recovered before they can be
+                    deleted. */}
                 {(() => {
                     if (status === "active") {
                         return hasHolders ? (
@@ -245,14 +248,6 @@ function RowActions({ status, hasHolders, onView, onEdit, onAction }: {
                                 <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
                             </button>
                         ) : (
-                            <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                                className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                            </button>
-                        );
-                    }
-                    if (!hasHolders) {
-                        return (
                             <button type="button" onClick={() => trigger(() => onAction("delete"))}
                                 className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
                                 <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
@@ -446,7 +441,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 }) {
     if (count === 0) return null;
     return (
-        <div className="absolute inset-x-0 bottom-0 flex justify-center pointer-events-none pb-[96px] pt-6 px-6 z-30">
+        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
             <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
@@ -738,7 +733,10 @@ export default function GiftCardsPage() {
     const hasArchivable    = selectedRows.some(r => r.status !== "archived");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
     const hasRecoverable   = selectedRows.some(r => r.status === "archived");
-    const hasDeletable     = selectedRows.length > 0 && selectedRows.every(r => !r.hasHolders);
+    // Delete only when every selected row is Active AND holder-free —
+    // inactive/archived gift cards must be reactivated/recovered first.
+    const hasDeletable     = selectedRows.length > 0
+        && selectedRows.every(r => r.status === "active" && !r.hasHolders);
 
     // ─── Action plumbing ───────────────────────────────────────────────────
     function openRowConfirm(row: GiftCardRow, kind: RowActionKind) {
@@ -757,7 +755,7 @@ export default function GiftCardsPage() {
                 case "reactivate": return selectedRows.filter(r => r.status === "inactive");
                 case "archive":    return selectedRows.filter(r => r.status !== "archived");
                 case "recover":    return selectedRows.filter(r => r.status === "archived");
-                case "delete":     return selectedRows.filter(r => !r.hasHolders);
+                case "delete":     return selectedRows.filter(r => r.status === "active" && !r.hasHolders);
             }
         })();
         if (rowsForKind.length === 0) return;

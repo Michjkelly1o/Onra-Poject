@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { DotsVertical, Trash01, Plus } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG } from "./widget-catalog";
+import type { DateFilter } from "@/components/ui/date-range-filter";
 import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
@@ -11,19 +12,32 @@ import {
 } from "recharts";
 
 // ─── Shared chart data ────────────────────────────────────────────────────────
+//
+// Each time-series widget stores a 7-value seed per data key. `buildSeries`
+// tiles that seed to the period's point count and applies a small scale so
+// year-view aggregates feel larger than per-day numbers. The X-axis label set
+// is also period-derived, so swapping the date-range filter visibly re-renders
+// every chart. Non-time-series widgets (top-memberships, class-by-popularity)
+// live in `STATIC` and are period-agnostic.
 
-const DATES = ["Feb 22", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Feb 28"];
+const SEEDS: Record<string, Record<string, number[]>> = {
+    "payments-collected":  { v: [220, 195, 240, 250, 235, 265, 280] },
+    "payments-status":     { paid: [38, 12, 22, 28, 35, 30, 25], failed: [8, 12, 6, 10, 4, 8, 5] },
+    "payments-by-method":  { card: [25, 18, 22, 35, 28, 32, 20], cash: [8, 5, 6, 5, 9, 7, 4], apple: [5, 3, 4, 4, 6, 5, 3] },
+    "payments-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
+    "revenue-overview":    { revenue: [480, 540, 600, 680, 760, 830, 910], lastWeek: [640, 610, 630, 615, 595, 605, 610] },
+    "sales-by-product":    { membership: [28, 18, 15, 10, 30, 35, 8], package: [8, 12, 5, 8, 10, 42, 5] },
+    "active-memberships":  { v: [28, 30, 32, 35, 34, 38, 42] },
+    "active-subscriptions":{ v: [32, 33, 35, 34, 37, 40, 44] },
+    "active-credits":      { v: [30, 32, 35, 33, 36, 38, 40] },
+    "memberships-sold":    { beginner: [10, 8, 12, 9, 14, 11, 13], advanced: [15, 10, 13, 15, 12, 18, 16], unlimited: [7, 6, 8, 7, 9, 8, 10] },
+    "class-bookings":      { v: [32, 28, 35, 30, 40, 38, 45] },
+    "bookings-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
+    "bookings-vs-visits":  { bookings: [35, 28, 32, 40, 38, 42, 36], visits: [28, 22, 25, 32, 30, 35, 28] },
+    "attendance-overview": { visits: [22, 18, 12, 35, 25, 28, 22], cancellations: [8, 30, 10, 6, 22, 24, 20], noShow: [3, 4, 2, 3, 2, 3, 2] },
+};
 
-const DATA: Record<string, object[]> = {
-    "payments-collected": DATES.map((date, i) => ({ date, v: [220, 195, 240, 250, 235, 265, 280][i] })),
-    "payments-status":    DATES.map((date, i) => ({ date, paid: [38, 12, 22, 28, 35, 30, 25][i], failed: [8, 12, 6, 10, 4, 8, 5][i] })),
-    "payments-by-method": DATES.map((date, i) => ({ date, card: [25, 18, 22, 35, 28, 32, 20][i], cash: [8, 5, 6, 5, 9, 7, 4][i], apple: [5, 3, 4, 4, 6, 5, 3][i] })),
-    "payments-by-source": DATES.map((date, i) => ({ date, crm: [4, 3, 5, 4, 6, 4, 3][i], app: [26, 20, 22, 26, 30, 28, 24][i], web: [10, 8, 9, 10, 12, 11, 8][i] })),
-    "revenue-overview":   DATES.map((date, i) => ({ date, revenue: [480, 540, 600, 680, 760, 830, 910][i], lastWeek: [640, 610, 630, 615, 595, 605, 610][i] })),
-    "sales-by-product":   DATES.map((date, i) => ({ date, membership: [28, 18, 15, 10, 30, 35, 8][i], package: [8, 12, 5, 8, 10, 42, 5][i] })),
-    "active-memberships": DATES.map((date, i) => ({ date, v: [28, 30, 32, 35, 34, 38, 42][i] })),
-    "active-subscriptions":DATES.map((date, i) => ({ date, v: [32, 33, 35, 34, 37, 40, 44][i] })),
-    "active-credits":     DATES.map((date, i) => ({ date, v: [30, 32, 35, 33, 36, 38, 40][i] })),
+const STATIC: Record<string, object[]> = {
     "top-memberships": [
         { name: "Beginner",  v: 28 },
         { name: "Unlimited", v: 12 },
@@ -31,18 +45,61 @@ const DATA: Record<string, object[]> = {
         { name: "30 Credit", v: 18 },
         { name: "Advanced",  v: 38 },
     ],
-    "memberships-sold":   DATES.map((date, i) => ({ date, beginner: [10, 8, 12, 9, 14, 11, 13][i], advanced: [15, 10, 13, 15, 12, 18, 16][i], unlimited: [7, 6, 8, 7, 9, 8, 10][i] })),
-    "class-bookings":     DATES.map((date, i) => ({ date, v: [32, 28, 35, 30, 40, 38, 45][i] })),
-    "bookings-by-source": DATES.map((date, i) => ({ date, crm: [4, 3, 5, 4, 6, 4, 3][i], app: [26, 20, 22, 26, 30, 28, 24][i], web: [10, 8, 9, 10, 12, 11, 8][i] })),
-    "bookings-vs-visits": DATES.map((date, i) => ({ date, bookings: [35, 28, 32, 40, 38, 42, 36][i], visits: [28, 22, 25, 32, 30, 35, 28][i] })),
-    "attendance-overview":DATES.map((date, i) => ({ date, visits: [22, 18, 12, 35, 25, 28, 22][i], cancellations: [8, 30, 10, 6, 22, 24, 20][i], noShow: [3, 4, 2, 3, 2, 3, 2][i] })),
     "class-by-popularity": [
         { name: "Reformer Pilates", instructor: "Sara Al-Rashid", color: "#b892ba", bookings: 142, occupancy: 89 },
         { name: "Mat Pilates",      instructor: "Liam Chen",      color: "#92baa4", bookings: 98,  occupancy: 78 },
-        { name: "Barre",            instructor: "Maya Johnson",    color: "#92d1de", bookings: 87,  occupancy: 72 },
-        { name: "Roller Release",   instructor: "Liam Chen",      color: "#9ea093", bookings: 45,  occupancy: 65 },
+        { name: "Barre",            instructor: "Maya Johnson",   color: "#92d1de", bookings: 87,  occupancy: 72 },
+        { name: "Hot Yoga",         instructor: "Liam Chen",      color: "#dc6803", bookings: 45,  occupancy: 65 },
     ],
 };
+
+const DEFAULT_PERIOD: DateFilter = { type: "week", label: "This week" };
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Per-period label set + value scale + X-axis tick interval. */
+function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number; interval: number } {
+    switch (period.type) {
+        case "day": {
+            const labels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+            return { labels, scale: 0.15, interval: 3 };
+        }
+        case "week":
+            return {
+                labels: ["Feb 22", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Feb 28"],
+                scale: 1, interval: 0,
+            };
+        case "month": {
+            const labels = Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`);
+            return { labels, scale: 1, interval: 4 };
+        }
+        case "year":
+            return { labels: MONTH_LABELS, scale: 6, interval: 0 };
+        case "custom": {
+            const days = Math.max(
+                1,
+                Math.min(60, Math.round((period.to.getTime() - period.from.getTime()) / 86_400_000) + 1),
+            );
+            const labels = Array.from({ length: days }, (_, i) => `Day ${i + 1}`);
+            return { labels, scale: 1, interval: Math.max(0, Math.ceil(days / 7) - 1) };
+        }
+    }
+}
+
+/** Tile the seed to match the period's point count + apply the period scale. */
+function buildSeries(id: string, period: DateFilter): object[] {
+    const seed = SEEDS[id];
+    if (!seed) return [];
+    const { labels, scale } = pointsForPeriod(period);
+    return labels.map((date, i) => {
+        const point: Record<string, string | number> = { date };
+        for (const key of Object.keys(seed)) {
+            const arr = seed[key];
+            point[key] = Math.max(0, Math.round(arr[i % arr.length] * scale));
+        }
+        return point;
+    });
+}
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
@@ -79,9 +136,10 @@ function Legend({ items }: { items: { color: string; label: string }[] }) {
     );
 }
 
-function renderChart(id: string, size: ChartSize): React.ReactNode {
+function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_PERIOD): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
-    const data = DATA[id] ?? [];
+    const { interval } = pointsForPeriod(period);
+    const data = STATIC[id] ?? buildSeries(id, period);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -93,7 +151,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                 <ResponsiveContainer width="100%" height={h}>
                     <LineChart data={data}>
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                        <XAxis dataKey="date" {...axisProps} />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={32} />
                         <Tooltip content={<ChartTooltip />} />
                         <Line type="monotone" dataKey="v" name="Payments (AED)" stroke="#92d1de" strokeWidth={2} dot={false} />
@@ -108,7 +166,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="paid" name="Paid" fill="#92baa4" radius={[3,3,0,0]} maxBarSize={10} />
@@ -125,7 +183,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="card"  name="Card"      fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
@@ -144,7 +202,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="crm" name="CRM"          fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
@@ -162,8 +220,8 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <LineChart data={data}>
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
-                            <YAxis {...axisProps} width={36} domain={[0, 1200]} ticks={[0,200,400,600,800,1000]} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={36} />
                             <Tooltip content={<ChartTooltip />} />
                             <Line type="monotone" dataKey="revenue"  name="Net revenue"      stroke="#92d1de" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="lastWeek" name="Last week"         stroke="#aad4bd" strokeWidth={2} dot={false} strokeDasharray="4 2" />
@@ -179,8 +237,8 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
-                            <YAxis {...axisProps} width={28} domain={[0, 50]} ticks={[0,10,20,30,40,50]} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="membership" name="Membership"   fill="#c4edd6" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="package"    name="Class package" fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
@@ -195,7 +253,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                 <ResponsiveContainer width="100%" height={h}>
                     <LineChart data={data}>
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                        <XAxis dataKey="date" {...axisProps} />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
                         <Line type="monotone" dataKey="v" name={id === "active-memberships" ? "Active memberships" : "Active subscriptions"} stroke="#92d1de" strokeWidth={2} dot={false} />
@@ -208,7 +266,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                 <ResponsiveContainer width="100%" height={h}>
                     <LineChart data={data}>
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                        <XAxis dataKey="date" {...axisProps} />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
                         <Line type="monotone" dataKey="v" name="Active credit packages" stroke="#b892ba" strokeWidth={2} dot={false} />
@@ -236,7 +294,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="25%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="beginner"  name="Beginner"  fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
@@ -252,7 +310,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                 <ResponsiveContainer width="100%" height={h}>
                     <LineChart data={data}>
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                        <XAxis dataKey="date" {...axisProps} />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
                         <Line type="monotone" dataKey="v" name="Total bookings" stroke="#92d1de" strokeWidth={2} dot={false} />
@@ -267,7 +325,7 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="bookings" name="Total bookings" fill="#92baa4" radius={[3,3,0,0]} maxBarSize={10} />
@@ -284,8 +342,8 @@ function renderChart(id: string, size: ChartSize): React.ReactNode {
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} />
-                            <YAxis {...axisProps} width={28} domain={[0, 50]} ticks={[0,10,20,30,40,50]} />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="visits"        name="Total visits"        fill="#92baa4" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="cancellations" name="Total cancellations" fill="#c4edd6" radius={[3,3,0,0]} maxBarSize={8} />
@@ -369,6 +427,9 @@ export function WidgetKebabMenu({ onRemove }: { onRemove: () => void }) {
 
 interface DashboardWidgetCardProps {
     widgetId: string;
+    /** Date-range filter driving the chart's data length, labels and scale.
+     *  Defaults to "This week" for backward compatibility. */
+    period?: DateFilter;
     /** undefined = no action button; "add" = + button; "kebab" = ··· remove menu */
     action?: "add" | "kebab";
     onAdd?: () => void;
@@ -376,7 +437,7 @@ interface DashboardWidgetCardProps {
     className?: string;
 }
 
-export function DashboardWidgetCard({ widgetId, action, onAdd, onRemove, className }: DashboardWidgetCardProps) {
+export function DashboardWidgetCard({ widgetId, period, action, onAdd, onRemove, className }: DashboardWidgetCardProps) {
     const meta = WIDGET_CATALOG.find(w => w.id === widgetId);
     if (!meta) return null;
 
@@ -403,7 +464,7 @@ export function DashboardWidgetCard({ widgetId, action, onAdd, onRemove, classNa
             </div>
             {/* Chart */}
             <div className="min-w-0">
-                {renderChart(widgetId, "full")}
+                {renderChart(widgetId, "full", period)}
             </div>
         </div>
     );

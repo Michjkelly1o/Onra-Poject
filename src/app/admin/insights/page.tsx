@@ -1,252 +1,227 @@
 "use client";
 
-import { useState } from "react";
-import { useDataStore } from "@/lib/data-store";
-import {
-    revenueProjection,
-    churnRiskSummary,
-    aiInsights,
-    members,
-} from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
-import {
-    Brain,
-    TrendingUp,
-    TrendingDown,
-    AlertTriangle,
-    UserX,
-    Zap,
-    ChevronRight,
-    Sparkles,
-    ShieldAlert,
-    BarChart3,
-    Target,
-} from "lucide-react";
-import {
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Line,
-} from "recharts";
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Insights page (/admin/insights)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Figma: 3636:11138 (Finance) + 3610:90785 (Memberships).
+//
+// Three category tabs — Finance / Memberships / Classes — each with a metric
+// grid on top and the dashboard's existing widget cards below. The same
+// `<DashboardWidgetCard>` and `WIDGET_CATALOG` powering the dashboard's
+// Performance tab are reused 1:1 (no duplication).
+//
+// Layout per tab:
+//   1. Tabs strip
+//   2. Toolbar — "Total · N {category} KPIs" + search + period dropdown
+//   3. Metric grid (4 per row, gap-6)
+//   4. Widget grid (2 per row, gap-6) using <DashboardWidgetCard widgetId=... />
+//
+// Search filters BOTH the metric grid and the widget grid by label/title
+// (case-insensitive). The period dropdown is a UI placeholder for now —
+// widgets render their own mock period internally; live filtering arrives
+// when the data layer is wired.
 
-const severityStyles = {
-    critical: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", icon: ShieldAlert, iconColor: "text-red-500", dot: "bg-red-500" },
-    high: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: AlertTriangle, iconColor: "text-orange-500", dot: "bg-orange-500" },
-    positive: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", icon: TrendingUp, iconColor: "text-emerald-500", dot: "bg-emerald-500" },
-    info: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: Zap, iconColor: "text-blue-500", dot: "bg-blue-500" },
-};
+import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown, InfoCircle, SearchMd } from "@untitledui/icons";
+import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
+import { WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type TabKey = "finance" | "memberships" | "classes";
+
+interface Metric {
+    label: string;
+    value: string;
+    /** Change %, signed. Undefined → no badge (just "vs last week"). */
+    change?: number;
+    /** Default "vs last week". */
+    period?: string;
+}
+
+interface TabConfig {
+    key: TabKey;
+    label: string;
+    /** Category used to filter the widget catalog. */
+    widgetCategory: WidgetCategory;
+    metrics: Metric[];
+}
+
+// ─── Tab content ──────────────────────────────────────────────────────────────
+//
+// Finance + Memberships metric values match the Figma exactly. Classes is a
+// sensible default (no Figma supplied yet) — same shape, ready to swap when
+// the spec lands. All values are mock for now; widgets render their own
+// derived data via the existing dashboard catalog.
+
+const FINANCE_METRICS: Metric[] = [
+    { label: "Net revenue",                value: "AED 752",   change: 8 },
+    { label: "Revenue from subscriptions", value: "AED 120",   change: 2 },
+    { label: "Revenue from packages",      value: "AED 390",   change: 30 },
+    { label: "Payment amount dues",        value: "AED 345",   change: 100 },
+    { label: "Revenue from classes",       value: "AED 1,620", change: 8 },
+    { label: "Revenue from products",      value: "AED 112",   change: -5 },
+    { label: "Revenue from gift cards",    value: "AED 104",   change: 2 },
+    { label: "Payments collected",         value: "AED 407",   change: 30 },
+];
+
+const MEMBERSHIP_METRICS: Metric[] = [
+    { label: "Active memberships",               value: "7",   change: 2 },
+    { label: "Active subscriptions",             value: "14",  change: 4 },
+    { label: "Active packages",                  value: "4",   change: 4 },
+    { label: "Active intro offers",              value: "4",   change: -5 },
+    { label: "Membership cancellations",         value: "2",   change: 2 },
+    { label: "Memberships suspended",            value: "0" },
+    { label: "Memberships with billing issue",   value: "4",   change: 2 },
+    { label: "Membership cancellations %",       value: "1%",  change: 2 },
+    { label: "Memberships suspended %",          value: "0%" },
+    { label: "Memberships with billing issue %", value: "2%",  change: 2 },
+];
+
+const CLASSES_METRICS: Metric[] = [
+    { label: "Total class scheduled",     value: "175",    change: 8 },
+    { label: "Total class check-ins",     value: "5",      change: -5 },
+    { label: "Revenue per class",         value: "AED 162", change: -30 },
+    { label: "Revenue per visit",         value: "AED 62", change: -5 },
+    { label: "Unique visitors",           value: "3",      change: 8 },
+    { label: "First time class visitors", value: "1",      change: -5 },
+    { label: "Class occupancy rate",      value: "1%",     change: -10 },
+];
+
+const TABS: TabConfig[] = [
+    { key: "finance",     label: "Finance",     widgetCategory: "Finance",     metrics: FINANCE_METRICS },
+    { key: "memberships", label: "Memberships", widgetCategory: "Memberships", metrics: MEMBERSHIP_METRICS },
+    { key: "classes",     label: "Classes",     widgetCategory: "Classes",     metrics: CLASSES_METRICS },
+];
+
+// ─── Insight metric card ──────────────────────────────────────────────────────
+
+function InsightMetricCard({ metric }: { metric: Metric }) {
+    const hasChange = typeof metric.change === "number";
+    const positive = (metric.change ?? 0) >= 0;
+    const periodLabel = metric.period ?? "vs last week";
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
+            {/* Label + info */}
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-[14px] text-[#667085]">{metric.label}</p>
+                <InfoCircle className="w-5 h-5 text-[#98a2b3] shrink-0" />
+            </div>
+            {/* Value */}
+            <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{metric.value}</p>
+            {/* Change row */}
+            <div className="flex items-center gap-1">
+                {hasChange && (
+                    <span className={cn(
+                        "inline-flex items-center gap-0.5 pl-1.5 pr-2 py-0.5 rounded-full text-[12px] font-medium border-1",
+                        positive
+                            ? "bg-[#ecfdf3] border-[#abefc6] text-[#067647]"
+                            : "bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
+                    )}>
+                        {positive
+                            ? <ArrowUp className="w-3 h-3" />
+                            : <ArrowDown className="w-3 h-3" />}
+                        {Math.abs(metric.change!)}%
+                    </span>
+                )}
+                <p className="text-[14px] text-[#667085]">{periodLabel}</p>
+            </div>
+        </div>
+    );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InsightsPage() {
-    const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+    const [tab, setTab] = useState<TabKey>("finance");
+    const [search, setSearch] = useState("");
+    const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
 
-    const activeInsights = aiInsights.filter(i => !dismissedIds.includes(i.id));
+    const activeTab = TABS.find(t => t.key === tab)!;
+    const widgetsInCategory = useMemo(
+        () => WIDGET_CATALOG.filter(w => w.category === activeTab.widgetCategory),
+        [activeTab.widgetCategory],
+    );
 
-    // Churn risk members
-    const atRiskMembers = members
-        .filter(m => (m.churn_risk_score ?? 0) >= 40)
-        .sort((a, b) => (b.churn_risk_score ?? 0) - (a.churn_risk_score ?? 0));
+    // Search filters metrics + widgets simultaneously, case-insensitive.
+    const q = search.trim().toLowerCase();
+    const filteredMetrics = q
+        ? activeTab.metrics.filter(m => m.label.toLowerCase().includes(q))
+        : activeTab.metrics;
+    const filteredWidgets = q
+        ? widgetsInCategory.filter(w =>
+            w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
+        : widgetsInCategory;
+
+    const kpiLabel = activeTab.key === "memberships"
+        ? "memberships KPIs"
+        : `${activeTab.key} KPIs`;
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-purple-200">
-                            <Brain className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">AI Insights</h1>
-                            <p className="text-sm text-gray-500 mt-0.5">Smart analytics powered by machine learning</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 rounded-full border border-violet-200">
-                    <Sparkles className="w-3.5 h-3.5 text-violet-500" />
-                    <span className="text-xs font-medium text-violet-700">AI-Powered</span>
+        <div className="flex flex-col gap-6 animate-fade-in">
+            {/* Tab strip */}
+            <div className="border-b border-[#e4e7ec]">
+                <div className="flex gap-3 items-start">
+                    {TABS.map(t => (
+                        <button key={t.key} type="button" onClick={() => setTab(t.key)}
+                            className={cn(
+                                "flex gap-2 h-8 items-center justify-center pb-3 px-1 transition-colors",
+                                tab === t.key
+                                    ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
+                                    : "text-[#667085] font-semibold hover:text-[#344054]",
+                            )}>
+                            <span className="text-sm">{t.label}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* KPI Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-violet-100">
-                            <Target className="w-4 h-4 text-violet-600" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 uppercase">Projected Revenue</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">AED 11,500</p>
-                    <div className="flex items-center gap-1 mt-1">
-                        <TrendingUp className="w-3 h-3 text-emerald-500" />
-                        <span className="text-xs text-emerald-600 font-medium">+12% by July</span>
-                    </div>
+            {/* Toolbar */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1 flex flex-col">
+                    <p className="text-[14px] text-[#667085]">Total</p>
+                    <p className="text-[14px] font-medium text-[#101828]">
+                        {filteredMetrics.length} {kpiLabel}
+                    </p>
                 </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-red-100">
-                            <UserX className="w-4 h-4 text-red-600" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 uppercase">Churn Risk</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{churnRiskSummary.totalAtRisk} Members</p>
-                    <div className="flex items-center gap-1 mt-1">
-                        <TrendingDown className="w-3 h-3 text-emerald-500" />
-                        <span className="text-xs text-emerald-600 font-medium">{churnRiskSummary.trend}% vs last month</span>
-                    </div>
+                <div className="relative w-[220px]">
+                    <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="Search insight..."
+                        className="h-10 w-full pl-[44px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    />
                 </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-amber-100">
-                            <AlertTriangle className="w-4 h-4 text-amber-600" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 uppercase">Churn Rate</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{churnRiskSummary.projectedChurnRate}%</p>
-                    <div className="flex items-center gap-1 mt-1">
-                        <span className="text-xs text-gray-500">Industry avg: 12%</span>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 rounded-lg bg-emerald-100">
-                            <BarChart3 className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 uppercase">AI Confidence</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">87%</p>
-                    <div className="flex items-center gap-1 mt-1">
-                        <span className="text-xs text-gray-500">Based on 6 months of data</span>
-                    </div>
-                </div>
+                <DateRangeFilter value={period} onChange={setPeriod} />
             </div>
 
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Revenue Projection Chart */}
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-soft">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="font-semibold text-gray-900">Revenue Forecast</h3>
-                            <p className="text-xs text-gray-500 mt-0.5">Projected revenue for the next 6 months</p>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs">
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                                Actual
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-violet-400" />
-                                Projected
-                            </span>
-                        </div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={revenueProjection}>
-                            <defs>
-                                <linearGradient id="gradProjected" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.15} />
-                                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", fontSize: "12px" }} />
-                            <Area type="monotone" dataKey="projected" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="6 4" fill="url(#gradProjected)" />
-                            <Line type="monotone" dataKey="actual" stroke="#34d399" strokeWidth={2.5} dot={{ fill: "#34d399", r: 5 }} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+            {/* Metric grid */}
+            {filteredMetrics.length > 0 && (
+                <div className="grid grid-cols-4 gap-6">
+                    {filteredMetrics.map(m => (
+                        <InsightMetricCard key={m.label} metric={m} />
+                    ))}
                 </div>
+            )}
 
-                {/* Churn Risk Members */}
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-soft">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900">At-Risk Members</h3>
-                        <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full font-semibold">
-                            {atRiskMembers.length} flagged
-                        </span>
-                    </div>
-                    <div className="space-y-3">
-                        {atRiskMembers.map(member => {
-                            const score = member.churn_risk_score ?? 0;
-                            const riskLevel = score >= 80 ? "critical" : score >= 60 ? "high" : "medium";
-                            const riskColor = riskLevel === "critical" ? "text-red-600 bg-red-50" : riskLevel === "high" ? "text-orange-600 bg-orange-50" : "text-amber-600 bg-amber-50";
-                            const barColor = riskLevel === "critical" ? "bg-red-500" : riskLevel === "high" ? "bg-orange-500" : "bg-amber-500";
+            {/* Widget grid — reuses the dashboard's WIDGET_CATALOG + DashboardWidgetCard. */}
+            {filteredWidgets.length > 0 && (
+                <div className="grid grid-cols-2 gap-6">
+                    {filteredWidgets.map(w => (
+                        <DashboardWidgetCard key={w.id} widgetId={w.id} period={period} />
+                    ))}
+                </div>
+            )}
 
-                            return (
-                                <div key={member.id} className="p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-                                                {member.first_name[0]}{member.last_name[0]}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-900">{member.first_name} {member.last_name}</p>
-                                                <p className="text-[10px] text-gray-500">{member.email}</p>
-                                            </div>
-                                        </div>
-                                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", riskColor)}>
-                                            {score}%
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                        <div className={cn("h-1.5 rounded-full transition-all", barColor)} style={{ width: `${score}%` }} />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+            {/* Empty state (search matched nothing) */}
+            {q && filteredMetrics.length === 0 && filteredWidgets.length === 0 && (
+                <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
+                    <p className="text-[16px] font-semibold text-[#101828]">No insights found</p>
+                    <p className="text-[14px] text-[#475467]">Try a different search term.</p>
                 </div>
-            </div>
-
-            {/* AI Action Cards */}
-            <div>
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900 text-lg">Actionable Insights</h3>
-                    <span className="text-xs text-gray-500">{activeInsights.length} active</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeInsights.map(insight => {
-                        const style = severityStyles[insight.severity as keyof typeof severityStyles];
-                        const Icon = style.icon;
-                        return (
-                            <div key={insight.id} className={cn("rounded-2xl p-5 border transition-all hover:shadow-md", style.bg, style.border)}>
-                                <div className="flex items-start gap-3">
-                                    <div className={cn("p-2 rounded-lg bg-white/60")}>
-                                        <Icon className={cn("w-5 h-5", style.iconColor)} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
-                                            <h4 className={cn("text-sm font-semibold", style.text)}>{insight.title}</h4>
-                                        </div>
-                                        <p className="text-xs text-gray-600 leading-relaxed">{insight.description}</p>
-                                        <div className="flex items-center justify-between mt-3">
-                                            <button className={cn("text-xs font-medium flex items-center gap-1", style.text)}>
-                                                {insight.actionLabel} <ChevronRight className="w-3 h-3" />
-                                            </button>
-                                            <button
-                                                onClick={() => setDismissedIds(prev => [...prev, insight.id])}
-                                                className="text-[10px] text-gray-400 hover:text-gray-600"
-                                            >
-                                                Dismiss
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
+            )}
         </div>
     );
 }

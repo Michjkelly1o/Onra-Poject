@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
@@ -77,9 +77,9 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
     const [viewYear, setViewYear] = useState(init.getFullYear());
     const [viewMonth, setViewMonth] = useState(init.getMonth());
     const [pending, setPending] = useState(value);
-    const [dropH, setDropH] = useState<"left" | "right">("left");
-    const [dropV, setDropV] = useState<"bottom" | "top">("bottom");
+    const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({ position: "fixed", visibility: "hidden" });
     const ref = useRef<HTMLDivElement>(null);
+    const popRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
@@ -87,12 +87,32 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
-    // Auto-flip dropdown so it never escapes the viewport
+    // Position the calendar with `position: fixed`, computed from the trigger
+    // rect + the calendar's MEASURED size, so it escapes any modal / scroll
+    // clipping. Opens below; flips above when there's no room; and as a last
+    // resort is clamped fully inside the viewport — so it can never be cut.
+    useLayoutEffect(() => {
+        if (!open || !ref.current || !popRef.current) return;
+        const r = ref.current.getBoundingClientRect();
+        const popH = popRef.current.offsetHeight;
+        const popW = popRef.current.offsetWidth;
+        const m = 8;
+        let top: number;
+        if (window.innerHeight - r.bottom >= popH + m) top = r.bottom + 4;
+        else if (r.top >= popH + m) top = r.top - popH - 4;
+        else top = Math.max(m, window.innerHeight - popH - m);
+        let left = r.left;
+        if (left + popW > window.innerWidth - m) left = window.innerWidth - popW - m;
+        if (left < m) left = m;
+        setMenuStyle({ position: "fixed", zIndex: 9999, top, left });
+    }, [open]);
+
+    // A fixed-positioned calendar can't track scrolling — close it on scroll.
     useEffect(() => {
-        if (!open || !ref.current) return;
-        const rect = ref.current.getBoundingClientRect();
-        setDropH(rect.left + 282 > window.innerWidth - 8 ? "right" : "left");
-        setDropV(window.innerHeight - rect.bottom < 420 && rect.top > 420 ? "top" : "bottom");
+        if (!open) return;
+        function close() { setOpen(false); }
+        window.addEventListener("scroll", close, true);
+        return () => window.removeEventListener("scroll", close, true);
     }, [open]);
 
     function prevMonth() {
@@ -148,23 +168,20 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
             </button>
 
             {open && !disabled && (
-                <div className={cn(
-                    "absolute z-50 w-[282px] bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] overflow-hidden",
-                    dropH === "left" ? "left-0" : "right-0",
-                    dropV === "bottom" ? "top-[calc(100%+4px)]" : "bottom-[calc(100%+4px)]"
-                )}>
-                    <div className="px-[16px] py-[20px] flex flex-col gap-[12px]">
+                <div ref={popRef} style={menuStyle}
+                    className="w-[248px] bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] overflow-hidden">
+                    <div className="px-[12px] py-[16px] flex flex-col gap-[10px]">
                         {/* Month navigation */}
                         <div className="flex items-center justify-between">
                             <button type="button" onClick={prevMonth}
-                                className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                                className="w-7 h-7 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                                 <ChevronLeft className="w-5 h-5 text-[#344054]" />
                             </button>
                             <p className="text-[16px] font-semibold text-[#344054]">
                                 {MONTHS_LONG[viewMonth]} {viewYear}
                             </p>
                             <button type="button" onClick={nextMonth}
-                                className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                                className="w-7 h-7 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                                 <ChevronRight className="w-5 h-5 text-[#344054]" />
                             </button>
                         </div>
@@ -190,7 +207,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                         {/* Day headers */}
                         <div className="flex">
                             {DAY_HDRS.map(d => (
-                                <div key={d} className="w-[36px] h-[36px] flex items-center justify-center">
+                                <div key={d} className="w-[32px] h-[32px] flex items-center justify-center">
                                     <span className="text-[14px] font-medium text-[#344054]">{d}</span>
                                 </div>
                             ))}
@@ -214,7 +231,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                                 disabled={outOfRange}
                                                 onClick={() => handleSelect(cell.date)}
                                                 className={cn(
-                                                    "relative w-[36px] h-[36px] flex items-center justify-center rounded-full transition-colors",
+                                                    "relative w-[32px] h-[32px] flex items-center justify-center rounded-full transition-colors",
                                                     isSel ? "bg-[#658774]"
                                                         : outOfRange ? "cursor-not-allowed"
                                                         : isTdy ? "bg-[#f5fffa]"
@@ -237,13 +254,13 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                     </div>
 
                     {/* Bottom panel */}
-                    <div className="border-t border-[#e4e7ec] px-4 py-4 flex gap-[12px]">
+                    <div className="border-t border-[#e4e7ec] px-3 py-3 flex gap-[10px]">
                         <button type="button" onClick={handleCancel}
-                            className="flex-1 h-10 border border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors">
+                            className="flex-1 h-9 border border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors">
                             Cancel
                         </button>
                         <button type="button" onClick={handleApply}
-                            className="flex-1 h-10 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-[#c4edd6] hover:bg-[#aad4bd] transition-colors">
+                            className="flex-1 h-9 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-[#c4edd6] hover:bg-[#aad4bd] transition-colors">
                             Apply
                         </button>
                     </div>

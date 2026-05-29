@@ -16,9 +16,9 @@ import { NumericStringInput } from "@/components/ui/NumericInput";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TemplateStatus = "Active" | "Archived" | "Inactive";
-type LocationType   = "Group" | "Private" | "Semi-private";
+type LocationType   = "Group" | "Private";
 
-const CLASS_TYPES: LocationType[] = ["Group", "Private", "Semi-private"];
+const CLASS_TYPES: LocationType[] = ["Group", "Private"];
 // Sourced from the live `class_categories` seed so the dropdown always
 // matches real categories (and resolves to a valid `categoryId` on create).
 const CATEGORIES = CLASS_CATEGORIES.map(c => c.name);

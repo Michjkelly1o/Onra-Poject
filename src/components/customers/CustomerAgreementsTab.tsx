@@ -1,0 +1,416 @@
+"use client";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Customer detail · Agreements tab
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Figma: 3882:62994 (table) + 6186:158509 (filter).
+//
+// Every agreement version the customer has been issued, with whether they
+// signed it. A row action opens "View agreement" — the dedicated Agreements
+// module doesn't exist yet, so the action fires an informational toast for
+// now and will deep-link once that module ships.
+//
+// Data is derived live from useAppStore(s => s.customerAgreements), joined to
+// `branches` (Branch location) and `classTemplates` (Class template).
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    SearchMd, FilterLines, DotsVertical, ChevronLeft, XClose, AlignLeft, Eye, File06,
+} from "@untitledui/icons";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { SelectInput } from "@/components/ui/select-input";
+import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { useAppStore, BRANCHES, type CustomerAgreement } from "@/lib/store";
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type AgreementStatus = CustomerAgreement["status"];
+
+interface AgreementFilter {
+    dateStart: string;
+    dateEnd: string;
+    statuses: AgreementStatus[];
+    branchId: string;
+}
+const EMPTY_AGREEMENT_FILTER: AgreementFilter = { dateStart: "", dateEnd: "", statuses: [], branchId: "" };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** "2025-02-28, 10:00 PM" — signed-date column format. */
+function fmtDateTime(iso?: string): string {
+    if (!iso) return "—";
+    const d = new Date(iso.length <= 10 ? `${iso}T00:00:00Z` : iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    let h = d.getUTCHours();
+    const min = String(d.getUTCMinutes()).padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${y}-${m}-${day}, ${h}:${min} ${ampm}`;
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function AgreementStatusBadge({ status }: { status: AgreementStatus }) {
+    const signed = status === "signed";
+    return (
+        <span className={cn(
+            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
+            signed
+                ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
+                : "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
+        )}>
+            {signed ? "Signed" : "Unsigned"}
+        </span>
+    );
+}
+
+// ─── Agreement icon ───────────────────────────────────────────────────────────
+
+function AgreementIcon() {
+    return (
+        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
+            <File06 className="w-5 h-5 text-[#475467]" />
+            <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
+        </div>
+    );
+}
+
+// ─── Filter pill ──────────────────────────────────────────────────────────────
+
+function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick}
+            className={cn("px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
+                selected ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]")}>
+            {label}
+        </button>
+    );
+}
+
+// ─── Filter panel (Figma 6186:158509) ─────────────────────────────────────────
+
+function AgreementFilterPanel({ open, onClose, applied, onApply }: {
+    open: boolean; onClose: () => void;
+    applied: AgreementFilter; onApply: (f: AgreementFilter) => void;
+}) {
+    const [pending, setPending] = useState<AgreementFilter>(EMPTY_AGREEMENT_FILTER);
+    useEffect(() => { if (open) setPending({ ...applied }); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        if (open) document.addEventListener("keydown", h);
+        return () => document.removeEventListener("keydown", h);
+    }, [open, onClose]);
+    if (!open) return null;
+
+    function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; }
+    const hasAny =
+        pending.statuses.length > 0 || pending.branchId !== "" ||
+        pending.dateStart !== "" || pending.dateEnd !== "";
+
+    const STATUSES: AgreementStatus[] = ["unsigned", "signed"];
+
+    return (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
+            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* Date range */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <DatePicker value={pending.dateStart} placeholder="Start date"
+                                onChange={v => setPending(p => ({
+                                    ...p, dateStart: v,
+                                    dateEnd: p.dateEnd && v && p.dateEnd < v ? "" : p.dateEnd,
+                                }))} />
+                            <DatePicker value={pending.dateEnd} placeholder="End date"
+                                minDate={pending.dateStart || undefined}
+                                onChange={v => setPending(p => ({ ...p, dateEnd: v }))} />
+                        </div>
+                    </div>
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    {/* Status */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <div className="flex flex-wrap gap-2">
+                            {STATUSES.map(s => (
+                                <FilterPill key={s} label={s === "signed" ? "Signed" : "Unsigned"}
+                                    selected={pending.statuses.includes(s)}
+                                    onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    {/* Branch location */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
+                        <SelectInput value={pending.branchId} placeholder="Select location"
+                            options={[{ value: "", label: "All locations" }, ...BRANCHES.map(b => ({ value: b.id, label: b.name }))]}
+                            onChange={v => setPending(p => ({ ...p, branchId: v }))} width="w-full" />
+                    </div>
+                </div>
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                        onClick={() => { setPending(EMPTY_AGREEMENT_FILTER); onApply(EMPTY_AGREEMENT_FILTER); onClose(); }}>Clear filter</Button>
+                    <Button variant="primary" size="md" disabled={!hasAny}
+                        onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Row action (⋮) ───────────────────────────────────────────────────────────
+
+function RowActions({ onView }: { onView: () => void }) {
+    const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    return (
+        <div className="relative">
+            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
+                <DotsVertical className="w-4 h-4 text-[#667085]" />
+            </button>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
+                <button type="button" onClick={() => { setOpen(false); onView(); }}
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                    <Eye className="w-4 h-4 text-[#667085]" />View agreement
+                </button>
+            </FixedDropdown>
+        </div>
+    );
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+function Pagination({ page, total, pageSize, onPage, onPageSize }: {
+    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
+}) {
+    const [sizeOpen, setSizeOpen] = useState(false);
+    const sizeRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return (
+        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
+            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
+                <button type="button" onClick={() => setSizeOpen(p => !p)}
+                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
+                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
+                </button>
+                {sizeOpen && (
+                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
+                        {[10, 20, 30].map(s => (
+                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
+                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
+                        ))}
+                    </div>
+                )}
+                <span className="text-[14px] font-medium text-[#344054]">per page</span>
+            </div>
+            <div className="flex items-center gap-3">
+                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
+                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
+                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
+                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
+                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
+                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
+                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
+    return (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-6 pointer-events-auto">
+                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                    <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
+                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-[8px] flex-1 min-w-0">
+                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                    </div>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
+                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7] align-middle";
+
+// ─── Agreements tab ───────────────────────────────────────────────────────────
+
+export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
+    const customerAgreements = useAppStore(s => s.customerAgreements);
+    const classTemplates = useAppStore(s => s.classTemplates);
+    const showToast = useAppStore(s => s.showToast);
+
+    const [search, setSearch] = useState("");
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [applied, setApplied] = useState<AgreementFilter>(EMPTY_AGREEMENT_FILTER);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    useEffect(() => { setPage(1); }, [search, applied]);
+
+    const branchName = (id: string) => BRANCHES.find(b => b.id === id)?.name ?? "—";
+    const templateNames = (ids: string[]) =>
+        ids.map(id => classTemplates.find(t => t.id === id)?.name).filter(Boolean).join(", ") || "—";
+
+    // ─── This customer's agreements (newest version first) ──────────────────
+    const rows = useMemo(
+        () => customerAgreements
+            .filter(a => a.customerId === customerId)
+            .sort((a, b) => b.version - a.version),
+        [customerAgreements, customerId],
+    );
+
+    // ─── Filtering + pagination ─────────────────────────────────────────────
+    const filtered = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return rows.filter(a => {
+            if (q && !`${a.title} version ${a.version}`.toLowerCase().includes(q)) return false;
+            if (applied.statuses.length > 0 && !applied.statuses.includes(a.status)) return false;
+            if (applied.branchId && a.branchId !== applied.branchId) return false;
+            if (applied.dateStart || applied.dateEnd) {
+                // Date range filters on the signed date — unsigned rows have none.
+                if (!a.signedAtISO) return false;
+                const date = a.signedAtISO.slice(0, 10);
+                if (applied.dateStart && date < applied.dateStart) return false;
+                if (applied.dateEnd && date > applied.dateEnd) return false;
+            }
+            return true;
+        });
+    }, [rows, search, applied]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const clampedPage = Math.min(Math.max(1, page), totalPages);
+    const paged = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const hasActiveFilter =
+        applied.statuses.length > 0 || applied.branchId !== "" ||
+        applied.dateStart !== "" || applied.dateEnd !== "";
+
+    // ─── View agreement — Agreements module not built yet ───────────────────
+    function handleView(a: CustomerAgreement) {
+        showToast(
+            "Agreement preview coming soon",
+            `"${a.title} — Version ${a.version}" will open once the Agreements module is connected.`,
+            "success",
+        );
+    }
+
+    return (
+        <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Toolbar */}
+            <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-4">
+                <div className="flex-1">
+                    <p className="text-[14px] text-[#667085]">Total</p>
+                    <p className="text-[14px] font-medium text-[#101828]">
+                        {filtered.length} {filtered.length === 1 ? "agreement" : "agreements"}
+                    </p>
+                </div>
+                <div className="relative w-[200px]">
+                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="Search agreement..."
+                        className="h-9 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    />
+                </div>
+                <Button variant="secondary-gray" size="md"
+                    leftIcon={
+                        <div className="relative">
+                            <FilterLines className="w-4 h-4" />
+                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border border-white" />}
+                        </div>
+                    }
+                    onClick={() => setFilterOpen(true)}>Filter</Button>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                {paged.length === 0 ? (
+                    <EmptyBlock
+                        title={rows.length === 0 ? "No agreements yet" : "No agreements found"}
+                        subtitle={rows.length === 0
+                            ? "This customer hasn't been issued any agreements."
+                            : "Try adjusting your search or filter."}
+                    />
+                ) : (
+                    <div className="px-6">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className={TH}>Version</th>
+                                    <th className={cn(TH, "w-[200px]")}>Branch location</th>
+                                    <th className={cn(TH, "w-[240px]")}>Class template</th>
+                                    <th className={cn(TH, "w-[130px]")}>Status</th>
+                                    <th className={cn(TH, "w-[190px]")}>Signed date</th>
+                                    <th className={cn(TH, "w-[52px]")} />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paged.map(a => (
+                                    <tr key={a.id} className="hover:bg-[#f9fafb] transition-colors">
+                                        <td className={TD}>
+                                            <div className="flex items-center gap-3">
+                                                <AgreementIcon />
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-[14px] font-medium text-[#101828]">{a.title}</span>
+                                                    <span className="text-[13px] text-[#667085]">Version {a.version}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className={cn(TD, "text-[#475467]")}>{branchName(a.branchId)}</td>
+                                        <td className={cn(TD, "text-[#667085]")}>{templateNames(a.classTemplateIds)}</td>
+                                        <td className={TD}><AgreementStatusBadge status={a.status} /></td>
+                                        <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(a.signedAtISO)}</td>
+                                        <td className={TD}>
+                                            <RowActions onView={() => handleView(a)} />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            <div className="px-6 shrink-0">
+                <Pagination page={clampedPage} total={filtered.length} pageSize={pageSize}
+                    onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
+            </div>
+
+            <AgreementFilterPanel open={filterOpen} onClose={() => setFilterOpen(false)}
+                applied={applied} onApply={f => { setApplied(f); setPage(1); }} />
+        </div>
+    );
+}

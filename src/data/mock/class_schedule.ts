@@ -14,10 +14,9 @@
 //
 // Distribution by template (3 per template — keeps class-types/[id] sessions
 // tab populated for every template):
-//   tpl_reformer_pilates → past Completed + today Ongoing + future Upcoming
+//   tpl_reformer_pilates → past Completed/Cancelled + today/Sunday/Friday Upcoming
 //   tpl_barre            → past Completed + today Upcoming + future Upcoming
 //   tpl_hot_yoga         → past Completed + tomorrow Upcoming + future Upcoming
-//   tpl_roller_release   → past Cancelled + Sunday Upcoming + future Upcoming
 //
 // `booked`, `rating`, `rating_count` are denormalized counts kept on the row
 // for fast list rendering. Task 8's class_bookings + class_ratings will
@@ -85,9 +84,9 @@ export const class_schedule: ClassSchedule[] = [
         status: "Completed",
     },
     {
-        // 4) Roller Release — Cancelled on Wednesday (refunds issued)
+        // 4) Reformer Pilates — Cancelled on Wednesday (refunds issued)
         id: "class_sched_2026_05_13_1800",
-        template_id: "tpl_roller_release",
+        template_id: "tpl_reformer_pilates",
         branch_id: "branch_forma_south",
         room_id: "room_south_mat",
         instructor_id: "staff_liam_chen",
@@ -157,9 +156,9 @@ export const class_schedule: ClassSchedule[] = [
         status: "Upcoming",
     },
     {
-        // 8) Roller Release — Sunday Upcoming
+        // 8) Reformer Pilates — Sunday Upcoming
         id: "class_sched_2026_05_17_1700",
-        template_id: "tpl_roller_release",
+        template_id: "tpl_reformer_pilates",
         branch_id: "branch_forma_south",
         room_id: "room_south_mat",
         instructor_id: "staff_liam_chen",
@@ -228,9 +227,9 @@ export const class_schedule: ClassSchedule[] = [
         status: "Upcoming",
     },
     {
-        // 12) Roller Release — Friday Upcoming
+        // 12) Reformer Pilates — Friday Upcoming
         id: "class_sched_2026_05_22_1700",
-        template_id: "tpl_roller_release",
+        template_id: "tpl_reformer_pilates",
         branch_id: "branch_forma_south",
         room_id: "room_south_mat",
         instructor_id: "staff_liam_chen",

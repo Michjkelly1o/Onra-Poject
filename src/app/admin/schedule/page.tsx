@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus, DotsVertical,
     ChevronLeft, ChevronRight, Eye, Edit02, Trash01,
@@ -25,13 +25,10 @@ type Instructor = ScheduleInstructor;
 // ─── Category colors ──────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates:          { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
-    Barre:            { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
-    Yoga:             { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
-    "Roller Release": { bg: "#f0fcf9", border: "#0e9384", text: "#125d56" },
-    HIIT:             { bg: "#fff3f2", border: "#d92d20", text: "#7a271a" },
-    Recovery:         { bg: "#f0f4f8", border: "#667085", text: "#344054" },
-    default:          { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
+    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
+    default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
 };
 
 function getCategoryColor(category: string) {
@@ -520,7 +517,7 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel }
     const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
     const templateOptions = templates.map(t => ({ value: t.id, label: t.name }));
 
-    const Divider = () => <div className="h-px bg-[#e4e7ec]" />;
+    const Divider = () => <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
     const SectionLabel = ({ label }: { label: string }) => (
         <p className="text-[14px] font-medium text-[#344054]">{label}</p>
     );
@@ -1288,13 +1285,28 @@ function ExportDropdown() {
 
 type ViewTab = "list" | "day" | "week" | "month";
 
-export default function SchedulePage() {
+export default function SchedulePageRoute() {
+    // Suspense wrapper is required by Next.js App Router because
+    // `useSearchParams()` defers rendering until the client has the URL.
+    return <Suspense fallback={null}><SchedulePage /></Suspense>;
+}
+
+function SchedulePage() {
     const router = useRouter();
     const { classSchedules, classTemplates, classBookings, cancelClassSchedule, showToast } = useAppStore();
     const [activeTab, setActiveTab] = useState<ViewTab>("list");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
-    const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
+    // Deep-link support — Staff details "Schedule" internal link drops the
+    // user here with `?instructorId=...` to land directly on a pre-filtered
+    // view. Honour it on first mount only so a manual filter clear sticks.
+    const searchParams = useSearchParams();
+    const initialInstructorId = searchParams?.get("instructorId") ?? "";
+    const [applied, setApplied] = useState<FilterState>(
+        initialInstructorId
+            ? { ...EMPTY_FILTER, instructors: [initialInstructorId] }
+            : EMPTY_FILTER,
+    );
     // Day view tracks an ISO date so prev/next can walk freely. Display label
     // is derived at render time via isoToDisplay().
     const [dayDateISO, setDayDateISO] = useState(DAY_VIEW_DATE);
@@ -1423,8 +1435,8 @@ export default function SchedulePage() {
                 </div>
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                    placeholder="Select studio"
-                    options={locationOptions}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
                     value={location}
                     onChange={setLocation}
                     width="w-[220px]"

@@ -53,7 +53,7 @@ const NAV_ITEMS: NavItemDef[] = [
         ],
     },
     { label: "Marketing", href: "/admin/marketing", icon: Announcement01, permission: "manage_marketing" },
-    { label: "Customers", href: "/admin/members", icon: User01, permission: "manage_members" },
+    { label: "Customers", href: "/admin/customers", icon: User01, permission: "manage_members" },
     {
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
         children: [
@@ -64,9 +64,9 @@ const NAV_ITEMS: NavItemDef[] = [
     {
         label: "Staff", icon: Users01, permission: "manage_instructors",
         children: [
-            { label: "Instructors", href: "/admin/instructors" },
+            { label: "Staff & Permissions", href: "/admin/staff" },
             { label: "Pay rate", href: "/admin/staff/pay-rate" },
-            { label: "Compensation", href: "/admin/compensation" },
+            { label: "Payroll", href: "/admin/compensation" },
         ],
     },
     {

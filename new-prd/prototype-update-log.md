@@ -4,26 +4,18 @@ A plain-language guide to what's ready in this build of the Onra Studio admin
 dashboard. Use it to run through the prototype yourself and see what each part
 can do.
 
-This update covers **four modules**:
+This update covers **seven modules**:
 
 1. **Dashboard**
 2. **Class Templates**
 3. **Class Schedule**
-4. **Memberships & Packages**
+4. **Point of Sale (POS)**
+5. **Memberships & Packages**
+6. **Gift Cards**
+7. **Promos**
 
 Each section below explains what the module is for, **what you can do** in it,
 and the **improvements in this build**.
-
----
-
-## How to read this document
-
-- **"What you can do"** — a checklist you can follow click-by-click in the
-  prototype. Everything listed is interactive and working with sample data.
-- **"What's new in this build"** — the notable changes and additions since the
-  previous demo.
-- The prototype is pre-loaded with sample data (branches, classes, members,
-  products), so every screen has realistic content to explore.
 
 ---
 
@@ -40,7 +32,6 @@ Your home screen — a single, at-a-glance view of how the studio is doing today
   - **Remove a widget** — use the "···" menu on any widget and choose
     *Remove widget* to take it off your dashboard.
 - Review **today's activity** — what's happening across the studio right now.
-- **Switch location** — filter the dashboard to a specific branch.
 - **Change the time period** — view the numbers for the range you care about.
 
 ### What's new in this build
@@ -54,8 +45,7 @@ Your home screen — a single, at-a-glance view of how the studio is doing today
 
 ## 2. Class Templates
 
-Your library of **reusable class types** — the master definition of each class
-you offer (e.g. Reformer Pilates, Barre, Hot Yoga). You build a template once,
+Your library of **reusable class types** — the master definition of each class you offer. You build a template once,
 then schedule it as often as you like.
 
 ### What you can do
@@ -118,7 +108,48 @@ built from your class templates.
 
 ---
 
-## 4. Memberships & Packages
+## 4. Point of Sale (POS)
+
+Your **checkout terminal** — sell memberships, packages, and gift cards to
+members or walk-ins in a single, fast flow.
+
+### What you can do
+
+- Work in a **two-panel layout** — the product catalogue on the left, the live
+  cart on the right.
+- **Browse the catalogue** with tabs for **All / Memberships / Packages /
+  Gift cards**, plus search and a side-panel filter for credit range and price
+  range.
+- **Select a customer** for the sale — search by name or email — or proceed as
+  a **walk-in**. You can also **create a new customer inline** without leaving
+  the till.
+- **Add items to the cart** by clicking any product card. Adjust quantities
+  with +/− or remove a line.
+- **Apply a promo code** — type in the code and the matching discount appears
+  in the totals.
+- **Apply a custom discount** — admins can switch from the promo input to a
+  percentage discount with one click (with a role-based maximum cap).
+- **Sell a gift card** — when a gift card is added to the cart, a recipient
+  modal opens to capture the recipient's name, email, custom amount (when the
+  card allows it), and a personal message. The sender is auto-filled from the
+  selected customer.
+- **Review totals** in real time — Subtotal, Promo discount, Custom discount,
+  Tax, and Final Total are all visible before you charge.
+- **Proceed to payment** — the checkout screen carries your customer, items
+  and discounts straight through.
+
+### What's new in this build
+
+- A full **two-panel POS terminal** built into the admin dashboard.
+- Working **promo code** and **custom discount** flows that update totals
+  live.
+- A dedicated **gift card recipient capture** so cards sold at the till always
+  come out personalised.
+- **Inline customer creation** — no need to leave POS to register a walk-in.
+
+---
+
+## 5. Memberships & Packages
 
 Your **products** — the memberships and class packages members buy to attend
 classes.
@@ -150,15 +181,92 @@ classes.
 
 ---
 
+## 6. Gift Cards
+
+Your **gift card designs** — the templates customers can buy and gift to
+someone else. Each design defines the price (or price range) and how long the
+card stays valid.
+
+### What you can do
+
+- See all **gift card** in one list with **search**, a **status
+  filter** (Active / Inactive / Archive), **sortable columns**, and **bulk
+  actions**.
+- Each row shows the gift card name, price, **active customers** (how many
+  people currently hold a card of this gift card), valid-until date, and status.
+- **Create a new gift card** on a dedicated, step-by-step full-page
+  form:
+  - Set the **name, description, and price**.
+  - Choose a **fixed amount** or enable **custom amount** with a minimum /
+    maximum range.
+  - Decide whether the card has **no expiry** or set explicit **issue and
+    expiry dates**.
+- **Open a gift card** to see its full detail page, including:
+  - The **gift card details** — what's been configured for the card.
+  - The **Active customers** tab — every issued card under this gift card, with
+    holder name, remaining balance, and expiry.
+- **Edit** a gift card at any time.
+- Manage each gift card's **lifecycle**:
+  - **Deactivate** — stop new sales while existing holders keep their balance.
+  - **Archive** — fully retire a gift card.
+  - **Delete** — remove a gift card that was never issued.
+- **Bulk actions** — select multiple gift cards and Archive, Reactivate, Recover,
+  or (when nothing's been issued) Delete them in one go.
+
+### What's new in this build
+
+- Step-by-step **create / edit** flow with both fixed-amount and
+  custom-amount gift cards supported.
+- A complete **detail page** showing every customer currently holding a card
+  of that gift card.
+- Working **search, sort, filter, bulk actions, and export** on the list.
+- Status management with the right option shown for each gift card's situation.
+
+---
+
+## 7. Promos
+
+Your **promo codes** — discounts you can hand out for bookings or purchases,
+with full control over who can use them, what they apply to, and how long they
+run.
+
+### What you can do
+
+- Browse all **promo codes** as a card grid — each card shows the promo name,
+  description, action type, offer, code, branches, and validity.
+- **Search** by name or code and **filter** by status and date range.
+- **Create a new promo** on a dedicated, step-by-step full-page form:
+  - **Step 1 — Promo details** — upload a banner image, set the name and
+    description, pick an **action** (Book a class / Buy a package), set the
+    **duration** with start / end dates and times (or mark it as no-expiry),
+    choose the **offer type** (Free class, Free trial, % off, Fixed AED),
+    enter the **discount value**, set the **code**, and set a **usage limit**.
+  - **Step 2 — Visibility settings** — choose which **branches**, which
+    **products or packages**, and which **customer segments** the promo
+    applies to.
+- **Open a promo** to see its full detail page — every setting from creation
+  is shown in a clean, scannable layout.
+- **Edit** a promo at any time.
+- Manage each promo's **lifecycle**:
+  - **Deactivate** — pause a promo without losing it.
+  - **Archive** — retire a promo you no longer run.
+  - **Delete** — remove a promo that was never used.
+- Promo codes you create here flow **straight into POS** — apply them at
+  checkout and the discount lands on the total.
+
+### What's new in this build
+
+- Step-by-step **create / edit** flow with full control over targeting and
+  validity.
+- A complete **detail page** for every promo.
+- Working **status management** with the correct lifecycle options.
+
+---
+
 ## A few things to know
 
 - This is an **interactive prototype** — feel free to click, create, edit, and
   delete. It uses realistic sample data, and your changes apply live as you
   move between screens.
-- Some menu items in the sidebar are **part of a later release** and aren't
-  open in this demo — selecting one simply shows a "page not found" screen.
-  This is intentional, so you can focus on the four modules above.
 - Nothing here is permanent — the prototype resets to its sample data when
   reloaded.
-
-Enjoy the walkthrough — and please note anything you'd like changed or added.

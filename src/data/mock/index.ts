@@ -18,7 +18,21 @@
 export * from "./_types";
 
 // Foundation seeds (no FK dependencies)
-export { roles } from "./roles";
+//
+// `roles` carries the full PRD 10 role-instance shape (id / name / type /
+// branch_id / status / grant_limits / permissions / locked). `DEFAULT_*`
+// helpers are re-exported so the role-creation form can copy the type's
+// permission template at insert time.
+export {
+    roles,
+    DEFAULT_PERMISSIONS_BY_TYPE,
+    DEFAULT_GRANT_LIMITS,
+} from "./roles";
+
+// Staff (FK → roles, branches, pay_rates) — supersedes the dedicated
+// `instructors` table; the existing one stays in place until phase 4
+// folds it in via a derived selector.
+export { staff } from "./staff";
 export { branches } from "./branches";
 export { class_categories } from "./class_categories";
 
@@ -31,6 +45,14 @@ export { user_role_assignments } from "./user_role_assignments";
 
 // Customers (FK → branches)
 export { customers } from "./customers";
+// Customer plans (FK → customers, memberships/packages)
+export { customer_plans } from "./customer_plans";
+// Customer transactions (FK → customers, branches, memberships/packages)
+export { customer_transactions } from "./customer_transactions";
+// Customer agreements (FK → customers, branches, class_templates)
+export { customer_agreements } from "./customer_agreements";
+// Customer referrals (FK → customers)
+export { customer_referrals } from "./customer_referrals";
 
 // Products & Payments (no FK deps for now — payment_methods adds customer_id later)
 export { memberships } from "./memberships";
@@ -54,3 +76,12 @@ export { issued_gift_cards } from "./issued_gift_cards";
 
 // Marketing (FK → branches, class_schedule, memberships/packages, promo_codes)
 export { marketing_items } from "./marketing_items";
+
+// Pay rates (FK → branches) — read by payroll, staff, instructor detail
+export { pay_rates } from "./pay_rates";
+
+// Instructors (FK → branches, pay_rates) — extends staff_profiles with contact + rate
+export { instructors } from "./instructors";
+
+// Payroll entries (FK → instructors, branches, pay_rates) — one per instructor × period
+export { payroll_entries, DEMO_PERIOD_START, DEMO_PERIOD_END } from "./payroll_entries";

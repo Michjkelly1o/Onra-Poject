@@ -271,14 +271,11 @@ function LeftSidebar({
     const hasHolders = customerCount > 0;
 
     const actions = (() => {
+        // Archived products must be Recovered before they can be edited or
+        // deleted; Inactive products must be Reactivated first.
         if (status === "archived") {
             return (
-                <>
-                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label={`Recover ${productNoun}`} onClick={() => onAction("recover")} />
-                    {!hasHolders && (
-                        <ActionBtn icon={<Trash01 className="w-5 h-5" />} label={`Delete ${productNoun}`} danger onClick={() => onAction("delete")} />
-                    )}
-                </>
+                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label={`Recover ${productNoun}`} onClick={() => onAction("recover")} />
             );
         }
         if (status === "inactive") {
@@ -286,9 +283,6 @@ function LeftSidebar({
                 <>
                     <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label={`Reactivate ${productNoun}`} onClick={() => onAction("reactivate")} />
                     <ActionBtn icon={<Archive className="w-5 h-5" />} label={`Archive ${productNoun}`} onClick={() => onAction("archive")} />
-                    {!hasHolders && (
-                        <ActionBtn icon={<Trash01 className="w-5 h-5" />} label={`Delete ${productNoun}`} danger onClick={() => onAction("delete")} />
-                    )}
                 </>
             );
         }

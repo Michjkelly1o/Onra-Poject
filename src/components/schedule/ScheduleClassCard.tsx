@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 //   • xs → /admin/schedule month-view cells            (single-line pill)
 //
 // The card paints its background + left accent stripe from the class category
-// palette (Pilates / Barre / Yoga / Roller Release / …) — pass in the resolved
+// palette (Pilates / Barre / Yoga / …) — pass in the resolved
 // bg/border/text hexes so the card stays decoupled from a specific palette
 // source (the schedule page keeps its own CATEGORY_COLORS map; the dashboard
 // resolves the same way through `CATEGORY_PALETTE`).

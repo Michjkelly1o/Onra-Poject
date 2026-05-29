@@ -37,7 +37,7 @@ export const marketing_items: MarketingItem[] = [
         branch_ids: ALL_BRANCHES,
         multi_location: true,
         target_package_ids: [],
-        target_class_ids: ["tpl_reformer_pilates", "tpl_barre", "tpl_hot_yoga", "tpl_roller_release"],
+        target_class_ids: ["tpl_reformer_pilates", "tpl_barre", "tpl_hot_yoga"],
         customer_targeting: "all",
         status: "active",
         view_count: 87,

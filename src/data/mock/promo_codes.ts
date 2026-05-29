@@ -55,7 +55,7 @@ export const promo_codes: PromoCode[] = [
         first_time_only: false,
         per_customer_limit: 2,
         applies_to_product_ids: [],
-        applies_to_class_ids: ["tpl_reformer_pilates", "tpl_barre", "tpl_hot_yoga", "tpl_roller_release"],
+        applies_to_class_ids: ["tpl_reformer_pilates", "tpl_barre", "tpl_hot_yoga"],
         customer_targeting: "all",
     },
     {
@@ -135,7 +135,7 @@ export const promo_codes: PromoCode[] = [
         first_time_only: true,
         per_customer_limit: 1,
         applies_to_product_ids: [],
-        applies_to_class_ids: ["tpl_hot_yoga", "tpl_roller_release"],
+        applies_to_class_ids: ["tpl_hot_yoga", "tpl_reformer_pilates"],
         customer_targeting: "new_users",
     },
 ];

@@ -147,10 +147,182 @@ export interface Customer {
      *  unlimited memberships (no credit cap) and no-plan customers. `0` means
      *  the plan is exhausted — a new plan purchase is required to book. */
     credits_remaining?: number;
-    // +later (Module 07): date_of_birth, address, emergency_contact,
-    //                     emergency_contact_phone, notes, status, deleted_at,
-    //                     churn_risk_score, customer_memberships[],
-    //                     customer_packages[] with per-row credit balances
+    /** Account lifecycle status. `active` = normal, `inactive` = suspended
+     *  (login disabled, no new bookings), `archived` = hidden from the default
+     *  list. Drives the customer-list status badge, the Status filter, and
+     *  which row actions are offered. */
+    status: "active" | "inactive" | "archived";
+    /** Date of the customer's most recent attended class (ISO `YYYY-MM-DD`).
+     *  Omitted when the customer has never visited — surfaces the "Never
+     *  visited" filter bucket and a dash in the Last visit column. */
+    last_visit_iso?: string;
+    /** Expiry date of the customer's current plan (ISO `YYYY-MM-DD`). Omitted
+     *  for no-plan customers. Drives the "Plan expiry date range" filter. */
+    plan_expiry_iso?: string;
+    // ── Profile detail (customer-detail "Details" tab) ───────────────────
+    /** ISO `YYYY-MM-DD`. */
+    date_of_birth?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+    postal_code?: string;
+    street_address?: string;
+    /** Whether the customer linked a Google account for sign-in. */
+    google_connected?: boolean;
+    /** Marketing-preference opt-ins shown on the Details tab. */
+    marketing_emails?: boolean;
+    marketing_sms?: boolean;
+    transactional_emails?: boolean;
+    /** Emergency contact captured at sign-up. */
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+    emergency_contact_relation?: string;
+    /** Personal referral code the customer shares — shown on the Referrals tab. */
+    referral_code?: string;
+    // +later (Module 07): notes, deleted_at, churn_risk_score,
+    //                     customer_memberships[], customer_packages[]
+}
+
+/**
+ * Customer referral record — one row of the customer-detail "Referrals" tab,
+ * which lists every person this customer successfully referred.
+ *
+ * The referred person isn't necessarily a seeded `customers` row (they signed
+ * up through the referral link), so their name + email are stored
+ * denormalized here. When the Referral module ships, a `referred_customer_id`
+ * FK joins them once they become a customer.
+ *
+ * FK: `referrer_customer_id` → customers.id.
+ */
+export interface CustomerReferral {
+    /** e.g. "ref_ahmed_1" */
+    id: string;
+    referrer_customer_id: string;  // → customers.id
+    /** Referred person's display name. */
+    referred_name: string;
+    /** Referred person's email. */
+    referred_email: string;
+    /** Bonus class credits the referrer earned from this referral. */
+    benefit_credits: number;
+    /** ISO 8601 — when the referred person signed up via the link. */
+    referred_at: string;
+}
+
+/**
+ * Customer agreement record — one row of the customer-detail "Agreements"
+ * tab. Each row is a version of a studio agreement (e.g. a liability waiver)
+ * and whether THIS customer has signed it.
+ *
+ * The dedicated Agreements module doesn't exist yet — this seed stands in so
+ * the tab is functional; when that module ships, agreement content + the
+ * "View agreement" route hang off `id`.
+ *
+ * FK: `customer_id` → customers.id; `branch_id` → branches.id;
+ *     `class_template_ids` → class_templates.id[].
+ */
+export interface CustomerAgreement {
+    /** e.g. "agr_ahmed_v3" */
+    id: string;
+    customer_id: string;          // → customers.id
+    /** Agreement name ("New Liability Waiver"). */
+    title: string;
+    /** Version number — higher is newer. */
+    version: number;
+    branch_id: string;            // → branches.id
+    /** Class templates the agreement covers. */
+    class_template_ids: string[]; // → class_templates.id[]
+    status: "signed" | "unsigned";
+    /** ISO 8601 — when the customer signed. Omitted while `unsigned`. */
+    signed_at?: string;
+}
+
+/**
+ * Customer plan record — one row of a customer's "Plan" tab. Covers purchased
+ * memberships, purchased credit packages, and complimentary grants. A customer
+ * accrues a NEW row each time they buy / are granted a plan, so the table is
+ * the full plan history (active + expired + frozen + cancelled + removed).
+ *
+ * FK: `customer_id` → customers.id; `product_id` → memberships.id / packages.id
+ *     (omitted for `kind: "complimentary"`).
+ */
+export interface CustomerPlan {
+    id: string;
+    customer_id: string;
+    kind: "membership" | "package" | "complimentary";
+    product_id?: string;
+    name: string;
+    /** Plan-type column label — "Membership" | "Credit package" | "Free credit". */
+    plan_type_label: string;
+    /** Transaction-name subtitle — "10 credits" | "1 free credit" | "Unlimited". */
+    credits_label: string;
+    status: "active" | "expired" | "frozen" | "cancelled" | "removed";
+    /** Purchase / grant date (ISO). Shown as "Member since" in the cancel modal. */
+    purchased_at: string;
+    /** Plan expiry (ISO datetime). Extended when the plan is frozen. */
+    expiry_iso: string;
+    /** Membership recurring billing amount in AED — drives the cancel modal's
+     *  "Next billing" line. Omitted for packages + complimentary. */
+    price_aed?: number;
+    // ── Freeze ──
+    freeze_start_iso?: string;
+    freeze_end_iso?: string;
+    // ── Complimentary grant ──
+    /** Number of free credits granted — complimentary plans only. */
+    free_credits?: number;
+    grant_reason?: string;
+    grant_issued_by?: string;
+    grant_issued_role?: string;
+    // ── Cancellation ──
+    cancel_mode?: "today" | "period_end";
+    cancel_reason?: string;
+    cancelled_at?: string;
+    // ── Removal (complimentary) ──
+    remove_reason?: string;
+    removed_by?: string;
+    removed_by_role?: string;
+    removed_at?: string;
+}
+
+/**
+ * Customer transaction record — one row of a customer's "Payments" tab
+ * payment-history table, and the source for the tab's Overview metrics
+ * (Total spent / Total refunded / Net spend).
+ *
+ * A transaction is created each time a customer pays for a membership or a
+ * credit package. Gift-card sales are NOT modelled here — the customer's
+ * gift cards live in `issued_gift_cards`.
+ *
+ * FK: `customer_id` → customers.id; `branch_id` → branches.id;
+ *     `product_id` → memberships.id / packages.id. `name` is a denormalized
+ *     copy of the product name (mirrors the `customer_plans` pattern) so the
+ *     table + refund modal render without a join.
+ */
+export interface CustomerTransaction {
+    /** e.g. "txn_ahmed_1" */
+    id: string;
+    customer_id: string;   // → customers.id
+    branch_id: string;     // → branches.id
+    /** Product type bought — drives the "Plan type" column + filter. */
+    kind: "membership" | "package";
+    /** FK → memberships.id / packages.id (depending on `kind`). */
+    product_id: string;
+    /** Denormalized product name shown in the table + refund modal. */
+    name: string;
+    /** Amount paid in AED. */
+    amount_aed: number;
+    /** complete = paid · pending = awaiting clearance · failed = declined ·
+     *  refunded = a completed payment that was later refunded. Only
+     *  `complete` rows expose the "Refund payment" row action. */
+    status: "complete" | "pending" | "failed" | "refunded";
+    /** Method the customer paid with at purchase time. */
+    payment_method: "card" | "cash";
+    /** ISO 8601 — when the transaction was created. */
+    created_at: string;
+    // ─ Refund (set when status === "refunded") ───────────────────────────
+    /** ISO 8601 — when the refund was processed. */
+    refunded_at?: string;
+    /** Method the refund was issued through (chosen in the Refund modal). */
+    refund_method?: "cash" | "card";
 }
 
 // ─── Products: Memberships & Packages ───────────────────────────────────────
@@ -525,7 +697,7 @@ export interface ClassTemplate {
     category_id: string;   // → class_categories.id
     name: string;          // "Reformer Pilates"
     description: string;
-    location_type: "Group" | "Private" | "Semi-private";
+    location_type: "Group" | "Private";
     duration_min: number;
     capacity: number;
     cover_image_url?: string; // /images/class-template/*.webp
@@ -576,7 +748,7 @@ export interface ClassSchedule {
     /** Gender restriction on who may book — defaults to "all" when unset. */
     gender_access?: "all" | "female" | "male";
     /** Class delivery format — defaults to "Group" when unset. */
-    class_type?: "Group" | "Private" | "Semi-private";
+    class_type?: "Group" | "Private";
     /** Equipment note captured on the schedule form. */
     equipment?: string;
     /** Whether per-spot selection is enabled for this class. */
@@ -630,4 +802,260 @@ export interface ClassRating {
     /** Soft-delete fields — set when an admin moderates the review. */
     deleted_at?: string;
     deleted_by?: string;
+}
+
+// ─── Pay rates (PRD 10 §6) ──────────────────────────────────────────────────
+//
+// `pay_rates` carries the structured rate definition (per-type config) and the
+// flags that drive payroll calculation. `usageCount` is a +later denormalized
+// count once the payroll table ships — for now the seed carries it directly.
+//
+// FK: `branch_id` → branches.id (single branch per row to match the v1 UI).
+
+export type PayRateStatusSeed = "active" | "archive";
+export type PayRateTypeSeed   = "flat" | "tiered" | "revenue" | "hybrid" | "monthly";
+
+export interface PayRateTierSeed {
+    id: string;
+    from: number;
+    to: number;
+    /** AED amount paid when attendee count falls in [from, to]. */
+    aed: number;
+}
+
+export type PayRateHybridConditionSeed =
+    | { kind: "bonus_attendance"; bonus_threshold: number; bonus_per_customer: number }
+    | { kind: "revenue"; split_percent: number };
+
+interface PayRateBaseSeed {
+    id: string;
+    name: string;
+    branch_id: string;
+    status: PayRateStatusSeed;
+    /** Toggle — "Only count checked-in customers" (false = count all booked). */
+    only_checked_in?: boolean;
+    /** Toggle — "Include late-cancelled customers" (false = exclude). */
+    include_late_cancelled?: boolean;
+    /** Staff assignments + payroll uses combined. Delete gate is `0`. */
+    usage_count: number;
+    created_at?: string;
+    // +later: archived_at, superseded_by_id, version, notes
+}
+
+export interface FlatPayRateSeed    extends PayRateBaseSeed { type: "flat";    flat_amount: number }
+export interface TieredPayRateSeed  extends PayRateBaseSeed { type: "tiered";  tiers: PayRateTierSeed[] }
+export interface RevenuePayRateSeed extends PayRateBaseSeed { type: "revenue"; split_percent: number; pay_per_customer?: number }
+export interface HybridPayRateSeed  extends PayRateBaseSeed { type: "hybrid";  base_rate: number; condition: PayRateHybridConditionSeed }
+export interface MonthlyPayRateSeed extends PayRateBaseSeed {
+    type: "monthly";
+    fixed_salary: number;
+    bonus_of_salary_percent?: number;
+    bonus_cap?: number;
+    sales_commission_packages_percent?: number;
+    sales_commission_memberships_percent?: number;
+}
+
+export type PayRateSeed = FlatPayRateSeed | TieredPayRateSeed | RevenuePayRateSeed | HybridPayRateSeed | MonthlyPayRateSeed;
+
+// ─── Instructors (extends staff_profiles for cross-module use) ──────────────
+//
+// The pay rate detail page reads `pay_rate_id` to filter; the (eventual) staff
+// module will own the fuller view. Keeping this in its own table — separate
+// from `staff_profiles` — so future Front Desk / Operator rows have a clean
+// home that isn't shaped around the instructor flow.
+//
+// FK:
+//   • branch_id   → branches.id
+//   • pay_rate_id → pay_rates.id (nullable when the instructor has no rate)
+
+export type InstructorStatusSeed = "active" | "inactive" | "archive";
+
+export interface InstructorSeed {
+    id: string;                  // shared with staff_profiles.id when both exist
+    full_name: string;
+    initials: string;
+    color_hex: string;
+    image_url?: string;
+    email: string;
+    phone: string;
+    /** Pre-formatted "Feb 1, 2024" string — display-ready. */
+    joined_date: string;
+    branch_id: string;
+    pay_rate_id?: string;
+    status: InstructorStatusSeed;
+    // +later: bio, specialties, default_capacity, hire_date
+}
+
+// ─── Payroll entries (PRD 10 §7) ────────────────────────────────────────────
+//
+// One row per (instructor, period). When a payroll run is confirmed, every
+// pending entry in that period flips status: pending → paid and gets stamped
+// with `payroll_run_id`.
+//
+// FK:
+//   • instructor_id  → instructors.id
+//   • branch_id      → branches.id          (snapshot at entry creation)
+//   • pay_rate_id    → pay_rates.id         (snapshot at entry creation)
+//   • payroll_run_id → payroll_runs.id      (nullable, set when paid)
+
+export type PayrollEntryStatusSeed = "pending" | "paid";
+
+export interface PayrollEntrySeed {
+    id: string;
+    instructor_id: string;
+    branch_id: string;
+    pay_rate_id: string;
+    /** Display snapshot — the pay rate's name as of entry creation. Survives
+     *  later renames / archives so historical rows still read correctly. */
+    pay_rate_name: string;
+    /** Period covered by this entry — ISO yyyy-mm-dd. */
+    period_start: string;
+    period_end: string;
+    /** Completed classes the instructor taught in the period. */
+    classes_count: number;
+    /** Sum of attendees across those classes — drives per-attendee math. */
+    total_attendees: number;
+    /** Total class duration in hours (sum of all completed classes).
+     *  Surfaced as the "Total time (hour)" column on the Run Payroll page. */
+    total_hours: number;
+    /** Revenue the studio earned from those classes (AED). Surfaced as the
+     *  "Gross revenue" column on the Run Payroll table. */
+    gross_revenue: number;
+    /** Earnings before any manual adjustment. */
+    base_earnings: number;
+    /** + or - AED amount applied during the Run Payroll review step. */
+    adjustment_amount: number;
+    adjustment_reason?: string;
+    /** Final amount: base_earnings + adjustment_amount. */
+    total_earnings: number;
+    status: PayrollEntryStatusSeed;
+    /** Set when a payroll run is confirmed and this entry is marked paid. */
+    payroll_run_id?: string;
+    created_at?: string;
+    // +later: substitute_classes, pay_rate_snapshot (full JSON), paid_at
+}
+
+// ─── Roles & permissions (PRD 10 §5 + Brief — Staff & Permissions module) ──
+//
+// `roles` is the source of truth for permission templates, grant limits, and
+// branch scope. Each row is a NAMED INSTANCE of one of 5 predefined role
+// types — admins create their own role names ("Forma South Ops", "Senior
+// Instructors") but the underlying `type` constrains what permission shape
+// they inherit. The Owner row is auto-created at signup and cannot be edited
+// by this module (locked = true).
+//
+// FK: branch_id → branches.id (nullable — Owner has no branch scope).
+
+export type RoleTypeSeed = "owner" | "branch_admin" | "operator" | "front_desk" | "instructor";
+export type RoleStatusSeed = "active" | "inactive" | "archive";
+
+/** A single cell in the CRUD permission matrix.
+ *  • true  — granted (checked checkbox)
+ *  • false — not granted (empty checkbox)
+ *  • "na"  — not applicable for this module × action (renders as "-") */
+export type PermissionCellSeed = boolean | "na";
+
+/** One row in the matrix: 4 actions per module (Create / Edit / Delete / View),
+ *  matching the Figma permission tables (6618-158416 through 158420). */
+export interface PermissionRowSeed {
+    create: PermissionCellSeed;
+    edit:   PermissionCellSeed;
+    delete: PermissionCellSeed;
+    view:   PermissionCellSeed;
+}
+
+/** Section → module-key → CRUD row. Section + module ordering is held in
+ *  `PERMISSION_SECTIONS` (see permission_templates.ts) so the matrix renders
+ *  in a deterministic order. The map itself just stores cell state per role. */
+export type PermissionsMapSeed = Record<string, Record<string, PermissionRowSeed>>;
+
+/** Grant Limits config — drives the customer module's "Add complimentary
+ *  credit" feature (PRD 00 §4.4).
+ *
+ *  Shape mirrors the Figma row-by-row table:
+ *    • `enabled` — section-level toggle (hides the whole feature when off)
+ *    • `unlimited` — section-level shortcut that marks both numeric limits
+ *      as uncapped (renders "Unlimited" badges)
+ *    • Per-row `*_enabled` flags — each row can be toggled on/off
+ *      independently from the table's Enabled column
+ *
+ *  When the table-level Enabled checkbox on a numeric row is off, the value
+ *  for that row is ignored at enforcement time (the limit doesn't apply). */
+export interface GrantLimitsSeed {
+    enabled: boolean;
+    /** If true, both numeric rows render as "Unlimited" — uncapped. */
+    unlimited: boolean;
+    /** Max grants this role can issue per calendar month. */
+    grants_per_month: number;
+    /** Whether the per-month limit is enforced (Enabled column on its row). */
+    grants_per_month_enabled?: boolean;
+    /** Max AED value of a single grant. */
+    max_grant_value_aed: number;
+    /** Whether the max-value limit is enforced (Enabled column on its row). */
+    max_grant_value_enabled?: boolean;
+    /** Whether the role can remove unused grants from customers. */
+    allow_remove_unused: boolean;
+}
+
+export interface RoleSeed {
+    id: string;
+    /** Admin-supplied name (e.g. "Branch admin 1"). Distinct from `type`. */
+    name: string;
+    description: string;
+    /** Predefined type — constrains the inherited permission shape. */
+    type: RoleTypeSeed;
+    /** FK → branches.id. Null for Owner (all branches). */
+    branch_id: string | null;
+    status: RoleStatusSeed;
+    /** Optional Grant Limits override. */
+    grant_limits: GrantLimitsSeed;
+    /** Full permission matrix — inherits the type default, can be overridden. */
+    permissions: PermissionsMapSeed;
+    /** Locked rows (Owner) cannot be edited or deactivated via the UI. */
+    locked: boolean;
+    created_at?: string;
+    archived_at?: string;
+}
+
+// ─── Staff (PRD 10 §3 + PRD 01 §10 demo users) ─────────────────────────────
+//
+// One row per person with system access. Each staff has ONE role assignment
+// in MVP (multi-role architecture deferred). Status lifecycle:
+//   pending  → invite sent, hasn't completed first-login
+//   active   → has signed in at least once
+//   inactive → deactivated (temporary leave — login disabled, data preserved)
+//   archive  → permanently left the studio
+//
+// Instructor-specific columns (bio, specialties, pay_rate_id) only render
+// in the UI when role.type === "instructor".
+//
+// FK: role_id → roles.id · branch_id → branches.id · pay_rate_id → pay_rates.id
+
+export type StaffStatusSeed = "pending" | "active" | "inactive" | "archive";
+
+export interface StaffSeed {
+    id: string;
+    first_name: string;
+    last_name: string;
+    /** Denormalized "First Last" for fast list rendering. */
+    full_name: string;
+    email: string;
+    phone: string;
+    image_url?: string;
+    initials: string;
+    color_hex: string;
+    role_id: string;          // → roles.id
+    branch_id: string | null; // null when assigned to All locations (Owner)
+    status: StaffStatusSeed;
+    /** "Demo1234!" for prototype; never displayed. */
+    temp_password?: string;
+    invite_sent_at?: string;
+    first_login_completed: boolean;
+    /** Display-ready "Feb 1, 2024". */
+    joined_date: string;
+    // ── Instructor-specific (nullable for other roles) ────────────────────
+    bio?: string;
+    specialties?: string[];
+    pay_rate_id?: string;
+    // +later: dob, gender, address, emergency_contact
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp } from "@untitledui/icons";
+import { ChevronDown, ChevronUp, Check } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 // ─── SelectInput — generic trigger + dropdown ─────────────────────────────────
@@ -51,6 +51,7 @@ export function SelectInput({
     width = "w-[220px]",
 }: SelectInputProps) {
     const [open, setOpen] = React.useState(false);
+    const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({ position: "fixed", visibility: "hidden" });
     const ref = React.useRef<HTMLDivElement>(null);
 
     // Close on outside click
@@ -63,6 +64,39 @@ export function SelectInput({
         document.addEventListener("mousedown", handle);
         return () => document.removeEventListener("mousedown", handle);
     }, []);
+
+    // Position the menu with `position: fixed` (computed from the trigger
+    // rect) so it escapes any modal / scroll-container `overflow` clipping,
+    // and flip it above the trigger when there isn't room below.
+    React.useLayoutEffect(() => {
+        if (!open || !ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        const menuH = Math.min(264, options.length * 38 + 8);
+        const spaceBelow = window.innerHeight - r.bottom;
+        const flipUp = spaceBelow < menuH + 8 && r.top > menuH + 8;
+        setMenuStyle({
+            position: "fixed",
+            left: r.left,
+            width: r.width,
+            zIndex: 9999,
+            ...(flipUp ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+        });
+    }, [open, options.length]);
+
+    // A fixed-positioned menu can't track scrolling — close it on any scroll
+    // that ORIGINATES OUTSIDE the menu. Scrolls inside the menu (the user
+    // scrolling through a long option list) must not close it.
+    const menuRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        if (!open) return;
+        function onScroll(e: Event) {
+            const target = e.target as Node | null;
+            if (menuRef.current && target && menuRef.current.contains(target)) return;
+            setOpen(false);
+        }
+        window.addEventListener("scroll", onScroll, true);
+        return () => window.removeEventListener("scroll", onScroll, true);
+    }, [open]);
 
     const selected = options.find((o) => o.value === value);
     const displayLabel = selected?.label ?? placeholder;
@@ -118,35 +152,48 @@ export function SelectInput({
             {/* Dropdown menu */}
             {open && (
                 <div
+                    ref={menuRef}
+                    style={menuStyle}
                     className={cn(
-                        "absolute z-50 top-[calc(100%+4px)] left-0 min-w-full",
+                        // Solid bg matters here — without it, scrolling the
+                        // option list lets the layer underneath bleed through
+                        // when the menu floats over a modal.
                         "bg-white border-1 border-[#e4e7ec] rounded-[8px]",
                         "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
-                        "p-[4px]",
+                        "p-[4px] max-h-[264px] overflow-y-auto scrollbar-hide",
                         menuClassName,
                     )}
                 >
-                    {options.map((option) => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => select(option)}
-                            className={cn(
-                                "flex items-center gap-[8px] w-full",
-                                "px-[10px] py-[9px] rounded-[6px]",
-                                "text-[14px] font-medium text-[#344054]",
-                                "hover:bg-[#f9fafb] transition-colors",
-                                option.value === value && "bg-[#f9fafb] text-[#101828]",
-                            )}
-                        >
-                            {option.icon && (
-                                <span className="w-4 h-4 flex items-center justify-center shrink-0 text-[#667085]">
-                                    {option.icon}
-                                </span>
-                            )}
-                            <span className="truncate">{option.label}</span>
-                        </button>
-                    ))}
+                    {options.map((option) => {
+                        const isSelected = option.value === value;
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => select(option)}
+                                className={cn(
+                                    "flex items-center gap-[8px] w-full",
+                                    "px-[10px] py-[9px] rounded-[6px]",
+                                    "text-[14px] font-medium text-[#344054]",
+                                    "hover:bg-[#f9fafb] transition-colors",
+                                    isSelected && "bg-[#f9fafb] text-[#101828]",
+                                )}
+                            >
+                                {option.icon && (
+                                    <span className="w-4 h-4 flex items-center justify-center shrink-0 text-[#667085]">
+                                        {option.icon}
+                                    </span>
+                                )}
+                                <span className="flex-1 min-w-0 truncate text-left">{option.label}</span>
+                                {/* Selected indicator — sage check, matches the
+                                    filter-dropdown pattern used by pay-rate /
+                                    gift-cards. */}
+                                {isSelected && (
+                                    <Check className="w-4 h-4 text-[#658774] shrink-0" />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>

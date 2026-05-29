@@ -2,11 +2,11 @@
 // Onra Studio — `class_templates` seed
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// 4 templates — exactly one per `class_categories` entry — so every category
-// is realised in the UI (no orphan categories on filters / dashboards).
+// 3 templates — one per `class_categories` entry — so every category is
+// realised in the UI (no orphan categories on filters / dashboards).
 //
 // Each template lists which memberships + packages grant access. For the
-// prototype all four templates accept all 3 memberships and all 4 packages;
+// prototype all three templates accept all 3 memberships and all 4 packages;
 // when access rules need to differ per category, just trim the arrays here.
 //
 // Cover images live under /public/images/class-template/.
@@ -58,19 +58,6 @@ export const class_templates: ClassTemplate[] = [
         duration_min: 75,
         capacity: 16,
         cover_image_url: "/images/class-template/hot-yoga.webp",
-        status: "Active",
-        applicable_membership_ids: ALL_MEMBERSHIPS,
-        applicable_package_ids: ALL_PACKAGES,
-    },
-    {
-        id: "tpl_roller_release",
-        category_id: "cat_roller_release",
-        name: "Roller Release",
-        description: "A foam roller–based recovery class to release muscle tension, improve mobility, and boost circulation.",
-        location_type: "Group",
-        duration_min: 45,
-        capacity: 8,
-        cover_image_url: "/images/class-template/roller-release.webp",
         status: "Active",
         applicable_membership_ids: ALL_MEMBERSHIPS,
         applicable_package_ids: ALL_PACKAGES,

@@ -17,20 +17,40 @@
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ──
-    "/admin/pos",                    // POS terminal
-    "/pos",                          // checkout flow
-
-    // ── Gift card module ──
-    "/admin/products/gift-cards",    // list view
-    "/products/gift-cards",          // create / detail / edit
+    //"/admin/pos",                    // POS terminal
+    //"/pos",                          // checkout flow
 
     // ── Promo module ──
-    "/admin/products/promo-codes",   // list view
-    "/products/promo-codes",         // create / detail / edit
+    //"/admin/products/promo-codes",   // list view
+    //"/products/promo-codes",         // create / detail / edit
 
     // ── Marketing module ──
     "/admin/marketing",              // list view
     "/marketing",                    // create / detail / edit
+
+    // ── Gift Cards module ──
+    //"/admin/products/gift-cards",    // list view
+    //"/products/gift-cards",          // create / detail / edit
+
+    // ── Customer Management module ──
+    "/admin/customers",              // list view
+    "/customers",                    // create / detail / edit / add-credit
+
+    // ── Insights module ──
+    "/admin/insights",               // tabs: Finance / Memberships / Classes
+
+    // ── Pay rate module ──
+    "/admin/staff/pay-rate",         // list view
+    "/staff/pay-rate",               // create / detail / edit
+
+    // ── Payroll module ──
+    "/admin/compensation",           // list view
+    "/compensation",                 // run payroll / instructor earnings detail
+
+    // ── Staff & Permissions module ──
+    "/admin/staff",                  // list view (Roles + Staff tabs)
+    "/staff/roles",                  // role create / detail / edit / edit-permissions
+    "/staff/members",                // staff create / detail / edit
 ];
 
 /** True when `pathname` falls under a disabled route prefix. */

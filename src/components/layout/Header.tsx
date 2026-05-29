@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/dashboard": "Dashboard",
     "/admin/schedule": "Schedule",
     "/admin/class-types": "Class Templates",
+    "/admin/customers": "Customers",
     "/admin/members": "Customers",
     "/admin/bookings": "Bookings",
     "/admin/pos": "Point of Sale",
@@ -16,8 +17,12 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/products/gift-cards": "Gift Cards",
     "/admin/products/promo-codes": "Promo",
     "/admin/marketing": "Marketing",
-    "/admin/instructors": "Staff",
-    "/admin/compensation": "Compensation",
+    // /admin/instructors redirects to /admin/staff — kept for header fallback
+    // during the redirect frame.
+    "/admin/instructors": "Staff & Permissions",
+    "/admin/staff": "Staff & Permissions",
+    "/admin/staff/pay-rate": "Pay rate",
+    "/admin/compensation": "Payroll",
     "/admin/insights": "Insights",
     "/admin/reports": "Reports",
     "/admin/settings": "Settings",

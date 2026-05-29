@@ -10,7 +10,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, type ClassInstance, type GenderAccess } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, CLASS_CATEGORIES, getBusinessHours, buildTimeSlots, type ClassInstance, type GenderAccess } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
@@ -18,8 +18,10 @@ import { genderAccessIcon } from "@/components/ui/gender-icons";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CLASS_TYPES   = ["Group", "Private", "Semi-private"] as const;
-const CATEGORIES    = ["Pilates", "Yoga", "Barre", "Strength", "Recovery", "Cardio", "HIIT", "Dance"];
+const CLASS_TYPES   = ["Group", "Private"] as const;
+// Sourced from the live `class_categories` seed — keeps the schedule form's
+// category dropdown in lockstep with the class-template form (same options).
+const CATEGORIES    = CLASS_CATEGORIES.map(c => c.name);
 const GENDER_OPTIONS = ["All genders", "Female only", "Male only"];
 
 // Map between the form's gender-access label and the stored `GenderAccess`
@@ -1328,7 +1330,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         const recurrenceGroupId = repeat === "Does not repeat"
             ? undefined
             : `rec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const typedClassType = classType as "Group" | "Private" | "Semi-private";
+        const typedClassType = classType as "Group" | "Private";
 
         if (repeat === "Does not repeat" && selectedDate) {
             instances.push({
@@ -1428,7 +1430,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             instructorColor: instName?.color ?? editing.instructorColor,
             roomId: locationId, room: room?.name ?? editing.room,
             capacity,
-            classType: classType as "Group" | "Private" | "Semi-private",
+            classType: classType as "Group" | "Private",
             equipment, spotSelectionEnabled: spotEnabled,
             spotLayout: spotEnabled
                 ? { cols: csCols, rows: csRows, blockedSpots: Array.from(csBlocked) }
@@ -1619,7 +1621,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                         {/* Category + Gender */}
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
-                                                <label className={labelCls}>Class type</label>
+                                                <label className={labelCls}>Class category</label>
                                                 <SimpleSelect label="Select category" value={category} options={CATEGORIES} onChange={setCategory} />
                                             </div>
                                             <div className="flex flex-col gap-1.5">

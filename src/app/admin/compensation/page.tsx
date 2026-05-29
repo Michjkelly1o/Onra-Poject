@@ -1,210 +1,511 @@
 "use client";
 
-import { useState } from "react";
-import { useDataStore } from "@/lib/data-store";
-import { instructorPayRules } from "@/lib/mock-data";
-import { cn, formatCurrency } from "@/lib/utils";
-import { TableAvatar } from "@/components/ui/avatar";
-import {
-    DollarSign,
-    Users,
-    Clock,
-    TrendingUp,
-    Edit3,
-    Save,
-    X,
-    Plus,
-} from "lucide-react";
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Compensation management (/admin/compensation)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// PRD 10 §7 — payroll module landing page. Figma 2837-17872.
+//
+// Layout:
+//   • 4 metric cards (Gross revenue / Total payouts / Classes completed /
+//     Avg per Instructor) — period-filtered
+//   • Toolbar (Total · branch · search · period filter · Export · Run payroll)
+//   • Table (avatar+name+email · branch · default pay rate · completed
+//     classes · earnings · ⋮ actions)
+//   • Pagination (10 / 20 / 30 per page)
+//
+// State source of truth: useAppStore(s => s.payrollEntries) joined with
+// useAppStore(s => s.instructors). Anything that mutates either slice (Run
+// Payroll confirm, instructor archive, pay rate rename) refreshes this view
+// in the same render cycle.
+//
+// Phase 1 scope:
+//   • Listing + filtering + search + export CSV  ✓
+//   • "Run payroll" → /compensation/run            (placeholder until phase 2)
+//   • Row "View details" → /compensation/[id]      (placeholder until phase 3)
 
-const payTypes = ["per_class", "per_head", "hourly", "fixed_monthly"] as const;
-const payTypeLabels: Record<string, string> = {
-    per_class: "Per Class",
-    per_head: "Per Head",
-    hourly: "Hourly",
-    fixed_monthly: "Fixed Monthly",
-};
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+    SearchMd, Download01, DotsVertical, Eye, ChevronLeft,
+    MarkerPin01, CoinsHand, CoinsStacked01, CheckCircle, Users01,
+} from "@untitledui/icons";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { SelectInput } from "@/components/ui/select-input";
+import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
+import {
+    useAppStore, BRANCHES,
+    type Instructor, type PayrollEntry,
+} from "@/lib/store";
+
+// ─── Display helpers ────────────────────────────────────────────────────────
+
+function aed(n: number): string {
+    return `AED ${Math.round(n).toLocaleString("en-US")}`;
+}
+
+// Default period — "This month". When the period has no entries the table
+// still shows every active instructor with 0 classes / AED 0, so the admin
+// can read a truthful "nothing earned yet this month" state.
+const DEFAULT_PERIOD: DateFilter = { type: "month", label: "This month" };
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// ─── Export dropdown (same chrome as customers/products list) ───────────────
+
+const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
+
+function ExportDropdown({ disabled, onExportCsv }: { disabled: boolean; onExportCsv: () => void }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    return (
+        <div ref={ref} className="relative">
+            <Button variant="secondary-gray" size="md"
+                leftIcon={<Download01 className="w-4 h-4" />}
+                disabled={disabled}
+                onClick={() => setOpen(p => !p)}>
+                Export
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
+                    {EXPORT_FORMATS.map(fmt => (
+                        <button key={fmt} type="button"
+                            onClick={() => {
+                                setOpen(false);
+                                if (fmt === "CSV") onExportCsv();
+                            }}
+                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            {fmt}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Metric card ───────────────────────────────────────────────────────────
+
+function MetricCard({ label, value, period, Icon }: {
+    label: string; value: string; period: string; Icon: React.ElementType;
+}) {
+    return (
+        <div className="flex-1 min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+                <p className="text-[14px] text-[#667085] leading-[20px] flex-1 min-w-0">{label}</p>
+                {/* Featured icon — same chrome as the dashboard metric cards
+                    (40px circle, warm cream bg, gray icon). */}
+                <div className="w-10 h-10 rounded-full bg-[#f1f2ed] flex items-center justify-center shrink-0 overflow-hidden">
+                    <Icon className="w-5 h-5 text-[#475467]" />
+                </div>
+            </div>
+            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[#667085] leading-[20px]">{period}</p>
+        </div>
+    );
+}
+
+// ─── Avatar ────────────────────────────────────────────────────────────────
+
+function InstructorAvatar({ instructor }: { instructor: Instructor }) {
+    if (instructor.imageUrl) {
+        return (
+            <img src={instructor.imageUrl} alt={instructor.name}
+                className="w-10 h-10 rounded-full object-cover shrink-0"
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+        );
+    }
+    return (
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-medium text-white shrink-0"
+            style={{ backgroundColor: instructor.color }}>
+            {instructor.initials}
+        </div>
+    );
+}
+
+// ─── Row actions (⋮) ──────────────────────────────────────────────────────
+
+function RowActions({ onView }: { onView: () => void }) {
+    const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    return (
+        <div className="relative">
+            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
+                <DotsVertical className="w-4 h-4 text-[#667085]" />
+            </button>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
+                <button type="button" onClick={() => { setOpen(false); onView(); }}
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                    <Eye className="w-4 h-4 text-[#667085]" />View details
+                </button>
+            </FixedDropdown>
+        </div>
+    );
+}
+
+// ─── Pagination (same chrome as pay-rate list) ─────────────────────────────
+
+function Pagination({ page, total, pageSize, onPage, onPageSize }: {
+    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
+}) {
+    const [sizeOpen, setSizeOpen] = useState(false);
+    const sizeRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return (
+        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
+            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
+                <button type="button" onClick={() => setSizeOpen(p => !p)}
+                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
+                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
+                </button>
+                {sizeOpen && (
+                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
+                        {[10, 20, 30].map(s => (
+                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
+                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
+                        ))}
+                    </div>
+                )}
+                <span className="text-[14px] font-medium text-[#344054]">per page</span>
+            </div>
+            <div className="flex items-center gap-3">
+                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
+                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
+                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
+                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
+                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
+                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
+                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Row VM + period helpers ───────────────────────────────────────────────
+
+interface CompRow {
+    entryId: string;
+    instructor: Instructor;
+    branchId: string;
+    payRateName: string;
+    classesCount: number;
+    earnings: number;
+    status: PayrollEntry["status"];
+    periodStart: string;
+    periodEnd: string;
+}
+
+/** Convert a `DateFilter` chip into an inclusive [from, to] range. Custom
+ *  ranges pass through directly; presets resolve relative to `now`. */
+// Period filter math lives in @/lib/period-filter — shared across every page
+// that uses DateRangeFilter so the presets behave identically everywhere.
+
+// ─── CSV export helper ─────────────────────────────────────────────────────
+
+function exportCompensationCsv(rows: CompRow[]) {
+    const header = [
+        "Instructor", "Email", "Branch", "Default pay rate",
+        "Completed classes", "Earnings (AED)", "Status", "Period",
+    ];
+    const branchName = (id: string) => BRANCHES.find(b => b.id === id)?.name ?? "—";
+    const escape = (v: string | number) => {
+        const s = String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = rows.map(r => [
+        r.instructor.name,
+        r.instructor.email,
+        branchName(r.branchId),
+        r.payRateName,
+        r.classesCount,
+        Math.round(r.earnings),
+        r.status === "paid" ? "Paid" : "Pending",
+        `${r.periodStart} → ${r.periodEnd}`,
+    ].map(escape).join(","));
+    const csv = [header.join(","), ...lines].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `compensation-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+}
+
+// ─── Table header/cell constants ───────────────────────────────────────────
+
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+
+// ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function CompensationPage() {
-    const { users, classInstances } = useDataStore();
-    const instructors = users.filter(u => u.role === "instructor");
-    const [selectedInstructor, setSelectedInstructor] = useState<string | null>(null);
+    const router = useRouter();
+    const payrollEntries = useAppStore(s => s.payrollEntries);
+    const instructors    = useAppStore(s => s.instructors);
+    const showToast      = useAppStore(s => s.showToast);
 
-    // Calculate earnings per instructor
-    const instructorEarnings = instructors.map(inst => {
-        const rule = instructorPayRules.find(r => r.instructor_id === inst.id);
-        const classes = classInstances.filter(c => c.instructor_id === inst.id);
-        const totalClasses = classes.length;
-        const totalStudents = classes.reduce((sum, c) => sum + c.booked_count, 0);
-        const totalHours = classes.reduce((sum, c) => {
-            const dur = (new Date(c.end_time).getTime() - new Date(c.start_time).getTime()) / 3600000;
-            return sum + dur;
-        }, 0);
+    const [branchId, setBranchId] = useState<string>("");
+    const [search, setSearch]     = useState("");
+    const [period, setPeriod]     = useState<DateFilter>(DEFAULT_PERIOD);
+    const [page, setPage]         = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
-        let estimated = 0;
-        if (rule) {
-            switch (rule.pay_type) {
-                case "per_class": estimated = totalClasses * rule.rate; break;
-                case "per_head": estimated = totalStudents * rule.rate; break;
-                case "hourly": estimated = totalHours * rule.rate; break;
-                case "fixed_monthly": estimated = rule.rate; break;
+    useEffect(() => { setPage(1); }, [branchId, search, period]);
+
+    const range = useMemo(() => dateFilterToRange(period), [period]);
+
+    // ─── Build rows: instructor-first (not entry-first) ────────────────────
+    //
+    // The table lists every active instructor scoped to the branch — even if
+    // they have NO payroll entry for the selected period. In that case the
+    // row shows "0 completed classes / AED 0", which is the truthful state
+    // (rather than an empty state that would suggest something's broken).
+    //
+    // The empty state is reserved for "no active instructors at all" in the
+    // current branch — i.e. there's literally nobody to pay.
+
+    const payRates = useAppStore(s => s.payRates);
+
+    const allRows = useMemo<CompRow[]>(() => {
+        const entriesByInstructor = new Map<string, PayrollEntry>();
+        for (const e of payrollEntries) {
+            if (!spanInRange(e.periodStart, e.periodEnd, range)) continue;
+            // If an instructor has multiple entries in the range (e.g. spans
+            // more than one month) we collapse them into one row by summing
+            // — that's the right behaviour for the list summary.
+            const existing = entriesByInstructor.get(e.instructorId);
+            if (!existing) {
+                entriesByInstructor.set(e.instructorId, e);
+            } else {
+                entriesByInstructor.set(e.instructorId, {
+                    ...existing,
+                    classesCount: existing.classesCount + e.classesCount,
+                    totalAttendees: existing.totalAttendees + e.totalAttendees,
+                    totalHours: existing.totalHours + e.totalHours,
+                    grossRevenue: existing.grossRevenue + e.grossRevenue,
+                    baseEarnings: existing.baseEarnings + e.baseEarnings,
+                    adjustmentAmount: existing.adjustmentAmount + e.adjustmentAmount,
+                    totalEarnings: existing.totalEarnings + e.totalEarnings,
+                    // Status precedence: if any entry is still pending the
+                    // aggregate row is pending (admin still has work to do).
+                    status: existing.status === "pending" || e.status === "pending" ? "pending" : "paid",
+                });
             }
         }
 
-        return {
-            ...inst,
-            rule,
-            totalClasses,
-            totalStudents,
-            totalHours: Math.round(totalHours * 10) / 10,
-            estimated: Math.round(estimated),
-        };
-    });
+        return instructors
+            .filter(i => i.status === "active")
+            .map(instructor => {
+                const entry = entriesByInstructor.get(instructor.id);
+                // Pay rate name preference: snapshot from the entry (survives
+                // rate renames), else look it up live, else "—".
+                const liveRateName = instructor.payRateId
+                    ? payRates.find(p => p.id === instructor.payRateId)?.name
+                    : undefined;
+                const payRateName = entry?.payRateName ?? liveRateName ?? "—";
 
-    const totalPayroll = instructorEarnings.reduce((sum, ie) => sum + ie.estimated, 0);
-    const avgPerClass = instructorEarnings.reduce((sum, ie) => sum + ie.totalClasses, 0);
+                return {
+                    entryId: entry?.id ?? `noentry_${instructor.id}`,
+                    instructor,
+                    branchId: instructor.branchId,
+                    payRateName,
+                    classesCount: entry?.classesCount ?? 0,
+                    earnings: entry?.totalEarnings ?? 0,
+                    status: entry?.status ?? "pending",
+                    periodStart: entry?.periodStart ?? "",
+                    periodEnd: entry?.periodEnd ?? "",
+                } satisfies CompRow;
+            });
+    }, [payrollEntries, instructors, payRates, range]);
+
+    const filteredRows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return allRows.filter(r => {
+            if (branchId && r.branchId !== branchId) return false;
+            if (q && !r.instructor.name.toLowerCase().includes(q)
+                  && !r.instructor.email.toLowerCase().includes(q)
+                  && !r.payRateName.toLowerCase().includes(q)) return false;
+            return true;
+        });
+    }, [allRows, branchId, search]);
+
+    // Metric cards ignore the search field — they always reflect the visible
+    // period × branch slice so the user sees the headline number even while
+    // typing in the search input.
+    const metricRows = useMemo(() => {
+        return allRows.filter(r => !branchId || r.branchId === branchId);
+    }, [allRows, branchId]);
+
+    const totalPayouts = metricRows.reduce((s, r) => s + r.earnings, 0);
+    const totalClasses = metricRows.reduce((s, r) => s + r.classesCount, 0);
+    const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
+    // Gross revenue isn't tracked per entry yet — use payouts × 6 as a
+    // placeholder demo multiplier. Real value derives from transactions in
+    // phase 2 (joining payroll period × class_schedule × transactions).
+    const grossRevenue = totalPayouts * 6;
+
+    // Period chip label for the metric cards ("Apr 2026", "This week", etc.)
+    const metricPeriodLabel = (() => {
+        if (period.type === "month") {
+            const m = range.from;
+            return `${MONTHS[m.getMonth()]} ${m.getFullYear()}`;
+        }
+        return period.label;
+    })();
+
+    // ─── Pagination slice ──────────────────────────────────────────────────
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    const clamped = Math.min(Math.max(1, page), totalPages);
+    const pageRows = filteredRows.slice((clamped - 1) * pageSize, clamped * pageSize);
+
+    // ─── Branch options (reuse the shared seed) ────────────────────────────
+    const branchOptions = useMemo(
+        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+            value: b.id, label: b.name,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        })),
+        [],
+    );
+
+    function handleRunPayroll() {
+        router.push("/compensation/run?returnTo=/admin/compensation");
+    }
+    function handleViewDetails(row: CompRow) {
+        router.push(`/compensation/${row.instructor.id}?returnTo=/admin/compensation`);
+    }
+
+    // Truly empty = there are no active instructors at all (or none in the
+    // selected branch). This is the only state that warrants the empty-state
+    // card — date-period filtering never empties the table; instructors
+    // simply show 0 classes / AED 0 for periods with no entries.
+    const isTrulyEmpty = allRows.length === 0
+        || (branchId !== "" && allRows.every(r => r.branchId !== branchId));
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Instructor Compensation</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage pay rules and track instructor earnings</p>
-                </div>
+        <div className="flex flex-col gap-6">
+            {/* Metric cards */}
+            <div className="flex items-stretch gap-4">
+                <MetricCard label="Gross revenue"     value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
+                <MetricCard label="Total payouts"     value={aed(totalPayouts)}     period={metricPeriodLabel} Icon={CoinsHand} />
+                <MetricCard label="Classes completed" value={totalClasses.toLocaleString("en-US")} period={metricPeriodLabel} Icon={CheckCircle} />
+                <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                            <DollarSign className="w-4.5 h-4.5 text-green-600" />
-                        </div>
-                        <p className="text-xs text-gray-500">Est. Monthly Payroll</p>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalPayroll)}</p>
+            {/* Toolbar */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1">
+                    <p className="text-[16px] text-[#667085]">Total</p>
+                    <p className="text-[16px] font-medium text-[#101828]">
+                        {filteredRows.length} {filteredRows.length === 1 ? "instructor" : "instructors"}
+                    </p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                            <Users className="w-4.5 h-4.5 text-blue-600" />
-                        </div>
-                        <p className="text-xs text-gray-500">Active Instructors</p>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{instructors.length}</p>
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                    value={branchId}
+                    onChange={setBranchId}
+                    width="w-[220px]"
+                />
+                <div className="relative w-[240px]">
+                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="Search..."
+                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    />
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
-                            <Clock className="w-4.5 h-4.5 text-purple-600" />
-                        </div>
-                        <p className="text-xs text-gray-500">Total Classes</p>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{avgPerClass}</p>
-                </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-soft">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-                            <TrendingUp className="w-4.5 h-4.5 text-amber-600" />
-                        </div>
-                        <p className="text-xs text-gray-500">Avg Cost/Class</p>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(avgPerClass > 0 ? Math.round(totalPayroll / avgPerClass) : 0)}</p>
-                </div>
+                <DateRangeFilter value={period} onChange={setPeriod} />
+                <ExportDropdown
+                    disabled={filteredRows.length === 0}
+                    onExportCsv={() => {
+                        exportCompensationCsv(filteredRows);
+                        showToast(
+                            "Compensation exported",
+                            `${filteredRows.length} ${filteredRows.length === 1 ? "instructor" : "instructors"} exported to CSV.`,
+                            "success", "check",
+                        );
+                    }}
+                />
+                <Button variant="primary" size="md" onClick={handleRunPayroll}>
+                    Run payroll
+                </Button>
             </div>
 
-            {/* Instructor Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-soft overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Pay Rules & Earnings</h3>
+            {/* Table */}
+            <div className="h-[760px] flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                    {pageRows.length === 0 ? (
+                        <EmptyState
+                            title={isTrulyEmpty ? "No active instructors" : "No instructors found"}
+                            subtitle={isTrulyEmpty
+                                ? "Add an instructor to start calculating compensation."
+                                : "Try adjusting your search or branch filter."}
+                        />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th className={cn(TH, "w-[320px]")}>Name</th>
+                                        <th className={cn(TH, "w-[220px]")}>Branch location</th>
+                                        <th className={cn(TH, "w-[200px]")}>Default pay rate</th>
+                                        <th className={cn(TH, "w-[160px]")}>Completed classes</th>
+                                        <th className={cn(TH, "w-[160px]")}>Earnings</th>
+                                        <th className={cn(TH, "w-[52px]")} />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pageRows.map(r => {
+                                        const branch = BRANCHES.find(b => b.id === r.branchId);
+                                        return (
+                                            <tr key={r.entryId} className="transition-colors hover:bg-[#f9fafb]">
+                                                <td className={TD}>
+                                                    <div className="flex items-center gap-3">
+                                                        <InstructorAvatar instructor={r.instructor} />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[14px] font-medium text-[#101828]">{r.instructor.name}</span>
+                                                            <span className="text-[13px] text-[#667085]">{r.instructor.email}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
+                                                <td className={TD}>{r.payRateName}</td>
+                                                <td className={TD}>{r.classesCount}</td>
+                                                <td className={TD}>{aed(r.earnings)}</td>
+                                                <td className={TD}>
+                                                    <RowActions onView={() => handleViewDetails(r)} />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
-                <table className="w-full">
-                    <thead>
-                        <tr className="bg-gray-50">
-                            <th className="text-left text-xs font-medium text-gray-500 px-6 py-3">Instructor</th>
-                            <th className="text-left text-xs font-medium text-gray-500 px-6 py-3">Pay Type</th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-6 py-3">Rate</th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-6 py-3">Classes</th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-6 py-3">Students</th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-6 py-3">Hours</th>
-                            <th className="text-right text-xs font-medium text-gray-500 px-6 py-3">Est. Earnings</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {instructorEarnings.map((ie) => (
-                            <tr
-                                key={ie.id}
-                                className={cn("border-t border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors",
-                                    selectedInstructor === ie.id && "bg-brand-50/30"
-                                )}
-                                onClick={() => setSelectedInstructor(selectedInstructor === ie.id ? null : ie.id)}
-                            >
-                                <td className="px-6 py-3">
-                                    <div className="flex items-center gap-3">
-                                        <TableAvatar initials={`${ie.first_name[0] ?? ""}${ie.last_name[0] ?? ""}`} size={32} />
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">{ie.first_name} {ie.last_name}</p>
-                                            <p className="text-xs text-gray-400">{ie.email}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-3">
-                                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full font-medium">
-                                        {ie.rule ? payTypeLabels[ie.rule.pay_type] : "Not Set"}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-3 text-sm text-gray-700 text-right font-medium">
-                                    {ie.rule ? formatCurrency(ie.rule.rate) : "—"}
-                                </td>
-                                <td className="px-6 py-3 text-sm text-gray-700 text-right">{ie.totalClasses}</td>
-                                <td className="px-6 py-3 text-sm text-gray-700 text-right">{ie.totalStudents}</td>
-                                <td className="px-6 py-3 text-sm text-gray-700 text-right">{ie.totalHours}h</td>
-                                <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">{formatCurrency(ie.estimated)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                    <tfoot>
-                        <tr className="border-t-2 border-gray-200 bg-gray-50">
-                            <td colSpan={6} className="px-6 py-3 text-sm font-semibold text-gray-700">Total Estimated Payroll</td>
-                            <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">{formatCurrency(totalPayroll)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
 
-            {/* Detail Panel */}
-            {selectedInstructor && (() => {
-                const ie = instructorEarnings.find(i => i.id === selectedInstructor);
-                if (!ie) return null;
-                const classes = classInstances.filter(c => c.instructor_id === ie.id);
-                return (
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-gray-900">{ie.first_name} {ie.last_name} — Recent Classes</h3>
-                            <button onClick={() => setSelectedInstructor(null)} className="p-1 hover:bg-gray-100 rounded-lg">
-                                <X className="w-4 h-4 text-gray-400" />
-                            </button>
-                        </div>
-                        <div className="space-y-2">
-                            {classes.slice(0, 8).map(cls => (
-                                <div key={cls.id} className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-1 h-8 rounded-full" style={{ backgroundColor: cls.class_type?.color }} />
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">{cls.class_type?.name}</p>
-                                            <p className="text-xs text-gray-400">{new Date(cls.start_time).toLocaleDateString()} · {cls.booked_count} students</p>
-                                        </div>
-                                    </div>
-                                    <span className="text-sm font-medium text-gray-700">
-                                        {ie.rule?.pay_type === "per_class" && formatCurrency(ie.rule.rate)}
-                                        {ie.rule?.pay_type === "per_head" && formatCurrency(cls.booked_count * (ie.rule?.rate || 0))}
-                                        {ie.rule?.pay_type === "hourly" && formatCurrency(((new Date(cls.end_time).getTime() - new Date(cls.start_time).getTime()) / 3600000) * (ie.rule?.rate || 0))}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            })()}
+                <div className="shrink-0">
+                    <Pagination
+                        page={clamped} total={filteredRows.length} pageSize={pageSize}
+                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                    />
+                </div>
+            </div>
         </div>
     );
 }

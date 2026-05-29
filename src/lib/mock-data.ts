@@ -188,11 +188,11 @@ export const classTypes: ClassType[] = [
         is_active: true, created_at: "2024-01-10T00:00:00Z",
     },
     {
-        id: "ct4", studio_id: "s1", name: "Roller Release",
-        description: "Myofascial release & recovery class using foam rollers.",
+        id: "ct4", studio_id: "s1", name: "Reformer Pilates",
+        description: "Full-body workout on the Pilates reformer. Builds core strength, improves posture and flexibility.",
         difficulty_level: "all_levels",
-        default_duration_min: 45, default_capacity: 10, default_room_id: "r2",
-        equipment_notes: "Foam rollers", color: "#0891b2",
+        default_duration_min: 50, default_capacity: 8, default_room_id: "r1",
+        equipment_notes: "Reformer machine", color: "#6c47ff",
         is_active: true, created_at: "2024-02-01T00:00:00Z",
     },
     {
@@ -359,7 +359,7 @@ export const walletTransactions: WalletTransaction[] = [
     { id: "wt9", user_id: "u-mem-3", studio_id: "s1", type: "credit_use", amount: -1, balance_after: 0, description: "Booked Barre", created_at: "2024-12-15T17:30:00Z" },
     { id: "wt10", user_id: "u-mem-3", studio_id: "s1", type: "credit_purchase", amount: 10, balance_after: 10, description: "Purchased 10-Class Pack", created_at: "2025-01-15T10:00:00Z" },
     { id: "wt11", user_id: "u-mem-3", studio_id: "s1", type: "credit_use", amount: -1, balance_after: 9, reference_id: "b14", description: "Booked Reformer Pilates", created_at: "2025-02-05T06:00:00Z" },
-    { id: "wt12", user_id: "u-mem-3", studio_id: "s1", type: "credit_use", amount: -1, balance_after: 8, reference_id: "b17", description: "No-show: Roller Release", created_at: "2025-01-28T08:00:00Z" },
+    { id: "wt12", user_id: "u-mem-3", studio_id: "s1", type: "credit_use", amount: -1, balance_after: 8, reference_id: "b17", description: "No-show: Reformer Pilates", created_at: "2025-01-28T08:00:00Z" },
     { id: "wt13", user_id: "u-mem-3", studio_id: "s1", type: "credit_use", amount: -1, balance_after: 7, reference_id: "b18", description: "Booked Reformer Pilates", created_at: "2025-01-25T06:30:00Z" },
     { id: "wt14", user_id: "u-mem-3", studio_id: "s1", type: "credit_use", amount: -1, balance_after: 6, reference_id: "b11", description: "Booked Mat Pilates", created_at: "2025-02-08T10:00:00Z" },
     { id: "wt15", user_id: "u-mem-3", studio_id: "s1", type: "referral_bonus", amount: 2, balance_after: 8, description: "Referral bonus: Mia Anderson signed up", created_at: "2025-01-20T12:00:00Z" },
@@ -390,7 +390,7 @@ export const classByPopularity = [
     { name: "Reformer Pilates", bookings: 142, occupancy: 89 },
     { name: "Mat Pilates", bookings: 98, occupancy: 78 },
     { name: "Barre", bookings: 87, occupancy: 72 },
-    { name: "Roller Release", bookings: 45, occupancy: 65 },
+    { name: "Reformer Pilates", bookings: 45, occupancy: 65 },
     { name: "Private Reformer", bookings: 22, occupancy: 91 },
 ];
 
@@ -546,7 +546,7 @@ export const notifications: Notification[] = [
     { id: "n2", studio_id: "s1", user_id: "u-mem-3", type: "reminder_24h", channel: "whatsapp", status: "sent", subject: "Class Tomorrow", body: "Reminder: Mat Pilates tomorrow at 10:00 AM. Don't forget your towel!", sent_at: "2025-02-09T10:00:00Z", created_at: "2025-02-09T10:00:00Z" },
     { id: "n3", studio_id: "s1", user_id: "u-mem-3", type: "payment", channel: "email", status: "sent", subject: "Payment Received", body: "AED 750 payment for 10-Class Pack received. Thank you!", sent_at: "2025-01-15T10:05:00Z", created_at: "2025-01-15T10:05:00Z" },
     { id: "n4", studio_id: "s1", user_id: "u-mem-3", type: "waitlist_promotion", channel: "email", status: "sent", subject: "You're In!", body: "Great news! A spot opened up in Barre Burn on Feb 14 at 5:30 PM. You've been automatically booked.", sent_at: "2025-02-08T14:00:00Z", created_at: "2025-02-08T14:00:00Z" },
-    { id: "n5", studio_id: "s1", user_id: "u-mem-3", type: "cancellation", channel: "email", status: "sent", subject: "Booking Cancelled", body: "Your Roller Release class on Jan 30 has been cancelled. Credit refunded.", sent_at: "2025-01-29T09:00:00Z", created_at: "2025-01-29T09:00:00Z" },
+    { id: "n5", studio_id: "s1", user_id: "u-mem-3", type: "cancellation", channel: "email", status: "sent", subject: "Booking Cancelled", body: "Your Reformer Pilates class on Jan 30 has been cancelled. Credit refunded.", sent_at: "2025-01-29T09:00:00Z", created_at: "2025-01-29T09:00:00Z" },
     { id: "n6", studio_id: "s1", user_id: "u-mem-3", type: "system_alert", channel: "push", status: "sent", subject: "Referral Bonus!", body: "You earned 2 bonus credits because Mia Anderson signed up with your referral code.", sent_at: "2025-01-20T12:05:00Z", created_at: "2025-01-20T12:05:00Z" },
     { id: "n7", studio_id: "s1", user_id: "u-mem-1", type: "booking_confirmation", channel: "email", status: "sent", subject: "Booking Confirmed", body: "Your Reformer Pilates class is confirmed.", sent_at: "2025-02-08T08:00:00Z", created_at: "2025-02-08T08:00:00Z" },
     { id: "n8", studio_id: "s1", user_id: "u-mem-3", type: "reminder_24h", channel: "push", status: "pending", subject: "Class Tomorrow", body: "Reformer Pilates at 6:30 AM tomorrow. See you there!", created_at: "2025-02-11T06:30:00Z" },

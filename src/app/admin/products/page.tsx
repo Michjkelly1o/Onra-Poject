@@ -222,35 +222,24 @@ function RowActions({ status, hasHolders, onView, onEdit, onAction }: {
                     </button>
                 )}
 
-                {/* Deactivate ↔ Delete swap (both red). Active rows:
+                {/* Deactivate ↔ Delete swap — Active rows only:
                     - has holders → Deactivate
                     - no holders  → Delete
-                    Inactive/archived rows: only Delete (when no holders). */}
-                {(() => {
-                    if (status === "active") {
-                        return hasHolders ? (
-                            <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
-                                className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                            </button>
-                        ) : (
-                            <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                                className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                            </button>
-                        );
-                    }
-                    // Non-active rows: surface Delete only when there are no holders.
-                    if (!hasHolders) {
-                        return (
-                            <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                                className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                            </button>
-                        );
-                    }
-                    return null;
-                })()}
+                    Inactive/archived rows must be Reactivated/Recovered before
+                    they can be deleted. */}
+                {status === "active" && (
+                    hasHolders ? (
+                        <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
+                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
+                            <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
+                        </button>
+                    ) : (
+                        <button type="button" onClick={() => trigger(() => onAction("delete"))}
+                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
+                            <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
+                        </button>
+                    )
+                )}
             </FixedDropdown>
         </div>
     );
@@ -420,7 +409,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Price range — order per user spec: Status → Price → Credits */}
                     <RangeSection
@@ -433,7 +422,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         onMax={v => setPending(p => ({ ...p, priceMax: v }))}
                     />
 
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Credits range — same RangeSection / ValueChip pattern as POS */}
                     <RangeSection
@@ -631,7 +620,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 }) {
     if (count === 0) return null;
     return (
-        <div className="absolute inset-x-0 bottom-0 flex justify-center pointer-events-none pb-[96px] pt-6 px-6 z-30">
+        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
             <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
                 {/* Selection counter pill (click to clear) — whitespace-nowrap so
                     the "N selected" label stays on one line even when the
@@ -967,11 +956,13 @@ export default function ProductsPage() {
     );
     // The bar gates each action on whether the selection has at least one
     // candidate row — Archive needs ≥1 active/inactive, Recover needs ≥1
-    // archived, Delete needs ≥1 holder-free row.
+    // archived, Delete needs every selected row to be Active AND holder-free
+    // (inactive/archived must be reactivated/recovered first).
     const hasArchivable = selectedRows.some(r => r.status !== "archived");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
     const hasRecoverable = selectedRows.some(r => r.status === "archived");
-    const hasDeletable = selectedRows.length > 0 && selectedRows.every(r => !r.hasHolders);
+    const hasDeletable = selectedRows.length > 0
+        && selectedRows.every(r => r.status === "active" && !r.hasHolders);
 
     // ─── Active filter dot ──────────────────────────────────────────────────
     const hasActiveFilter =
@@ -993,7 +984,7 @@ export default function ProductsPage() {
                 case "reactivate": return selectedRows.filter(r => r.status === "inactive");
                 case "archive": return selectedRows.filter(r => r.status !== "archived");
                 case "recover": return selectedRows.filter(r => r.status === "archived");
-                case "delete": return selectedRows.filter(r => !r.hasHolders);
+                case "delete": return selectedRows.filter(r => r.status === "active" && !r.hasHolders);
             }
         })();
         if (rowsForKind.length === 0) return;
@@ -1105,8 +1096,8 @@ export default function ProductsPage() {
                 </div>
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                    placeholder="Select studio"
-                    options={branchOptions}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
                     value={branchId}
                     onChange={setBranchId}
                     width="w-[220px]"

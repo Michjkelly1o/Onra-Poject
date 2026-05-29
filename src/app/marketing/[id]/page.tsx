@@ -247,14 +247,11 @@ function LeftSidebar({ vm, onAction }: {
     const canDelete = vm.viewCount === 0;
 
     const actions = (() => {
+        // Archived items must be Recovered before they can be edited or
+        // deleted; Inactive items must be Reactivated first.
         if (vm.status === "archived") {
             return (
-                <>
-                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover marketing" onClick={() => onAction("recover")} />
-                    {canDelete && (
-                        <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete marketing" danger onClick={() => onAction("delete")} />
-                    )}
-                </>
+                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover marketing" onClick={() => onAction("recover")} />
             );
         }
         if (vm.status === "inactive") {
@@ -262,9 +259,6 @@ function LeftSidebar({ vm, onAction }: {
                 <>
                     <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate marketing" onClick={() => onAction("reactivate")} />
                     <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive marketing" onClick={() => onAction("archive")} />
-                    {canDelete && (
-                        <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete marketing" danger onClick={() => onAction("delete")} />
-                    )}
                 </>
             );
         }

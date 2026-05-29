@@ -479,10 +479,11 @@ function POSInner() {
                             </p>
                         </div>
                         <SelectInput
-                            options={branchOptions}
+                            options={[{ value: "", label: "All locations" }, ...branchOptions]}
                             value={branchId}
                             onChange={setBranchId}
                             triggerIcon={<MarkerPin01 className="w-5 h-5 text-[#667085]" />}
+                            placeholder="Select location"
                             width="w-[180px]"
                         />
                         <div className="relative w-[200px]">

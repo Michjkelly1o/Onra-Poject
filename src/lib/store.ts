@@ -30,7 +30,22 @@ import {
     promo_codes as SEED_PROMO_CODES,
     marketing_items as SEED_MARKETING_ITEMS,
     payment_methods as SEED_PAYMENT_METHODS,
+    pay_rates as SEED_PAY_RATES,
+    instructors as SEED_INSTRUCTORS,
+    roles as SEED_ROLES,
+    DEFAULT_PERMISSIONS_BY_TYPE as SEED_DEFAULT_PERMISSIONS_BY_TYPE,
+    DEFAULT_GRANT_LIMITS as SEED_DEFAULT_GRANT_LIMITS,
+    staff as SEED_STAFF,
+    payroll_entries as SEED_PAYROLL_ENTRIES,
+    customer_plans as SEED_CUSTOMER_PLANS,
+    customer_transactions as SEED_CUSTOMER_TRANSACTIONS,
+    customer_agreements as SEED_CUSTOMER_AGREEMENTS,
+    customer_referrals as SEED_CUSTOMER_REFERRALS,
     type Customer as SeedCustomer,
+    type CustomerPlan as SeedCustomerPlan,
+    type CustomerTransaction as SeedCustomerTransaction,
+    type CustomerAgreement as SeedCustomerAgreement,
+    type CustomerReferral as SeedCustomerReferral,
     type ClassSchedule as SeedClassSchedule,
     type ClassBooking as SeedClassBooking,
     type ClassRating as SeedClassRating,
@@ -50,6 +65,20 @@ import {
     type PurchaseRulesData,
     type DurationUnit,
     type Weekday,
+    type PayRateSeed,
+    type InstructorSeed,
+    type RoleSeed,
+    type RoleTypeSeed,
+    type RoleStatusSeed,
+    type StaffSeed,
+    type StaffStatusSeed,
+    type PermissionsMapSeed,
+    type PermissionCellSeed,
+    type PermissionRowSeed,
+    type GrantLimitsSeed,
+    type PayRateHybridConditionSeed,
+    type PayrollEntrySeed,
+    type PayrollEntryStatusSeed,
 } from "@/data/mock";
 
 // Re-export raw seed types — consumers can read these directly from the store.
@@ -265,6 +294,141 @@ export interface ScheduleInstructor {
     imageUrl?: string;
 }
 
+/** Status for a directory instructor. Mirrors the customer/staff status model:
+ *  active → working; inactive → temporary leave; archive → left the studio. */
+export type InstructorStatus = "active" | "inactive" | "archive";
+
+/** Full instructor record — extends ScheduleInstructor with the contact +
+ *  pay rate relationship needed by the pay rate detail page ("Assigned
+ *  instructor" tab) and (eventually) the staff module. */
+export interface Instructor extends ScheduleInstructor {
+    email: string;
+    phone: string;
+    /** Pre-formatted "Feb 1, 2024" string for the table. */
+    joinedDate: string;
+    branchId: string;
+    /** FK → payRates.id. Nullable when the instructor has no rate assigned. */
+    payRateId?: string;
+    status: InstructorStatus;
+}
+
+// ─── Roles & permissions (Staff & Permissions module — PRD 10 §5) ──────────
+//
+// Mirror of `RoleSeed` in camelCase. Roles drive the Staff & Permissions
+// list page (Roles tab), the role detail page, every staff member's
+// permission shape, and the customer module's add-complimentary-credit
+// limits (via grantLimits).
+
+export type RoleType   = RoleTypeSeed;
+export type RoleStatus = RoleStatusSeed;
+export type PermissionCell = PermissionCellSeed;
+export type PermissionRow  = PermissionRowSeed;
+export type PermissionsMap  = PermissionsMapSeed;
+/** Camel-cased mirror of `GrantLimitsSeed`. Per-row enabled flags carry the
+ *  same defaults — undefined treated as "enabled when section is on". */
+export interface GrantLimits {
+    enabled: boolean;
+    unlimited: boolean;
+    grants_per_month: number;
+    grants_per_month_enabled?: boolean;
+    max_grant_value_aed: number;
+    max_grant_value_enabled?: boolean;
+    allow_remove_unused: boolean;
+}
+
+export interface Role {
+    id: string;
+    name: string;
+    description: string;
+    type: RoleType;
+    /** Branch FK — null for Owner (all-locations scope). */
+    branchId: string | null;
+    status: RoleStatus;
+    grantLimits: GrantLimits;
+    permissions: PermissionsMap;
+    /** Locked rows (Owner) can't be edited or deactivated. */
+    locked: boolean;
+    createdAt?: string;
+    archivedAt?: string;
+}
+
+/** Re-exports of the type-template helpers so consumers (the create-role
+ *  form, the edit-permissions wizard) can copy the predefined matrix at
+ *  insert time without re-importing from the seed barrel directly. */
+export const DEFAULT_PERMISSIONS_BY_TYPE = SEED_DEFAULT_PERMISSIONS_BY_TYPE;
+export const DEFAULT_GRANT_LIMITS        = SEED_DEFAULT_GRANT_LIMITS;
+// Permission section + module ordering (lives in permission_templates.ts).
+export {
+    STAFF_PERMISSION_SECTIONS,
+    INSTRUCTOR_PERMISSION_SECTIONS,
+    permissionSectionsFor,
+} from "@/data/mock/permission_templates";
+export type {
+    PermissionSectionSpec,
+    PermissionModuleSpec,
+} from "@/data/mock/permission_templates";
+
+// ─── Staff (PRD 10 §3 + PRD 01 §10) ────────────────────────────────────────
+//
+// Camel-case mirror of `StaffSeed`. One row per person with system access.
+// Instructor-specific fields (bio / specialties / payRateId) live as optional
+// columns and only render when role.type === "instructor".
+
+export type StaffStatus = StaffStatusSeed;
+
+export interface Staff {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    imageUrl?: string;
+    initials: string;
+    color: string;
+    roleId: string;
+    branchId: string | null;
+    status: StaffStatus;
+    tempPassword?: string;
+    inviteSentAt?: string;
+    firstLoginCompleted: boolean;
+    joinedDate: string;
+    bio?: string;
+    specialties?: string[];
+    payRateId?: string;
+}
+
+/** Payroll entry — one row per (instructor, period). Camel-case mirror of
+ *  PayrollEntrySeed; the store drives the compensation list page and (later)
+ *  the Run Payroll + instructor-earnings detail pages. */
+export type PayrollEntryStatus = PayrollEntryStatusSeed;
+
+export interface PayrollEntry {
+    id: string;
+    instructorId: string;
+    branchId: string;
+    payRateId: string;
+    /** Display snapshot — pay rate's name as of entry creation. */
+    payRateName: string;
+    /** ISO yyyy-mm-dd. */
+    periodStart: string;
+    periodEnd: string;
+    classesCount: number;
+    totalAttendees: number;
+    /** Sum of class durations in hours — "Total time (hour)" column. */
+    totalHours: number;
+    /** Studio revenue from those classes (AED) — "Gross revenue" column. */
+    grossRevenue: number;
+    baseEarnings: number;
+    adjustmentAmount: number;
+    adjustmentReason?: string;
+    totalEarnings: number;
+    status: PayrollEntryStatus;
+    /** Set once a payroll run confirms this entry. */
+    payrollRunId?: string;
+    createdAt?: string;
+}
+
 /** Gender restriction on who may book a class. "all" = open to everyone. */
 export type GenderAccess = "all" | "female" | "male";
 
@@ -295,8 +459,8 @@ export interface ClassSchedule {
     displayTime: string;
     booked: number;
     capacity: number;
-    /** Class delivery format — Group / Private / Semi-private. */
-    classType: "Group" | "Private" | "Semi-private";
+    /** Class delivery format — Group / Private. */
+    classType: "Group" | "Private";
     equipment: string;
     spotSelectionEnabled: boolean;
     /** Spot-grid layout — only set when spot selection is enabled. */
@@ -365,7 +529,17 @@ export interface Customer {
     /** Class credits left on the current plan. Omitted for unlimited
      *  memberships + no-plan customers; `0` means the plan is exhausted. */
     creditsRemaining?: number;
-    // Optional Module-07 fields — only the customer-create form sets these today.
+    /** Account lifecycle status — `active` / `inactive` (suspended) /
+     *  `archived` (hidden from default list). Drives the customer-list status
+     *  badge, the Status filter, and which row/bulk actions are available. */
+    status: "active" | "inactive" | "archived";
+    /** Most recent attended-class date (ISO `YYYY-MM-DD`). Omitted when the
+     *  customer has never visited. */
+    lastVisitISO?: string;
+    /** Current plan's expiry date (ISO `YYYY-MM-DD`). Omitted for no-plan
+     *  customers. Drives the "Plan expiry date range" filter. */
+    planExpiryISO?: string;
+    // Optional Module-07 fields — set by the customer-create form + the seed.
     dateOfBirth?: string;
     gender?: string;
     country?: string;
@@ -373,6 +547,87 @@ export interface Customer {
     city?: string;
     postalCode?: string;
     streetAddress?: string;
+    // Profile-detail fields surfaced on the customer-detail "Details" tab.
+    googleConnected?: boolean;
+    marketingEmails?: boolean;
+    marketingSms?: boolean;
+    transactionalEmails?: boolean;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelation?: string;
+    referralCode?: string;
+}
+
+/** Customer agreement record — store shape (camelCase) of a
+ *  `customer_agreements` row. Drives the customer-detail Agreements tab. */
+export interface CustomerAgreement {
+    id: string;
+    customerId: string;
+    title: string;
+    version: number;
+    branchId: string;
+    classTemplateIds: string[];
+    status: "signed" | "unsigned";
+    signedAtISO?: string;
+}
+
+/** Customer referral record — store shape (camelCase) of a
+ *  `customer_referrals` row. Drives the customer-detail Referrals tab. */
+export interface CustomerReferral {
+    id: string;
+    referrerCustomerId: string;
+    referredName: string;
+    referredEmail: string;
+    benefitCredits: number;
+    referredAtISO: string;
+}
+
+/** Customer plan record — store shape (camelCase) of a `customer_plans` row.
+ *  One per purchased membership / package or complimentary grant; drives the
+ *  customer-detail Plan tab + its freeze / unfreeze / cancel / remove actions. */
+export interface CustomerPlan {
+    id: string;
+    customerId: string;
+    kind: "membership" | "package" | "complimentary";
+    productId?: string;
+    name: string;
+    planTypeLabel: string;
+    creditsLabel: string;
+    status: "active" | "expired" | "frozen" | "cancelled" | "removed";
+    purchasedAtISO: string;
+    expiryISO: string;
+    priceAed?: number;
+    freezeStartISO?: string;
+    freezeEndISO?: string;
+    freeCredits?: number;
+    grantReason?: string;
+    grantIssuedBy?: string;
+    grantIssuedRole?: string;
+    cancelMode?: "today" | "period_end";
+    cancelReason?: string;
+    cancelledAtISO?: string;
+    removeReason?: string;
+    removedBy?: string;
+    removedByRole?: string;
+    removedAtISO?: string;
+}
+
+/** Customer transaction record — store shape (camelCase) of a
+ *  `customer_transactions` row. One per membership / package payment; drives
+ *  the customer-detail Payments tab (Overview metrics + history table). */
+export interface CustomerTransaction {
+    id: string;
+    customerId: string;
+    branchId: string;
+    kind: "membership" | "package";
+    productId: string;
+    name: string;
+    amountAed: number;
+    status: "complete" | "pending" | "failed" | "refunded";
+    paymentMethod: "card" | "cash";
+    createdAtISO: string;
+    refundedAtISO?: string;
+    refundMethod?: "cash" | "card";
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -563,6 +818,93 @@ function customerFromSeed(c: SeedCustomer): Customer {
         createdAt: c.created_at,
         gender: c.gender,
         creditsRemaining: c.credits_remaining,
+        status: c.status,
+        lastVisitISO: c.last_visit_iso,
+        planExpiryISO: c.plan_expiry_iso,
+        dateOfBirth: c.date_of_birth,
+        country: c.country,
+        state: c.state,
+        city: c.city,
+        postalCode: c.postal_code,
+        streetAddress: c.street_address,
+        googleConnected: c.google_connected,
+        marketingEmails: c.marketing_emails,
+        marketingSms: c.marketing_sms,
+        transactionalEmails: c.transactional_emails,
+        emergencyContactName: c.emergency_contact_name,
+        emergencyContactPhone: c.emergency_contact_phone,
+        emergencyContactRelation: c.emergency_contact_relation,
+        referralCode: c.referral_code,
+    };
+}
+
+function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
+    return {
+        id: r.id,
+        referrerCustomerId: r.referrer_customer_id,
+        referredName: r.referred_name,
+        referredEmail: r.referred_email,
+        benefitCredits: r.benefit_credits,
+        referredAtISO: r.referred_at,
+    };
+}
+
+function customerAgreementFromSeed(a: SeedCustomerAgreement): CustomerAgreement {
+    return {
+        id: a.id,
+        customerId: a.customer_id,
+        title: a.title,
+        version: a.version,
+        branchId: a.branch_id,
+        classTemplateIds: a.class_template_ids,
+        status: a.status,
+        signedAtISO: a.signed_at,
+    };
+}
+
+function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
+    return {
+        id: p.id,
+        customerId: p.customer_id,
+        kind: p.kind,
+        productId: p.product_id,
+        name: p.name,
+        planTypeLabel: p.plan_type_label,
+        creditsLabel: p.credits_label,
+        status: p.status,
+        purchasedAtISO: p.purchased_at,
+        expiryISO: p.expiry_iso,
+        priceAed: p.price_aed,
+        freezeStartISO: p.freeze_start_iso,
+        freezeEndISO: p.freeze_end_iso,
+        freeCredits: p.free_credits,
+        grantReason: p.grant_reason,
+        grantIssuedBy: p.grant_issued_by,
+        grantIssuedRole: p.grant_issued_role,
+        cancelMode: p.cancel_mode,
+        cancelReason: p.cancel_reason,
+        cancelledAtISO: p.cancelled_at,
+        removeReason: p.remove_reason,
+        removedBy: p.removed_by,
+        removedByRole: p.removed_by_role,
+        removedAtISO: p.removed_at,
+    };
+}
+
+function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransaction {
+    return {
+        id: t.id,
+        customerId: t.customer_id,
+        branchId: t.branch_id,
+        kind: t.kind,
+        productId: t.product_id,
+        name: t.name,
+        amountAed: t.amount_aed,
+        status: t.status,
+        paymentMethod: t.payment_method,
+        createdAtISO: t.created_at,
+        refundedAtISO: t.refunded_at,
+        refundMethod: t.refund_method,
     };
 }
 
@@ -581,6 +923,240 @@ function ratingFromSeed(r: SeedClassRating): ClassRating {
     };
 }
 
+// ─── Pay rate (PRD 10 §6) — types + seed + display helper ───────────────────
+//
+// Pay rates are a discriminated union by `type`. The variant carries the
+// fields the payroll engine needs to compute earnings:
+//   • flat     — single AED amount per class
+//   • tiered   — list of (from, to, amount) rules over attendee count
+//   • revenue  — % split of class revenue (+ optional per-customer top-up)
+//   • hybrid   — base AED + bonus_attendance (Once N → AED Y/customer) OR
+//                base AED + revenue (% split)
+//   • monthly  — fixed monthly salary + optional performance bonus + optional
+//                sales commission on Packages / Memberships
+//
+// `branchId` is single per the existing list shape. Status is active/archive
+// only — pay rates have no inactive state (PRD 10 §6.1).
+
+export type PayRateStatus = "active" | "archive";
+export type PayRateType = "flat" | "tiered" | "revenue" | "hybrid" | "monthly";
+
+export interface PayRateTier {
+    id: string;
+    from: number;
+    to: number;
+    /** AED amount paid when attendee count falls in [from, to]. */
+    aed: number;
+}
+
+export type PayRateHybridCondition =
+    | { kind: "bonus_attendance"; bonusThreshold: number; bonusPerCustomer: number }
+    | { kind: "revenue"; splitPercent: number };
+
+interface PayRateBase {
+    id: string;
+    name: string;
+    branchId: string;
+    status: PayRateStatus;
+    /** Toggle — "Only count checked-in customers" (false = count all booked). */
+    onlyCheckedIn?: boolean;
+    /** Toggle — "Include late-cancelled customers" (false = exclude). */
+    includeLateCancelled?: boolean;
+    /** Staff assignments + payroll uses — gates Delete (only when 0). */
+    usageCount: number;
+    createdAt?: string;
+}
+
+export interface FlatPayRate    extends PayRateBase { type: "flat";    flatAmount: number }
+export interface TieredPayRate  extends PayRateBase { type: "tiered";  tiers: PayRateTier[] }
+export interface RevenuePayRate extends PayRateBase { type: "revenue"; splitPercent: number; payPerCustomer?: number }
+export interface HybridPayRate  extends PayRateBase { type: "hybrid";  baseRate: number; condition: PayRateHybridCondition }
+export interface MonthlyPayRate extends PayRateBase {
+    type: "monthly";
+    fixedSalary: number;
+    /** "Bonus of monthly salary" — % of fixedSalary. */
+    bonusOfSalaryPercent?: number;
+    /** Optional AED cap on the bonus. */
+    bonusCap?: number;
+    /** Sales commission % on Packages product sales. */
+    salesCommissionPackagesPercent?: number;
+    /** Sales commission % on Memberships product sales. */
+    salesCommissionMembershipsPercent?: number;
+}
+
+export type PayRate = FlatPayRate | TieredPayRate | RevenuePayRate | HybridPayRate | MonthlyPayRate;
+
+/** Derived list-row display strings. Computed live so the rate column
+ *  always reflects the underlying structured data. */
+export function computePayRateDisplay(p: PayRate): { main: string; subtitle: string } {
+    const aed = (n: number) => `AED ${n.toLocaleString("en-US")}`;
+    switch (p.type) {
+        case "flat":
+            return { main: aed(p.flatAmount), subtitle: "per class" };
+        case "tiered": {
+            const amounts = p.tiers.map(t => t.aed);
+            const lo = Math.min(...amounts);
+            const hi = Math.max(...amounts);
+            const main = lo === hi ? aed(lo) : `${aed(lo)} – ${hi.toLocaleString("en-US")}`;
+            return { main, subtitle: `${p.tiers.length} tier${p.tiers.length === 1 ? "" : "s"} based on attendance` };
+        }
+        case "revenue":
+            return { main: `${p.splitPercent}%`, subtitle: "of total class revenue" };
+        case "hybrid":
+            if (p.condition.kind === "bonus_attendance") {
+                return {
+                    main: `${aed(p.baseRate)} + ${aed(p.condition.bonusPerCustomer)}`,
+                    subtitle: `AED ${p.condition.bonusPerCustomer.toLocaleString("en-US")} applies after ${p.condition.bonusThreshold} customers`,
+                };
+            }
+            return {
+                main: `${aed(p.baseRate)} + ${p.condition.splitPercent}%`,
+                subtitle: "base per class + revenue share",
+            };
+        case "monthly":
+            return { main: aed(p.fixedSalary), subtitle: "per month" };
+    }
+}
+
+// ─── Adapters (snake_case seed → camelCase store shape) ────────────────────
+//
+// These keep the store's runtime shape ergonomic for React components while
+// preserving the Supabase-ready snake_case shape in src/data/mock/. Each
+// adapter mirrors a single seed file so a future Postgres migration is a
+// straight CSV/SQL export.
+
+function payRateConditionFromSeed(c: PayRateHybridConditionSeed): PayRateHybridCondition {
+    if (c.kind === "bonus_attendance") {
+        return { kind: "bonus_attendance", bonusThreshold: c.bonus_threshold, bonusPerCustomer: c.bonus_per_customer };
+    }
+    return { kind: "revenue", splitPercent: c.split_percent };
+}
+
+function payRateFromSeed(p: PayRateSeed): PayRate {
+    const baseShared = {
+        id: p.id,
+        name: p.name,
+        branchId: p.branch_id,
+        status: p.status,
+        onlyCheckedIn: p.only_checked_in,
+        includeLateCancelled: p.include_late_cancelled,
+        usageCount: p.usage_count,
+        createdAt: p.created_at,
+    };
+    switch (p.type) {
+        case "flat":
+            return { ...baseShared, type: "flat", flatAmount: p.flat_amount };
+        case "tiered":
+            return { ...baseShared, type: "tiered", tiers: p.tiers };
+        case "revenue":
+            return {
+                ...baseShared, type: "revenue",
+                splitPercent: p.split_percent,
+                payPerCustomer: p.pay_per_customer,
+            };
+        case "hybrid":
+            return {
+                ...baseShared, type: "hybrid",
+                baseRate: p.base_rate,
+                condition: payRateConditionFromSeed(p.condition),
+            };
+        case "monthly":
+            return {
+                ...baseShared, type: "monthly",
+                fixedSalary: p.fixed_salary,
+                bonusOfSalaryPercent: p.bonus_of_salary_percent,
+                bonusCap: p.bonus_cap,
+                salesCommissionPackagesPercent: p.sales_commission_packages_percent,
+                salesCommissionMembershipsPercent: p.sales_commission_memberships_percent,
+            };
+    }
+}
+
+function instructorFromSeed(i: InstructorSeed): Instructor {
+    return {
+        id: i.id,
+        name: i.full_name,
+        initials: i.initials,
+        color: i.color_hex,
+        imageUrl: i.image_url,
+        email: i.email,
+        phone: i.phone,
+        joinedDate: i.joined_date,
+        branchId: i.branch_id,
+        payRateId: i.pay_rate_id,
+        status: i.status,
+    };
+}
+
+function roleFromSeed(r: RoleSeed): Role {
+    return {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        type: r.type,
+        branchId: r.branch_id,
+        status: r.status,
+        grantLimits: r.grant_limits,
+        permissions: r.permissions,
+        locked: r.locked,
+        createdAt: r.created_at,
+        archivedAt: r.archived_at,
+    };
+}
+
+function staffFromSeed(s: StaffSeed): Staff {
+    return {
+        id: s.id,
+        firstName: s.first_name,
+        lastName: s.last_name,
+        fullName: s.full_name,
+        email: s.email,
+        phone: s.phone,
+        imageUrl: s.image_url,
+        initials: s.initials,
+        color: s.color_hex,
+        roleId: s.role_id,
+        branchId: s.branch_id,
+        status: s.status,
+        tempPassword: s.temp_password,
+        inviteSentAt: s.invite_sent_at,
+        firstLoginCompleted: s.first_login_completed,
+        joinedDate: s.joined_date,
+        bio: s.bio,
+        specialties: s.specialties,
+        payRateId: s.pay_rate_id,
+    };
+}
+
+function payrollEntryFromSeed(e: PayrollEntrySeed): PayrollEntry {
+    return {
+        id: e.id,
+        instructorId: e.instructor_id,
+        branchId: e.branch_id,
+        payRateId: e.pay_rate_id,
+        payRateName: e.pay_rate_name,
+        periodStart: e.period_start,
+        periodEnd: e.period_end,
+        classesCount: e.classes_count,
+        totalAttendees: e.total_attendees,
+        totalHours: e.total_hours,
+        grossRevenue: e.gross_revenue,
+        baseEarnings: e.base_earnings,
+        adjustmentAmount: e.adjustment_amount,
+        adjustmentReason: e.adjustment_reason,
+        totalEarnings: e.total_earnings,
+        status: e.status,
+        payrollRunId: e.payroll_run_id,
+        createdAt: e.created_at,
+    };
+}
+
+const INITIAL_PAY_RATES:        PayRate[]        = SEED_PAY_RATES.map(payRateFromSeed);
+const INITIAL_INSTRUCTORS:      Instructor[]     = SEED_INSTRUCTORS.map(instructorFromSeed);
+const INITIAL_PAYROLL_ENTRIES:  PayrollEntry[]   = SEED_PAYROLL_ENTRIES.map(payrollEntryFromSeed);
+const INITIAL_ROLES:            Role[]           = SEED_ROLES.map(roleFromSeed);
+const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed);
+
 // ─── Initial state — adapt seeds at boot ────────────────────────────────────
 
 const INITIAL_TEMPLATES: ClassTemplate[] = SEED_CLASS_TEMPLATES.map(templateFromSeed);
@@ -588,6 +1164,10 @@ const INITIAL_SCHEDULES: ClassSchedule[] = SEED_CLASS_SCHEDULE.map(s => schedule
 const INITIAL_BOOKINGS:  ClassBooking[]  = SEED_CLASS_BOOKINGS.map(bookingFromSeed);
 const INITIAL_RATINGS:   ClassRating[]   = SEED_CLASS_RATINGS.map(ratingFromSeed);
 const INITIAL_CUSTOMERS: Customer[]      = SEED_CUSTOMERS.map(customerFromSeed);
+const INITIAL_CUSTOMER_PLANS: CustomerPlan[] = SEED_CUSTOMER_PLANS.map(customerPlanFromSeed);
+const INITIAL_CUSTOMER_TRANSACTIONS: CustomerTransaction[] = SEED_CUSTOMER_TRANSACTIONS.map(customerTransactionFromSeed);
+const INITIAL_CUSTOMER_AGREEMENTS: CustomerAgreement[] = SEED_CUSTOMER_AGREEMENTS.map(customerAgreementFromSeed);
+const INITIAL_CUSTOMER_REFERRALS: CustomerReferral[] = SEED_CUSTOMER_REFERRALS.map(customerReferralFromSeed);
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
@@ -601,6 +1181,15 @@ interface AppState {
     classBookings: ClassBooking[];
     classRatings: ClassRating[];
     customers: Customer[];
+    /** Customer plan records — the customer-detail Plan tab reads + mutates these. */
+    customerPlans: CustomerPlan[];
+    /** Customer transaction records — the customer-detail Payments tab reads
+     *  these (Overview metrics + history table) and mutates them on refund. */
+    customerTransactions: CustomerTransaction[];
+    /** Customer agreement records — the customer-detail Agreements tab reads these. */
+    customerAgreements: CustomerAgreement[];
+    /** Customer referral records — the customer-detail Referrals tab reads these. */
+    customerReferrals: CustomerReferral[];
     /** Live memberships/packages — admins mutate these from /admin/products
      *  and every consumer (POS catalog, class-types Applicable Plans tab,
      *  etc.) reads the updated state. Seeded from `memberships.ts` /
@@ -618,6 +1207,23 @@ interface AppState {
     promoCodes: PromoCode[];
     /** Live marketing items — powers the Marketing module list/detail (PRD 08). */
     marketingItems: MarketingItem[];
+    /** Live pay rates — powers /admin/staff/pay-rate list/detail/payroll (PRD 10 §6). */
+    payRates: PayRate[];
+    /** Live instructors — the pay rate detail page's "Assigned instructor" tab
+     *  filters this by `payRateId`. The staff module (PRD 10 §3) will own the
+     *  fuller list; this slice is the minimum surface for cross-module sync. */
+    instructors: Instructor[];
+    /** Live payroll entries — drives /admin/compensation list, the Run
+     *  Payroll review step, and the instructor-earnings detail page. */
+    payrollEntries: PayrollEntry[];
+    /** Live roles — drives /admin/staff Roles tab + every staff member's
+     *  effective permission shape. Owner row is `locked: true` and cannot
+     *  be deactivated or edited via the UI. */
+    roles: Role[];
+    /** Live staff — drives /admin/staff Staff tab + every staff details
+     *  page. Phase 4 folds the dedicated `instructors` slice into a
+     *  derived selector off this one. */
+    staff: Staff[];
     pendingPurchase: PendingPurchase | null;
     toast: ToastData | null;
 
@@ -643,7 +1249,35 @@ interface AppState {
 
     deleteClassRating: (id: string, deletedBy: string) => void;
 
-    addCustomer: (customer: Omit<Customer, "id" | "createdAt" | "initials" | "branchId"> & { initials?: string; branchId?: string }) => string;
+    addCustomer: (customer: Omit<Customer, "id" | "createdAt" | "initials" | "branchId" | "status"> & { initials?: string; branchId?: string; status?: Customer["status"] }) => string;
+    /** Mutate any field on a customer — used by the Edit Customer flow. */
+    updateCustomer: (id: string, patch: Partial<Omit<Customer, "id">>) => void;
+    /** Change lifecycle status for one or many customers. Deactivate, archive,
+     *  recover and reactivate all route through here so every call-site lands
+     *  on the same propagation + toast pattern. */
+    setCustomerStatus: (ids: string[], status: Customer["status"]) => void;
+    /** Hard-delete customers. Blocked for any customer that has booking
+     *  history (archive instead). Returns the split so the UI can report
+     *  exactly what was removed and what was kept. */
+    deleteCustomers: (ids: string[]) => { deleted: string[]; blocked: string[] };
+
+    // ── Customer plans (customer-detail Plan tab) ──────────────────────────
+    /** Freeze a plan — status → frozen, freeze window stored, and the expiry
+     *  date pushed back by the freeze duration so frozen days aren't lost. */
+    freezeCustomerPlan: (planId: string, startISO: string, endISO: string) => void;
+    /** Unfreeze a plan — status → active. The extended expiry date is kept. */
+    unfreezeCustomerPlan: (planId: string) => void;
+    /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
+    cancelCustomerPlan: (planId: string, mode: "today" | "period_end", reason: string) => void;
+    /** Remove a complimentary grant — status → removed, with reason + actor. */
+    removeComplimentaryPlan: (planId: string, reason: string, removedBy: string, removedByRole: string) => void;
+    /** Append a complimentary grant as a new plan row (from the add-credit flow). */
+    addComplimentaryPlan: (input: Omit<CustomerPlan, "id" | "kind" | "status" | "planTypeLabel">) => string;
+
+    // ── Customer transactions (customer-detail Payments tab) ───────────────
+    /** Refund a completed transaction — status → refunded, with the refund
+     *  method + timestamp recorded. Only `complete` transactions are eligible. */
+    refundTransaction: (id: string, method: "cash" | "card") => void;
 
     // ── Memberships ────────────────────────────────────────────────────────
     /** Append a new membership to the store. Generates an id if one is not
@@ -696,6 +1330,63 @@ interface AppState {
     /** Delete a marketing item. Blocked (returns false) once it has any views. */
     deleteMarketingItem: (id: string) => boolean;
 
+    // ── Pay rates ──────────────────────────────────────────────────────────
+    /** Append a new pay rate. Auto-generates id when not supplied. Returns id. */
+    addPayRate: (input: Omit<PayRate, "id"> & { id?: string }) => string;
+    /** Patch a pay rate. Caller supplies the same `type` (or no `type` change)
+     *  — switching types is a "replace" semantically and goes through add+delete. */
+    updatePayRate: (id: string, patch: Partial<PayRate>) => void;
+    setPayRatesStatus: (ids: string[], status: PayRateStatus) => void;
+    /** Hard-delete only allowed when every selected row is Active AND
+     *  zero-usage. Returns the list of ids that were actually deleted. */
+    deletePayRates: (ids: string[]) => { deleted: string[]; blocked: string[] };
+
+    // ── Instructors ────────────────────────────────────────────────────────
+    /** Assign or clear an instructor's pay rate. Pass `payRateId = undefined`
+     *  to remove the assignment (the instructor reverts to "—" in the table). */
+    assignInstructorPayRate: (instructorId: string, payRateId: string | undefined) => void;
+    /** Bulk status change — used by the detail page's row actions
+     *  (Archive / Deactivate / Reactivate / Recover). */
+    setInstructorStatus: (ids: string[], status: InstructorStatus) => void;
+
+    // ── Payroll entries ────────────────────────────────────────────────────
+    /** Mark one or more entries as paid (used by the Run Payroll wizard's
+     *  per-row "Mark as paid" action). If `payrollRunId` is supplied the
+     *  entries are stamped with it; otherwise just status flips. */
+    setPayrollEntriesStatus: (ids: string[], status: PayrollEntryStatus, payrollRunId?: string) => void;
+    /** Apply an adjustment to a single entry — used in the Run Payroll review
+     *  step. Recomputes `totalEarnings` automatically. */
+    setPayrollEntryAdjustment: (id: string, amount: number, reason?: string) => void;
+
+    // ── Roles ──────────────────────────────────────────────────────────────
+    /** Append a role. Auto-generates id + createdAt + copies the type's
+     *  default permission matrix when `permissions` is omitted. */
+    addRole: (input: Omit<Role, "id" | "createdAt"> & { id?: string }) => string;
+    updateRole: (id: string, patch: Partial<Omit<Role, "id">>) => void;
+    /** Bulk status flip — used by the Roles tab toggle + archive bulk action.
+     *  No-ops on locked rows (Owner). */
+    setRolesStatus: (ids: string[], status: RoleStatus) => void;
+    /** Hard-delete only allowed when the role has zero assigned staff AND
+     *  isn't locked. Returns ids actually deleted + ids blocked. */
+    deleteRoles: (ids: string[]) => { deleted: string[]; blocked: string[] };
+
+    // ── Staff ──────────────────────────────────────────────────────────────
+    /** Append a staff member. Auto-generates id + sets status to "pending"
+     *  + stamps inviteSentAt unless overridden. */
+    addStaff: (input: Omit<Staff, "id" | "inviteSentAt" | "firstLoginCompleted"> & {
+        id?: string; inviteSentAt?: string; firstLoginCompleted?: boolean;
+    }) => string;
+    updateStaff: (id: string, patch: Partial<Omit<Staff, "id">>) => void;
+    setStaffStatus: (ids: string[], status: StaffStatus) => void;
+    /** Resend invite — stamps a new inviteSentAt timestamp. Returns false if
+     *  the staff member is already past first-login (resend is a no-op). */
+    resendStaffInvite: (id: string) => boolean;
+    /** Hard-delete only allowed when the staff member has zero historical
+     *  records (zero classes taught, zero transactions, zero payroll
+     *  entries). For the prototype we approximate by allowing delete only
+     *  on Pending rows or rows with no `payRateId`. */
+    deleteStaff: (ids: string[]) => { deleted: string[]; blocked: string[] };
+
     setPendingPurchase: (purchase: PendingPurchase | null) => void;
     applyPurchase: (customerId: string, items: PurchaseLineItem[]) => void;
 
@@ -712,12 +1403,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     classBookings: INITIAL_BOOKINGS,
     classRatings: INITIAL_RATINGS,
     customers: INITIAL_CUSTOMERS,
+    customerPlans: INITIAL_CUSTOMER_PLANS,
+    customerTransactions: INITIAL_CUSTOMER_TRANSACTIONS,
+    customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
+    customerReferrals: INITIAL_CUSTOMER_REFERRALS,
     memberships: [...SEED_MEMBERSHIPS],
     packages: [...SEED_PACKAGES],
     giftCardDesigns: [...SEED_GIFT_CARD_DESIGNS],
     issuedGiftCards: [...SEED_ISSUED_GIFT_CARDS],
     promoCodes: [...SEED_PROMO_CODES],
     marketingItems: [...SEED_MARKETING_ITEMS],
+    payRates: [...INITIAL_PAY_RATES],
+    instructors: [...INITIAL_INSTRUCTORS],
+    payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
+    roles: [...INITIAL_ROLES],
+    staff: [...INITIAL_STAFF],
     pendingPurchase: null,
     toast: null,
 
@@ -873,11 +1573,162 @@ export const useAppStore = create<AppState>((set, get) => ({
             id,
             initials,
             branchId: input.branchId ?? "branch_forma_south",
+            // Newly-created customers are Active by default — a brand-new
+            // account is never seeded inactive/archived.
+            status: input.status ?? "active",
             createdAt: new Date().toISOString(),
         };
         set((state) => ({ customers: [customer, ...state.customers] }));
         return id;
     },
+    updateCustomer: (id, patch) =>
+        set((state) => ({
+            customers: state.customers.map(c => c.id === id ? { ...c, ...patch } : c),
+        })),
+    setCustomerStatus: (ids, status) =>
+        set((state) => {
+            const idSet = new Set(ids);
+            return { customers: state.customers.map(c => idSet.has(c.id) ? { ...c, status } : c) };
+        }),
+    deleteCustomers: (ids) => {
+        const state = get();
+        const deleted: string[] = [];
+        const blocked: string[] = [];
+        for (const id of ids) {
+            // A customer with any booking on record is history-bearing — it
+            // can only be archived, never hard-deleted (CLAUDE.md archive rule).
+            const hasHistory = state.classBookings.some(b => b.customerId === id);
+            if (hasHistory) blocked.push(id);
+            else deleted.push(id);
+        }
+        if (deleted.length > 0) {
+            const deletedSet = new Set(deleted);
+            set(s => ({ customers: s.customers.filter(c => !deletedSet.has(c.id)) }));
+        }
+        return { deleted, blocked };
+    },
+
+    // ── Customer plans ─────────────────────────────────────────────────────
+
+    freezeCustomerPlan: (planId, startISO, endISO) =>
+        set(state => ({
+            customerPlans: state.customerPlans.map(p => {
+                if (p.id !== planId) return p;
+                // Frozen days are added back onto the expiry so the customer
+                // doesn't lose the paused time (Brief: expiry is extended).
+                const days = Math.max(0, Math.round(
+                    (new Date(`${endISO}T00:00:00Z`).getTime() - new Date(`${startISO}T00:00:00Z`).getTime()) / 86_400_000,
+                ));
+                const extendedExpiry = new Date(new Date(p.expiryISO).getTime() + days * 86_400_000).toISOString();
+                return {
+                    ...p,
+                    status: "frozen" as const,
+                    freezeStartISO: startISO,
+                    freezeEndISO: endISO,
+                    expiryISO: extendedExpiry,
+                };
+            }),
+        })),
+
+    unfreezeCustomerPlan: (planId) =>
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? { ...p, status: "active" as const, freezeStartISO: undefined, freezeEndISO: undefined }
+                    : p,
+            ),
+        })),
+
+    cancelCustomerPlan: (planId, mode, reason) =>
+        set(state => {
+            const target = state.customerPlans.find(p => p.id === planId);
+            const customerPlans = state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                        ...p,
+                        status: "cancelled" as const,
+                        cancelMode: mode,
+                        cancelReason: reason,
+                        cancelledAtISO: new Date().toISOString(),
+                    }
+                    : p,
+            );
+            // Clamp the customer's live `creditsRemaining` to the new
+            // allotment ceiling so a cancelled plan visibly removes credits
+            // from the side-panel widget (and anywhere else reading the
+            // balance). Unlimited plans keep credits uncapped.
+            const customers = !target ? state.customers : state.customers.map(c => {
+                if (c.id !== target.customerId) return c;
+                const stillCounted = customerPlans.filter(p =>
+                    p.customerId === c.id
+                    && (p.status === "active" || p.status === "frozen"));
+                let cap = 0;
+                for (const p of stillCounted) {
+                    if (p.creditsLabel.toLowerCase().includes("unlimited")) {
+                        return c; // any remaining unlimited plan → no clamp
+                    }
+                    const m = p.creditsLabel.match(/\d+/);
+                    cap += p.freeCredits ?? (m ? Number(m[0]) : 0);
+                }
+                return { ...c, creditsRemaining: Math.min(c.creditsRemaining ?? 0, cap) };
+            });
+            return { customerPlans, customers };
+        }),
+
+    removeComplimentaryPlan: (planId, reason, removedBy, removedByRole) =>
+        set(state => {
+            const plan = state.customerPlans.find(p => p.id === planId);
+            const customerPlans = state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                        ...p,
+                        status: "removed" as const,
+                        removeReason: reason,
+                        removedBy,
+                        removedByRole,
+                        removedAtISO: new Date().toISOString(),
+                    }
+                    : p,
+            );
+            // Revoke the still-unused free credits from the customer's balance.
+            const customers = (plan && plan.freeCredits)
+                ? state.customers.map(c =>
+                    c.id === plan.customerId
+                        ? { ...c, creditsRemaining: Math.max(0, (c.creditsRemaining ?? 0) - (plan.freeCredits ?? 0)) }
+                        : c,
+                )
+                : state.customers;
+            return { customerPlans, customers };
+        }),
+
+    addComplimentaryPlan: (input) => {
+        const id = `cp_comp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const plan: CustomerPlan = {
+            ...input,
+            id,
+            kind: "complimentary",
+            status: "active",
+            planTypeLabel: "Free credit",
+        };
+        set(state => ({ customerPlans: [plan, ...state.customerPlans] }));
+        return id;
+    },
+
+    // ── Customer transactions ──────────────────────────────────────────────
+
+    refundTransaction: (id, method) =>
+        set(state => ({
+            customerTransactions: state.customerTransactions.map(t =>
+                t.id === id && t.status === "complete"
+                    ? {
+                        ...t,
+                        status: "refunded" as const,
+                        refundedAtISO: new Date().toISOString(),
+                        refundMethod: method,
+                    }
+                    : t,
+            ),
+        })),
 
     // ── Memberships / Packages ─────────────────────────────────────────────
 
@@ -1063,6 +1914,165 @@ export const useAppStore = create<AppState>((set, get) => ({
         return true;
     },
 
+    addPayRate: (input) => {
+        const id = input.id ?? `pr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next = {
+            ...input,
+            id,
+            createdAt: input.createdAt ?? new Date().toISOString(),
+        } as PayRate;
+        set(state => ({ payRates: [...state.payRates, next] }));
+        return id;
+    },
+    updatePayRate: (id, patch) =>
+        // Merging discriminated unions with Partial is awkward in TS — we cast
+        // the result back to PayRate after merge. Callers are responsible for
+        // not mixing fields across variants.
+        set(state => ({
+            payRates: state.payRates.map(p => p.id === id ? ({ ...p, ...patch } as PayRate) : p),
+        })),
+    setPayRatesStatus: (ids, status) =>
+        set(state => ({
+            payRates: state.payRates.map(p => ids.includes(p.id) ? { ...p, status } : p),
+        })),
+    deletePayRates: (ids) => {
+        const deletable = get().payRates.filter(p => ids.includes(p.id) && p.status === "active" && p.usageCount === 0);
+        const deletableIds = deletable.map(p => p.id);
+        const blocked = ids.filter(id => !deletableIds.includes(id));
+        if (deletableIds.length > 0) {
+            // Also clear the rate from any instructor that still references
+            // it — the relationship survives the delete in DB-land but the
+            // UI shouldn't dangle.
+            set(state => ({
+                payRates: state.payRates.filter(p => !deletableIds.includes(p.id)),
+                instructors: state.instructors.map(i =>
+                    i.payRateId && deletableIds.includes(i.payRateId) ? { ...i, payRateId: undefined } : i,
+                ),
+            }));
+        }
+        return { deleted: deletableIds, blocked };
+    },
+
+    assignInstructorPayRate: (instructorId, payRateId) =>
+        set(state => ({
+            instructors: state.instructors.map(i =>
+                i.id === instructorId ? { ...i, payRateId } : i,
+            ),
+        })),
+    setInstructorStatus: (ids, status) =>
+        set(state => ({
+            instructors: state.instructors.map(i =>
+                ids.includes(i.id) ? { ...i, status } : i,
+            ),
+        })),
+
+    setPayrollEntriesStatus: (ids, status, payrollRunId) =>
+        set(state => ({
+            payrollEntries: state.payrollEntries.map(e =>
+                ids.includes(e.id)
+                    ? { ...e, status, ...(payrollRunId ? { payrollRunId } : {}) }
+                    : e,
+            ),
+        })),
+    setPayrollEntryAdjustment: (id, amount, reason) =>
+        set(state => ({
+            payrollEntries: state.payrollEntries.map(e =>
+                e.id === id
+                    ? { ...e, adjustmentAmount: amount, adjustmentReason: reason, totalEarnings: e.baseEarnings + amount }
+                    : e,
+            ),
+        })),
+
+    // ── Role actions ───────────────────────────────────────────────────────
+    addRole: (input) => {
+        const id = input.id ?? `role_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next: Role = {
+            ...input,
+            id,
+            createdAt: new Date().toISOString(),
+            // If caller didn't supply permissions, copy the type's template.
+            permissions: input.permissions ?? DEFAULT_PERMISSIONS_BY_TYPE[input.type],
+        };
+        set(state => ({ roles: [...state.roles, next] }));
+        return id;
+    },
+    updateRole: (id, patch) =>
+        set(state => ({
+            // Locked rows (Owner) ignore patches except status flips coming
+            // from setRolesStatus (which uses a separate code path below).
+            roles: state.roles.map(r =>
+                r.id === id && !r.locked ? { ...r, ...patch } : r,
+            ),
+        })),
+    setRolesStatus: (ids, status) =>
+        set(state => ({
+            roles: state.roles.map(r =>
+                ids.includes(r.id) && !r.locked ? { ...r, status } : r,
+            ),
+        })),
+    deleteRoles: (ids) => {
+        // Delete only when: NOT locked AND zero assigned staff.
+        const staffByRole = new Map<string, number>();
+        for (const s of get().staff) {
+            staffByRole.set(s.roleId, (staffByRole.get(s.roleId) ?? 0) + 1);
+        }
+        const deletable = get().roles
+            .filter(r => ids.includes(r.id) && !r.locked && (staffByRole.get(r.id) ?? 0) === 0)
+            .map(r => r.id);
+        const blocked = ids.filter(i => !deletable.includes(i));
+        if (deletable.length > 0) {
+            set(state => ({ roles: state.roles.filter(r => !deletable.includes(r.id)) }));
+        }
+        return { deleted: deletable, blocked };
+    },
+
+    // ── Staff actions ──────────────────────────────────────────────────────
+    addStaff: (input) => {
+        const id = input.id ?? `staff_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next: Staff = {
+            ...input,
+            id,
+            // New staff start Pending unless the caller overrides.
+            status: input.status,
+            inviteSentAt: input.inviteSentAt ?? new Date().toISOString(),
+            firstLoginCompleted: input.firstLoginCompleted ?? false,
+        };
+        set(state => ({ staff: [...state.staff, next] }));
+        return id;
+    },
+    updateStaff: (id, patch) =>
+        set(state => ({
+            staff: state.staff.map(s => s.id === id ? { ...s, ...patch } : s),
+        })),
+    setStaffStatus: (ids, status) =>
+        set(state => ({
+            staff: state.staff.map(s => ids.includes(s.id) ? { ...s, status } : s),
+        })),
+    resendStaffInvite: (id) => {
+        const target = get().staff.find(s => s.id === id);
+        if (!target || target.firstLoginCompleted) return false;
+        set(state => ({
+            staff: state.staff.map(s =>
+                s.id === id ? { ...s, inviteSentAt: new Date().toISOString() } : s,
+            ),
+        }));
+        return true;
+    },
+    deleteStaff: (ids) => {
+        // Prototype rule: delete only when the staff row has no payroll /
+        // pay rate history. We approximate with `payRateId` absence + Pending
+        // status. The real rule (zero classes / zero transactions / zero
+        // payroll entries) will land once those tables are joinable.
+        const deletable = get().staff
+            .filter(s => ids.includes(s.id) && (s.status === "pending" || !s.payRateId))
+            .map(s => s.id);
+        const blocked = ids.filter(i => !deletable.includes(i));
+        if (deletable.length > 0) {
+            set(state => ({ staff: state.staff.filter(s => !deletable.includes(s.id)) }));
+        }
+        return { deleted: deletable, blocked };
+    },
+
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
     applyPurchase: (customerId, items) =>
         set((state) => {
@@ -1149,10 +2159,69 @@ export const useAppStore = create<AppState>((set, get) => ({
                 }
             }
 
+            // ─── Plan + transaction records ────────────────────────────────
+            // Each membership / package line item becomes a `customer_plans`
+            // row (customer-detail Plan tab) and a `customer_transactions` row
+            // (Payments tab + its Overview metrics), so a completed POS /
+            // checkout sale propagates across the whole customer module.
+            const buyer = state.customers.find(c => c.id === customerId);
+            const saleBranchId = buyer?.branchId ?? DEFAULT_BRANCH_ID;
+            const stamp = Date.now();
+            const nowISO = new Date().toISOString();
+            const newPlans: CustomerPlan[] = [];
+            const newTransactions: CustomerTransaction[] = [];
+            items.forEach((it, idx) => {
+                if (it.productType !== "membership" && it.productType !== "package") return;
+                const isMembership = it.productType === "membership";
+                const expiry = new Date();
+                let creditsLabel: string;
+                if (isMembership) {
+                    const m = state.memberships.find(mm => mm.id === it.productId);
+                    expiry.setMonth(expiry.getMonth() + (m?.duration_months ?? 1));
+                    creditsLabel = m && m.credits !== "unlimited" ? `${m.credits} credits` : "Unlimited";
+                } else {
+                    const p = state.packages.find(pp => pp.id === it.productId);
+                    expiry.setDate(expiry.getDate() + (p?.validity_days ?? 30));
+                    const credits = (typeof p?.credits === "number" ? p.credits : 0) * it.quantity;
+                    creditsLabel = `${credits} ${credits === 1 ? "credit" : "credits"}`;
+                }
+                newPlans.push({
+                    id: `cp_sale_${stamp}_${idx}`,
+                    customerId,
+                    kind: isMembership ? "membership" : "package",
+                    productId: it.productId,
+                    name: it.name,
+                    planTypeLabel: isMembership ? "Membership" : "Credit package",
+                    creditsLabel,
+                    status: "active",
+                    purchasedAtISO: nowISO,
+                    expiryISO: expiry.toISOString(),
+                    ...(isMembership ? { priceAed: it.unitPrice } : {}),
+                });
+                newTransactions.push({
+                    id: `txn_sale_${stamp}_${idx}`,
+                    customerId,
+                    branchId: saleBranchId,
+                    kind: isMembership ? "membership" : "package",
+                    productId: it.productId,
+                    name: it.name,
+                    amountAed: it.unitPrice * it.quantity,
+                    status: "complete",
+                    paymentMethod: "card",
+                    createdAtISO: nowISO,
+                });
+            });
+
             return {
                 customers,
                 ...(newIssued.length > 0
                     ? { issuedGiftCards: [...state.issuedGiftCards, ...newIssued] }
+                    : {}),
+                ...(newPlans.length > 0
+                    ? { customerPlans: [...newPlans, ...state.customerPlans] }
+                    : {}),
+                ...(newTransactions.length > 0
+                    ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
                     : {}),
             };
         }),

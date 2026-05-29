@@ -61,12 +61,11 @@ interface TimeSlot {
 }
 
 // Resolved hex triple per category — kept in sync with the schedule page's
-// CATEGORY_COLORS (Pilates/Barre/Yoga/Roller Release).
+// CATEGORY_COLORS (Pilates / Barre / Yoga).
 const CATEGORY_PALETTE: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates:          { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
-    Barre:            { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
-    Yoga:             { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
-    "Roller Release": { bg: "#f0fcf9", border: "#0e9384", text: "#125d56" },
+    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
 };
 const FALLBACK_PALETTE = { bg: "#f7f3f7", border: "#b892ba", text: "#4a1fb8" };
 
@@ -193,10 +192,12 @@ const metrics = [
 
 function PerformanceTab({
     activeWidgets,
+    period,
     onRemoveWidget,
     onOpenModal,
 }: {
     activeWidgets: string[];
+    period: DateFilter;
     onRemoveWidget: (id: string) => void;
     onOpenModal: () => void;
 }) {
@@ -206,6 +207,7 @@ function PerformanceTab({
                 <DashboardWidgetCard
                     key={id}
                     widgetId={id}
+                    period={period}
                     action="kebab"
                     onRemove={() => onRemoveWidget(id)}
                 />
@@ -472,7 +474,7 @@ export default function AdminDashboard() {
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
                     placeholder="Select location"
-                    options={locationOptions}
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
                     value={location}
                     onChange={setLocation}
                     width="w-[220px]"
@@ -523,6 +525,7 @@ export default function AdminDashboard() {
             {activeTab === "performance" && (
                 <PerformanceTab
                     activeWidgets={activeWidgets}
+                    period={period}
                     onRemoveWidget={handleRemoveWidget}
                     onOpenModal={() => setWidgetModalOpen(true)}
                 />

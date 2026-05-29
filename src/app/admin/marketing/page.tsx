@@ -280,7 +280,7 @@ function FilterPanel({ open, applied, onClose, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Marketing date range — filters by the item's expiry date */}
                     <div className="flex flex-col gap-1.5">
@@ -384,7 +384,7 @@ export default function MarketingListPage() {
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
                     placeholder="Select location"
-                    options={locationOptions}
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
                     value={locationId}
                     onChange={setLocationId}
                     width="w-[220px]"

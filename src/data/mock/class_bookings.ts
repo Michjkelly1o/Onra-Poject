@@ -102,7 +102,7 @@ export const class_bookings: ClassBooking[] = [
         plan_kind_used: "package", plan_id_used: "pkg_10_class",
     },
 
-    // ─── Row 4: Roller Release 2026-05-13 (Cancelled by class) — 3 cancelled, refunds issued ──
+    // ─── Row 4: Reformer Pilates 2026-05-13 (Cancelled by class) — 3 cancelled, refunds issued ──
     {
         id: "bk_011", class_schedule_id: "class_sched_2026_05_13_1800",
         customer_id: "cust_rosale_martin", branch_id: "branch_forma_south",
@@ -203,7 +203,7 @@ export const class_bookings: ClassBooking[] = [
         plan_kind_used: "package", plan_id_used: "pkg_10_class",
     },
 
-    // ─── Row 8: Roller Release Sun (Upcoming) — 0 bookings (empty roster demo) ──
+    // ─── Row 8: Reformer Pilates Sun (Upcoming) — 0 bookings (empty roster demo) ──
     // (no rows)
 
     // ─── Row 9: Reformer Pilates Mon (Upcoming) — 2 booked ──
@@ -294,7 +294,7 @@ export const class_bookings: ClassBooking[] = [
     // ─── Row 11: Hot Yoga Wed (Upcoming) — 0 bookings (empty roster demo) ──
     // (no rows)
 
-    // ─── Row 12: Roller Release Fri (Upcoming) — 1 booked ──
+    // ─── Row 12: Reformer Pilates Fri (Upcoming) — 1 booked ──
     {
         id: "bk_034", class_schedule_id: "class_sched_2026_05_22_1700",
         customer_id: "cust_lucas_brown", branch_id: "branch_forma_south",

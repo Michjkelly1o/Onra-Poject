@@ -1572,7 +1572,7 @@ function BulkActionBar({ variant, count, onClear, onCancel, onRemove, onPresent,
 }) {
     if (count === 0) return null;
     return (
-        <div className="absolute inset-x-0 bottom-0 flex justify-center pointer-events-none pb-[96px] pt-6 px-6 z-30">
+        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
             <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 {/* Selection counter pill */}
                 <button type="button" onClick={onClear}
