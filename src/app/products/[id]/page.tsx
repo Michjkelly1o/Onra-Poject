@@ -32,10 +32,11 @@ import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
-    useAppStore, BRANCHES,
-    type Membership, type Package, type Customer, type PurchaseRulesData,
+    useAppStore,
+    type Membership, type Package, type Customer, type PurchaseRulesData, type Branch,
 } from "@/lib/store";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TaxSuffix } from "@/components/ui/TaxSuffix";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
@@ -88,8 +89,8 @@ function formatValidity(days: number): string {
     return `${days} Days`;
 }
 
-function branchName(id: string): string {
-    return BRANCHES.find(b => b.id === id)?.name ?? id;
+function branchName(id: string, branches: Branch[]): string {
+    return branches.find(b => b.id === id)?.name ?? id;
 }
 
 // Deterministic "created at" — pseudo-randomized per id until the column
@@ -316,7 +317,11 @@ function LeftSidebar({
                     <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{name}</h2>
 
                     <div className="flex flex-col gap-3">
-                        <SidebarField label="Price" value={formatAed(priceAed)} />
+                        <SidebarField
+                            label="Price"
+                            value={formatAed(priceAed)}
+                            suffix={<TaxSuffix category={kind === "membership" ? "membership" : "credit_package"} />}
+                        />
                         <SidebarField label="Credit amount" value={creditsLabel} />
                         <SidebarField label="Duration" value={durationLabel} />
                         <SidebarField label="Active customers" value={`${customerCount} Customers`} />
@@ -333,11 +338,12 @@ function LeftSidebar({
     );
 }
 
-function SidebarField({ label, value }: { label: string; value: string }) {
+function SidebarField({ label, value, suffix }: { label: string; value: string; suffix?: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
             <p className="text-[14px] text-[#667085]">{label}</p>
             <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            {suffix}
         </div>
     );
 }
@@ -348,11 +354,12 @@ type TabId = "details" | "customers";
 
 // ─── Right panel ────────────────────────────────────────────────────────────
 
-function RightPanel({ kind, vm, activeCustomers, renewalFor }: {
+function RightPanel({ kind, vm, activeCustomers, renewalFor, branches }: {
     kind: ProductKind;
     vm: MembershipDetailVM;
     activeCustomers: Customer[];
     renewalFor: (c: Customer) => string;
+    branches: Branch[];
 }) {
     const [tab, setTab] = useState<TabId>("details");
 
@@ -384,7 +391,7 @@ function RightPanel({ kind, vm, activeCustomers, renewalFor }: {
             </div>
 
             {tab === "details" ? (
-                <DetailsTab vm={vm} />
+                <DetailsTab vm={vm} branches={branches} />
             ) : (
                 <ActiveCustomersTab customers={activeCustomers} productName={vm.name} renewalFor={renewalFor} />
             )}
@@ -415,7 +422,7 @@ function RightPanel({ kind, vm, activeCustomers, renewalFor }: {
 //                              Usage cap), each with disabled-checkbox rule
 //                              rows + descriptive subtext under each rule
 
-function DetailsTab({ vm }: { vm: MembershipDetailVM }) {
+function DetailsTab({ vm, branches }: { vm: MembershipDetailVM; branches: Branch[] }) {
     const groups = buildPurchaseRuleGroups(vm);
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
@@ -428,6 +435,8 @@ function DetailsTab({ vm }: { vm: MembershipDetailVM }) {
                     icon={<Coins01 className="w-4 h-4" />}
                     label={`${vm.kindLabel} price`}
                     value={formatAed(vm.priceAed)}
+                    tooltip={undefined}
+                    suffix={<TaxSuffix category={vm.kind === "membership" ? "membership" : "credit_package"} />}
                 />
                 <InlineStat
                     icon={<CalendarPlus01 className="w-4 h-4" />}
@@ -468,7 +477,7 @@ function DetailsTab({ vm }: { vm: MembershipDetailVM }) {
             )}
 
             {/* ── Applicable branches ── (kind- and multi-location-aware subtitle) */}
-            <BranchesCard branchIds={vm.branchIds} productNoun={vm.productNoun} />
+            <BranchesCard branchIds={vm.branchIds} productNoun={vm.productNoun} branches={branches} />
 
             {/* ── Duration block ──
                 Membership: "Duration & renewal" with 3 stats (Duration,
@@ -746,11 +755,12 @@ function InlineStatRow({ children }: { children: React.ReactNode }) {
     return <div className="grid grid-cols-2 gap-4">{children}</div>;
 }
 
-function InlineStat({ icon, label, value, tooltip }: {
+function InlineStat({ icon, label, value, tooltip, suffix }: {
     icon: React.ReactNode;
     label: string;
     value: string;
     tooltip?: string;
+    suffix?: React.ReactNode;
 }) {
     return (
         <div className="flex items-center gap-3">
@@ -763,6 +773,7 @@ function InlineStat({ icon, label, value, tooltip }: {
                     {tooltip && <HelpTooltip text={tooltip} />}
                 </div>
                 <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{value}</p>
+                {suffix}
             </div>
         </div>
     );
@@ -813,7 +824,7 @@ function DisabledCheckbox({ checked }: { checked: boolean }) {
 //   • single-location (exactly 1 branch):                    "can only be
 //     use on a single branch"
 
-function BranchesCard({ branchIds, productNoun }: { branchIds: string[]; productNoun: string }) {
+function BranchesCard({ branchIds, productNoun, branches }: { branchIds: string[]; productNoun: string; branches: Branch[] }) {
     const [open, setOpen] = useState(true);
     const isSingleLocation = branchIds.length === 1;
     const subtitle = isSingleLocation
@@ -846,7 +857,7 @@ function BranchesCard({ branchIds, productNoun }: { branchIds: string[]; product
                         branchIds.map(id => (
                             <div key={id} className="flex items-center gap-2">
                                 <DisabledCheckbox checked />
-                                <span className="text-[14px] font-medium text-[#101828]">{branchName(id)}</span>
+                                <span className="text-[14px] font-medium text-[#101828]">{branchName(id, branches)}</span>
                             </div>
                         ))
                     )}
@@ -1227,6 +1238,7 @@ export default function ProductDetailPage() {
     const memberships         = useAppStore(s => s.memberships);
     const packages            = useAppStore(s => s.packages);
     const customers           = useAppStore(s => s.customers);
+    const branches            = useAppStore(s => s.branches);
     const setMembershipStatus = useAppStore(s => s.setMembershipStatus);
     const setPackageStatus    = useAppStore(s => s.setPackageStatus);
     const deleteMembership    = useAppStore(s => s.deleteMembership);
@@ -1360,7 +1372,7 @@ export default function ProductDetailPage() {
                         status={product.status}
                         onAction={handleAction}
                     />
-                    <RightPanel kind={kind} vm={vm} activeCustomers={activeCustomers} renewalFor={renewalDate} />
+                    <RightPanel kind={kind} vm={vm} activeCustomers={activeCustomers} renewalFor={renewalDate} branches={branches} />
                 </div>
             </div>
 

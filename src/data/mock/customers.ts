@@ -274,14 +274,19 @@ export const customers: Customer[] = [
         email: "fatima.al-sayed@email.com",
         phone: "+971 50 890 1234",
         branch_id: "branch_forma_south",
-        plan_kind: "membership",
-        membership_id: "mem_unlimited_monthly",
-        plan_name: "Unlimited Monthly Membership",
+        // Switched membership → package today (see `cp_fatima_notif` /
+        // `txn_fatima_notif`). Per the 1-membership-OR-multiple-packages
+        // rule (CLAUDE.md), her old Unlimited Membership is now `cancelled`
+        // in customer_plans.ts and this record reflects the new package state.
+        plan_kind: "package",
+        package_ids: ["pkg_10_class"],
+        plan_name: "10-Class Package for One Month",
+        credits_remaining: 10,
         created_at: "2026-01-15T09:00:00Z",
         gender: "Female",
         status: "active",
         last_visit_iso: "2026-05-19",
-        plan_expiry_iso: "2026-08-01",
+        plan_expiry_iso: "2026-06-14",
         date_of_birth: "1994-12-05",
         country: "United Arab Emirates",
         state: "Dubai",
@@ -330,9 +335,10 @@ export const customers: Customer[] = [
         referral_code: "LUCABR",
     },
     {
-        // Intentionally no plan — the Payment confirmation "Buy packages"
-        // variant needs at least one customer to demo against. Never visited
-        // — surfaces the "Never visited" Last visit filter bucket.
+        // Just purchased the Unlimited Monthly Membership (see
+        // `cp_mia_notif` / `txn_mia_notif`). Matches the Payment Confirmed
+        // notification at the top of the bell feed. Never visited yet —
+        // still surfaces the "Never visited" Last visit filter bucket.
         id: "cust_mia_anderson",
         first_name: "Mia",
         last_name: "Anderson",
@@ -340,10 +346,13 @@ export const customers: Customer[] = [
         email: "mia.anderson@email.com",
         phone: "+971 50 012 3456",
         branch_id: "branch_forma_south",
-        plan_kind: null,
+        plan_kind: "membership",
+        membership_id: "mem_unlimited_monthly",
+        plan_name: "Unlimited Monthly Membership",
         created_at: "2026-01-17T09:00:00Z",
         gender: "Female",
         status: "active",
+        plan_expiry_iso: "2026-06-15",
         date_of_birth: "2001-06-11",
         country: "United Arab Emirates",
         state: "Dubai",

@@ -30,7 +30,7 @@ import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
-import { useAppStore, BRANCHES, DEFAULT_BRANCH_ID, type Customer } from "@/lib/store";
+import { useAppStore, DEFAULT_BRANCH_ID, type Customer } from "@/lib/store";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
@@ -737,6 +737,7 @@ export default function CustomersPage() {
     // ─── Store subscriptions ────────────────────────────────────────────────
     const customers = useAppStore(s => s.customers);
     const classBookings = useAppStore(s => s.classBookings);
+    const branches = useAppStore(s => s.branches);
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const deleteCustomers = useAppStore(s => s.deleteCustomers);
     const showToast = useAppStore(s => s.showToast);
@@ -755,10 +756,11 @@ export default function CustomersPage() {
     // Reset to page 1 whenever the result set changes shape.
     useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize]);
 
-    // Branch dropdown — active branches from the BRANCHES seed.
+    // Branch dropdown — active branches from the live `branches` slice so
+    // adds/archives in Business & Locations propagate immediately.
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
-        [],
+        () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
+        [branches],
     );
 
     // ─── Build rows (history flag derived live from bookings) ───────────────

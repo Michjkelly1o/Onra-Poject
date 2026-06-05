@@ -60,7 +60,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
                 <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-6 sticky top-0 z-30">
                     <h2 className="text-sm font-semibold text-gray-700">Instructor Portal</h2>
                     <div className="flex items-center gap-3">
-                        <NotificationBell userId="u-inst-1" accentColor="emerald" />
+                        <NotificationBell />
                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
                             <span className="text-xs font-semibold text-emerald-700">SJ</span>
                         </div>

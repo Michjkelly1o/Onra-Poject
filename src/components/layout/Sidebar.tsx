@@ -74,23 +74,38 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Business & locations", href: "/admin/settings" },
             { label: "Branding", href: "/admin/settings/branding" },
-            { label: "User roles", href: "/admin/settings/roles" },
+            // "User roles" removed — fully owned by the Staff & Permissions
+            // module (sidebar entry above). Keeping it here would split the
+            // mental model in two for the same data.
             { label: "Booking rules", href: "/admin/settings/booking-rules" },
             { label: "Payments", href: "/admin/settings/payments" },
+            { label: "Integrations", href: "/admin/settings/integrations" },
+            { label: "Agreements", href: "/admin/settings/agreements" },
             { label: "Tax", href: "/admin/settings/tax" },
             { label: "Referral", href: "/admin/settings/referral" },
-            { label: "Notifications", href: "/admin/settings/notifications" },
+            { label: "Customer notifications", href: "/admin/settings/notifications" },
         ],
     },
 ];
 
 // Among a parent's children, pick the SINGLE child whose href is the longest
+// Routes that live in the bottom user-menu (not the main nav) and therefore
+// should NEVER trigger a main-nav highlight. Without this, a path like
+// `/admin/settings/account` would prefix-match the Settings → "Business &
+// locations" child (`/admin/settings`) and light up the Settings group while
+// the user is viewing their account page.
+const USER_MENU_ROUTES = ["/admin/settings/account"];
+function isUserMenuRoute(pathname: string): boolean {
+    return USER_MENU_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+}
+
 // prefix-match of `pathname`. Prevents the active highlight from doubling up
 // when one child's href is a prefix of another's (e.g. `/admin/products` and
 // `/admin/products/gift-cards` — without this both rows would light up when
 // the user is on the gift-cards page).
 function activeChildHrefFor(children: { href: string }[] | undefined, pathname: string): string | null {
     if (!children) return null;
+    if (isUserMenuRoute(pathname)) return null;
     let bestHref: string | null = null;
     let bestLen = -1;
     for (const c of children) {
@@ -142,6 +157,10 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
+    // Phase 3 sync — brand label uses the centralized `brandingSettings`.
+    // Editing the display name through Settings → Branding → Customize
+    // design settings flips this immediately.
+    const brandingSettings = useAppStore(s => s.brandingSettings);
     const { studio } = useDataStore();
 
     // All open groups tracked here — no sub-component state
@@ -164,10 +183,15 @@ export default function Sidebar() {
 
     const slim = sidebarCollapsed;
 
-    const avatarUrl = `https://ui-avatars.com/api/?name=${currentUser.first_name
-        ? `${currentUser.first_name}+${currentUser.last_name ?? ""}`
-        : "Admin"
-        }&background=c4edd6&color=0c2d34&bold=true`;
+    // Prefer the uploaded avatar from Account settings if the user picked
+    // one; otherwise fall back to a generated initial-tile so the chip never
+    // renders empty. Same precedence as the Account settings page.
+    const avatarUrl = currentUser.avatar_url
+        ? currentUser.avatar_url
+        : `https://ui-avatars.com/api/?name=${currentUser.first_name
+            ? `${currentUser.first_name}+${currentUser.last_name ?? ""}`
+            : "Admin"
+            }&background=c4edd6&color=0c2d34&bold=true`;
 
     const visibleItems = NAV_ITEMS.filter((item) => {
         if (!item.permission) return true;
@@ -220,7 +244,13 @@ export default function Sidebar() {
                                     )}
                                 </div>
                                 <p className="font-bold text-[24px] leading-[28px] text-[#0c2d34] truncate" style={{ fontVariationSettings: "'opsz' 14" }}>
-                                    {studio.name || "Forma Studio"}
+                                    {/* Phase 3 sync — brand label is the single
+                                        Branding-module `displayName`. Editing
+                                        it through Customize design settings
+                                        propagates here in the same render
+                                        cycle. Falls back to the legacy
+                                        `studio.name` if branding isn't set. */}
+                                    {brandingSettings.displayName || studio.name || "Forma Studio"}
                                 </p>
                             </div>
                             {/* Powered by row */}
@@ -253,10 +283,12 @@ export default function Sidebar() {
             <nav className="flex-1 overflow-y-auto pt-3 pb-6 px-4 flex flex-col gap-1">
                 {visibleItems.map((item) => {
                     const hasChildren = !!item.children?.length;
-                    const isSelfActive = item.href
+                    // Bottom user-menu routes never highlight a main-nav item.
+                    const skipNavHighlight = isUserMenuRoute(pathname);
+                    const isSelfActive = item.href && !skipNavHighlight
                         ? pathname === item.href || pathname.startsWith(item.href + "/")
                         : false;
-                    const isChildActive = hasChildren
+                    const isChildActive = hasChildren && !skipNavHighlight
                         ? item.children!.some(
                             (c) => pathname === c.href || pathname.startsWith(c.href + "/")
                         )

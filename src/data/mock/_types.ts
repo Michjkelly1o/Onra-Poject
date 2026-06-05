@@ -48,11 +48,17 @@ export interface Branch {
     /** e.g. "branch_forma_south" */
     id: string;
     name: string;          // "Forma Studio South"
-    status: "active" | "inactive";
+    status: "active" | "inactive" | "archive";
     /** Display flag — the "main" branch shows first in selectors. */
     is_main: boolean;
     address?: string;
     // +later: phone, timezone, opening_hours, logo_url
+    /** Optional branch-level contact info — populated by the Branch form. */
+    phone?: string;
+    email?: string;
+    city?: string;
+    country?: string;
+    image_url?: string;
 }
 
 export interface Room {
@@ -61,7 +67,11 @@ export interface Room {
     branch_id: string;     // → branches.id
     name: string;          // "Reformer Studio"
     capacity: number;
-    status: "active" | "inactive";
+    status: "active" | "inactive" | "archive";
+    /** Optional room metadata populated by the Room form. */
+    equipment_notes?: string;
+    columns?: number;
+    rows?: number;
 }
 
 /**
@@ -224,9 +234,17 @@ export interface CustomerAgreement {
     /** e.g. "agr_ahmed_v3" */
     id: string;
     customer_id: string;          // → customers.id
-    /** Agreement name ("New Liability Waiver"). */
+    /** FK → agreements.id (Phase 4 cross-module wiring). The customer
+     *  Agreements tab joins on this to display the live agreement name + the
+     *  Phase 3 view-content modal. */
+    agreement_id: string;
+    /** Snapshot of the agreement name at issue time. Useful when the parent
+     *  agreement is later renamed — the customer's record keeps the title
+     *  they actually saw. Live consumers should prefer the joined agreement
+     *  name when available. */
     title: string;
-    /** Version number — higher is newer. */
+    /** Version number — joins to `agreement_versions.version_number` under
+     *  the same `agreement_id`. */
     version: number;
     branch_id: string;            // → branches.id
     /** Class templates the agreement covers. */
@@ -308,8 +326,21 @@ export interface CustomerTransaction {
     product_id: string;
     /** Denormalized product name shown in the table + refund modal. */
     name: string;
-    /** Amount paid in AED. */
+    /** Amount paid in AED — when tax fields below are populated, this is the
+     *  GROSS amount (i.e. `subtotal_aed + tax_aed`). Historical seed rows
+     *  predating the Tax module fill the breakdown fields lazily. */
     amount_aed: number;
+    /** Phase 4 — pre-tax amount. Optional so existing historical seeds keep
+     *  rendering as a single AED line without a forced breakdown. */
+    subtotal_aed?: number;
+    /** Phase 4 — tax portion of `amount_aed`. */
+    tax_aed?: number;
+    /** Phase 4 — tax rate applied (percentage). Lets the Payments tab
+     *  render "Tax (X%)" without re-deriving the rule. */
+    tax_rate_percentage?: number;
+    /** Phase 4 — true when prices included tax at purchase time (the tax
+     *  was already inside `subtotal_aed`-equivalent display prices). */
+    tax_inclusive?: boolean;
     /** complete = paid · pending = awaiting clearance · failed = declined ·
      *  refunded = a completed payment that was later refunded. Only
      *  `complete` rows expose the "Refund payment" row action. */
@@ -706,6 +737,11 @@ export interface ClassTemplate {
     applicable_membership_ids: string[]; // → memberships.id[]
     /** Packages that grant access to classes from this template. */
     applicable_package_ids: string[];    // → packages.id[]
+    /** Branches that offer this template. Used by the Agreements module's
+     *  "Applicable services" multi-select to group rows under each branch
+     *  (Figma node: agreement detail step 2). Empty/undefined = offered at
+     *  every active branch (legacy fallback for older seed rows). */
+    branch_ids?: string[]; // → branches.id[]
 }
 
 // ─── Schedule (renamed from `class_instances`) ──────────────────────────────
@@ -1058,4 +1094,387 @@ export interface StaffSeed {
     specialties?: string[];
     pay_rate_id?: string;
     // +later: dob, gender, address, emergency_contact
+}
+
+// ─── Customer notification settings (PRD 11 §12) ──────────────────────────
+
+export type NotificationCategorySeed =
+    | "booking"
+    | "payment"
+    | "package_membership"
+    | "marketing"
+    | "referral";
+
+// ─── Referral settings (PRD 11 §11) ───────────────────────────────────────
+
+/** "Trigger for successful referral" dropdown — when the rewards unlock. */
+export type ReferralTriggerSeed = "sign_up" | "purchase";
+
+export interface ReferralSettingsSeed {
+    program_active: boolean;
+    // ── New customer benefit (referred) ──
+    new_customer_credits: number;
+    new_customer_message: string;
+    // ── Existing customer benefit (referrer) ──
+    existing_customer_trigger: ReferralTriggerSeed;
+    existing_customer_min_referred: number;
+    existing_customer_credits: number;
+    existing_customer_message: string;
+    // ── Customer-facing copy ──
+    info_description: string;
+}
+
+/** One row per customer-facing notification event. Drives the per-channel
+ *  toggles + template editor on Settings → Customer notifications. Field set
+ *  matches the inputs the UI actually edits (Figma 4467-35019): the three
+ *  channel toggles + the three template fields. */
+export interface NotificationSettingSeed {
+    id: string;
+    category: NotificationCategorySeed;
+    /** Stable enum key — used by code that fires the notification. */
+    notification_type: string;
+    /** Display label in the row. */
+    label: string;
+    // ── Channel switches (the 3 row toggles) ──────────────────────────────
+    email_enabled: boolean;
+    whatsapp_enabled: boolean;
+    push_enabled: boolean;
+    // ── Template fields (set in the Edit template modal) ──────────────────
+    email_subject?: string;
+    email_template?: string;
+    whatsapp_template?: string;
+}
+
+// ─── Notification records (in-app feed — PRD 12 §6.1) ────────────────────────
+
+/** The exact event the notification represents. Drives icon + title + which
+ *  module the click-through navigates to. */
+export type NotificationEventSeed =
+    | "booking_confirmation"
+    | "late_cancellation"
+    | "no_show"
+    | "waitlist_promoted"
+    | "class_cancelled"
+    | "payment_confirmed"
+    | "refund_processed";
+
+/** Tab grouping on the notifications page (matches Figma's All / Bookings /
+ *  Payments tabs). Pure presentation field — kept on the row so a single
+ *  filter expression can drive the tab badges. */
+export type NotificationTabSeed = "booking" | "payment";
+
+/** Featured-icon glyph rendered in the 48px (page) / 40px (dropdown) tile.
+ *  Mapped to a `@untitledui/icons` component at render time. */
+export type NotificationIconSeed =
+    | "calendar-check"
+    | "calendar-minus"
+    | "user-x"
+    | "credit-card"
+    | "refresh"
+    | "calendar-x";
+
+/** Which module the click-through should navigate to. Pairs with `source_id`
+ *  to build the destination URL (e.g. `/schedule/{source_id}` for class). */
+export type NotificationSourceSeed = "booking" | "class" | "transaction";
+
+/** One row per in-app notification record. This is the **feed** table —
+ *  separate from `notification_settings` which configures customer-facing
+ *  channel/template config. */
+export interface NotificationSeed {
+    id: string;
+    /** Tab grouping — "booking" for booking/class events, "payment" for sale
+     *  & refund events. */
+    tab: NotificationTabSeed;
+    /** The exact event. */
+    event: NotificationEventSeed;
+    /** Display title (e.g. "Booking Confirmation"). Set per-row so future
+     *  copy tweaks land here instead of in the renderer. */
+    title: string;
+    /** Body line — fully interpolated at seed time. */
+    body: string;
+    /** Featured-icon glyph. */
+    icon: NotificationIconSeed;
+    /** Which module the notification points at — used to build the
+     *  click-through route. */
+    source_module: NotificationSourceSeed;
+    /** Related record id (`class_bookings.id`, `class_schedule.id`, or
+     *  `customer_transactions.id`). Nullable when the source row has been
+     *  removed but the notification persists. */
+    source_id?: string;
+    /** Convenience FKs so the tab badge counts and per-branch filters can
+     *  group without a join. */
+    customer_id?: string;
+    branch_id?: string;
+    /** Class schedule id — populated on every booking/class event so the
+     *  click-through can deep-link to `/schedule/[classScheduleId]` (the
+     *  class-detail page with the roster). Always set for `booking`,
+     *  `class_cancelled`, `late_cancellation`, `no_show`, and
+     *  `waitlist_promoted` events. */
+    class_schedule_id?: string;
+    /** Customer transaction id — populated for payment events so the
+     *  click-through opens the customer profile with the receipt visible. */
+    transaction_id?: string;
+    /** Unread state. Read records still appear in the list with a muted
+     *  green dot collapsed (no dot rendered) — matches the Figma. */
+    is_read: boolean;
+    /** ISO timestamp — drives "Today/Past" sectioning and "2 min ago". */
+    created_at: string;
+}
+
+// ─── Tax module (PRD 11 §10) ─────────────────────────────────────────────────
+
+/** Lifecycle status — same shape as memberships/packages/gift cards so the
+ *  row-action ⋮ menu pattern (Archive / Deactivate ↔ Delete / Reactivate /
+ *  Recover) maps 1:1. */
+export type TaxRateStatusSeed = "active" | "inactive" | "archived";
+
+/** Per-rate calculation mode — overrides the global `prices_include_tax`
+ *  toggle when set. PRD 11 §10.3 ("Inclusive / Exclusive per rate override"). */
+export type TaxCalculationModeSeed = "exclusive" | "inclusive";
+
+/** One row per configured tax rate. Lives in /admin/settings/tax → Tax rates
+ *  list. Each row gets applied to one or more product categories via
+ *  `tax_rules` in Phase 3 — the `usage_count` shown in the row-action
+ *  Delete↔Deactivate swap is derived live from that join.
+ *
+ *  FK: none yet. Phase 4 wires `memberships.tax_rate_id` /
+ *      `packages.tax_rate_id` / `gift_card_designs.tax_rate_id` /
+ *      `pay_rates.tax_rate_id` → `tax_rates.id`. */
+export interface TaxRateSeed {
+    id: string;
+    name: string;
+    rate_percentage: number;
+    description?: string;
+    /** Per-rate override of the global `prices_include_tax` toggle. */
+    calculation_mode: TaxCalculationModeSeed;
+    status: TaxRateStatusSeed;
+    created_at: string;
+}
+
+/** Studio-wide tax settings. Currently a single row — modelled as an
+ *  interface so future fields (`apply_to_all_products_by_default`, etc.) can
+ *  land here without breaking the store shape. */
+export interface TaxSettingsSeed {
+    /** Global default — when true, all prices already include tax (PRD §10.1
+     *  "Tax inclusive"). When false, tax is added at checkout. */
+    prices_include_tax: boolean;
+}
+
+// ─── Tax rules (Apply tax rates tab — PRD 11 §10.4 / Phase 3) ────────────────
+
+/** Which product category a tax rule applies to. The Apply tax rates tab
+ *  groups all rules under these four predefined categories (Figma 5041-99787). */
+export type TaxRuleCategorySeed =
+    | "membership"
+    | "credit_package"
+    | "gift_card"
+    | "pay_rate";
+
+/** Rule-level on/off — driven by the per-row toggle in the Figma. Toggling
+ *  off keeps the rule's configuration but stops it applying to future sales. */
+export type TaxRuleStatusSeed = "active" | "inactive";
+
+/** One row per applied tax rule. Each category can hold many rules — typical
+ *  shape is "one rule per branch" but a single rule with `all_locations: true`
+ *  is also valid (Figma's Membership demo).
+ *
+ *  FK behaviour:
+ *    • `tax_rate_id` → `tax_rates.id` — when the referenced rate is archived
+ *      or deleted, the rule's `tax_rate_id` is cleared to undefined so the
+ *      row visibly drops back to the "Select tax rate" placeholder.
+ *    • `location_ids[]` → `branches.id` — when a branch is archived /
+ *      deleted, it's removed from this array on every rule. */
+export interface TaxRuleSeed {
+    id: string;
+    category: TaxRuleCategorySeed;
+    /** Nullable while the rule is being filled out (matches the Figma's
+     *  "Select tax rate" placeholder state). */
+    tax_rate_id?: string;
+    /** When `true`, the rule applies to every active branch — the location
+     *  selector shows "All locations selected" and `location_ids` is ignored. */
+    all_locations: boolean;
+    /** Specific branch FKs (only consulted when `all_locations` is false). */
+    location_ids: string[];
+    status: TaxRuleStatusSeed;
+    created_at: string;
+}
+
+// ─── Agreements module (PRD 11 §9 / Brief-for-Agreements-module.md) ─────────
+
+/** Legal type captured in Step 1 "Basic information" (PRD 11 §9.2). The list
+ *  view doesn't surface this — it's read by the detail page + filter
+ *  (Phase 2/3). The "Type" *column* in the Figma is location scope, not this. */
+export type AgreementTypeSeed =
+    | "liability_waiver"
+    | "consent_form"
+    | "terms_and_conditions"
+    | "health_declaration"
+    | "other";
+
+/** Lifecycle status. Brief explicitly excludes "delete" + "deactivate" for
+ *  agreements — legal records can only be Archived (and Recovered back). */
+export type AgreementStatusSeed = "active" | "archived";
+
+/** Whether the current version's content was authored in the rich editor or
+ *  uploaded as a PDF/DOCX (Step 3 of the create flow). */
+export type AgreementContentTypeSeed = "text" | "upload";
+
+/** One row per agreement. The actual content lives on `agreement_versions`
+ *  so versions can be republished/inspected independently — the parent row
+ *  caches the current version number for fast list rendering.
+ *
+ *  Cross-module FKs:
+ *    • `location_ids[]` → `branches.id` (when `all_locations: false`)
+ *    • `customer_agreements.agreement_id` → this row's `id` (Module 07
+ *      Customer detail Agreements tab consumes this in Phase 4)
+ */
+export interface AgreementSeed {
+    id: string;
+    name: string;
+    type: AgreementTypeSeed;
+    description?: string;
+    /** Required for first booking — PRD 11 §9.2 Step 1 "Required" toggle. */
+    required: boolean;
+    /** Cached version number — equals MAX(agreement_versions.version_number)
+     *  for this id. Bumped by the "Add new version" flow (Phase 3). */
+    current_version: number;
+    /** Rules step (Phase 2) — when ON, agreement applies studio-wide; when
+     *  OFF, only branches in `location_ids` see it. The list view derives
+     *  "Multi-branch" vs "Specific branch" from this + the array length. */
+    all_locations: boolean;
+    location_ids: string[];
+    /** Rules step — "Applicable services" multi-select. References
+     *  `class_templates.id` (i.e. individual offered services, grouped
+     *  by branch in the form UI). Empty/undefined = applies to every
+     *  active service. Phase 4 wires this into the booking flow so the
+     *  customer only sees agreements covering the class they're booking. */
+    applicable_class_template_ids?: string[];
+    /** Rules step — Issued date (locked to today at creation, ISO 8601). */
+    effective_from: string;
+    /** Rules step — Expiry date (must be ≥ today at creation, ISO 8601). */
+    effective_until: string;
+    status: AgreementStatusSeed;
+    /** ISO timestamp — bumps on every save (versioned content edits + status flips). */
+    updated_at: string;
+    created_at: string;
+}
+
+/** One row per published version. The current version is the row with the
+ *  highest `version_number` for a given `agreement_id` — `agreements.current_version`
+ *  caches that for the list view.
+ *
+ *  Content lives here (text OR file URL) so republishing creates a new row
+ *  rather than mutating the previous one. Members who signed an earlier
+ *  version are still bound by the version they signed.
+ */
+export interface AgreementVersionSeed {
+    id: string;
+    agreement_id: string;       // → agreements.id
+    version_number: number;     // 1, 2, 3 …
+    content_type: AgreementContentTypeSeed;
+    /** Rich-text HTML (when content_type === "text"). */
+    content_text?: string;
+    /** Original filename (when content_type === "upload"). */
+    file_name?: string;
+    /** Mock URL — points at the bundled sample PDF (when content_type === "upload"). */
+    file_url?: string;
+    /** File size in bytes — drives the "1.2 MB" display next to the filename. */
+    file_size_bytes?: number;
+    /** Extracted HTML content (when content_type === "upload"). For PDFs the
+     *  text is extracted via pdfjs-dist; for DOCX via mammoth. The View
+     *  modal renders this directly via `dangerouslySetInnerHTML`, so file
+     *  contents appear as styled text rather than a download link. */
+    extracted_html?: string;
+    /** ISO 8601 — when this version was published. */
+    published_at: string;
+    /** FK → users.id — who published this version. */
+    published_by: string;
+}
+
+// ─── Integrations module (PRD 11 §8 / Brief-for-integrations-module.md) ────
+
+/** Stable identifier per integration. Used by the page to route to the
+ *  correct per-tool Connect / View modal in Phase 2. */
+export type IntegrationSlugSeed =
+    | "google_calendar"
+    | "whatsapp_business"
+    | "apple_calendar"
+    | "google_analytics";
+
+/** Lifecycle status. Brief only models two states for now: not_connected
+ *  (default — Connect button) and connected (View + Disconnect buttons).
+ *  PRD §8.1 also mentions an "Error" state; deferred until Phase 2/3. */
+export type IntegrationStatusSeed = "not_connected" | "connected";
+
+/** One row per integration the studio can connect to. The simulated
+ *  connect flow flips `status` to "connected" + stamps `connected_at` and
+ *  an `account_label` (shown later in the Phase 2 View modal). Disconnect
+ *  reverses all three. No real OAuth — see Phase 3 brief. */
+export interface IntegrationSeed {
+    id: string;
+    slug: IntegrationSlugSeed;
+    name: string;
+    /** One-line copy shown under the name on the card. */
+    description: string;
+    status: IntegrationStatusSeed;
+    /** ISO 8601 — when the studio connected. Cleared on disconnect. */
+    connected_at?: string;
+    /** Account / workspace label shown later by the View modal — e.g.
+     *  "FitLab Studio Schedule" for Google Calendar. Cleared on disconnect. */
+    account_label?: string;
+}
+
+// ─── Payments module (PRD 11 §7 / Brief-for-payments-module.md) ────────────
+//
+// NOTE: The existing `payment_methods` table holds CUSTOMER SAVED CARDS
+// (the POS Card-on-file selector). This new `payment_providers` table is
+// the studio-level settings page — Stripe / Apple Pay / Google Pay
+// gateways and wallets the admin connects. Two distinct concepts; the
+// names stay separate to keep them legible.
+
+/** Stable identifier per payment provider. */
+export type PaymentProviderSlugSeed =
+    | "stripe"
+    | "apple_pay"
+    | "google_pay";
+
+/** "gateway"  — top-level payment processor (Stripe). Connects directly.
+ *  "wallet"   — Apple Pay / Google Pay. Always nested under a gateway —
+ *               requires the gateway to be connected before it can be
+ *               enabled. Disconnecting the gateway cascades and disables
+ *               every wallet that depended on it. */
+export type PaymentProviderKindSeed = "gateway" | "wallet";
+
+/** Lifecycle status — same shape as integrations. `not_connected` means
+ *  the Connect (gateway) / Enable (wallet) button is shown; `connected`
+ *  shows View + Disconnect. */
+export type PaymentProviderStatusSeed = "not_connected" | "connected";
+
+/** One row per payment provider shown on /admin/settings/payments. The
+ *  simulated flow is identical to the Integrations module — flip status,
+ *  stamp connected_at + account_label, surface a toast.
+ *
+ *  Phase 3 cross-module sync: the POS Checkout reads from this table to
+ *  decide which payment-method cards to render. Disabling Apple Pay here
+ *  removes the Apple Pay card from POS in the same render cycle.
+ *
+ *  FK: `requires_provider_slug` → another row's `slug`. Wallets that
+ *      reference an un-connected gateway can't be enabled. */
+export interface PaymentProviderSeed {
+    id: string;
+    slug: PaymentProviderSlugSeed;
+    name: string;
+    /** One-line copy shown under the name on the card. */
+    description: string;
+    kind: PaymentProviderKindSeed;
+    /** When set, this provider is gated on another provider (by slug)
+     *  being `connected`. Wallets use this; gateways don't. */
+    requires_provider_slug?: PaymentProviderSlugSeed;
+    status: PaymentProviderStatusSeed;
+    /** ISO 8601 — when the provider was connected/enabled. Cleared on
+     *  disconnect or when the gateway it depends on disconnects. */
+    connected_at?: string;
+    /** Account label shown later by the View modal — e.g. "acct_***1234"
+     *  for Stripe, the Apple ID email for Apple Pay. Cleared on disconnect. */
+    account_label?: string;
 }

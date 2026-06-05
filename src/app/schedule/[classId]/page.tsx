@@ -2202,6 +2202,7 @@ export default function ClassDetailPage() {
      *  `pickedPlanId` is the package the admin chose in PaymentConfirmation for
      *  multi-package customers; falls back to the customer's first available plan. */
     function insertBooking(c: Customer, status: "booked" | "waitlisted", pickedPlanId?: string) {
+        const bookingId = `b-${Date.now()}`;
         useAppStore.setState(state => {
             const planId = c.planKind === "membership"
                 ? c.membershipId ?? ""
@@ -2212,7 +2213,7 @@ export default function ClassDetailPage() {
                 ? state.packages.find(p => p.id === pickedPlanId)?.name ?? c.planName ?? "No plan"
                 : c.planName ?? "No plan";
             const newBooking: ClassBooking = {
-                id: `b-${Date.now()}`,
+                id: bookingId,
                 classScheduleId: ci.id,
                 customerId: c.id,
                 branchId: c.branchId,
@@ -2231,6 +2232,25 @@ export default function ClassDetailPage() {
                     : state.classSchedules,
             };
         });
+        // Feed: surface in the notification center (PRD 12). Only confirmed
+        // bookings emit a "Booking Confirmation" — a waitlist add isn't a
+        // confirmed seat so it would surface as a separate event when that
+        // template lands.
+        if (status === "booked") {
+            const customerName = `${c.firstName} ${c.lastName}`.trim();
+            useAppStore.getState().addNotification({
+                tab: "booking",
+                event: "booking_confirmation",
+                title: "Booking Confirmation",
+                body: `${customerName} booked ${ci.name} on ${ci.dayOfWeek} at ${ci.displayTime}.`,
+                icon: "calendar-check",
+                sourceModule: "booking",
+                sourceId: bookingId,
+                classScheduleId: ci.id,
+                customerId: c.id,
+                branchId: c.branchId,
+            });
+        }
     }
 
     /** AddCustomerModal row's "Add to class" — moves the flow into the payment-confirmation step. */

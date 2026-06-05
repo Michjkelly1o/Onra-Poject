@@ -38,7 +38,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
 import {
-    useAppStore, BRANCHES,
+    useAppStore, type Branch,
     type Instructor, type PayrollEntry,
 } from "@/lib/store";
 
@@ -124,9 +124,11 @@ function InstructorAvatar({ instructor }: { instructor: Instructor }) {
             />
         );
     }
+    // Single neutral chrome — matches the Staff & Permissions staff tab so
+    // every fallback initials avatar across the module reads as one surface
+    // (gray-100 bg + dark initials), not a colourful per-row palette.
     return (
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-medium text-white shrink-0"
-            style={{ backgroundColor: instructor.color }}>
+        <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center text-[14px] font-medium text-[#475467] shrink-0">
             {instructor.initials}
         </div>
     );
@@ -217,12 +219,12 @@ interface CompRow {
 
 // ─── CSV export helper ─────────────────────────────────────────────────────
 
-function exportCompensationCsv(rows: CompRow[]) {
+function exportCompensationCsv(rows: CompRow[], branches: Branch[]) {
     const header = [
         "Instructor", "Email", "Branch", "Default pay rate",
         "Completed classes", "Earnings (AED)", "Status", "Period",
     ];
-    const branchName = (id: string) => BRANCHES.find(b => b.id === id)?.name ?? "—";
+    const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -257,6 +259,7 @@ export default function CompensationPage() {
     const router = useRouter();
     const payrollEntries = useAppStore(s => s.payrollEntries);
     const instructors    = useAppStore(s => s.instructors);
+    const branches       = useAppStore(s => s.branches);
     const showToast      = useAppStore(s => s.showToast);
 
     const [branchId, setBranchId] = useState<string>("");
@@ -373,13 +376,13 @@ export default function CompensationPage() {
     const clamped = Math.min(Math.max(1, page), totalPages);
     const pageRows = filteredRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
-    // ─── Branch options (reuse the shared seed) ────────────────────────────
+    // ─── Branch options (live `branches` slice — single source of truth) ────
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
 
     function handleRunPayroll() {
@@ -433,7 +436,7 @@ export default function CompensationPage() {
                 <ExportDropdown
                     disabled={filteredRows.length === 0}
                     onExportCsv={() => {
-                        exportCompensationCsv(filteredRows);
+                        exportCompensationCsv(filteredRows, branches);
                         showToast(
                             "Compensation exported",
                             `${filteredRows.length} ${filteredRows.length === 1 ? "instructor" : "instructors"} exported to CSV.`,
@@ -471,7 +474,7 @@ export default function CompensationPage() {
                                 </thead>
                                 <tbody>
                                     {pageRows.map(r => {
-                                        const branch = BRANCHES.find(b => b.id === r.branchId);
+                                        const branch = branches.find(b => b.id === r.branchId);
                                         return (
                                             <tr key={r.entryId} className="transition-colors hover:bg-[#f9fafb]">
                                                 <td className={TD}>

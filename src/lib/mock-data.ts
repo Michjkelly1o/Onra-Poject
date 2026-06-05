@@ -152,14 +152,15 @@ export const members: User[] = [
 ];
 
 // ── Admin User ──
-export const adminUser: User = {
-    id: "u-admin-1", studio_id: "s1", role: "admin",
-    first_name: "Dana", last_name: "Rashid",
-    email: "dana@formastudio.ae", phone: "+971 50 300 0001",
-    waiver_signed: true, is_active: true, created_at: "2024-01-01T00:00:00Z",
-    avatar_url: "",
-    permissions: ["all"], // Full access
-};
+//
+// Phase 3 — the canonical profile record now lives in
+// `src/data/mock/account_profile.ts` so the Account settings module has a
+// single source of truth that the Sidebar + Customer "by-current-user"
+// attribution all read from. This export is kept as a re-export alias so
+// legacy callers (data-store.ts, store.ts initial state) keep working
+// unchanged. Update the data in `account_profile.ts` — never duplicate it
+// here.
+export { account_profile as adminUser } from "@/data/mock/account_profile";
 
 // ── Class Types ──
 export const classTypes: ClassType[] = [

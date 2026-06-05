@@ -21,7 +21,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import {
     CheckoutShell, PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
-    describePayment, computeTotals,
+    describePayment, computeTotals, enabledMethodsFromProviders,
     type PaymentMethod,
 } from "@/components/checkout/CheckoutScreen";
 
@@ -44,6 +44,20 @@ function ScheduleCheckoutInner() {
     const customers = useAppStore(s => s.customers);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
+    // Tax module wiring (Phase 4) — same shape as /admin/pos so the
+    // schedule-flow checkout honours archived rates + the global toggle.
+    const taxRules = useAppStore(s => s.taxRules);
+    const taxRates = useAppStore(s => s.taxRates);
+    const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
+    const classSchedules = useAppStore(s => s.classSchedules);
+    // Phase 3 — same subscription as /admin/pos/checkout. Hides the Card /
+    // Apple Pay / Google Pay tiles when their provider isn't connected,
+    // including cascade-disconnects from Stripe.
+    const paymentProviders = useAppStore(s => s.paymentProviders);
+    const enabledMethods = useMemo(
+        () => enabledMethodsFromProviders(paymentProviders),
+        [paymentProviders],
+    );
 
     const customer = useMemo(
         () => pendingPurchase ? customers.find(c => c.id === pendingPurchase.customerId) ?? null : null,
@@ -62,10 +76,28 @@ function ScheduleCheckoutInner() {
         if (!pendingPurchase) router.replace(`/schedule/${classId}`);
     }, [pendingPurchase, classId, router]);
 
+    // Cascade safety — if a Settings change just hid the currently-selected
+    // method (e.g. disconnecting Stripe while this page was open), drop the
+    // selection so the picker doesn't show a stale active state.
+    useEffect(() => {
+        if (paymentMethod !== null && !enabledMethods.includes(paymentMethod)) {
+            setPaymentMethod(null);
+        }
+    }, [paymentMethod, enabledMethods]);
+
     if (!pendingPurchase || !customer) return null;
 
-    const { subtotal, discountAmount, taxRate, taxAmount, total } = computeTotals(
-        pendingPurchase.items, pendingPurchase.discountPercent,
+    // Resolve branch from the originating schedule so branch-specific tax
+    // rules apply (falls back to undefined → all_locations rule).
+    const branchId = useMemo(
+        () => classSchedules.find(s => s.id === pendingPurchase.classScheduleId)?.branchId,
+        [classSchedules, pendingPurchase.classScheduleId],
+    );
+    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, total } = computeTotals(
+        pendingPurchase.items,
+        pendingPurchase.discountPercent,
+        pendingPurchase.promoDiscountAed,
+        { taxRules, taxRates, pricesIncludeTax, branchId },
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
@@ -76,6 +108,7 @@ function ScheduleCheckoutInner() {
         if (paymentMethod === "cash") return cashReceivedNum >= total;
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
+        if (paymentMethod === "googlepay") return true;
         return false;
     }
 
@@ -114,6 +147,7 @@ function ScheduleCheckoutInner() {
                 promoCode={pendingPurchase.promoCode}
                 taxRate={taxRate}
                 taxAmount={taxAmount}
+                taxIncluded={taxIncluded}
                 total={total}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -124,6 +158,7 @@ function ScheduleCheckoutInner() {
                 change={change}
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
+                enabledMethods={enabledMethods}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}
@@ -136,6 +171,7 @@ function ScheduleCheckoutInner() {
             promoCode={pendingPurchase.promoCode}
             taxRate={taxRate}
             taxAmount={taxAmount}
+            taxIncluded={taxIncluded}
             total={total}
             paymentMethodLabel={paymentMethodLabel}
             chargedTo={chargedTo}

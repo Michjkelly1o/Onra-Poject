@@ -12,7 +12,9 @@
 // now and will deep-link once that module ships.
 //
 // Data is derived live from useAppStore(s => s.customerAgreements), joined to
-// `branches` (Branch location) and `classTemplates` (Class template).
+// `branches` (Branch location), `classTemplates` (Class template), and the
+// Phase 4 Agreements module's `agreements` + `agreementVersions` so the View
+// action opens the actual agreement content rather than firing a stub toast.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,7 +25,11 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
-import { useAppStore, BRANCHES, type CustomerAgreement } from "@/lib/store";
+import {
+    useAppStore,
+    type CustomerAgreement, type AgreementVersion, type Branch,
+} from "@/lib/store";
+import { AgreementContentModal } from "@/components/settings/AgreementContentModal";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -96,9 +102,10 @@ function FilterPill({ label, selected, onClick }: { label: string; selected: boo
 
 // ─── Filter panel (Figma 6186:158509) ─────────────────────────────────────────
 
-function AgreementFilterPanel({ open, onClose, applied, onApply }: {
+function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
     open: boolean; onClose: () => void;
     applied: AgreementFilter; onApply: (f: AgreementFilter) => void;
+    branches: Branch[];
 }) {
     const [pending, setPending] = useState<AgreementFilter>(EMPTY_AGREEMENT_FILTER);
     useEffect(() => { if (open) setPending({ ...applied }); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -158,7 +165,7 @@ function AgreementFilterPanel({ open, onClose, applied, onApply }: {
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
                         <SelectInput value={pending.branchId} placeholder="Select location"
-                            options={[{ value: "", label: "All locations" }, ...BRANCHES.map(b => ({ value: b.id, label: b.name }))]}
+                            options={[{ value: "", label: "All locations" }, ...branches.map(b => ({ value: b.id, label: b.name }))]}
                             onChange={v => setPending(p => ({ ...p, branchId: v }))} width="w-full" />
                     </div>
                 </div>
@@ -270,20 +277,73 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7] align
 
 export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
     const customerAgreements = useAppStore(s => s.customerAgreements);
+    const branches = useAppStore(s => s.branches);
+    // Phase 4 — live joins back to the Agreements module so renames /
+    // archives propagate, the View modal can read the published content
+    // (text or uploaded file) from the actual version, and the Class
+    // template column derives from the agreement's live applicable
+    // services (so new-version fan-out rows show the same templates as
+    // the agreement's existing rows, instead of "—").
+    const agreements = useAppStore(s => s.agreements);
+    const agreementVersions = useAppStore(s => s.agreementVersions);
     const classTemplates = useAppStore(s => s.classTemplates);
-    const showToast = useAppStore(s => s.showToast);
 
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = useState<AgreementFilter>(EMPTY_AGREEMENT_FILTER);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const [viewVersion, setViewVersion] = useState<AgreementVersion | null>(null);
 
     useEffect(() => { setPage(1); }, [search, applied]);
 
-    const branchName = (id: string) => BRANCHES.find(b => b.id === id)?.name ?? "—";
-    const templateNames = (ids: string[]) =>
-        ids.map(id => classTemplates.find(t => t.id === id)?.name).filter(Boolean).join(", ") || "—";
+    const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
+
+    // Live agreement-name lookup — prefer the joined `agreements` row's
+    // current name, fall back to the customer_agreements snapshot when the
+    // parent has been deleted (shouldn't happen — agreements are legal
+    // records — but the fallback keeps the table from blanking out).
+    const liveAgreementName = (a: CustomerAgreement) => {
+        const parent = agreements.find(x => x.id === a.agreementId);
+        return parent?.name ?? a.title;
+    };
+
+    // Phase 4 — derive the Class template column live from the joined
+    // agreement instead of the customer_agreements snapshot. Logic:
+    //   1. Look up the parent agreement by `agreementId`.
+    //   2. Determine the applicable services:
+    //        • parent.applicableClassTemplateIds is empty → ALL active
+    //          templates apply (matches how the form persists "all")
+    //        • non-empty → only those specific templates apply
+    //   3. Filter to templates that are offered at the customer's branch
+    //      (`branch_ids` either missing/empty = available at all branches,
+    //      or includes the row's branchId).
+    //   4. Join to names. If the result is empty, fall back to "—".
+    //
+    // This means: when admin adds a new version, the fan-out row shows
+    // the same class templates as the customer's existing rows for that
+    // agreement, even though the fan-out only stores the agreement's
+    // current `applicableClassTemplateIds` snapshot. When admin edits the
+    // agreement to add/remove services, every customer row reflects the
+    // new list in the same render cycle.
+    const liveClassTemplateNames = (a: CustomerAgreement): string => {
+        const parent = agreements.find(x => x.id === a.agreementId);
+        const includeAll = !parent || parent.applicableClassTemplateIds.length === 0;
+        const applicableIds = new Set(
+            includeAll
+                ? classTemplates.filter(t => t.status === "Active").map(t => t.id)
+                : parent!.applicableClassTemplateIds,
+        );
+        const names = classTemplates
+            .filter(t => t.status === "Active")
+            .filter(t => applicableIds.has(t.id))
+            .filter(t => {
+                const tBranchIds = (t as { branch_ids?: string[] }).branch_ids;
+                return !tBranchIds || tBranchIds.length === 0 || tBranchIds.includes(a.branchId);
+            })
+            .map(t => t.name);
+        return names.length > 0 ? names.join(", ") : "—";
+    };
 
     // ─── This customer's agreements (newest version first) ──────────────────
     const rows = useMemo(
@@ -319,13 +379,16 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
         applied.statuses.length > 0 || applied.branchId !== "" ||
         applied.dateStart !== "" || applied.dateEnd !== "";
 
-    // ─── View agreement — Agreements module not built yet ───────────────────
+    // ─── View agreement (Phase 4) — open the live version's content modal ──
     function handleView(a: CustomerAgreement) {
-        showToast(
-            "Agreement preview coming soon",
-            `"${a.title} — Version ${a.version}" will open once the Agreements module is connected.`,
-            "success",
+        const v = agreementVersions.find(
+            x => x.agreementId === a.agreementId && x.versionNumber === a.version,
         );
+        if (v) {
+            setViewVersion(v);
+        }
+        // No fallback toast — if the version is somehow missing we just
+        // open nothing rather than leaving a misleading "coming soon" copy.
     }
 
     return (
@@ -384,13 +447,13 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
                                             <div className="flex items-center gap-3">
                                                 <AgreementIcon />
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-[14px] font-medium text-[#101828]">{a.title}</span>
+                                                    <span className="text-[14px] font-medium text-[#101828]">{liveAgreementName(a)}</span>
                                                     <span className="text-[13px] text-[#667085]">Version {a.version}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className={cn(TD, "text-[#475467]")}>{branchName(a.branchId)}</td>
-                                        <td className={cn(TD, "text-[#667085]")}>{templateNames(a.classTemplateIds)}</td>
+                                        <td className={cn(TD, "text-[#667085]")}>{liveClassTemplateNames(a)}</td>
                                         <td className={TD}><AgreementStatusBadge status={a.status} /></td>
                                         <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(a.signedAtISO)}</td>
                                         <td className={TD}>
@@ -410,7 +473,22 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
             </div>
 
             <AgreementFilterPanel open={filterOpen} onClose={() => setFilterOpen(false)}
-                applied={applied} onApply={f => { setApplied(f); setPage(1); }} />
+                applied={applied} onApply={f => { setApplied(f); setPage(1); }} branches={branches} />
+
+            {/* Phase 4 — live agreement content modal (shared component).
+                Resolves the agreement name from the live `agreements` store
+                so the modal title shows the current agreement name + the
+                exact version the customer signed (or didn't). */}
+            <AgreementContentModal
+                version={viewVersion}
+                agreementName={
+                    viewVersion
+                        ? agreements.find(x => x.id === viewVersion.agreementId)?.name
+                        : undefined
+                }
+                versionLabel={viewVersion ? `Version ${viewVersion.versionNumber}` : undefined}
+                onClose={() => setViewVersion(null)}
+            />
         </div>
     );
 }

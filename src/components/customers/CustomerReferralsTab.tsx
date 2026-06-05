@@ -182,6 +182,11 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 export function CustomerReferralsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const customerReferrals = useAppStore(s => s.customerReferrals);
+    // Cross-module sync (Phase 4) — when the admin deactivates the referral
+    // program in Settings → Referral, the customer-facing share affordance
+    // disappears here and a banner surfaces so anyone reviewing the tab can
+    // see the program is paused.
+    const referralProgramActive = useAppStore(s => s.referralSettings.programActive);
     const showToast = useAppStore(s => s.showToast);
 
     const [search, setSearch] = useState("");
@@ -238,13 +243,25 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Program-paused banner — fires when admin turns the referral
+                program off via Settings → Referral. Historical referrals
+                stay visible below but the share affordance is suppressed. */}
+            {!referralProgramActive && (
+                <div className="shrink-0 mx-6 mt-5 flex gap-3 items-start bg-[#fffaeb] border-1 border-[#fedf89] rounded-[12px] px-4 py-3">
+                    <p className="text-[14px] text-[#b54708] leading-[20px]">
+                        <span className="font-semibold">Referral program is currently paused.</span>{" "}
+                        Customers can&apos;t earn or redeem referral rewards until the program is reactivated in Settings → Referral.
+                    </p>
+                </div>
+            )}
+
             {/* Metric cards */}
             <div className="shrink-0 px-6 pt-5 pb-4 flex gap-4">
                 <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
                     <p className="text-[14px] text-[#667085]">Referral code</p>
                     <div className="flex items-center gap-2">
                         <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{referralCode}</p>
-                        {customer?.referralCode && (
+                        {customer?.referralCode && referralProgramActive && (
                             <button type="button" onClick={copyCode}
                                 className="w-7 h-7 flex items-center justify-center rounded-[6px] hover:bg-[#f2f4f7] transition-colors"
                                 title="Copy referral code">

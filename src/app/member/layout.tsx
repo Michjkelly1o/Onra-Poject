@@ -63,7 +63,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
                             <Wallet className="w-3.5 h-3.5 text-blue-600" />
                             <span className="text-xs font-semibold text-blue-700">7 credits</span>
                         </div>
-                        <NotificationBell userId="u-mem-3" accentColor="blue" />
+                        <NotificationBell />
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                             <span className="text-xs font-semibold text-blue-700">OM</span>
                         </div>

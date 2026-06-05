@@ -4,6 +4,7 @@ import { useDataStore } from "@/lib/data-store";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { CreditCard, Clock, ShoppingBag, Crown, ArrowRight, Snowflake, Play } from "lucide-react";
 import { useState } from "react";
+import { TaxSuffix } from "@/components/ui/TaxSuffix";
 
 export default function MemberPackagesPage() {
     const { packages, memberships, userPackages, userMemberships, purchasePackage, purchaseMembership, freezePackage, unfreezePackage } = useDataStore();
@@ -180,10 +181,11 @@ export default function MemberPackagesPage() {
                         <div key={pkg.id} className="bg-white rounded-2xl border border-gray-100 shadow-soft p-5 hover-lift">
                             <h3 className="font-semibold text-gray-900 mb-1">{pkg.name}</h3>
                             <p className="text-xs text-gray-500 mb-4">{pkg.description}</p>
-                            <div className="flex items-baseline gap-1 mb-3">
+                            <div className="flex items-baseline gap-1 mb-1">
                                 <span className="text-2xl font-bold text-gray-900">{formatCurrency(pkg.price)}</span>
                                 <span className="text-sm text-gray-400">AED</span>
                             </div>
+                            <div className="mb-3"><TaxSuffix category="credit_package" /></div>
                             <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
                                 <span className="flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />{pkg.credit_count} credits</span>
                                 <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{pkg.validity_days} days</span>
@@ -208,10 +210,11 @@ export default function MemberPackagesPage() {
                             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-indigo-500" />
                             <h3 className="font-semibold text-gray-900 mb-1">{mem.name}</h3>
                             <p className="text-xs text-gray-500 mb-4">{mem.description}</p>
-                            <div className="flex items-baseline gap-1 mb-3">
+                            <div className="flex items-baseline gap-1 mb-1">
                                 <span className="text-2xl font-bold text-gray-900">{formatCurrency(mem.price)}</span>
                                 <span className="text-sm text-gray-400">/ {mem.billing_period}</span>
                             </div>
+                            <div className="mb-3"><TaxSuffix category="membership" /></div>
                             <p className="text-xs text-purple-600 mb-4">{mem.max_bookings_per_period ? `Up to ${mem.max_bookings_per_period} classes per ${mem.billing_period}` : "Unlimited classes"}</p>
                             <button
                                 onClick={() => handleSubscribeMembership(mem)}

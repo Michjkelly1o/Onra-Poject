@@ -27,10 +27,10 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import {
-    useAppStore, BRANCHES, DEFAULT_BRANCH_ID,
+    useAppStore, DEFAULT_BRANCH_ID,
     DEFAULT_PERMISSIONS_BY_TYPE, DEFAULT_GRANT_LIMITS,
     permissionSectionsFor, type PermissionSectionSpec,
-    type Role, type RoleType, type GrantLimits, type PermissionsMap, type PermissionCell,
+    type Role, type RoleType, type GrantLimits, type PermissionsMap, type PermissionCell, type Branch,
 } from "@/lib/store";
 
 // ─── Mode + form shape ─────────────────────────────────────────────────────
@@ -190,11 +190,11 @@ function SectionHeader({ title }: { title: string }) {
 
 // ─── Right-rail preview ────────────────────────────────────────────────────
 
-function RolePreview({ form }: { form: FormValue }) {
+function RolePreview({ form, branches }: { form: FormValue; branches: Branch[] }) {
     // Mirrors Figma 6223-387561 — avatar top-left, left-aligned text. The
     // bg-#f6f6f3 outer band frames a white inner card (no max-height — the
     // card grows with description length).
-    const branch = form.branchId ? BRANCHES.find(b => b.id === form.branchId) : null;
+    const branch = form.branchId ? branches.find(b => b.id === form.branchId) : null;
     const branchLabel = form.branchId === null ? "All locations" : branch?.name ?? "Branch location";
     return (
         <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
@@ -228,13 +228,13 @@ function RolePreview({ form }: { form: FormValue }) {
 
 // ─── Step 1 — Role details ─────────────────────────────────────────────────
 
-function Step1Details({ form, set }: { form: FormValue; set: (patch: Partial<FormValue>) => void }) {
+function Step1Details({ form, set, branches }: { form: FormValue; set: (patch: Partial<FormValue>) => void; branches: Branch[] }) {
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
     return (
         <div className="flex flex-col gap-5 w-full">
@@ -538,6 +538,7 @@ export interface RoleFormPageProps {
 export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }: RoleFormPageProps) {
     const router = useRouter();
     const roles       = useAppStore(s => s.roles);
+    const branches    = useAppStore(s => s.branches);
     const addRole     = useAppStore(s => s.addRole);
     const updateRole  = useAppStore(s => s.updateRole);
     const showToast   = useAppStore(s => s.showToast);
@@ -659,7 +660,7 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                 <div className="flex-1 min-w-0 max-w-[760px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         {step === 1
-                            ? <Step1Details form={form} set={set} />
+                            ? <Step1Details form={form} set={set} branches={branches} />
                             : <Step2Permissions form={form} set={set} />
                         }
                     </div>
@@ -682,7 +683,7 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                 {/* Right preview — visible on all modes including edit
                     permissions so the admin still sees the role identity
                     they're editing. */}
-                <RolePreview form={form} />
+                <RolePreview form={form} branches={branches} />
             </div>
 
             <Toast />

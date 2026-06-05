@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { SearchMd } from "@untitledui/icons";
-import { useAppStore } from "@/lib/store";
 import NotificationBell from "@/components/NotificationBell";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -25,13 +24,16 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/compensation": "Payroll",
     "/admin/insights": "Insights",
     "/admin/reports": "Reports",
+    "/admin/notifications": "Notification",
     "/admin/settings": "Settings",
     "/admin/settings/branding": "Branding",
-    "/admin/settings/roles": "User Roles & Permissions",
     "/admin/settings/booking-rules": "Booking Rules",
     "/admin/settings/payments": "Payments",
     "/admin/settings/integrations": "Integrations",
-    "/admin/settings/notifications": "Notifications",
+    "/admin/settings/notifications": "Customer notifications",
+    "/admin/settings/tax": "Tax",
+    "/admin/settings/agreements": "Agreements",
+    "/admin/settings/account": "Account settings",
 };
 
 function getPageTitle(pathname: string): string {
@@ -44,7 +46,6 @@ function getPageTitle(pathname: string): string {
 
 export default function Header() {
     const pathname = usePathname();
-    const { currentUser } = useAppStore();
     const pageTitle = getPageTitle(pathname);
 
     const isDashboard = pathname === "/admin/dashboard";
@@ -68,7 +69,7 @@ export default function Header() {
                         />
                     </div>
                 )}
-                <NotificationBell userId={currentUser.id} accentColor="brand" />
+                <NotificationBell />
             </div>
         </header>
     );

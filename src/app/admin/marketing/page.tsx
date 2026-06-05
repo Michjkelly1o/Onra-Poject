@@ -26,7 +26,7 @@ import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { useAppStore, BRANCHES, DEFAULT_BRANCH_ID, type MarketingItem } from "@/lib/store";
+import { useAppStore, DEFAULT_BRANCH_ID, type MarketingItem } from "@/lib/store";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -80,9 +80,9 @@ const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
 };
 
 /** "All branches" when the item covers every branch, else "N branches". */
-function branchLabel(branchIds: string[] | undefined): string {
+function branchLabel(branchIds: string[] | undefined, totalBranches: number): string {
     const n = branchIds?.length ?? 0;
-    if (n === 0 || n >= BRANCHES.length) return "All branches";
+    if (n === 0 || n >= totalBranches) return "All branches";
     return `${n} ${n === 1 ? "branch" : "branches"}`;
 }
 
@@ -124,7 +124,7 @@ function MarketingAttribute({ icon, label }: { icon: React.ReactNode; label: str
     );
 }
 
-function MarketingCardView({ item, onOpen }: { item: MarketingItem; onOpen: () => void }) {
+function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingItem; onOpen: () => void; totalBranches: number }) {
     const status = effectiveStatus(item);
     // Active items get the deep-slate gradient fallback; inactive / archived /
     // expired items render the muted gray gradient (Figma grayscale state).
@@ -183,7 +183,7 @@ function MarketingCardView({ item, onOpen }: { item: MarketingItem; onOpen: () =
                     />
                     <MarketingAttribute
                         icon={<MarkerPin01 className="w-4 h-4" />}
-                        label={branchLabel(item.branch_ids)}
+                        label={branchLabel(item.branch_ids, totalBranches)}
                     />
                 </div>
 
@@ -330,6 +330,7 @@ function FilterPanel({ open, applied, onClose, onApply }: {
 export default function MarketingListPage() {
     const router = useRouter();
     const marketingItems = useAppStore(s => s.marketingItems);
+    const branches = useAppStore(s => s.branches);
 
     const [search, setSearch] = useState("");
     // Default to the user's primary branch — matches the POS / schedule /
@@ -340,15 +341,17 @@ export default function MarketingListPage() {
 
     const hasActiveFilter = filter.statuses.length > 0 || !!filter.startDate || !!filter.endDate;
 
-    // Branch picker — active branches, each option carrying a MarkerPin01
-    // glyph so the dropdown matches the POS / schedule / dashboard pickers.
-    const locationOptions = useMemo(() => BRANCHES
+    // Branch picker — active branches from the live `branches` slice, each
+    // option carrying a MarkerPin01 glyph so the dropdown matches the
+    // POS / schedule / dashboard pickers.
+    const locationOptions = useMemo(() => branches
         .filter(b => b.status === "active")
         .map(b => ({
             value: b.id,
             label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
-        })), []);
+        })), [branches]);
+    const totalBranches = branches.length;
 
     // ─── Filter + search ───────────────────────────────────────────────────
     const visible = useMemo(() => {
@@ -430,7 +433,7 @@ export default function MarketingListPage() {
             ) : (
                 <div className="grid grid-cols-3 gap-4">
                     {visible.map(m => (
-                        <MarketingCardView key={m.id} item={m}
+                        <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
                             onOpen={() => router.push(`/marketing/${m.id}`)} />
                     ))}
                 </div>

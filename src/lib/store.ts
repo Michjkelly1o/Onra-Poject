@@ -37,6 +37,16 @@ import {
     DEFAULT_GRANT_LIMITS as SEED_DEFAULT_GRANT_LIMITS,
     staff as SEED_STAFF,
     payroll_entries as SEED_PAYROLL_ENTRIES,
+    notification_settings as SEED_NOTIFICATION_SETTINGS,
+    notifications as SEED_NOTIFICATIONS,
+    referral_settings as SEED_REFERRAL_SETTINGS,
+    tax_rates as SEED_TAX_RATES,
+    tax_settings as SEED_TAX_SETTINGS,
+    tax_rules as SEED_TAX_RULES,
+    agreements as SEED_AGREEMENTS,
+    agreement_versions as SEED_AGREEMENT_VERSIONS,
+    integrations as SEED_INTEGRATIONS,
+    payment_providers as SEED_PAYMENT_PROVIDERS,
     customer_plans as SEED_CUSTOMER_PLANS,
     customer_transactions as SEED_CUSTOMER_TRANSACTIONS,
     customer_agreements as SEED_CUSTOMER_AGREEMENTS,
@@ -72,6 +82,34 @@ import {
     type RoleStatusSeed,
     type StaffSeed,
     type StaffStatusSeed,
+    type NotificationSettingSeed,
+    type NotificationCategorySeed,
+    type NotificationSeed,
+    type NotificationEventSeed,
+    type NotificationTabSeed,
+    type NotificationIconSeed,
+    type NotificationSourceSeed,
+    type TaxRateSeed,
+    type TaxRateStatusSeed,
+    type TaxCalculationModeSeed,
+    type TaxSettingsSeed,
+    type TaxRuleSeed,
+    type TaxRuleCategorySeed,
+    type TaxRuleStatusSeed,
+    type AgreementSeed,
+    type AgreementTypeSeed,
+    type AgreementStatusSeed,
+    type AgreementContentTypeSeed,
+    type AgreementVersionSeed,
+    type IntegrationSeed,
+    type IntegrationSlugSeed,
+    type IntegrationStatusSeed,
+    type PaymentProviderSeed,
+    type PaymentProviderSlugSeed,
+    type PaymentProviderKindSeed,
+    type PaymentProviderStatusSeed,
+    type ReferralSettingsSeed,
+    type ReferralTriggerSeed,
     type PermissionsMapSeed,
     type PermissionCellSeed,
     type PermissionRowSeed,
@@ -79,6 +117,7 @@ import {
     type PayRateHybridConditionSeed,
     type PayrollEntrySeed,
     type PayrollEntryStatusSeed,
+    branding_settings as SEED_BRANDING_SETTINGS,
 } from "@/data/mock";
 
 // Re-export raw seed types — consumers can read these directly from the store.
@@ -130,25 +169,28 @@ export const DEFAULT_BRANCH_ID: string =
 /** Hours window in 24h "HH:mm" strings. `null` when the branch is closed. */
 export type HoursWindow = { open: string; close: string } | null;
 
-/** Return the open/close hours for `branchId` on the weekday of `dateISO`. */
-export function getBusinessHours(branchId: string, dateISO: string): HoursWindow {
+/** Return the open/close hours for `branchId` on the weekday of `dateISO`.
+ *  Pass the live `businessHours` slice (`useAppStore(s => s.businessHours)`)
+ *  so edits made through the Business & Locations module propagate to every
+ *  consumer on the same render — DO NOT read the static seed here. */
+export function getBusinessHours(rows: BusinessHours[], branchId: string, dateISO: string): HoursWindow {
     const d = new Date(dateISO + "T00:00:00Z");
     const dow = d.getUTCDay();
-    const row = SEED_BUSINESS_HOURS.find(r => r.branch_id === branchId && r.day_of_week === dow);
+    const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
     if (!row || row.is_closed) return null;
     return { open: row.open_time, close: row.close_time };
 }
 
 /** Union of every branch's open hours for a weekday — used when a view shows
- *  more than one branch and the grid needs the widest envelope.
- *  Returns null only when every branch is closed that weekday. */
-export function getUnionBusinessHours(branchIds: string[], dateISO: string): HoursWindow {
+ *  more than one branch and the grid needs the widest envelope. Same
+ *  contract as `getBusinessHours`: pass the live slice. */
+export function getUnionBusinessHours(rows: BusinessHours[], branchIds: string[], dateISO: string): HoursWindow {
     const d = new Date(dateISO + "T00:00:00Z");
     const dow = d.getUTCDay();
-    const rows = SEED_BUSINESS_HOURS.filter(r => branchIds.includes(r.branch_id) && r.day_of_week === dow && !r.is_closed);
-    if (rows.length === 0) return null;
-    const open  = rows.reduce((acc, r) => r.open_time  < acc ? r.open_time  : acc, rows[0].open_time);
-    const close = rows.reduce((acc, r) => r.close_time > acc ? r.close_time : acc, rows[0].close_time);
+    const matches = rows.filter(r => branchIds.includes(r.branch_id) && r.day_of_week === dow && !r.is_closed);
+    if (matches.length === 0) return null;
+    const open  = matches.reduce((acc, r) => r.open_time  < acc ? r.open_time  : acc, matches[0].open_time);
+    const close = matches.reduce((acc, r) => r.close_time > acc ? r.close_time : acc, matches[0].close_time);
     return { open, close };
 }
 
@@ -303,6 +345,24 @@ export function canApplyCustomDiscount(role: UserRole | string): boolean {
 export function maxCustomDiscountPct(role: UserRole | string): number {
     if (role === "admin") return 100;
     return 0;
+}
+
+// ─── Demo-mode role mapping ────────────────────────────────────────────────
+//
+// The legacy `currentUser.role` carries the three-bucket prototype role
+// ("admin" / "instructor" / "member"). The Staff & Permissions module owns
+// the 5 predefined Staff roles (owner / branch_admin / operator /
+// front_desk / instructor). Phase 4 — cross-module sync — needs ONE
+// function callers can use to resolve "what Staff role is the current user
+// playing?" so features like Grant Limits read from the right role record.
+
+/** Map the demo `currentUser.role` to one of the 5 Staff role TYPES.
+ *  Returns null when no Staff role maps (e.g. a "member" demo persona). */
+export function demoRoleToStaffType(role: UserRole | string): RoleTypeSeed | null {
+    if (role === "admin")      return "owner";
+    if (role === "instructor") return "instructor";
+    // Member personas aren't Staff and don't get a Staff role.
+    return null;
 }
 
 // ─── Legacy camelCase types (kept stable for existing consumers) ────────────
@@ -609,6 +669,11 @@ export interface Customer {
 export interface CustomerAgreement {
     id: string;
     customerId: string;
+    /** Phase 4 FK → agreements.id. The tab joins on this to display the live
+     *  agreement name + open the View modal with the joined version's content. */
+    agreementId: string;
+    /** Snapshot of the agreement name at issue time. Live consumers should
+     *  prefer the joined `agreements` row's name when present. */
     title: string;
     version: number;
     branchId: string;
@@ -626,6 +691,259 @@ export interface CustomerReferral {
     referredEmail: string;
     benefitCredits: number;
     referredAtISO: string;
+}
+
+// ─── Customer notification settings (PRD 11 §12) ───────────────────────────
+
+export type NotificationCategory = NotificationCategorySeed;
+
+/** Camel-cased mirror of `NotificationSettingSeed`. Drives the per-event
+ *  channel toggles + template editor on Settings → Customer notifications. */
+export interface NotificationSetting {
+    id: string;
+    category: NotificationCategory;
+    notificationType: string;
+    label: string;
+    emailEnabled: boolean;
+    whatsappEnabled: boolean;
+    pushEnabled: boolean;
+    emailSubject?: string;
+    emailTemplate?: string;
+    whatsappTemplate?: string;
+}
+
+// ─── Tax module (PRD 11 §10) ───────────────────────────────────────────────
+
+export type TaxRateStatus = TaxRateStatusSeed;
+export type TaxCalculationMode = TaxCalculationModeSeed;
+
+/** Camel-cased mirror of `TaxRateSeed`. Drives /admin/settings/tax → Tax
+ *  rates list. Phase 4 cross-module wiring: every membership / package /
+ *  gift card / pay rate gets an optional `taxRateId` FK to this row. */
+export interface TaxRate {
+    id: string;
+    name: string;
+    ratePercentage: number;
+    description?: string;
+    calculationMode: TaxCalculationMode;
+    status: TaxRateStatus;
+    createdAt: string;
+}
+
+/** Studio-wide tax display settings. */
+export interface TaxSettings {
+    pricesIncludeTax: boolean;
+}
+
+export type TaxRuleCategory = TaxRuleCategorySeed;
+export type TaxRuleStatus = TaxRuleStatusSeed;
+
+/** Camel-cased mirror of `TaxRuleSeed`. One row per applied tax rule on the
+ *  /admin/settings/tax → Apply tax rates tab. */
+export interface TaxRule {
+    id: string;
+    category: TaxRuleCategory;
+    taxRateId?: string;
+    allLocations: boolean;
+    locationIds: string[];
+    status: TaxRuleStatus;
+    createdAt: string;
+}
+
+// ─── Agreements module (PRD 11 §9) ─────────────────────────────────────────
+
+export type AgreementType        = AgreementTypeSeed;
+export type AgreementStatus      = AgreementStatusSeed;
+export type AgreementContentType = AgreementContentTypeSeed;
+
+/** Camel-cased mirror of `AgreementSeed`. Drives /admin/settings/agreements
+ *  list + detail. */
+export interface Agreement {
+    id: string;
+    name: string;
+    type: AgreementType;
+    description?: string;
+    required: boolean;
+    currentVersion: number;
+    allLocations: boolean;
+    locationIds: string[];
+    /** Class templates (services) this agreement covers — empty = applies
+     *  to every active service. Phase 2 captures this from the Rules step's
+     *  "Applicable services" multi-select (grouped by branch). FK →
+     *  class_templates.id. */
+    applicableClassTemplateIds: string[];
+    effectiveFrom: string;
+    effectiveUntil: string;
+    status: AgreementStatus;
+    updatedAt: string;
+    createdAt: string;
+}
+
+/** Camel-cased mirror of `AgreementVersionSeed`. */
+export interface AgreementVersion {
+    id: string;
+    agreementId: string;
+    versionNumber: number;
+    contentType: AgreementContentType;
+    contentText?: string;
+    fileName?: string;
+    fileUrl?: string;
+    fileSizeBytes?: number;
+    /** Extracted HTML content for uploaded files. The View modal renders
+     *  this directly, so PDF/DOCX uploads appear as styled text. */
+    extractedHtml?: string;
+    publishedAt: string;
+    publishedBy: string;
+}
+
+// ─── Integrations module (PRD 11 §8) ───────────────────────────────────────
+
+export type IntegrationSlug   = IntegrationSlugSeed;
+export type IntegrationStatus = IntegrationStatusSeed;
+
+/** Camel-cased mirror of `IntegrationSeed`. Drives the card grid at
+ *  /admin/settings/integrations. Connect / disconnect actions flip the
+ *  `status` and stamp / clear `connectedAt` + `accountLabel`. The actual
+ *  "connection" is simulated — no real OAuth (see Phase 3 brief). */
+export interface Integration {
+    id: string;
+    slug: IntegrationSlug;
+    name: string;
+    description: string;
+    status: IntegrationStatus;
+    connectedAt?: string;
+    accountLabel?: string;
+}
+
+// ─── Business profile (PRD 11 §4.1) ────────────────────────────────────────
+
+/** Studio-wide profile data — name, contact, locale. Powers the Studio
+ *  profile edit page + the Branch / Room forms' country / city / currency
+ *  / timezone defaults. Phase 4 will lift this into a centralized seed
+ *  (`src/data/mock/business_profile.ts`) and propagate the timezone to the
+ *  schedule + dashboard date displays. */
+export interface BusinessProfile {
+    name: string;
+    logoUrl: string;
+    website: string;
+    /** Country full name (matches `Country.name` in `lib/data/locales.ts`). */
+    country: string;
+    /** Currency ISO code (e.g. "AED"). */
+    currency: string;
+    /** IANA timezone (e.g. "Asia/Dubai"). The schedule + dashboard will read
+     *  this to render date-times in the studio's local time, instead of the
+     *  browser's. */
+    timezone: string;
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string;
+}
+
+// ─── Branding module (PRD 11 §5) ───────────────────────────────────────────
+
+/** A single menu item on the customer-portal nav. The `enabled` flag drives
+ *  whether the chip is visible in the portal's nav bar. */
+export interface PortalMenuItem {
+    id: string;
+    label: string;
+    enabled: boolean;
+    /** Deep link URL the portal points at — surfaced on Step 2 (Embed
+     *  website) so the admin can grab a copyable share/link target. */
+    url: string;
+}
+
+/** Single source of truth for the studio's brand identity + customer-portal
+ *  preferences. Phase 2 holds it in store memory; Phase 3 will repoint the
+ *  initial state at `src/data/mock/branding_settings.ts`. Field shape
+ *  mirrors PRD 11 §13.2 plus the brief's Portal-preferences additions. */
+export interface BrandingSettings {
+    displayName:     string;
+    primaryColor:    string;
+    backgroundColor: string;
+    textColor:       string;
+    /** Human label for the text colour (e.g. "Black") — displayed in the
+     *  landing preview where the hex would read poorly. */
+    textColorLabel:  string;
+    portalUrl:       string;
+    /** Master switch — when off, the portal renders without a menu bar even
+     *  if individual items are enabled. */
+    menuBarVisible:  boolean;
+    menuItems:       PortalMenuItem[];
+    /** The HTML/JS snippet the admin pastes into their site to embed the
+     *  Forma portal. Held as a single multi-line string. */
+    embedCode:       string;
+}
+
+// ─── Payments module (PRD 11 §7) ───────────────────────────────────────────
+
+export type PaymentProviderSlug   = PaymentProviderSlugSeed;
+export type PaymentProviderKind   = PaymentProviderKindSeed;
+export type PaymentProviderStatus = PaymentProviderStatusSeed;
+
+/** Camel-cased mirror of `PaymentProviderSeed`. Drives the card grid at
+ *  /admin/settings/payments. Connect / Enable / Disconnect actions flip
+ *  the `status`. Disconnecting a gateway cascades — every wallet whose
+ *  `requiresProviderSlug` points at it auto-disconnects too. */
+export interface PaymentProvider {
+    id: string;
+    slug: PaymentProviderSlug;
+    name: string;
+    description: string;
+    kind: PaymentProviderKind;
+    requiresProviderSlug?: PaymentProviderSlug;
+    status: PaymentProviderStatus;
+    connectedAt?: string;
+    accountLabel?: string;
+}
+
+// ─── In-app notifications (PRD 12 — feed records) ──────────────────────────
+
+export type NotificationEvent = NotificationEventSeed;
+export type NotificationTab = NotificationTabSeed;
+export type NotificationIcon = NotificationIconSeed;
+export type NotificationSource = NotificationSourceSeed;
+
+/** Camel-cased mirror of `NotificationSeed`. Drives the bell-icon dropdown
+ *  + the `/admin/notifications` full page (PRD 12 §3). Distinct from
+ *  `NotificationSetting` which is the per-event config table. */
+export interface Notification {
+    id: string;
+    tab: NotificationTab;
+    event: NotificationEvent;
+    title: string;
+    body: string;
+    icon: NotificationIcon;
+    sourceModule: NotificationSource;
+    sourceId?: string;
+    customerId?: string;
+    branchId?: string;
+    /** Class schedule id — used by the click-through resolver to deep-link
+     *  booking / class events into `/schedule/[id]`. Always populated by
+     *  the booking + class action triggers in this store. */
+    classScheduleId?: string;
+    /** Customer transaction id — populated for payment events so the
+     *  click-through can deep-link to the receipt on the customer profile. */
+    transactionId?: string;
+    isRead: boolean;
+    createdAt: string;
+}
+
+// ─── Referral settings (PRD 11 §11) ────────────────────────────────────────
+
+export type ReferralTrigger = ReferralTriggerSeed;
+
+/** Camel-cased mirror of `ReferralSettingsSeed`. Drives Settings → Referral
+ *  AND the customer-detail Referrals tab (which gates its CTA on
+ *  `programActive` and quotes the configured benefit numbers). */
+export interface ReferralSettings {
+    programActive: boolean;
+    newCustomerCredits: number;
+    newCustomerMessage: string;
+    existingCustomerTrigger: ReferralTrigger;
+    existingCustomerMinReferred: number;
+    existingCustomerCredits: number;
+    existingCustomerMessage: string;
+    infoDescription: string;
 }
 
 /** Customer plan record — store shape (camelCase) of a `customer_plans` row.
@@ -668,7 +986,18 @@ export interface CustomerTransaction {
     kind: "membership" | "package";
     productId: string;
     name: string;
+    /** Gross amount paid. When the breakdown fields below are present this
+     *  equals `subtotalAed + taxAed`. */
     amountAed: number;
+    /** Phase 4 — pre-tax line amount. Undefined on historical rows. */
+    subtotalAed?: number;
+    /** Phase 4 — tax portion of `amountAed`. */
+    taxAed?: number;
+    /** Phase 4 — tax rate applied (percentage). */
+    taxRatePercentage?: number;
+    /** Phase 4 — true when the global "Prices include tax" toggle was ON at
+     *  purchase time. */
+    taxInclusive?: boolean;
     status: "complete" | "pending" | "failed" | "refunded";
     paymentMethod: "card" | "cash";
     createdAtISO: string;
@@ -904,6 +1233,7 @@ function customerAgreementFromSeed(a: SeedCustomerAgreement): CustomerAgreement 
     return {
         id: a.id,
         customerId: a.customer_id,
+        agreementId: a.agreement_id,
         title: a.title,
         version: a.version,
         branchId: a.branch_id,
@@ -951,6 +1281,10 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         productId: t.product_id,
         name: t.name,
         amountAed: t.amount_aed,
+        subtotalAed: t.subtotal_aed,
+        taxAed: t.tax_aed,
+        taxRatePercentage: t.tax_rate_percentage,
+        taxInclusive: t.tax_inclusive,
         status: t.status,
         paymentMethod: t.payment_method,
         createdAtISO: t.created_at,
@@ -1202,11 +1536,239 @@ function payrollEntryFromSeed(e: PayrollEntrySeed): PayrollEntry {
     };
 }
 
+function notificationSettingFromSeed(n: NotificationSettingSeed): NotificationSetting {
+    return {
+        id: n.id,
+        category: n.category,
+        notificationType: n.notification_type,
+        label: n.label,
+        emailEnabled: n.email_enabled,
+        whatsappEnabled: n.whatsapp_enabled,
+        pushEnabled: n.push_enabled,
+        emailSubject: n.email_subject,
+        emailTemplate: n.email_template,
+        whatsappTemplate: n.whatsapp_template,
+    };
+}
+
+function taxRateFromSeed(t: TaxRateSeed): TaxRate {
+    return {
+        id: t.id,
+        name: t.name,
+        ratePercentage: t.rate_percentage,
+        description: t.description,
+        calculationMode: t.calculation_mode,
+        status: t.status,
+        createdAt: t.created_at,
+    };
+}
+
+function taxSettingsFromSeed(t: TaxSettingsSeed): TaxSettings {
+    return { pricesIncludeTax: t.prices_include_tax };
+}
+
+function taxRuleFromSeed(t: TaxRuleSeed): TaxRule {
+    return {
+        id: t.id,
+        category: t.category,
+        taxRateId: t.tax_rate_id,
+        allLocations: t.all_locations,
+        locationIds: [...t.location_ids],
+        status: t.status,
+        createdAt: t.created_at,
+    };
+}
+
+function agreementFromSeed(a: AgreementSeed): Agreement {
+    return {
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        description: a.description,
+        required: a.required,
+        currentVersion: a.current_version,
+        allLocations: a.all_locations,
+        locationIds: [...a.location_ids],
+        applicableClassTemplateIds: [...(a.applicable_class_template_ids ?? [])],
+        effectiveFrom: a.effective_from,
+        effectiveUntil: a.effective_until,
+        status: a.status,
+        updatedAt: a.updated_at,
+        createdAt: a.created_at,
+    };
+}
+
+function agreementVersionFromSeed(v: AgreementVersionSeed): AgreementVersion {
+    return {
+        id: v.id,
+        agreementId: v.agreement_id,
+        versionNumber: v.version_number,
+        contentType: v.content_type,
+        contentText: v.content_text,
+        fileName: v.file_name,
+        fileUrl: v.file_url,
+        fileSizeBytes: v.file_size_bytes,
+        extractedHtml: v.extracted_html,
+        publishedAt: v.published_at,
+        publishedBy: v.published_by,
+    };
+}
+
+function integrationFromSeed(i: IntegrationSeed): Integration {
+    return {
+        id: i.id,
+        slug: i.slug,
+        name: i.name,
+        description: i.description,
+        status: i.status,
+        connectedAt: i.connected_at,
+        accountLabel: i.account_label,
+    };
+}
+
+function paymentProviderFromSeed(p: PaymentProviderSeed): PaymentProvider {
+    return {
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        description: p.description,
+        kind: p.kind,
+        requiresProviderSlug: p.requires_provider_slug,
+        status: p.status,
+        connectedAt: p.connected_at,
+        accountLabel: p.account_label,
+    };
+}
+
+function notificationFromSeed(n: NotificationSeed): Notification {
+    return {
+        id: n.id,
+        tab: n.tab,
+        event: n.event,
+        title: n.title,
+        body: n.body,
+        icon: n.icon,
+        sourceModule: n.source_module,
+        sourceId: n.source_id,
+        customerId: n.customer_id,
+        branchId: n.branch_id,
+        classScheduleId: n.class_schedule_id,
+        transactionId: n.transaction_id,
+        isRead: n.is_read,
+        createdAt: n.created_at,
+    };
+}
+function referralSettingsFromSeed(r: ReferralSettingsSeed): ReferralSettings {
+    return {
+        programActive: r.program_active,
+        newCustomerCredits: r.new_customer_credits,
+        newCustomerMessage: r.new_customer_message,
+        existingCustomerTrigger: r.existing_customer_trigger,
+        existingCustomerMinReferred: r.existing_customer_min_referred,
+        existingCustomerCredits: r.existing_customer_credits,
+        existingCustomerMessage: r.existing_customer_message,
+        infoDescription: r.info_description,
+    };
+}
+
 const INITIAL_PAY_RATES:        PayRate[]        = SEED_PAY_RATES.map(payRateFromSeed);
 const INITIAL_INSTRUCTORS:      Instructor[]     = SEED_INSTRUCTORS.map(instructorFromSeed);
 const INITIAL_PAYROLL_ENTRIES:  PayrollEntry[]   = SEED_PAYROLL_ENTRIES.map(payrollEntryFromSeed);
 const INITIAL_ROLES:            Role[]           = SEED_ROLES.map(roleFromSeed);
 const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed);
+const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = SEED_NOTIFICATION_SETTINGS.map(notificationSettingFromSeed);
+const INITIAL_NOTIFICATIONS:         Notification[]         = SEED_NOTIFICATIONS.map(notificationFromSeed);
+const INITIAL_REFERRAL_SETTINGS:     ReferralSettings       = referralSettingsFromSeed(SEED_REFERRAL_SETTINGS);
+const INITIAL_TAX_RATES:             TaxRate[]              = SEED_TAX_RATES.map(taxRateFromSeed);
+const INITIAL_TAX_SETTINGS:          TaxSettings            = taxSettingsFromSeed(SEED_TAX_SETTINGS);
+const INITIAL_TAX_RULES:             TaxRule[]              = SEED_TAX_RULES.map(taxRuleFromSeed);
+const INITIAL_AGREEMENTS:            Agreement[]            = SEED_AGREEMENTS.map(agreementFromSeed);
+const INITIAL_AGREEMENT_VERSIONS:    AgreementVersion[]     = SEED_AGREEMENT_VERSIONS.map(agreementVersionFromSeed);
+const INITIAL_INTEGRATIONS:          Integration[]          = SEED_INTEGRATIONS.map(integrationFromSeed);
+const INITIAL_PAYMENT_PROVIDERS:     PaymentProvider[]      = SEED_PAYMENT_PROVIDERS.map(paymentProviderFromSeed);
+
+// ─── Phase 4 — staff ↔ instructors sync helpers ────────────────────────────
+//
+// The legacy `instructors` slice still drives pay-rate / payroll / schedule
+// reads, while the new `staff` slice owns adds/edits/status changes from the
+// Staff & Permissions module. To make both stay in sync (so deactivating a
+// staff in S&P also deactivates them in pay-rate, etc.), every staff mutation
+// runs through `applyStaffSync()` which mirrors the change into instructors.
+// The reverse helpers (`writeInstructorBackToStaff`) keep the pay-rate
+// detail / payroll wizard's instructor writes echoed into staff.
+//
+// Status mapping: `instructor.status` only has 3 values, so `pending` staff
+// (an invited but never-logged-in user) is treated as `inactive` in the
+// instructor view — they don't appear in payroll runs, schedule pickers,
+// etc. until they log in and flip to Active.
+
+/** Map a staff status to its instructor-view equivalent. */
+function mapStaffStatusToInstructor(s: StaffStatus): InstructorStatus {
+    return s === "pending" ? "inactive" : (s as InstructorStatus);
+}
+
+/** Project a Staff row into the Instructor shape, preserving any
+ *  instructor-only fields the pay-rate / payroll views may read. Returns
+ *  null when the staff's role isn't `instructor`. */
+function projectStaffAsInstructor(
+    staff: Staff,
+    roles: Role[],
+    existingInstructor: Instructor | undefined,
+): Instructor | null {
+    const role = roles.find(r => r.id === staff.roleId);
+    if (role?.type !== "instructor") return null;
+    return {
+        id: staff.id,
+        name: staff.fullName,
+        initials: staff.initials,
+        color: staff.color,
+        imageUrl: staff.imageUrl,
+        email: staff.email,
+        phone: staff.phone,
+        joinedDate: staff.joinedDate,
+        // Staff branch can be null (Owner = all locations); instructors carry
+        // a concrete branch. Fall back to the existing instructor branch when
+        // present, otherwise the default seed branch.
+        branchId: staff.branchId
+            ?? existingInstructor?.branchId
+            ?? DEFAULT_BRANCH_ID,
+        payRateId: staff.payRateId ?? existingInstructor?.payRateId,
+        status: mapStaffStatusToInstructor(staff.status),
+    };
+}
+
+/** Recompute the `instructors` slice for a list of affected staff ids.
+ *  Rows whose role flipped from / to instructor are added or removed. */
+function syncInstructorsFromStaff(
+    instructors: Instructor[],
+    nextStaff: Staff[],
+    roles: Role[],
+    affectedIds: string[],
+): Instructor[] {
+    const staffById = new Map(nextStaff.map(s => [s.id, s] as const));
+    let next = [...instructors];
+    for (const id of affectedIds) {
+        const staffRow = staffById.get(id);
+        const existing = next.find(i => i.id === id);
+        if (!staffRow) {
+            // Staff row deleted → remove instructor mirror too.
+            next = next.filter(i => i.id !== id);
+            continue;
+        }
+        const projected = projectStaffAsInstructor(staffRow, roles, existing);
+        if (!projected) {
+            // Role changed off "instructor" → drop from instructors slice.
+            next = next.filter(i => i.id !== id);
+            continue;
+        }
+        if (existing) {
+            next = next.map(i => i.id === id ? projected : i);
+        } else {
+            next = [...next, projected];
+        }
+    }
+    return next;
+}
 
 // ─── Initial state — adapt seeds at boot ────────────────────────────────────
 
@@ -1219,6 +1781,15 @@ const INITIAL_CUSTOMER_PLANS: CustomerPlan[] = SEED_CUSTOMER_PLANS.map(customerP
 const INITIAL_CUSTOMER_TRANSACTIONS: CustomerTransaction[] = SEED_CUSTOMER_TRANSACTIONS.map(customerTransactionFromSeed);
 const INITIAL_CUSTOMER_AGREEMENTS: CustomerAgreement[] = SEED_CUSTOMER_AGREEMENTS.map(customerAgreementFromSeed);
 const INITIAL_CUSTOMER_REFERRALS: CustomerReferral[] = SEED_CUSTOMER_REFERRALS.map(customerReferralFromSeed);
+
+/** Phase 3 — initial branding now derives from the centralized seed at
+ *  `src/data/mock/branding_settings.ts`. The deep-copy below ensures runtime
+ *  mutations through `updateBrandingSettings` never leak back into the seed
+ *  module's exported object (Zustand state lives in its own reference). */
+const INITIAL_BRANDING_SETTINGS: BrandingSettings = {
+    ...SEED_BRANDING_SETTINGS,
+    menuItems: SEED_BRANDING_SETTINGS.menuItems.map(i => ({ ...i })),
+};
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
@@ -1278,8 +1849,49 @@ interface AppState {
     pendingPurchase: PendingPurchase | null;
     toast: ToastData | null;
 
+    /** Branding module (PRD 11 §5) — single source of truth for studio
+     *  identity + customer-portal preferences. Read by the Branding landing,
+     *  the Design settings sub-page, the Portal preferences sub-page, and
+     *  (eventually) the customer-facing portal. */
+    brandingSettings: BrandingSettings;
+    /** Partial-merge patch over `brandingSettings`. Both branding sub-pages
+     *  call this on save; landing re-renders automatically because it
+     *  subscribes to the same slice. */
+    updateBrandingSettings: (patch: Partial<BrandingSettings>) => void;
+
+    /** Business profile (PRD 11 §4.1) — studio name, locale, contact. */
+    businessProfile: BusinessProfile;
+    updateBusinessProfile: (patch: Partial<BusinessProfile>) => void;
+
+    /** Branches + Rooms state — live, mutable copies of the seed data so
+     *  archive / delete / status-toggle actions persist across navigation.
+     *  Phase 4 will migrate the cross-module consumers (Schedule, Customers,
+     *  POS, etc.) to read from these slices too. */
+    branches: Branch[];
+    rooms: Room[];
+    businessHours: BusinessHours[];
+    addBranch:    (b: Branch) => void;
+    updateBranch: (id: string, patch: Partial<Branch>) => void;
+    deleteBranch: (id: string) => void;
+    addRoom:    (r: Room) => void;
+    updateRoom: (id: string, patch: Partial<Room>) => void;
+    deleteRoom: (id: string) => void;
+    /** Replace a branch's full weekly hours (7 rows, one per day). Adding,
+     *  editing, or recovering a branch routes through here so the landing
+     *  page, branch detail, and any consumer of `useAppStore(s => s.businessHours)`
+     *  reflect the new hours on the same render. */
+    setBranchHours: (branchId: string, hours: BusinessHours[]) => void;
+
     setRole: (role: UserRole) => void;
     setCurrentUser: (user: User) => void;
+    /** Phase 3 — partial-merge patch over `currentUser`. The Account
+     *  settings modals (Edit profile / Change email / Change phone /
+     *  Change password) call this with only the field(s) they edit; every
+     *  consumer that subscribes to `currentUser` (Sidebar avatar chip,
+     *  Customer Plan-tab "removed by" attribution, Add complimentary
+     *  credit granter, the Account page itself) re-renders in the same
+     *  render cycle. */
+    updateAccountProfile: (patch: Partial<User>) => void;
     toggleSidebar: () => void;
     setSidebarCollapsed: (collapsed: boolean) => void;
 
@@ -1409,6 +2021,141 @@ interface AppState {
      *  step. Recomputes `totalEarnings` automatically. */
     setPayrollEntryAdjustment: (id: string, amount: number, reason?: string) => void;
 
+    // ── Customer notification settings (PRD 11 §12) ───────────────────────
+    notificationSettings: NotificationSetting[];
+    /** Flip a single event's channel toggle. */
+    setNotificationEventChannel: (id: string, channel: "email" | "whatsapp" | "push", enabled: boolean) => void;
+    /** Save a template edit (subject / email body / whatsapp body) for one event. */
+    updateNotificationTemplate: (id: string, patch: Partial<Pick<NotificationSetting, "emailSubject" | "emailTemplate" | "whatsappTemplate">>) => void;
+
+    // ── In-app notifications feed (PRD 12) ────────────────────────────────
+    /** Notification feed records — drives the bell-icon dropdown and the
+     *  `/admin/notifications` page. Records are appended by other actions
+     *  (`addClassBooking`, `applyPurchase`, `cancelClassBooking`, etc.) so
+     *  the feed stays in lock-step with the rest of the data. */
+    notifications: Notification[];
+    /** Append a new notification — used by the cross-module triggers below. */
+    addNotification: (input: Omit<Notification, "id" | "createdAt" | "isRead"> & { id?: string; createdAt?: string; isRead?: boolean }) => string;
+    /** Mark a single notification as read (e.g. on click-through). */
+    markNotificationRead: (id: string) => void;
+    /** Mark every unread notification as read at once. */
+    markAllNotificationsRead: () => void;
+    /** Soft-dismiss a notification (removes from the bell + page feed). */
+    dismissNotification: (id: string) => void;
+
+    // ── Referral settings (PRD 11 §11) ────────────────────────────────────
+    referralSettings: ReferralSettings;
+    /** Flip the referral-program master switch. Customer-facing referral UI
+     *  reads this — when off, the customer detail Referrals tab hides the
+     *  share CTA and surfaces a "program inactive" notice. */
+    setReferralProgramActive: (active: boolean) => void;
+    /** Save the "Edit referral settings" wizard — covers BOTH the new-customer
+     *  benefit (step 1) and the existing-customer benefit (step 2). */
+    updateReferralRewards: (patch: Partial<Pick<ReferralSettings,
+        | "newCustomerCredits" | "newCustomerMessage"
+        | "existingCustomerTrigger" | "existingCustomerMinReferred"
+        | "existingCustomerCredits" | "existingCustomerMessage"
+    >>) => void;
+    /** Save the "Customize referral information" form — customer-facing copy. */
+    updateReferralInformation: (patch: Partial<Pick<ReferralSettings,
+        "infoDescription"
+    >>) => void;
+
+    // ── Tax module (PRD 11 §10) ────────────────────────────────────────────
+    /** Live tax rates — powers /admin/settings/tax → Tax rates list +
+     *  (Phase 3) the "Apply tax rates" tab dropdowns. */
+    taxRates: TaxRate[];
+    /** Studio-wide tax display mode toggle. */
+    taxSettings: TaxSettings;
+    /** Flip the global "Prices include tax" toggle. */
+    setPricesIncludeTax: (value: boolean) => void;
+    /** Append a new tax rate. Auto-generates id + createdAt when not
+     *  supplied. Returns the resolved id. (Phase 2 wires the modal to this.) */
+    addTaxRate: (input: Omit<TaxRate, "id" | "createdAt"> & { id?: string; createdAt?: string }) => string;
+    /** Patch a tax rate — used by the Edit modal in Phase 2. */
+    updateTaxRate: (id: string, patch: Partial<Omit<TaxRate, "id">>) => void;
+    /** Bulk status flip — row + bulk Archive / Deactivate / Reactivate /
+     *  Recover all route through this single action. */
+    setTaxRatesStatus: (ids: string[], status: TaxRateStatus) => void;
+    /** Hard-delete tax rates. Active rows with no usage delete cleanly;
+     *  the cross-module sync in this action also clears any `tax_rules`
+     *  that referenced the deleted rate (their `taxRateId` falls back to
+     *  undefined and the row drops to the "Select tax rate" placeholder). */
+    deleteTaxRates: (ids: string[]) => { deleted: string[]; blocked: string[] };
+
+    // ── Tax rules (Apply tax rates tab) ────────────────────────────────────
+    /** Live tax rules — one row per applied rule across the four
+     *  predefined categories (Membership / Credit package / Gift card /
+     *  Pay rate). Drives `hasUsage` derivation for the Tax rates list. */
+    taxRules: TaxRule[];
+    /** Append a blank rule under `category` — created by the "+ Add another
+     *  tax rule" button. Returns the new rule's id so the caller can scroll
+     *  / focus it. */
+    addTaxRule: (category: TaxRuleCategory) => string;
+    /** Patch any field on a tax rule — used by the rate + location dropdowns. */
+    updateTaxRule: (id: string, patch: Partial<Omit<TaxRule, "id" | "createdAt">>) => void;
+    /** Flip the per-rule active/inactive toggle. */
+    setTaxRuleStatus: (id: string, status: TaxRuleStatus) => void;
+    /** Hard-delete one tax rule (the trash-icon button on each row). */
+    deleteTaxRule: (id: string) => void;
+
+    // ── Agreements module (PRD 11 §9) ─────────────────────────────────────
+    /** Live agreements — drives /admin/settings/agreements list + detail. */
+    agreements: Agreement[];
+    /** Per-version content (text or uploaded file). Phase 3's version-history
+     *  table reads from here; Phase 1's list view only uses the parent
+     *  `Agreement.currentVersion` for the "Version N" subtext. */
+    agreementVersions: AgreementVersion[];
+    /** Append a new agreement. Phase 2's create wizard wires through this.
+     *  Auto-generates id + timestamps when not supplied. */
+    addAgreement: (input: Omit<Agreement, "id" | "createdAt" | "updatedAt"> & {
+        id?: string; createdAt?: string; updatedAt?: string;
+    }) => string;
+    /** Patch any field on an agreement (used by the Edit flow in Phase 2 +
+     *  the new-version flow in Phase 3 to bump `currentVersion`). Bumps
+     *  `updatedAt` automatically. */
+    updateAgreement: (id: string, patch: Partial<Omit<Agreement, "id" | "createdAt">>) => void;
+    /** Bulk status flip — row + bulk Archive / Recover both route here.
+     *  Brief excludes delete/deactivate for agreements (legal records). */
+    setAgreementsStatus: (ids: string[], status: AgreementStatus) => void;
+    /** Append a new published version. Phase 3 "Add new version" flow uses
+     *  this — it both inserts the version row AND patches the parent's
+     *  `currentVersion` + `updatedAt` to keep the list view's "Version N"
+     *  subtext in sync. */
+    addAgreementVersion: (input: Omit<AgreementVersion, "id" | "publishedAt"> & {
+        id?: string; publishedAt?: string;
+    }) => string;
+    /** Republish — flip every customer's `customer_agreements` row for this
+     *  (agreementId, versionNumber) pair from "signed" back to "unsigned" so
+     *  they have to re-sign on the customer side. Older versions stay
+     *  signed (historical record preserved). */
+    republishAgreementVersion: (agreementId: string, versionNumber: number) => void;
+
+    // ── Integrations module (PRD 11 §8) ───────────────────────────────────
+    /** Live integrations — drives /admin/settings/integrations card grid. */
+    integrations: Integration[];
+    /** Simulated connect — flip status to "connected", stamp `connectedAt`,
+     *  and persist an optional account label (shown later in the Phase 2
+     *  View modal). No real OAuth — see Phase 3 brief. */
+    connectIntegration: (id: string, accountLabel?: string) => void;
+    /** Reverse of `connectIntegration` — flip back to "not_connected" and
+     *  clear `connectedAt` + `accountLabel`. */
+    disconnectIntegration: (id: string) => void;
+
+    // ── Payments module (PRD 11 §7) ───────────────────────────────────────
+    /** Live payment providers — drives /admin/settings/payments card grid
+     *  AND (Phase 3) the POS Checkout payment-method selector. */
+    paymentProviders: PaymentProvider[];
+    /** Connect a gateway / Enable a wallet. Flips status to "connected",
+     *  stamps `connectedAt` + optional `accountLabel`. Phase 1 fires
+     *  directly from the button; Phase 2 routes through the Connect modal. */
+    connectPaymentProvider: (id: string, accountLabel?: string) => void;
+    /** Disconnect a provider. Cascades — when a GATEWAY is disconnected,
+     *  every wallet whose `requiresProviderSlug` points at it is also
+     *  flipped back to "not_connected" in the same render cycle (so the
+     *  POS payment grid never shows orphaned wallets). */
+    disconnectPaymentProvider: (id: string) => void;
+
     // ── Roles ──────────────────────────────────────────────────────────────
     /** Append a role. Auto-generates id + createdAt + copies the type's
      *  default permission matrix when `permissions` is omitted. */
@@ -1433,9 +2180,12 @@ interface AppState {
      *  the staff member is already past first-login (resend is a no-op). */
     resendStaffInvite: (id: string) => boolean;
     /** Hard-delete only allowed when the staff member has zero historical
-     *  records (zero classes taught, zero transactions, zero payroll
-     *  entries). For the prototype we approximate by allowing delete only
-     *  on Pending rows or rows with no `payRateId`. */
+     *  records (zero classes taught, zero ratings received, zero payroll
+     *  entries). Status must also be Pending (never accepted invite) or
+     *  Archive (intentionally retired) — Active/Inactive rows must be
+     *  Archived first. UI surfaces should gate the Delete affordance on
+     *  `canDeleteStaff(id)` to avoid offering an action the store will refuse. */
+    canDeleteStaff: (id: string) => boolean;
     deleteStaff: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
     setPendingPurchase: (purchase: PendingPurchase | null) => void;
@@ -1448,6 +2198,21 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
     currentRole: "admin",
     currentUser: adminUser,
+    brandingSettings: { ...INITIAL_BRANDING_SETTINGS, menuItems: [...INITIAL_BRANDING_SETTINGS.menuItems] },
+    businessProfile: {
+        name: "Forma Studio",
+        logoUrl: "",
+        website: "forma.studio.com",
+        country: "United Arab Emirates",
+        currency: "AED",
+        timezone: "Asia/Dubai",
+        contactName: "",
+        contactEmail: "",
+        contactPhone: "",
+    },
+    branches:      SEED_BRANCHES.map(b => ({ ...b })),
+    rooms:         SEED_ROOMS.map(r => ({ ...r })),
+    businessHours: SEED_BUSINESS_HOURS.map(h => ({ ...h })),
     sidebarCollapsed: false,
     classTemplates: INITIAL_TEMPLATES,
     classSchedules: INITIAL_SCHEDULES,
@@ -1469,11 +2234,59 @@ export const useAppStore = create<AppState>((set, get) => ({
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
     roles: [...INITIAL_ROLES],
     staff: [...INITIAL_STAFF],
+    notificationSettings: [...INITIAL_NOTIFICATION_SETTINGS],
+    notifications: [...INITIAL_NOTIFICATIONS],
+    referralSettings: { ...INITIAL_REFERRAL_SETTINGS },
+    taxRates: [...INITIAL_TAX_RATES],
+    taxSettings: { ...INITIAL_TAX_SETTINGS },
+    taxRules: [...INITIAL_TAX_RULES],
+    agreements: [...INITIAL_AGREEMENTS],
+    agreementVersions: [...INITIAL_AGREEMENT_VERSIONS],
+    integrations: [...INITIAL_INTEGRATIONS],
+    paymentProviders: [...INITIAL_PAYMENT_PROVIDERS],
     pendingPurchase: null,
     toast: null,
 
+    updateBusinessProfile: (patch) =>
+        set(state => ({
+            businessProfile: { ...state.businessProfile, ...patch },
+        })),
+
+    addBranch:    (b)         => set(state => ({ branches: [b, ...state.branches] })),
+    updateBranch: (id, patch) => set(state => ({ branches: state.branches.map(b => b.id === id ? { ...b, ...patch } : b) })),
+    setBranchHours: (branchId, hours) => set(state => ({
+        businessHours: [
+            ...state.businessHours.filter(h => h.branch_id !== branchId),
+            ...hours,
+        ],
+    })),
+    deleteBranch: (id)        => set(state => ({
+        branches: state.branches.filter(b => b.id !== id),
+        // Cascade — rooms + business hours under a deleted branch go with it.
+        rooms:         state.rooms.filter(r => r.branch_id !== id),
+        businessHours: state.businessHours.filter(h => h.branch_id !== id),
+    })),
+    addRoom:    (r)         => set(state => ({ rooms: [r, ...state.rooms] })),
+    updateRoom: (id, patch) => set(state => ({ rooms: state.rooms.map(r => r.id === id ? { ...r, ...patch } : r) })),
+    deleteRoom: (id)        => set(state => ({ rooms: state.rooms.filter(r => r.id !== id) })),
+
+    updateBrandingSettings: (patch) =>
+        set((state) => ({
+            brandingSettings: {
+                ...state.brandingSettings,
+                ...patch,
+                // Defensive deep-copy for menuItems so callers can mutate
+                // their local arrays without leaking into store state.
+                menuItems: patch.menuItems
+                    ? patch.menuItems.map(i => ({ ...i }))
+                    : state.brandingSettings.menuItems,
+            },
+        })),
+
     setRole: (role) => set({ currentRole: role }),
     setCurrentUser: (user) => set({ currentUser: user, currentRole: user.role }),
+    updateAccountProfile: (patch) =>
+        set((state) => ({ currentUser: { ...state.currentUser, ...patch } })),
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
@@ -1523,21 +2336,48 @@ export const useAppStore = create<AppState>((set, get) => ({
             classSchedules: state.classSchedules.map(s => s.id === id ? { ...s, ...updates } : s),
         })),
     cancelClassSchedule: (id, refundCredits) =>
-        set((state) => {
-            const now = new Date().toISOString();
-            return {
-                classSchedules: state.classSchedules.map(s =>
-                    s.id === id ? { ...s, status: "Cancelled" as ClassStatus, cancelledAt: now, cancelledBy: "Alex Owen" } : s
-                ),
-                classBookings: state.classBookings.map(b =>
-                    b.classScheduleId === id && b.status === "booked"
-                        ? { ...b, status: "cancelled" as const, cancelledAt: now, cancellationReason: "Class cancelled", refundCreditIssued: refundCredits, waitlistPosition: undefined }
-                        : b
-                ),
-            };
-        }),
+        {
+            const stateBefore = get();
+            const schedule = stateBefore.classSchedules.find(s => s.id === id);
+            const affected = stateBefore.classBookings.filter(b => b.classScheduleId === id && b.status === "booked").length;
+            set((state) => {
+                const now = new Date().toISOString();
+                return {
+                    classSchedules: state.classSchedules.map(s =>
+                        s.id === id ? { ...s, status: "Cancelled" as ClassStatus, cancelledAt: now, cancelledBy: "Alex Owen" } : s
+                    ),
+                    classBookings: state.classBookings.map(b =>
+                        b.classScheduleId === id && b.status === "booked"
+                            ? { ...b, status: "cancelled" as const, cancelledAt: now, cancellationReason: "Class cancelled", refundCreditIssued: refundCredits, waitlistPosition: undefined }
+                            : b
+                    ),
+                };
+            });
+            // Feed: surface in the notification center (PRD 12). Click-
+            // through routes to /schedule/[id] via `classScheduleId`.
+            if (schedule) {
+                const suffix = affected > 0
+                    ? ` ${affected} booking${affected === 1 ? "" : "s"} ${affected === 1 ? "was" : "were"} affected.`
+                    : "";
+                get().addNotification({
+                    tab: "booking",
+                    event: "class_cancelled",
+                    title: "Class Cancelled",
+                    body: `${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime} was cancelled.${suffix}`,
+                    icon: "calendar-x",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: schedule.branchId,
+                });
+            }
+        },
 
-    cancelClassBooking: (id, reason, refund) =>
+    cancelClassBooking: (id, reason, refund) => {
+        const stateBefore = get();
+        const booking = stateBefore.classBookings.find(b => b.id === id);
+        const customer = booking ? stateBefore.customers.find(c => c.id === booking.customerId) : undefined;
+        const schedule = booking ? stateBefore.classSchedules.find(s => s.id === booking.classScheduleId) : undefined;
         set((state) => ({
             classBookings: state.classBookings.map(b =>
                 b.id === id ? { ...b, status: "cancelled" as const, cancelledAt: new Date().toISOString(), cancellationReason: reason, refundCreditIssued: refund } : b
@@ -1549,14 +2389,36 @@ export const useAppStore = create<AppState>((set, get) => ({
                 }
                 return s;
             }),
-        })),
-    cancelClassBookings: (ids, reason, refund) =>
+        }));
+        // Feed: a cancelled booking surfaces as "Late Cancellation" in the
+        // notification center. Title uses "Late Cancellation" because the
+        // cancellation UI is opened from the per-booking row at the schedule
+        // page — admins use this for after-deadline cancels.
+        if (booking && customer && schedule) {
+            const verb = refund ? "Class session has been returned." : "1 class session was forfeited.";
+            const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+            get().addNotification({
+                tab: "booking",
+                event: "late_cancellation",
+                title: "Late Cancellation",
+                body: `${customerName} cancelled ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. ${verb}`,
+                icon: "calendar-minus",
+                sourceModule: "booking",
+                sourceId: id,
+                classScheduleId: schedule.id,
+                customerId: customer.id,
+                branchId: schedule.branchId,
+            });
+        }
+    },
+    cancelClassBookings: (ids, reason, refund) => {
+        const stateBefore = get();
+        const targets = stateBefore.classBookings.filter(b => ids.includes(b.id));
         set((state) => {
             const idSet = new Set(ids);
             const now = new Date().toISOString();
-            const targets = state.classBookings.filter(b => idSet.has(b.id));
             const decrementByClass = new Map<string, number>();
-            for (const t of targets) {
+            for (const t of state.classBookings.filter(b => idSet.has(b.id))) {
                 if (t.status === "booked") {
                     decrementByClass.set(t.classScheduleId, (decrementByClass.get(t.classScheduleId) ?? 0) + 1);
                 }
@@ -1572,7 +2434,30 @@ export const useAppStore = create<AppState>((set, get) => ({
                     return dec ? { ...s, booked: Math.max(0, s.booked - dec) } : s;
                 }),
             };
-        }),
+        });
+        // Feed: emit one notification per cancelled booking so each row stays
+        // attributable to a specific customer + class.
+        const verb = refund ? "Class session has been returned." : "1 class session was forfeited.";
+        for (const t of targets) {
+            const customer = stateBefore.customers.find(c => c.id === t.customerId);
+            const schedule = stateBefore.classSchedules.find(s => s.id === t.classScheduleId);
+            if (customer && schedule) {
+                const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+                get().addNotification({
+                    tab: "booking",
+                    event: "late_cancellation",
+                    title: "Late Cancellation",
+                    body: `${customerName} cancelled ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. ${verb}`,
+                    icon: "calendar-minus",
+                    sourceModule: "booking",
+                    sourceId: t.id,
+                    classScheduleId: schedule.id,
+                    customerId: customer.id,
+                    branchId: schedule.branchId,
+                });
+            }
+        }
+    },
     removeClassBooking: (id) =>
         set((state) => {
             const target = state.classBookings.find(b => b.id === id);
@@ -1602,12 +2487,37 @@ export const useAppStore = create<AppState>((set, get) => ({
                 }),
             };
         }),
-    updateAttendance: (bookingId, status) =>
+    updateAttendance: (bookingId, status) => {
+        const stateBefore = get();
+        const booking = stateBefore.classBookings.find(b => b.id === bookingId);
+        const wasNoShow = booking?.attendanceStatus === "no_show";
         set((state) => ({
             classBookings: state.classBookings.map(b =>
                 b.id === bookingId ? { ...b, attendanceStatus: status } : b
             ),
-        })),
+        }));
+        // Feed: a fresh no-show stamp (one that wasn't already a no-show)
+        // surfaces in the notification center so admins can follow up.
+        if (status === "no_show" && !wasNoShow && booking) {
+            const customer = stateBefore.customers.find(c => c.id === booking.customerId);
+            const schedule = stateBefore.classSchedules.find(s => s.id === booking.classScheduleId);
+            if (customer && schedule) {
+                const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+                get().addNotification({
+                    tab: "booking",
+                    event: "no_show",
+                    title: "No-Show",
+                    body: `${customerName} did not attend ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
+                    icon: "user-x",
+                    sourceModule: "booking",
+                    sourceId: bookingId,
+                    classScheduleId: schedule.id,
+                    customerId: customer.id,
+                    branchId: schedule.branchId,
+                });
+            }
+        }
+    },
 
     deleteClassRating: (id, deletedBy) =>
         set((state) => ({
@@ -1623,7 +2533,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...input,
             id,
             initials,
-            branchId: input.branchId ?? "branch_forma_south",
+            // Form callers always pass an explicit `branchId`. The fallback
+            // resolves to the configured default (main active branch) so
+            // legacy callers / future seed paths still land somewhere valid
+            // instead of being silently pinned to one hardcoded branch.
+            branchId: input.branchId ?? DEFAULT_BRANCH_ID,
             // Newly-created customers are Active by default — a brand-new
             // account is never seeded inactive/archived.
             status: input.status ?? "active",
@@ -1991,13 +2905,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         const deletableIds = deletable.map(p => p.id);
         const blocked = ids.filter(id => !deletableIds.includes(id));
         if (deletableIds.length > 0) {
-            // Also clear the rate from any instructor that still references
-            // it — the relationship survives the delete in DB-land but the
-            // UI shouldn't dangle.
+            // Also clear the rate from any instructor / staff that still
+            // references it — the relationship survives the delete in
+            // DB-land but the UI shouldn't dangle. Both slices are wiped
+            // together so the cross-module displays stay in sync.
             set(state => ({
                 payRates: state.payRates.filter(p => !deletableIds.includes(p.id)),
                 instructors: state.instructors.map(i =>
                     i.payRateId && deletableIds.includes(i.payRateId) ? { ...i, payRateId: undefined } : i,
+                ),
+                staff: state.staff.map(s =>
+                    s.payRateId && deletableIds.includes(s.payRateId) ? { ...s, payRateId: undefined } : s,
                 ),
             }));
         }
@@ -2005,15 +2923,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     assignInstructorPayRate: (instructorId, payRateId) =>
+        // Mirror the write into `staff` too — the Staff & Permissions
+        // module reads payRateId from staff, so a pay-rate change must
+        // propagate or the staff detail will show a stale rate.
         set(state => ({
             instructors: state.instructors.map(i =>
                 i.id === instructorId ? { ...i, payRateId } : i,
             ),
+            staff: state.staff.map(s =>
+                s.id === instructorId ? { ...s, payRateId } : s,
+            ),
         })),
     setInstructorStatus: (ids, status) =>
+        // Mirror status back to staff (instructor statuses are a strict
+        // subset of staff statuses — no mapping needed in this direction).
         set(state => ({
             instructors: state.instructors.map(i =>
                 ids.includes(i.id) ? { ...i, status } : i,
+            ),
+            staff: state.staff.map(s =>
+                ids.includes(s.id) ? { ...s, status } : s,
             ),
         })),
 
@@ -2033,6 +2962,353 @@ export const useAppStore = create<AppState>((set, get) => ({
                     : e,
             ),
         })),
+
+    // ── Customer notification settings ────────────────────────────────────
+    setNotificationEventChannel: (id, channel, enabled) =>
+        set(state => ({
+            notificationSettings: state.notificationSettings.map(n =>
+                n.id !== id ? n :
+                channel === "email"    ? { ...n, emailEnabled:    enabled } :
+                channel === "whatsapp" ? { ...n, whatsappEnabled: enabled } :
+                                         { ...n, pushEnabled:     enabled },
+            ),
+        })),
+    updateNotificationTemplate: (id, patch) =>
+        set(state => ({
+            notificationSettings: state.notificationSettings.map(n =>
+                n.id === id ? { ...n, ...patch } : n,
+            ),
+        })),
+
+    // ── In-app notifications feed ─────────────────────────────────────────
+    //
+    // Append-only by default. Reads are sorted by `createdAt` DESC so newest
+    // events appear first in the bell + the page. Other actions in this store
+    // call `addNotification` directly via `get().addNotification(...)` so the
+    // cross-module sync logic stays co-located with the action it mirrors.
+
+    addNotification: (input) => {
+        const id = input.id ?? `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const record: Notification = {
+            ...input,
+            id,
+            createdAt: input.createdAt ?? new Date().toISOString(),
+            isRead: input.isRead ?? false,
+        };
+        set(state => ({ notifications: [record, ...state.notifications] }));
+        return id;
+    },
+    markNotificationRead: (id) =>
+        set(state => ({
+            notifications: state.notifications.map(n =>
+                n.id === id ? { ...n, isRead: true } : n,
+            ),
+        })),
+    markAllNotificationsRead: () =>
+        set(state => ({
+            notifications: state.notifications.map(n =>
+                n.isRead ? n : { ...n, isRead: true },
+            ),
+        })),
+    dismissNotification: (id) =>
+        set(state => ({
+            notifications: state.notifications.filter(n => n.id !== id),
+        })),
+
+    // ── Referral settings ─────────────────────────────────────────────────
+    setReferralProgramActive: (active) =>
+        set(state => ({
+            referralSettings: { ...state.referralSettings, programActive: active },
+        })),
+    updateReferralRewards: (patch) =>
+        set(state => ({
+            referralSettings: { ...state.referralSettings, ...patch },
+        })),
+    updateReferralInformation: (patch) =>
+        set(state => ({
+            referralSettings: { ...state.referralSettings, ...patch },
+        })),
+
+    // ── Tax module ────────────────────────────────────────────────────────
+    setPricesIncludeTax: (value) =>
+        set(state => ({
+            taxSettings: { ...state.taxSettings, pricesIncludeTax: value },
+        })),
+    addTaxRate: (input) => {
+        const id = input.id ?? `tax_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const record: TaxRate = {
+            ...input,
+            id,
+            createdAt: input.createdAt ?? new Date().toISOString(),
+        };
+        set(state => ({ taxRates: [record, ...state.taxRates] }));
+        // Note: no bell-feed entry. Tax events are admin-only config — the
+        // toast emitted by the TaxRateModal is sufficient feedback, and the
+        // bell is reserved for customer-visible events (bookings / payments).
+        return id;
+    },
+    updateTaxRate: (id, patch) =>
+        set(state => ({
+            taxRates: state.taxRates.map(t => t.id === id ? { ...t, ...patch } : t),
+        })),
+    setTaxRatesStatus: (ids, status) =>
+        set(state => {
+            const idSet = new Set(ids);
+            // Cross-module sync: archiving a rate clears it off every
+            // referencing tax rule so the Apply tax rates row drops to the
+            // "Select tax rate" placeholder. Deactivate keeps the reference
+            // (admin can still see what was assigned) but the rule's runtime
+            // effect is gated on the rate being active.
+            const shouldClearRefs = status === "archived";
+            return {
+                taxRates: state.taxRates.map(t => idSet.has(t.id) ? { ...t, status } : t),
+                taxRules: shouldClearRefs
+                    ? state.taxRules.map(r =>
+                        r.taxRateId && idSet.has(r.taxRateId)
+                            ? { ...r, taxRateId: undefined }
+                            : r,
+                    )
+                    : state.taxRules,
+            };
+        }),
+    deleteTaxRates: (ids) => {
+        // Phase 1 had no usage gate. Phase 3 wires the real gate at the page
+        // layer via `hasUsage()`, and this action mirrors the gift-card /
+        // pay-rate pattern: it accepts all ids the caller passed, but the
+        // sync below also clears any `tax_rules.taxRateId` that referenced
+        // a deleted rate so the rule drops to the placeholder state.
+        const idSet = new Set(ids);
+        const deleted: string[] = [];
+        const blocked: string[] = [];
+        for (const id of ids) {
+            const existing = get().taxRates.find(t => t.id === id);
+            if (existing) deleted.push(id);
+            else blocked.push(id);
+        }
+        if (deleted.length > 0) {
+            set(state => ({
+                taxRates: state.taxRates.filter(t => !idSet.has(t.id)),
+                // Cross-module sync — clear taxRateId on every referencing rule.
+                taxRules: state.taxRules.map(r =>
+                    r.taxRateId && idSet.has(r.taxRateId)
+                        ? { ...r, taxRateId: undefined }
+                        : r,
+                ),
+            }));
+        }
+        return { deleted, blocked };
+    },
+
+    // ── Tax rules ─────────────────────────────────────────────────────────
+    addTaxRule: (category) => {
+        const id = `trl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const record: TaxRule = {
+            id,
+            category,
+            taxRateId: undefined,
+            allLocations: false,
+            locationIds: [],
+            status: "active",
+            createdAt: new Date().toISOString(),
+        };
+        set(state => ({ taxRules: [...state.taxRules, record] }));
+        return id;
+    },
+    updateTaxRule: (id, patch) =>
+        set(state => ({
+            taxRules: state.taxRules.map(r => r.id === id ? { ...r, ...patch } : r),
+        })),
+    setTaxRuleStatus: (id, status) =>
+        set(state => ({
+            taxRules: state.taxRules.map(r => r.id === id ? { ...r, status } : r),
+        })),
+    deleteTaxRule: (id) =>
+        set(state => ({
+            taxRules: state.taxRules.filter(r => r.id !== id),
+        })),
+
+    // ── Agreements actions ────────────────────────────────────────────────
+    addAgreement: (input) => {
+        const id = input.id ?? `agr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const now = new Date().toISOString();
+        const record: Agreement = {
+            ...input,
+            id,
+            createdAt: input.createdAt ?? now,
+            updatedAt: input.updatedAt ?? now,
+        };
+        set(state => ({ agreements: [record, ...state.agreements] }));
+        return id;
+    },
+    updateAgreement: (id, patch) =>
+        set(state => ({
+            agreements: state.agreements.map(a =>
+                a.id === id
+                    ? { ...a, ...patch, updatedAt: new Date().toISOString() }
+                    : a,
+            ),
+        })),
+    setAgreementsStatus: (ids, status) =>
+        set(state => {
+            const idSet = new Set(ids);
+            const stamp = new Date().toISOString();
+            return {
+                agreements: state.agreements.map(a =>
+                    idSet.has(a.id) ? { ...a, status, updatedAt: stamp } : a,
+                ),
+            };
+        }),
+    addAgreementVersion: (input) => {
+        const id = input.id ?? `agr_v_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const now = new Date().toISOString();
+        const record: AgreementVersion = {
+            ...input,
+            id,
+            publishedAt: input.publishedAt ?? now,
+        };
+        set(state => {
+            // Phase 4 cross-module sync: every customer who already has a
+            // `customer_agreements` row for this agreement gets a new
+            // `unsigned` row for the new version. Their existing rows stay
+            // (history). One row per (customer, agreement) snapshot —
+            // duplicates by (customer + version) are guarded with a check.
+            const parent = state.agreements.find(a => a.id === input.agreementId);
+            const parentName = parent?.name ?? "";
+
+            const customersForAgreement = new Map<string, string>(); // customerId → branchId
+            for (const ca of state.customerAgreements) {
+                if (ca.agreementId !== input.agreementId) continue;
+                if (!customersForAgreement.has(ca.customerId)) {
+                    customersForAgreement.set(ca.customerId, ca.branchId);
+                }
+            }
+            const newCustomerRows: CustomerAgreement[] = [];
+            customersForAgreement.forEach((branchId, customerId) => {
+                const already = state.customerAgreements.some(ca =>
+                    ca.agreementId === input.agreementId
+                    && ca.customerId === customerId
+                    && ca.version === input.versionNumber,
+                );
+                if (already) return;
+                newCustomerRows.push({
+                    id: `agr_${customerId}_v${input.versionNumber}_${Math.random().toString(36).slice(2, 6)}`,
+                    customerId,
+                    agreementId: input.agreementId,
+                    title: parentName,
+                    version: input.versionNumber,
+                    branchId,
+                    classTemplateIds: parent?.applicableClassTemplateIds ?? [],
+                    status: "unsigned",
+                });
+            });
+
+            return {
+                agreementVersions: [...state.agreementVersions, record],
+                // Keep the parent's cached `currentVersion` in lock-step so the
+                // list view's "Version N" subtext doesn't drift behind the
+                // version-history table.
+                agreements: state.agreements.map(a =>
+                    a.id === input.agreementId
+                        ? {
+                            ...a,
+                            currentVersion: Math.max(a.currentVersion, input.versionNumber),
+                            updatedAt: now,
+                        }
+                        : a,
+                ),
+                customerAgreements: [...state.customerAgreements, ...newCustomerRows],
+            };
+        });
+        return id;
+    },
+    republishAgreementVersion: (agreementId, versionNumber) =>
+        set(state => ({
+            customerAgreements: state.customerAgreements.map(ca =>
+                ca.agreementId === agreementId
+                && ca.version === versionNumber
+                && ca.status === "signed"
+                    ? { ...ca, status: "unsigned" as const, signedAtISO: undefined }
+                    : ca,
+            ),
+        })),
+
+    // ── Integrations actions ──────────────────────────────────────────────
+    connectIntegration: (id, accountLabel) =>
+        set(state => {
+            const stamp = new Date().toISOString();
+            return {
+                integrations: state.integrations.map(i =>
+                    i.id === id
+                        ? {
+                            ...i,
+                            status: "connected" as const,
+                            connectedAt: stamp,
+                            accountLabel: accountLabel ?? i.accountLabel,
+                        }
+                        : i,
+                ),
+            };
+        }),
+    disconnectIntegration: (id) =>
+        set(state => ({
+            integrations: state.integrations.map(i =>
+                i.id === id
+                    ? {
+                        ...i,
+                        status: "not_connected" as const,
+                        connectedAt: undefined,
+                        accountLabel: undefined,
+                    }
+                    : i,
+            ),
+        })),
+
+    // ── Payments actions ──────────────────────────────────────────────────
+    connectPaymentProvider: (id, accountLabel) =>
+        set(state => {
+            const stamp = new Date().toISOString();
+            return {
+                paymentProviders: state.paymentProviders.map(p =>
+                    p.id === id
+                        ? {
+                            ...p,
+                            status: "connected" as const,
+                            connectedAt: stamp,
+                            accountLabel: accountLabel ?? p.accountLabel,
+                        }
+                        : p,
+                ),
+            };
+        }),
+    disconnectPaymentProvider: (id) =>
+        set(state => {
+            const target = state.paymentProviders.find(p => p.id === id);
+            // Cascade rule: disconnecting a gateway auto-disconnects every
+            // wallet whose `requiresProviderSlug` points at this gateway's
+            // slug. Wallets disconnect cleanly (just themselves).
+            const cascadedSlug = target?.kind === "gateway" ? target.slug : undefined;
+            return {
+                paymentProviders: state.paymentProviders.map(p => {
+                    if (p.id === id) {
+                        return {
+                            ...p,
+                            status: "not_connected" as const,
+                            connectedAt: undefined,
+                            accountLabel: undefined,
+                        };
+                    }
+                    if (cascadedSlug && p.requiresProviderSlug === cascadedSlug) {
+                        return {
+                            ...p,
+                            status: "not_connected" as const,
+                            connectedAt: undefined,
+                            accountLabel: undefined,
+                        };
+                    }
+                    return p;
+                }),
+            };
+        }),
 
     // ── Role actions ───────────────────────────────────────────────────────
     addRole: (input) => {
@@ -2078,6 +3354,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     // ── Staff actions ──────────────────────────────────────────────────────
+    //
+    // Every mutation here also syncs the legacy `instructors` slice through
+    // `syncInstructorsFromStaff` so pay-rate / payroll / schedule views
+    // reflect Staff & Permissions changes immediately.
     addStaff: (input) => {
         const id = input.id ?? `staff_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const next: Staff = {
@@ -2088,20 +3368,36 @@ export const useAppStore = create<AppState>((set, get) => ({
             inviteSentAt: input.inviteSentAt ?? new Date().toISOString(),
             firstLoginCompleted: input.firstLoginCompleted ?? false,
         };
-        set(state => ({ staff: [...state.staff, next] }));
+        set(state => {
+            const nextStaff = [...state.staff, next];
+            return {
+                staff: nextStaff,
+                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]),
+            };
+        });
         return id;
     },
     updateStaff: (id, patch) =>
-        set(state => ({
-            staff: state.staff.map(s => s.id === id ? { ...s, ...patch } : s),
-        })),
+        set(state => {
+            const nextStaff = state.staff.map(s => s.id === id ? { ...s, ...patch } : s);
+            return {
+                staff: nextStaff,
+                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]),
+            };
+        }),
     setStaffStatus: (ids, status) =>
-        set(state => ({
-            staff: state.staff.map(s => ids.includes(s.id) ? { ...s, status } : s),
-        })),
+        set(state => {
+            const nextStaff = state.staff.map(s => ids.includes(s.id) ? { ...s, status } : s);
+            return {
+                staff: nextStaff,
+                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, ids),
+            };
+        }),
     resendStaffInvite: (id) => {
         const target = get().staff.find(s => s.id === id);
         if (!target || target.firstLoginCompleted) return false;
+        // Pure timestamp bump — no instructor-visible field changes, so we
+        // skip the sync here to avoid unnecessary re-renders downstream.
         set(state => ({
             staff: state.staff.map(s =>
                 s.id === id ? { ...s, inviteSentAt: new Date().toISOString() } : s,
@@ -2109,23 +3405,71 @@ export const useAppStore = create<AppState>((set, get) => ({
         }));
         return true;
     },
+    canDeleteStaff: (id) => {
+        // Hard-delete rule: status is Pending or Archive AND zero references
+        // in payrollEntries / classSchedules / classRatings (classBookings
+        // carries no instructor FK in this codebase). Mirrors deleteMembership's
+        // "block when history exists" pattern.
+        const state = get();
+        const staff = state.staff.find(s => s.id === id);
+        if (!staff) return false;
+        if (staff.status !== "pending" && staff.status !== "archive") return false;
+        if (state.payrollEntries.some(p => p.instructorId === id)) return false;
+        if (state.classSchedules.some(s => s.instructorId === id)) return false;
+        if (state.classRatings.some(r => r.instructorId === id)) return false;
+        return true;
+    },
     deleteStaff: (ids) => {
-        // Prototype rule: delete only when the staff row has no payroll /
-        // pay rate history. We approximate with `payRateId` absence + Pending
-        // status. The real rule (zero classes / zero transactions / zero
-        // payroll entries) will land once those tables are joinable.
-        const deletable = get().staff
-            .filter(s => ids.includes(s.id) && (s.status === "pending" || !s.payRateId))
-            .map(s => s.id);
-        const blocked = ids.filter(i => !deletable.includes(i));
+        const canDelete = get().canDeleteStaff;
+        const deletable = ids.filter(id => canDelete(id));
+        const blocked = ids.filter(id => !deletable.includes(id));
         if (deletable.length > 0) {
-            set(state => ({ staff: state.staff.filter(s => !deletable.includes(s.id)) }));
+            const deletableSet = new Set(deletable);
+            set(state => {
+                const nextStaff = state.staff.filter(s => !deletableSet.has(s.id));
+                // Belt-and-suspenders: scrub any stray FK references in
+                // dependent slices. Layer 1 only allows delete when these
+                // arrays already have zero matches, so these filters are
+                // no-ops in steady state — they protect against drift from
+                // future seed data or out-of-band mutations.
+                return {
+                    staff: nextStaff,
+                    instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, deletable),
+                    payrollEntries: state.payrollEntries.filter(p => !deletableSet.has(p.instructorId)),
+                    classSchedules: state.classSchedules.filter(s => !deletableSet.has(s.instructorId)),
+                    classRatings: state.classRatings.filter(r => !deletableSet.has(r.instructorId)),
+                };
+            });
         }
         return { deleted: deletable, blocked };
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items) =>
+    applyPurchase: (customerId, items) => {
+        // Snapshot the buyer + a description of what they bought BEFORE the
+        // `set` so the notification body reads natural ("X purchased the Y
+        // Package for AED Z") even if subsequent sets re-enter.
+        const stateBefore = get();
+        const buyerSnapshot = stateBefore.customers.find(c => c.id === customerId);
+        const purchaseTotal = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+        const productLabel = (() => {
+            const membership = items.find(it => it.productType === "membership");
+            const packages = items.filter(it => it.productType === "package");
+            const giftCards = items.filter(it => it.productType === "gift_card");
+            if (membership) return `the ${membership.name}`;
+            if (packages.length === 1) return `the ${packages[0].name}`;
+            if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} credit packages`;
+            if (giftCards.length > 0) return giftCards.length === 1
+                ? `a ${giftCards[0].name} gift card`
+                : `${giftCards.length} gift cards`;
+            return "items at checkout";
+        })();
+        // Pre-compute the first transaction id so the notification record can
+        // deep-link the click-through to the exact receipt on the customer
+        // profile (Payments tab → highlighted row).
+        const txnStamp = Date.now();
+        const firstSaleIdx = items.findIndex(it => it.productType === "membership" || it.productType === "package");
+        const firstTxnId = firstSaleIdx >= 0 ? `txn_sale_${txnStamp}_${firstSaleIdx}` : undefined;
         set((state) => {
             // Business rule (per CLAUDE.md): 1 membership OR multiple packages — never both.
             const membership = items.find(it => it.productType === "membership");
@@ -2217,7 +3561,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             // checkout sale propagates across the whole customer module.
             const buyer = state.customers.find(c => c.id === customerId);
             const saleBranchId = buyer?.branchId ?? DEFAULT_BRANCH_ID;
-            const stamp = Date.now();
+            // Reuse the stamp captured outside the set so the txn id the
+            // notification points at matches the one the set writes.
+            const stamp = txnStamp;
             const nowISO = new Date().toISOString();
             const newPlans: CustomerPlan[] = [];
             const newTransactions: CustomerTransaction[] = [];
@@ -2249,6 +3595,37 @@ export const useAppStore = create<AppState>((set, get) => ({
                     expiryISO: expiry.toISOString(),
                     ...(isMembership ? { priceAed: it.unitPrice } : {}),
                 });
+                // Phase 4 — snapshot the tax breakdown onto the transaction
+                // so the Payments tab + receipt views stay truthful even if
+                // the rule / toggle later changes. Inlined (instead of using
+                // `tax-calc.ts`) to avoid a circular import — tax-calc reads
+                // the store's TaxRule type.
+                const lineGross = it.unitPrice * it.quantity;
+                const txnCategory = isMembership ? "membership" as const : "credit_package" as const;
+                const taxRule = state.taxRules.find(r =>
+                    r.category === txnCategory
+                    && r.status === "active"
+                    && r.taxRateId !== undefined
+                    && (r.allLocations || r.locationIds.includes(saleBranchId)),
+                );
+                const taxRate = taxRule?.taxRateId
+                    ? state.taxRates.find(t => t.id === taxRule.taxRateId && t.status === "active")
+                    : undefined;
+                let txnExtra: Partial<CustomerTransaction> = {};
+                if (taxRate) {
+                    const rPct = taxRate.ratePercentage;
+                    const pricesInclude = state.taxSettings.pricesIncludeTax;
+                    const taxAed = pricesInclude
+                        ? Math.round(lineGross * rPct / (100 + rPct))
+                        : Math.round(lineGross * rPct / 100);
+                    const subtotalAed = pricesInclude ? lineGross - taxAed : lineGross;
+                    txnExtra = {
+                        subtotalAed,
+                        taxAed,
+                        taxRatePercentage: rPct,
+                        taxInclusive: pricesInclude,
+                    };
+                }
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
@@ -2256,7 +3633,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                     kind: isMembership ? "membership" : "package",
                     productId: it.productId,
                     name: it.name,
-                    amountAed: it.unitPrice * it.quantity,
+                    amountAed: lineGross,
+                    ...txnExtra,
                     status: "complete",
                     paymentMethod: "card",
                     createdAtISO: nowISO,
@@ -2275,7 +3653,26 @@ export const useAppStore = create<AppState>((set, get) => ({
                     ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
                     : {}),
             };
-        }),
+        });
+        // Feed: a completed sale surfaces in the notification center as
+        // "Payment Confirmed". Amount is formatted with thousands separators
+        // to match the visual treatment used in /admin/insights and POS.
+        if (buyerSnapshot && purchaseTotal > 0) {
+            const buyerName = `${buyerSnapshot.firstName} ${buyerSnapshot.lastName}`.trim();
+            get().addNotification({
+                tab: "payment",
+                event: "payment_confirmed",
+                title: "Payment Confirmed",
+                body: `${buyerName} purchased ${productLabel} for AED ${purchaseTotal.toLocaleString("en-US")}.`,
+                icon: "credit-card",
+                sourceModule: "transaction",
+                sourceId: firstTxnId,
+                transactionId: firstTxnId,
+                customerId: buyerSnapshot.id,
+                branchId: buyerSnapshot.branchId,
+            });
+        }
+    },
 
     showToast: (title, message, type = "success", icon) =>
         set({ toast: { id: Date.now().toString(), title, message, type, icon } }),

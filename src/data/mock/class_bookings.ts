@@ -291,8 +291,19 @@ export const class_bookings: ClassBooking[] = [
         plan_kind_used: "package", plan_id_used: "pkg_10_class",
     },
 
-    // ─── Row 11: Hot Yoga Wed (Upcoming) — 0 bookings (empty roster demo) ──
-    // (no rows)
+    // ─── Row 11: Hot Yoga Wed (Upcoming) — 1 late-cancelled (no impact on
+    //            `booked` count). Backs the Late Cancellation notification so
+    //            the click-through lands on a real roster row with the
+    //            `late_cancel` attendance flag. ──
+    {
+        id: "bk_035", class_schedule_id: "class_sched_2026_05_20_0630",
+        customer_id: "cust_james_taylor", branch_id: "branch_forma_east",
+        status: "cancelled", attendance_status: "late_cancel",
+        booked_at: "2026-05-15T08:00:00Z",
+        cancelled_at: "2026-05-20T05:45:00Z",
+        cancellation_reason: "Late cancellation by customer",
+        plan_kind_used: "package", plan_id_used: "pkg_5_class",
+    },
 
     // ─── Row 12: Reformer Pilates Fri (Upcoming) — 1 booked ──
     {

@@ -10,11 +10,14 @@
 // optionally notifying the customer. "Confirm" opens a summary modal; confirming
 // there adds the credits to the customer's balance through the store.
 //
-// Role-based grant limits (Owner = unlimited, Branch Admin = capped, etc.) are
-// surfaced in the summary modal but not yet enforced — the brief defers limit
-// configuration to the future Staff & Permissions module.
+// Role-based grant limits (Owner = unlimited, Branch Admin = capped, etc.)
+// are now fully enforced — the summary modal reads the current Staff role's
+// `grantLimits`, the credit input is capped by the role's max_grant_value_aed,
+// and the confirm button is blocked when the per-month count is exceeded.
+// Driven by `demoRoleToStaffType()` so creating a new role with a tighter
+// limit immediately affects this flow without code changes.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { XClose, Check, HeartHand } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -24,7 +27,7 @@ import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { TableAvatar } from "@/components/ui/avatar";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, demoRoleToStaffType } from "@/lib/store";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -161,9 +164,48 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
     const router = useRouter();
     const searchParams = useSearchParams();
     const returnTo = searchParams.get("returnTo");
-    const { customers, updateCustomer, addComplimentaryPlan, showToast, currentUser } = useAppStore();
+    const {
+        customers, updateCustomer, addComplimentaryPlan, showToast,
+        currentUser, currentRole, roles, customerPlans,
+    } = useAppStore();
 
     const customer = customers.find(c => c.id === customerId);
+
+    // ─── Phase 4 — Grant Limits enforcement ─────────────────────────────────
+    //
+    // Map the demo `currentRole` to a Staff role record and read its
+    // `grantLimits` config. The summary panel + the confirm button both gate
+    // on this — so creating a new role with a tighter limit immediately
+    // affects this flow without any code changes.
+    const currentStaffRole = useMemo(() => {
+        const type = demoRoleToStaffType(currentRole);
+        if (!type) return undefined;
+        return roles.find(r => r.type === type && r.status === "active");
+    }, [currentRole, roles]);
+    const grantLimits = currentStaffRole?.grantLimits;
+    const grantsAllowed = !!grantLimits?.enabled;
+    const grantsUnlimited = !!grantLimits?.unlimited;
+    const grantsPerMonthCap = grantLimits?.grants_per_month ?? 0;
+    const maxValuePerGrantCap = grantLimits?.max_grant_value_aed ?? 0;
+
+    // Count this user's complimentary grants in the current calendar month.
+    // Uses `grantIssuedBy` (the user's display name) as the lookup key.
+    const userFullName = `${currentUser.first_name} ${currentUser.last_name}`.trim();
+    const grantsUsedThisMonth = useMemo(() => {
+        const monthKey = todayISO().slice(0, 7); // "YYYY-MM"
+        return customerPlans.filter(p =>
+            p.kind === "complimentary"
+            && p.grantIssuedBy === userFullName
+            && p.purchasedAtISO.slice(0, 7) === monthKey
+        ).length;
+    }, [customerPlans, userFullName]);
+
+    const grantsRemainingThisMonth = grantsUnlimited
+        ? Infinity
+        : Math.max(0, grantsPerMonthCap - grantsUsedThisMonth);
+    const maxCreditsPerGrant = grantsUnlimited
+        ? 50
+        : Math.max(0, Math.floor(maxValuePerGrantCap / CREDIT_VALUE_AED));
 
     // ─── Form state ─────────────────────────────────────────────────────────
     const [credits, setCredits] = useState(1);
@@ -184,8 +226,15 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
 
     const reasonLabel = REASON_OPTIONS.find(o => o.value === reasonCategory)?.label ?? "";
 
+    const grantValueAed = credits * CREDIT_VALUE_AED;
+    const overValueCap = grantsAllowed && !grantsUnlimited && grantValueAed > maxValuePerGrantCap;
+    const noGrantsRemaining = grantsAllowed && !grantsUnlimited && grantsRemainingThisMonth <= 0;
+
     const canConfirm =
         !!customer &&
+        grantsAllowed &&
+        !noGrantsRemaining &&
+        !overValueCap &&
         credits >= 1 &&
         reasonCategory !== "" &&
         (reasonCategory !== "other" || reasonNote.trim() !== "") &&
@@ -222,8 +271,9 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
             expiryISO: `${resolvedExpiry}T22:00:00Z`,
             freeCredits: credits,
             grantReason: reasonLabel,
-            grantIssuedBy: `${currentUser.first_name} ${currentUser.last_name}`,
-            grantIssuedRole: "Owner",
+            grantIssuedBy: userFullName,
+            // Real Staff role name — feeds the role-based audit display.
+            grantIssuedRole: currentStaffRole?.name ?? "Owner",
         });
         showToast(
             "Complimentary credit added",
@@ -259,7 +309,11 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                             <p className="text-[18px] font-semibold text-[#101828]">Complimentary configuration</p>
 
                             <Field label="Number of free credit">
-                                <NumericInput value={credits} onChange={setCredits} min={1} max={50} suffix="credits" />
+                                {/* `max` follows the role's per-grant value cap
+                                    (max_grant_value_aed ÷ CREDIT_VALUE_AED).
+                                    Owner / unlimited → 50, Branch Admin →
+                                    AED 500 / 100 = 5, etc. */}
+                                <NumericInput value={credits} onChange={setCredits} min={1} max={maxCreditsPerGrant} suffix="credits" />
                             </Field>
 
                             <Field label="Reason category">
@@ -346,21 +400,47 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
 
                         {/* Content */}
                         <div className="flex flex-col gap-4 px-6 py-5">
-                            {/* Role + grant limit */}
+                            {/* Role + grant limit — live values driven by the
+                                current Staff role's `grantLimits` config. */}
                             <div className="border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4">
                                 <span className="self-start inline-flex items-center px-2 py-[2px] rounded-full text-[14px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]">
-                                    Owner
+                                    {currentStaffRole?.name ?? "Owner"}
                                 </span>
                                 <div className="flex gap-4">
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        <p className="text-[16px] font-semibold text-[#101828]">Grant limit</p>
-                                        <p className="text-[16px] text-[#475467]">Unlimited</p>
+                                        <p className="text-[16px] font-semibold text-[#101828]">Grants this month</p>
+                                        <p className="text-[16px] text-[#475467]">
+                                            {grantsUnlimited
+                                                ? "Unlimited"
+                                                : `${grantsUsedThisMonth} / ${grantsPerMonthCap} used`}
+                                        </p>
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        <p className="text-[16px] font-semibold text-[#101828]">Remaining value</p>
-                                        <p className="text-[16px] text-[#475467]">Unlimited</p>
+                                        <p className="text-[16px] font-semibold text-[#101828]">Max per grant</p>
+                                        <p className="text-[16px] text-[#475467]">
+                                            {grantsUnlimited
+                                                ? "Unlimited"
+                                                : `AED ${maxValuePerGrantCap.toLocaleString("en-US")}`}
+                                        </p>
                                     </div>
                                 </div>
+                                {/* Block reasons — only when the current grant
+                                    would violate a limit. */}
+                                {!grantsAllowed && (
+                                    <p className="text-[14px] text-[#b42318]">
+                                        Your role doesn&apos;t allow granting complimentary credits.
+                                    </p>
+                                )}
+                                {grantsAllowed && noGrantsRemaining && (
+                                    <p className="text-[14px] text-[#b42318]">
+                                        You&apos;ve used all {grantsPerMonthCap} grants this month.
+                                    </p>
+                                )}
+                                {grantsAllowed && !noGrantsRemaining && overValueCap && (
+                                    <p className="text-[14px] text-[#b42318]">
+                                        This grant exceeds the AED {maxValuePerGrantCap.toLocaleString("en-US")} per-grant cap.
+                                    </p>
+                                )}
                             </div>
 
                             {/* Details */}

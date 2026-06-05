@@ -35,11 +35,11 @@ import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableH
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import {
-    useAppStore, BRANCHES,
+    useAppStore,
     permissionSectionsFor,
     type Role, type RoleStatus, type RoleType,
     type Staff, type StaffStatus,
-    type PermissionCell, type PermissionSectionSpec,
+    type PermissionCell, type PermissionSectionSpec, type Branch,
 } from "@/lib/store";
 
 // ─── Tokens — status badges + role-type badge colors ──────────────────────
@@ -87,32 +87,32 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     archive: {
         title: s => `Archive ${s}?`,
         description: () => "Archived records are hidden from the default lists but kept for audit. You can recover later.",
-        confirmLabel: "Archive", destructive: true,
-        Icon: Archive, iconBg: "bg-[#fef3f2]", iconColor: "text-[#b42318]",
+        confirmLabel: "Archive", destructive: false,
+        Icon: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
     },
     recover: {
         title: s => `Recover ${s}?`,
         description: () => "The record returns to Active and becomes assignable again.",
         confirmLabel: "Recover", destructive: false,
-        Icon: RefreshCcw01, iconBg: "bg-[#ecfdf3]", iconColor: "text-[#067647]",
+        Icon: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
     },
     deactivate: {
         title: s => `Deactivate ${s}?`,
         description: () => "The record is disabled but kept for historical reference. You can reactivate later.",
         confirmLabel: "Deactivate", destructive: true,
-        Icon: SlashCircle01, iconBg: "bg-[#fef3f2]", iconColor: "text-[#b42318]",
+        Icon: SlashCircle01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
     },
     reactivate: {
         title: s => `Reactivate ${s}?`,
         description: () => "The record returns to Active and becomes assignable again.",
         confirmLabel: "Reactivate", destructive: false,
-        Icon: Check, iconBg: "bg-[#ecfdf3]", iconColor: "text-[#067647]",
+        Icon: Check, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
     },
     delete: {
         title: s => `Delete ${s}?`,
         description: () => "This permanently removes the record. Only allowed when no history is attached.",
         confirmLabel: "Delete", destructive: true,
-        Icon: Trash01, iconBg: "bg-[#fef3f2]", iconColor: "text-[#b42318]",
+        Icon: Trash01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
     },
 };
 
@@ -167,10 +167,11 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 
-function Sidebar({ role, totalStaffs, onAction }: {
+function Sidebar({ role, totalStaffs, onAction, branches }: {
     role: Role;
     totalStaffs: number;
     onAction: (kind: "add_staff" | "edit_details" | "edit_permissions" | ConfirmKind) => void;
+    branches: Branch[];
 }) {
     const isActive  = role.status === "active";
     const isInactive = role.status === "inactive";
@@ -179,7 +180,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
     const canDelete = !isLocked && !isArchive && totalStaffs === 0;
     const branchLabel = role.branchId === null
         ? "All locations"
-        : BRANCHES.find(b => b.id === role.branchId)?.name ?? "—";
+        : branches.find(b => b.id === role.branchId)?.name ?? "—";
 
     return (
         <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
@@ -637,8 +638,10 @@ function StaffListTab({ role, onChangeRoleFor }: {
 }) {
     const router = useRouter();
     const allStaff           = useAppStore(s => s.staff);
+    const branches           = useAppStore(s => s.branches);
     const setStaffStatus     = useAppStore(s => s.setStaffStatus);
     const deleteStaffAction  = useAppStore(s => s.deleteStaff);
+    const canDeleteStaff     = useAppStore(s => s.canDeleteStaff);
     const resendStaffInvite  = useAppStore(s => s.resendStaffInvite);
     const showToast          = useAppStore(s => s.showToast);
 
@@ -667,8 +670,8 @@ function StaffListTab({ role, onChangeRoleFor }: {
     const { sorted: filtered, sortKey, sortDir, toggle: toggleSort } = useSort<Staff>(searched, {
         name:   (a, b) => a.fullName.localeCompare(b.fullName),
         branch: (a, b) => {
-            const an = a.branchId === null ? "All locations" : BRANCHES.find(x => x.id === a.branchId)?.name ?? "";
-            const bn = b.branchId === null ? "All locations" : BRANCHES.find(x => x.id === b.branchId)?.name ?? "";
+            const an = a.branchId === null ? "All locations" : branches.find(x => x.id === a.branchId)?.name ?? "";
+            const bn = b.branchId === null ? "All locations" : branches.find(x => x.id === b.branchId)?.name ?? "";
             return an.localeCompare(bn);
         },
         status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
@@ -699,7 +702,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
         });
     }
 
-    function hasHistory(s: Staff): boolean { return s.firstLoginCompleted; }
+    function hasHistory(s: Staff): boolean { return !canDeleteStaff(s.id); }
 
     function handleAction(s: Staff, kind: StaffRowAction) {
         if (kind === "view")          return router.push(`/staff/members/${s.id}?returnTo=/staff/roles/${role.id}`);
@@ -843,7 +846,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
                             <tbody>
                                 {pageRows.map(s => {
                                     const isSelected = selectedIds.has(s.id);
-                                    const branch = s.branchId === null ? "All locations" : BRANCHES.find(b => b.id === s.branchId)?.name ?? "—";
+                                    const branch = s.branchId === null ? "All locations" : branches.find(b => b.id === s.branchId)?.name ?? "—";
                                     return (
                                         <tr key={s.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
                                             <td className={TD}>
@@ -978,6 +981,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
     const router = useRouter();
     const roles            = useAppStore(s => s.roles);
     const staff            = useAppStore(s => s.staff);
+    const branches         = useAppStore(s => s.branches);
     const setRolesStatus   = useAppStore(s => s.setRolesStatus);
     const deleteRolesAction = useAppStore(s => s.deleteRoles);
     const showToast        = useAppStore(s => s.showToast);
@@ -1069,7 +1073,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
             {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
                 <div className="flex gap-6 h-[832px]">
-                    <Sidebar role={role} totalStaffs={staffOnRole.length} onAction={handleSidebarAction} />
+                    <Sidebar role={role} totalStaffs={staffOnRole.length} onAction={handleSidebarAction} branches={branches} />
 
                     {/* Content card */}
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">

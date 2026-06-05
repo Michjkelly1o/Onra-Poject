@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
-import { useAppStore, BRANCHES, type MarketingItem } from "@/lib/store";
+import { useAppStore, type MarketingItem, type Branch } from "@/lib/store";
 
 /** Current local time as "HH:MM" — used to bar past start-time slots today. */
 function nowHHMM(): string {
@@ -468,13 +468,14 @@ function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
 
 // ─── Branch single-select dropdown (multi-location OFF) ──────────────────────
 
-function BranchSingleSelect({ value, onChange }: {
+function BranchSingleSelect({ value, onChange, branches }: {
     value: string | null; onChange: (id: string) => void;
+    branches: Branch[];
 }) {
     const [open, setOpen] = useState(false);
     const [width, setWidth] = useState(0);
     const btnRef = useRef<HTMLButtonElement>(null);
-    const selected = BRANCHES.find(b => b.id === value);
+    const selected = branches.find(b => b.id === value);
     function toggle() {
         if (btnRef.current) setWidth(btnRef.current.offsetWidth);
         setOpen(p => !p);
@@ -490,7 +491,7 @@ function BranchSingleSelect({ value, onChange }: {
                 <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 220}>
-                {BRANCHES.map(b => (
+                {branches.map(b => (
                     <button key={b.id} type="button"
                         onClick={() => { onChange(b.id); setOpen(false); }}
                         className={cn(
@@ -568,6 +569,7 @@ export function MarketingFormPage({ mode, marketingId, initial }: MarketingFormP
     const memberships         = useAppStore(s => s.memberships);
     const packages            = useAppStore(s => s.packages);
     const classTemplates      = useAppStore(s => s.classTemplates);
+    const branches            = useAppStore(s => s.branches);
 
     const [step, setStep] = useState(1);
     const [form, setForm] = useState<MarketingFormData>({
@@ -887,7 +889,7 @@ export function MarketingFormPage({ mode, marketingId, initial }: MarketingFormP
                                     <MultiSelectCard
                                         title="Branches"
                                         subtitle="The marketing can be used on these branches"
-                                        options={BRANCHES.map(b => ({ id: b.id, label: b.name }))}
+                                        options={branches.map(b => ({ id: b.id, label: b.name }))}
                                         selected={form.branchIds}
                                         onChange={ids => patch({ branchIds: ids })}
                                     />
@@ -896,6 +898,7 @@ export function MarketingFormPage({ mode, marketingId, initial }: MarketingFormP
                                         <BranchSingleSelect
                                             value={form.singleBranchId}
                                             onChange={id => patch({ singleBranchId: id })}
+                                            branches={branches}
                                         />
                                     </FormField>
                                 )}
@@ -936,7 +939,7 @@ export function MarketingFormPage({ mode, marketingId, initial }: MarketingFormP
                     )}
 
                     {/* Right: live marketing preview */}
-                    <MarketingPreviewPanel form={form} />
+                    <MarketingPreviewPanel form={form} branches={branches} />
                 </div>
             </div>
         </div>
@@ -984,7 +987,7 @@ function PreviewAttr({ icon, label, muted }: {
     );
 }
 
-function MarketingPreviewPanel({ form }: { form: MarketingFormData }) {
+function MarketingPreviewPanel({ form, branches }: { form: MarketingFormData; branches: Branch[] }) {
     const name = form.name.trim();
     const description = form.description.trim();
 
@@ -992,10 +995,10 @@ function MarketingPreviewPanel({ form }: { form: MarketingFormData }) {
         if (form.multiLocation) {
             const n = form.branchIds.length;
             if (n === 0) return null;
-            if (n >= BRANCHES.length) return "All branches";
+            if (n >= branches.length) return "All branches";
             return `${n} ${n === 1 ? "branch" : "branches"}`;
         }
-        return BRANCHES.find(b => b.id === form.singleBranchId)?.name ?? null;
+        return branches.find(b => b.id === form.singleBranchId)?.name ?? null;
     })();
 
     return (

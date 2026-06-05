@@ -35,8 +35,8 @@ import { NumericStringInput } from "@/components/ui/NumericInput";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { DecorativeBanner, BANNER_TINTS } from "./DecorativeBanner";
 import {
-    BRANCHES, useAppStore,
-    type PurchaseRulesData, type DurationUnit, type Weekday,
+    useAppStore,
+    type PurchaseRulesData, type DurationUnit, type Weekday, type Branch,
 } from "@/lib/store";
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
@@ -264,12 +264,13 @@ interface ConfigurationData {
     singleBranchId: string | null;
 }
 
-function ProductConfigurationStep({ kind, data, onChange, onBack, onContinue }: {
+function ProductConfigurationStep({ kind, data, onChange, onBack, onContinue, branches }: {
     kind: ProductKind;
     data: ConfigurationData;
     onChange: (patch: Partial<ConfigurationData>) => void;
     onBack: () => void;
     onContinue: () => void;
+    branches: Branch[];
 }) {
     // Validation: credit amount required unless membership has "unlimited" on.
     // Branch selection: at least 1 selected when multi-location ON; any branch
@@ -345,12 +346,14 @@ function ProductConfigurationStep({ kind, data, onChange, onBack, onContinue }: 
                         kind={kind}
                         selected={data.branchIds}
                         onChange={ids => onChange({ branchIds: ids })}
+                        branches={branches}
                     />
                 ) : (
                     <FormField label="Branch location">
                         <BranchSingleSelect
                             value={data.singleBranchId}
                             onChange={id => onChange({ singleBranchId: id })}
+                            branches={branches}
                         />
                     </FormField>
                 )}
@@ -425,15 +428,16 @@ function CreditAmountInput({ value, onChange }: {
 
 type BranchFilterValue = "all" | "active" | "inactive";
 
-function BranchMultiSelect({ kind, selected, onChange }: {
+function BranchMultiSelect({ kind, selected, onChange, branches }: {
     kind: ProductKind;
     selected: string[];
     onChange: (ids: string[]) => void;
+    branches: Branch[];
 }) {
     const [expanded, setExpanded] = useState(true);
     const [filter, setFilter] = useState<BranchFilterValue>("all");
 
-    const all = BRANCHES;
+    const all = branches;
     const visible = all.filter(b => {
         if (filter === "active") return b.status === "active";
         if (filter === "inactive") return b.status === "inactive";
@@ -574,8 +578,9 @@ function FilledCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
 
 // ─── Branch single-select dropdown (Figma 5390:84035) ───────────────────────
 
-function BranchSingleSelect({ value, onChange }: {
+function BranchSingleSelect({ value, onChange, branches }: {
     value: string | null; onChange: (id: string) => void;
+    branches: Branch[];
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -585,7 +590,7 @@ function BranchSingleSelect({ value, onChange }: {
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
-    const selected = BRANCHES.find(b => b.id === value);
+    const selected = branches.find(b => b.id === value);
 
     return (
         <div ref={ref} className="relative w-full">
@@ -602,7 +607,7 @@ function BranchSingleSelect({ value, onChange }: {
             </button>
             {open && (
                 <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
-                    {BRANCHES.map(b => (
+                    {branches.map(b => (
                         <button key={b.id} type="button"
                             onClick={() => { onChange(b.id); setOpen(false); }}
                             className={cn(
@@ -1655,6 +1660,7 @@ export function ProductFormPage({ mode, productId, initial }: ProductFormPagePro
     const addPackage       = useAppStore(s => s.addPackage);
     const updateMembership = useAppStore(s => s.updateMembership);
     const updatePackage    = useAppStore(s => s.updatePackage);
+    const branches         = useAppStore(s => s.branches);
 
     function handleClose() {
         // Edit mode returns to the detail page; create mode returns to list.
@@ -1846,6 +1852,7 @@ export function ProductFormPage({ mode, productId, initial }: ProductFormPagePro
                             onChange={p => setConfig(prev => ({ ...prev, ...p }))}
                             onBack={() => setStep(2)}
                             onContinue={() => setStep(4)}
+                            branches={branches}
                         />
                     )}
                     {step === 4 && kind && (

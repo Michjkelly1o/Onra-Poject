@@ -38,10 +38,10 @@ import {
     type LinePoint, type AttendancePoint,
 } from "@/components/staff/InstructorCharts";
 import {
-    useAppStore, BRANCHES,
+    useAppStore,
     permissionSectionsFor,
     type Staff, type StaffStatus, type Role, type RoleType,
-    type PermissionCell, type PermissionSectionSpec,
+    type PermissionCell, type PermissionSectionSpec, type Branch,
 } from "@/lib/store";
 
 // ─── Status badges ─────────────────────────────────────────────────────────
@@ -79,32 +79,32 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     archive: {
         title: s => `Archive ${s}?`,
         description: () => "Archived staff are hidden from the default lists but kept for audit. You can recover later.",
-        confirmLabel: "Archive", destructive: true,
-        Icon: Archive, iconBg: "bg-[#fef3f2]", iconColor: "text-[#b42318]",
+        confirmLabel: "Archive", destructive: false,
+        Icon: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
     },
     recover: {
         title: s => `Recover ${s}?`,
         description: () => "The staff member returns to Active and login is re-enabled.",
         confirmLabel: "Recover", destructive: false,
-        Icon: RefreshCcw01, iconBg: "bg-[#ecfdf3]", iconColor: "text-[#067647]",
+        Icon: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
     },
     deactivate: {
         title: s => `Deactivate ${s}?`,
         description: () => "Login is disabled but all historical data is kept. You can reactivate later.",
         confirmLabel: "Deactivate", destructive: true,
-        Icon: SlashCircle01, iconBg: "bg-[#fef3f2]", iconColor: "text-[#b42318]",
+        Icon: SlashCircle01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
     },
     reactivate: {
         title: s => `Reactivate ${s}?`,
         description: () => "Login is re-enabled and the staff member returns to Active.",
         confirmLabel: "Reactivate", destructive: false,
-        Icon: Check, iconBg: "bg-[#ecfdf3]", iconColor: "text-[#067647]",
+        Icon: Check, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
     },
     delete: {
         title: s => `Delete ${s}?`,
         description: () => "This permanently removes the staff record. Only allowed when no first login has happened.",
         confirmLabel: "Delete", destructive: true,
-        Icon: Trash01, iconBg: "bg-[#fef3f2]", iconColor: "text-[#b42318]",
+        Icon: Trash01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
     },
 };
 
@@ -159,20 +159,21 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 
-function Sidebar({ staff, role, payRateName, onAction }: {
+function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
     staff: Staff;
     role: Role | undefined;
     payRateName: string;
     onAction: (kind: "edit_details" | "change_role" | "resend_invite" | ConfirmKind) => void;
+    branches: Branch[];
+    hasHistory: boolean;
 }) {
     const isPending  = staff.status === "pending";
     const isActive   = staff.status === "active";
     const isInactive = staff.status === "inactive";
     const isArchive  = staff.status === "archive";
-    const hasHistory = staff.firstLoginCompleted;
     const branchLabel = staff.branchId === null
         ? "All locations"
-        : BRANCHES.find(b => b.id === staff.branchId)?.name ?? "—";
+        : branches.find(b => b.id === staff.branchId)?.name ?? "—";
 
     const tempPwMask = staff.tempPassword
         ? "•".repeat(Math.min(12, staff.tempPassword.length))
@@ -276,17 +277,24 @@ function Metadata({ label, value }: { label: string; value: React.ReactNode }) {
 function InternalLinkCard({ staff, payRateId }: { staff: Staff; payRateId?: string }) {
     const router = useRouter();
     function go(path: string) { router.push(path); }
+    // self-aligned-start so the card hugs its content height rather than
+    // stretching to match the main content card on its left.
     return (
-        <aside className="w-[280px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[280px] shrink-0 self-start bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <div className="px-6 pt-6 pb-4">
                 <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">Internal link</p>
             </div>
             <div className="flex flex-col gap-1 px-3 pb-6">
+                {/* Earnings → payroll module detail page for THIS instructor.
+                    `staff.id` matches the `instructors` slice id 1:1, so the
+                    [instructorId] route resolves directly. */}
                 <LinkRow icon={<CreditCard02 className="w-5 h-5" />} label="Earnings"
-                    onClick={() => go(`/admin/staff/compensation`)} />
+                    onClick={() => go(`/compensation/${staff.id}?returnTo=/staff/members/${staff.id}`)} />
+                {/* Pay rate → pay-rate module detail page for the instructor's
+                    assigned rate (e.g. "Standard"). Hidden when no rate set. */}
                 {payRateId && (
                     <LinkRow icon={<CoinsHand className="w-5 h-5" />} label="Pay rate"
-                        onClick={() => go(`/admin/staff/pay-rate/${payRateId}`)} />
+                        onClick={() => go(`/staff/pay-rate/${payRateId}?returnTo=/staff/members/${staff.id}`)} />
                 )}
                 <LinkRow icon={<Calendar className="w-5 h-5" />} label="Schedule"
                     onClick={() => go(`/admin/schedule?instructorId=${staff.id}`)} />
@@ -609,8 +617,10 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
     const allStaff           = useAppStore(s => s.staff);
     const allRoles           = useAppStore(s => s.roles);
     const payRates           = useAppStore(s => s.payRates);
+    const branches           = useAppStore(s => s.branches);
     const setStaffStatus     = useAppStore(s => s.setStaffStatus);
     const deleteStaffAction  = useAppStore(s => s.deleteStaff);
+    const canDeleteStaff     = useAppStore(s => s.canDeleteStaff);
     const resendStaffInvite  = useAppStore(s => s.resendStaffInvite);
     const showToast          = useAppStore(s => s.showToast);
 
@@ -717,6 +727,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                         role={role}
                         payRateName={payRateName}
                         onAction={handleSidebarAction}
+                        branches={branches}
+                        hasHistory={!canDeleteStaff(staff.id)}
                     />
 
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">

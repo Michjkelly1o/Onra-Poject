@@ -276,11 +276,12 @@ function LeftSidebar({ design, customerCount, onAction }: {
     );
 }
 
-function SidebarField({ label, value }: { label: string; value: string }) {
+function SidebarField({ label, value, suffix }: { label: string; value: string; suffix?: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
             <p className="text-[14px] text-[#667085]">{label}</p>
             <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            {suffix}
         </div>
     );
 }
@@ -414,8 +415,8 @@ function InlineStatRow({ children }: { children: React.ReactNode }) {
     return <div className="grid grid-cols-2 gap-4">{children}</div>;
 }
 
-function InlineStat({ icon, label, value, tooltip }: {
-    icon: React.ReactNode; label: string; value: string; tooltip?: string;
+function InlineStat({ icon, label, value, tooltip, suffix }: {
+    icon: React.ReactNode; label: string; value: string; tooltip?: string; suffix?: React.ReactNode;
 }) {
     return (
         <div className="flex items-center gap-3">
@@ -428,6 +429,7 @@ function InlineStat({ icon, label, value, tooltip }: {
                     {tooltip && <HelpTooltip text={tooltip} />}
                 </div>
                 <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{value}</p>
+                {suffix}
             </div>
         </div>
     );

@@ -851,6 +851,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const router  = useRouter();
     const searchParams = useSearchParams();
     const { classTemplates, classSchedules, addClassSchedules, updateClassSchedule, showToast } = useAppStore();
+    // Live business hours — Read here so any branch-hours edit made in
+    // Settings → Business & Locations immediately drives the form's
+    // Start/End time slot list (no static seed reads).
+    const liveBusinessHours = useAppStore(s => s.businessHours);
 
     const isEditing = !!editingId;
     const editing = editingId ? classSchedules.find(c => c.id === editingId) : undefined;
@@ -1059,7 +1063,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // class that begins in the past. Slots on a future date are unaffected.
     const singleDateSlots = useMemo(() => {
         if (!selectedDate || !selectedBranchGroup) return [];
-        const slots = buildTimeSlots(getBusinessHours(selectedBranchId, selectedDate), duration);
+        const slots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration);
         if (selectedDate === todayISO()) {
             const now = new Date();
             const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -1069,7 +1073,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             });
         }
         return slots;
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
@@ -1086,10 +1090,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             const d = new Date(anchor);
             d.setUTCDate(anchor.getUTCDate() + delta);
             const iso = d.toISOString().slice(0, 10);
-            map[label] = buildTimeSlots(getBusinessHours(selectedBranchId, iso), duration);
+            map[label] = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, iso), duration);
         }
         return map;
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours]);
 
     // True when a recurring slot's FIRST occurrence lands on today AND its
     // start time has already passed the current live time. Drives the

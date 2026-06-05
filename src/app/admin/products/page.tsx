@@ -36,9 +36,10 @@ import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableH
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
-    useAppStore, BRANCHES, DEFAULT_BRANCH_ID,
-    type Membership, type Package, type Customer,
+    useAppStore, DEFAULT_BRANCH_ID,
+    type Membership, type Package, type Customer, type Branch,
 } from "@/lib/store";
+import { findActiveTaxRuleFor, categoryForProductType } from "@/lib/tax-calc";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -100,10 +101,10 @@ function formatValidity(days: number): string {
     return `${days} days`;
 }
 
-function branchNamesFor(ids: string[]): string {
+function branchNamesFor(ids: string[], branches: Branch[]): string {
     if (ids.length === 0) return "All branches";
     const names = ids
-        .map(id => BRANCHES.find(b => b.id === id)?.name ?? id)
+        .map(id => branches.find(b => b.id === id)?.name ?? id)
         // strip the "Forma Studio " prefix so the cell stays compact
         .map(n => n.replace(/^Forma Studio /, ""));
     if (names.length <= 2) return names.join(", ");
@@ -127,6 +128,40 @@ function StatusBadge({ status }: { status: ProductStatus }) {
         )}>
             {STATUS_LABEL[status]}
         </span>
+    );
+}
+
+// ─── Price cell with live tax suffix (Phase 4 cross-module wiring) ──────────
+//
+// Renders the raw catalog price + a one-line subtle suffix that reflects the
+// global "Prices include tax" toggle and any active tax_rule for this product
+// category (Membership → tax_rule.category = "membership"; Package →
+// "credit_package"). When no rule is set or the rate is archived, the suffix
+// is omitted and the cell looks exactly like before.
+
+function PriceCell({ priceAed, kind }: { priceAed: number; kind: "membership" | "package" }) {
+    const taxRules = useAppStore(s => s.taxRules);
+    const taxRates = useAppStore(s => s.taxRates);
+    const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
+
+    const category = categoryForProductType(kind);
+    // List view has no branch context, so we resolve against `undefined` —
+    // that picks up `all_locations` rules only (the most generic match).
+    const match = category
+        ? findActiveTaxRuleFor({ taxRules, taxRates }, category, undefined)
+        : null;
+
+    return (
+        <div className="flex flex-col">
+            <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{formatAed(priceAed)}</span>
+            {match && (
+                <span className="text-[12px] text-[#667085] whitespace-nowrap">
+                    {pricesIncludeTax
+                        ? `Inc. ${match.rate.ratePercentage}% tax`
+                        : `+ ${match.rate.ratePercentage}% tax`}
+                </span>
+            )}
+        </div>
     );
 }
 
@@ -698,7 +733,7 @@ type ProductRow = {
     hasHolders: boolean;
 };
 
-function rowsFromMemberships(items: Membership[], customers: Customer[]): ProductRow[] {
+function rowsFromMemberships(items: Membership[], customers: Customer[], branches: Branch[]): ProductRow[] {
     return items.map(m => ({
         id: m.id,
         kind: "membership" as const,
@@ -707,7 +742,7 @@ function rowsFromMemberships(items: Membership[], customers: Customer[]): Produc
         creditsLabel: formatCredits(m.credits),
         creditsSortValue: m.credits === "unlimited" ? Number.POSITIVE_INFINITY : m.credits,
         branchIds: m.branch_ids,
-        branchesLabel: branchNamesFor(m.branch_ids),
+        branchesLabel: branchNamesFor(m.branch_ids, branches),
         durationLabel: formatDuration(m.duration_months),
         durationDays: m.duration_months * 30,
         status: m.status,
@@ -715,7 +750,7 @@ function rowsFromMemberships(items: Membership[], customers: Customer[]): Produc
     }));
 }
 
-function rowsFromPackages(items: Package[], customers: Customer[]): ProductRow[] {
+function rowsFromPackages(items: Package[], customers: Customer[], branches: Branch[]): ProductRow[] {
     return items.map(p => ({
         id: p.id,
         kind: "package" as const,
@@ -724,7 +759,7 @@ function rowsFromPackages(items: Package[], customers: Customer[]): ProductRow[]
         creditsLabel: formatCredits(p.credits),
         creditsSortValue: p.credits,
         branchIds: p.branch_ids,
-        branchesLabel: branchNamesFor(p.branch_ids),
+        branchesLabel: branchNamesFor(p.branch_ids, branches),
         durationLabel: formatValidity(p.validity_days),
         durationDays: p.validity_days,
         status: p.status,
@@ -816,7 +851,7 @@ function ListView({
                                         <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                     </div>
                                 </td>
-                                <td className={cn(TD, "font-medium text-[#101828] whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
+                                <td className={cn(TD, "whitespace-nowrap")}><PriceCell priceAed={r.priceAed} kind={r.kind} /></td>
                                 <td className={cn(TD, "whitespace-nowrap text-center")}>{r.creditsLabel}</td>
                                 <td className={TD}>{r.branchesLabel}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationLabel}</td>
@@ -852,6 +887,7 @@ export default function ProductsPage() {
     const memberships = useAppStore(s => s.memberships);
     const packages = useAppStore(s => s.packages);
     const customers = useAppStore(s => s.customers);
+    const branches = useAppStore(s => s.branches);
     const setMembershipStatus = useAppStore(s => s.setMembershipStatus);
     const setPackageStatus = useAppStore(s => s.setPackageStatus);
     const deleteMembership = useAppStore(s => s.deleteMembership);
@@ -881,22 +917,22 @@ export default function ProductsPage() {
     // Reset page when tab/filters change
     useEffect(() => { setPage(1); }, [tab, search, applied, branchId]);
 
-    // Branch dropdown — single source: BRANCHES seed
+    // Branch dropdown — single source: live `branches` slice
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
 
     // ─── Build rows for the current tab (holder flag derived live) ──────────
     const allRows = useMemo<ProductRow[]>(
         () => tab === "memberships"
-            ? rowsFromMemberships(memberships, customers)
-            : rowsFromPackages(packages, customers),
-        [tab, memberships, packages, customers],
+            ? rowsFromMemberships(memberships, customers, branches)
+            : rowsFromPackages(packages, customers, branches),
+        [tab, memberships, packages, customers, branches],
     );
 
     // ─── Apply branch + search + filter ─────────────────────────────────────

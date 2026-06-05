@@ -39,7 +39,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import {
-    useAppStore, BRANCHES,
+    useAppStore, type Branch,
     type Role, type RoleStatus, type RoleType,
     type Staff, type StaffStatus,
 } from "@/lib/store";
@@ -83,9 +83,9 @@ const ROLE_TYPE_BADGE: Record<RoleType, string> = {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function branchName(id: string | null): string {
+function branchName(id: string | null, branches: Branch[]): string {
     if (id === null) return "All locations";
-    return BRANCHES.find(b => b.id === id)?.name ?? "—";
+    return branches.find(b => b.id === id)?.name ?? "—";
 }
 
 // ─── Toggle switch (role row "Enabled" column) ─────────────────────────────
@@ -282,13 +282,14 @@ interface StaffFilter  { roleId: string; branchId: string; statuses: StaffStatus
 const EMPTY_ROLE_FILTER:  RoleFilter  = { branchId: "", statuses: [] };
 const EMPTY_STAFF_FILTER: StaffFilter = { roleId: "", branchId: "", statuses: [] };
 
-function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRole, onApplyStaff, roles }: {
+function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRole, onApplyStaff, roles, branches }: {
     open: boolean; onClose: () => void;
     tab: TabId;
     appliedRole: RoleFilter; appliedStaff: StaffFilter;
     onApplyRole:  (next: RoleFilter)  => void;
     onApplyStaff: (next: StaffFilter) => void;
     roles: Role[];
+    branches: Branch[];
 }) {
     const [pendingRole,  setPendingRole]  = useState<RoleFilter>(EMPTY_ROLE_FILTER);
     const [pendingStaff, setPendingStaff] = useState<StaffFilter>(EMPTY_STAFF_FILTER);
@@ -326,7 +327,7 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
         ? pendingRole.branchId !== "" || pendingRole.statuses.length > 0
         : pendingStaff.branchId !== "" || pendingStaff.statuses.length > 0 || pendingStaff.roleId !== "";
 
-    const branchOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
+    const branchOptions = branches.filter(b => b.status === "active").map(b => ({
         value: b.id, label: b.name,
         icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
     }));
@@ -726,14 +727,14 @@ function Pagination({ page, total, pageSize, onPage, onPageSize }: {
 
 // ─── CSV export helper ─────────────────────────────────────────────────────
 
-function exportRolesCsv(rows: Role[], staffByRole: Map<string, number>) {
+function exportRolesCsv(rows: Role[], staffByRole: Map<string, number>, branches: Branch[]) {
     const header = ["Role name", "Description", "Type", "Branch location", "Staffs", "Status"];
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const lines = rows.map(r => [
-        r.name, r.description, r.type, branchName(r.branchId),
+        r.name, r.description, r.type, branchName(r.branchId, branches),
         staffByRole.get(r.id) ?? 0, ROLE_STATUS_LABEL[r.status],
     ].map(escape).join(","));
     const csv = [header.join(","), ...lines].join("\n");
@@ -744,7 +745,7 @@ function exportRolesCsv(rows: Role[], staffByRole: Map<string, number>) {
     URL.revokeObjectURL(url);
 }
 
-function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>) {
+function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>, branches: Branch[]) {
     const header = ["Name", "Email", "Phone", "Role", "Branch location", "Status", "Joined"];
     const escape = (v: string | number) => {
         const s = String(v);
@@ -753,7 +754,7 @@ function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>) {
     const lines = rows.map(s => [
         s.fullName, s.email, s.phone,
         rolesById.get(s.roleId)?.name ?? "—",
-        branchName(s.branchId),
+        branchName(s.branchId, branches),
         STAFF_STATUS_LABEL[s.status], s.joinedDate,
     ].map(escape).join(","));
     const csv = [header.join(","), ...lines].join("\n");
@@ -780,10 +781,12 @@ export default function StaffPermissionsPage() {
     const router = useRouter();
     const roles            = useAppStore(s => s.roles);
     const staff            = useAppStore(s => s.staff);
+    const branches         = useAppStore(s => s.branches);
     const setRolesStatus   = useAppStore(s => s.setRolesStatus);
     const deleteRolesAction = useAppStore(s => s.deleteRoles);
     const setStaffStatus   = useAppStore(s => s.setStaffStatus);
     const deleteStaffAction = useAppStore(s => s.deleteStaff);
+    const canDeleteStaff   = useAppStore(s => s.canDeleteStaff);
     const resendStaffInvite = useAppStore(s => s.resendStaffInvite);
     const showToast        = useAppStore(s => s.showToast);
 
@@ -850,7 +853,7 @@ export default function StaffPermissionsPage() {
     const STAFF_STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archive: 3 };
     function branchSortName(id: string | null): string {
         if (id === null) return "All locations";
-        return BRANCHES.find(b => b.id === id)?.name ?? "";
+        return branches.find(b => b.id === id)?.name ?? "";
     }
     const { sorted: sortedRoles, sortKey: roleSortKey, sortDir: roleSortDir, toggle: toggleRoleSort } = useSort<Role>(filteredRoles, {
         name:    (a, b) => a.name.localeCompare(b.name),
@@ -898,15 +901,15 @@ export default function StaffPermissionsPage() {
     const bulkStaffReactivatable = selectedStaffRows.some(s => s.status === "inactive");
     const bulkStaffRecoverable   = selectedStaffRows.some(s => s.status === "archive");
     const bulkStaffDeletable     = selectedStaffRows.length > 0
-        && selectedStaffRows.every(s => !s.firstLoginCompleted && s.status !== "archive");
+        && selectedStaffRows.every(s => canDeleteStaff(s.id));
 
-    // ─── Branch options ───────────────────────────────────────────────────
+    // ─── Branch options (live `branches` slice) ───────────────────────────
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
 
     // ─── Toolbar handlers ─────────────────────────────────────────────────
@@ -915,11 +918,11 @@ export default function StaffPermissionsPage() {
     function handleExport() {
         if (tab === "roles") {
             if (filteredRoles.length === 0) return;
-            exportRolesCsv(filteredRoles, staffByRole);
+            exportRolesCsv(filteredRoles, staffByRole, branches);
             showToast("Roles exported", `${filteredRoles.length} role${filteredRoles.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
         } else {
             if (filteredStaff.length === 0) return;
-            exportStaffCsv(filteredStaff, rolesById);
+            exportStaffCsv(filteredStaff, rolesById, branches);
             showToast("Staff exported", `${filteredStaff.length} staff member${filteredStaff.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
         }
     }
@@ -1257,7 +1260,7 @@ export default function StaffPermissionsPage() {
                                                 </div>
                                             </td>
                                             <td className={TD}>{staffCount}</td>
-                                            <td className={cn(TD, "text-[#475467]")}>{branchName(r.branchId)}</td>
+                                            <td className={cn(TD, "text-[#475467]")}>{branchName(r.branchId, branches)}</td>
                                             <td className={TD}>
                                                 <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", ROLE_STATUS_BADGE[r.status])}>
                                                     {ROLE_STATUS_LABEL[r.status]}
@@ -1325,10 +1328,11 @@ export default function StaffPermissionsPage() {
                                 <tbody>
                                     {staffPageRows.map(s => {
                                         const role = rolesById.get(s.roleId);
-                                        // "Has history" = signed in at least once. A staff
-                                        // member who's never logged in has produced no records
-                                        // and qualifies for the Delete branch of the XOR.
-                                        const hasHistory = s.firstLoginCompleted;
+                                        // "Has history" = store refuses hard-delete. The
+                                        // single source of truth for the XOR lives in
+                                        // `canDeleteStaff`, which checks payroll / schedule /
+                                        // rating references before allowing the Delete branch.
+                                        const hasHistory = !canDeleteStaff(s.id);
                                         const isSelected = selectedStaffIds.has(s.id);
                                         return (
                                             <tr key={s.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
@@ -1355,7 +1359,7 @@ export default function StaffPermissionsPage() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId)}</td>
+                                                <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
                                                         {STAFF_STATUS_LABEL[s.status]}
@@ -1398,6 +1402,7 @@ export default function StaffPermissionsPage() {
                 onApplyRole={setRoleFilter}
                 onApplyStaff={setStaffFilter}
                 roles={roles}
+                branches={branches}
             />
 
             {pendingConfirm && (

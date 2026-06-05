@@ -4,262 +4,228 @@ A plain-language guide to what's ready in this build of the Onra Studio admin
 dashboard. Use it to run through the prototype yourself and see what each part
 can do.
 
-This update covers **seven modules**:
+This update covers **four modules**:
 
-1. **Dashboard**
-2. **Class Templates**
-3. **Class Schedule**
-4. **Point of Sale (POS)**
-5. **Memberships & Packages**
-6. **Gift Cards**
-7. **Promos**
+1. **Customer Management**
+2. **Marketing**
+3. **Insights**
+4. **Pay Rate**
 
 Each section below explains what the module is for, **what you can do** in it,
 and the **improvements in this build**.
 
 ---
 
-## 1. Dashboard
+## 1. Customer Management
 
-Your home screen — a single, at-a-glance view of how the studio is doing today.
+Your **customer directory** — every member and walk-in the studio knows, with
+their plans, payments, agreements, and history in one place.
 
 ### What you can do
 
-- See the studio's **key numbers** at the top — the headline stats for the day.
-- **Customise your dashboard** — it's built from widgets you control:
-  - **Add a widget** — open the widget picker and choose what you want on the
-    screen.
-  - **Remove a widget** — use the "···" menu on any widget and choose
-    *Remove widget* to take it off your dashboard.
-- Review **today's activity** — what's happening across the studio right now.
-- **Change the time period** — view the numbers for the range you care about.
+- See every customer in a **single table** — avatar, name, contact, current
+  plan, status, last visit, and a row menu for quick actions.
+- **Search** by name, email, or phone number.
+- **Filter by branch** to focus on one location.
+- Open the **advanced filter panel** to slice by status, plan type (membership
+  / credit package / no plan), last-visit buckets (last 7 / 30 / 60 / 90 days
+  / over 90 / never visited), and plan expiry date range.
+- **Sort** any column and choose how many rows you want per page.
+- **Bulk-select** multiple customers and apply Archive, Reactivate, Recover,
+  Deactivate, or Delete in one go — a floating action bar shows the live
+  selection count.
+- **Add a new customer** on a dedicated full-page form — first and last name,
+  email, phone, home branch, and an optional starting plan.
+- **Import customers** from a list via the split menu on the "Add new" button.
+- **Export the list to CSV** with the columns you see — name, email, phone,
+  plan, status, join date, last visit.
+- **Open a customer** to see their full profile:
+  - **Left sidebar** — avatar, status badge, contact, join date, plan summary
+    with expiry, and current credit balance.
+  - **Plan tab** — every plan they've ever held (membership or package) with
+    kind, status, start date, expiry, and credits. Row actions to **Freeze**,
+    **Unfreeze**, **Cancel plan**, **Remove free credit**, or **View
+    details** — each with its own confirmation.
+  - **Payments tab** — Overview cards (total spent, total refunded, net
+    spend), issued gift cards with balance and expiry, saved payment methods,
+    plus a Payment history table showing every transaction with type, amount,
+    and status. Refund completed payments with a reason captured.
+  - **Agreements tab** — every agreement version this customer has been
+    issued, with signed status, branches covered, and signed date. Open any
+    agreement to read the full content.
+- **Edit** any active customer's details at any time.
+- **Add complimentary credit** — a dedicated screen to grant free credit with
+  the amount, a reason (loyalty reward / new member / other), and a note.
+- Manage each customer's **lifecycle**:
+  - **Deactivate** — suspend login and new bookings while keeping history.
+  - **Archive** — hide from the default list, all history preserved, fully
+    recoverable.
+  - **Reactivate / Recover** — bring deactivated or archived customers back.
+  - **Delete** — only when the customer has zero booking history.
+- Every change shows a **confirmation** and a success message.
 
 ### What's new in this build
 
-- The dashboard is now **fully customisable** — pick the widgets that matter to
-  you and drop the ones you don't.
-- The widget remove action is clearer — it now reads **"Remove widget"**.
-- Cleaner layout and consistent styling across every card.
+- Full customer list with **search, branch filter, advanced multi-filter
+  panel, sorting, pagination, bulk actions, and CSV export**.
+- A complete **customer profile** with Plan, Payments, and Agreements tabs
+  showing live data that stays in sync with the rest of the studio.
+- A dedicated **Add complimentary credit** screen for granting free credit.
+- Working **plan freeze / unfreeze / cancel / remove free credit** flows on
+  the Plan tab — each with its own confirmation and toast.
+- **Refunds** from the Payments tab with a reason captured.
+- Full **lifecycle management** (deactivate / archive / reactivate / recover /
+  delete) with the correct option shown for each customer's situation.
 
 ---
 
-## 2. Class Templates
+## 2. Marketing
 
-Your library of **reusable class types** — the master definition of each class you offer. You build a template once,
-then schedule it as often as you like.
-
-### What you can do
-
-- **Browse all class templates** as a card grid, each showing its image,
-  category, duration and capacity.
-- **Search** for a template by name.
-- **Filter** the list by status and by category.
-- **Create a new class template** on a dedicated, full-page form — set the
-  name, description, category, class type, duration, capacity, and a cover
-  image.
-- **Open a template** to see its full detail page.
-- **Edit** an existing template's details at any time.
-- Manage a template's **lifecycle**:
-  - **Deactivate** — pause a class type without losing it.
-  - **Archive** — retire a class type you no longer run.
-  - **Delete** — permanently remove a template that was never used.
-- Every change shows a **confirmation** and a success message so you always
-  know it worked.
-
-### What's new in this build
-
-- Full **create / edit** flow on dedicated full-page screens — no cramped
-  pop-ups.
-- A complete **detail page** for each template.
-- Working **status management** (deactivate / archive / delete) with the right
-  option shown for each template's situation.
-
----
-
-## 3. Class Schedule
-
-Your **calendar of scheduled classes** — the actual sessions members can book,
-built from your class templates.
+Your **marketing campaigns** — banners, announcements, and events you push to
+members, with full control over who sees them and when.
 
 ### What you can do
 
-- View the schedule as a **Day, Week, Month, or List** — switch freely.
-- Classes are **colour-coded by category** so the calendar is easy to scan.
-- **Add a class to the schedule** — pick a template, then set the date, time,
-  room, instructor and capacity.
-- Set up **recurring classes** so a weekly slot is created in one step.
-- **Filter** the schedule by category, instructor, status, or branch.
-- **Open a class** to see its full detail page, including:
-  - The **roster** — every member booked into the class.
-  - The class **status** — Upcoming, Active, Completed, or Cancelled — with the
-    screen adapting to each stage.
-  - **Attendance** — mark who showed up.
-- **Cancel a class** when needed, with a reason recorded.
-- **Assign a substitute instructor** to a class.
-- Every action updates the schedule and related screens instantly.
-
-### What's new in this build
-
-- Full multi-view calendar (Day / Week / Month / List).
-- Dedicated **create / edit** screens for scheduling a class.
-- A complete class **detail page** with roster and attendance.
-- The schedule stays in sync with class templates and instructors
-  automatically.
-
----
-
-## 4. Point of Sale (POS)
-
-Your **checkout terminal** — sell memberships, packages, and gift cards to
-members or walk-ins in a single, fast flow.
-
-### What you can do
-
-- Work in a **two-panel layout** — the product catalogue on the left, the live
-  cart on the right.
-- **Browse the catalogue** with tabs for **All / Memberships / Packages /
-  Gift cards**, plus search and a side-panel filter for credit range and price
-  range.
-- **Select a customer** for the sale — search by name or email — or proceed as
-  a **walk-in**. You can also **create a new customer inline** without leaving
-  the till.
-- **Add items to the cart** by clicking any product card. Adjust quantities
-  with +/− or remove a line.
-- **Apply a promo code** — type in the code and the matching discount appears
-  in the totals.
-- **Apply a custom discount** — admins can switch from the promo input to a
-  percentage discount with one click (with a role-based maximum cap).
-- **Sell a gift card** — when a gift card is added to the cart, a recipient
-  modal opens to capture the recipient's name, email, custom amount (when the
-  card allows it), and a personal message. The sender is auto-filled from the
-  selected customer.
-- **Review totals** in real time — Subtotal, Promo discount, Custom discount,
-  Tax, and Final Total are all visible before you charge.
-- **Proceed to payment** — the checkout screen carries your customer, items
-  and discounts straight through.
-
-### What's new in this build
-
-- A full **two-panel POS terminal** built into the admin dashboard.
-- Working **promo code** and **custom discount** flows that update totals
-  live.
-- A dedicated **gift card recipient capture** so cards sold at the till always
-  come out personalised.
-- **Inline customer creation** — no need to leave POS to register a walk-in.
-
----
-
-## 5. Memberships & Packages
-
-Your **products** — the memberships and class packages members buy to attend
-classes.
-
-### What you can do
-
-- See all **memberships and packages** in one organised list with tabs,
-  search, and filters.
-- **Create a membership** or a **package** on a clear, step-by-step full-page
-  form — set the name, description, price, included credits, duration,
-  applicable branches, and purchase rules.
-- **Open a product** to see its detail page, including the **customers who
-  currently hold it**.
-- **Edit** a product's details at any time.
-- Manage each product's **lifecycle**:
-  - **Deactivate** — stop selling it while existing holders keep access.
-  - **Archive** — fully retire a product.
-  - **Delete** — remove a product that was never purchased.
-- Pricing is shown in **AED** throughout.
+- Browse every campaign as a **card grid** — each card shows the banner,
+  campaign type (New class / Announcement / Event), status, title, short
+  description, action type, branches served, and expiry date.
+- **Search** by name or description.
+- **Filter by branch**, **status** (Active / Inactive / Archived), and
+  **expiry date range**.
+- **Create a new campaign** on a two-step, step-by-step full-page form:
+  - **Step 1 — Marketing configuration** — upload a banner, set the name and
+    description, pick the campaign **type**, choose an **action** (Book an
+    event, Buy a ticket, External link, or No action — the choices adapt to
+    the campaign type), and set the **duration** with start and end dates and
+    times (or mark it as no-expiry).
+  - **Step 2 — Visibility settings** — choose **branches** (single or
+    multi-location), **packages** (memberships and credit packages),
+    **classes**, and **customer targeting** (Everyone or New users only).
+- **Open a campaign** to see its full detail page — banner, dates, branches,
+  view count, and every targeting choice from creation laid out in a clean,
+  scannable summary.
+- **Edit** an active campaign at any time.
+- Manage each campaign's **lifecycle**:
+  - **Deactivate** — pause a campaign that members have already seen.
+  - **Archive** — retire a campaign you no longer run.
+  - **Reactivate / Recover** — bring deactivated or archived campaigns back.
+  - **Delete** — only when the campaign was never viewed.
 - Every action is confirmed with a clear success message.
 
 ### What's new in this build
 
-- Step-by-step **create / edit** flow for both memberships and packages.
-- A full product **detail page** showing live data, including active customers.
-- Consistent **status management** with the correct options per product.
-- Centralised, connected sample data so products, classes and customers all
-  reference each other correctly.
+- Full campaign **card-grid** list with working search and filters.
+- A two-step **create / edit** flow with type-aware action fields, banner
+  upload, and full date / time control.
+- A complete **detail page** for every campaign.
+- Visibility settings that connect directly to **branches, packages,
+  classes, and customer segments** from the rest of the studio.
+- Status management with the right option shown for each campaign's
+  situation.
 
 ---
 
-## 6. Gift Cards
+## 3. Insights
 
-Your **gift card designs** — the templates customers can buy and gift to
-someone else. Each design defines the price (or price range) and how long the
-card stays valid.
+Your **studio-wide analytics** — finance, memberships, and classes — in a
+single place with KPI cards and charts that adapt to the period you pick.
 
 ### What you can do
 
-- See all **gift card** in one list with **search**, a **status
-  filter** (Active / Inactive / Archive), **sortable columns**, and **bulk
-  actions**.
-- Each row shows the gift card name, price, **active customers** (how many
-  people currently hold a card of this gift card), valid-until date, and status.
-- **Create a new gift card** on a dedicated, step-by-step full-page
-  form:
-  - Set the **name, description, and price**.
-  - Choose a **fixed amount** or enable **custom amount** with a minimum /
-    maximum range.
-  - Decide whether the card has **no expiry** or set explicit **issue and
-    expiry dates**.
-- **Open a gift card** to see its full detail page, including:
-  - The **gift card details** — what's been configured for the card.
-  - The **Active customers** tab — every issued card under this gift card, with
-    holder name, remaining balance, and expiry.
-- **Edit** a gift card at any time.
-- Manage each gift card's **lifecycle**:
-  - **Deactivate** — stop new sales while existing holders keep their balance.
-  - **Archive** — fully retire a gift card.
-  - **Delete** — remove a gift card that was never issued.
-- **Bulk actions** — select multiple gift cards and Archive, Reactivate, Recover,
-  or (when nothing's been issued) Delete them in one go.
+- Switch between **three tabs** — **Finance**, **Memberships**, and
+  **Classes** — each with its own KPI grid and chart deck.
+- **Change the time period** with one click — Day, Week, Month, Year, or a
+  Custom date range. KPI values, comparison badges, and charts all re-render
+  to match.
+- **Search across KPIs and charts** to narrow the view to the metric you
+  care about.
+- See each KPI with its **value, a percentage change badge** (colour-coded
+  up or down), and the **comparison period** (e.g. "vs last week") right
+  next to it.
+- **Finance tab** — net revenue, subscription revenue, package revenue,
+  class revenue, payment dues, collected payments, gift-card revenue, and
+  product revenue, plus charts for payments collected, payments by status,
+  payment method, payment source, revenue vs last period, and sales by
+  product.
+- **Memberships tab** — active memberships, active subscriptions, active
+  packages, intro offers, cancellations, suspensions, and billing issues
+  with percentages, plus charts for active memberships, active
+  subscriptions, active credit packages, top 5 membership plans, and unit
+  sales.
+- **Classes tab** — classes scheduled, check-ins, revenue per class, revenue
+  per visit, unique visitors, first-time visitors, and occupancy rate, plus
+  charts for class bookings, bookings by source, bookings vs visits,
+  attendance overview, and class popularity.
 
 ### What's new in this build
 
-- Step-by-step **create / edit** flow with both fixed-amount and
-  custom-amount gift cards supported.
-- A complete **detail page** showing every customer currently holding a card
-  of that gift card.
-- Working **search, sort, filter, bulk actions, and export** on the list.
-- Status management with the right option shown for each gift card's situation.
+- Three fully-tabbed dashboards (**Finance / Memberships / Classes**) wired
+  to a shared **period and search** control bar.
+- Working period switching across **Day / Week / Month / Year / Custom**,
+  with every chart's scale and X-axis adapting automatically.
+- A consistent **KPI card** with value, change badge, and comparison period
+  used across every tab.
 
 ---
 
-## 7. Promos
+## 4. Pay Rate
 
-Your **promo codes** — discounts you can hand out for bookings or purchases,
-with full control over who can use them, what they apply to, and how long they
-run.
+Your library of **instructor pay rates** — the rules that decide how each
+instructor is paid for a class. Define a rate once, then assign it to as many
+instructors as you need.
 
 ### What you can do
 
-- Browse all **promo codes** as a card grid — each card shows the promo name,
-  description, action type, offer, code, branches, and validity.
-- **Search** by name or code and **filter** by status and date range.
-- **Create a new promo** on a dedicated, step-by-step full-page form:
-  - **Step 1 — Promo details** — upload a banner image, set the name and
-    description, pick an **action** (Book a class / Buy a package), set the
-    **duration** with start / end dates and times (or mark it as no-expiry),
-    choose the **offer type** (Free class, Free trial, % off, Fixed AED),
-    enter the **discount value**, set the **code**, and set a **usage limit**.
-  - **Step 2 — Visibility settings** — choose which **branches**, which
-    **products or packages**, and which **customer segments** the promo
-    applies to.
-- **Open a promo** to see its full detail page — every setting from creation
-  is shown in a clean, scannable layout.
-- **Edit** a promo at any time.
-- Manage each promo's **lifecycle**:
-  - **Deactivate** — pause a promo without losing it.
-  - **Archive** — retire a promo you no longer run.
-  - **Delete** — remove a promo that was never used.
-- Promo codes you create here flow **straight into POS** — apply them at
-  checkout and the discount lands on the total.
+- See every pay rate in a **single table** showing the rate name, type, the
+  formatted rate (so you can read it like a sentence), branches, status, and
+  a row menu for quick actions.
+- **Filter by branch** and **status** (Active / Archive).
+- **Search** by name or rate display.
+- **Bulk-select** rates and Archive, Recover, or Delete in one go — Delete
+  appears only when none of the selected rates have ever been used.
+- **Create a new pay rate** on a two-step, step-by-step full-page form:
+  - **Step 1 — Rate details** — pick a rate **type** from five cards and
+    configure it:
+    - **Flat** — a single AED amount per class.
+    - **Tiered** — stack rules like "if X to Y customers attend, pay AED Z"
+      with add and remove controls per tier.
+    - **% of revenue** — a split of class revenue, with an optional
+      per-customer top-up.
+    - **Hybrid** — a base rate plus either an attendance bonus
+      (threshold + per-customer) or a % of revenue.
+    - **Monthly salary** — a fixed monthly amount, an optional performance
+      bonus % (with an optional cap), and separate sales commission % for
+      packages and memberships.
+  - Toggle whether only **checked-in** customers count and whether
+    **late-cancelled** customers are included.
+  - A **live preview** card shows exactly how the rate will read in the list.
+  - **Step 2 — Branch assignment** — pick which branches this rate applies
+    to.
+- **Open a pay rate** to see its full detail page:
+  - **Left sidebar** — name, type badge, formatted rate, branch, status, and
+    action buttons.
+  - **Assigned instructor tab** — every instructor currently on this rate
+    with branch and status filters, search, pagination, and row actions.
+  - **Additional settings tab** — a read-only view of the two toggles set on
+    the rate.
+- **Edit** an active rate at any time.
+- Manage each rate's **lifecycle**:
+  - **Archive** — retire a rate you no longer use.
+  - **Recover** — bring an archived rate back.
+  - **Delete** — only when the rate has never been used.
+- Every action is confirmed with a clear success message.
 
 ### What's new in this build
 
-- Step-by-step **create / edit** flow with full control over targeting and
-  validity.
-- A complete **detail page** for every promo.
-- Working **status management** with the correct lifecycle options.
+- Full **list view** with branch filter, status filter, search, sortable
+  columns, pagination, and bulk actions.
+- A two-step **create / edit** flow covering **five rate types** with
+  type-specific configuration and a **live preview** so the formatted rate
+  is always visible before you save.
+- A complete **detail page** with Assigned-instructor and Additional-settings
+  tabs.
+- Working **status management** (archive / recover / delete) with the right
+  option shown for each rate's situation.
 
 ---
 

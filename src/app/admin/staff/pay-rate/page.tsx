@@ -32,7 +32,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
-    useAppStore, BRANCHES, DEFAULT_BRANCH_ID,
+    useAppStore, DEFAULT_BRANCH_ID,
     type PayRate, type PayRateStatus, type PayRateType,
     computePayRateDisplay,
 } from "@/lib/store";
@@ -397,6 +397,7 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 export default function PayRatePage() {
     const router = useRouter();
     const payRates           = useAppStore(s => s.payRates);
+    const branches           = useAppStore(s => s.branches);
     const setPayRatesStatus  = useAppStore(s => s.setPayRatesStatus);
     const deletePayRatesAction = useAppStore(s => s.deletePayRates);
     const showToast          = useAppStore(s => s.showToast);
@@ -510,14 +511,14 @@ export default function PayRatePage() {
         openConfirm(kind, [row.id]);
     }
 
-    // ─── Branch options (reuse the shared branches seed) ───────────────────
+    // ─── Branch options (live `branches` slice — single source of truth) ───
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
 
     // "All locations" mode shows the full table; specific branch filters
@@ -631,7 +632,7 @@ export default function PayRatePage() {
                                                     })()}
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>
-                                                    {BRANCHES.find(b => b.id === r.branchId)?.name ?? "—"}
+                                                    {branches.find(b => b.id === r.branchId)?.name ?? "—"}
                                                 </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STATUS_BADGE_STYLE[r.status])}>

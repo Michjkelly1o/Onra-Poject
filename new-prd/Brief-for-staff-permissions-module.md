@@ -115,3 +115,57 @@ Rules:
 3\. Dont broke the current UI, module, flow we already create.
 4\. make sure also for every module data is connected so it sync, for example if we delete, deactivate, archive, or other actions in this module it will reflect the table and other module, and for edit too and added new data too, delete, archive, deactivate, or other actions.
 4\. dont forget to use the empty state if data is empty.
+
+
+---
+
+## DEFERRED — Role-gated UI (do AFTER every Owner-role module is finished)
+
+These two tasks intentionally come LAST, after every module is fully built
+for the Owner role. The other roles (Branch Admin, Operator, Front Desk,
+Instructor) reuse the same Owner pages — only the visible menu and the
+allowed actions differ. Doing this last is the safest order: once all the
+Owner pages are stable, gating is a thin pass on top, not a redesign.
+
+### A. Role-gated sidebar / navigation
+- Read the current role from the demo role switcher.
+- Filter [src/config/navigation.ts](../src/config/navigation.ts) entries so
+  Branch Admin / Operator / Front Desk / Instructor only see the menu items
+  their `role.type` permits. Owner = sees everything (no change).
+- Map the demo switcher's role string to the 5 predefined types
+  (owner / branch_admin / operator / front_desk / instructor) BEFORE
+  gating, so the mapping is deterministic.
+
+### B. Action-level UI gating (scoped — NOT every button on every page)
+- Read `role.permissions[section][module][action]` from the assigned role.
+- Gate only **high-signal actions**, not every button:
+    1. Delete customer
+    2. Refund (POS + customer payments tab)
+    3. Add complimentary credit (already gated by Grant Limits — see Phase 4
+       below — but ALSO hide entirely when `customers.complimentary_credit.create`
+       is false on the role).
+    4. Edit pay rate / Run payroll
+- Owner ALWAYS bypasses these checks.
+- Defer full per-page gating to a later release — don't try to gate every
+  CRUD button in every module at this stage.
+
+### Why deferred
+- Every module is currently built **Owner-first**, which is the simplest path
+  to coverage. Trying to layer role-gating in parallel doubles the surface
+  area to test and is the easiest way to silently break the Owner view.
+- Once all modules ship for Owner, the gating pass is a single sweep over
+  navigation + a handful of action buttons — much smaller blast radius.
+
+---
+
+## PHASE 4 PROGRESS — Cross-module sync
+
+Phase 4 has TWO active workstreams (the rest is deferred above):
+
+1. **Grant Limits enforcement** — the `role.grantLimits` config on each
+   role caps the customer module's "Add complimentary credit" feature.
+   Status: implemented (this commit).
+2. **Single source of truth for instructors** — the legacy `instructors`
+   slice now stays in sync with the `staff` slice whenever staff actions
+   fire (status flips, role changes, pay rate assignment, delete).
+   Status: implemented (this commit).

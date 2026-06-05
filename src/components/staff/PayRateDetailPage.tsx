@@ -38,8 +38,8 @@ import { Toast } from "@/components/ui/Toast";
 import { SelectInput } from "@/components/ui/select-input";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import {
-    useAppStore, BRANCHES, computePayRateDisplay,
-    type PayRate, type PayRateType, type Instructor, type InstructorStatus,
+    useAppStore, computePayRateDisplay,
+    type PayRate, type PayRateType, type Instructor, type InstructorStatus, type Branch,
 } from "@/lib/store";
 
 // ─── Badges ─────────────────────────────────────────────────────────────────
@@ -282,11 +282,12 @@ function ConfirmModal({ kind, subject, onCancel, onConfirm }: {
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 
-function Sidebar({ payRate, onAction }: {
+function Sidebar({ payRate, onAction, branches }: {
     payRate: PayRate;
     onAction: (kind: "edit" | ConfirmKind) => void;
+    branches: Branch[];
 }) {
-    const branch = BRANCHES.find(b => b.id === payRate.branchId);
+    const branch = branches.find(b => b.id === payRate.branchId);
     const display = computePayRateDisplay(payRate);
     const isActive   = payRate.status === "active";
     const canDelete  = isActive && payRate.usageCount === 0;
@@ -373,10 +374,11 @@ function FilterPill({ label, selected, onClick }: { label: string; selected: boo
     );
 }
 
-function InstructorFilterPanel({ open, onClose, applied, onApply }: {
+function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
     open: boolean; onClose: () => void;
     applied: InstructorFilter;
     onApply: (next: InstructorFilter) => void;
+    branches: Branch[];
 }) {
     const [pending, setPending] = useState<InstructorFilter>(EMPTY_INSTRUCTOR_FILTER);
 
@@ -395,7 +397,7 @@ function InstructorFilterPanel({ open, onClose, applied, onApply }: {
         }));
     }
     const hasAny = pending.branchId !== "" || pending.statuses.length > 0;
-    const branchOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
+    const branchOptions = branches.filter(b => b.status === "active").map(b => ({
         value: b.id, label: b.name,
         icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
     }));
@@ -469,6 +471,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
 }) {
     const router = useRouter();
     const instructors        = useAppStore(s => s.instructors);
+    const branches           = useAppStore(s => s.branches);
     const setInstructorStatus = useAppStore(s => s.setInstructorStatus);
     const showToast          = useAppStore(s => s.showToast);
 
@@ -626,7 +629,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                         <tbody>
                             {pageRows.map(r => {
                                 const isSelected = selectedIds.has(r.id);
-                                const branch = BRANCHES.find(b => b.id === r.branchId);
+                                const branch = branches.find(b => b.id === r.branchId);
                                 return (
                                     <tr key={r.id}
                                         className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
@@ -694,6 +697,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                 onClose={() => setFilterOpen(false)}
                 applied={filter}
                 onApply={setFilter}
+                branches={branches}
             />
         </div>
     );
@@ -790,6 +794,7 @@ export interface PayRateDetailPageProps {
 export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/pay-rate" }: PayRateDetailPageProps) {
     const router = useRouter();
     const payRates           = useAppStore(s => s.payRates);
+    const branches           = useAppStore(s => s.branches);
     const setPayRatesStatus  = useAppStore(s => s.setPayRatesStatus);
     const deletePayRatesAction = useAppStore(s => s.deletePayRates);
     const showToast          = useAppStore(s => s.showToast);
@@ -860,7 +865,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
             {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
                 <div className="flex gap-6 h-[832px]">
-                    <Sidebar payRate={payRate} onAction={handleSidebarAction} />
+                    <Sidebar payRate={payRate} onAction={handleSidebarAction} branches={branches} />
 
                     {/* Content card */}
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">

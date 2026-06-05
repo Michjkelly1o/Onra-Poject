@@ -13,6 +13,7 @@ interface SharedProps {
     min?: number;
     step?: number;
     required?: boolean;
+    placeholder?: string;
     "aria-label"?: string;
 }
 
@@ -40,20 +41,32 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
     value: number;
     onChange: (n: number) => void;
 }>(function NumericInput(
-    { value, onChange, className, inputClassName, suffix, disabled, max, min, step, required, ...rest },
+    { value, onChange, className, inputClassName, suffix, disabled, max, min, step, required, placeholder, ...rest },
     ref
 ) {
+    // Effective floor — never let the value go below the larger of `min` (if
+    // provided) or 0. Negative numbers are out of scope for every NumericInput
+    // call site in the app (credits, days, hours, qty, …).
+    const floor = Math.max(0, min ?? 0);
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/^0+(?=\d)/, "");
         if (raw === "") { onChange(0); return; }
         const num = Number(raw);
         if (Number.isNaN(num)) return;
+        if (num < floor) return;
         if (max !== undefined && num > max) return;
         onChange(num);
     };
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        // Block characters that produce negative or exponent values directly
+        // from the keyboard — easier than trying to scrub them post-hoc.
+        if (e.key === "-" || e.key === "e" || e.key === "E" || e.key === "+") {
+            e.preventDefault();
+        }
+    };
     const stepBy = (delta: number) => {
         const next = (value || 0) + delta;
-        if (min !== undefined && next < min) return;
+        if (next < floor) return;
         if (max !== undefined && next > max) return;
         onChange(next);
     };
@@ -64,11 +77,14 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
                     ref={ref}
                     type="number"
                     value={value === 0 ? "" : String(value)}
-                    placeholder="0"
+                    placeholder={placeholder ?? "0"}
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     disabled={disabled}
                     required={required}
                     step={step}
+                    min={floor}
+                    max={max}
                     aria-label={rest["aria-label"]}
                     className={cn(
                         "flex-1 min-w-0 h-10 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
@@ -100,15 +116,26 @@ export const NumericStringInput = forwardRef<HTMLInputElement, SharedProps & {
     { value, onChange, className, inputClassName, suffix, disabled, max, min, step, required, ...rest },
     ref
 ) {
+    const floor = Math.max(0, min ?? 0);
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/^0+(?=\d)/, "");
+        if (raw === "") { onChange(""); return; }
+        const num = Number(raw);
+        if (Number.isNaN(num)) return;
+        if (num < floor) return;
+        if (max !== undefined && num > max) return;
         onChange(raw);
+    };
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "-" || e.key === "e" || e.key === "E" || e.key === "+") {
+            e.preventDefault();
+        }
     };
     const stepBy = (delta: number) => {
         const current = value === "" ? 0 : Number(value);
         if (Number.isNaN(current)) return;
         const next = current + delta;
-        if (min !== undefined && next < min) return;
+        if (next < floor) return;
         if (max !== undefined && next > max) return;
         onChange(next === 0 ? "" : String(next));
     };
@@ -121,9 +148,12 @@ export const NumericStringInput = forwardRef<HTMLInputElement, SharedProps & {
                     value={value === "0" ? "" : value}
                     placeholder="0"
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     disabled={disabled}
                     required={required}
                     step={step}
+                    min={floor}
+                    max={max}
                     aria-label={rest["aria-label"]}
                     className={cn(
                         "flex-1 min-w-0 h-10 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",

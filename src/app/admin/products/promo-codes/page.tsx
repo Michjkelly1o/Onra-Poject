@@ -26,7 +26,7 @@ import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { useAppStore, BRANCHES, DEFAULT_BRANCH_ID, type PromoCode } from "@/lib/store";
+import { useAppStore, DEFAULT_BRANCH_ID, type PromoCode } from "@/lib/store";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -79,10 +79,10 @@ const OFFER_LABEL: Record<NonNullable<PromoCode["offer_type"]>, string> = {
 };
 
 /** "All branches" when the promo covers every branch, else "N branches". */
-function branchLabel(branchIds: string[] | undefined): string {
+function branchLabel(branchIds: string[] | undefined, totalBranches: number): string {
     const n = branchIds?.length ?? 0;
     if (n === 0) return "All branches";
-    if (n >= BRANCHES.length) return "All branches";
+    if (n >= totalBranches) return "All branches";
     return `${n} ${n === 1 ? "branch" : "branches"}`;
 }
 
@@ -115,7 +115,7 @@ function PromoAttribute({ icon, label }: { icon: React.ReactNode; label: string 
     );
 }
 
-function PromoCardView({ promo, onOpen }: { promo: PromoCode; onOpen: () => void }) {
+function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onOpen: () => void; totalBranches: number }) {
     const status = effectiveStatus(promo);
     // Active promos get the deep-slate banner; inactive / archived / expired
     // promos render a muted gray banner (matches the Figma grayscale state).
@@ -179,7 +179,7 @@ function PromoCardView({ promo, onOpen }: { promo: PromoCode; onOpen: () => void
                     />
                     <PromoAttribute
                         icon={<MarkerPin01 className="w-4 h-4" />}
-                        label={branchLabel(promo.branch_ids)}
+                        label={branchLabel(promo.branch_ids, totalBranches)}
                     />
                 </div>
 
@@ -326,6 +326,7 @@ function FilterPanel({ open, applied, onClose, onApply }: {
 export default function PromoListPage() {
     const router = useRouter();
     const promoCodes = useAppStore(s => s.promoCodes);
+    const branches = useAppStore(s => s.branches);
 
     const [search, setSearch] = useState("");
     // Default to the user's primary branch — matches the POS / schedule /
@@ -336,15 +337,17 @@ export default function PromoListPage() {
 
     const hasActiveFilter = filter.statuses.length > 0 || !!filter.startDate || !!filter.endDate;
 
-    // Branch picker — active branches, each option carrying a MarkerPin01
-    // glyph so the dropdown matches the POS / schedule / dashboard pickers.
-    const locationOptions = useMemo(() => BRANCHES
+    // Branch picker — active branches from the live `branches` slice, each
+    // option carrying a MarkerPin01 glyph so the dropdown matches the
+    // POS / schedule / dashboard pickers.
+    const locationOptions = useMemo(() => branches
         .filter(b => b.status === "active")
         .map(b => ({
             value: b.id,
             label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
-        })), []);
+        })), [branches]);
+    const totalBranches = branches.length;
 
     // ─── Filter + search ───────────────────────────────────────────────────
     const visible = useMemo(() => {
@@ -426,7 +429,7 @@ export default function PromoListPage() {
             ) : (
                 <div className="grid grid-cols-3 gap-4">
                     {visible.map(p => (
-                        <PromoCardView key={p.id} promo={p}
+                        <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
                             onOpen={() => router.push(`/products/promo-codes/${p.id}`)} />
                     ))}
                 </div>

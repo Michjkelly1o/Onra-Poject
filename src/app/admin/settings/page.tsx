@@ -1,520 +1,1156 @@
 "use client";
 
-import { useState } from "react";
-import { useDataStore } from "@/lib/data-store";
-import { useAppStore } from "@/lib/store";
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Settings → Business & Locations (Phase 1)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Figma:
+//   • Landing layout            — 4098:163482
+//   • "Add location" dropdown   — 5630:101278
+//
+// Phase 1 scope (per `Brief-for-business-and-locations-module.md`):
+//   ✓ Studio details container (avatar + name + Country / Currency / Time
+//     zone tiles) with top-right Edit button.
+//   ✓ Location & rooms container with header (title + supporting text) +
+//     Search input + Filter dropdown (Active / Inactive / Archived,
+//     multi-select) + "Add location" green primary dropdown (Branch / Room).
+//   ✓ Table with expandable branch rows. Each branch row shows the
+//     "M T W T F S S" working-days strip (closed days in red) + working
+//     hour string + address + status badge + Enable toggle + row-actions
+//     menu (View details / Edit / Add room / Archive).
+//   ✓ Indented room rows under their parent branch (when expanded), each
+//     with a LayoutGrid avatar + "X max" capacity subtitle + status badge
+//     + Enable toggle + row-actions menu (View details / Edit / Archive).
+//   ✓ Empty state when search + filter combo yields no results.
+//   ✓ Every action (Edit studio, Add branch, Add room, row-Edit, row-View,
+//     row-Add-room, row-Archive, toggle flip) fires a success toast as
+//     a placeholder. Phase 2 wires the create/edit pages; Phase 3 wires
+//     the branch detail / room modal; Phase 4 wires the proper store
+//     actions + cross-module sync.
+//
+// Data sources:
+//   • Branches      — `useAppStore(s => s.branches)`        (seed-loaded)
+//   • Rooms         — `useAppStore(s => s.rooms)`           (seed-loaded)
+//   • BusinessHours — `useAppStore(s => s.businessHours)`   (seed-loaded)
+//   • Studio info   — `useDataStore(s => s.studio)`         (legacy)
+//
+// NB — this REPLACES the legacy /admin/settings/page.tsx (the original
+// prototype's Studio + Rooms + Admins form). The legacy mutations
+// (updateStudio, addRoom, deleteRoom, toggleRoom, addAdmin, removeAdmin)
+// are now decoupled from this surface — Phase 2 + Phase 4 will reconnect
+// the new sub-pages to proper store actions.
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+    Edit02, SearchLg, FilterLines, Plus, ChevronDown, ChevronRight,
+    DotsVertical, Building01, LayoutGrid01, Image01, Eye, Archive,
+    Pencil01, Trash04, Check, XClose, SlashCircle01, RefreshCcw01,
+} from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { NumericInput, NumericStringInput } from "@/components/ui/NumericInput";
-import { Building2, Clock, Globe, Mail, MapPin, Phone, Plus, Save, Trash2, X, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/lib/store";
+import { timezoneLabel } from "@/lib/data/locales";
+import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
+import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
 
-export default function SettingsPage() {
-    const { studio, rooms, users, updateStudio, addRoom, deleteRoom, toggleRoom, addAdmin, removeAdmin } = useDataStore();
-    const [studioForm, setStudioForm] = useState(studio);
-    const [showRoomModal, setShowRoomModal] = useState(false);
-    const [showAdminModal, setShowAdminModal] = useState(false);
-    const [roomForm, setRoomForm] = useState({ name: "", capacity: "" });
-    const [adminForm, setAdminForm] = useState({
-        first_name: "",
-        last_name: "",
-        email: "",
-        isSuperAdmin: false
-    });
+// ─── Constants ──────────────────────────────────────────────────────────────
 
-    const handleSaveStudio = () => {
-        updateStudio(studioForm);
-        alert("Studio settings saved!");
-    };
+type StatusFilter = "active" | "inactive" | "archive";
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+    { value: "active",   label: "Active"   },
+    { value: "inactive", label: "Inactive" },
+    { value: "archive",  label: "Archive"  },
+];
 
-    const handleAddRoom = (e: React.FormEvent) => {
-        e.preventDefault();
-        addRoom({
-            studio_id: studio.id,
-            name: roomForm.name,
-            capacity: parseInt(roomForm.capacity),
-            is_active: true
+const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+// JS Date.getUTCDay() — 0=Sun..6=Sat. The Figma displays Mon-first so the
+// indexes line up like this:
+const DOW_FOR_COL = [1, 2, 3, 4, 5, 6, 0] as const;
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
+export default function BusinessLocationsPage() {
+    const router = useRouter();
+    // Phase 3 — reads from live store-state slices so archive / delete /
+    // status-toggle actions propagate immediately. (BUSINESS_HOURS stays
+    // static — hours editing isn't in scope until Phase 4.)
+    const branches      = useAppStore(s => s.branches);
+    const rooms         = useAppStore(s => s.rooms);
+    const businessHours = useAppStore(s => s.businessHours);
+    const updateBranch  = useAppStore(s => s.updateBranch);
+    const updateRoom    = useAppStore(s => s.updateRoom);
+    const deleteBranch  = useAppStore(s => s.deleteBranch);
+    const deleteRoom    = useAppStore(s => s.deleteRoom);
+    const showToast     = useAppStore(s => s.showToast);
+
+    // Studio info — single source of truth is the businessProfile slice.
+    // StudioProfileFormPage writes here, so logo / name / country / currency
+    // / timezone changes propagate to this landing card on the same render.
+    const businessProfile = useAppStore(s => s.businessProfile);
+
+    const [searchQuery, setSearchQuery]   = useState("");
+    // Single-select status filter — same UX as the Gift Cards module. `null`
+    // means "no filter applied" (show every status). Clicking the same
+    // option twice clears the filter.
+    const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
+    const [expandedBranches, setExpandedBranches] = useState<Set<string>>(
+        new Set(branches.filter(b => b.is_main).map(b => b.id)),
+    );
+    const [filterOpen, setFilterOpen]       = useState(false);
+    const [addMenuOpen, setAddMenuOpen]     = useState(false);
+    const [actionMenuId, setActionMenuId]   = useState<string | null>(null);
+
+    // Confirmation modal state — drives both the toggle confirm and any
+    // "Archive" / "Delete" prompts kicked off from the row action menu.
+    /** Generic confirmation modal — used for archive + delete + (existing)
+     *  deactivate / reactivate flows. */
+    const [pendingConfirm, setPendingConfirm] = useState<{
+        id: string;
+        kind: "branch" | "room";
+        action: "archive" | "delete" | "recover";
+        label: string;
+    } | null>(null);
+
+    /** Toggle-confirmation state. The Enable toggle on each row routes
+     *  through a modal first — "Are you sure you want to deactivate / reactivate
+     *  [name]?" — so the admin can't accidentally flip a branch off
+     *  mid-scroll. Confirm → applies the status; Cancel → no-op. */
+    const [pendingToggle, setPendingToggle] = useState<{
+        id: string;
+        label: string;
+        kind: "branch" | "room";
+        currentStatus: "active" | "inactive";
+    } | null>(null);
+
+    /** Phase 3 — Room detail modal. The branch detail page lives at its
+     *  own route (`/settings/branches/[id]`); rooms are smaller, so they
+     *  surface as an in-page modal instead of a separate route. */
+    const [roomDetailId, setRoomDetailId] = useState<string | null>(null);
+
+    // Derived: branches that match the search + filter combo.
+    const visibleBranches = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return branches.filter(b => {
+            if (statusFilter && b.status !== statusFilter) return false;
+            if (q && !`${b.name} ${b.address ?? ""}`.toLowerCase().includes(q)) {
+                return false;
+            }
+            return true;
         });
-        setShowRoomModal(false);
-        setRoomForm({ name: "", capacity: "" });
-    };
+    }, [branches, searchQuery, statusFilter]);
 
-    const handleDeleteRoom = (id: string) => {
-        if (confirm("Are you sure you want to delete this room?")) {
-            deleteRoom(id);
+    // ── Action handlers (toast placeholders) ─────────────────────────────
+
+    // Phase 2 — Edit / Add navigate to the dedicated full-page forms under
+    // /settings/*. View details + archive remain toast placeholders for now
+    // (Phase 3 wires the branch detail page + room detail modal + archive
+    // confirmation flow).
+    function editStudio() {
+        router.push("/settings/business/edit");
+    }
+    function addBranch() {
+        setAddMenuOpen(false);
+        router.push("/settings/branches/new");
+    }
+    function addRoom(branchId?: string) {
+        setAddMenuOpen(false);
+        setActionMenuId(null);
+        const target = branchId
+            ? `/settings/rooms/new?branchId=${branchId}`
+            : "/settings/rooms/new";
+        router.push(target);
+    }
+    function viewBranch(b: Branch) {
+        setActionMenuId(null);
+        router.push(`/settings/branches/${b.id}`);
+    }
+    function editBranch(b: Branch) {
+        setActionMenuId(null);
+        router.push(`/settings/branches/${b.id}/edit`);
+    }
+    function archiveBranch(b: Branch) {
+        setActionMenuId(null);
+        setPendingConfirm({ id: b.id, kind: "branch", action: "archive", label: b.name });
+    }
+    function recoverBranch(b: Branch) {
+        setActionMenuId(null);
+        setPendingConfirm({ id: b.id, kind: "branch", action: "recover", label: b.name });
+    }
+    function deleteBranchRow(b: Branch) {
+        setActionMenuId(null);
+        setPendingConfirm({ id: b.id, kind: "branch", action: "delete", label: b.name });
+    }
+    function viewRoom(r: Room) {
+        setActionMenuId(null);
+        setRoomDetailId(r.id);
+    }
+    function editRoom(r: Room) {
+        setActionMenuId(null);
+        router.push(`/settings/rooms/${r.id}/edit`);
+    }
+    function archiveRoom(r: Room) {
+        setActionMenuId(null);
+        setPendingConfirm({ id: r.id, kind: "room", action: "archive", label: r.name });
+    }
+    function recoverRoom(r: Room) {
+        setActionMenuId(null);
+        setPendingConfirm({ id: r.id, kind: "room", action: "recover", label: r.name });
+    }
+    function deleteRoomRow(r: Room) {
+        setActionMenuId(null);
+        setPendingConfirm({ id: r.id, kind: "room", action: "delete", label: r.name });
+    }
+
+    function applyPendingConfirm() {
+        if (!pendingConfirm) return;
+        const { id, kind, action, label } = pendingConfirm;
+        if (kind === "branch") {
+            if      (action === "archive") updateBranch(id, { status: "archive" });
+            else if (action === "recover") updateBranch(id, { status: "active"  });
+            else if (action === "delete")  deleteBranch(id);
+        } else {
+            if      (action === "archive") updateRoom(id, { status: "archive" });
+            else if (action === "recover") updateRoom(id, { status: "active"  });
+            else if (action === "delete")  deleteRoom(id);
         }
-    };
+        const verb = action === "archive" ? "Archived" : action === "recover" ? "Recovered" : "Deleted";
+        showToast(verb, `${label} has been ${verb.toLowerCase()}.`, "success",
+            action === "delete" ? "trash" : action === "archive" ? "archive" : "refresh");
+        setPendingConfirm(null);
+    }
 
-    const handleAddAdmin = (e: React.FormEvent) => {
-        e.preventDefault();
-        addAdmin({
-            studio_id: studio.id,
-            first_name: adminForm.first_name,
-            last_name: adminForm.last_name,
-            email: adminForm.email,
-            phone: "",
-            waiver_signed: true,
-            is_active: true,
-            role: "admin",
-            permissions: adminForm.isSuperAdmin ? ["all"] : ["manage_schedule", "manage_bookings"]
+    /** Toggle click → open the confirmation modal. The actual mutation
+     *  happens on confirm in `applyPendingToggle`. */
+    function requestToggle(
+        id: string,
+        currentStatus: "active" | "inactive",
+        label: string,
+        kind: "branch" | "room",
+    ) {
+        setPendingToggle({ id, label, kind, currentStatus });
+    }
+
+    function applyPendingToggle() {
+        if (!pendingToggle) return;
+        const { id, kind, currentStatus, label } = pendingToggle;
+        const next = currentStatus === "active" ? "inactive" : "active";
+        if (kind === "branch") updateBranch(id, { status: next });
+        else                   updateRoom(id,   { status: next });
+        showToast(
+            next === "active" ? "Reactivated" : "Deactivated",
+            `${label} is now ${next === "active" ? "active" : "inactive"}.`,
+            "success", "check",
+        );
+        setPendingToggle(null);
+    }
+
+    function toggleExpand(branchId: string) {
+        setExpandedBranches(prev => {
+            const next = new Set(prev);
+            if (next.has(branchId)) next.delete(branchId);
+            else next.add(branchId);
+            return next;
         });
-        setShowAdminModal(false);
-        setAdminForm({ first_name: "", last_name: "", email: "", isSuperAdmin: false });
-    };
+    }
+
+    function pickStatusFilter(s: StatusFilter) {
+        // Toggle behaviour — click the same option twice to clear, matching
+        // the Gift Cards module convention.
+        setStatusFilter(prev => prev === s ? null : s);
+        setFilterOpen(false);
+    }
+
+    const isEmpty = visibleBranches.length === 0;
 
     return (
-        <div className="space-y-6 animate-fade-in max-w-4xl">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-                <p className="text-sm text-gray-500 mt-1">Manage studio profile, rooms, and booking rules</p>
-            </div>
+        <div className="flex flex-col gap-5 w-full">
+            {/* ── Studio details ──────────────────────────────────────── */}
+            <StudioCard
+                name={businessProfile.name || "Forma Studio"}
+                logoUrl={businessProfile.logoUrl}
+                country={businessProfile.country}
+                currency={businessProfile.currency}
+                timezone={businessProfile.timezone}
+                onEdit={editStudio}
+            />
 
-            {/* Studio Profile */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-brand-50">
-                        <Building2 className="w-5 h-5 text-brand-600" />
+            {/* ── Location & rooms ────────────────────────────────────── */}
+            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 w-full">
+                <div className="flex items-center justify-between gap-6 w-full">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <p className="text-[16px] font-semibold text-[#101828] leading-6">
+                            Location &amp; rooms
+                        </p>
+                        <p className="text-[14px] text-[#475467] leading-5">
+                            Manage your studio locations and rooms for scheduling classes and sessions.
+                        </p>
                     </div>
-                    <h2 className="font-semibold text-gray-900">Studio Profile</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Studio Name</label>
-                        <input
-                            type="text"
-                            value={studioForm.name}
-                            onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                    <div className="flex items-center gap-3 shrink-0">
+                        <SearchInput value={searchQuery} onChange={setSearchQuery} />
+                        <FilterDropdown
+                            open={filterOpen}
+                            onToggle={() => setFilterOpen(o => !o)}
+                            onClose={() => setFilterOpen(false)}
+                            value={statusFilter}
+                            onPick={pickStatusFilter}
                         />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Slug</label>
-                        <input type="text" value={studioForm.slug} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 bg-gray-50" readOnly />
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            <MapPin className="w-3.5 h-3.5 inline mr-1" />Address
-                        </label>
-                        <input
-                            type="text"
-                            value={studioForm.address}
-                            onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            <Phone className="w-3.5 h-3.5 inline mr-1" />Phone
-                        </label>
-                        <input
-                            type="text"
-                            value={studioForm.phone}
-                            onChange={(e) => setStudioForm({ ...studioForm, phone: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            <Mail className="w-3.5 h-3.5 inline mr-1" />Email
-                        </label>
-                        <input
-                            type="text"
-                            value={studioForm.email}
-                            onChange={(e) => setStudioForm({ ...studioForm, email: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            <Globe className="w-3.5 h-3.5 inline mr-1" />Timezone
-                        </label>
-                        <input
-                            type="text"
-                            value={studioForm.timezone}
-                            onChange={(e) => setStudioForm({ ...studioForm, timezone: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                        <AddLocationDropdown
+                            open={addMenuOpen}
+                            onToggle={() => setAddMenuOpen(o => !o)}
+                            onClose={() => setAddMenuOpen(false)}
+                            onAddBranch={addBranch}
+                            onAddRoom={() => addRoom()}
                         />
                     </div>
                 </div>
-            </div>
 
-            {/* Branding Settings */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-purple-50">
-                        <Globe className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <h2 className="font-semibold text-gray-900">Branding</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Studio Logo</label>
-                        <div className="flex gap-4 items-start">
-                            {/* Preview */}
-                            <div className="w-16 h-16 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                {studioForm.logo_url ? (
-                                    <img src={studioForm.logo_url} alt="Logo Preview" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span className="text-xs text-gray-400">No Logo</span>
-                                )}
-                            </div>
-
-                            <div className="flex-1">
-                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <div className="p-2 rounded-full bg-gray-100 mb-2">
-                                            <Plus className="w-5 h-5 text-gray-400" />
-                                        </div>
-                                        <p className="mb-1 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                        <p className="text-xs text-gray-500">SVG, PNG, JPG (MAX. 800x400px)</p>
-                                    </div>
-                                    <input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                const reader = new FileReader();
-                                                reader.onloadend = () => {
-                                                    setStudioForm({ ...studioForm, logo_url: reader.result as string });
-                                                };
-                                                reader.readAsDataURL(file);
-                                            }
-                                        }}
+                {/* Table — flush, no outer border. Row separation is handled by
+                    a 1-px bottom border on each row (drops on the last). */}
+                <div className="flex flex-col w-full">
+                    <TableHeader />
+                    {isEmpty ? (
+                        <EmptyState query={searchQuery} />
+                    ) : (
+                        visibleBranches.map(branch => {
+                            const branchStatus = branch.status;
+                            const branchRooms = rooms.filter(r => r.branch_id === branch.id);
+                            const branchHours = businessHours.filter(h => h.branch_id === branch.id);
+                            const expanded = expandedBranches.has(branch.id);
+                            return (
+                                <div key={branch.id}>
+                                    <BranchRow
+                                        branch={branch}
+                                        status={branchStatus}
+                                        hours={branchHours}
+                                        roomCount={branchRooms.length}
+                                        expanded={expanded}
+                                        onToggleExpand={() => toggleExpand(branch.id)}
+                                        onToggleEnable={() => requestToggle(branch.id, branchStatus === "active" ? "active" : "inactive", branch.name, "branch")}
+                                        actionMenuOpen={actionMenuId === `branch:${branch.id}`}
+                                        onOpenActionMenu={() => setActionMenuId(`branch:${branch.id}`)}
+                                        onCloseActionMenu={() => setActionMenuId(null)}
+                                        onView={() => viewBranch(branch)}
+                                        onEdit={() => editBranch(branch)}
+                                        onAddRoom={() => addRoom(branch.id)}
+                                        onArchive={() => archiveBranch(branch)}
+                                        onRecover={() => recoverBranch(branch)}
+                                        onDelete={() => deleteBranchRow(branch)}
                                     />
-                                </label>
-                                {studioForm.logo_url && (
-                                    <button
-                                        onClick={() => setStudioForm({ ...studioForm, logo_url: "" })}
-                                        className="mt-2 text-xs text-red-500 hover:text-red-600 font-medium"
-                                    >
-                                        Remove Logo
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex justify-end mt-6">
-                    <button
-                        onClick={handleSaveStudio}
-                        className="flex items-center gap-2 px-4 py-2.5 gradient-bg-brand text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-                    >
-                        <Save className="w-4 h-4" /> Save Changes
-                    </button>
-                </div>
-            </div>
-
-            {/* Booking Rules */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-amber-50">
-                        <Clock className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <h2 className="font-semibold text-gray-900">Booking Rules</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Cancellation Window (hours)</label>
-                        <NumericInput
-                            value={studioForm.cancellation_window_hours ?? 0}
-                            onChange={n => setStudioForm({ ...studioForm, cancellation_window_hours: n })}
-                            min={0}
-                            suffix="hours"
-                            className="rounded-xl"
-                            inputClassName="text-sm"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Credits are forfeited if cancelled within this window</p>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Booking Window (days ahead)</label>
-                        <NumericInput
-                            value={studioForm.booking_window_days ?? 0}
-                            onChange={n => setStudioForm({ ...studioForm, booking_window_days: n })}
-                            min={0}
-                            suffix="days"
-                            className="rounded-xl"
-                            inputClassName="text-sm"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">How far in advance members can book classes</p>
-                    </div>
+                                    {expanded && branchRooms.map(room => {
+                                        const roomStatus = room.status;
+                                        return (
+                                            <RoomRow
+                                                key={room.id}
+                                                room={room}
+                                                status={roomStatus}
+                                                onToggleEnable={() => requestToggle(room.id, roomStatus === "active" ? "active" : "inactive", room.name, "room")}
+                                                actionMenuOpen={actionMenuId === `room:${room.id}`}
+                                                onOpenActionMenu={() => setActionMenuId(`room:${room.id}`)}
+                                                onCloseActionMenu={() => setActionMenuId(null)}
+                                                onView={() => viewRoom(room)}
+                                                onEdit={() => editRoom(room)}
+                                                onArchive={() => archiveRoom(room)}
+                                                onRecover={() => recoverRoom(room)}
+                                                onDelete={() => deleteRoomRow(room)}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             </div>
 
-            {/* Rooms */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-6">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-emerald-50">
-                            <MapPin className="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <h2 className="font-semibold text-gray-900">Rooms</h2>
-                    </div>
-                    <button
-                        onClick={() => setShowRoomModal(true)}
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-brand-600 hover:bg-brand-50 rounded-xl font-medium transition-colors"
-                    >
-                        <Plus className="w-4 h-4" /> Add Room
-                    </button>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-100">
-                                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2">Name</th>
-                                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2">Capacity</th>
-                                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2">Status</th>
-                                <th className="px-4 py-2"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rooms.map((room) => (
-                                <tr key={room.id} className="table-row-hover border-b border-gray-50 group">
-                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{room.name}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-600">{room.capacity} people</td>
-                                    <td className="px-4 py-3">
-                                        <button
-                                            onClick={() => toggleRoom(room.id)}
-                                            className={cn("text-xs px-2 py-0.5 rounded-full font-medium transition-colors", room.is_active ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
-                                        >
-                                            {room.is_active ? "Active" : "Inactive"}
-                                        </button>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button
-                                            onClick={() => handleDeleteRoom(room.id)}
-                                            className="p-1.5 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {/* ── Room detail modal ───────────────────────────────────── */}
+            {roomDetailId && (() => {
+                const room = rooms.find(r => r.id === roomDetailId);
+                return room ? <RoomDetailModal room={room} onClose={() => setRoomDetailId(null)} /> : null;
+            })()}
 
+            {/* ── Toggle-confirmation modal ───────────────────────────── */}
+            {pendingToggle && (
+                <ToggleConfirmModal
+                    label={pendingToggle.label}
+                    kind={pendingToggle.kind}
+                    action={pendingToggle.currentStatus === "active" ? "deactivate" : "reactivate"}
+                    onCancel={() => setPendingToggle(null)}
+                    onConfirm={applyPendingToggle}
+                />
+            )}
 
-
-            {/* Team Management - Super Admin Only */}
-            {
-                useAppStore.getState().currentUser.permissions?.includes("all") && (
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-blue-50">
-                                    <Users className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <h2 className="font-semibold text-gray-900">Team Management</h2>
-                            </div>
-                            <button
-                                onClick={() => setShowAdminModal(true)}
-                                className="flex items-center gap-1.5 px-3 py-2 text-sm text-brand-600 hover:bg-brand-50 rounded-xl font-medium transition-colors"
-                            >
-                                <Plus className="w-4 h-4" /> Add Member
-                            </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-gray-100">
-                                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2">Name</th>
-                                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2">Role</th>
-                                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2">Status</th>
-                                        <th className="px-4 py-2"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {users.filter(u => u.role === "admin").map((admin) => (
-                                        <tr key={admin.id} className="table-row-hover border-b border-gray-50 group">
-                                            <td className="px-4 py-3">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-gray-900">{admin.first_name} {admin.last_name}</span>
-                                                    <span className="text-xs text-gray-500">{admin.email}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(
-                                                    "text-xs px-2 py-1 rounded-full font-medium",
-                                                    admin.permissions?.includes("all")
-                                                        ? "bg-purple-50 text-purple-700"
-                                                        : "bg-blue-50 text-blue-700"
-                                                )}>
-                                                    {admin.permissions?.includes("all") ? "Super Admin" : "Admin"}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
-                                                    Active
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                {/* Prevent deleting yourself or the main demo admin if desired */}
-                                                {admin.id !== "u-admin-1" && (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (confirm("Remove this admin?")) {
-                                                                removeAdmin(admin.id);
-                                                            }
-                                                        }}
-                                                        className="p-1.5 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Add Room Modal */}
-            {
-                showRoomModal && (
-                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
-                        <div className="bg-white rounded-2xl w-full max-w-sm mx-4 p-6 shadow-2xl animate-scale-in">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-lg font-bold text-gray-900">Add Room</h2>
-                                <button onClick={() => setShowRoomModal(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                                    <X className="w-4 h-4 text-gray-500" />
-                                </button>
-                            </div>
-                            <form onSubmit={handleAddRoom} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Room Name</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        value={roomForm.name}
-                                        onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Capacity</label>
-                                    <NumericStringInput
-                                        required
-                                        value={roomForm.capacity}
-                                        onChange={v => setRoomForm({ ...roomForm, capacity: v })}
-                                        min={0}
-                                        className="rounded-xl"
-                                        inputClassName="text-sm"
-                                    />
-                                </div>
-                                <div className="flex gap-3 pt-4">
-                                    <button type="button" onClick={() => setShowRoomModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-                                    <button type="submit" className="flex-1 py-2.5 gradient-bg-brand text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">Add Room</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Add Admin Modal */}
-            {
-                showAdminModal && (
-                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
-                        <div className="bg-white rounded-2xl w-full max-w-md mx-4 p-6 shadow-2xl animate-scale-in">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-lg font-bold text-gray-900">Add Team Member</h2>
-                                <button onClick={() => setShowAdminModal(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                                    <X className="w-4 h-4 text-gray-500" />
-                                </button>
-                            </div>
-                            <form onSubmit={handleAddAdmin} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={adminForm.first_name}
-                                            onChange={(e) => setAdminForm({ ...adminForm, first_name: e.target.value })}
-                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={adminForm.last_name}
-                                            onChange={(e) => setAdminForm({ ...adminForm, last_name: e.target.value })}
-                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                                    <input
-                                        required
-                                        type="email"
-                                        value={adminForm.email}
-                                        onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Role & Permissions</label>
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <label className={cn(
-                                            "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all",
-                                            adminForm.isSuperAdmin
-                                                ? "border-brand-500 bg-brand-50 ring-1 ring-brand-500"
-                                                : "border-gray-200 hover:border-brand-200"
-                                        )}>
-                                            <div className="pt-0.5">
-                                                <input
-                                                    type="radio"
-                                                    name="role"
-                                                    checked={adminForm.isSuperAdmin}
-                                                    onChange={() => setAdminForm({ ...adminForm, isSuperAdmin: true })}
-                                                    className="text-brand-600 focus:ring-brand-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <span className="block text-sm font-medium text-gray-900">Super Admin</span>
-                                                <span className="block text-xs text-gray-500 mt-0.5">Full access to all settings, billing, and team management.</span>
-                                            </div>
-                                        </label>
-
-                                        <label className={cn(
-                                            "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all",
-                                            !adminForm.isSuperAdmin
-                                                ? "border-brand-500 bg-brand-50 ring-1 ring-brand-500"
-                                                : "border-gray-200 hover:border-brand-200"
-                                        )}>
-                                            <div className="pt-0.5">
-                                                <input
-                                                    type="radio"
-                                                    name="role"
-                                                    checked={!adminForm.isSuperAdmin}
-                                                    onChange={() => setAdminForm({ ...adminForm, isSuperAdmin: false })}
-                                                    className="text-brand-600 focus:ring-brand-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <span className="block text-sm font-medium text-gray-900">Admin</span>
-                                                <span className="block text-xs text-gray-500 mt-0.5">Can manage classes, bookings, and members. Limited access to settings.</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
-                                    <button type="button" onClick={() => setShowAdminModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-                                    <button type="submit" className="flex-1 py-2.5 gradient-bg-brand text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">Add Member</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
-        </div >
+            {/* ── Archive / Recover / Delete confirmation modal ───────── */}
+            {pendingConfirm && (
+                <GenericConfirmModal
+                    title={
+                        pendingConfirm.action === "archive" ? `Archive ${pendingConfirm.label}?`
+                        : pendingConfirm.action === "recover" ? `Recover ${pendingConfirm.label}?`
+                        : `Delete ${pendingConfirm.label}?`
+                    }
+                    supporting={
+                        pendingConfirm.action === "archive"
+                            ? `Archiving hides this ${pendingConfirm.kind} from active views. All data is preserved and you can recover it later.`
+                        : pendingConfirm.action === "recover"
+                            ? `Recovering brings this ${pendingConfirm.kind} back into the active list.`
+                            : `Deleting this ${pendingConfirm.kind} permanently removes it from the prototype. This can't be undone.`
+                    }
+                    confirmLabel={
+                        pendingConfirm.action === "archive" ? "Archive"
+                        : pendingConfirm.action === "recover" ? "Recover"
+                        : "Delete"
+                    }
+                    destructive={pendingConfirm.action === "delete"}
+                    onCancel={() => setPendingConfirm(null)}
+                    onConfirm={applyPendingConfirm}
+                />
+            )}
+        </div>
     );
 }
+
+// ─── Subcomponents ──────────────────────────────────────────────────────────
+
+function StudioCard({ name, logoUrl, country, currency, timezone, onEdit }: {
+    name: string;
+    logoUrl?: string;
+    country: string;
+    currency: string;
+    timezone: string;
+    onEdit: () => void;
+}) {
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex items-center gap-6 w-full">
+            <StudioAvatar logoUrl={logoUrl} />
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
+                    {name}
+                </p>
+                <div className="grid grid-cols-3 gap-3 w-full">
+                    <InfoTile label="Country"   value={country || "—"} />
+                    <InfoTile label="Currency"  value={currency || "—"} />
+                    <InfoTile label="Time zone" value={timezoneLabel(timezone) || timezone || "—"} />
+                </div>
+            </div>
+            <Button
+                variant="secondary-gray"
+                size="md"
+                leftIcon={<Edit02 className="w-5 h-5" />}
+                onClick={onEdit}
+            >
+                Edit
+            </Button>
+        </div>
+    );
+}
+
+function StudioAvatar({ logoUrl }: { logoUrl?: string }) {
+    return (
+        <div
+            className="relative w-[96px] h-[96px] rounded-full bg-[#f2f4f7] border-4 border-white shrink-0 overflow-hidden flex items-center justify-center"
+            style={{
+                boxShadow:
+                    "0px 12px 16px -4px rgba(16,24,40,0.08), 0px 4px 6px -2px rgba(16,24,40,0.03)",
+            }}
+        >
+            {logoUrl
+                ? <img src={logoUrl} alt="" className="w-full h-full object-cover rounded-full" />
+                : <Image01 className="w-12 h-12 text-[#98a2b3]" />
+            }
+            <div className="absolute inset-0 rounded-full border border-[rgba(0,0,0,0.08)] pointer-events-none" />
+        </div>
+    );
+}
+
+function InfoTile({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex flex-col">
+            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
+            <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">
+                {value}
+            </p>
+        </div>
+    );
+}
+
+// ─── Header controls ────────────────────────────────────────────────────────
+
+function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    return (
+        <div className="w-[220px] h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] flex items-center gap-2 px-[14px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+            <SearchLg className="w-5 h-5 text-[#667085] shrink-0" />
+            <input
+                type="text"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                placeholder="Search location..."
+                className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none min-w-0"
+            />
+        </div>
+    );
+}
+
+function FilterDropdown({ open, onToggle, onClose, value, onPick }: {
+    open: boolean;
+    onToggle: () => void;
+    onClose: () => void;
+    value: StatusFilter | null;
+    onPick: (s: StatusFilter) => void;
+}) {
+    const ref = useClickOutside<HTMLDivElement>(onClose, open);
+    return (
+        <div ref={ref} className="relative">
+            <Button
+                variant="secondary-gray"
+                size="md"
+                leftIcon={
+                    // The small green dot pinned to the icon's top-right is the
+                    // "filter active" affordance shared with Gift Cards.
+                    <div className="relative">
+                        <FilterLines className="w-4 h-4" />
+                        {value !== null && (
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
+                        )}
+                    </div>
+                }
+                onClick={onToggle}
+            >
+                Filter
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[160px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2">
+                    {STATUS_OPTIONS.map(o => {
+                        const active = value === o.value;
+                        return (
+                            <button
+                                key={o.value}
+                                type="button"
+                                onClick={() => onPick(o.value)}
+                                className={cn(
+                                    "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
+                                    active
+                                        ? "bg-[#f9fafb] text-[#101828]"
+                                        : "text-[#344054] hover:bg-[#f9fafb]",
+                                )}
+                            >
+                                {o.label}
+                                {active && <Check className="w-4 h-4 text-[#658774]" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AddLocationDropdown({ open, onToggle, onClose, onAddBranch, onAddRoom }: {
+    open: boolean;
+    onToggle: () => void;
+    onClose: () => void;
+    onAddBranch: () => void;
+    onAddRoom: () => void;
+}) {
+    const ref = useClickOutside<HTMLDivElement>(onClose, open);
+    return (
+        <div ref={ref} className="relative">
+            <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Plus className="w-5 h-5" />}
+                onClick={onToggle}
+            >
+                Add location
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
+                    <MenuItem icon={<Building01 className="w-4 h-4 text-[#667085]" />} label="Branch" onClick={onAddBranch} />
+                    <MenuItem icon={<LayoutGrid01 className="w-4 h-4 text-[#667085]" />} label="Room" onClick={onAddRoom} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MenuItem({ icon, label, onClick, danger = false }: {
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    danger?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="flex items-center gap-3 px-3 py-2 mx-1 rounded-[6px] hover:bg-[#f9fafb] text-left"
+        >
+            {icon}
+            <span className={cn(
+                "text-[14px] font-medium",
+                danger ? "text-[#d92d20]" : "text-[#344054]",
+            )}>
+                {label}
+            </span>
+        </button>
+    );
+}
+
+// ─── Table chrome ───────────────────────────────────────────────────────────
+
+function TableHeader() {
+    return (
+        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[44px] border-b border-[#e4e7ec] bg-white">
+            <TableHeaderCell className="pl-8 pr-6">Location name</TableHeaderCell>
+            <TableHeaderCell className="px-6">Working days</TableHeaderCell>
+            <TableHeaderCell className="px-6">Working hour</TableHeaderCell>
+            <TableHeaderCell className="px-6">Address</TableHeaderCell>
+            <TableHeaderCell className="px-6">Status</TableHeaderCell>
+            <TableHeaderCell className="px-6">Enable</TableHeaderCell>
+            <TableHeaderCell className="px-2" />
+        </div>
+    );
+}
+
+function TableHeaderCell({ children, className }: { children?: React.ReactNode; className?: string }) {
+    return (
+        <p className={cn("text-[12px] font-medium text-[#475467] leading-[18px] truncate", className)}>
+            {children}
+        </p>
+    );
+}
+
+// ─── Rows ──────────────────────────────────────────────────────────────────
+
+function BranchRow({
+    branch, status, hours, roomCount, expanded, onToggleExpand, onToggleEnable,
+    actionMenuOpen, onOpenActionMenu, onCloseActionMenu,
+    onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
+}: {
+    branch: Branch;
+    status: "active" | "inactive" | "archive";
+    hours: BusinessHours[];
+    roomCount: number;
+    expanded: boolean;
+    onToggleExpand: () => void;
+    onToggleEnable: () => void;
+    actionMenuOpen: boolean;
+    onOpenActionMenu: () => void;
+    onCloseActionMenu: () => void;
+    onView: () => void;
+    onEdit: () => void;
+    onAddRoom: () => void;
+    onArchive: () => void;
+    onRecover: () => void;
+    onDelete: () => void;
+}) {
+    const ref = useClickOutside<HTMLDivElement>(onCloseActionMenu, actionMenuOpen);
+    return (
+        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec]">
+            {/* Col 1 — Location name (with expand chevron) */}
+            <div className="flex items-center gap-2 pl-3 pr-6 h-full">
+                <button
+                    type="button"
+                    onClick={onToggleExpand}
+                    className="w-6 h-6 flex items-center justify-center text-[#475467] hover:bg-[#f9fafb] rounded-[6px] shrink-0"
+                    aria-label={expanded ? "Collapse rooms" : "Expand rooms"}
+                >
+                    {expanded
+                        ? <ChevronDown className="w-4 h-4" />
+                        : <ChevronRight className="w-4 h-4" />
+                    }
+                </button>
+                <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0 overflow-hidden">
+                    {branch.image_url
+                        ? <img src={branch.image_url} alt="" className="w-full h-full object-cover" />
+                        : <Building01 className="w-5 h-5 text-[#475467]" />
+                    }
+                </div>
+                <div className="flex flex-col min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                        {branch.name}
+                    </p>
+                    <p className="text-[14px] text-[#475467] leading-5 truncate">
+                        {emailFromBranchName(branch.name)}
+                    </p>
+                </div>
+            </div>
+            {/* Col 2 — Working days */}
+            <div className="px-6">
+                <WorkingDaysStrip hours={hours} />
+            </div>
+            {/* Col 3 — Working hour */}
+            <div className="px-6">
+                <p className="text-[14px] text-[#101828] leading-5 truncate">
+                    {primaryHoursDisplay(hours)}
+                </p>
+            </div>
+            {/* Col 4 — Address */}
+            <div className="px-6">
+                <p className="text-[14px] text-[#101828] leading-5 line-clamp-2">
+                    {branch.address ?? "—"}
+                </p>
+            </div>
+            {/* Col 5 — Status */}
+            <div className="px-6">
+                <StatusBadge status={status} />
+            </div>
+            {/* Col 6 — Enable toggle (only when active/inactive) */}
+            <div className="px-6">
+                {status !== "archive" ? (
+                    <Toggle
+                        on={status === "active"}
+                        onChange={onToggleEnable}
+                        ariaLabel={`Toggle ${branch.name}`}
+                    />
+                ) : null}
+            </div>
+            {/* Col 7 — Actions */}
+            <div ref={ref} className="relative px-2 flex justify-end">
+                <button
+                    type="button"
+                    onClick={actionMenuOpen ? onCloseActionMenu : onOpenActionMenu}
+                    className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors"
+                    aria-label="Open actions"
+                >
+                    <DotsVertical className="w-4 h-4 text-[#667085]" />
+                </button>
+                {actionMenuOpen && (
+                    <BranchActionMenu
+                        status={status}
+                        canDelete={roomCount === 0}
+                        onView={onView}
+                        onEdit={onEdit}
+                        onAddRoom={onAddRoom}
+                        onArchive={onArchive}
+                        onRecover={onRecover}
+                        onDelete={onDelete}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
+function RoomRow({
+    room, status, onToggleEnable, actionMenuOpen, onOpenActionMenu, onCloseActionMenu,
+    onView, onEdit, onArchive, onRecover, onDelete,
+}: {
+    room: Room;
+    status: "active" | "inactive" | "archive";
+    onToggleEnable: () => void;
+    actionMenuOpen: boolean;
+    onOpenActionMenu: () => void;
+    onCloseActionMenu: () => void;
+    onView: () => void;
+    onEdit: () => void;
+    onArchive: () => void;
+    onRecover: () => void;
+    onDelete: () => void;
+}) {
+    const ref = useClickOutside<HTMLDivElement>(onCloseActionMenu, actionMenuOpen);
+    return (
+        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec] bg-white">
+            {/* Col 1 — Room name (indented under branch) */}
+            <div className="flex items-center gap-3 pl-[60px] pr-6 h-full">
+                <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
+                    <LayoutGrid01 className="w-5 h-5 text-[#475467]" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                        {room.name}
+                    </p>
+                    <p className="text-[14px] text-[#475467] leading-5 truncate">
+                        {room.capacity} max
+                    </p>
+                </div>
+            </div>
+            {/* Col 2-4 empty for rooms */}
+            <div className="px-6" />
+            <div className="px-6" />
+            <div className="px-6" />
+            {/* Col 5 — Status */}
+            <div className="px-6">
+                <StatusBadge status={status} />
+            </div>
+            {/* Col 6 — Enable toggle (only when active/inactive) */}
+            <div className="px-6">
+                {status !== "archive" ? (
+                    <Toggle
+                        on={status === "active"}
+                        onChange={onToggleEnable}
+                        ariaLabel={`Toggle ${room.name}`}
+                    />
+                ) : null}
+            </div>
+            {/* Col 7 — Actions */}
+            <div ref={ref} className="relative px-2 flex justify-end">
+                <button
+                    type="button"
+                    onClick={actionMenuOpen ? onCloseActionMenu : onOpenActionMenu}
+                    className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors"
+                    aria-label="Open actions"
+                >
+                    <DotsVertical className="w-4 h-4 text-[#667085]" />
+                </button>
+                {actionMenuOpen && (
+                    <RoomActionMenu
+                        status={status}
+                        onView={onView}
+                        onEdit={onEdit}
+                        onArchive={onArchive}
+                        onRecover={onRecover}
+                        onDelete={onDelete}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Row action menus ──────────────────────────────────────────────────────
+
+function BranchActionMenu({
+    status, canDelete, onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
+}: {
+    status: "active" | "inactive" | "archive";
+    /** True when the branch has zero rooms — delete is only offered then. */
+    canDelete: boolean;
+    onView: () => void;
+    onEdit: () => void;
+    onAddRoom: () => void;
+    onArchive: () => void;
+    onRecover: () => void;
+    onDelete: () => void;
+}) {
+    const archived = status === "archive";
+    return (
+        <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[200px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
+            <MenuItem icon={<Eye className="w-4 h-4 text-[#667085]" />}        label="View details" onClick={onView} />
+            {!archived && (
+                <>
+                    <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit branch" onClick={onEdit} />
+                    <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
+                    <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"     onClick={onArchive} />
+                </>
+            )}
+            {archived && (
+                <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[#667085]" />} label="Recover" onClick={onRecover} />
+            )}
+            {canDelete && (
+                <MenuItem icon={<Trash04 className="w-4 h-4 text-[#d92d20]" />} label="Delete" onClick={onDelete} danger />
+            )}
+        </div>
+    );
+}
+
+function RoomActionMenu({
+    status, onView, onEdit, onArchive, onRecover, onDelete,
+}: {
+    status: "active" | "inactive" | "archive";
+    onView: () => void;
+    onEdit: () => void;
+    onArchive: () => void;
+    onRecover: () => void;
+    onDelete: () => void;
+}) {
+    const archived = status === "archive";
+    return (
+        <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
+            <MenuItem icon={<Eye className="w-4 h-4 text-[#667085]" />}      label="View details" onClick={onView} />
+            {!archived && (
+                <>
+                    <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit room" onClick={onEdit} />
+                    <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"   onClick={onArchive} />
+                </>
+            )}
+            {archived && (
+                <>
+                    <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[#667085]" />} label="Recover" onClick={onRecover} />
+                    <MenuItem icon={<Trash04 className="w-4 h-4 text-[#d92d20]" />}      label="Delete"  onClick={onDelete} danger />
+                </>
+            )}
+        </div>
+    );
+}
+
+// ─── Display primitives ────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: "active" | "inactive" | "archive" }) {
+    if (status === "active") {
+        return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
+                Active
+            </span>
+        );
+    }
+    if (status === "archive") {
+        return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
+                Archived
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
+            Inactive
+        </span>
+    );
+}
+
+/** Generic confirmation modal for archive / recover / delete actions. */
+function GenericConfirmModal({
+    title, supporting, confirmLabel, destructive, onCancel, onConfirm,
+}: {
+    title: string;
+    supporting: string;
+    confirmLabel: string;
+    destructive: boolean;
+    onCancel: () => void;
+    onConfirm: () => void;
+}) {
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            if (e.key === "Escape") onCancel();
+        }
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [onCancel]);
+
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onCancel} />
+            <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[400px] flex flex-col">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    aria-label="Close"
+                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
+                >
+                    <XClose className="w-6 h-6 text-[#98a2b3]" />
+                </button>
+                <div className="pt-6 px-6 flex flex-col items-center gap-4">
+                    <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
+                        destructive ? "bg-[#fee4e2]" : "bg-[#e9fff3]",
+                    )}>
+                        {destructive
+                            ? <Trash04 className="w-6 h-6 text-[#d92d20]" />
+                            : <Archive className="w-6 h-6 text-[#658774]" />
+                        }
+                    </div>
+                    <div className="flex flex-col gap-1 items-center text-center w-full">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
+                        <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 items-start p-6 pt-6 w-full">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant={destructive ? "destructive" : "primary"}
+                        size="lg"
+                        className="flex-1"
+                        onClick={onConfirm}
+                    >
+                        {confirmLabel}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/** Renders the "M T W T F S S" working-days strip. Closed days render red
+ *  (#d92d20). Falls back to all-grey neutral letters if no business_hours
+ *  exist for the branch yet. */
+function WorkingDaysStrip({ hours }: { hours: BusinessHours[] }) {
+    const byDow = new Map(hours.map(h => [h.day_of_week, h]));
+    return (
+        <div className="flex items-center gap-2">
+            {DAY_LETTERS.map((letter, i) => {
+                const dow = DOW_FOR_COL[i];
+                const h = byDow.get(dow);
+                const closed = !h || h.is_closed;
+                return (
+                    <span
+                        key={i}
+                        className={cn(
+                            "text-[14px] font-semibold leading-5",
+                            closed ? "text-[#d92d20]" : "text-[#101828]",
+                        )}
+                    >
+                        {letter}
+                    </span>
+                );
+            })}
+        </div>
+    );
+}
+
+/** First-open-day hours string (e.g. "07:00 AM - 08:00 PM"). Falls back to
+ *  "—" if every day is closed. Branches typically have a uniform weekday
+ *  window so this single string is a good summary for the table. */
+function primaryHoursDisplay(hours: BusinessHours[]): string {
+    const open = hours.find(h => !h.is_closed);
+    if (!open) return "—";
+    return `${to12h(open.open_time)} - ${to12h(open.close_time)}`;
+}
+
+function to12h(hhmm: string): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const hr = ((h + 11) % 12) + 1;
+    return `${String(hr).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${period}`;
+}
+
+/** Cosmetic — derives a synthetic branch email from the branch name so the
+ *  Figma's `forma.south@untitled.ui` subtitle has a sensible placeholder
+ *  until Phase 4 adds `email` to the seed proper. */
+function emailFromBranchName(name: string): string {
+    const slug = name.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, "")
+        .replace(/\s+/g, ".")
+        .slice(0, 24);
+    return `${slug}@formastudio.ae`;
+}
+
+function Toggle({ on, onChange, ariaLabel }: {
+    on: boolean;
+    onChange: () => void;
+    ariaLabel: string;
+}) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-label={ariaLabel}
+            onClick={onChange}
+            className={cn(
+                "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
+                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+            )}
+        >
+            <div className={cn(
+                "w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
+                on ? "translate-x-4" : "translate-x-0",
+            )} />
+        </button>
+    );
+}
+
+function EmptyState({ query }: { query: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center gap-2 py-16 px-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center mb-2">
+                <Building01 className="w-6 h-6 text-[#475467]" />
+            </div>
+            <p className="text-[16px] font-semibold text-[#101828] leading-6">
+                {query ? "No locations found" : "No branches yet"}
+            </p>
+            <p className="text-[14px] text-[#475467] leading-5 max-w-[360px]">
+                {query
+                    ? `Nothing matches "${query}". Try a different search or clear the status filter.`
+                    : "Add your first branch to start scheduling classes and managing rooms."
+                }
+            </p>
+        </div>
+    );
+}
+
+// ─── Hooks ─────────────────────────────────────────────────────────────────
+
+// ─── Toggle confirmation modal ──────────────────────────────────────────────
+
+/** Reactivate / Deactivate confirm — surfaced when the Enable toggle on
+ *  any branch / room row is clicked. The two variants differ only in copy
+ *  and primary CTA tone (destructive for deactivate, primary for
+ *  reactivate), so this single component handles both. */
+function ToggleConfirmModal({ label, kind, action, onCancel, onConfirm }: {
+    label: string;
+    kind: "branch" | "room";
+    action: "deactivate" | "reactivate";
+    onCancel: () => void;
+    onConfirm: () => void;
+}) {
+    // Esc closes the modal — same convention as the rest of the app.
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            if (e.key === "Escape") onCancel();
+        }
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [onCancel]);
+
+    const isDeactivate = action === "deactivate";
+    const title = isDeactivate
+        ? `Deactivate ${label}?`
+        : `Reactivate ${label}?`;
+    const supporting = isDeactivate
+        ? `Deactivating this ${kind} prevents new scheduling and bookings. Existing data is preserved and you can reactivate any time.`
+        : `Reactivating this ${kind} re-enables scheduling, bookings and visibility across the app.`;
+
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onCancel} />
+            <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[400px] flex flex-col">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    aria-label="Close"
+                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
+                >
+                    <XClose className="w-6 h-6 text-[#98a2b3]" />
+                </button>
+                {/* Featured icon — red for deactivate (matches the destructive
+                    button below); green for reactivate. */}
+                <div className="pt-6 px-6 flex flex-col items-center gap-4">
+                    <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
+                        isDeactivate ? "bg-[#fee4e2]" : "bg-[#d7ffe9]",
+                    )}>
+                        {isDeactivate
+                            ? <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
+                            : <Check className="w-6 h-6 text-[#079455]" />
+                        }
+                    </div>
+                    <div className="flex flex-col gap-1 items-center text-center w-full">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
+                        <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 items-start p-6 pt-6 w-full">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant={isDeactivate ? "destructive" : "primary"}
+                        size="lg"
+                        className="flex-1"
+                        onClick={onConfirm}
+                    >
+                        {isDeactivate ? "Deactivate" : "Reactivate"}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/** Closes the floating menu when the user clicks outside the referenced
+ *  container. `enabled` short-circuits the listener while the menu is
+ *  closed so we don't run mousedown handlers for no reason. */
+function useClickOutside<T extends HTMLElement>(close: () => void, enabled: boolean) {
+    const ref = useRef<T | null>(null);
+    useEffect(() => {
+        if (!enabled) return;
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) close();
+        }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [close, enabled]);
+    return ref;
+}
+

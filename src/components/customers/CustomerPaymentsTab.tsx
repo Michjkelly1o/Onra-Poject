@@ -22,6 +22,7 @@
 // a success toast confirms it.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, DotsVertical, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
@@ -502,7 +503,19 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const refundTransaction = useAppStore(s => s.refundTransaction);
     const showToast = useAppStore(s => s.showToast);
 
-    const [inner, setInner] = useState<"overview" | "history">("overview");
+    // Notification click-through can deep-link to the Payment history
+    // sub-tab via `?payment=history` (and optionally `?tx=<id>` to highlight
+    // a specific transaction row). Falls back to Overview otherwise.
+    const searchParams = useSearchParams();
+    const initialInner: "overview" | "history" =
+        searchParams?.get("payment") === "history" ? "history" : "overview";
+    const highlightTx = searchParams?.get("tx") ?? null;
+
+    const [inner, setInner] = useState<"overview" | "history">(initialInner);
+
+    // Auto-jump to the page containing the highlighted transaction, then
+    // pulse-highlight the row for a couple seconds so admins can spot it.
+    const [pulseTxId, setPulseTxId] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = useState<PaymentFilter>(EMPTY_PAYMENT_FILTER);
@@ -560,6 +573,22 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const paged = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    // When a `?tx=` is present, jump to the page containing that row and
+    // pulse-highlight it for 2.5s. Runs once when the inner tab + tx id
+    // are both available — guards against the highlight blinking on every
+    // unrelated re-render.
+    useEffect(() => {
+        if (!highlightTx || inner !== "history" || filtered.length === 0) return;
+        const idx = filtered.findIndex(t => t.id === highlightTx);
+        if (idx < 0) return;
+        const targetPage = Math.floor(idx / pageSize) + 1;
+        if (targetPage !== page) setPage(targetPage);
+        setPulseTxId(highlightTx);
+        const timer = setTimeout(() => setPulseTxId(null), 2500);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [highlightTx, inner, filtered.length]);
 
     const hasActiveFilter =
         applied.statuses.length > 0 || applied.kinds.length > 0 ||
@@ -693,7 +722,12 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                     </thead>
                                     <tbody>
                                         {paged.map(t => (
-                                            <tr key={t.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={t.id} className={cn(
+                                                "transition-colors",
+                                                pulseTxId === t.id
+                                                    ? "bg-[#e9fff3] animate-pulse"
+                                                    : "hover:bg-[#f9fafb]",
+                                            )}>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <TxnIcon kind={t.kind} />

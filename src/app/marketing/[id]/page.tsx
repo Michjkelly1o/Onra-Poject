@@ -30,7 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { useAppStore, BRANCHES, type MarketingItem } from "@/lib/store";
+import { useAppStore, type MarketingItem, type Branch } from "@/lib/store";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -97,15 +97,15 @@ const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
     no_action: "No action",
 };
 
-function branchName(id: string): string {
-    return BRANCHES.find(b => b.id === id)?.name ?? id;
+function branchName(id: string, branches: Branch[]): string {
+    return branches.find(b => b.id === id)?.name ?? id;
 }
 
 /** "All branches" / "3 branches" / a single branch name. */
-function branchSummary(branchIds: string[]): string {
+function branchSummary(branchIds: string[], branches: Branch[]): string {
     const n = branchIds.length;
-    if (n === 0 || n >= BRANCHES.length) return "All branches";
-    if (n === 1) return branchName(branchIds[0]);
+    if (n === 0 || n >= branches.length) return "All branches";
+    if (n === 1) return branchName(branchIds[0], branches);
     return `${n} branches`;
 }
 
@@ -240,9 +240,10 @@ function MarketingSidebarBanner({ vm }: { vm: MarketingDetailVM }) {
     );
 }
 
-function LeftSidebar({ vm, onAction }: {
+function LeftSidebar({ vm, onAction, branches }: {
     vm: MarketingDetailVM;
     onAction: (a: "edit" | ModalAction) => void;
+    branches: Branch[];
 }) {
     const canDelete = vm.viewCount === 0;
 
@@ -294,7 +295,7 @@ function LeftSidebar({ vm, onAction }: {
                         <SidebarField label="Marketing action" value={ACTION_LABEL[vm.actionType]} />
                         <SidebarField label="Start date & time" value={formatDateTime(vm.publishDate)} />
                         <SidebarField label="End date & time" value={formatDateTime(vm.expiryDate)} />
-                        <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds)} />
+                        <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
                     </div>
                 </div>
 
@@ -417,7 +418,7 @@ function CheckRow({ label, trailing }: { label: string; trailing?: string }) {
 
 // ─── Right panel ─────────────────────────────────────────────────────────────
 
-function RightPanel({ vm }: { vm: MarketingDetailVM }) {
+function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[] }) {
     return (
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
@@ -457,7 +458,7 @@ function RightPanel({ vm }: { vm: MarketingDetailVM }) {
                     {vm.branchIds.length === 0 ? (
                         <CheckRow label="All active branches" />
                     ) : (
-                        vm.branchIds.map(id => <CheckRow key={id} label={branchName(id)} />)
+                        vm.branchIds.map(id => <CheckRow key={id} label={branchName(id, branches)} />)
                     )}
                 </VisibilityCard>
 
@@ -553,6 +554,7 @@ export default function MarketingDetailPage() {
     const memberships       = useAppStore(s => s.memberships);
     const packages          = useAppStore(s => s.packages);
     const classTemplates    = useAppStore(s => s.classTemplates);
+    const branches          = useAppStore(s => s.branches);
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
     const deleteMarketingItem = useAppStore(s => s.deleteMarketingItem);
     const showToast         = useAppStore(s => s.showToast);
@@ -673,8 +675,8 @@ export default function MarketingDetailPage() {
             {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
                 <div className="flex gap-6 h-[832px]">
-                    <LeftSidebar vm={vm} onAction={handleAction} />
-                    <RightPanel vm={vm} />
+                    <LeftSidebar vm={vm} onAction={handleAction} branches={branches} />
+                    <RightPanel vm={vm} branches={branches} />
                 </div>
             </div>
 

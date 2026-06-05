@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import {
     CheckoutShell, PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
-    describePayment, computeTotals,
+    describePayment, computeTotals, enabledMethodsFromProviders,
     type PaymentMethod,
 } from "@/components/checkout/CheckoutScreen";
 
@@ -46,6 +46,15 @@ function POSCheckoutInner() {
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
     const showToast = useAppStore(s => s.showToast);
+    // Phase 3 — POS subscribes to the live Payments-Settings store so that
+    // toggling Stripe / Apple Pay / Google Pay (or disconnecting Stripe and
+    // cascading the wallets off) hides their cards from the picker grid in
+    // the same render cycle.
+    const paymentProviders = useAppStore(s => s.paymentProviders);
+    const enabledMethods = useMemo(
+        () => enabledMethodsFromProviders(paymentProviders),
+        [paymentProviders],
+    );
 
     const customer = useMemo(
         () => pendingPurchase ? customers.find(c => c.id === pendingPurchase.customerId) ?? null : null,
@@ -67,6 +76,16 @@ function POSCheckoutInner() {
         if (!pendingPurchase) router.replace("/admin/pos");
     }, [pendingPurchase, router]);
 
+    // Cascade safety — if the currently-selected method just disappeared
+    // from `enabledMethods` (e.g. the user disconnected Stripe in another
+    // tab while this checkout was open), drop the selection so the picker
+    // stops claiming a hidden card is active.
+    useEffect(() => {
+        if (paymentMethod !== null && !enabledMethods.includes(paymentMethod)) {
+            setPaymentMethod(null);
+        }
+    }, [paymentMethod, enabledMethods]);
+
     if (!pendingPurchase || !customer) return null;
 
     const { subtotal, discountAmount, taxRate, taxAmount, total } = computeTotals(
@@ -81,6 +100,7 @@ function POSCheckoutInner() {
         if (paymentMethod === "cash") return cashReceivedNum >= total;
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
+        if (paymentMethod === "googlepay") return true;
         return false;
     }
 
@@ -136,6 +156,7 @@ function POSCheckoutInner() {
                 change={change}
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
+                enabledMethods={enabledMethods}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}

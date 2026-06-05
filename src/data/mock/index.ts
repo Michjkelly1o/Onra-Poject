@@ -85,3 +85,40 @@ export { instructors } from "./instructors";
 
 // Payroll entries (FK → instructors, branches, pay_rates) — one per instructor × period
 export { payroll_entries, DEMO_PERIOD_START, DEMO_PERIOD_END } from "./payroll_entries";
+
+// Customer notification settings (PRD 11 §12) — per-event channel + template config
+export { notification_settings } from "./notification_settings";
+
+// In-app notification records (PRD 12 §6.1) — feed for bell + /admin/notifications
+export { notifications } from "./notifications";
+
+// Referral settings (PRD 11 §11) — global referral program config
+export { referral_settings } from "./referral_settings";
+
+// Tax module (PRD 11 §10) — tax rates list + global display mode
+export { tax_rates } from "./tax_rates";
+export { tax_settings } from "./tax_settings";
+// Tax rules (Apply tax rates tab) — FK → tax_rates + branches
+export { tax_rules } from "./tax_rules";
+
+// Agreements module (PRD 11 §9) — list + per-version content (FK → branches, users)
+export { agreements } from "./agreements";
+export { agreement_versions } from "./agreement_versions";
+
+// Integrations module (PRD 11 §8) — third-party connect cards
+export { integrations } from "./integrations";
+
+// Payments module (PRD 11 §7) — Stripe / Apple Pay / Google Pay providers
+// (distinct from `payment_methods` which holds customer saved cards)
+export { payment_providers } from "./payment_providers";
+
+// Account settings (PRD 12 §account) — canonical logged-in user profile.
+// Single source of truth read by the Account page, Sidebar avatar chip,
+// and any "by-current-user" attribution across the prototype. Distinct
+// from `users` which seeds the demo role-switcher personas.
+export { account_profile } from "./account_profile";
+
+// Branding module (PRD 11 §5) — studio identity + customer-portal preferences.
+// Read by the Branding landing + Customize design / portal sub-pages, and
+// (when it ships) by the customer-facing portal itself for theming.
+export { branding_settings } from "./branding_settings";

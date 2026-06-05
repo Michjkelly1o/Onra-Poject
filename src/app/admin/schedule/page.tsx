@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus, DotsVertical,
@@ -16,7 +16,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
-import { useAppStore, getBusinessHours, getUnionBusinessHours, hourFloatFromTime, BRANCHES, ROOMS, DEFAULT_BRANCH_ID, type ClassInstance, type ClassStatus, type ScheduleInstructor, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, type ClassInstance, type ClassStatus, type ScheduleInstructor, type BusinessHours, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 
 // Alias for compatibility with existing code in this file
@@ -127,6 +127,32 @@ function buildMonthGrid(my: string): Array<{ iso: string; num: number; current: 
         if (d <= 0 || d > daysInMonth) return null;
         return { iso: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, num: d, current: true };
     });
+}
+
+// ─── Live business-hours lookups ───────────────────────────────────────────────
+//
+// The schedule grid (Day / Week views) reads open/close from the LIVE
+// `businessHours` store slice so edits made in Settings → Business Hours
+// propagate to the time axis without a page reload. These mirror the
+// store-level `getBusinessHours` / `getUnionBusinessHours` helpers but
+// operate on whatever rows the caller hands in.
+
+function lookupBusinessHours(rows: BusinessHours[], branchId: string, dateISO: string): HoursWindow {
+    const d = new Date(dateISO + "T00:00:00Z");
+    const dow = d.getUTCDay();
+    const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
+    if (!row || row.is_closed) return null;
+    return { open: row.open_time, close: row.close_time };
+}
+
+function lookupUnionBusinessHours(rows: BusinessHours[], branchIds: string[], dateISO: string): HoursWindow {
+    const d = new Date(dateISO + "T00:00:00Z");
+    const dow = d.getUTCDay();
+    const matches = rows.filter(r => branchIds.includes(r.branch_id) && r.day_of_week === dow && !r.is_closed);
+    if (matches.length === 0) return null;
+    const open  = matches.reduce((acc, r) => r.open_time  < acc ? r.open_time  : acc, matches[0].open_time);
+    const close = matches.reduce((acc, r) => r.close_time > acc ? r.close_time : acc, matches[0].close_time);
+    return { open, close };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -364,10 +390,7 @@ const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Completed", "Cancel
 // Branch → room-name groups for the location filter, derived from the live
 // `branches` + `rooms` seeds so the filter always matches the room names the
 // schedule rows actually carry.
-const LOCATION_GROUPS = BRANCHES.map(b => ({
-    branch: b.name,
-    rooms: ROOMS.filter(r => r.branch_id === b.id).map(r => r.name),
-})).filter(g => g.rooms.length > 0);
+type LocationGroup = { branch: string; rooms: string[] };
 
 function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
     return (
@@ -385,8 +408,9 @@ function FilterPill({ label, selected, onClick }: { label: string; selected: boo
  * branch headers, no cross-branch grouping. Pass `branchLabel` to filter to a
  * single branch; omit it to fall back to a flat union of all rooms.
  */
-function LocationDropdown({ value, onChange, branchLabel }: {
+function LocationDropdown({ value, onChange, branchLabel, locationGroups }: {
     value: string; onChange: (v: string) => void; branchLabel?: string;
+    locationGroups: LocationGroup[];
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -398,8 +422,8 @@ function LocationDropdown({ value, onChange, branchLabel }: {
     }, []);
 
     const rooms = branchLabel
-        ? LOCATION_GROUPS.find(g => g.branch === branchLabel)?.rooms ?? []
-        : LOCATION_GROUPS.flatMap(g => g.rooms);
+        ? locationGroups.find(g => g.branch === branchLabel)?.rooms ?? []
+        : locationGroups.flatMap(g => g.rooms);
     const display = value || "All locations";
 
     return (
@@ -487,7 +511,7 @@ function FilterDropdown({ label, value, options, onChange }: {
     );
 }
 
-function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel }: {
+function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel, locationGroups }: {
     open: boolean;
     onClose: () => void;
     applied: FilterState;
@@ -495,6 +519,7 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel }
     templates: { id: string; name: string }[];
     /** Branch currently selected in the toolbar — the Location filter scopes to its rooms only. */
     branchLabel?: string;
+    locationGroups: LocationGroup[];
 }) {
     const [pending, setPending] = useState<FilterState>(EMPTY_FILTER);
 
@@ -595,7 +620,7 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel }
                     {/* Location — grouped by branch → rooms */}
                     <div className="flex flex-col gap-2">
                         <SectionLabel label="Location" />
-                        <LocationDropdown branchLabel={branchLabel} value={pending.locationRoom} onChange={v => setPending(p => ({ ...p, locationRoom: v }))} />
+                        <LocationDropdown branchLabel={branchLabel} locationGroups={locationGroups} value={pending.locationRoom} onChange={v => setPending(p => ({ ...p, locationRoom: v }))} />
                     </div>
                     <Divider />
 
@@ -752,13 +777,19 @@ function ClassBlock({ cls, onClick, gridStartHour }: {
     );
 }
 
-function DayView({ dateISO, classes, branchId, onClassClick }: {
+function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, onClassClick }: {
     /** ISO date the view is anchored to ("2026-05-15"). Filter is dateISO-based
      *  so newly-created schedules surface regardless of display-string format. */
     dateISO: string;
     classes: ClassInstance[];
-    /** Branch the view is scoped to — drives the grid's hour range. */
+    /** Branch the view is scoped to — drives the grid's hour range.
+     *  Empty string when "All locations" is selected. */
     branchId: string;
+    /** Live businessHours rows from the store slice. */
+    businessHoursRows: BusinessHours[];
+    /** Active branch ids — used to build the union hours window when
+     *  branchId is empty ("All locations"). */
+    activeBranchIds: string[];
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
     const dayClasses = classes.filter(c => c.dateISO === dateISO);
@@ -767,9 +798,13 @@ function DayView({ dateISO, classes, branchId, onClassClick }: {
     const missingInstructors = INSTRUCTORS.filter(i => !instructorIds.includes(i.id)).slice(0, Math.max(0, 4 - allInstructors.length));
     const columns = [...allInstructors, ...missingInstructors];
 
-    // Grid hour range = the branch's open hours for this weekday, rounded out
-    // to whole-hour bounds. Falls back to 7am–9pm if the branch is closed.
-    const businessHours = getBusinessHours(branchId, dateISO);
+    // Grid hour range = the branch's open hours for this weekday (or the
+    // union envelope across every active branch when "All locations" is
+    // selected), rounded out to whole-hour bounds. Falls back to 7am–9pm
+    // when the branch is closed or no hours are seeded.
+    const businessHours = branchId
+        ? lookupBusinessHours(businessHoursRows, branchId, dateISO)
+        : lookupUnionBusinessHours(businessHoursRows, activeBranchIds, dateISO);
     const gridStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open)) : FALLBACK_START_HOUR;
     const gridEndHour   = businessHours ? Math.ceil(hourFloatFromTime(businessHours.close)) : FALLBACK_END_HOUR;
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
@@ -874,23 +909,32 @@ function weekHeightFromTime(s: string, e: string): number {
     return Math.max(WEEK_HOUR_HEIGHT, ((eh * 60 + em) - (sh * 60 + sm)) * WEEK_HOUR_HEIGHT / 60);
 }
 
-function WeekView({ classes, weekStart, branchId, onClassClick }: {
+function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranchIds, onClassClick }: {
     classes: ClassInstance[];
     weekStart: string;
-    /** Branch the view is scoped to — drives the grid's hour range. */
+    /** Branch the view is scoped to — drives the grid's hour range.
+     *  Empty string when "All locations" is selected. */
     branchId: string;
+    /** Live businessHours rows from the store slice. */
+    businessHoursRows: BusinessHours[];
+    /** Active branch ids — used when branchId is empty (All locations). */
+    activeBranchIds: string[];
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
     const cols = buildWeekCols(weekStart);
 
     // Grid range = widest envelope of the branch's open hours across the 7
     // visible days (some weekdays may open earlier/close later than others).
-    const weekHours = getUnionBusinessHours([branchId], weekStart);
+    // When "All locations" is selected, we widen across every active branch.
+    const scopeBranchIds = branchId ? [branchId] : activeBranchIds;
+    const weekHours = lookupUnionBusinessHours(businessHoursRows, scopeBranchIds, weekStart);
     // Walk the whole week, taking the earliest open + latest close across days.
     let openMin: string | null = null;
     let closeMax: string | null = null;
     for (const c of cols) {
-        const h = getBusinessHours(branchId, c.iso);
+        const h = branchId
+            ? lookupBusinessHours(businessHoursRows, branchId, c.iso)
+            : lookupUnionBusinessHours(businessHoursRows, activeBranchIds, c.iso);
         if (!h) continue;
         if (openMin === null  || h.open  < openMin)  openMin  = h.open;
         if (closeMax === null || h.close > closeMax) closeMax = h.close;
@@ -1294,6 +1338,9 @@ export default function SchedulePageRoute() {
 function SchedulePage() {
     const router = useRouter();
     const { classSchedules, classTemplates, classBookings, cancelClassSchedule, showToast } = useAppStore();
+    const branches = useAppStore(s => s.branches);
+    const rooms = useAppStore(s => s.rooms);
+    const businessHours = useAppStore(s => s.businessHours);
     const [activeTab, setActiveTab] = useState<ViewTab>("list");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
@@ -1359,6 +1406,10 @@ function SchedulePage() {
         !!applied.dateFrom || !!applied.dateTo;
 
     const filteredClasses = classSchedules.filter(c => {
+        // Branch picker — empty string = "All locations", otherwise scope to
+        // schedules carrying the matching branchId. Composes with every
+        // other filter below.
+        if (location && c.branchId !== location) return false;
         const q = search.toLowerCase();
         if (q && !c.name.toLowerCase().includes(q) && !c.instructorName.toLowerCase().includes(q) && !c.location.toLowerCase().includes(q)) return false;
         if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
@@ -1388,15 +1439,41 @@ function SchedulePage() {
     const { sorted: sortedClasses, sortKey: listSortKey, sortDir: listSortDir, toggle: toggleListSort } =
         useSort(filteredClasses, listComparators);
 
-    // Sourced from the centralized `branches` seed — same options/order
-    // appear in the dashboard and POS branch pickers (single source of truth).
-    // Inactive branches are hidden. Each option carries a MarkerPin01 glyph
-    // so the dropdown items visually echo the trigger icon.
-    const locationOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
-        value: b.id,
-        label: b.name,
-        icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
-    }));
+    // Sourced from the live `branches` slice — same options/order appear in
+    // the dashboard and POS branch pickers (single source of truth). Inactive
+    // / archived branches are hidden from the picker so users can't make NEW
+    // selections against retired branches. Each option carries a MarkerPin01
+    // glyph so the dropdown items visually echo the trigger icon.
+    const locationOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({
+            value: b.id,
+            label: b.name,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        })),
+        [branches],
+    );
+
+    // Ids of every active branch — used by the day/week grid's hour-axis
+    // when "All locations" is selected so the union covers every studio.
+    const activeBranchIds = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => b.id),
+        [branches],
+    );
+
+    // Branch → rooms grouping for the FilterPanel Location dropdown. Built
+    // from the live `branches` + `rooms` slices so adds/archives propagate
+    // immediately. Archived branches and inactive rooms are excluded so the
+    // filter only offers selectable rooms tied to active branches.
+    const locationGroups = useMemo<LocationGroup[]>(
+        () => branches
+            .filter(b => b.status === "active")
+            .map(b => ({
+                branch: b.name,
+                rooms: rooms.filter(r => r.branch_id === b.id).map(r => r.name),
+            }))
+            .filter(g => g.rooms.length > 0),
+        [branches, rooms],
+    );
 
     const TAB_ITEMS: { id: ViewTab; label: string }[] = [
         { id: "list", label: "List" },
@@ -1540,11 +1617,11 @@ function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView dateISO={dayDateISO} branchId={location} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} classes={filteredClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "week" && (
-                    <WeekView weekStart={weekStart} branchId={location} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <WeekView weekStart={weekStart} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} classes={filteredClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "month" && (
@@ -1557,6 +1634,7 @@ function SchedulePage() {
                 applied={applied} onApply={f => { setApplied(f); setPage(1); }}
                 templates={classTemplates.filter(t => t.status === "Active").map(t => ({ id: t.id, name: t.name }))}
                 branchLabel={locationOptions.find(o => o.value === location)?.label}
+                locationGroups={locationGroups}
             />
 
             {/* Class floating popup */}

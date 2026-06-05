@@ -41,9 +41,10 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
 import { Toast } from "@/components/ui/Toast";
 import {
-    useAppStore, BRANCHES,
-    type Instructor, type PayrollEntry, type PayrollEntryStatus,
+    useAppStore,
+    type Instructor, type PayrollEntry, type PayrollEntryStatus, type Branch,
 } from "@/lib/store";
+import { TaxSuffix } from "@/components/ui/TaxSuffix";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 
@@ -186,9 +187,10 @@ function InstructorAvatar({ instructor }: { instructor: Instructor }) {
             />
         );
     }
+    // Neutral chrome — matches the Staff & Permissions staff tab so payroll
+    // initials avatars don't drift into a per-row colour palette.
     return (
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-medium text-white shrink-0"
-            style={{ backgroundColor: instructor.color }}>
+        <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center text-[14px] font-medium text-[#475467] shrink-0">
             {instructor.initials}
         </div>
     );
@@ -421,9 +423,9 @@ interface RunRow {
 
 // ─── CSV export ────────────────────────────────────────────────────────────
 
-function exportRunCsv(rows: RunRow[], periodLabel: string) {
+function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
     const header = ["Instructor", "Email", "Branch", "Default pay rate", "Completed classes", "Total time (hrs)", "Gross revenue (AED)", "Instructor payout (AED)", "Status", "Period"];
-    const branchName = (id: string) => BRANCHES.find(b => b.id === id)?.name ?? "—";
+    const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -456,6 +458,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const payrollEntries        = useAppStore(s => s.payrollEntries);
     const instructors           = useAppStore(s => s.instructors);
     const payRates              = useAppStore(s => s.payRates);
+    const branches              = useAppStore(s => s.branches);
     const setPayrollEntriesStatus = useAppStore(s => s.setPayrollEntriesStatus);
     const showToast             = useAppStore(s => s.showToast);
 
@@ -543,13 +546,13 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const clamped = Math.min(Math.max(1, page), totalPages);
     const pageRows = filteredRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
-    // ─── Branch options ───────────────────────────────────────────────────
+    // ─── Branch options (live `branches` slice) ───────────────────────────
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
 
     // ─── Pending entries snapshot (for the Process Payroll button gating) ─
@@ -600,7 +603,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     }
 
     function handleExportFromSubmitted() {
-        exportRunCsv(filteredRows, period.label);
+        exportRunCsv(filteredRows, period.label, branches);
         showToast(
             "Compensation data exported successfully",
             "The data has been exported successfully.",
@@ -611,7 +614,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     }
 
     function handleExportFromToolbar() {
-        exportRunCsv(filteredRows, period.label);
+        exportRunCsv(filteredRows, period.label, branches);
         showToast(
             "Compensation data exported successfully",
             "The data has been exported successfully.",
@@ -693,7 +696,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                 </thead>
                                 <tbody>
                                     {pageRows.map(r => {
-                                        const branch = BRANCHES.find(b => b.id === r.branchId);
+                                        const branch = branches.find(b => b.id === r.branchId);
                                         return (
                                             <tr key={r.entryId} className="transition-colors hover:bg-[#f9fafb]">
                                                 <td className={TD}>
@@ -710,7 +713,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{r.totalHours}h</td>
                                                 <td className={TD}>{aed(r.grossRevenue)}</td>
-                                                <td className={TD}>{aed(r.payout)}</td>
+                                                <td className={TD}>
+                                                    <div className="flex flex-col">
+                                                        <span>{aed(r.payout)}</span>
+                                                        <TaxSuffix category="pay_rate" branchId={r.branchId} />
+                                                    </div>
+                                                </td>
                                                 <td className={TD}><StatusBadge status={r.status} /></td>
                                                 <td className={TD}>
                                                     <RowActions

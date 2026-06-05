@@ -14,8 +14,12 @@
 //   • failed    — no action (declined)
 //   • refunded  — terminal state after a completed payment is refunded
 // Every customer with a plan has at least one `complete` row so the refund
-// flow is always demoable. `mia_anderson` has no rows on purpose — drives
-// the Payment-history empty state (she still shows a gift card in Overview).
+// flow is always demoable.
+//
+// The bottom of the seed adds two "recent" rows (`txn_mia_notif`,
+// `txn_fatima_notif`) anchored to `Date.now()` at module-load. These back
+// the live `notifications` seed so clicking a Payment notification deep-
+// links to a real row in Mia's / Fatima's Payment history.
 //
 // FK: `customer_id` → customers.id, `branch_id` → branches.id,
 //     `product_id` → memberships.id / packages.id
@@ -23,6 +27,13 @@
 import type { CustomerTransaction } from "./_types";
 
 const SOUTH = "branch_forma_south";
+
+// Relative-time helpers — used only for the notification-backing rows below
+// so the demo's Payment history always shows a "yesterday"/"today" row that
+// matches the bell-feed copy without manual seed maintenance.
+const NOW_MS = Date.now();
+const minutesAgo = (n: number) => new Date(NOW_MS - n * 60_000).toISOString();
+const daysAgo    = (n: number) => minutesAgo(n * 60 * 24);
 
 export const customer_transactions: CustomerTransaction[] = [
     // ── Ahmed Zayn ───────────────────────────────────────────────────────────
@@ -431,5 +442,38 @@ export const customer_transactions: CustomerTransaction[] = [
         created_at: "2025-09-10T13:40:00Z",
         refunded_at: "2025-09-14T10:00:00Z",
         refund_method: "cash",
+    },
+
+    // ── Notification-backing rows ────────────────────────────────────────────
+    // Each row pairs 1:1 with a Payment Confirmed notification in
+    // `notifications.ts`. The `id` here is the same value the notification
+    // carries in `transaction_id` so the `?tx=` highlight finds it. Prices
+    // mirror the live `memberships.ts` / `packages.ts` seeds so the row
+    // amount matches what's quoted in the notification body.
+    {
+        // Backs `notif_payment_fatima_pkg` — "14 min ago", today's bucket.
+        id: "txn_fatima_notif",
+        customer_id: "cust_fatima_al_sayed",
+        branch_id: SOUTH,
+        kind: "package",
+        product_id: "pkg_10_class",
+        name: "10-Class Package for One Month",
+        amount_aed: 1390,
+        status: "complete",
+        payment_method: "card",
+        created_at: minutesAgo(14),
+    },
+    {
+        // Backs `notif_payment_mia_membership` — "Yesterday" bucket.
+        id: "txn_mia_notif",
+        customer_id: "cust_mia_anderson",
+        branch_id: SOUTH,
+        kind: "membership",
+        product_id: "mem_unlimited_monthly",
+        name: "Unlimited Monthly Membership",
+        amount_aed: 2800,
+        status: "complete",
+        payment_method: "card",
+        created_at: daysAgo(1),
     },
 ];

@@ -46,10 +46,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import {
     useAppStore,
-    MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS, BRANCHES, DEFAULT_BRANCH_ID,
+    MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS, DEFAULT_BRANCH_ID,
     validatePromoCode, canApplyCustomDiscount, maxCustomDiscountPct,
     type Customer, type PurchaseLineItem,
 } from "@/lib/store";
+import { findActiveTaxRuleFor, computeLineTax, categoryForProductType } from "@/lib/tax-calc";
 
 // ─── Catalog adapter ─────────────────────────────────────────────────────────
 //
@@ -71,6 +72,11 @@ interface PosProduct {
     priceDisplay: string;
     /** Number of credits — used by the Credits-range filter. undefined for gift cards. */
     creditsValue?: number;
+    /** Branches where this product is sellable. Empty `[]` = available at every
+     *  active branch (legacy fallback). Gift-card designs have no per-branch
+     *  scoping in the data model — they're always treated as "all branches"
+     *  here (empty array). Used by the branch filter in `filteredProducts`. */
+    branchIds: string[];
 }
 
 /** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
@@ -102,6 +108,7 @@ function buildCatalog(
             priceAed: m.price_aed,
             priceDisplay: `AED ${m.price_aed.toLocaleString()}`,
             creditsValue: credits,
+            branchIds: m.branch_ids ?? [],
         });
     }
 
@@ -116,6 +123,7 @@ function buildCatalog(
             priceAed: p.price_aed,
             priceDisplay: `AED ${p.price_aed.toLocaleString()}`,
             creditsValue: p.credits,
+            branchIds: p.branch_ids ?? [],
         });
     }
 
@@ -141,6 +149,10 @@ function buildCatalog(
             priceAed: isFixed ? g.fixed_value_aed ?? 0 : g.min_value_aed ?? 0,
             // Custom-amount cards have no single price → the card reads "Custom".
             priceDisplay: isFixed ? `AED ${(g.fixed_value_aed ?? 0).toLocaleString()}` : "Custom",
+            // Gift-card designs aren't branch-scoped in the data model — treat
+            // them as "all branches" so they always appear regardless of the
+            // POS branch picker selection.
+            branchIds: [],
         });
     }
 
@@ -199,7 +211,14 @@ function POSInner() {
     const packages = useAppStore(s => s.packages);
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
     const promoCodes = useAppStore(s => s.promoCodes);
+    const branches = useAppStore(s => s.branches);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
+    // Tax module wiring (Phase 4) — every render pulls the live rules/rates +
+    // global toggle so the totals recompute when the admin flips
+    // "Prices include tax", archives a rate, or edits a rule's locations.
+    const taxRules = useAppStore(s => s.taxRules);
+    const taxRates = useAppStore(s => s.taxRates);
+    const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
 
     // UI state
     const [activeTab, setActiveTab] = useState<TabId>("all");
@@ -285,6 +304,14 @@ function POSInner() {
         return catalog.filter(p => {
             if (kinds && !kinds.includes(p.kind)) return false;
             if (q && !p.name.toLowerCase().includes(q)) return false;
+            // Branch scope — products with a non-empty `branchIds` are only
+            // sellable at those branches. Empty `branchIds` means "available
+            // everywhere" and always passes. The "All locations" picker option
+            // sets `branchId` to `""` — skip the filter entirely in that case
+            // so every product (including branch-restricted ones) shows.
+            if (branchId && p.branchIds.length > 0 && !p.branchIds.includes(branchId)) {
+                return false;
+            }
             if (filter.priceMin != null && p.priceAed < filter.priceMin) return false;
             if (filter.priceMax != null && p.priceAed > filter.priceMax) return false;
             if (p.kind !== "gift_card") {
@@ -294,7 +321,7 @@ function POSInner() {
             }
             return true;
         });
-    }, [catalog, activeTab, search, filter]);
+    }, [catalog, activeTab, search, filter, branchId]);
 
     // Membership ↔ package mutex (per brief rule 1 — applied to add buttons)
     const cartHasMembership = cart.some(l => l.kind === "membership");
@@ -444,11 +471,55 @@ function POSInner() {
     const customPctNum = appliedCustomDiscount ?? 0;
     const customDiscount = Math.round(afterPromo * (customPctNum / 100));
     const afterDiscounts = Math.max(0, afterPromo - customDiscount);
-    // Tax defaults to 0 — per-product tax rates will ship with the Tax
-    // settings module (PRD 11). Until then no tax row renders anywhere.
-    const taxRate = 0;
-    const taxAmount = Math.round(afterDiscounts * (taxRate / 100));
-    const total = afterDiscounts + taxAmount;
+
+    // ─── Tax computation (Phase 4 — Tax module wiring) ─────────────────────
+    //
+    // Per-line: look up the active `tax_rule` for (category, branchId) and
+    // apply its `tax_rate`. Carts that mix categories sum the per-line tax
+    // amounts cleanly; the displayed rate label uses the first matching
+    // line's percentage (most carts here are single-category so it lines up).
+    //
+    // Discount handling: tax is computed on each line's discount-adjusted
+    // proportion of `afterDiscounts` (tax is always on what the customer
+    // actually pays, post-discount).
+    //
+    // Mode (`pricesIncludeTax`):
+    //   • OFF — exclusive — tax is ADDED to total.
+    //   • ON  — inclusive — tax is INCLUDED in the displayed line prices,
+    //           so `total` stays at `afterDiscounts` and the tax row is
+    //           informational only.
+    const { taxAmount, taxRate, taxIncluded } = useMemo(() => {
+        if (cart.length === 0 || subtotal <= 0) {
+            return { taxAmount: 0, taxRate: 0, taxIncluded: pricesIncludeTax };
+        }
+        let totalTax = 0;
+        let firstRate = 0;
+        for (const line of cart) {
+            const category = categoryForProductType(line.kind);
+            if (!category) continue;
+            const match = findActiveTaxRuleFor(
+                { taxRules, taxRates },
+                category,
+                branchId || undefined,
+            );
+            if (!match) continue;
+            // Allocate this line's share of `afterDiscounts` proportionally
+            // to its pre-discount line total. Promo + custom discounts
+            // applied at the cart level distribute across lines this way.
+            const lineRaw = line.unitPrice * line.quantity;
+            const lineShare = subtotal > 0 ? lineRaw / subtotal : 0;
+            const lineAfter = afterDiscounts * lineShare;
+            const breakdown = computeLineTax(lineAfter, match.rate.ratePercentage, pricesIncludeTax);
+            totalTax += breakdown.taxAed;
+            if (firstRate === 0) firstRate = match.rate.ratePercentage;
+        }
+        return { taxAmount: totalTax, taxRate: firstRate, taxIncluded: pricesIncludeTax };
+    }, [cart, subtotal, afterDiscounts, taxRules, taxRates, pricesIncludeTax, branchId]);
+
+    // In exclusive mode the customer pays subtotal − discount + tax. In
+    // inclusive mode the tax was already inside the displayed line prices
+    // so `total` stays at `afterDiscounts` and the tax line is informational.
+    const total = taxIncluded ? afterDiscounts : afterDiscounts + taxAmount;
 
     // ── Proceed to payment — hand off to the existing checkout screen ──────
     function handleProceed() {
@@ -481,10 +552,10 @@ function POSInner() {
         router.push("/pos/checkout");
     }
 
-    // ── Branch picker options (active branches only) ────────────────────────
+    // ── Branch picker options (active branches only, live `branches` slice) ─
     // Each option carries a MarkerPin01 glyph so the dropdown items visually
     // echo the trigger icon — same shape as the dashboard + schedule pickers.
-    const branchOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
+    const branchOptions = branches.filter(b => b.status === "active").map(b => ({
         value: b.id,
         label: b.name,
         icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
@@ -619,7 +690,7 @@ function POSInner() {
                         subtotal={subtotal}
                         promoDiscount={promoDiscount}
                         customDiscount={customDiscount}
-                        taxRate={taxRate} taxAmount={taxAmount}
+                        taxRate={taxRate} taxAmount={taxAmount} taxIncluded={taxIncluded}
                         total={total}
                         onProceed={handleProceed}
                         onNewCustomer={() => router.push("/customers/new?returnTo=/admin/pos")}
@@ -706,7 +777,7 @@ function PosCartPanel(props: {
     subtotal: number;
     promoDiscount: number;
     customDiscount: number;
-    taxRate: number; taxAmount: number;
+    taxRate: number; taxAmount: number; taxIncluded: boolean;
     total: number;
     onProceed: () => void;
     onNewCustomer: () => void;
@@ -846,8 +917,17 @@ function PosCartPanel(props: {
                     {props.customDiscount > 0 && props.appliedCustomDiscount != null && (
                         <Row label={`Custom discount (${props.appliedCustomDiscount}%)`} value={-props.customDiscount} />
                     )}
+                    {/* Tax row — labelled "Tax (included)" in inclusive mode
+                        because the amount is informational only (already
+                        baked into the displayed line prices). Exclusive
+                        mode labels it "Tax rate (X%)" and adds it on top. */}
                     {props.taxRate > 0 && (
-                        <Row label={`Tax rate (${props.taxRate}%)`} value={props.taxAmount} />
+                        <Row
+                            label={props.taxIncluded
+                                ? `Tax (${props.taxRate}% included)`
+                                : `Tax rate (${props.taxRate}%)`}
+                            value={props.taxAmount}
+                        />
                     )}
                 </div>
                 <div className="h-px bg-[#e4e7ec]" />

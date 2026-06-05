@@ -28,9 +28,22 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { PAYMENT_METHODS, type Customer, type PurchaseLineItem } from "@/lib/store";
+import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
 
-export type PaymentMethod = "cash" | "card" | "applepay";
+export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay";
+
+/** Every method the POS UI knows how to render. Both checkout entry points
+ *  pass an `enabledMethods` subset of this list to `PaymentConfirmationStep`
+ *  — derived from the `payment_providers` store so Settings → Payments is
+ *  the single source of truth for which cards appear:
+ *    • cash       — always on (no gateway needed)
+ *    • card       — Stripe must be connected
+ *    • applepay   — Apple Pay must be enabled (which requires Stripe)
+ *    • googlepay  — Google Pay must be enabled (which requires Stripe)
+ *  Disconnecting Stripe cascades — Apple/Google flip back to not_connected
+ *  in the same render cycle, the POS hides their cards, and the entry
+ *  point's reset effect snaps the selection back to `null`. */
+export const ALL_PAYMENT_METHODS: PaymentMethod[] = ["cash", "card", "applepay", "googlepay"];
 
 // Sourced from the centralized `payment_methods` seed.
 const SAVED_CARDS = PAYMENT_METHODS.map(pm => ({
@@ -102,7 +115,11 @@ export interface PaymentConfirmationStepProps {
     items: PurchaseLineItem[];
     subtotal: number; discountPercent: number; discountAmount: number;
     promoCode?: string;
-    taxRate: number; taxAmount: number; total: number;
+    taxRate: number; taxAmount: number;
+    /** Phase 4 — pass through from the global "Prices include tax" toggle.
+     *  When true the row label changes and the amount is informational only. */
+    taxIncluded?: boolean;
+    total: number;
     paymentMethod: PaymentMethod | null;
     setPaymentMethod: (m: PaymentMethod) => void;
     cashReceived: string; setCashReceived: (v: string) => void;
@@ -110,8 +127,16 @@ export interface PaymentConfirmationStepProps {
     change: number;
     canConfirm: boolean;
     onConfirm: () => void;
+    /** Methods to render in the picker grid. Driven by `payment_providers`
+     *  in the store — see `ALL_PAYMENT_METHODS` above. Defaults to all
+     *  four for backward compatibility, but every active caller passes the
+     *  store-derived subset so disconnecting Stripe in Settings hides
+     *  Card / Apple / Google Pay from the POS in the same render. */
+    enabledMethods?: PaymentMethod[];
 }
 export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
+    const enabled = p.enabledMethods ?? ALL_PAYMENT_METHODS;
+    const show = (m: PaymentMethod) => enabled.includes(m);
     return (
         <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6">
@@ -124,34 +149,49 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     promoCode={p.promoCode}
                     taxRate={p.taxRate}
                     taxAmount={p.taxAmount}
+                    taxIncluded={p.taxIncluded}
                     total={p.total}
                 />
 
                 <div className="flex flex-col gap-4">
                     <p className="text-[18px] font-semibold text-[#101828]">Payment method</p>
                     <div className="grid grid-cols-2 gap-4">
-                        <PaymentMethodCard
-                            selected={p.paymentMethod === "cash"}
-                            onSelect={() => p.setPaymentMethod("cash")}
-                            title="Cash" subtitle="Payment via cash"
-                            icon={<BankNote01 className="w-4 h-4 text-[#475467]" />}
-                        />
-                        <PaymentMethodCard
-                            selected={p.paymentMethod === "card"}
-                            onSelect={() => p.setPaymentMethod("card")}
-                            title="Card on file" subtitle="Payment via card"
-                            icon={<CreditCard01 className="w-4 h-4 text-[#475467]" />}
-                        />
-                        <PaymentMethodCard
-                            selected={p.paymentMethod === "applepay"}
-                            onSelect={() => p.setPaymentMethod("applepay")}
-                            title="Apple Pay" subtitle="Payment via Apple Pay"
-                            icon={<AppleLogo />}
-                        />
+                        {show("cash") && (
+                            <PaymentMethodCard
+                                selected={p.paymentMethod === "cash"}
+                                onSelect={() => p.setPaymentMethod("cash")}
+                                title="Cash" subtitle="Payment via cash"
+                                icon={<BankNote01 className="w-4 h-4 text-[#475467]" />}
+                            />
+                        )}
+                        {show("card") && (
+                            <PaymentMethodCard
+                                selected={p.paymentMethod === "card"}
+                                onSelect={() => p.setPaymentMethod("card")}
+                                title="Card on file" subtitle="Payment via card"
+                                icon={<CreditCard01 className="w-4 h-4 text-[#475467]" />}
+                            />
+                        )}
+                        {show("applepay") && (
+                            <PaymentMethodCard
+                                selected={p.paymentMethod === "applepay"}
+                                onSelect={() => p.setPaymentMethod("applepay")}
+                                title="Apple Pay" subtitle="Payment via Apple Pay"
+                                icon={<AppleLogo />}
+                            />
+                        )}
+                        {show("googlepay") && (
+                            <PaymentMethodCard
+                                selected={p.paymentMethod === "googlepay"}
+                                onSelect={() => p.setPaymentMethod("googlepay")}
+                                title="Google Pay" subtitle="Payment via Google Pay"
+                                icon={<GoogleLogo />}
+                            />
+                        )}
                     </div>
                 </div>
 
-                {p.paymentMethod !== null && (
+                {p.paymentMethod !== null && show(p.paymentMethod) && (
                     <div className="flex flex-col gap-4">
                         <p className="text-[18px] font-semibold text-[#101828]">Payment confirmation</p>
                         {p.paymentMethod === "cash" && (
@@ -162,6 +202,9 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                         )}
                         {p.paymentMethod === "applepay" && (
                             <ApplePayConfirmation total={p.total} />
+                        )}
+                        {p.paymentMethod === "googlepay" && (
+                            <GooglePayConfirmation total={p.total} />
                         )}
                     </div>
                 )}
@@ -176,11 +219,16 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     );
 }
 
-function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, total }: {
+function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, total }: {
     customer: Customer;
     items: PurchaseLineItem[];
     subtotal: number; discountPercent: number; discountAmount: number; promoCode?: string;
-    taxRate: number; taxAmount: number; total: number;
+    taxRate: number; taxAmount: number;
+    /** Phase 4 — when true the tax was already baked into the displayed
+     *  line prices; the tax row becomes informational and does NOT add to
+     *  `total`. The label flips to "Tax (X% included)". */
+    taxIncluded?: boolean;
+    total: number;
 }) {
     return (
         <div className="flex flex-col gap-4">
@@ -231,12 +279,18 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                         <p className="text-[16px] font-medium text-[#d92d20]">-AED {discountAmount.toLocaleString()}</p>
                     </div>
                 )}
-                {/* Tax row only renders when a product carries a tax rate.
-                    Default is 0 (per-product tax ships with the Tax settings
-                    module / PRD 11) so this is hidden today. */}
+                {/* Tax row — labelled differently depending on the global
+                    "Prices include tax" toggle. Exclusive: "Tax rate (X%)",
+                    amount is added on top. Inclusive: "Tax (X% included)",
+                    informational only (already inside the displayed prices). */}
                 {taxRate > 0 && (
                     <div className="flex items-center justify-between">
-                        <p className="text-[14px] text-[#667085]">Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</p>
+                        <p className="text-[14px] text-[#667085]">
+                            {taxIncluded
+                                ? <>Tax (<span className="font-medium text-[#101828]">{taxRate}% included</span>)</>
+                                : <>Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</>
+                            }
+                        </p>
                         <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
                     </div>
                 )}
@@ -386,6 +440,33 @@ function ApplePayConfirmation({ total }: { total: number }) {
     );
 }
 
+function GoogleLogo() {
+    // Multi-colour Google "G" — Pixel-perfect at 16px so it sits cleanly
+    // inside the 32×32 method-card icon tile alongside Apple's mono mark.
+    return (
+        <svg viewBox="0 0 16 16" className="w-4 h-4" aria-hidden="true">
+            <path fill="#4285F4" d="M15.68 8.18c0-.53-.05-1.05-.14-1.55H8v2.94h4.31a3.69 3.69 0 0 1-1.6 2.42v2.01h2.59c1.51-1.4 2.38-3.46 2.38-5.82z" />
+            <path fill="#34A853" d="M8 16c2.16 0 3.97-.72 5.29-1.94l-2.59-2.01c-.72.48-1.63.77-2.7.77-2.08 0-3.84-1.4-4.47-3.29H.86v2.07A8 8 0 0 0 8 16z" />
+            <path fill="#FBBC05" d="M3.53 9.53A4.8 4.8 0 0 1 3.28 8c0-.53.09-1.05.25-1.53V4.4H.86A8 8 0 0 0 0 8c0 1.29.31 2.51.86 3.6l2.67-2.07z" />
+            <path fill="#EA4335" d="M8 3.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 8 0 8 8 0 0 0 .86 4.4l2.67 2.07C4.16 4.58 5.92 3.18 8 3.18z" />
+        </svg>
+    );
+}
+
+function GooglePayConfirmation({ total }: { total: number }) {
+    return (
+        <div className="flex flex-col gap-3 items-center bg-white border-1 border-[#e4e7ec] rounded-[12px] p-6">
+            <div className="w-12 h-12 rounded-[12px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center">
+                <GoogleLogo />
+            </div>
+            <p className="text-[16px] font-semibold text-[#101828]">Confirm with Google Pay</p>
+            <p className="text-[14px] text-[#475467] text-center">
+                Charge of <span className="font-medium text-[#101828]">AED {total.toLocaleString()}</span> will be billed to the customer&apos;s Google Pay on confirmation.
+            </p>
+        </div>
+    );
+}
+
 // ─── Loading state — Figma 6891:75669 ─────────────────────────────────────────
 export function ProcessingPaymentCard({ method, chargedTo }: { method: PaymentMethod; chargedTo: string }) {
     return (
@@ -416,6 +497,7 @@ export function ProcessingPaymentCard({ method, chargedTo }: { method: PaymentMe
 function PaymentMethodLogo({ method }: { method: PaymentMethod }) {
     if (method === "cash") return <BankNote01 className="w-6 h-6 text-[#658774]" />;
     if (method === "applepay") return <div className="w-6 h-6 rounded-md bg-[#101828] flex items-center justify-center"><AppleLogo /></div>;
+    if (method === "googlepay") return <div className="w-6 h-6 rounded-md bg-white border-1 border-[#e4e7ec] flex items-center justify-center"><GoogleLogo /></div>;
     return <MasterCardLogo />;
 }
 
@@ -446,7 +528,11 @@ export interface ReceiptStepProps {
     items: PurchaseLineItem[];
     subtotal: number; discountPercent: number; discountAmount: number;
     promoCode?: string;
-    taxRate: number; taxAmount: number; total: number;
+    taxRate: number; taxAmount: number;
+    /** Phase 4 — pass through from the global "Prices include tax" toggle.
+     *  Affects the receipt's tax-row label. */
+    taxIncluded?: boolean;
+    total: number;
     paymentMethodLabel: string;
     chargedTo: string;
     onBack: () => void;
@@ -511,12 +597,17 @@ export function ReceiptStep(p: ReceiptStepProps) {
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {p.discountAmount.toLocaleString()}</p>
                             </div>
                         )}
-                        {/* Tax row hidden until a product carries a tax rate
-                            (Tax settings module / PRD 11 will set per-product
-                            rates). Default taxRate=0 keeps it off everywhere. */}
+                        {/* Tax row — labelled per the global "Prices include
+                            tax" toggle. Exclusive: "Tax rate (X%)" added on
+                            top. Inclusive: "Tax (X% included)" informational. */}
                         {p.taxRate > 0 && (
                             <div className="flex items-center justify-between">
-                                <p className="text-[14px] text-[#667085]">Tax rate (<span className="font-medium text-[#101828]">{p.taxRate}%</span>)</p>
+                                <p className="text-[14px] text-[#667085]">
+                                    {p.taxIncluded
+                                        ? <>Tax (<span className="font-medium text-[#101828]">{p.taxRate}% included</span>)</>
+                                        : <>Tax rate (<span className="font-medium text-[#101828]">{p.taxRate}%</span>)</>
+                                    }
+                                </p>
                                 <p className="text-[16px] font-medium text-[#101828]">AED {p.taxAmount.toLocaleString()}</p>
                             </div>
                         )}
@@ -578,13 +669,29 @@ function ReceiptHeaderDecoration() {
 
 // ─── Shared helpers exported for both entry points ──────────────────────────
 
+/** Translate the live `payment_providers` slice into the list of methods the
+ *  POS picker should render. Cash is always available; the three card-style
+ *  methods only appear when their corresponding provider is connected in
+ *  Settings → Payments. Order matches the Figma row order. */
+export function enabledMethodsFromProviders(providers: PaymentProvider[]): PaymentMethod[] {
+    const isOn = (slug: PaymentProvider["slug"]) =>
+        providers.some(p => p.slug === slug && p.status === "connected");
+    const methods: PaymentMethod[] = ["cash"];
+    if (isOn("stripe"))     methods.push("card");
+    if (isOn("apple_pay"))  methods.push("applepay");
+    if (isOn("google_pay")) methods.push("googlepay");
+    return methods;
+}
+
+
 /** Resolve the payment-method label + charge target string shown on the receipt. */
 export function describePayment(paymentMethod: PaymentMethod | null, selectedCardId: string | null, cashReceivedNum: number): { label: string; chargedTo: string } {
     const label =
         paymentMethod === "cash" ? "Cash"
             : paymentMethod === "card" ? "Card on file"
                 : paymentMethod === "applepay" ? "Apple Pay"
-                    : "—";
+                    : paymentMethod === "googlepay" ? "Google Pay"
+                        : "—";
     const chargedTo =
         paymentMethod === "card" && selectedCardId
             ? (() => {
@@ -593,7 +700,8 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
             })()
             : paymentMethod === "cash" ? `Cash (AED ${cashReceivedNum})`
                 : paymentMethod === "applepay" ? "Apple Pay"
-                    : "—";
+                    : paymentMethod === "googlepay" ? "Google Pay"
+                        : "—";
     return { label, chargedTo };
 }
 
@@ -601,15 +709,64 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
  *  `promoDiscountAed` is an optional flat AED promo discount applied ON TOP of
  *  the custom-discount percentage. Promo + custom discount are mutually
  *  exclusive in the POS UI, but the math handles both being present and caps
- *  the combined discount at the subtotal. */
-export function computeTotals(items: PurchaseLineItem[], discountPercent: number, promoDiscountAed = 0) {
+ *  the combined discount at the subtotal.
+ *
+ *  `taxContext` (Phase 4) — when provided, the helper computes per-line tax
+ *  via `findActiveTaxRuleFor` / `computeLineTax` and aggregates a single
+ *  `taxAmount` + the first-line `taxRate` for display. When omitted (legacy
+ *  call sites), behaviour falls back to the pre-Phase-4 zero-tax shape. */
+export function computeTotals(
+    items: PurchaseLineItem[],
+    discountPercent: number,
+    promoDiscountAed = 0,
+    taxContext?: {
+        taxRules: import("@/lib/store").TaxRule[];
+        taxRates: import("@/lib/store").TaxRate[];
+        pricesIncludeTax: boolean;
+        branchId?: string;
+    },
+) {
     const subtotal = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
     const pctDiscount = Math.round(subtotal * (discountPercent / 100));
     const discountAmount = Math.min(subtotal, pctDiscount + Math.round(promoDiscountAed));
-    // Tax defaults to 0 — per-product tax rates ship with the Tax settings
-    // module (PRD 11). Until then we display no tax row anywhere.
-    const taxRate = 0;
-    const taxAmount = Math.round((subtotal - discountAmount) * (taxRate / 100));
-    const total = subtotal - discountAmount + taxAmount;
-    return { subtotal, discountAmount, taxRate, taxAmount, total };
+    const afterDiscounts = Math.max(0, subtotal - discountAmount);
+
+    if (!taxContext || subtotal <= 0) {
+        return {
+            subtotal, discountAmount,
+            taxRate: 0, taxAmount: 0, taxIncluded: false,
+            total: afterDiscounts,
+        };
+    }
+
+    // Per-line tax (matches the POS page's algorithm). Imports kept lazy so
+    // this helper stays usable from anywhere without an /admin store import.
+    const { findActiveTaxRuleFor, computeLineTax, categoryForProductType } = require("@/lib/tax-calc") as typeof import("@/lib/tax-calc");
+    let totalTax = 0;
+    let firstRate = 0;
+    for (const item of items) {
+        const category = categoryForProductType(item.productType);
+        if (!category) continue;
+        const match = findActiveTaxRuleFor(
+            { taxRules: taxContext.taxRules, taxRates: taxContext.taxRates },
+            category,
+            taxContext.branchId,
+        );
+        if (!match) continue;
+        const lineRaw = item.unitPrice * item.quantity;
+        const lineShare = subtotal > 0 ? lineRaw / subtotal : 0;
+        const lineAfter = afterDiscounts * lineShare;
+        const breakdown = computeLineTax(lineAfter, match.rate.ratePercentage, taxContext.pricesIncludeTax);
+        totalTax += breakdown.taxAed;
+        if (firstRate === 0) firstRate = match.rate.ratePercentage;
+    }
+
+    // Inclusive: tax was already baked into prices, total stays at afterDiscounts.
+    // Exclusive: tax is added on top.
+    const total = taxContext.pricesIncludeTax ? afterDiscounts : afterDiscounts + totalTax;
+    return {
+        subtotal, discountAmount,
+        taxRate: firstRate, taxAmount: totalTax, taxIncluded: taxContext.pricesIncludeTax,
+        total,
+    };
 }

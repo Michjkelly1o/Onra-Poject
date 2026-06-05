@@ -11,6 +11,8 @@ import {
     isSameDay,
     isWithinInterval,
     isAfter,
+    isBefore,
+    startOfDay,
     addMonths,
     subMonths,
     getDaysInMonth,
@@ -91,9 +93,17 @@ function CalendarPicker({
     const month = view.getMonth();
     const rows = buildCalendarRows(year, month);
 
-    // Normalize so start is always ≤ end
+    // Normalize so start is always ≤ end (defensive — once the parent applies
+    // the click-rules below, `from` is guaranteed ≤ `to`).
     const normalFrom = from && to ? (isAfter(from, to) ? to : from) : from;
     const normalTo = from && to ? (isAfter(from, to) ? from : to) : to;
+
+    // We're "picking the end" when a start is committed but no end yet.
+    // In that mode cells BEFORE the start are dimmed as a visual hint that
+    // they can't be a valid end date — clicking one resets the range to a
+    // new start (handled in the parent's `handleCalendarSelect`).
+    const pickingEnd = !!from && !to;
+    const startBoundary = from ? startOfDay(from) : null;
 
     function isSel(d: Date) { return (!!from && isSameDay(d, from)) || (!!to && isSameDay(d, to)); }
     function isStart(d: Date) { return !!normalFrom && isSameDay(d, normalFrom); }
@@ -101,6 +111,9 @@ function CalendarPicker({
     function inRange(d: Date) {
         if (!normalFrom || !normalTo) return false;
         return isWithinInterval(d, { start: normalFrom, end: normalTo });
+    }
+    function isBeforeStart(d: Date) {
+        return pickingEnd && !!startBoundary && isBefore(startOfDay(d), startBoundary);
     }
 
     return (
@@ -161,12 +174,15 @@ function CalendarPicker({
                             const inR = inRange(date);
                             const inBand = inR && !sel;
                             const hasRange = !!(normalFrom && normalTo);
+                            const beforeStart = isBeforeStart(date);
 
                             return (
                                 <button
                                     key={ci}
                                     type="button"
                                     onClick={() => onSelect(date)}
+                                    aria-disabled={beforeStart}
+                                    title={beforeStart ? "End date can't be before the start" : undefined}
                                     className="relative w-[36px] h-[36px] flex items-center justify-center group"
                                 >
                                     {/* Range band (green strip, behind circles) */}
@@ -185,15 +201,17 @@ function CalendarPicker({
                                     {sel && (
                                         <div className="absolute inset-0 rounded-full bg-[#658774]" />
                                     )}
-                                    {/* Hover ring (only unselected, out-of-range cells) */}
-                                    {!sel && !inR && (
+                                    {/* Hover ring — suppressed for cells that
+                                        can't be a valid end (before start). */}
+                                    {!sel && !inR && !beforeStart && (
                                         <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 bg-[#f2f4f7] transition-opacity" />
                                     )}
                                     <span className={cn(
                                         "relative z-10 text-[14px] select-none leading-none",
                                         sel ? "text-white font-medium" : "",
-                                        !sel && current ? "text-[#344054]" : "",
-                                        !sel && !current ? "text-[#98a2b3]" : "",
+                                        !sel && beforeStart ? "text-[#d0d5dd]" : "",
+                                        !sel && !beforeStart && current ? "text-[#344054]" : "",
+                                        !sel && !beforeStart && !current ? "text-[#98a2b3]" : "",
                                     )}>
                                         {date.getDate()}
                                     </span>
@@ -250,13 +268,21 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
     }
 
     function handleCalendarSelect(date: Date) {
-        // First click: set start. Second click (or if both set): reset + set start.
+        // First click (or both set → starting over): set start.
         if (!pendingFrom || (pendingFrom && pendingTo)) {
             setPendingFrom(date);
             setPendingTo(null);
-        } else {
-            setPendingTo(date);
+            return;
         }
+        // Picking the end: must be on/after the start. Clicking BEFORE the
+        // start resets the range — that click becomes the new start, so the
+        // user can correct their first pick without getting stuck.
+        if (isBefore(startOfDay(date), startOfDay(pendingFrom))) {
+            setPendingFrom(date);
+            setPendingTo(null);
+            return;
+        }
+        setPendingTo(date);
     }
 
     function handleApply() {

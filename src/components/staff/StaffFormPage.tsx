@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import {
-    useAppStore, BRANCHES,
+    useAppStore,
     type Staff, type StaffStatus,
 } from "@/lib/store";
 
@@ -329,6 +329,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     const allRoles    = useAppStore(s => s.roles);
     const allStaff    = useAppStore(s => s.staff);
     const allPayRates = useAppStore(s => s.payRates);
+    const branches    = useAppStore(s => s.branches);
     const addStaff    = useAppStore(s => s.addStaff);
     const updateStaff = useAppStore(s => s.updateStaff);
     const showToast   = useAppStore(s => s.showToast);
@@ -381,7 +382,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     const branchLabel = selectedRole?.branchId === null
         ? "All locations"
         : selectedRole
-            ? BRANCHES.find(b => b.id === selectedRole.branchId)?.name ?? "—"
+            ? branches.find(b => b.id === selectedRole.branchId)?.name ?? "—"
             : "Branch location";
 
     function handleSave() {

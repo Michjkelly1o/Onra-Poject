@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, BRANCHES, DEFAULT_BRANCH_ID } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, DEFAULT_BRANCH_ID } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
@@ -151,40 +151,14 @@ const recentActivity: ActivityItem[] = [
     },
 ];
 
-const metrics = [
-    {
-        label: "Today Revenue",
-        value: "2,000",
-        change: 3,
-        positive: true,
-        comparison: "vs yesterday",
-        icon: CurrencyDollar,
-    },
-    {
-        label: "Active Members",
-        value: "84",
-        change: 3,
-        positive: true,
-        comparison: "vs yesterday",
-        icon: Users01,
-    },
-    {
-        label: "Low Stock Items",
-        value: "3",
-        change: 2,
-        positive: false,
-        comparison: "vs yesterday",
-        icon: ShoppingBag01,
-    },
-    {
-        label: "Avg Occupancy",
-        value: "78%",
-        change: 1,
-        positive: false,
-        comparison: "vs yesterday",
-        icon: TrendUp01,
-    },
-];
+interface DashboardMetric {
+    label: string;
+    value: string;
+    change: number;
+    positive: boolean;
+    comparison: string;
+    icon: typeof CurrencyDollar;
+}
 
 
 
@@ -236,7 +210,7 @@ function PerformanceTab({
 // src/components/schedule/ScheduleClassCard.tsx. The dashboard-local card was
 // removed when the DS variants landed.
 
-function MetricCard({ metric }: { metric: typeof metrics[0] }) {
+function MetricCard({ metric }: { metric: DashboardMetric }) {
     const Icon = metric.icon;
     return (
         <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-6 items-start justify-end min-w-0 p-6 relative rounded-2xl">
@@ -340,17 +314,6 @@ function ReportDropdown() {
     );
 }
 
-// Sourced from the centralized `branches` seed so the dashboard, schedule
-// and POS branch pickers all show the same options. Inactive branches are
-// hidden (matches POS catalog behavior). Each option carries a MarkerPin01
-// glyph so dropdown items align visually with the trigger icon (Figma
-// reference: branch dropdown style shared across modules).
-const locationOptions = BRANCHES.filter(b => b.status === "active").map(b => ({
-    value: b.id,
-    label: b.name,
-    icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
-}));
-
 const instructorOptions = [
     { value: "all", label: "All instructors" },
     { value: "sara", label: "Sara Al-Rashid" },
@@ -371,13 +334,124 @@ export default function AdminDashboard() {
     const today = new Date();
 
     const classSchedules = useAppStore(s => s.classSchedules);
+    const classBookings = useAppStore(s => s.classBookings);
+    const customers = useAppStore(s => s.customers);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const branches = useAppStore(s => s.branches);
     const showToast = useAppStore(s => s.showToast);
+    // Phase 3 cross-module sync — welcome header reads from the centralized
+    // Branding `displayName` so editing it through Settings → Branding flips
+    // the dashboard greeting in the same render cycle.
+    const studioDisplayName = useAppStore(s => s.brandingSettings.displayName);
+
+    // Sourced from the live `branches` slice so dashboard / schedule / POS
+    // branch pickers reflect adds, archives and renames in Business &
+    // Locations immediately. Inactive + archived branches are hidden (only
+    // active branches are valid as a NEW selection — matches POS catalog
+    // behavior). Each option carries a MarkerPin01 glyph so dropdown items
+    // align visually with the trigger icon.
+    const locationOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({
+            value: b.id,
+            label: b.name,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        })),
+        [branches],
+    );
+
+    // Branch-scope sentinel — empty string means "All locations" (no scoping).
+    // Any non-empty value is a real `branches[].id`. Every downstream aggregate
+    // funnels through this so picking a branch in the header flows into the
+    // KPI cards, the schedule list, the revenue trend and the activity feed
+    // in the same render cycle.
+    const branchScopeId = location || null;
+    const todayISO = format(today, "yyyy-MM-dd");
+
+    // Branch-scoped slices. When no branch is picked we keep the global lists
+    // so "All locations" continues to show aggregate numbers.
+    const scopedSchedules = useMemo(
+        () => branchScopeId ? classSchedules.filter(s => s.branchId === branchScopeId) : classSchedules,
+        [classSchedules, branchScopeId],
+    );
+    const scopedBookings = useMemo(
+        () => branchScopeId ? classBookings.filter(b => b.branchId === branchScopeId) : classBookings,
+        [classBookings, branchScopeId],
+    );
+    const scopedCustomers = useMemo(
+        () => branchScopeId ? customers.filter(c => c.branchId === branchScopeId) : customers,
+        [customers, branchScopeId],
+    );
+    const scopedTransactions = useMemo(
+        () => branchScopeId ? customerTransactions.filter(t => t.branchId === branchScopeId) : customerTransactions,
+        [customerTransactions, branchScopeId],
+    );
+
+    // KPI aggregates — recompute whenever scope or underlying slices change.
+    const metrics = useMemo<DashboardMetric[]>(() => {
+        // Today's revenue = sum of completed transactions created today within scope.
+        const todayRevenue = scopedTransactions
+            .filter(t => t.status === "complete" && t.createdAtISO.startsWith(todayISO))
+            .reduce((sum, t) => sum + t.amountAed, 0);
+
+        // Active members = customers in scope with status === "active".
+        const activeMembers = scopedCustomers.filter(c => c.status === "active").length;
+
+        // Classes today = schedules in scope whose dateISO matches today.
+        const classesToday = scopedSchedules.filter(s => s.dateISO === todayISO).length;
+
+        // Bookings today = bookings whose class_schedule is scheduled today.
+        // `class_bookings` already carries `branchId` (mirror of its schedule's
+        // branch), so the same scope filter applies. We still need the date —
+        // pull it from the schedule via class_schedule_id.
+        const todayScheduleIds = new Set(
+            scopedSchedules.filter(s => s.dateISO === todayISO).map(s => s.id),
+        );
+        const bookingsToday = scopedBookings.filter(
+            b => b.status === "booked" && todayScheduleIds.has(b.classScheduleId),
+        ).length;
+
+        return [
+            {
+                label: "Today's revenue",
+                value: `AED ${todayRevenue.toLocaleString("en-US")}`,
+                change: 3,
+                positive: true,
+                comparison: "vs yesterday",
+                icon: CurrencyDollar,
+            },
+            {
+                label: "Active members",
+                value: activeMembers.toLocaleString("en-US"),
+                change: 3,
+                positive: true,
+                comparison: "vs yesterday",
+                icon: Users01,
+            },
+            {
+                label: "Classes today",
+                value: classesToday.toLocaleString("en-US"),
+                change: 2,
+                positive: true,
+                comparison: "vs yesterday",
+                icon: CalendarCheck01,
+            },
+            {
+                label: "Bookings today",
+                value: bookingsToday.toLocaleString("en-US"),
+                change: 1,
+                positive: true,
+                comparison: "vs yesterday",
+                icon: ShoppingBag01,
+            },
+        ];
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
-    // of the wall-clock date — keeping the dashboard visually populated.
+    // of the wall-clock date — keeping the dashboard visually populated. Branch
+    // scoping still applies so picking a location filters the list.
     const todayClasses = useMemo<ScheduleClass[]>(() => {
-        return [...classSchedules]
+        return [...scopedSchedules]
             .filter(ci => ci.status === "Upcoming" || ci.status === "Ongoing")
             .sort((a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`))
             .slice(0, 6)
@@ -399,7 +473,7 @@ export default function AdminDashboard() {
                     color: palette,
                 };
             });
-    }, [classSchedules]);
+    }, [scopedSchedules]);
 
     // Group classes by start-time so the timeline matches the original two-column
     // (time | classes) layout, with multiple classes stacked when they share a slot.
@@ -467,7 +541,7 @@ export default function AdminDashboard() {
             {/* Welcome + Location Picker + Performance actions */}
             <div className="flex gap-2 items-center">
                 <p className="flex-1 font-semibold text-base text-[#101828]">
-                    Welcome, Forma Studio
+                    Welcome, {studioDisplayName}
                 </p>
 
                 {/* Location picker — always visible */}

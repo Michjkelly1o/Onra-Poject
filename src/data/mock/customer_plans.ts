@@ -16,11 +16,26 @@
 //   • complimentary active  — Remove free credit action (lucas cp_lucas_2)
 //   • complimentary removed — View details action     (lucas cp_lucas_3)
 //
-// `mia_anderson` has no rows on purpose — drives the Plan-tab empty state.
+// The two `_notif` rows at the bottom of the seed back the live Payment
+// Confirmed notifications in `notifications.ts`. They pair with the
+// `_notif` rows in `customer_transactions.ts` (same customer, same product,
+// matching dates) so clicking a notification → Plan tab shows the plan AND
+// the Payments tab shows the receipt — the two views stay in lock-step.
 //
 // FK: `customer_id` → customers.id, `product_id` → memberships.id / packages.id
 
 import type { CustomerPlan } from "./_types";
+
+// Relative-time helpers — used by the notification-backing rows below so
+// the demo's Plan tab always shows a "Member since yesterday" / today row
+// that matches the bell-feed timing without manual seed maintenance.
+const NOW_MS = Date.now();
+const minutesAgo = (n: number) => new Date(NOW_MS - n * 60_000);
+const daysAgo    = (n: number) => minutesAgo(n * 60 * 24);
+const isoDate    = (d: Date) => d.toISOString().slice(0, 10);
+const isoFull    = (d: Date) => d.toISOString();
+/** Days-from-now ISO timestamp at the same wall-clock time. */
+const daysFromNow = (n: number) => isoFull(new Date(NOW_MS + n * 24 * 60 * 60_000));
 
 export const customer_plans: CustomerPlan[] = [
     // ── Ahmed Zayn — unlimited membership ────────────────────────────────────
@@ -181,7 +196,11 @@ export const customer_plans: CustomerPlan[] = [
         expiry_iso: "2026-06-05T22:00:00Z",
     },
 
-    // ── Fatima Al-Sayed — membership + a frozen package ──────────────────────
+    // ── Fatima Al-Sayed — switched from membership → package ────────────────
+    // Her Unlimited Membership was cancelled the day before she bought the
+    // 10-Class Package (see `cp_fatima_notif` at the bottom). Required by
+    // the 1-membership-OR-multiple-packages business rule (CLAUDE.md):
+    // a customer cannot hold an active membership AND an active package.
     {
         id: "cp_fatima_1",
         customer_id: "cust_fatima_al_sayed",
@@ -190,10 +209,13 @@ export const customer_plans: CustomerPlan[] = [
         name: "Unlimited Monthly Membership",
         plan_type_label: "Membership",
         credits_label: "Unlimited",
-        status: "active",
+        status: "cancelled",
         purchased_at: "2026-01-15",
         expiry_iso: "2026-08-01T22:00:00Z",
         price_aed: 600,
+        cancel_mode: "today",
+        cancel_reason: "Switched to credit package",
+        cancelled_at: "2026-05-14",
     },
     {
         // Expired package — past history. Fatima later moved to an unlimited
@@ -257,5 +279,40 @@ export const customer_plans: CustomerPlan[] = [
         removed_by: "Alex Owen",
         removed_by_role: "Owner",
         removed_at: "2026-03-05",
+    },
+
+    // ── Notification-backing rows ────────────────────────────────────────────
+    // Pair 1:1 with the `_notif` rows in customer_transactions.ts and the
+    // Payment Confirmed entries in notifications.ts. Clicking the bell
+    // notification → Plan tab shows the plan; Payments → History shows the
+    // receipt — both views reflect the same purchase.
+    {
+        // Backs `notif_payment_fatima_pkg` — 10-Class Package, today.
+        id: "cp_fatima_notif",
+        customer_id: "cust_fatima_al_sayed",
+        kind: "package",
+        product_id: "pkg_10_class",
+        name: "10-Class Package for One Month",
+        plan_type_label: "Credit package",
+        credits_label: "10 credits",
+        status: "active",
+        purchased_at: isoDate(minutesAgo(14)),
+        // Package validity = 30 days (per pkg_10_class.validity_days).
+        expiry_iso: daysFromNow(30),
+    },
+    {
+        // Backs `notif_payment_mia_membership` — Unlimited Monthly, yesterday.
+        id: "cp_mia_notif",
+        customer_id: "cust_mia_anderson",
+        kind: "membership",
+        product_id: "mem_unlimited_monthly",
+        name: "Unlimited Monthly Membership",
+        plan_type_label: "Membership",
+        credits_label: "Unlimited",
+        status: "active",
+        purchased_at: isoDate(daysAgo(1)),
+        // Membership duration = 1 month (per mem_unlimited_monthly.duration_months).
+        expiry_iso: daysFromNow(30),
+        price_aed: 2800,
     },
 ];

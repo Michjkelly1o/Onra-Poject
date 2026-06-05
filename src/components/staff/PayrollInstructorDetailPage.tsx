@@ -44,9 +44,10 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { dateFilterToRange, isoInRange, type DateRange } from "@/lib/period-filter";
 import { Toast } from "@/components/ui/Toast";
 import {
-    useAppStore, BRANCHES, computePayRateDisplay,
+    useAppStore, computePayRateDisplay,
     type Instructor, type ClassSchedule, type PayRate,
 } from "@/lib/store";
+import { TaxSuffix } from "@/components/ui/TaxSuffix";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 
@@ -79,8 +80,10 @@ function InstructorAvatar({ instructor, size = 40 }: { instructor: Instructor; s
         );
     }
     return (
-        <div className="rounded-full flex items-center justify-center text-white shrink-0"
-            style={{ width: size, height: size, backgroundColor: instructor.color, fontSize: size * 0.35 }}>
+        // Neutral chrome — matches Staff & Permissions / payroll list so every
+        // initials avatar across the staff stack reads as one surface.
+        <div className="rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center text-[#475467] shrink-0"
+            style={{ width: size, height: size, fontSize: size * 0.35 }}>
             {instructor.initials}
         </div>
     );
@@ -451,10 +454,12 @@ function exportPayoutReport(rows: ClassRow[], instructor: Instructor, periodLabe
 
 // ─── Sidebar earnings summary (Figma — Total earnings this month card) ────
 
-function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateName, payRateAmount }: {
+function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateName, payRateAmount, branchId }: {
     totalThisMonth: number;
     classesCount: number;
     classCap: number;
+    /** Branch context for the pay_rate tax-suffix lookup. */
+    branchId: string;
     payRateName: string;
     payRateAmount: string;
 }) {
@@ -464,6 +469,7 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateNa
             <div className="flex flex-col gap-1">
                 <p className="text-[13px] text-[#667085] leading-[18px]">Total earnings this month</p>
                 <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{aed(totalThisMonth)}</p>
+                <TaxSuffix category="pay_rate" branchId={branchId} />
             </div>
             <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
                 <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
@@ -532,6 +538,7 @@ export default function PayrollInstructorDetailPage({
     const payRates               = useAppStore(s => s.payRates);
     const classSchedules         = useAppStore(s => s.classSchedules);
     const payrollEntries         = useAppStore(s => s.payrollEntries);
+    const branches               = useAppStore(s => s.branches);
     const assignInstructorPayRate = useAppStore(s => s.assignInstructorPayRate);
     const showToast              = useAppStore(s => s.showToast);
 
@@ -566,7 +573,7 @@ export default function PayrollInstructorDetailPage({
     // (TS doesn't narrow through closures of `const | undefined` values).
     const ins: Instructor = instructor;
 
-    const branch = BRANCHES.find(b => b.id === ins.branchId);
+    const branch = branches.find(b => b.id === ins.branchId);
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
     // ─── Class rows: filter schedules by instructor + period + status ─────
@@ -646,6 +653,7 @@ export default function PayrollInstructorDetailPage({
         return `${d.main}/${d.subtitle.replace(/^per /, "")}`;
     })();
 
+
     // ─── Actions ──────────────────────────────────────────────────────────
     function handleChangePayRate(newPayRateId: string) {
         const oldName = payRate?.name ?? "—";
@@ -712,6 +720,7 @@ export default function PayrollInstructorDetailPage({
                                     classCap={Math.max(10, completedThisMonth)}
                                     payRateName={payRate?.name ?? "—"}
                                     payRateAmount={payRateAmount}
+                                    branchId={ins.branchId}
                                 />
 
                                 <div className="flex flex-col gap-4">

@@ -78,6 +78,11 @@ export interface User {
     is_active: boolean;
     churn_risk_score?: number; // Added for AI
     permissions?: string[]; // Added for RBAC
+    /** Demo-only plaintext password — surfaced by the Account settings page's
+     *  Password row so the admin can reveal the current credential via the
+     *  eye-toggle. Seeded to `Demo1234!` per CLAUDE.md and updated when the
+     *  Change-password modal is submitted. Never sent off-device. */
+    password?: string;
     created_at: string;
 }
 

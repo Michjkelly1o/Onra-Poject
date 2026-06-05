@@ -12,7 +12,7 @@
 // The same screen is reused by the POS / schedule "add customer" flows via the
 // `?returnTo=` query param, so the admin lands back where they started.
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { XClose, Check, ChevronDown, SearchMd } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, DEFAULT_BRANCH_ID } from "@/lib/store";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,7 +31,11 @@ const STATE_OPTIONS = ["Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Ras Al Khaimah
 const CITY_OPTIONS = ["Dubai", "Abu Dhabi", "Sharjah", "Al Ain", "Ajman", "Ras Al Khaimah"];
 
 // Common international dialing codes, ordered for the dropdown.
-const PHONE_COUNTRIES: { code: string; dial: string; name: string; flag: string }[] = [
+//
+// Exported so other forms (e.g. Account settings → Change phone modal)
+// can reuse the exact same country list + dropdown without duplicating it.
+export type PhoneCountry = { code: string; dial: string; name: string; flag: string };
+export const PHONE_COUNTRIES: PhoneCountry[] = [
     { code: "AE", dial: "+971", name: "United Arab Emirates", flag: "🇦🇪" },
     { code: "SA", dial: "+966", name: "Saudi Arabia",          flag: "🇸🇦" },
     { code: "QA", dial: "+974", name: "Qatar",                  flag: "🇶🇦" },
@@ -77,7 +81,7 @@ const PHONE_COUNTRIES: { code: string; dial: string; name: string; flag: string 
  *  country + the bare national number, so the Edit form re-opens with the
  *  phone picker correctly populated. Longest dial prefix wins (so "+971" is
  *  matched before "+9"). */
-function splitPhone(stored?: string): { country: typeof PHONE_COUNTRIES[number]; number: string } {
+export function splitPhone(stored?: string): { country: PhoneCountry; number: string } {
     if (!stored) return { country: PHONE_COUNTRIES[0], number: "" };
     const byLongestDial = [...PHONE_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
     const match = byLongestDial.find(c => stored.startsWith(c.dial));
@@ -85,10 +89,17 @@ function splitPhone(stored?: string): { country: typeof PHONE_COUNTRIES[number];
     return { country: match, number: stored.slice(match.dial.length).replace(/\D/g, "") };
 }
 
-function PhoneCountryDropdown({ value, onChange }: { value: typeof PHONE_COUNTRIES[number]; onChange: (c: typeof PHONE_COUNTRIES[number]) => void }) {
+export function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry; onChange: (c: PhoneCountry) => void }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
+    // Auto-flip the menu above the button when there isn't enough room below.
+    // Re-measures every time `open` flips to true so the placement matches the
+    // dial-code button's CURRENT viewport position — important when the picker
+    // lives inside a modal (e.g. Account settings → Change phone) where the
+    // button often sits near the viewport's bottom edge.
+    const [placement, setPlacement] = useState<"down" | "up">("down");
     const ref = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
@@ -96,20 +107,34 @@ function PhoneCountryDropdown({ value, onChange }: { value: typeof PHONE_COUNTRI
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
+    useEffect(() => {
+        if (!open || !buttonRef.current) return;
+        const rect = buttonRef.current.getBoundingClientRect();
+        const MENU_HEIGHT = 320 + 8; // max-h + the 4-px gap on each side
+        const roomBelow = window.innerHeight - rect.bottom;
+        const roomAbove = rect.top;
+        // Flip up only when below doesn't fit AND above gives more room — so
+        // small viewport edge cases still land somewhere sensible.
+        setPlacement(roomBelow < MENU_HEIGHT && roomAbove > roomBelow ? "up" : "down");
+    }, [open]);
+
     const filtered = !search ? PHONE_COUNTRIES : PHONE_COUNTRIES.filter(c =>
         c.name.toLowerCase().includes(search.toLowerCase()) || c.dial.includes(search) || c.code.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
         <div ref={ref} className="relative">
-            <button type="button" onClick={() => setOpen(p => !p)}
+            <button ref={buttonRef} type="button" onClick={() => setOpen(p => !p)}
                 className="h-10 flex items-center gap-1.5 px-[14px] border-r border-[#d0d5dd] text-[16px] text-[#101828] hover:bg-[#f9fafb] transition-colors">
                 <span className="text-[16px]">{value.flag}</span>
                 {value.dial}
                 <ChevronDown className="w-4 h-4 text-[#667085]" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 z-50 w-[280px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col max-h-[320px]">
+                <div className={cn(
+                    "absolute left-0 z-[400] w-[280px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col max-h-[320px]",
+                    placement === "down" ? "top-[calc(100%+4px)]" : "bottom-[calc(100%+4px)]"
+                )}>
                     <div className="p-2 border-b border-[#e4e7ec]">
                         <div className="relative">
                             <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
@@ -186,15 +211,40 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const returnTo = searchParams.get("returnTo");
-    const { customers, addCustomer, updateCustomer, showToast } = useAppStore();
+    // Optional ?branchId= context — POS / schedule flows can pre-select the
+    // branch the admin was working in when they jumped to "Add customer".
+    const branchIdParam = searchParams.get("branchId");
+    const customers     = useAppStore(s => s.customers);
+    const branches      = useAppStore(s => s.branches);
+    const addCustomer    = useAppStore(s => s.addCustomer);
+    const updateCustomer = useAppStore(s => s.updateCustomer);
+    const showToast      = useAppStore(s => s.showToast);
 
     const isEditing = !!editingId;
     const editing = editingId ? customers.find(c => c.id === editingId) : undefined;
     const initialPhone = splitPhone(editing?.phone);
 
+    // Active branches drive the picker. Memoized so the option array is stable
+    // across re-renders while branch additions/archives in Settings propagate.
+    const branchOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
+        [branches],
+    );
+
+    // Default branch — edit mode reuses the customer's branch; create mode
+    // honours ?branchId= when valid, then falls back to the global default
+    // (main active branch → first active branch → first branch).
+    function pickInitialBranch(): string {
+        if (editing?.branchId) return editing.branchId;
+        if (branchIdParam && branchOptions.some(o => o.value === branchIdParam)) return branchIdParam;
+        if (branchOptions.some(o => o.value === DEFAULT_BRANCH_ID)) return DEFAULT_BRANCH_ID;
+        return branchOptions[0]?.value ?? DEFAULT_BRANCH_ID;
+    }
+
     // Customer details — pre-filled from the edited customer, empty for create.
     const [firstName, setFirstName] = useState(editing?.firstName ?? "");
     const [lastName, setLastName] = useState(editing?.lastName ?? "");
+    const [branchId, setBranchId] = useState<string>(pickInitialBranch);
     const [dob, setDob] = useState(editing?.dateOfBirth ?? "");
     const [gender, setGender] = useState(editing?.gender ?? "");
     const [email, setEmail] = useState(editing?.email ?? "");
@@ -208,7 +258,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const [postalCode, setPostalCode] = useState(editing?.postalCode ?? "");
     const [streetAddress, setStreetAddress] = useState(editing?.streetAddress ?? "");
 
-    const canSave = !!firstName.trim() && !!lastName.trim() && !!email.trim();
+    const canSave = !!firstName.trim() && !!lastName.trim() && !!email.trim() && !!branchId;
 
     // Edit mode opened for an id that no longer exists (deleted in another
     // tab / stale link) — bail with a clear message instead of a blank form.
@@ -231,6 +281,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
             lastName: lastName.trim(),
             email: email.trim(),
             phone: phoneValue,
+            branchId,
             dateOfBirth: dob || undefined,
             gender: gender || undefined,
             country: country || undefined,
@@ -329,6 +380,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                                         className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]" />
                                 </div>
                             </Field>
+
                         </div>
 
                         {/* ─── Address details ─── */}

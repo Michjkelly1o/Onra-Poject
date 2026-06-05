@@ -36,10 +36,11 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import {
-    useAppStore, BRANCHES, DEFAULT_BRANCH_ID,
+    useAppStore, DEFAULT_BRANCH_ID,
     computePayRateDisplay,
     type PayRate, type PayRateType, type PayRateTier, type PayRateHybridCondition,
     type FlatPayRate, type TieredPayRate, type RevenuePayRate, type HybridPayRate, type MonthlyPayRate,
+    type Branch,
 } from "@/lib/store";
 
 // ─── Form value (mirror of PayRate without id/createdAt/usage/status) ───────
@@ -712,14 +713,14 @@ function PayRatePreview({ form }: { form: FormValue }) {
 
 // ─── Branch select (step 2) ─────────────────────────────────────────────────
 
-function BranchStep({ form, set }: { form: FormValue; set: (patch: Partial<FormValue>) => void }) {
+function BranchStep({ form, set, branches }: { form: FormValue; set: (patch: Partial<FormValue>) => void; branches: Branch[] }) {
     const branchOptions = useMemo(
-        () => BRANCHES.filter(b => b.status === "active").map(b => ({
+        () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
             icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
-        [],
+        [branches],
     );
     return (
         <div className="flex flex-col gap-4 w-full">
@@ -755,6 +756,7 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
     // admin list so a deep link without the query still lands somewhere sane.
     const router = useRouter();
     const payRates       = useAppStore(s => s.payRates);
+    const branches       = useAppStore(s => s.branches);
     const addPayRate     = useAppStore(s => s.addPayRate);
     const updatePayRate  = useAppStore(s => s.updatePayRate);
     const showToast      = useAppStore(s => s.showToast);
@@ -875,7 +877,7 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                 </div>
                             </div>
                         ) : (
-                            <BranchStep form={form} set={set} />
+                            <BranchStep form={form} set={set} branches={branches} />
                         )}
                     </div>
 

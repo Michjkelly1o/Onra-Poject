@@ -17,7 +17,7 @@
 // all re-render in the same cycle. Every action emits a toast.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft,
     Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
@@ -801,7 +801,14 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
 
     const customer = customers.find(c => c.id === customerId);
 
-    const [tab, setTab] = useState<TabId>("Plan");
+    // Read `?tab=` so notification click-through can deep-link the user
+    // straight to a specific tab (e.g. notification → Payments tab).
+    const searchParams = useSearchParams();
+    const initialTab: TabId = (() => {
+        const q = searchParams?.get("tab");
+        return q && (TABS as readonly string[]).includes(q) ? (q as TabId) : "Plan";
+    })();
+    const [tab, setTab] = useState<TabId>(initialTab);
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = useState<PlanFilter>(EMPTY_PLAN_FILTER);
