@@ -9,7 +9,7 @@ import {
     CreditCard01, Package, AlignLeft,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
@@ -304,6 +304,10 @@ function LeftPanel({
     onAction: (action: "edit" | "archive" | "deactivate" | "recover" | "reactivate" | "delete") => void;
 }) {
     const { status } = template;
+    // Effective banner — template's own upload, else the parent category's
+    // image (Phase 4 sync), else nothing.
+    const classCategories = useAppStore(s => s.classCategories);
+    const effectiveCover  = resolveTemplateCoverImage(template, classCategories);
 
     const actions = (() => {
         if (status === "Archived") {
@@ -338,9 +342,9 @@ function LeftPanel({
             {/* Banner */}
             <div className="relative h-[155px] shrink-0 overflow-hidden"
                 style={{ backgroundColor: template.coverColor }}>
-                {template.coverImage && (
+                {effectiveCover && (
                     <img
-                        src={template.coverImage}
+                        src={effectiveCover}
                         alt={template.name}
                         className={cn("absolute inset-0 w-full h-full object-cover", status === "Inactive" && "grayscale")}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}

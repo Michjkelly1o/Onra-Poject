@@ -31,6 +31,7 @@ import {
     useAppStore,
     type Staff, type StaffStatus,
 } from "@/lib/store";
+import { isValidEmail } from "@/lib/validation";
 
 // ─── Form value ────────────────────────────────────────────────────────────
 
@@ -304,8 +305,9 @@ function StaffPreview({ form, roleName, payRateName, branchLabel, joinedLabel }:
 function isFormValid(form: FormValue): boolean {
     return !!form.firstName.trim()
         && !!form.lastName.trim()
-        && !!form.email.trim()
-        && /^\S+@\S+\.\S+$/.test(form.email.trim())
+        // Centralized email rule — same `isValidEmail` the admin Change
+        // Email modal + Customer form + Instructor Edit profile all use.
+        && isValidEmail(form.email)
         && !!form.tempPassword.trim()
         && !!form.phone.trim()
         && !!form.roleId;
@@ -491,6 +493,11 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 <div className="flex flex-col gap-[6px]">
                                     <FieldLabel>Email</FieldLabel>
                                     <TextInput value={form.email} onChange={v => set({ email: v })} placeholder="Enter email" type="email" />
+                                    {form.email.trim().length > 0 && !isValidEmail(form.email) && (
+                                        <p className="text-[14px] text-[#b42318] leading-5">
+                                            Please enter a valid email address.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="flex flex-col gap-[6px]">
                                     <FieldLabel>Temporary password</FieldLabel>

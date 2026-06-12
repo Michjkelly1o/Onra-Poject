@@ -10,7 +10,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, CLASS_CATEGORIES, getBusinessHours, buildTimeSlots, type ClassInstance, type GenderAccess } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
@@ -19,9 +19,9 @@ import { genderAccessIcon } from "@/components/ui/gender-icons";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CLASS_TYPES   = ["Group", "Private"] as const;
-// Sourced from the live `class_categories` seed — keeps the schedule form's
-// category dropdown in lockstep with the class-template form (same options).
-const CATEGORIES    = CLASS_CATEGORIES.map(c => c.name);
+// Categories are read from the LIVE `classCategories` store slice inside
+// the component (Phase 4 wiring). Adds / edits / deletes performed in
+// Booking Rules surface here without a refresh.
 const GENDER_OPTIONS = ["All genders", "Female only", "Male only"];
 
 // Map between the form's gender-access label and the stored `GenderAccess`
@@ -46,25 +46,35 @@ const EDIT_STEPS = [
     { n: 2, label: "Location & instructor" },
 ];
 
-const BRANCH_ROOMS = [
-    {
-        branch: "Forma Studio (South)",
-        rooms: [
-            { id: "r1", name: "Reformer Studio", capacity: 6,  usedByOther: false },
-            { id: "r2", name: "Mat Studio",       capacity: 20, usedByOther: false },
-            { id: "r3", name: "Barre Studio",     capacity: 10, usedByOther: false },
-            { id: "r4", name: "Private Suite",    capacity: 15, usedByOther: false },
-        ],
-    },
-    {
-        branch: "Forma Studio (East)",
-        rooms: [
-            { id: "r5", name: "Yoga Studio",  capacity: 10, usedByOther: false },
-            { id: "r6", name: "HIIT Studio",  capacity: 8,  usedByOther: false },
-            { id: "r7", name: "Power Studio", capacity: 15, usedByOther: false },
-        ],
-    },
-];
+/** Shape of the dropdown groups used inside `LocationDropdown` and the
+ *  schedule form's lookup paths (`flatMap`/`find` calls). Keeping the
+ *  same shape as the original static `BRANCH_ROOMS` constant means
+ *  every existing call site keeps working — only the data source moves
+ *  from a static seed to the live store slices. */
+interface BranchRoomGroup {
+    branchId: string;
+    branch: string;
+    rooms: { id: string; name: string; capacity: number; usedByOther: boolean }[];
+}
+
+/** Build the dropdown groups from the live `branches` + `rooms` slices.
+ *  Only active branches with at least one room are listed (matches the
+ *  "real options the admin can pick" rule). `usedByOther` is left false
+ *  here — the schedule-conflict pass below sets it per row when needed. */
+function buildBranchRooms(
+    branches: { id: string; name: string; status: "active" | "inactive" | "archive"; is_main: boolean }[],
+    rooms: { id: string; branch_id: string; name: string; capacity: number; status: "active" | "inactive" | "archive" }[],
+): BranchRoomGroup[] {
+    return branches
+        .filter(b => b.status === "active")
+        .map(b => ({
+            branchId: b.id,
+            branch: b.name,
+            rooms: rooms
+                .filter(r => r.branch_id === b.id && r.status === "active")
+                .map(r => ({ id: r.id, name: r.name, capacity: r.capacity, usedByOther: false })),
+        }));
+}
 
 const REPEAT_OPTIONS = ["Does not repeat", "Repeat weekly"] as const;
 const REPEAT_END     = ["No end date", "End on date", "End after"] as const;
@@ -257,10 +267,15 @@ function TemplateDropdown({ templates, value, onChange, disabled = false }: {
 
 // ─── Location dropdown (grouped, with capacity + status) ──────────────────────
 
-function LocationDropdown({ classCapacity, value, onChange }: {
+function LocationDropdown({ classCapacity, value, onChange, branchRooms, onAddRoom }: {
     classCapacity: number;
     value: string;
     onChange: (id: string) => void;
+    /** Live dropdown groups derived from `branches + rooms` slices. */
+    branchRooms: BranchRoomGroup[];
+    /** Click handler for the per-branch "+ Add room" affordance — receives
+     *  the parent branch id so the room-form is pre-scoped to it. */
+    onAddRoom: (branchId: string) => void;
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -270,7 +285,7 @@ function LocationDropdown({ classCapacity, value, onChange }: {
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
-    const selectedRoom = BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === value);
+    const selectedRoom = branchRooms.flatMap(b => b.rooms).find(r => r.id === value);
 
     return (
         <div ref={ref} className="relative">
@@ -294,15 +309,19 @@ function LocationDropdown({ classCapacity, value, onChange }: {
             </button>
             {open && (
                 <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 overflow-hidden max-h-[360px] overflow-y-auto">
-                    {BRANCH_ROOMS.map((group, gi) => (
-                        <div key={group.branch} className={gi > 0 ? "border-t border-[#e4e7ec]" : ""}>
+                    {branchRooms.map((group, gi) => (
+                        <div key={group.branchId} className={gi > 0 ? "border-t border-[#e4e7ec]" : ""}>
                             {/* Branch header — no bg, dark add room */}
                             <div className="flex items-center justify-between px-4 py-3">
                                 <div className="flex items-center gap-2">
                                     <Building01 className="w-4 h-4 text-[#667085]" />
                                     <span className="text-[14px] font-semibold text-[#101828]">{group.branch}</span>
                                 </div>
-                                <button type="button" className="flex items-center gap-1 text-[13px] font-semibold text-[#344054] hover:text-[#101828] transition-colors">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setOpen(false); onAddRoom(group.branchId); }}
+                                    className="flex items-center gap-1 text-[13px] font-semibold text-[#344054] hover:text-[#101828] transition-colors"
+                                >
                                     <Plus className="w-3.5 h-3.5" />Add room
                                 </button>
                             </div>
@@ -855,6 +874,100 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // Settings → Business & Locations immediately drives the form's
     // Start/End time slot list (no static seed reads).
     const liveBusinessHours = useAppStore(s => s.businessHours);
+    // Live category list — drives the "Class category" SimpleSelect below.
+    // Phase 4 wiring (Booking Rules → schedule form).
+    const classCategories   = useAppStore(s => s.classCategories);
+    const categoryOptions   = classCategories.map(c => c.name);
+    // Live branch + room slices — drive the Location dropdown so adds
+    // performed via the "+ Add room" affordance below reflect immediately.
+    const liveBranches      = useAppStore(s => s.branches);
+    const liveRooms         = useAppStore(s => s.rooms);
+    const branchRooms       = useMemo(
+        () => buildBranchRooms(liveBranches, liveRooms),
+        [liveBranches, liveRooms],
+    );
+
+    /** Navigate to the Room create form pre-scoped to the branch the admin
+     *  picked, and tell it to return back here on Save / Cancel so the
+     *  schedule form state isn't lost. Phase Booking-Rules-tail wiring. */
+    /** sessionStorage key used by the "Add room" round-trip below — scoped
+     *  per editing context so the draft for a new schedule never collides
+     *  with an in-progress edit of an existing one. */
+    const DRAFT_KEY = `onra_schedule_form_draft_${editingId ?? "new"}`;
+
+    function handleAddRoomFromDropdown(branchId: string) {
+        // Snapshot every field driven by the form so the schedule's
+        // in-progress state survives the full-page jump to /settings/rooms.
+        // Restored on this component's next mount (the returnTo hop).
+        try {
+            const draft = {
+                step, templateId, name, desc, classType, category, gender,
+                duration, capacity, templateCapacity, coverImage, coverCol,
+                locationId, equipment, spotEnabled, instructorId, instrSearch,
+                repeat, repeatEvery, repeatEnd, endDate, endAfter,
+                selectedDate, startTime, selectedDays, daySlots,
+            };
+            sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch {
+            // sessionStorage can throw in sandboxed iframes / private mode.
+            // Worst case the form returns to step 1 — same as before this fix.
+        }
+        const here = window.location.pathname + window.location.search;
+        router.push(`/settings/rooms/new?branchId=${branchId}&returnTo=${encodeURIComponent(here)}`);
+    }
+
+    // Restore the draft saved by `handleAddRoomFromDropdown` above. Runs
+    // once on mount, consumes the entry (single-use) so a navigation away
+    // for some other reason doesn't accidentally resurrect old form data.
+    useEffect(() => {
+        try {
+            if (typeof window === "undefined") return;
+            const raw = sessionStorage.getItem(DRAFT_KEY);
+            if (!raw) return;
+            sessionStorage.removeItem(DRAFT_KEY);
+            const d = JSON.parse(raw) as Partial<{
+                step: number; templateId: string; name: string; desc: string;
+                classType: string; category: string; gender: string;
+                duration: number; capacity: number; templateCapacity: number;
+                coverImage: string; coverCol: string; locationId: string;
+                equipment: string; spotEnabled: boolean; instructorId: string;
+                instrSearch: string; repeat: typeof REPEAT_OPTIONS[number];
+                repeatEvery: number; repeatEnd: typeof REPEAT_END[number];
+                endDate: string; endAfter: number; selectedDate: string;
+                startTime: string; selectedDays: string[];
+                daySlots: Record<string, TimeSlot[]>;
+            }>;
+            if (d.step              !== undefined) setStep(d.step);
+            if (d.templateId        !== undefined) setTemplateId(d.templateId);
+            if (d.name              !== undefined) setName(d.name);
+            if (d.desc              !== undefined) setDesc(d.desc);
+            if (d.classType         !== undefined) setClassType(d.classType);
+            if (d.category          !== undefined) setCategory(d.category);
+            if (d.gender            !== undefined) setGender(d.gender);
+            if (d.duration          !== undefined) setDuration(d.duration);
+            if (d.capacity          !== undefined) setCapacity(d.capacity);
+            if (d.templateCapacity  !== undefined) setTemplateCapacity(d.templateCapacity);
+            if (d.coverImage        !== undefined) setCoverImage(d.coverImage);
+            if (d.coverCol          !== undefined) setCoverCol(d.coverCol);
+            if (d.locationId        !== undefined) setLocationId(d.locationId);
+            if (d.equipment         !== undefined) setEquipment(d.equipment);
+            if (d.spotEnabled       !== undefined) setSpotEnabled(d.spotEnabled);
+            if (d.instructorId      !== undefined) setInstructorId(d.instructorId);
+            if (d.instrSearch       !== undefined) setInstrSearch(d.instrSearch);
+            if (d.repeat            !== undefined) setRepeat(d.repeat);
+            if (d.repeatEvery       !== undefined) setRepeatEvery(d.repeatEvery);
+            if (d.repeatEnd         !== undefined) setRepeatEnd(d.repeatEnd);
+            if (d.endDate           !== undefined) setEndDate(d.endDate);
+            if (d.endAfter          !== undefined) setEndAfter(d.endAfter);
+            if (d.selectedDate      !== undefined) setSelectedDate(d.selectedDate);
+            if (d.startTime         !== undefined) setStartTime(d.startTime);
+            if (d.selectedDays      !== undefined) setSelectedDays(d.selectedDays);
+            if (d.daySlots          !== undefined) setDaySlots(d.daySlots);
+        } catch {
+            // Corrupt or stale draft — silently fall back to defaults.
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const isEditing = !!editingId;
     const editing = editingId ? classSchedules.find(c => c.id === editingId) : undefined;
@@ -875,7 +988,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // Treat editing AND duplicating as "we have a source class" for pre-fill purposes; only `isEditing` gates the 2-step / disabled-template behaviour.
     const sourceClass: ClassInstance | undefined = editing ?? duplicateSource;
     // When editing, derive the original room id from the room name stored on the instance.
-    const editingRoomId = sourceClass ? BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.name === sourceClass.room)?.id ?? "" : "";
+    const editingRoomId = sourceClass ? branchRooms.flatMap(b => b.rooms).find(r => r.name === sourceClass.room)?.id ?? "" : "";
 
     // Form state — pre-filled when editing OR duplicating.
     const [step, setStep] = useState(1);
@@ -941,7 +1054,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         // denormalized onto every schedule (form-created and seeded alike), so
         // name is the one key that matches across both.
         const selectedRoomName = locationId
-            ? BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === locationId)?.name
+            ? branchRooms.flatMap(b => b.rooms).find(r => r.id === locationId)?.name
             : undefined;
         const blocked: string[] = [];
         classSchedules.forEach(ex => {
@@ -1040,16 +1153,18 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         setDuration(t.durationMin);
         setCapacity(t.capacity);
         setTemplateCapacity(t.capacity);
-        setCoverImage(t.coverImage ?? "");
+        // Use the resolved cover image so picking a template that doesn't
+        // have its own banner inherits the parent category's image.
+        setCoverImage(resolveTemplateCoverImage(t, classCategories) ?? "");
         setCoverCol(t.coverColor);
     }
 
-    const selectedRoom = BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === locationId);
+    const selectedRoom = branchRooms.flatMap(b => b.rooms).find(r => r.id === locationId);
 
     // Resolve the seed branch_id from the picked room so we can look up
     // business hours for it. Local BRANCH_ROOMS is the form's room dropdown
     // source; the East branch is the only non-South one in seeds today.
-    const selectedBranchGroup = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
+    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
     const selectedBranchId = selectedBranchGroup?.branch.includes("East")
         ? "branch_forma_east"
         : "branch_forma_south";
@@ -1169,7 +1284,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
 
     function handleSelectRoom(roomId: string) {
         setLocationId(roomId);
-        const room = BRANCH_ROOMS.flatMap(b => b.rooms).find(r => r.id === roomId);
+        const room = branchRooms.flatMap(b => b.rooms).find(r => r.id === roomId);
         if (!room) return;
         const cap = room.capacity;
         const dc = (() => { for (const c of [4,3,5,2,6]) { if (cap%c===0 && cap/c<=8) return c; } return Math.min(cap,4); })();
@@ -1321,7 +1436,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     function handleCreate() {
         const instances: Omit<ClassInstance, "id">[] = [];
         const instName     = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
-        const branchGroup  = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
+        const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
         const now          = new Date().toISOString();
@@ -1395,13 +1510,14 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 "success", "check"
             );
         }
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
         router.push("/admin/schedule");
     }
 
     function handleSaveEdit() {
         if (!editingId || !editing) return;
         const instName = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
-        const branchGroup  = BRANCH_ROOMS.find(b => b.rooms.some(r => r.id === locationId));
+        const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
 
@@ -1449,6 +1565,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             `${name} has been ${dateChanged ? "rescheduled and saved" : "updated"}.`,
             "success", "check",
         );
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
         router.push(`/schedule/${editingId}`);
     }
 
@@ -1495,7 +1612,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             {/* Header */}
             <div className="shrink-0 h-[72px] flex items-center px-6">
                 <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => router.push("/admin/schedule")}
+                    <button type="button" onClick={() => {
+                        try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
+                        router.push("/admin/schedule");
+                    }}
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
@@ -1563,7 +1683,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                                 id: t.id, name: t.name, category: t.category,
                                                 description: t.description, locationType: t.locationType,
                                                 durationMin: t.durationMin, capacity: t.capacity,
-                                                coverColor: t.coverColor, coverImage: t.coverImage,
+                                                coverColor: t.coverColor,
+                                                // Effective banner — falls back to the parent
+                                                // category's image when the template has none.
+                                                coverImage: resolveTemplateCoverImage(t, classCategories),
                                             }))}
                                             value={templateId}
                                             onChange={handleSelectTemplate}
@@ -1626,7 +1749,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Class category</label>
-                                                <SimpleSelect label="Select category" value={category} options={CATEGORIES} onChange={setCategory} />
+                                                <SimpleSelect label="Select category" value={category} options={categoryOptions} onChange={setCategory} />
                                             </div>
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Gender</label>
@@ -1660,7 +1783,13 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                     <p className="text-[18px] font-semibold text-[#101828]">Class location</p>
                                     <div className="flex flex-col gap-1.5">
                                         <label className={labelCls}>Location</label>
-                                        <LocationDropdown classCapacity={capacity} value={locationId} onChange={handleSelectRoom} />
+                                        <LocationDropdown
+                                            classCapacity={capacity}
+                                            value={locationId}
+                                            onChange={handleSelectRoom}
+                                            branchRooms={branchRooms}
+                                            onAddRoom={handleAddRoomFromDropdown}
+                                        />
                                     </div>
 
                                     {/* Over capacity alert */}

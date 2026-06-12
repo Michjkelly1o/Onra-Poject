@@ -69,6 +69,10 @@ interface FormValue {
     bonusCap: number | "";
     salesCommissionPackagesPercent: number | "";
     salesCommissionMembershipsPercent: number | "";
+    /** Optional per-rate tax override (Figma 6106:10962). Empty string =
+     *  "No tax rate" (the rate inherits the global pay-rate tax rule).
+     *  Populated with a `tax_rates.id` when the admin picks one. */
+    taxRateId: string;
 }
 
 function emptyForm(): FormValue {
@@ -93,6 +97,7 @@ function emptyForm(): FormValue {
         bonusCap: "",
         salesCommissionPackagesPercent: "",
         salesCommissionMembershipsPercent: "",
+        taxRateId: "",
     };
 }
 
@@ -104,6 +109,7 @@ function formFromPayRate(p: PayRate): FormValue {
     base.branchId = p.branchId;
     base.onlyCheckedIn = p.onlyCheckedIn ?? false;
     base.includeLateCancelled = p.includeLateCancelled ?? false;
+    base.taxRateId = p.taxRateId ?? "";
     switch (p.type) {
         case "flat":
             base.flatAmount = p.flatAmount;
@@ -150,6 +156,9 @@ function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate 
         onlyCheckedIn: form.onlyCheckedIn,
         includeLateCancelled: form.includeLateCancelled,
         usageCount,
+        // Empty-string sentinel → undefined so the persisted record reads
+        // as "no override" instead of holding an empty FK string.
+        taxRateId: form.taxRateId === "" ? undefined : form.taxRateId,
     };
     const num = (v: number | "") => (v === "" ? 0 : v);
     switch (form.type) {
@@ -757,11 +766,40 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
     const router = useRouter();
     const payRates       = useAppStore(s => s.payRates);
     const branches       = useAppStore(s => s.branches);
+    const taxRates       = useAppStore(s => s.taxRates);
+    const taxRules       = useAppStore(s => s.taxRules);
     const addPayRate     = useAppStore(s => s.addPayRate);
     const updatePayRate  = useAppStore(s => s.updatePayRate);
     const showToast      = useAppStore(s => s.showToast);
 
     const existing = mode === "edit" && payRateId ? payRates.find(p => p.id === payRateId) : undefined;
+
+    // Tax-rate picker options — only tax rates that are referenced by an
+    // ACTIVE tax_rule with category="pay_rate" qualify (matches the brief:
+    // "list of tax rate we have that has been apply to tax rule on pay rate").
+    // Inactive / archived tax rates are also filtered out.
+    const payRateTaxOptions = useMemo(() => {
+        const usedIds = new Set(
+            taxRules
+                .filter(r => r.category === "pay_rate" && r.status === "active" && r.taxRateId)
+                .map(r => r.taxRateId!),
+        );
+        const usable = taxRates.filter(t => t.status === "active" && usedIds.has(t.id));
+        // Preserve the existing taxRateId on edit even if its rule has since
+        // been deactivated — otherwise the SelectInput would silently reset
+        // the picked option on first render.
+        if (existing?.taxRateId && !usable.some(t => t.id === existing.taxRateId)) {
+            const stale = taxRates.find(t => t.id === existing.taxRateId);
+            if (stale) usable.push(stale);
+        }
+        return [
+            { value: "", label: "No tax rate" },
+            ...usable.map(t => ({
+                value: t.id,
+                label: `${t.name} (${t.ratePercentage}%)`,
+            })),
+        ];
+    }, [taxRates, taxRules, existing]);
 
     const [form, setForm] = useState<FormValue>(() => existing ? formFromPayRate(existing) : emptyForm());
     const [step, setStep] = useState<1 | 2>(1);
@@ -857,7 +895,24 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                     {form.type === "monthly" && <MonthlyRateSection form={form} set={set} />}
                                 </div>
 
-                                {/* Additional settings — tax rates intentionally omitted per brief */}
+                                {/* Tax rates — Figma 6106:10962. Lists the global pay-rate
+                                    tax rules so the admin can override the inherited
+                                    rate for this specific pay rate. */}
+                                <div className="flex flex-col gap-4 w-full">
+                                    <SectionHeader title="Tax rates" />
+                                    <div className="flex flex-col gap-[6px] w-full">
+                                        <FieldLabel>Tax rate (optional)</FieldLabel>
+                                        <SelectInput
+                                            value={form.taxRateId}
+                                            onChange={v => set({ taxRateId: v })}
+                                            options={payRateTaxOptions}
+                                            placeholder="Select"
+                                            width="w-full"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Additional settings */}
                                 <div className="flex flex-col gap-4 w-full">
                                     <SectionHeader title="Additional settings" />
                                     <div className="flex flex-col gap-4 w-full">

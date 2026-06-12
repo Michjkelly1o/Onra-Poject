@@ -1914,21 +1914,29 @@ export default function ClassDetailPage() {
         [allMemberships, allPackagesForPos]
     );
 
-    // When the class itself is cancelled, the Booked tab shows the bookings that
-    // existed at the moment of class-cancellation (i.e. cancellationReason === "Class cancelled").
-    // The Cancelled tab still shows customer-initiated cancellations only.
+    // **Tab-preservation cancel model** — bookings keep their ORIGINAL
+    // `status` regardless of the parent class's state. So:
+    //   • Booked tab     → status === "booked" rows
+    //   • Waitlisted tab → status === "waitlisted" rows
+    //   • Cancelled tab  → status === "cancelled" rows (customer-self-
+    //                      cancellations only)
+    //
+    // On a Cancelled class, the row's status BADGE flips to "Cancelled"
+    // in the Booked tab — but the row stays where it was, so the tab
+    // doesn't render empty. The page logic stays simple (no special
+    // `if (isCancelled)` branches); the visual flip happens at the
+    // badge layer.
     const bookedBookings = useMemo(
-        () => classIsCancelled
-            ? allBookings.filter(b => b.status === "cancelled" && b.cancellationReason === "Class cancelled")
-            : allBookings.filter(b => b.status === "booked"),
-        [allBookings, classIsCancelled]
+        () => allBookings.filter(b => b.status === "booked"),
+        [allBookings]
     );
-    const waitlistBookings = useMemo(() => allBookings.filter(b => b.status === "waitlisted").sort((a, b) => (a.waitlistPosition ?? 99) - (b.waitlistPosition ?? 99)), [allBookings]);
+    const waitlistBookings = useMemo(
+        () => allBookings.filter(b => b.status === "waitlisted").sort((a, b) => (a.waitlistPosition ?? 99) - (b.waitlistPosition ?? 99)),
+        [allBookings]
+    );
     const cancelledBookings = useMemo(
-        () => classIsCancelled
-            ? allBookings.filter(b => b.status === "cancelled" && b.cancellationReason !== "Class cancelled")
-            : allBookings.filter(b => b.status === "cancelled"),
-        [allBookings, classIsCancelled]
+        () => allBookings.filter(b => b.status === "cancelled"),
+        [allBookings]
     );
 
     const [tab, setTab] = useState<DetailTab>("booked");
@@ -2098,7 +2106,7 @@ export default function ClassDetailPage() {
 
     function handleCancelBooking(refund: boolean) {
         if (!cancelBookingTarget) return;
-        cancelClassBooking(cancelBookingTarget.id, "Cancelled by admin", refund);
+        cancelClassBooking(cancelBookingTarget.id, "Cancelled by admin", refund, "admin");
         setCancelBookingTarget(null);
         setSelectedIds(prev => { const next = new Set(prev); next.delete(cancelBookingTarget!.id); return next; });
         showToast(
@@ -2127,7 +2135,7 @@ export default function ClassDetailPage() {
     function handleBulkCancel(refund: boolean) {
         const ids = Array.from(selectedIds);
         if (!ids.length) return;
-        cancelClassBookings(ids, "Cancelled by admin", refund);
+        cancelClassBookings(ids, "Cancelled by admin", refund, "admin");
         setBulkCancelOpen(false);
         setSelectedIds(new Set());
         showToast(
@@ -2713,17 +2721,23 @@ export default function ClassDetailPage() {
                                                                 {showSpot && <td className={TD}>{spotLabel}</td>}
                                                                 {showStatus && (
                                                                     <td className={TD}>
-                                                                        {tab === "booked" && (isOngoing || isCompleted)
-                                                                            ? (b.attendanceStatus === "present"
-                                                                                ? <PresentBadge />
-                                                                                : b.attendanceStatus === "no_show"
-                                                                                    ? <NoShowBadge />
-                                                                                    : null)
-                                                                            : <BookingStatusBadge kind={cancellationBadgeKind({
-                                                                                cancelledAt: b.cancelledAt,
-                                                                                classDateISO: ci.dateISO,
-                                                                                classStartTime: ci.startTime,
-                                                                            })} />}
+                                                                        {/* Booked tab on a Cancelled class →
+                                                                            class-level "Cancelled" badge (tab-
+                                                                            preservation model: rows stay in their
+                                                                            original tab; the badge tells the story). */}
+                                                                        {tab === "booked" && isCancelled
+                                                                            ? <BookingStatusBadge kind="class" />
+                                                                            : tab === "booked" && (isOngoing || isCompleted)
+                                                                                ? (b.attendanceStatus === "present"
+                                                                                    ? <PresentBadge />
+                                                                                    : b.attendanceStatus === "no_show"
+                                                                                        ? <NoShowBadge />
+                                                                                        : null)
+                                                                                : <BookingStatusBadge kind={cancellationBadgeKind({
+                                                                                    cancelledAt: b.cancelledAt,
+                                                                                    classDateISO: ci.dateISO,
+                                                                                    classStartTime: ci.startTime,
+                                                                                })} />}
                                                                     </td>
                                                                 )}
                                                                 {showActions && (

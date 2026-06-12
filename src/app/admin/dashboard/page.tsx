@@ -20,6 +20,8 @@ import {
 } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
+import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, DEFAULT_BRANCH_ID } from "@/lib/store";
@@ -160,6 +162,62 @@ interface DashboardMetric {
     icon: typeof CurrencyDollar;
 }
 
+// ─── CSV export — Performance snapshot ──────────────────────────────────────
+
+/** One combined CSV with section headers between each block (Option A from
+ *  earlier convo). Sections, in order:
+ *    1. SUMMARY — the 4 KPI metrics (already branch + period scoped)
+ *    2. One section per CURRENTLY-ACTIVE widget — period scoped via the same
+ *       `buildSeries(id, period)` call the chart uses, so exported numbers
+ *       mirror what's on screen. Hidden widgets are skipped.
+ *  Each section is `[title row, header row, ...body rows, blank row]`. The
+ *  trailing blank row is dropped so the file doesn't end on whitespace. */
+function exportPerformanceCsv(
+    metrics: DashboardMetric[],
+    activeWidgets: string[],
+    period: DateFilter,
+) {
+    const sections: { title: string; header: string[]; body: string[][] }[] = [];
+
+    // ── KPI summary ──
+    sections.push({
+        title: "Summary",
+        header: ["Metric", "Value", "Change", "Comparison"],
+        body: metrics.map(m => [
+            m.label,
+            m.value,
+            `${m.positive ? "+" : "-"}${m.change}%`,
+            m.comparison,
+        ]),
+    });
+
+    // ── Per-active-widget section ──
+    for (const id of activeWidgets) {
+        const section = getWidgetCsvSection(id, period);
+        if (section) sections.push(section);
+    }
+
+    // ── Combine sections with a blank-row separator ──
+    const lines: string[][] = [];
+    for (const s of sections) {
+        lines.push([s.title]);
+        lines.push(s.header);
+        for (const row of s.body) lines.push(row);
+        lines.push([]);
+    }
+    // Drop the trailing blank if any.
+    if (lines.length && lines[lines.length - 1].length === 0) lines.pop();
+
+    const csv = lines
+        .map(line => line.length === 0 ? "" : line.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
+        .join("\r\n");
+
+    downloadCsv(
+        `dashboard-performance-${period.label.toLowerCase().replace(/\s+/g, "-")}-${csvTodayISO()}.csv`,
+        csv,
+    );
+}
+
 
 
 // ── Performance Tab ───────────────────────────────────────────────────────────
@@ -273,7 +331,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 // ── Report dropdown ──
 const REPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
 
-function ReportDropdown() {
+function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -302,7 +360,11 @@ function ReportDropdown() {
                         <button
                             key={fmt}
                             type="button"
-                            onClick={() => setOpen(false)}
+                            onClick={() => {
+                                setOpen(false);
+                                // Only CSV is wired today; PDF / Excel come later.
+                                if (fmt === "CSV") onExportCsv();
+                            }}
                             className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
                         >
                             {fmt}
@@ -583,7 +645,16 @@ export default function AdminDashboard() {
                         </Button>
 
                         {/* Report download — with format picker */}
-                        <ReportDropdown />
+                        <ReportDropdown
+                            onExportCsv={() => {
+                                exportPerformanceCsv(metrics, activeWidgets, period);
+                                showToast(
+                                    "Performance report exported",
+                                    `${metrics.length} metric${metrics.length === 1 ? "" : "s"} + ${activeWidgets.length} widget${activeWidgets.length === 1 ? "" : "s"} exported to CSV.`,
+                                    "success", "check",
+                                );
+                            }}
+                        />
                     </>
                 )}
             </div>

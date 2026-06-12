@@ -87,6 +87,52 @@ function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number;
 }
 
 /** Tile the seed to match the period's point count + apply the period scale. */
+// ─── Public CSV export helper ───────────────────────────────────────────────
+
+/** Returns a flat CSV section (`title + header + rows`) for one widget, OR
+ *  `null` if the widget id isn't a recognised data source. Period is honoured
+ *  exactly the way the chart honours it (same `buildSeries(id, period)` call)
+ *  so the exported numbers match what the admin sees on screen. Branch-level
+ *  filtering isn't yet wired into the widget seeds — the on-screen chart
+ *  doesn't change per branch today, so neither does the exported CSV. KPI
+ *  metrics above the widgets already respect branch scope. */
+export function getWidgetCsvSection(
+    id: string,
+    period: DateFilter,
+): { title: string; header: string[]; body: string[][] } | null {
+    const title = WIDGET_CATALOG.find(w => w.id === id)?.title ?? id;
+    const series = STATIC[id] ?? buildSeries(id, period);
+    const cols = WIDGET_CSV_COLS[id];
+    if (!cols) return null;
+    const body = series.map(row => cols.fields.map(k => {
+        const v = (row as Record<string, string | number>)[k];
+        return v === undefined ? "" : String(v);
+    }));
+    return { title, header: cols.headers, body };
+}
+
+/** Per-widget header + data-key mapping. Keys must match the seed shape in
+ *  `SEEDS` / `STATIC` above (case-sensitive). When a widget is added, drop
+ *  its column meta here OR pass it in from the catalog later. */
+const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> = {
+    "payments-collected":   { headers: ["Date", "Payments (AED)"],                fields: ["date", "v"] },
+    "payments-status":      { headers: ["Date", "Paid", "Failed"],                fields: ["date", "paid", "failed"] },
+    "payments-by-method":   { headers: ["Date", "Card", "Cash", "Apple pay"],     fields: ["date", "card", "cash", "apple"] },
+    "payments-by-source":   { headers: ["Date", "CRM", "Customer App", "Website"], fields: ["date", "crm", "app", "web"] },
+    "revenue-overview":     { headers: ["Date", "Revenue", "Last week"],          fields: ["date", "revenue", "lastWeek"] },
+    "sales-by-product":     { headers: ["Date", "Membership", "Class package"],   fields: ["date", "membership", "package"] },
+    "active-memberships":   { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
+    "active-subscriptions": { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
+    "active-credits":       { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
+    "top-memberships":      { headers: ["Plan", "Total sales"],                   fields: ["name", "v"] },
+    "memberships-sold":     { headers: ["Date", "Beginner", "Advanced", "Unlimited"], fields: ["date", "beginner", "advanced", "unlimited"] },
+    "class-bookings":       { headers: ["Date", "Bookings"],                      fields: ["date", "v"] },
+    "bookings-by-source":   { headers: ["Date", "CRM", "Customer App", "Website"], fields: ["date", "crm", "app", "web"] },
+    "bookings-vs-visits":   { headers: ["Date", "Bookings", "Visits"],            fields: ["date", "bookings", "visits"] },
+    "attendance-overview":  { headers: ["Date", "Visits", "Cancellations", "No-show"], fields: ["date", "visits", "cancellations", "noShow"] },
+    "class-by-popularity":  { headers: ["Class", "Instructor", "Bookings", "Occupancy (%)"], fields: ["name", "instructor", "bookings", "occupancy"] },
+};
+
 function buildSeries(id: string, period: DateFilter): object[] {
     const seed = SEEDS[id];
     if (!seed) return [];

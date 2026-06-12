@@ -18,6 +18,12 @@
 //   tpl_barre            → past Completed + today Upcoming + future Upcoming
 //   tpl_hot_yoga         → past Completed + tomorrow Upcoming + future Upcoming
 //
+// Liam (`staff_liam_chen`) rich data — the Earnings module demo set lives
+// in [prototype_demo_data.ts](src/data/mock/prototype_demo_data.ts) under
+// `DEMO_NOW_LIAM_*` exports so the rows auto-anchor to the current real
+// date and always fall inside "This week" / "Last week" period filters.
+// Those exports are spread in below alongside `DEMO_NOW_SCHEDULES`.
+//
 // `booked`, `rating`, `rating_count` are denormalized counts kept on the row
 // for fast list rendering. Task 8's class_bookings + class_ratings will
 // match these counts exactly.
@@ -29,8 +35,11 @@
 //   instructor_id → staff_profiles.id
 
 import type { ClassSchedule } from "./_types";
+import { DEMO_NOW_SCHEDULES, DEMO_NOW_LIAM_SCHEDULES } from "./prototype_demo_data";
 
 export const class_schedule: ClassSchedule[] = [
+    ...DEMO_NOW_SCHEDULES,
+    ...DEMO_NOW_LIAM_SCHEDULES,
     // ── 4 PAST ──────────────────────────────────────────────────────────────
     {
         // 1) Reformer Pilates — completed last Friday
@@ -95,7 +104,11 @@ export const class_schedule: ClassSchedule[] = [
         end_time: "18:45",
         display_time: "06:00 - 06:45 PM",
         capacity: 8,
-        booked: 0, // all bookings flipped to "cancelled" status — refund issued
+        // Tab-preservation model: bookings keep their original status
+        // when the class is cancelled, so `booked` reflects the count
+        // of customers who WERE booked when the class died (3 here).
+        // See store.ts cancelClassSchedule for the contract.
+        booked: 3,
         rating: 0,
         rating_count: 0,
         status: "Cancelled",

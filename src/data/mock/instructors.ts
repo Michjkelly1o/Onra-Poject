@@ -32,7 +32,9 @@ export const instructors: InstructorSeed[] = [
         id: "staff_liam_chen",
         full_name: "Liam Chen", initials: "LC", color_hex: "#4b8c9a",
         image_url: "/images/instructors/liam-chen.webp",
-        email: "liam@formastudio.ae", phone: "+971 55 200 2002",
+        // Aligned with `instructor_profile.ts` (Phase 4 audit) — edits made
+        // through the cascade in `updateAccountProfile` keep this row in sync.
+        email: "liam@email.com", phone: "+971 55 200 2001",
         joined_date: "Mar 12, 2024",
         branch_id: "branch_forma_south",
         pay_rate_id: "pr_standard", status: "active",

@@ -7,7 +7,18 @@ import { cn } from "@/lib/utils";
 interface SharedProps {
     className?: string;
     inputClassName?: string;
+    /** Optional cell appended after the input (with `border-l` divider).
+     *  Used for units / appended icons that visually live OUTSIDE the
+     *  number box (e.g. Overbooking percentage `%` button). */
     suffix?: ReactNode;
+    /** Optional icon rendered INSIDE the input wrapper before the number
+     *  (no divider). Used for "Charge class session" (currency icon) and
+     *  similar inline-prefix patterns. */
+    prefix?: ReactNode;
+    /** When true, hides the right-side stepper handle. Useful when the
+     *  field is plain text-style (e.g. currency input on Phase 2 policy
+     *  form) and the up/down toggle isn't part of the design. */
+    hideStepper?: boolean;
     disabled?: boolean;
     max?: number;
     min?: number;
@@ -41,7 +52,7 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
     value: number;
     onChange: (n: number) => void;
 }>(function NumericInput(
-    { value, onChange, className, inputClassName, suffix, disabled, max, min, step, required, placeholder, ...rest },
+    { value, onChange, className, inputClassName, suffix, prefix, hideStepper, disabled, max, min, step, required, placeholder, ...rest },
     ref
 ) {
     // Effective floor — never let the value go below the larger of `min` (if
@@ -73,6 +84,9 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
     return (
         <div className={cn("flex items-stretch border border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all", disabled && "bg-[#f9fafb]", className)}>
             <div className="flex flex-1 items-center gap-2 pl-[14px] pr-[10px]">
+                {prefix !== undefined && (
+                    <span className="shrink-0 flex items-center text-[#667085]">{prefix}</span>
+                )}
                 <input
                     ref={ref}
                     type="number"
@@ -92,12 +106,14 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
                         inputClassName
                     )}
                 />
-                <StepperHandle
-                    onUp={() => stepBy(1)} onDown={() => stepBy(-1)}
-                    disabled={disabled}
-                    canUp={max === undefined || value < max}
-                    canDown={min === undefined ? value > 0 : value > min}
-                />
+                {!hideStepper && (
+                    <StepperHandle
+                        onUp={() => stepBy(1)} onDown={() => stepBy(-1)}
+                        disabled={disabled}
+                        canUp={max === undefined || value < max}
+                        canDown={min === undefined ? value > 0 : value > min}
+                    />
+                )}
             </div>
             {suffix !== undefined && (
                 <div className="flex items-center px-[14px] border-l border-[#d0d5dd] text-[16px] text-[#344054] shrink-0">

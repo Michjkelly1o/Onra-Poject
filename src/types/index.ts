@@ -84,7 +84,37 @@ export interface User {
      *  Change-password modal is submitted. Never sent off-device. */
     password?: string;
     created_at: string;
+    // ── Instructor profile fields (only populated on instructor personas) ──
+    // Optional so admin/member personas don't need them. The instructor
+    // Account settings page reads these to render the Personal information
+    // tab; the Edit profile modal writes them through `updateAccountProfile`.
+    // Phase 4 will revisit whether these belong on the `staff_profile` row
+    // instead — for Phase 1 they live on `User` so the existing camel-case
+    // store action keeps working unchanged.
+    /** Instructor bio — shown verbatim on the customer-facing portal. */
+    introduction?: string;
+    /** Weekday literals the instructor works. Inactive days render in red
+     *  on the chip row (matches Figma). */
+    working_days?: ReadonlyArray<WorkingDay>;
+    /** 24-hour string, e.g. "07:00" + "20:00". Rendered as "07:00 AM - 08:00 PM". */
+    working_hours_start?: string;
+    working_hours_end?: string;
+    /** Free-form mailing address line — appears on the Branch info card. */
+    address?: string;
+    /** ISO date the instructor joined the studio. Distinct from `created_at`
+     *  (account-creation timestamp). Falls back to `created_at` when unset. */
+    joined_at?: string;
+    /** Instructor notification preferences (Figma 6378:524545). Each
+     *  channel is a simple boolean — default `true` so a new instructor
+     *  starts with everything ON. Edited from the Notification settings
+     *  tab of `/instructor/account` via `updateAccountProfile`. */
+    notify_email?: boolean;
+    notify_whatsapp?: boolean;
+    notify_push?: boolean;
 }
+
+/** Weekday glyph the instructor profile uses to draw the M T W T F S S row. */
+export type WorkingDay = "M" | "T" | "W" | "Th" | "F" | "Sa" | "Su";
 
 export interface Room {
     id: string;

@@ -25,6 +25,7 @@
 // FK: `customer_id` → customers.id, `product_id` → memberships.id / packages.id
 
 import type { CustomerPlan } from "./_types";
+import { DEMO_NOW_PLANS } from "./prototype_demo_data";
 
 // Relative-time helpers — used by the notification-backing rows below so
 // the demo's Plan tab always shows a "Member since yesterday" / today row
@@ -38,6 +39,7 @@ const isoFull    = (d: Date) => d.toISOString();
 const daysFromNow = (n: number) => isoFull(new Date(NOW_MS + n * 24 * 60 * 60_000));
 
 export const customer_plans: CustomerPlan[] = [
+    ...DEMO_NOW_PLANS,
     // ── Ahmed Zayn — unlimited membership ────────────────────────────────────
     {
         id: "cp_ahmed_1",

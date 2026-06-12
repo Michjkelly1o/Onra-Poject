@@ -119,7 +119,7 @@ function POSCheckoutInner() {
      *  to reset its local cart state — but the toast itself is already up. */
     function handleComplete() {
         if (!customer || !pendingPurchase) return;
-        applyPurchase(customer.id, pendingPurchase.items);
+        applyPurchase(customer.id, pendingPurchase.items, "pos");
         setPendingPurchase(null);
         showToast(
             "Transaction complete",

@@ -15,6 +15,7 @@ import {
     CreditCard01,
     RefreshCcw01,
     XCircle,
+    BankNote01,
 } from "@untitledui/icons";
 import type { NotificationIcon, Notification } from "@/lib/store";
 
@@ -30,6 +31,9 @@ const ICON_MAP: Record<NotificationIcon, React.FC<{ className?: string }>> = {
     // calendar-x glyph in the icon pack, so the next-closest crossed-out
     // circle stands in.
     "calendar-x": XCircle,
+    // Instructor earnings glyph — used for `payment_earned` and
+    // `weekly_earnings` rows on the instructor feed.
+    "bank-note": BankNote01,
 };
 
 /** Resolve the icon component for a notification's icon glyph. */
@@ -101,14 +105,34 @@ export function bucketByDay(list: Notification[]): { today: Notification[]; past
  *
  * Falls back to `/admin/notifications` only when no FK link survives. */
 export function routeForNotification(n: Notification): string {
+    // Instructor click-throughs land on instructor-side surfaces — bookings
+    // open the instructor's schedule entry, earnings open the earnings page.
+    const isInstructor = n.audience === "instructor";
+
     switch (n.tab) {
         case "booking": {
             // Booking + class events both live under the class-detail page.
+            //
+            //   • Admin → `/schedule/[id]` (admin's existing detail page)
+            //   • Instructor → `/class/[id]` (instructor's Ongoing/Upcoming
+            //     detail page; its mount-time guard auto-redirects
+            //     Completed/Cancelled to `/earnings/[id]`, so any class
+            //     status routes correctly without having to inspect status
+            //     from the notification payload here).
+            //
+            // `returnTo` carries the notification feed so the detail page's
+            // X-close button lands the user back on the bell, not the
+            // schedule list.
             if (n.classScheduleId) {
-                const hash = n.sourceId ? `?highlight=${encodeURIComponent(n.sourceId)}` : "";
-                return `/schedule/${n.classScheduleId}${hash}`;
+                const params = new URLSearchParams();
+                if (n.sourceId) params.set("highlight", n.sourceId);
+                if (isInstructor) params.set("returnTo", "/instructor/notifications");
+                const qs = params.toString();
+                const base = isInstructor ? "/class" : "/schedule";
+                return `${base}/${n.classScheduleId}${qs ? `?${qs}` : ""}`;
             }
             // Legacy fallback when classScheduleId wasn't captured.
+            if (isInstructor) return "/instructor/schedule";
             return n.sourceModule === "class" && n.sourceId
                 ? `/schedule/${n.sourceId}`
                 : "/admin/schedule";
@@ -127,7 +151,13 @@ export function routeForNotification(n: Notification): string {
             }
             return "/admin/customers";
         }
+        case "earnings":
+            // Earnings notifications belong to the instructor — deep-link to
+            // the earnings page so the instructor lands on the matching
+            // payout summary. The earnings page itself will pick out the
+            // referenced sourceId / transactionId when those are populated.
+            return "/instructor/earnings";
         default:
-            return "/admin/notifications";
+            return isInstructor ? "/instructor/notifications" : "/admin/notifications";
     }
 }

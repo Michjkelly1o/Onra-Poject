@@ -1,6 +1,81 @@
 "use client";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — Centralized Zustand store
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ── Phase 3 admin ↔ instructor sync contract ─────────────────────────────────
+//
+// This file is the SINGLE source of truth for every cross-module slice the
+// admin and the instructor experience read. Both sides subscribe to the
+// SAME selectors — no forked seeds, no parallel "instructor stores".
+// Per-instructor scoping is a client-side `.filter(c => c.instructorId
+// === staffId)`; when this project moves to Supabase the filter becomes
+// an RLS policy on the matching FK.
+//
+//   ─ Schedule rows ........... `classSchedules` slice
+//   ─ Booking lifecycle ....... `classBookings` slice
+//   ─ Class ratings .......... `classRatings` slice
+//   ─ Per-class earnings math . `payroll-calc.ts::earningsForClass`
+//   ─ Customer profile ....... `customers` slice
+//   ─ Staff / Instructor ..... `staff[]` + `instructors[]` (mirrored)
+//   ─ Pay rates .............. `payRates` slice
+//   ─ Branches / Rooms ....... `branches` + `rooms` slices
+//   ─ Business hours ......... `businessHours` slice
+//   ─ Notifications .......... `notifications` slice, audience-scoped
+//                              via `targetInstructorId`
+//   ─ Account profile ........ `currentUser` slice; bi-directional
+//                              cascade to staff[] + instructors[] +
+//                              classSchedules[] denormalized snapshots
+//
+// ── Mutators that cascade to multiple slices in ONE `set()` call ─────────────
+//
+//   • `addClassSchedule` / `updateClassSchedule` / `cancelClassSchedule`
+//     ─ schedule rows id+merge, no fork
+//     ─ **Tab-preservation cancel model**: when a class is cancelled,
+//       bookings keep their ORIGINAL `status` (booked / waitlisted /
+//       cancelled). The class.status flips to "Cancelled" and the
+//       refund flag is set on booked + waitlisted rows. Detail page
+//       tabs render unchanged — Booked / Waitlisted / Cancelled tabs
+//       each show their original customers. Visual indication of
+//       cancellation comes from the row's status badge (kind="class")
+//       on the Booked tab when class.status === "Cancelled".
+//     ─ emits dual-audience notifications (admin + instructor-scoped)
+//   • `updateAttendance` (Present / No-show / Late-cancel)
+//     ─ updates booking row; both schedule detail pages re-render
+//   • `updateRoom({ name })` → cascades to `classSchedules.room`
+//     denormalized snapshot (Phase 3 gap closure)
+//   • `updateBranch({ name })` → cascades to `classSchedules.location`
+//     denormalized snapshot (Phase 3 gap closure)
+//   • `updatePayRate` / `assignInstructorPayRate`
+//     ─ rate edits cascade to BOTH `instructors[]` and `staff[]` slices
+//     ─ centralized `earningsForClass` recomputes for both surfaces
+//   • `updateAccountProfile(patch)` (instructor side)
+//     ─ patches `currentUser` AND cascades identity (name / email /
+//       phone / avatar / **bio** as `introduction`) to staff[] +
+//       instructors[] + classSchedules[] denormalized fields
+//   • `updateStaff(id, patch)` (admin side, reverse cascade)
+//     ─ if editing the currently-logged-in instructor, mirrors identity
+//       (name / email / phone / avatar / **bio**) back into `currentUser`
+//       so /instructor/account stays in sync
+//
+// ── Notification scoping ─────────────────────────────────────────────────────
+//
+//   • `audience: "admin"` rows land in admin notification center
+//   • `audience: "instructor"` + `targetInstructorId: <staffId>` rows
+//     land in that one instructor's bell only — never cross-leak
+//
+// ── Hardcoded attribution rules ──────────────────────────────────────────────
+//
+// All mutators that stamp a "by" field (cancelledBy, etc.) resolve via:
+//   explicit param > `currentUser.first_name + last_name` > "Alex Owen"
+//
+// Old call-sites stay backward-compatible (optional params); new surfaces
+// pass the active user's name automatically.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { adminUser } from "./mock-data";
 
@@ -19,6 +94,8 @@ import {
     class_ratings as SEED_CLASS_RATINGS,
     class_templates as SEED_CLASS_TEMPLATES,
     class_categories as SEED_CLASS_CATEGORIES,
+    classes_settings as SEED_CLASSES_SETTINGS,
+    cancellation_policies as SEED_CANCELLATION_POLICIES,
     branches as SEED_BRANCHES,
     rooms as SEED_ROOMS,
     business_hours as SEED_BUSINESS_HOURS,
@@ -39,6 +116,11 @@ import {
     payroll_entries as SEED_PAYROLL_ENTRIES,
     notification_settings as SEED_NOTIFICATION_SETTINGS,
     notifications as SEED_NOTIFICATIONS,
+    notifications_instructor as SEED_NOTIFICATIONS_INSTRUCTOR,
+    instructor_integrations as SEED_INSTRUCTOR_INTEGRATIONS,
+    type InstructorIntegrationSeed,
+    type InstructorIntegrationSlugSeed,
+    type InstructorIntegrationStatusSeed,
     referral_settings as SEED_REFERRAL_SETTINGS,
     tax_rates as SEED_TAX_RATES,
     tax_settings as SEED_TAX_SETTINGS,
@@ -61,6 +143,11 @@ import {
     type ClassRating as SeedClassRating,
     type ClassTemplate as SeedClassTemplate,
     type ClassCategory,
+    type ClassesSettings,
+    type CancellationPolicy,
+    type PolicyType,
+    type CancellationChoice,
+    type NoShowChoice,
     type Branch,
     type Room,
     type BusinessHours,
@@ -122,7 +209,7 @@ import {
 
 // Re-export raw seed types — consumers can read these directly from the store.
 export type {
-    ClassCategory, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
+    ClassCategory, ClassesSettings, CancellationPolicy, PolicyType, CancellationChoice, NoShowChoice, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
 };
 
@@ -198,6 +285,22 @@ export function getUnionBusinessHours(rows: BusinessHours[], branchIds: string[]
 export function hourFloatFromTime(t: string): number {
     const [h, m] = t.split(":").map(Number);
     return h + (m ?? 0) / 60;
+}
+
+/** Effective cover image for a class template — falls back to the parent
+ *  category's `image_url` when the template itself has no banner. So the
+ *  flow:
+ *   1. Admin uploads an image on a Service category in Booking Rules.
+ *   2. Admin creates a class template, picks that category, doesn't
+ *      upload a separate banner.
+ *   3. The template list, detail page, and schedule preview all show the
+ *      category image automatically.
+ *  Templates that have their own uploaded banner keep showing it. */
+export function resolveTemplateCoverImage(
+    template: { coverImage?: string; categoryId: string },
+    categories: ClassCategory[],
+): string | undefined {
+    return template.coverImage || categories.find(c => c.id === template.categoryId)?.image_url;
 }
 
 /** Build 15-min start-time slots within a business-hours window.
@@ -610,6 +713,11 @@ export interface ClassBooking {
     cancellationReason?: string;
     refundCreditIssued?: boolean;
     waitlistPosition?: number;
+    /** Origin surface where the booking was created (camel-case mirror
+     *  of `ClassBookingSeed.booking_source`). */
+    bookingSource?: "customer_portal" | "admin" | "front_desk" | "pos";
+    /** Origin surface that cancelled the booking. */
+    cancelledSource?: "customer_portal" | "admin" | "front_desk" | "system";
 }
 
 /** Customer record — store shape (camelCase). Extends the lean seed shape
@@ -815,6 +923,26 @@ export interface Integration {
     accountLabel?: string;
 }
 
+// ─── Instructor calendar integrations (per-instructor) ─────────────────────
+//
+// Distinct from the studio `Integration` above — instructor calendar
+// connections are per-staff (Liam's Google Calendar ≠ Maya's). Stays in
+// its own slice so the admin Integrations list never picks up these rows
+// + Phase 4 can lift the whole table cleanly into Supabase.
+
+export type InstructorIntegrationSlug = InstructorIntegrationSlugSeed;
+export type InstructorIntegrationStatus = InstructorIntegrationStatusSeed;
+
+/** Camel-cased mirror of `InstructorIntegrationSeed`. */
+export interface InstructorIntegration {
+    id: string;
+    staffProfileId: string;
+    slug: InstructorIntegrationSlug;
+    status: InstructorIntegrationStatus;
+    connectedAt?: string;
+    accountLabel?: string;
+}
+
 // ─── Business profile (PRD 11 §4.1) ────────────────────────────────────────
 
 /** Studio-wide profile data — name, contact, locale. Powers the Studio
@@ -902,12 +1030,18 @@ export type NotificationEvent = NotificationEventSeed;
 export type NotificationTab = NotificationTabSeed;
 export type NotificationIcon = NotificationIconSeed;
 export type NotificationSource = NotificationSourceSeed;
+export type NotificationAudience = "admin" | "instructor";
 
 /** Camel-cased mirror of `NotificationSeed`. Drives the bell-icon dropdown
  *  + the `/admin/notifications` full page (PRD 12 §3). Distinct from
  *  `NotificationSetting` which is the per-event config table. */
 export interface Notification {
     id: string;
+    /** Audience scope — drives which feed shows the row. Optional; an
+     *  undefined value behaves like `"admin"` so legacy seeds keep
+     *  appearing in the admin bell + page. Instructor rows MUST set
+     *  this to `"instructor"` or they'll leak into the admin feed. */
+    audience?: NotificationAudience;
     tab: NotificationTab;
     event: NotificationEvent;
     title: string;
@@ -921,6 +1055,11 @@ export interface Notification {
      *  booking / class events into `/schedule/[id]`. Always populated by
      *  the booking + class action triggers in this store. */
     classScheduleId?: string;
+    /** Per-instructor scope (FK to `staff_profiles.id`). Required when
+     *  `audience === "instructor"` so the instructor bell shows only
+     *  notifications for THIS instructor's classes. Undefined for admin
+     *  rows. */
+    targetInstructorId?: string;
     /** Customer transaction id — populated for payment events so the
      *  click-through can deep-link to the receipt on the customer profile. */
     transactionId?: string;
@@ -963,6 +1102,9 @@ export interface CustomerPlan {
     priceAed?: number;
     freezeStartISO?: string;
     freezeEndISO?: string;
+    /** Origin surface that initiated the freeze. Mirrors the
+     *  `customer_plans.freeze_source` seed column. */
+    freezeSource?: "customer_portal" | "admin" | "front_desk";
     freeCredits?: number;
     grantReason?: string;
     grantIssuedBy?: string;
@@ -1000,6 +1142,9 @@ export interface CustomerTransaction {
     taxInclusive?: boolean;
     status: "complete" | "pending" | "failed" | "refunded";
     paymentMethod: "card" | "cash";
+    /** Origin surface that processed the payment. Mirrors the
+     *  `customer_transactions.payment_source` seed column. */
+    paymentSource?: "pos" | "customer_portal" | "admin";
     createdAtISO: string;
     refundedAtISO?: string;
     refundMethod?: "cash" | "card";
@@ -1178,6 +1323,8 @@ function bookingFromSeed(b: SeedClassBooking): ClassBooking {
         cancellationReason: b.cancellation_reason,
         refundCreditIssued: b.refund_credit_issued,
         waitlistPosition: b.waitlist_position,
+        bookingSource: b.booking_source,
+        cancelledSource: b.cancelled_source,
     };
 }
 
@@ -1258,6 +1405,7 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
         priceAed: p.price_aed,
         freezeStartISO: p.freeze_start_iso,
         freezeEndISO: p.freeze_end_iso,
+        freezeSource: p.freeze_source,
         freeCredits: p.free_credits,
         grantReason: p.grant_reason,
         grantIssuedBy: p.grant_issued_by,
@@ -1287,6 +1435,7 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         taxInclusive: t.tax_inclusive,
         status: t.status,
         paymentMethod: t.payment_method,
+        paymentSource: t.payment_source,
         createdAtISO: t.created_at,
         refundedAtISO: t.refunded_at,
         refundMethod: t.refund_method,
@@ -1350,6 +1499,11 @@ interface PayRateBase {
     /** Staff assignments + payroll uses — gates Delete (only when 0). */
     usageCount: number;
     createdAt?: string;
+    /** Optional per-rate tax override. When set, payroll for this pay rate
+     *  applies this `tax_rate` instead of (or alongside) the global pay-rate
+     *  tax rule. Unset = "No tax rate" — the rate inherits whatever the
+     *  global Tax module's pay-rate rule provides. */
+    taxRateId?: string;
 }
 
 export interface FlatPayRate    extends PayRateBase { type: "flat";    flatAmount: number }
@@ -1427,6 +1581,7 @@ function payRateFromSeed(p: PayRateSeed): PayRate {
         includeLateCancelled: p.include_late_cancelled,
         usageCount: p.usage_count,
         createdAt: p.created_at,
+        taxRateId: p.tax_rate_id,
     };
     switch (p.type) {
         case "flat":
@@ -1643,6 +1798,7 @@ function paymentProviderFromSeed(p: PaymentProviderSeed): PaymentProvider {
 function notificationFromSeed(n: NotificationSeed): Notification {
     return {
         id: n.id,
+        audience: n.audience,
         tab: n.tab,
         event: n.event,
         title: n.title,
@@ -1653,6 +1809,7 @@ function notificationFromSeed(n: NotificationSeed): Notification {
         customerId: n.customer_id,
         branchId: n.branch_id,
         classScheduleId: n.class_schedule_id,
+        targetInstructorId: n.target_instructor_id,
         transactionId: n.transaction_id,
         isRead: n.is_read,
         createdAt: n.created_at,
@@ -1677,7 +1834,12 @@ const INITIAL_PAYROLL_ENTRIES:  PayrollEntry[]   = SEED_PAYROLL_ENTRIES.map(payr
 const INITIAL_ROLES:            Role[]           = SEED_ROLES.map(roleFromSeed);
 const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed);
 const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = SEED_NOTIFICATION_SETTINGS.map(notificationSettingFromSeed);
-const INITIAL_NOTIFICATIONS:         Notification[]         = SEED_NOTIFICATIONS.map(notificationFromSeed);
+// Admin + instructor notifications live in one initial array — the bell +
+// page components filter by `audience` based on the current user role.
+const INITIAL_NOTIFICATIONS:         Notification[]         = [
+    ...SEED_NOTIFICATIONS,
+    ...SEED_NOTIFICATIONS_INSTRUCTOR,
+].map(notificationFromSeed);
 const INITIAL_REFERRAL_SETTINGS:     ReferralSettings       = referralSettingsFromSeed(SEED_REFERRAL_SETTINGS);
 const INITIAL_TAX_RATES:             TaxRate[]              = SEED_TAX_RATES.map(taxRateFromSeed);
 const INITIAL_TAX_SETTINGS:          TaxSettings            = taxSettingsFromSeed(SEED_TAX_SETTINGS);
@@ -1686,6 +1848,19 @@ const INITIAL_AGREEMENTS:            Agreement[]            = SEED_AGREEMENTS.ma
 const INITIAL_AGREEMENT_VERSIONS:    AgreementVersion[]     = SEED_AGREEMENT_VERSIONS.map(agreementVersionFromSeed);
 const INITIAL_INTEGRATIONS:          Integration[]          = SEED_INTEGRATIONS.map(integrationFromSeed);
 const INITIAL_PAYMENT_PROVIDERS:     PaymentProvider[]      = SEED_PAYMENT_PROVIDERS.map(paymentProviderFromSeed);
+
+function instructorIntegrationFromSeed(s: InstructorIntegrationSeed): InstructorIntegration {
+    return {
+        id: s.id,
+        staffProfileId: s.staff_profile_id,
+        slug: s.slug,
+        status: s.status,
+        connectedAt: s.connected_at,
+        accountLabel: s.account_label,
+    };
+}
+const INITIAL_INSTRUCTOR_INTEGRATIONS: InstructorIntegration[] =
+    SEED_INSTRUCTOR_INTEGRATIONS.map(instructorIntegrationFromSeed);
 
 // ─── Phase 4 — staff ↔ instructors sync helpers ────────────────────────────
 //
@@ -1882,6 +2057,40 @@ interface AppState {
      *  reflect the new hours on the same render. */
     setBranchHours: (branchId: string, hours: BusinessHours[]) => void;
 
+    /** Global "Classes settings" record (PRD 11 §6). Booking Rules landing
+     *  reads display fields; Customize classes settings 3-step page writes
+     *  through `updateClassesSettings` so the landing summary cards and
+     *  every downstream consumer (schedule form booking window, waitlist
+     *  flow, SMS dispatch, overbooking enforcement) see edits on the same
+     *  render. */
+    classesSettings: ClassesSettings;
+    updateClassesSettings: (patch: Partial<ClassesSettings>) => void;
+
+    /** Cancellation & no-show policies (Booking Rules Phase 2). The
+     *  populated container view, the add/edit page, the delete confirm
+     *  modal, and any future booking-cancel / booking-no-show flow all
+     *  read from this slice so changes propagate on the same render. */
+    cancellationPolicies: CancellationPolicy[];
+    addCancellationPolicy:    (policy: CancellationPolicy) => void;
+    updateCancellationPolicy: (id: string, patch: Partial<CancellationPolicy>) => void;
+    deleteCancellationPolicy: (id: string) => void;
+
+    /** Service categories (Booking Rules Phase 3 + Phase 4 wiring) — the
+     *  same rows that drive class-template + schedule category selection.
+     *  Class-types list/filter, Class-type create/edit, and Schedule
+     *  create/edit all read from this slice (Phase 4 migration), so
+     *  adding / editing / deleting a category in Booking Rules surfaces
+     *  in those modules on the same render. */
+    classCategories: ClassCategory[];
+    addClassCategory:    (category: ClassCategory) => void;
+    updateClassCategory: (id: string, patch: Partial<ClassCategory>) => void;
+    /** Removes the category record. Refuses (no-op) when any class
+     *  template still references the id — `canDeleteClassCategory` is the
+     *  read-side guard the UI consults before calling this. */
+    deleteClassCategory: (id: string) => void;
+    /** True when no class template references this category id. */
+    canDeleteClassCategory: (id: string) => boolean;
+
     setRole: (role: UserRole) => void;
     setCurrentUser: (user: User) => void;
     /** Phase 3 — partial-merge patch over `currentUser`. The Account
@@ -1902,12 +2111,23 @@ interface AppState {
     addClassSchedule: (schedule: Omit<ClassSchedule, "id">) => string;
     addClassSchedules: (schedules: Omit<ClassSchedule, "id">[]) => void;
     updateClassSchedule: (id: string, updates: Partial<Omit<ClassSchedule, "id">>) => void;
-    cancelClassSchedule: (id: string, refundCredits: boolean) => void;
+    /**
+     *  Cancel a class. `cancelledBy` records the human-readable attribution
+     *  on the schedule row (admin name, instructor name, system label). If
+     *  omitted, falls back to the active user's `full_name`, then to
+     *  "Alex Owen" — the seed Owner persona — so legacy call-sites stay
+     *  backward-compatible while new callers can pass an explicit name.
+     */
+    cancelClassSchedule: (id: string, refundCredits: boolean, cancelledBy?: string) => void;
+    // ── Booking lifecycle: source params let UI callers attribute a
+    //    cancellation to the surface that triggered it (admin / customer
+    //    portal / front_desk / system). Defaulting to "admin" preserves
+    //    existing behaviour for any caller that hasn't migrated yet.
 
-    cancelClassBooking: (id: string, reason: string, refund: boolean) => void;
+    cancelClassBooking: (id: string, reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
     removeClassBooking: (id: string) => void;
     removeClassBookings: (ids: string[]) => void;
-    cancelClassBookings: (ids: string[], reason: string, refund: boolean) => void;
+    cancelClassBookings: (ids: string[], reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
     updateAttendance: (bookingId: string, status: ClassBooking["attendanceStatus"]) => void;
 
     deleteClassRating: (id: string, deletedBy: string) => void;
@@ -1927,7 +2147,7 @@ interface AppState {
     // ── Customer plans (customer-detail Plan tab) ──────────────────────────
     /** Freeze a plan — status → frozen, freeze window stored, and the expiry
      *  date pushed back by the freeze duration so frozen days aren't lost. */
-    freezeCustomerPlan: (planId: string, startISO: string, endISO: string) => void;
+    freezeCustomerPlan: (planId: string, startISO: string, endISO: string, source?: CustomerPlan["freezeSource"]) => void;
     /** Unfreeze a plan — status → active. The extended expiry date is kept. */
     unfreezeCustomerPlan: (planId: string) => void;
     /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
@@ -2036,6 +2256,19 @@ interface AppState {
     notifications: Notification[];
     /** Append a new notification — used by the cross-module triggers below. */
     addNotification: (input: Omit<Notification, "id" | "createdAt" | "isRead"> & { id?: string; createdAt?: string; isRead?: boolean }) => string;
+    /** Fan-out emitter — single point through which every cross-module
+     *  trigger publishes notifications to one OR both audiences. Each
+     *  payload is appended via `addNotification` with the matching
+     *  `audience` stamped on the row, so the bell + the page can scope
+     *  to the right viewer without any other plumbing. Skipping a key
+     *  (admin or instructor) means that audience gets no row.
+     *
+     *  Use this — not `addNotification` directly — for every new
+     *  cross-module event so the admin/instructor feeds stay in lockstep. */
+    emitNotifications: (input: {
+        admin?:      Omit<Notification, "id" | "createdAt" | "isRead" | "audience">;
+        instructor?: Omit<Notification, "id" | "createdAt" | "isRead" | "audience">;
+    }) => void;
     /** Mark a single notification as read (e.g. on click-through). */
     markNotificationRead: (id: string) => void;
     /** Mark every unread notification as read at once. */
@@ -2142,6 +2375,17 @@ interface AppState {
      *  clear `connectedAt` + `accountLabel`. */
     disconnectIntegration: (id: string) => void;
 
+    // ── Instructor calendar integrations (per-instructor) ─────────────────
+    /** Per-staff calendar connections — drives the Integrations tab on
+     *  /instructor/account. One row per (staffProfileId, slug). */
+    instructorIntegrations: InstructorIntegration[];
+    /** Connect a specific (staffProfileId, slug) row — flip status to
+     *  "connected", stamp `connectedAt`, persist the account email so the
+     *  View modal can render it. */
+    connectInstructorIntegration: (staffProfileId: string, slug: InstructorIntegrationSlug, accountLabel?: string) => void;
+    /** Reverse — flip back to "not_connected" + clear timestamp/email. */
+    disconnectInstructorIntegration: (staffProfileId: string, slug: InstructorIntegrationSlug) => void;
+
     // ── Payments module (PRD 11 §7) ───────────────────────────────────────
     /** Live payment providers — drives /admin/settings/payments card grid
      *  AND (Phase 3) the POS Checkout payment-method selector. */
@@ -2189,13 +2433,66 @@ interface AppState {
     deleteStaff: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
     setPendingPurchase: (purchase: PendingPurchase | null) => void;
-    applyPurchase: (customerId: string, items: PurchaseLineItem[]) => void;
+    applyPurchase: (customerId: string, items: PurchaseLineItem[], paymentSource?: CustomerTransaction["paymentSource"]) => void;
 
     showToast: (title: string, message: string, type?: "success" | "error", icon?: ToastData["icon"]) => void;
     clearToast: () => void;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistence — Zustand `persist` middleware (localStorage)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Every data slice survives a page refresh and syncs across browser
+// tabs. Anything a tester creates / edits / cancels / marks present
+// during a demo session sticks until they explicitly wipe the demo
+// state from the browser.
+//
+// ── Resetting back to the seeded mock data ─────────────────────────
+//
+// Option A (surgical, dev-friendly):
+//   Chrome / Firefox DevTools → Application → Local Storage → right-
+//   click the `onra-demo-state` key → Delete → refresh the page.
+//
+// Option B (full reset, tester-friendly):
+//   Browser settings → Privacy → Clear browsing data for this site
+//   (NOTE: this also clears cookies / cache / other site storage).
+//
+// Either way, the next page load finds no persisted state, falls back
+// to the seed files in `src/data/mock/`, and re-builds the store from
+// scratch.
+//
+// ── What's EXCLUDED from persistence (per-tab state) ──────────────
+//
+//   • currentUser / currentRole — the URL-driven persona auto-flip in
+//     each layout sets these per tab. Persisting them would mean Tab A
+//     (admin) switches persona when Tab B (instructor) loads.
+//   • sidebarCollapsed — tab-local UI preference.
+//   • toast — ephemeral notification, must NOT survive refresh.
+//   • pendingPurchase — in-flight POS checkout state.
+//
+// Everything else (every business data slice, every settings record,
+// every action-snapshot) IS persisted.
+//
+// ── Schema versioning ──────────────────────────────────────────────
+//
+// `version: 1` — when the AppState shape changes in a breaking way,
+// bump this number. Zustand will discard the old payload and re-seed
+// from the mock files (acceptable for a demo — no migration logic
+// needed; testers get fresh seed data after a deploy with schema
+// changes).
+//
+// ── Cross-tab sync ────────────────────────────────────────────────
+//
+// The `window.storage` listener at the bottom of this file rehydrates
+// the active tab's store whenever ANOTHER tab writes. Result: open
+// admin in Tab A and instructor in Tab B — admin creates a class →
+// instructor tab sees the new row instantly without a manual refresh.
+
+const PERSIST_KEY = "onra-demo-state";
+
+export const useAppStore = create<AppState>()(persist(
+    (set, get) => ({
     currentRole: "admin",
     currentUser: adminUser,
     brandingSettings: { ...INITIAL_BRANDING_SETTINGS, menuItems: [...INITIAL_BRANDING_SETTINGS.menuItems] },
@@ -2213,6 +2510,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     branches:      SEED_BRANCHES.map(b => ({ ...b })),
     rooms:         SEED_ROOMS.map(r => ({ ...r })),
     businessHours: SEED_BUSINESS_HOURS.map(h => ({ ...h })),
+    classesSettings: { ...SEED_CLASSES_SETTINGS },
+    cancellationPolicies: SEED_CANCELLATION_POLICIES.map(p => ({ ...p })),
+    classCategories: SEED_CLASS_CATEGORIES.map(c => ({ ...c })),
     sidebarCollapsed: false,
     classTemplates: INITIAL_TEMPLATES,
     classSchedules: INITIAL_SCHEDULES,
@@ -2243,6 +2543,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     agreements: [...INITIAL_AGREEMENTS],
     agreementVersions: [...INITIAL_AGREEMENT_VERSIONS],
     integrations: [...INITIAL_INTEGRATIONS],
+    instructorIntegrations: [...INITIAL_INSTRUCTOR_INTEGRATIONS],
     paymentProviders: [...INITIAL_PAYMENT_PROVIDERS],
     pendingPurchase: null,
     toast: null,
@@ -2253,13 +2554,57 @@ export const useAppStore = create<AppState>((set, get) => ({
         })),
 
     addBranch:    (b)         => set(state => ({ branches: [b, ...state.branches] })),
-    updateBranch: (id, patch) => set(state => ({ branches: state.branches.map(b => b.id === id ? { ...b, ...patch } : b) })),
+    updateBranch: (id, patch) => set(state => {
+        const nextBranches = state.branches.map(b => b.id === id ? { ...b, ...patch } : b);
+        // Phase 3 cascade — `classSchedules.location` is a denormalized
+        // snapshot of the branch's name. Renaming a branch must update
+        // every schedule row that lives there, otherwise the admin +
+        // instructor schedule cards keep showing the old branch name.
+        if (patch.name === undefined) return { branches: nextBranches };
+        const newName = patch.name;
+        return {
+            branches: nextBranches,
+            classSchedules: state.classSchedules.map(s =>
+                s.branchId === id ? { ...s, location: newName } : s,
+            ),
+        };
+    }),
     setBranchHours: (branchId, hours) => set(state => ({
         businessHours: [
             ...state.businessHours.filter(h => h.branch_id !== branchId),
             ...hours,
         ],
     })),
+    updateClassesSettings: (patch) => set(state => ({
+        classesSettings: { ...state.classesSettings, ...patch },
+    })),
+    addCancellationPolicy: (policy) => set(state => ({
+        cancellationPolicies: [policy, ...state.cancellationPolicies],
+    })),
+    updateCancellationPolicy: (id, patch) => set(state => ({
+        cancellationPolicies: state.cancellationPolicies.map(p => p.id === id ? { ...p, ...patch } : p),
+    })),
+    deleteCancellationPolicy: (id) => set(state => ({
+        cancellationPolicies: state.cancellationPolicies.filter(p => p.id !== id),
+    })),
+    addClassCategory: (category) => set(state => ({
+        classCategories: [category, ...state.classCategories],
+    })),
+    updateClassCategory: (id, patch) => set(state => ({
+        classCategories: state.classCategories.map(c => c.id === id ? { ...c, ...patch } : c),
+    })),
+    deleteClassCategory: (id) => set(state => {
+        // Refuse the delete when any class template still references the
+        // category. The UI consults `canDeleteClassCategory` first and
+        // surfaces a friendly toast; this guard is the belt-and-suspenders
+        // store-side enforcement.
+        const referenced = state.classTemplates.some(t => t.categoryId === id);
+        if (referenced) return {};
+        return { classCategories: state.classCategories.filter(c => c.id !== id) };
+    }),
+    canDeleteClassCategory: (id) => {
+        return !get().classTemplates.some(t => t.categoryId === id);
+    },
     deleteBranch: (id)        => set(state => ({
         branches: state.branches.filter(b => b.id !== id),
         // Cascade — rooms + business hours under a deleted branch go with it.
@@ -2267,7 +2612,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         businessHours: state.businessHours.filter(h => h.branch_id !== id),
     })),
     addRoom:    (r)         => set(state => ({ rooms: [r, ...state.rooms] })),
-    updateRoom: (id, patch) => set(state => ({ rooms: state.rooms.map(r => r.id === id ? { ...r, ...patch } : r) })),
+    updateRoom: (id, patch) => set(state => {
+        const nextRooms = state.rooms.map(r => r.id === id ? { ...r, ...patch } : r);
+        // Phase 3 cascade — `classSchedules.room` is a denormalized snapshot
+        // of the room's name. Without this cascade, renaming a room leaves
+        // every existing schedule card (admin + instructor) showing the OLD
+        // name. Patch all schedules whose roomId matches.
+        if (patch.name === undefined) return { rooms: nextRooms };
+        const newName = patch.name;
+        return {
+            rooms: nextRooms,
+            classSchedules: state.classSchedules.map(s =>
+                s.roomId === id ? { ...s, room: newName } : s,
+            ),
+        };
+    }),
     deleteRoom: (id)        => set(state => ({ rooms: state.rooms.filter(r => r.id !== id) })),
 
     updateBrandingSettings: (patch) =>
@@ -2286,7 +2645,94 @@ export const useAppStore = create<AppState>((set, get) => ({
     setRole: (role) => set({ currentRole: role }),
     setCurrentUser: (user) => set({ currentUser: user, currentRole: user.role }),
     updateAccountProfile: (patch) =>
-        set((state) => ({ currentUser: { ...state.currentUser, ...patch } })),
+        // Phase 4 centralization cascade — when the currently-logged-in user
+        // is an instructor (role === "instructor" + staff_profile_id set),
+        // mirror identity edits to every other slice that holds a copy of
+        // the same instructor. Without this, an instructor renaming
+        // themselves in /instructor/account would leave the admin Staff
+        // list, Pay rate, Payroll, Schedule (denormalized instructorName),
+        // and class-detail roster all showing the OLD name + email + phone
+        // + avatar.
+        //
+        // The cascade is single-direction (instructor profile → other
+        // slices). Admin edits to staff still flow through their dedicated
+        // mutators, which already keep the other admin slices in sync —
+        // none of those touch `currentUser` since the admin isn't editing
+        // their own auth profile when they update a staff row.
+        set((state) => {
+            const nextUser = { ...state.currentUser, ...patch };
+            const staffId = (nextUser as typeof nextUser & { staff_profile_id?: string }).staff_profile_id;
+
+            // Bail out of the cascade when we're not editing an instructor
+            // persona — admin/member edits stay as a simple currentUser merge.
+            if (nextUser.role !== "instructor" || !staffId) {
+                return { currentUser: nextUser };
+            }
+
+            // Derive the cascade fields off the merged user — `patch` may
+            // change only one of (first_name, last_name, avatar_url, email,
+            // phone, password) so we always compute from the merged shape.
+            const fullName = `${nextUser.first_name ?? ""} ${nextUser.last_name ?? ""}`.trim();
+            const initials = `${(nextUser.first_name?.[0] ?? "").toUpperCase()}${(nextUser.last_name?.[0] ?? "").toUpperCase()}` || "??";
+            const imageUrl = nextUser.avatar_url ?? undefined;
+            const email = nextUser.email ?? "";
+            const phone = nextUser.phone ?? "";
+
+            // Phase 3 cascade — instructor's `introduction` (User-level
+            // free-text bio shown in /instructor/account) mirrors to
+            // `staff[].bio` so admin sees the same copy on the staff
+            // profile page. The merged user shape carries it via
+            // optional chaining (instructor_profile augments User).
+            const introduction = (nextUser as typeof nextUser & { introduction?: string }).introduction;
+
+            return {
+                currentUser: nextUser,
+                // staff[] (camelCase store) — drives admin Staff & Permissions list
+                staff: state.staff.map(s =>
+                    s.id === staffId
+                        ? {
+                            ...s,
+                            firstName: nextUser.first_name ?? s.firstName,
+                            lastName:  nextUser.last_name  ?? s.lastName,
+                            fullName,
+                            email,
+                            phone,
+                            imageUrl: imageUrl ?? s.imageUrl,
+                            initials,
+                            // Bio cascade: only patch when the merged user
+                            // has a defined introduction so callers that
+                            // edit just the name/email don't accidentally
+                            // clobber an existing staff bio.
+                            bio: introduction !== undefined ? introduction : s.bio,
+                        }
+                        : s,
+                ),
+                // instructors[] — drives pay-rate + payroll + class roster
+                instructors: state.instructors.map(i =>
+                    i.id === staffId
+                        ? {
+                            ...i,
+                            fullName,
+                            email,
+                            phone,
+                            imageUrl: imageUrl ?? i.imageUrl,
+                            initials,
+                        }
+                        : i,
+                ),
+                // classSchedules[] denormalizes instructor identity for fast
+                // list render — keep those snapshots fresh too.
+                classSchedules: state.classSchedules.map(c =>
+                    c.instructorId === staffId
+                        ? {
+                            ...c,
+                            instructorName: fullName,
+                            instructorInitials: initials,
+                        }
+                        : c,
+                ),
+            };
+        }),
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
@@ -2322,65 +2768,287 @@ export const useAppStore = create<AppState>((set, get) => ({
     addClassSchedule: (schedule) => {
         const id = `cs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         set((state) => ({ classSchedules: [...state.classSchedules, { ...schedule, id }] }));
+        // Phase 4 sync — fire a notification to the instructor whose
+        // schedule just got a new class. Admin gets a parallel audit row.
+        if (schedule.instructorId) {
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "class_scheduled",
+                    title: "Class scheduled",
+                    body: `${schedule.name} added — ${schedule.dayOfWeek} ${schedule.displayTime}, assigned to ${schedule.instructorName}.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: schedule.branchId,
+                },
+                instructor: {
+                    tab: "booking",
+                    event: "class_scheduled",
+                    title: "New class on your schedule",
+                    body: `${schedule.name} added — ${schedule.dayOfWeek} ${schedule.displayTime} at ${schedule.room}.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: schedule.branchId,
+                    targetInstructorId: schedule.instructorId,
+                },
+            });
+        }
         return id;
     },
-    addClassSchedules: (schedules) =>
+    addClassSchedules: (schedules) => {
+        const withIds = schedules.map((s, i) => ({ ...s, id: `cs-${Date.now()}-${i}` }));
         set((state) => ({
-            classSchedules: [
-                ...state.classSchedules,
-                ...schedules.map((s, i) => ({ ...s, id: `cs-${Date.now()}-${i}` })),
-            ],
-        })),
-    updateClassSchedule: (id, updates) =>
+            classSchedules: [...state.classSchedules, ...withIds],
+        }));
+        // Phase 4 sync — admin's schedule form creates classes through
+        // THIS mutator (covers both single-day and recurring multi-day
+        // creation via [ScheduleFormPage.tsx:1497](src/components/schedule/ScheduleFormPage.tsx#L1497)).
+        // Group the new rows by `instructorId` so a recurring set of N
+        // instances notifies the instructor ONCE (summary) instead of N
+        // times — a cleaner bell, same admin↔instructor sync guarantee.
+        const byInstructor = new Map<string, typeof withIds>();
+        for (const sched of withIds) {
+            if (!sched.instructorId) continue;
+            const bucket = byInstructor.get(sched.instructorId) ?? [];
+            bucket.push(sched);
+            byInstructor.set(sched.instructorId, bucket);
+        }
+        // Use Array.from(...) for the iteration so we don't depend on the
+        // tsconfig `target` allowing `Map` to be `for..of`-iterated directly.
+        for (const [instructorId, group] of Array.from(byInstructor.entries())) {
+            const sample = group[0];
+            const isRecurring = group.length > 1;
+            // Use the first row as the click-through anchor for both
+            // single + recurring (admin's schedule detail will surface
+            // the recurrence group via `recurrenceGroupId`).
+            const adminBody = isRecurring
+                ? `${group.length} ${sample.name} classes added, assigned to ${sample.instructorName}.`
+                : `${sample.name} added — ${sample.dayOfWeek} ${sample.displayTime}, assigned to ${sample.instructorName}.`;
+            const instructorBody = isRecurring
+                ? `${group.length} new ${sample.name} classes added to your schedule.`
+                : `${sample.name} added — ${sample.dayOfWeek} ${sample.displayTime} at ${sample.room}.`;
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "class_scheduled",
+                    title: isRecurring ? "Classes scheduled" : "Class scheduled",
+                    body: adminBody,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: sample.id,
+                    classScheduleId: sample.id,
+                    branchId: sample.branchId,
+                },
+                instructor: {
+                    tab: "booking",
+                    event: "class_scheduled",
+                    title: isRecurring ? "New classes on your schedule" : "New class on your schedule",
+                    body: instructorBody,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: sample.id,
+                    classScheduleId: sample.id,
+                    branchId: sample.branchId,
+                    targetInstructorId: instructorId,
+                },
+            });
+        }
+    },
+    updateClassSchedule: (id, updates) => {
+        const stateBefore = get();
+        const before = stateBefore.classSchedules.find(s => s.id === id);
         set((state) => ({
             classSchedules: state.classSchedules.map(s => s.id === id ? { ...s, ...updates } : s),
-        })),
-    cancelClassSchedule: (id, refundCredits) =>
+        }));
+        // Phase 4 sync — fire a notification only when an instructor-
+        // relevant field actually changed. Quiet for cover-image swaps,
+        // capacity tweaks, etc. that don't affect the instructor's day.
+        if (!before) return;
+        const after = { ...before, ...updates };
+        const dateChanged    = updates.dateISO !== undefined && updates.dateISO !== before.dateISO;
+        const timeChanged    = (updates.startTime !== undefined && updates.startTime !== before.startTime)
+                            || (updates.endTime   !== undefined && updates.endTime   !== before.endTime);
+        const roomChanged    = updates.roomId !== undefined && updates.roomId !== before.roomId;
+        const reassignedAway = updates.instructorId !== undefined && updates.instructorId !== before.instructorId;
+        // Notify the new instructor when reassigned (they got a class);
+        // notify the old instructor when reassigned away (they lost one);
+        // notify the same instructor for date/time/room changes.
+        if (reassignedAway) {
+            // New instructor got a class
+            get().emitNotifications({
+                instructor: {
+                    tab: "booking",
+                    event: "class_scheduled",
+                    title: "New class on your schedule",
+                    body: `${after.name} added — ${after.dayOfWeek} ${after.displayTime} at ${after.room}.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: after.branchId,
+                    targetInstructorId: after.instructorId,
+                },
+            });
+            // Old instructor lost a class — re-use class_rescheduled
+            // with copy that signals removal so the bell still narrates
+            // the change for them.
+            get().emitNotifications({
+                instructor: {
+                    tab: "booking",
+                    event: "class_rescheduled",
+                    title: "Class reassigned",
+                    body: `${before.name} on ${before.dayOfWeek} ${before.displayTime} was reassigned to another instructor.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: before.branchId,
+                    targetInstructorId: before.instructorId,
+                },
+            });
+        } else if (dateChanged || timeChanged || roomChanged) {
+            const changes: string[] = [];
+            if (dateChanged) changes.push(`date → ${after.date}`);
+            if (timeChanged) changes.push(`time → ${after.displayTime}`);
+            if (roomChanged) changes.push(`room → ${after.room}`);
+            const summary = changes.join(", ");
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "class_rescheduled",
+                    title: "Class rescheduled",
+                    body: `${after.name} updated — ${summary}.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: after.branchId,
+                },
+                instructor: {
+                    tab: "booking",
+                    event: "class_rescheduled",
+                    title: "Your class was updated",
+                    body: `${after.name} updated — ${summary}.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    classScheduleId: id,
+                    branchId: after.branchId,
+                    targetInstructorId: after.instructorId,
+                },
+            });
+        }
+    },
+    cancelClassSchedule: (id, refundCredits, cancelledBy) =>
         {
             const stateBefore = get();
             const schedule = stateBefore.classSchedules.find(s => s.id === id);
-            const affected = stateBefore.classBookings.filter(b => b.classScheduleId === id && b.status === "booked").length;
+            // "Affected" count for the notification suffix — everyone who
+            // had a live claim on the class at cancel time (booked OR
+            // waitlisted). Both groups get refund credit + a single
+            // Cancelled-tab row per the consolidated cancel model below.
+            const affected = stateBefore.classBookings.filter(b =>
+                b.classScheduleId === id && (b.status === "booked" || b.status === "waitlisted"),
+            ).length;
+            // Resolve attribution: explicit param > active user's name >
+            // "Alex Owen" fallback. Keeps every legacy caller working
+            // while new admin / instructor surfaces can pass the correct
+            // attribution. `currentUser` uses `first_name` + `last_name`
+            // (the Supabase-compatible shape), so we join them here.
+            const u = stateBefore.currentUser;
+            const userFullName = u ? `${u.first_name} ${u.last_name}`.trim() : "";
+            const attribution = cancelledBy
+                ?? (userFullName.length > 0 ? userFullName : "Alex Owen");
             set((state) => {
                 const now = new Date().toISOString();
                 return {
                     classSchedules: state.classSchedules.map(s =>
-                        s.id === id ? { ...s, status: "Cancelled" as ClassStatus, cancelledAt: now, cancelledBy: "Alex Owen" } : s
+                        s.id === id ? { ...s, status: "Cancelled" as ClassStatus, cancelledAt: now, cancelledBy: attribution } : s
                     ),
+                    // **Tab-preservation cancel model** — bookings keep
+                    // their ORIGINAL `status` (booked / waitlisted /
+                    // cancelled) so each tab on the class detail page
+                    // stays populated. The page renders a "Cancelled"
+                    // status badge on rows when the parent class is
+                    // Cancelled — the visual flips, but the tab
+                    // classification doesn't change.
+                    //
+                    // Only the refund flag is set on booked + waitlisted
+                    // rows so the refund-tracking column reflects
+                    // that those customers were eligible for refund.
+                    //
+                    // Effect on the detail page tabs after this runs:
+                    //   • Booked tab     → still shows originally-booked
+                    //                      customers, with a "Cancelled"
+                    //                      status badge per row
+                    //   • Waitlisted tab → still shows originally-
+                    //                      waitlisted customers (no
+                    //                      status column on this tab per
+                    //                      Figma)
+                    //   • Cancelled tab  → still shows customer-self-
+                    //                      cancelled bookings, with the
+                    //                      timing-based late/no-charge
+                    //                      badge
                     classBookings: state.classBookings.map(b =>
-                        b.classScheduleId === id && b.status === "booked"
-                            ? { ...b, status: "cancelled" as const, cancelledAt: now, cancellationReason: "Class cancelled", refundCreditIssued: refundCredits, waitlistPosition: undefined }
+                        b.classScheduleId === id
+                        && (b.status === "booked" || b.status === "waitlisted")
+                            ? { ...b, refundCreditIssued: refundCredits }
                             : b
                     ),
                 };
             });
             // Feed: surface in the notification center (PRD 12). Click-
-            // through routes to /schedule/[id] via `classScheduleId`.
+            // through routes to /schedule/[id] via `classScheduleId`. The
+            // instructor of the cancelled class gets their own row —
+            // attributed via `targetInstructorId` so it lands in their
+            // bell and nobody else's.
             if (schedule) {
                 const suffix = affected > 0
                     ? ` ${affected} booking${affected === 1 ? "" : "s"} ${affected === 1 ? "was" : "were"} affected.`
                     : "";
-                get().addNotification({
-                    tab: "booking",
-                    event: "class_cancelled",
-                    title: "Class Cancelled",
-                    body: `${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime} was cancelled.${suffix}`,
-                    icon: "calendar-x",
-                    sourceModule: "class",
-                    sourceId: id,
-                    classScheduleId: id,
-                    branchId: schedule.branchId,
+                get().emitNotifications({
+                    admin: {
+                        tab: "booking",
+                        event: "class_cancelled",
+                        title: "Class Cancelled",
+                        body: `${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime} was cancelled.${suffix}`,
+                        icon: "calendar-x",
+                        sourceModule: "class",
+                        sourceId: id,
+                        classScheduleId: id,
+                        branchId: schedule.branchId,
+                    },
+                    instructor: {
+                        tab: "booking",
+                        event: "class_cancelled",
+                        title: "Class Cancelled",
+                        body: `Your ${schedule.name} class on ${schedule.dayOfWeek} at ${schedule.displayTime} was cancelled.${suffix}`,
+                        icon: "calendar-x",
+                        sourceModule: "class",
+                        sourceId: id,
+                        classScheduleId: id,
+                        branchId: schedule.branchId,
+                        targetInstructorId: schedule.instructorId,
+                    },
                 });
             }
         },
 
-    cancelClassBooking: (id, reason, refund) => {
+    cancelClassBooking: (id, reason, refund, source) => {
         const stateBefore = get();
         const booking = stateBefore.classBookings.find(b => b.id === id);
         const customer = booking ? stateBefore.customers.find(c => c.id === booking.customerId) : undefined;
         const schedule = booking ? stateBefore.classSchedules.find(s => s.id === booking.classScheduleId) : undefined;
+        // Default origin: an admin clicked the cancel button. Callers
+        // from the customer portal or front desk should pass their own.
+        const cancelledSource = source ?? "admin" as const;
         set((state) => ({
             classBookings: state.classBookings.map(b =>
-                b.id === id ? { ...b, status: "cancelled" as const, cancelledAt: new Date().toISOString(), cancellationReason: reason, refundCreditIssued: refund } : b
+                b.id === id ? { ...b, status: "cancelled" as const, cancelledAt: new Date().toISOString(), cancellationReason: reason, refundCreditIssued: refund, cancelledSource } : b
             ),
             classSchedules: state.classSchedules.map(s => {
                 const booking = state.classBookings.find(b => b.id === id);
@@ -2390,30 +3058,49 @@ export const useAppStore = create<AppState>((set, get) => ({
                 return s;
             }),
         }));
-        // Feed: a cancelled booking surfaces as "Late Cancellation" in the
-        // notification center. Title uses "Late Cancellation" because the
-        // cancellation UI is opened from the per-booking row at the schedule
-        // page — admins use this for after-deadline cancels.
+        // Feed: a cancelled booking surfaces as "Late Cancellation" in
+        // the admin notification center AND as "Cancellation" on the
+        // instructor side — body copy matches the instructor Figma
+        // ("X cancelled. Y/Z spots filled."). Both rows fire through
+        // `emitNotifications` so admin + instructor stay in lockstep.
         if (booking && customer && schedule) {
             const verb = refund ? "Class session has been returned." : "1 class session was forfeited.";
             const customerName = `${customer.firstName} ${customer.lastName}`.trim();
-            get().addNotification({
-                tab: "booking",
-                event: "late_cancellation",
-                title: "Late Cancellation",
-                body: `${customerName} cancelled ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. ${verb}`,
-                icon: "calendar-minus",
-                sourceModule: "booking",
-                sourceId: id,
-                classScheduleId: schedule.id,
-                customerId: customer.id,
-                branchId: schedule.branchId,
+            // Booked count was decremented in the set() above, so re-read it.
+            const updatedBooked = get().classSchedules.find(s => s.id === schedule.id)?.booked ?? schedule.booked;
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "late_cancellation",
+                    title: "Late Cancellation",
+                    body: `${customerName} cancelled ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. ${verb}`,
+                    icon: "calendar-minus",
+                    sourceModule: "booking",
+                    sourceId: id,
+                    classScheduleId: schedule.id,
+                    customerId: customer.id,
+                    branchId: schedule.branchId,
+                },
+                instructor: {
+                    tab: "booking",
+                    event: "cancellation",
+                    title: "Cancellation",
+                    body: `${customerName} cancelled. ${updatedBooked}/${schedule.capacity} spots filled.`,
+                    icon: "calendar-minus",
+                    sourceModule: "booking",
+                    sourceId: id,
+                    classScheduleId: schedule.id,
+                    customerId: customer.id,
+                    branchId: schedule.branchId,
+                    targetInstructorId: schedule.instructorId,
+                },
             });
         }
     },
-    cancelClassBookings: (ids, reason, refund) => {
+    cancelClassBookings: (ids, reason, refund, source) => {
         const stateBefore = get();
         const targets = stateBefore.classBookings.filter(b => ids.includes(b.id));
+        const cancelledSource = source ?? "admin" as const;
         set((state) => {
             const idSet = new Set(ids);
             const now = new Date().toISOString();
@@ -2426,7 +3113,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             return {
                 classBookings: state.classBookings.map(b =>
                     idSet.has(b.id)
-                        ? { ...b, status: "cancelled" as const, cancelledAt: now, cancellationReason: reason, refundCreditIssued: refund }
+                        ? { ...b, status: "cancelled" as const, cancelledAt: now, cancellationReason: reason, refundCreditIssued: refund, cancelledSource }
                         : b
                 ),
                 classSchedules: state.classSchedules.map(s => {
@@ -2435,25 +3122,43 @@ export const useAppStore = create<AppState>((set, get) => ({
                 }),
             };
         });
-        // Feed: emit one notification per cancelled booking so each row stays
-        // attributable to a specific customer + class.
+        // Feed: emit one admin + one instructor notification per cancelled
+        // booking so each row stays attributable to a specific customer +
+        // class. Instructor rows are scoped via `targetInstructorId` so
+        // each instructor sees only their own classes.
         const verb = refund ? "Class session has been returned." : "1 class session was forfeited.";
         for (const t of targets) {
             const customer = stateBefore.customers.find(c => c.id === t.customerId);
             const schedule = stateBefore.classSchedules.find(s => s.id === t.classScheduleId);
             if (customer && schedule) {
                 const customerName = `${customer.firstName} ${customer.lastName}`.trim();
-                get().addNotification({
-                    tab: "booking",
-                    event: "late_cancellation",
-                    title: "Late Cancellation",
-                    body: `${customerName} cancelled ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. ${verb}`,
-                    icon: "calendar-minus",
-                    sourceModule: "booking",
-                    sourceId: t.id,
-                    classScheduleId: schedule.id,
-                    customerId: customer.id,
-                    branchId: schedule.branchId,
+                const updatedBooked = get().classSchedules.find(s => s.id === schedule.id)?.booked ?? schedule.booked;
+                get().emitNotifications({
+                    admin: {
+                        tab: "booking",
+                        event: "late_cancellation",
+                        title: "Late Cancellation",
+                        body: `${customerName} cancelled ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. ${verb}`,
+                        icon: "calendar-minus",
+                        sourceModule: "booking",
+                        sourceId: t.id,
+                        classScheduleId: schedule.id,
+                        customerId: customer.id,
+                        branchId: schedule.branchId,
+                    },
+                    instructor: {
+                        tab: "booking",
+                        event: "cancellation",
+                        title: "Cancellation",
+                        body: `${customerName} cancelled. ${updatedBooked}/${schedule.capacity} spots filled.`,
+                        icon: "calendar-minus",
+                        sourceModule: "booking",
+                        sourceId: t.id,
+                        classScheduleId: schedule.id,
+                        customerId: customer.id,
+                        branchId: schedule.branchId,
+                        targetInstructorId: schedule.instructorId,
+                    },
                 });
             }
         }
@@ -2496,24 +3201,40 @@ export const useAppStore = create<AppState>((set, get) => ({
                 b.id === bookingId ? { ...b, attendanceStatus: status } : b
             ),
         }));
-        // Feed: a fresh no-show stamp (one that wasn't already a no-show)
-        // surfaces in the notification center so admins can follow up.
+        // Feed: a fresh no-show stamp surfaces on BOTH feeds. Admin sees
+        // a follow-up cue; the affected instructor sees the same event
+        // attributed to their class via `targetInstructorId`.
         if (status === "no_show" && !wasNoShow && booking) {
             const customer = stateBefore.customers.find(c => c.id === booking.customerId);
             const schedule = stateBefore.classSchedules.find(s => s.id === booking.classScheduleId);
             if (customer && schedule) {
                 const customerName = `${customer.firstName} ${customer.lastName}`.trim();
-                get().addNotification({
-                    tab: "booking",
-                    event: "no_show",
-                    title: "No-Show",
-                    body: `${customerName} did not attend ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
-                    icon: "user-x",
-                    sourceModule: "booking",
-                    sourceId: bookingId,
-                    classScheduleId: schedule.id,
-                    customerId: customer.id,
-                    branchId: schedule.branchId,
+                get().emitNotifications({
+                    admin: {
+                        tab: "booking",
+                        event: "no_show",
+                        title: "No-Show",
+                        body: `${customerName} did not attend ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
+                        icon: "user-x",
+                        sourceModule: "booking",
+                        sourceId: bookingId,
+                        classScheduleId: schedule.id,
+                        customerId: customer.id,
+                        branchId: schedule.branchId,
+                    },
+                    instructor: {
+                        tab: "booking",
+                        event: "no_show",
+                        title: "No-Show",
+                        body: `${customerName} did not attend your ${schedule.name} class on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
+                        icon: "user-x",
+                        sourceModule: "booking",
+                        sourceId: bookingId,
+                        classScheduleId: schedule.id,
+                        customerId: customer.id,
+                        branchId: schedule.branchId,
+                        targetInstructorId: schedule.instructorId,
+                    },
                 });
             }
         }
@@ -2575,7 +3296,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // ── Customer plans ─────────────────────────────────────────────────────
 
-    freezeCustomerPlan: (planId, startISO, endISO) =>
+    freezeCustomerPlan: (planId, startISO, endISO, source) =>
         set(state => ({
             customerPlans: state.customerPlans.map(p => {
                 if (p.id !== planId) return p;
@@ -2590,6 +3311,10 @@ export const useAppStore = create<AppState>((set, get) => ({
                     status: "frozen" as const,
                     freezeStartISO: startISO,
                     freezeEndISO: endISO,
+                    // Default origin: an admin clicked freeze on a
+                    // customer detail page. Callers from the customer
+                    // portal or front desk should pass their own.
+                    freezeSource: source ?? "admin" as const,
                     expiryISO: extendedExpiry,
                 };
             }),
@@ -2889,13 +3614,64 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({ payRates: [...state.payRates, next] }));
         return id;
     },
-    updatePayRate: (id, patch) =>
+    updatePayRate: (id, patch) => {
+        const stateBefore = get();
+        const before = stateBefore.payRates.find(p => p.id === id);
         // Merging discriminated unions with Partial is awkward in TS — we cast
         // the result back to PayRate after merge. Callers are responsible for
         // not mixing fields across variants.
         set(state => ({
             payRates: state.payRates.map(p => p.id === id ? ({ ...p, ...patch } as PayRate) : p),
-        })),
+        }));
+        // Phase 4 sync — fan out a notification to every instructor
+        // currently assigned to this rate, so they know their pay terms
+        // changed. Only fires when the visible fields (name / amounts)
+        // actually moved — status toggles and config-flag flips stay
+        // quiet to avoid notification spam.
+        if (!before) return;
+        const after = get().payRates.find(p => p.id === id);
+        if (!after) return;
+        const nameChanged = patch.name !== undefined && patch.name !== before.name;
+        const amountChanged = (() => {
+            // Only the flat-rate variant ships a single comparable scalar;
+            // for tiered / revenue / hybrid / monthly we compare JSON
+            // shape so any visible change to the math fires the notice.
+            if (before.type === "flat" && after.type === "flat") {
+                return before.flatAmount !== after.flatAmount;
+            }
+            return JSON.stringify(before) !== JSON.stringify(after);
+        })();
+        if (!nameChanged && !amountChanged) return;
+        const assignedInstructors = get().instructors.filter(i => i.payRateId === id);
+        if (assignedInstructors.length === 0) return;
+        // Admin gets one summary row; each affected instructor gets a
+        // scoped row with their `targetInstructorId` set.
+        get().emitNotifications({
+            admin: {
+                tab: "payment",
+                event: "pay_rate_updated",
+                title: "Pay rate updated",
+                body: `${after.name} updated — ${assignedInstructors.length} instructor${assignedInstructors.length === 1 ? "" : "s"} affected.`,
+                icon: "bank-note",
+                sourceModule: "transaction",
+                sourceId: id,
+            },
+        });
+        assignedInstructors.forEach(i => {
+            get().emitNotifications({
+                instructor: {
+                    tab: "earnings",
+                    event: "pay_rate_updated",
+                    title: "Your pay rate changed",
+                    body: `${after.name} was updated. Open Earnings to see the new figures.`,
+                    icon: "bank-note",
+                    sourceModule: "transaction",
+                    sourceId: id,
+                    targetInstructorId: i.id,
+                },
+            });
+        });
+    },
     setPayRatesStatus: (ids, status) =>
         set(state => ({
             payRates: state.payRates.map(p => ids.includes(p.id) ? { ...p, status } : p),
@@ -2922,7 +3698,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         return { deleted: deletableIds, blocked };
     },
 
-    assignInstructorPayRate: (instructorId, payRateId) =>
+    assignInstructorPayRate: (instructorId, payRateId) => {
+        const stateBefore = get();
+        const beforeInstructor = stateBefore.instructors.find(i => i.id === instructorId);
+        const previousPayRateId = beforeInstructor?.payRateId;
         // Mirror the write into `staff` too — the Staff & Permissions
         // module reads payRateId from staff, so a pay-rate change must
         // propagate or the staff detail will show a stale rate.
@@ -2933,7 +3712,40 @@ export const useAppStore = create<AppState>((set, get) => ({
             staff: state.staff.map(s =>
                 s.id === instructorId ? { ...s, payRateId } : s,
             ),
-        })),
+        }));
+        // Phase 4 sync — only fire when the pay rate actually changed.
+        // Re-assigning the same rate (e.g. via a save-without-change form
+        // submit) is a no-op for the bell.
+        if (previousPayRateId === payRateId) return;
+        const newRate = payRateId ? get().payRates.find(p => p.id === payRateId) : undefined;
+        const bodyForInstructor = newRate
+            ? `You're now on the ${newRate.name} pay rate. Open Earnings to see the new figures.`
+            : "Your pay rate assignment was removed. Reach out to admin for details.";
+        const bodyForAdmin = newRate
+            ? `${beforeInstructor?.name ?? "Instructor"} assigned to ${newRate.name}.`
+            : `${beforeInstructor?.name ?? "Instructor"} pay rate assignment cleared.`;
+        get().emitNotifications({
+            admin: {
+                tab: "payment",
+                event: "pay_rate_assigned",
+                title: "Pay rate assigned",
+                body: bodyForAdmin,
+                icon: "bank-note",
+                sourceModule: "transaction",
+                sourceId: payRateId ?? previousPayRateId,
+            },
+            instructor: {
+                tab: "earnings",
+                event: "pay_rate_assigned",
+                title: "Pay rate updated",
+                body: bodyForInstructor,
+                icon: "bank-note",
+                sourceModule: "transaction",
+                sourceId: payRateId ?? previousPayRateId,
+                targetInstructorId: instructorId,
+            },
+        });
+    },
     setInstructorStatus: (ids, status) =>
         // Mirror status back to staff (instructor statuses are a strict
         // subset of staff statuses — no mapping needed in this direction).
@@ -2997,6 +3809,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         };
         set(state => ({ notifications: [record, ...state.notifications] }));
         return id;
+    },
+    emitNotifications: (input) => {
+        // Stamp the `audience` field per payload + delegate to
+        // `addNotification` so both feeds (admin bell, instructor bell)
+        // pick the row up in the same render cycle. Skip undefined
+        // payloads silently — many events fire for only one audience.
+        if (input.admin) {
+            get().addNotification({ ...input.admin, audience: "admin" });
+        }
+        if (input.instructor) {
+            get().addNotification({ ...input.instructor, audience: "instructor" });
+        }
     },
     markNotificationRead: (id) =>
         set(state => ({
@@ -3263,6 +4087,37 @@ export const useAppStore = create<AppState>((set, get) => ({
             ),
         })),
 
+    // ── Instructor calendar integrations ──────────────────────────────────
+    connectInstructorIntegration: (staffProfileId, slug, accountLabel) =>
+        set(state => {
+            const stamp = new Date().toISOString();
+            return {
+                instructorIntegrations: state.instructorIntegrations.map(i =>
+                    i.staffProfileId === staffProfileId && i.slug === slug
+                        ? {
+                            ...i,
+                            status: "connected" as const,
+                            connectedAt: stamp,
+                            accountLabel: accountLabel ?? i.accountLabel,
+                        }
+                        : i,
+                ),
+            };
+        }),
+    disconnectInstructorIntegration: (staffProfileId, slug) =>
+        set(state => ({
+            instructorIntegrations: state.instructorIntegrations.map(i =>
+                i.staffProfileId === staffProfileId && i.slug === slug
+                    ? {
+                        ...i,
+                        status: "not_connected" as const,
+                        connectedAt: undefined,
+                        accountLabel: undefined,
+                    }
+                    : i,
+            ),
+        })),
+
     // ── Payments actions ──────────────────────────────────────────────────
     connectPaymentProvider: (id, accountLabel) =>
         set(state => {
@@ -3378,19 +4233,78 @@ export const useAppStore = create<AppState>((set, get) => ({
         return id;
     },
     updateStaff: (id, patch) =>
+        // Phase 4 reverse cascade — admin → instructor.
+        // If the edited staff row is the currently-logged-in instructor,
+        // mirror identity edits back to `currentUser` so the instructor
+        // side (Sidebar chip, Header welcome, Personal info tab) sees
+        // changes admin made on `/admin/staff/[id]/edit` immediately.
+        // Together with the forward cascade on `updateAccountProfile`,
+        // edits flow bi-directionally and the two views never drift.
         set(state => {
             const nextStaff = state.staff.map(s => s.id === id ? { ...s, ...patch } : s);
+            const nextInstructors = syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]);
+
+            const currentStaffId = (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
+            const editingCurrent = state.currentUser.role === "instructor" && currentStaffId === id;
+            const editedRow = nextStaff.find(s => s.id === id);
+
+            if (editingCurrent && editedRow) {
+                // Phase 3 cascade — `staff[].bio` mirrors back to
+                // `currentUser.introduction` so when admin edits Liam's
+                // bio via /admin/staff/[id]/edit, Liam's own
+                // /instructor/account reads the new copy. Only patch
+                // when bio is defined on the edited row (admin may have
+                // only changed identity fields without touching bio).
+                const introductionPatch = editedRow.bio !== undefined
+                    ? { introduction: editedRow.bio }
+                    : {};
+                return {
+                    staff: nextStaff,
+                    instructors: nextInstructors,
+                    currentUser: {
+                        ...state.currentUser,
+                        first_name: editedRow.firstName,
+                        last_name:  editedRow.lastName,
+                        email:      editedRow.email,
+                        phone:      editedRow.phone,
+                        avatar_url: editedRow.imageUrl ?? state.currentUser.avatar_url,
+                        ...introductionPatch,
+                    },
+                };
+            }
+
             return {
                 staff: nextStaff,
-                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]),
+                instructors: nextInstructors,
             };
         }),
     setStaffStatus: (ids, status) =>
         set(state => {
             const nextStaff = state.staff.map(s => ids.includes(s.id) ? { ...s, status } : s);
+            const nextInstructors = syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, ids);
+
+            // Phase 4 reverse cascade — if the current instructor was in
+            // the batch, mirror `status` back to `currentUser.is_active`
+            // so the instructor side knows it's been deactivated.
+            const currentStaffId = (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
+            const editingCurrent = state.currentUser.role === "instructor"
+                && currentStaffId !== undefined
+                && ids.includes(currentStaffId);
+
+            if (editingCurrent) {
+                return {
+                    staff: nextStaff,
+                    instructors: nextInstructors,
+                    currentUser: {
+                        ...state.currentUser,
+                        is_active: status === "active",
+                    },
+                };
+            }
+
             return {
                 staff: nextStaff,
-                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, ids),
+                instructors: nextInstructors,
             };
         }),
     resendStaffInvite: (id) => {
@@ -3445,7 +4359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items) => {
+    applyPurchase: (customerId, items, paymentSource) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -3637,6 +4551,9 @@ export const useAppStore = create<AppState>((set, get) => ({
                     ...txnExtra,
                     status: "complete",
                     paymentMethod: "card",
+                    // Default origin: a POS checkout. Customer-portal +
+                    // admin callers pass their own value via `paymentSource`.
+                    paymentSource: paymentSource ?? "pos" as const,
                     createdAtISO: nowISO,
                 });
             });
@@ -3677,4 +4594,43 @@ export const useAppStore = create<AppState>((set, get) => ({
     showToast: (title, message, type = "success", icon) =>
         set({ toast: { id: Date.now().toString(), title, message, type, icon } }),
     clearToast: () => set({ toast: null }),
-}));
+}),
+    {
+        name: PERSIST_KEY,
+        version: 1,
+        storage: createJSONStorage(() => localStorage),
+        // `partialize` strips per-tab + ephemeral state from the serialized
+        // payload. Action functions (set / get callbacks) are dropped
+        // automatically by JSON.stringify — they don't survive serialization
+        // and the store keeps its initial-definition implementations after
+        // rehydrate, which is what we want.
+        partialize: (state) => {
+            const {
+                currentUser:    _currentUser,
+                currentRole:    _currentRole,
+                sidebarCollapsed: _sidebarCollapsed,
+                toast:          _toast,
+                pendingPurchase: _pendingPurchase,
+                ...persistable
+            } = state;
+            return persistable;
+        },
+    },
+));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cross-tab sync — Zustand `persist` writes to localStorage but doesn't
+// auto-rehydrate other tabs. Browsers fire a `storage` event on every
+// OTHER tab (not the one that wrote) when localStorage changes; we use
+// that event to re-read the persisted state into the in-memory store.
+//
+// Effect: admin creates a class in Tab A → instructor view in Tab B
+// updates in the same render cycle, no manual refresh required.
+// ─────────────────────────────────────────────────────────────────────────────
+if (typeof window !== "undefined") {
+    window.addEventListener("storage", (e) => {
+        if (e.key === PERSIST_KEY) {
+            void useAppStore.persist.rehydrate();
+        }
+    });
+}

@@ -1,238 +1,181 @@
-# Onra Studio — Prototype Update & Walkthrough
+# Onra Studio — Prototype Update and Walkthrough
 
-A plain-language guide to what's ready in this build of the Onra Studio admin
-dashboard. Use it to run through the prototype yourself and see what each part
-can do.
+**Overall progress:** 18 / 25 modules done
 
-This update covers **four modules**:
+### This update covers
 
-1. **Customer Management**
-2. **Marketing**
-3. **Insights**
-4. **Pay Rate**
+- Payroll
+- Staff & Permissions
+- Tax
+- Agreements
+- Payments
+- Integrations
+- Referral
 
-Each section below explains what the module is for, **what you can do** in it,
-and the **improvements in this build**.
-
----
-
-## 1. Customer Management
-
-Your **customer directory** — every member and walk-in the studio knows, with
-their plans, payments, agreements, and history in one place.
-
-### What you can do
-
-- See every customer in a **single table** — avatar, name, contact, current
-  plan, status, last visit, and a row menu for quick actions.
-- **Search** by name, email, or phone number.
-- **Filter by branch** to focus on one location.
-- Open the **advanced filter panel** to slice by status, plan type (membership
-  / credit package / no plan), last-visit buckets (last 7 / 30 / 60 / 90 days
-  / over 90 / never visited), and plan expiry date range.
-- **Sort** any column and choose how many rows you want per page.
-- **Bulk-select** multiple customers and apply Archive, Reactivate, Recover,
-  Deactivate, or Delete in one go — a floating action bar shows the live
-  selection count.
-- **Add a new customer** on a dedicated full-page form — first and last name,
-  email, phone, home branch, and an optional starting plan.
-- **Import customers** from a list via the split menu on the "Add new" button.
-- **Export the list to CSV** with the columns you see — name, email, phone,
-  plan, status, join date, last visit.
-- **Open a customer** to see their full profile:
-  - **Left sidebar** — avatar, status badge, contact, join date, plan summary
-    with expiry, and current credit balance.
-  - **Plan tab** — every plan they've ever held (membership or package) with
-    kind, status, start date, expiry, and credits. Row actions to **Freeze**,
-    **Unfreeze**, **Cancel plan**, **Remove free credit**, or **View
-    details** — each with its own confirmation.
-  - **Payments tab** — Overview cards (total spent, total refunded, net
-    spend), issued gift cards with balance and expiry, saved payment methods,
-    plus a Payment history table showing every transaction with type, amount,
-    and status. Refund completed payments with a reason captured.
-  - **Agreements tab** — every agreement version this customer has been
-    issued, with signed status, branches covered, and signed date. Open any
-    agreement to read the full content.
-- **Edit** any active customer's details at any time.
-- **Add complimentary credit** — a dedicated screen to grant free credit with
-  the amount, a reason (loyalty reward / new member / other), and a note.
-- Manage each customer's **lifecycle**:
-  - **Deactivate** — suspend login and new bookings while keeping history.
-  - **Archive** — hide from the default list, all history preserved, fully
-    recoverable.
-  - **Reactivate / Recover** — bring deactivated or archived customers back.
-  - **Delete** — only when the customer has zero booking history.
-- Every change shows a **confirmation** and a success message.
-
-### What's new in this build
-
-- Full customer list with **search, branch filter, advanced multi-filter
-  panel, sorting, pagination, bulk actions, and CSV export**.
-- A complete **customer profile** with Plan, Payments, and Agreements tabs
-  showing live data that stays in sync with the rest of the studio.
-- A dedicated **Add complimentary credit** screen for granting free credit.
-- Working **plan freeze / unfreeze / cancel / remove free credit** flows on
-  the Plan tab — each with its own confirmation and toast.
-- **Refunds** from the Payments tab with a reason captured.
-- Full **lifecycle management** (deactivate / archive / reactivate / recover /
-  delete) with the correct option shown for each customer's situation.
+Below, you will find a breakdown of what each module is for, its key capabilities, and the improvements made in this specific build.
 
 ---
 
-## 2. Marketing
+## 1. Payroll
 
-Your **marketing campaigns** — banners, announcements, and events you push to
-members, with full control over who sees them and when.
+> Your dedicated workspace for processing instructor compensation, tracking earnings, and running payroll cycles.
 
-### What you can do
+### Capabilities
 
-- Browse every campaign as a **card grid** — each card shows the banner,
-  campaign type (New class / Announcement / Event), status, title, short
-  description, action type, branches served, and expiry date.
-- **Search** by name or description.
-- **Filter by branch**, **status** (Active / Inactive / Archived), and
-  **expiry date range**.
-- **Create a new campaign** on a two-step, step-by-step full-page form:
-  - **Step 1 — Marketing configuration** — upload a banner, set the name and
-    description, pick the campaign **type**, choose an **action** (Book an
-    event, Buy a ticket, External link, or No action — the choices adapt to
-    the campaign type), and set the **duration** with start and end dates and
-    times (or mark it as no-expiry).
-  - **Step 2 — Visibility settings** — choose **branches** (single or
-    multi-location), **packages** (memberships and credit packages),
-    **classes**, and **customer targeting** (Everyone or New users only).
-- **Open a campaign** to see its full detail page — banner, dates, branches,
-  view count, and every targeting choice from creation laid out in a clean,
-  scannable summary.
-- **Edit** an active campaign at any time.
-- Manage each campaign's **lifecycle**:
-  - **Deactivate** — pause a campaign that members have already seen.
-  - **Archive** — retire a campaign you no longer run.
-  - **Reactivate / Recover** — bring deactivated or archived campaigns back.
-  - **Delete** — only when the campaign was never viewed.
-- Every action is confirmed with a clear success message.
+- **Compensation Directory** — View all instructors in a centralized table displaying avatar, name, assigned pay rate, branch, classes taught in the period, computed earnings, and last payroll status.
+- **Search & Filter** — Search by instructor name, and filter by branch, period (Day / Week / Month / Custom), and pay rate type.
+- **Instructor Earnings Detail** — Open any instructor to inspect the per-class breakdown: class name, date, attendees, pay rate applied, and computed earnings for the period.
+- **Run Payroll Wizard** — Guided multi-step flow for processing a pay cycle:
+  1. **Select Period** — Choose the pay period and branch scope.
+  2. **Review Earnings** — Live preview of computed earnings per instructor, with the per-class breakdown expanded inline.
+  3. **Adjustments** — Add one-off bonuses or deductions with required reason text.
+  4. **Confirm** — Lock the run with attribution and timestamp.
+- **Payroll History** — Past runs are immutable records, attributing who ran each cycle and when.
+- **Export** — One-click CSV export of any compensation view.
 
-### What's new in this build
+### What's New
 
-- Full campaign **card-grid** list with working search and filters.
-- A two-step **create / edit** flow with type-aware action fields, banner
-  upload, and full date / time control.
-- A complete **detail page** for every campaign.
-- Visibility settings that connect directly to **branches, packages,
-  classes, and customer segments** from the rest of the studio.
-- Status management with the right option shown for each campaign's
-  situation.
+- A comprehensive list view with sortable columns, period KPI cards, and CSV export.
+- A guided Run Payroll wizard with live earnings preview and per-instructor adjustment support.
+- Instructor earnings detail page with full per-class transparency and pay rate snapshot.
+- Centralized earnings math — any pay rate edit flows through to every dependent view in real time.
 
 ---
 
-## 3. Insights
+## 2. Staff & Permissions
 
-Your **studio-wide analytics** — finance, memberships, and classes — in a
-single place with KPI cards and charts that adapt to the period you pick.
+> Your team management hub, covering staff records, role definitions, and granular permission control.
 
-### What you can do
+### Capabilities
 
-- Switch between **three tabs** — **Finance**, **Memberships**, and
-  **Classes** — each with its own KPI grid and chart deck.
-- **Change the time period** with one click — Day, Week, Month, Year, or a
-  Custom date range. KPI values, comparison badges, and charts all re-render
-  to match.
-- **Search across KPIs and charts** to narrow the view to the metric you
-  care about.
-- See each KPI with its **value, a percentage change badge** (colour-coded
-  up or down), and the **comparison period** (e.g. "vs last week") right
-  next to it.
-- **Finance tab** — net revenue, subscription revenue, package revenue,
-  class revenue, payment dues, collected payments, gift-card revenue, and
-  product revenue, plus charts for payments collected, payments by status,
-  payment method, payment source, revenue vs last period, and sales by
-  product.
-- **Memberships tab** — active memberships, active subscriptions, active
-  packages, intro offers, cancellations, suspensions, and billing issues
-  with percentages, plus charts for active memberships, active
-  subscriptions, active credit packages, top 5 membership plans, and unit
-  sales.
-- **Classes tab** — classes scheduled, check-ins, revenue per class, revenue
-  per visit, unique visitors, first-time visitors, and occupancy rate, plus
-  charts for class bookings, bookings by source, bookings vs visits,
-  attendance overview, and class popularity.
+- **Staff Tab** — Browse all team members with avatar, role, branch assignment, contact info, pay rate, and status.
+- **Search & Filter** — Find staff by name, email, or phone, and filter by role, branch, or active / archived status.
+- **Add Staff** — Onboard new team members via a dedicated form covering personal info, role assignment, branch scope, contact details, and starting pay rate.
+- **Staff Profile** — Open any staff member to access personal info, role + branch assignment, pay rate history, and lifecycle controls (Deactivate, Archive, Reactivate, Recover).
+- **Roles Tab** — Browse all defined roles with their member count, status, and quick actions. The Owner role is locked and cannot be edited or deactivated.
+- **Role Detail** — Open any role to view the full permission matrix grouped by module (Customers, Schedule, POS, Settings, Marketing, etc.).
+- **Edit Permissions** — Inline editor to toggle granular permissions per module. Live preview of the affected member count.
+- **Bulk Actions** — Multi-select staff or roles for bulk Archive, Reactivate, Recover, Deactivate, Delete with a floating action bar.
 
-### What's new in this build
+### What's New
 
-- Three fully-tabbed dashboards (**Finance / Memberships / Classes**) wired
-  to a shared **period and search** control bar.
-- Working period switching across **Day / Week / Month / Year / Custom**,
-  with every chart's scale and X-axis adapting automatically.
-- A consistent **KPI card** with value, change badge, and comparison period
-  used across every tab.
+- A comprehensive list view for both Roles and Staff with sortable columns and bulk actions.
+- Dedicated permission matrix editor with per-module scoping and live member-count preview.
+- Add / Edit staff form with role + branch + pay rate assignment in one flow.
+- Lifecycle controls that preserve historical data appropriately (archived staff stay queryable for payroll history).
 
 ---
 
-## 4. Pay Rate
+## 3. Tax
 
-Your library of **instructor pay rates** — the rules that decide how each
-instructor is paid for a class. Define a rate once, then assign it to as many
-instructors as you need.
+> Your tax configuration library, defining rates once and applying them across product categories.
 
-### What you can do
+### Capabilities
 
-- See every pay rate in a **single table** showing the rate name, type, the
-  formatted rate (so you can read it like a sentence), branches, status, and
-  a row menu for quick actions.
-- **Filter by branch** and **status** (Active / Archive).
-- **Search** by name or rate display.
-- **Bulk-select** rates and Archive, Recover, or Delete in one go — Delete
-  appears only when none of the selected rates have ever been used.
-- **Create a new pay rate** on a two-step, step-by-step full-page form:
-  - **Step 1 — Rate details** — pick a rate **type** from five cards and
-    configure it:
-    - **Flat** — a single AED amount per class.
-    - **Tiered** — stack rules like "if X to Y customers attend, pay AED Z"
-      with add and remove controls per tier.
-    - **% of revenue** — a split of class revenue, with an optional
-      per-customer top-up.
-    - **Hybrid** — a base rate plus either an attendance bonus
-      (threshold + per-customer) or a % of revenue.
-    - **Monthly salary** — a fixed monthly amount, an optional performance
-      bonus % (with an optional cap), and separate sales commission % for
-      packages and memberships.
-  - Toggle whether only **checked-in** customers count and whether
-    **late-cancelled** customers are included.
-  - A **live preview** card shows exactly how the rate will read in the list.
-  - **Step 2 — Branch assignment** — pick which branches this rate applies
-    to.
-- **Open a pay rate** to see its full detail page:
-  - **Left sidebar** — name, type badge, formatted rate, branch, status, and
-    action buttons.
-  - **Assigned instructor tab** — every instructor currently on this rate
-    with branch and status filters, search, pagination, and row actions.
-  - **Additional settings tab** — a read-only view of the two toggles set on
-    the rate.
-- **Edit** an active rate at any time.
-- Manage each rate's **lifecycle**:
-  - **Archive** — retire a rate you no longer use.
-  - **Recover** — bring an archived rate back.
-  - **Delete** — only when the rate has never been used.
-- Every action is confirmed with a clear success message.
+- **Tax Rates Tab** — Browse all configured tax rates with name, percentage, inclusive / exclusive treatment, status, and usage count.
+- **Add / Edit Tax Rate** — Configure a rate with name, percentage, and inclusive vs. exclusive treatment. The Edit modal is also reachable from the row kebab.
+- **Apply Tax Rates Tab** — Map each product category (Membership, Credit package, Gift card, Pay rate) to one of your defined rates. One-click switch a category's rate without revisiting its individual products.
+- **Studio-Wide Toggle** — Flip the global "Prices include tax" setting that drives display behavior across the storefront and POS.
+- **Lifecycle Control** — Archive obsolete rates, recover them later, or bulk-delete unused ones.
 
-### What's new in this build
+### What's New
 
-- Full **list view** with branch filter, status filter, search, sortable
-  columns, pagination, and bulk actions.
-- A two-step **create / edit** flow covering **five rate types** with
-  type-specific configuration and a **live preview** so the formatted rate
-  is always visible before you save.
-- A complete **detail page** with Assigned-instructor and Additional-settings
-  tabs.
-- Working **status management** (archive / recover / delete) with the right
-  option shown for each rate's situation.
+- A two-tab structure that cleanly separates rate definition from rate application.
+- Real-time usage tracking — see exactly which categories each rate is bound to.
+- Bulk actions with delete-only-when-unused safety constraints; tax rules referencing a deleted rate are gracefully cleared.
 
 ---
 
-## A few things to know
+## 4. Agreements
 
-- This is an **interactive prototype** — feel free to click, create, edit, and
-  delete. It uses realistic sample data, and your changes apply live as you
-  move between screens.
-- Nothing here is permanent — the prototype resets to its sample data when
-  reloaded.
+> Your library of waivers, terms, and policy documents — version-controlled and assignable across the customer base.
+
+### Capabilities
+
+- **Agreements Directory** — Browse all documents with title, current version number, status (Active / Archived), last updated date, and signed / issued counts.
+- **Agreement Detail** — Open any agreement to view its full content, version history, and signature stats.
+- **Create New Agreement** — Author a new document with title, full body text, and effective date.
+- **New Version** — Publish a new revision of an existing agreement. Old versions are preserved for full audit trail.
+- **Edit Mode** — Inline edit the latest version's title or body before publishing.
+- **Lifecycle Control** — Archive old agreements when retired. The customer profile's Agreements tab respects status when surfacing what each member has signed.
+
+### What's New
+
+- Full version history with per-version stats (issued / signed counts).
+- Rich body editor for clean formatting.
+- Signature stats that pull from the customer agreements table in real time so the directory always reflects live data.
+
+---
+
+## 5. Payments
+
+> Your payment provider configuration center, managing Stripe, Apple Pay, Google Pay, and other gateway connections.
+
+### Capabilities
+
+- **Provider Card Grid** — Browse all available payment providers in a card layout showing the provider logo, connection status (Connected / Disconnected), and last sync timestamp.
+- **Connection Flow** — Connect a new provider via its standard OAuth or API key flow with a guided modal.
+- **Disconnect** — Sever a provider connection with confirmation.
+- **Status at a Glance** — Each card surfaces its real-time health (connection valid, last successful transaction, error state if any).
+- **POS Sync** — Connected providers propagate to the POS checkout payment-method picker automatically — no extra step.
+
+### What's New
+
+- Card-grid layout with connection status badges.
+- One-click connect / disconnect flows with toast confirmation.
+- Real-time provider state propagation to every dependent surface (POS, refund flows, payment history).
+
+---
+
+## 6. Integrations
+
+> Your third-party app marketplace, surfacing every integration your studio can wire up.
+
+### Capabilities
+
+- **Integration Card Grid** — Browse all available integrations with logo, short description, category, and current connection status.
+- **Search & Filter** — Find integrations by name or filter by category and connection status.
+- **Connection Flow** — Connect each integration through its provider-specific authentication (OAuth, API key, webhook URL).
+- **Disconnect** — Sever an integration with confirmation. Per-integration configuration is preserved for next time.
+- **Per-Integration Configuration** — Some integrations expose additional settings (default calendar, channel selection, sync frequency, etc.) reachable from the card.
+
+### What's New
+
+- Newly designed card grid with category grouping and connection status badges.
+- Standardized connect / disconnect flow across all integrations.
+- Per-integration detail page that hosts provider-specific settings without leaving the studio admin.
+
+---
+
+## 7. Referral
+
+> Your customer referral program control center, setting rewards for both referrers and referred members.
+
+### Capabilities
+
+- **Program Master Switch** — Enable or disable the entire referral program with one toggle. The customer-facing referral CTA respects this flag.
+- **Edit Referral Settings** — Two-step wizard for benefit configuration:
+  1. **New Customer Benefit** — Define what a NEW (referred) customer receives: credit count and welcome message copy.
+  2. **Existing Customer Benefit** — Define what an EXISTING (referring) customer earns: trigger condition, minimum referred count, credit reward, and acknowledgement message.
+- **Customize Referral Information** — Edit the customer-facing description copy shown in the referral share UI.
+- **Live Data Sync** — Configured benefits propagate to the customer profile's Referrals tab the moment they're saved.
+
+### What's New
+
+- Two-step wizard for benefit configuration with field validation per step.
+- Customize referral information form to edit the customer-facing copy without code changes.
+- Master switch that respects every dependent surface (program off → customer-facing CTA hides studio-wide).
+
+---
+
+## Important Notes on the Prototype
+
+- **Interactive experience** — This is a fully interactive prototype. Feel free to click, create, edit, and delete items to test the workflows.
+- **Live updates** — The prototype uses realistic sample data. Any changes you make apply live as you navigate between different screens.
+- **Cross-tab sync** — Open the admin in one tab and the instructor experience in another. Changes in one tab reflect in the other in real time.
+- **Session persistence** — Any data you create, edit, or cancel survives a page refresh and tab close. Your demo session sticks until you explicitly reset.
+- **Resetting to sample data** — To return to the default seeded data:
+  - Browser settings → Privacy → Clear browsing data for this site, OR
+  - DevTools → Application → Local Storage → delete the `onra-demo-state` key.
+
+  The next page load rebuilds the store from the seed files.

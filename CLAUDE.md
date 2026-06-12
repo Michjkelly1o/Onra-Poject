@@ -68,6 +68,24 @@ These rules apply to every module built — follow consistently so the prototype
 - `src/data/mock/` — fallback mock data files
 - `tailwind.config.ts` — design tokens (run `/sync-tokens` to populate from Figma)
 
+## Demo State Persistence
+
+The Zustand store at [src/lib/store.ts](src/lib/store.ts) wraps `create()` with the `persist` middleware. Every business slice (`classSchedules`, `classBookings`, `customers`, `payRates`, `staff`, `branches`, `rooms`, settings records, etc.) is saved to `localStorage` under the key **`onra-demo-state`**.
+
+What this means in practice:
+- Anything a tester creates / edits / cancels / marks present during a demo session **survives page refresh + closing the tab**.
+- Cross-tab sync is wired via a `window.storage` listener at the bottom of [store.ts](src/lib/store.ts). Open admin in one tab and instructor in another — admin writes propagate to the instructor tab in the same render cycle, no manual refresh.
+
+**Excluded from persistence (per-tab, by design):** `currentUser`, `currentRole`, `sidebarCollapsed`, `toast`, `pendingPurchase`. The persona auto-flip in each layout sets `currentUser` / `currentRole` based on the URL — persisting them would break the two-tab demo flow.
+
+**Resetting back to the seeded mock data:**
+- **Surgical** — DevTools → Application → Local Storage → delete the `onra-demo-state` key → refresh. Login (when added later) stays.
+- **Full wipe** — Browser settings → Clear browsing data for this site. Nukes cookies / cache / everything.
+
+Either way, the next page load finds no persisted state, falls back to the seed files in [src/data/mock/](src/data/mock/), and rebuilds the store from scratch.
+
+**Schema versioning:** `version: 1`. Bump when AppState changes shape in a breaking way; Zustand discards the old payload on version mismatch and re-seeds from the mock files.
+
 ## Design System
 - Figma DS file: `wXcoPTXUVwkdIxMsfDkteq` (ONRA DESIGN SYSTEM Light Version)
 - **Token file:** `tokens.json` at project root — exported from Figma via token export plugin. Contains 399 primitives + 345 light-mode semantic + 345 dark-mode semantic = 1,089 tokens. This is the source for `/sync-tokens`, no Figma access needed.

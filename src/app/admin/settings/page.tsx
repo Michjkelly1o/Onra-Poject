@@ -53,6 +53,7 @@ import { useAppStore } from "@/lib/store";
 import { timezoneLabel } from "@/lib/data/locales";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -310,7 +311,15 @@ export default function BusinessLocationsPage() {
                 <div className="flex flex-col w-full">
                     <TableHeader />
                     {isEmpty ? (
-                        <EmptyState query={searchQuery} />
+                        <div className="relative flex-1" style={{ minHeight: 400 }}>
+                            <EmptyState
+                                title={searchQuery ? "No locations found" : "No branches yet"}
+                                subtitle={searchQuery
+                                    ? `Nothing matches "${searchQuery}". Try a different search or clear the status filter.`
+                                    : "Add your first branch to start scheduling classes and managing rooms."}
+                                icon={Building01}
+                            />
+                        </div>
                     ) : (
                         visibleBranches.map(branch => {
                             const branchStatus = branch.status;
@@ -1037,25 +1046,6 @@ function Toggle({ on, onChange, ariaLabel }: {
                 on ? "translate-x-4" : "translate-x-0",
             )} />
         </button>
-    );
-}
-
-function EmptyState({ query }: { query: string }) {
-    return (
-        <div className="flex flex-col items-center justify-center gap-2 py-16 px-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center mb-2">
-                <Building01 className="w-6 h-6 text-[#475467]" />
-            </div>
-            <p className="text-[16px] font-semibold text-[#101828] leading-6">
-                {query ? "No locations found" : "No branches yet"}
-            </p>
-            <p className="text-[14px] text-[#475467] leading-5 max-w-[360px]">
-                {query
-                    ? `Nothing matches "${query}". Try a different search or clear the status filter.`
-                    : "Add your first branch to start scheduling classes and managing rooms."
-                }
-            </p>
-        </div>
     );
 }
 

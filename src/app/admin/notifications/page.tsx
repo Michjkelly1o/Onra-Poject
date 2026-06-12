@@ -26,7 +26,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell01, MarkerPin01 } from "@untitledui/icons";
-import { useAppStore, DEFAULT_BRANCH_ID, type Notification, type NotificationTab } from "@/lib/store";
+import { useAppStore, DEFAULT_BRANCH_ID, type Notification } from "@/lib/store";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import {
@@ -39,7 +39,12 @@ import { cn } from "@/lib/utils";
 
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 
-type TabKey = "all" | NotificationTab;
+// Admin tabs are a strict subset of the platform-wide `NotificationTab`
+// type — the "earnings" tab is instructor-only and lives on
+// `/instructor/notifications`. Narrowing the key here keeps the
+// `counts`/`TAB_EMPTY_COPY` Records exhaustive for THIS page without
+// having to declare an unused "earnings" branch.
+type TabKey = "all" | "booking" | "payment";
 
 const TABS: { key: TabKey; label: string }[] = [
     { key: "all", label: "All" },

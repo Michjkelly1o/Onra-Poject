@@ -17,8 +17,10 @@
 // FK: `design_id` → gift_card_designs.id, `customer_id` → customers.id
 
 import type { IssuedGiftCard } from "./_types";
+import { DEMO_NOW_GIFT_CARDS } from "./prototype_demo_data";
 
 export const issued_gift_cards: IssuedGiftCard[] = [
+    ...DEMO_NOW_GIFT_CARDS,
     // ── AED 250 Gift Card (dated) — 6 holders ───────────────────────────────
     {
         id: "issued_gc_0001",

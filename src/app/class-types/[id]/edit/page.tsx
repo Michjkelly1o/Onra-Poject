@@ -5,7 +5,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAppStore, CLASS_CATEGORIES, type Membership, type Package } from "@/lib/store";
+import { useAppStore, type Membership, type Package } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import {
     XClose, UploadCloud02, Grid01, User01,
@@ -22,9 +22,9 @@ import { NumericStringInput } from "@/components/ui/NumericInput";
 type LocationType = "Group" | "Private";
 
 const CLASS_TYPES: LocationType[] = ["Group", "Private"];
-// Sourced from the live `class_categories` seed so the dropdown always
-// matches real categories (and resolves to a valid `categoryId` on save).
-const CATEGORIES = CLASS_CATEGORIES.map(c => c.name);
+// Categories are read from the LIVE `classCategories` store slice inside
+// the page component (Phase 4) so adds / edits / deletes performed in
+// Booking Rules show up here without a refresh.
 
 // Built from the centralized `memberships` + `packages` seeds — the
 // "Applicable memberships" picker stays in sync with whatever products the
@@ -177,8 +177,11 @@ interface Step1Data {
     durationMin: string; capacity: string; coverPreview: string | null; coverFile: File | null;
 }
 
-function BasicInformationStep({ data, onChange, onContinue }: {
+function BasicInformationStep({ data, onChange, onContinue, categoryOptions }: {
     data: Step1Data; onChange: (d: Partial<Step1Data>) => void; onContinue: () => void;
+    /** Live category names — passed from the page so this step doesn't
+     *  re-subscribe to the store (Phase 4 wiring). */
+    categoryOptions: string[];
 }) {
     const canContinue = data.name.trim() && data.description.trim() && data.classType && data.category && data.durationMin && data.capacity;
     return (
@@ -203,7 +206,7 @@ function BasicInformationStep({ data, onChange, onContinue }: {
                         </FormField>
                         <FormField label="Class category">
                             <SelectInput placeholder="Select class category" value={data.category} onChange={v => onChange({ category: v })}
-                                options={CATEGORIES.map(o => ({ value: o, label: o }))} width="w-full" />
+                                options={categoryOptions.map(o => ({ value: o, label: o }))} width="w-full" />
                         </FormField>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -300,7 +303,9 @@ export default function EditClassTemplatePage() {
     const { classTemplates, updateClassTemplate, showToast } = useAppStore();
     // Live store memberships/packages — picker reflects current catalog mutations.
     const allMemberships = useAppStore(s => s.memberships);
-    const allPackages = useAppStore(s => s.packages);
+    const allPackages    = useAppStore(s => s.packages);
+    const classCategories = useAppStore(s => s.classCategories);
+    const categoryOptions = classCategories.map(c => c.name);
     const membershipItems = buildMembershipItems(allMemberships, allPackages);
 
     const template = classTemplates.find(t => t.id === id);
@@ -339,7 +344,7 @@ export default function EditClassTemplatePage() {
         // Re-resolve the category FK + banner color whenever the category
         // changes — writing only the display name would leave a stale
         // `categoryId` / `coverColor`.
-        const cat = CLASS_CATEGORIES.find(c => c.name === step1.category);
+        const cat = classCategories.find(c => c.name === step1.category);
         updateClassTemplate(id, {
             name:                   step1.name,
             description:            step1.description,
@@ -397,7 +402,7 @@ export default function EditClassTemplatePage() {
 
                     {/* Form */}
                     {step === 1 ? (
-                        <BasicInformationStep data={step1} onChange={d => setStep1(prev => ({ ...prev, ...d }))} onContinue={() => setStep(2)} />
+                        <BasicInformationStep data={step1} onChange={d => setStep1(prev => ({ ...prev, ...d }))} onContinue={() => setStep(2)} categoryOptions={categoryOptions} />
                     ) : (
                         <ApplicableMembershipsStep items={membershipItems} selected={selectedMemberships} onToggle={handleToggle}
                             onSelectAll={handleSelectAll} onBack={() => setStep(1)} onSave={handleSave} />

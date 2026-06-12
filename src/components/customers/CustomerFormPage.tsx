@@ -13,6 +13,7 @@
 // `?returnTo=` query param, so the admin lands back where they started.
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { XClose, Check, ChevronDown, SearchMd } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore, DEFAULT_BRANCH_ID } from "@/lib/store";
+import { isValidEmail } from "@/lib/validation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -92,30 +94,51 @@ export function splitPhone(stored?: string): { country: PhoneCountry; number: st
 export function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry; onChange: (c: PhoneCountry) => void }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
-    // Auto-flip the menu above the button when there isn't enough room below.
-    // Re-measures every time `open` flips to true so the placement matches the
-    // dial-code button's CURRENT viewport position — important when the picker
-    // lives inside a modal (e.g. Account settings → Change phone) where the
-    // button often sits near the viewport's bottom edge.
-    const [placement, setPlacement] = useState<"down" | "up">("down");
+    // The menu is PORTALED to `document.body` with `position: fixed` so
+    // it can never be clipped by a scrollable parent (Account settings
+    // change-phone modal, instructor Edit profile modal, etc). Anchor
+    // coords are computed off the trigger button's bounding rect.
+    const [anchor, setAnchor] = useState<{ top: number; left: number; placement: "down" | "up" } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
+    const MENU_WIDTH = 280;
+    const MENU_HEIGHT = 320;
+
+    // Click-outside — checks both the dropdown wrapper AND the portaled
+    // menu since they're disjoint in the DOM tree.
     useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        function h(e: MouseEvent) {
+            const target = e.target as Node;
+            const insideWrapper = ref.current?.contains(target);
+            const insideMenu    = menuRef.current?.contains(target);
+            if (!insideWrapper && !insideMenu) setOpen(false);
+        }
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
+    // Compute portal anchor each time the menu opens. Auto-flip up when
+    // there isn't enough room below, so the menu always lands inside
+    // the viewport regardless of where the button sits.
     useEffect(() => {
-        if (!open || !buttonRef.current) return;
+        if (!open || !buttonRef.current) {
+            setAnchor(null);
+            return;
+        }
         const rect = buttonRef.current.getBoundingClientRect();
-        const MENU_HEIGHT = 320 + 8; // max-h + the 4-px gap on each side
         const roomBelow = window.innerHeight - rect.bottom;
         const roomAbove = rect.top;
-        // Flip up only when below doesn't fit AND above gives more room — so
-        // small viewport edge cases still land somewhere sensible.
-        setPlacement(roomBelow < MENU_HEIGHT && roomAbove > roomBelow ? "up" : "down");
+        const placement = roomBelow < MENU_HEIGHT + 8 && roomAbove > roomBelow ? "up" : "down";
+        const top = placement === "down"
+            ? rect.bottom + 4
+            : rect.top - MENU_HEIGHT - 4;
+        // Clamp left so a button near the viewport's right edge doesn't push
+        // the menu off-screen.
+        const maxLeft = window.innerWidth - MENU_WIDTH - 8;
+        const left = Math.min(rect.left, Math.max(8, maxLeft));
+        setAnchor({ top, left, placement });
     }, [open]);
 
     const filtered = !search ? PHONE_COUNTRIES : PHONE_COUNTRIES.filter(c =>
@@ -130,11 +153,18 @@ export function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry;
                 {value.dial}
                 <ChevronDown className="w-4 h-4 text-[#667085]" />
             </button>
-            {open && (
-                <div className={cn(
-                    "absolute left-0 z-[400] w-[280px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col max-h-[320px]",
-                    placement === "down" ? "top-[calc(100%+4px)]" : "bottom-[calc(100%+4px)]"
-                )}>
+            {open && anchor && typeof document !== "undefined" && createPortal(
+                <div
+                    ref={menuRef}
+                    style={{
+                        position: "fixed",
+                        top: anchor.top,
+                        left: anchor.left,
+                        width: MENU_WIDTH,
+                        maxHeight: MENU_HEIGHT,
+                    }}
+                    className="z-[1000] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col"
+                >
                     <div className="p-2 border-b border-[#e4e7ec]">
                         <div className="relative">
                             <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
@@ -155,7 +185,8 @@ export function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry;
                             </button>
                         ))}
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
         </div>
     );
@@ -258,7 +289,12 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const [postalCode, setPostalCode] = useState(editing?.postalCode ?? "");
     const [streetAddress, setStreetAddress] = useState(editing?.streetAddress ?? "");
 
-    const canSave = !!firstName.trim() && !!lastName.trim() && !!email.trim() && !!branchId;
+    // Email must be syntactically valid — same `isValidEmail` rule the
+    // admin Change-email modal + instructor Edit profile use, so the
+    // forms reject identical typos.
+    const emailValid = isValidEmail(email);
+    const emailDirty = email.trim().length > 0;
+    const canSave = !!firstName.trim() && !!lastName.trim() && emailValid && !!branchId;
 
     // Edit mode opened for an id that no longer exists (deleted in another
     // tab / stale link) — bail with a clear message instead of a blank form.
@@ -369,6 +405,11 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                             <Field label="Email">
                                 <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                                     placeholder="Email..." className={inputCls} />
+                                {emailDirty && !emailValid && (
+                                    <p className="text-[14px] text-[#b42318] leading-5 mt-1.5">
+                                        Please enter a valid email address.
+                                    </p>
+                                )}
                             </Field>
 
                             <Field label="Phone number">

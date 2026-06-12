@@ -74,9 +74,21 @@ export function dateFilterToRange(p: DateFilter, now: Date = new Date()): DateRa
     return { from: new Date(0), to: new Date(8.64e15) };
 }
 
-/** Inclusive overlap check — does an ISO-date row fall in the range? */
+/** Inclusive overlap check — does an ISO row fall in the range?
+ *
+ *  Accepts both forms: `YYYY-MM-DD` (legacy date-only seeds) and full
+ *  `YYYY-MM-DDTHH:MM:SS[.SSSZ]` timestamps (what the reports module +
+ *  the demo-now seed augmentation produce). A 10-char input is treated
+ *  as midnight local time so the legacy seeds keep their existing
+ *  inclusive boundary behaviour.
+ */
 export function isoInRange(iso: string, r: DateRange): boolean {
-    const t = new Date(iso + "T00:00:00").getTime();
+    if (!iso) return false;
+    const parsed = iso.length <= 10
+        ? new Date(iso + "T00:00:00")
+        : new Date(iso);
+    const t = parsed.getTime();
+    if (Number.isNaN(t)) return false;
     return t >= r.from.getTime() && t <= r.to.getTime();
 }
 

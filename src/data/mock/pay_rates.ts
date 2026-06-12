@@ -50,7 +50,7 @@ export const pay_rates: PayRateSeed[] = [
     },
     {
         id: "pr_split_rate", name: "Split Rate", type: "revenue",
-        split_percent: 30, pay_per_customer: 147,
+        split_percent: 30, pay_per_customer: 15,
         branch_id: "branch_forma_south", status: "active", usage_count: 3,
         // Revenue-share — only count customers who actually showed up.
         only_checked_in: true,  include_late_cancelled: false,

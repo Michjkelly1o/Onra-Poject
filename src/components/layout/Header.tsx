@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { SearchMd } from "@untitledui/icons";
 import NotificationBell from "@/components/NotificationBell";
+import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 
 const PAGE_TITLES: Record<string, string> = {
     "/admin/dashboard": "Dashboard",
@@ -34,6 +36,11 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings/tax": "Tax",
     "/admin/settings/agreements": "Agreements",
     "/admin/settings/account": "Account settings",
+    // Instructor experience — sidebar config in `instructor-navigation.ts`
+    "/instructor/dashboard": "Dashboard",
+    "/instructor/schedule": "Schedule",
+    "/instructor/earnings": "Earnings",
+    "/instructor/account": "Profile",
 };
 
 function getPageTitle(pathname: string): string {
@@ -47,8 +54,7 @@ function getPageTitle(pathname: string): string {
 export default function Header() {
     const pathname = usePathname();
     const pageTitle = getPageTitle(pathname);
-
-    const isDashboard = pathname === "/admin/dashboard";
+    const [searchOpen, setSearchOpen] = useState(false);
 
     return (
         <header className="h-[80px] bg-white flex items-center px-[24px] py-[20px] flex-shrink-0">
@@ -57,20 +63,21 @@ export default function Header() {
                 {pageTitle}
             </h1>
 
-            {/* Right: Search (dashboard only) + Bell */}
+            {/* Right: Search trigger (every page) + Bell */}
             <div className="flex items-center gap-[12px]">
-                {isDashboard && (
-                    <div className="relative w-[280px]">
-                        <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            className="h-10 w-full pl-[40px] pr-[14px] bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0_1px_2px_rgba(16,24,40,0.05)]"
-                        />
-                    </div>
-                )}
+                <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    aria-label="Open global search"
+                    className="relative w-[280px] h-10 pl-[40px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-left text-[14px] text-[#667085] hover:border-[#7ba08c] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0_1px_2px_rgba(16,24,40,0.05)]"
+                >
+                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
+                    Search for anything…
+                </button>
                 <NotificationBell />
             </div>
+
+            <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
         </header>
     );
 }

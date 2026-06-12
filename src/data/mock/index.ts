@@ -64,6 +64,12 @@ export { payment_methods } from "./payment_methods";
 // Class catalog (FK → class_categories, memberships, packages)
 export { class_templates } from "./class_templates";
 
+// Booking rules — global classes settings (no FKs; single-row config)
+export { classes_settings } from "./classes_settings";
+
+// Booking rules — cancellation & no-show policies (no FKs)
+export { cancellation_policies } from "./cancellation_policies";
+
 // Schedule (FK → class_templates, branches, rooms, staff_profiles)
 export { class_schedule } from "./class_schedule";
 
@@ -91,6 +97,12 @@ export { notification_settings } from "./notification_settings";
 
 // In-app notification records (PRD 12 §6.1) — feed for bell + /admin/notifications
 export { notifications } from "./notifications";
+// Instructor-scoped notification records (audience: "instructor") — feed for
+// the instructor bell + /instructor/notifications page.
+export { notifications_instructor } from "./notifications_instructor";
+// Per-instructor calendar integrations — Google / Apple — drives the
+// Integrations tab on /instructor/account.
+export { instructor_integrations } from "./instructor_integrations";
 
 // Referral settings (PRD 11 §11) — global referral program config
 export { referral_settings } from "./referral_settings";

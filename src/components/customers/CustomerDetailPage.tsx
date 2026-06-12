@@ -916,7 +916,9 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
 
     // ─── Plan action handlers ───────────────────────────────────────────────
     function handleFreeze(plan: CustomerPlan, startISO: string, endISO: string) {
-        freezeCustomerPlan(plan.id, startISO, endISO);
+        // Customer detail is an admin surface — attribute the freeze
+        // there so the Frozen package report shows "Admin" for this row.
+        freezeCustomerPlan(plan.id, startISO, endISO, "admin");
         setPlanModal(null);
         showToast(
             "Membership has been frozen",

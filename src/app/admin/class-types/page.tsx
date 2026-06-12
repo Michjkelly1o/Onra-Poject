@@ -8,7 +8,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, CLASS_CATEGORIES } from "@/lib/store";
+import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -19,9 +19,9 @@ type LocationType = "Group" | "Private";
 
 
 const ALL_STATUSES: TemplateStatus[] = ["Active", "Archived", "Inactive"];
-// Filter categories come from the live `class_categories` seed so the filter
-// only ever offers categories that real templates can actually have.
-const ALL_CATEGORIES = CLASS_CATEGORIES.map(c => c.name);
+// Filter categories come from the LIVE `classCategories` store slice
+// (Phase 4 wiring) so adding / editing / deleting categories in the
+// Booking Rules module reflects here on the same render.
 const LOCATION_TYPES: LocationType[] = ["Group", "Private"];
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -43,6 +43,10 @@ function StatusBadge({ status }: { status: TemplateStatus }) {
 
 function ClassTemplateCard({ template }: { template: ClassTemplate }) {
     const router = useRouter();
+    // Effective banner — template's own upload, else the parent category's
+    // image (Phase 4 sync), else nothing.
+    const classCategories = useAppStore(s => s.classCategories);
+    const effectiveCover  = resolveTemplateCoverImage(template, classCategories);
     return (
         <div
             onClick={() => router.push(`/class-types/${template.id}`)}
@@ -53,9 +57,9 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
             )}>
             {/* Banner */}
             <div className="relative h-[156px] w-full overflow-hidden shrink-0" style={{ backgroundColor: template.coverColor }}>
-                {template.coverImage && (
+                {effectiveCover && (
                     <img
-                        src={template.coverImage}
+                        src={effectiveCover}
                         alt={template.name}
                         className={cn("absolute inset-0 w-full h-full object-cover", template.status === "Inactive" && "grayscale")}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -133,6 +137,8 @@ interface FilterPanelProps {
 }
 
 function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
+    // Live category list — drives the Categories pill row below.
+    const allCategories = useAppStore(s => s.classCategories).map(c => c.name);
     const [pending, setPending] = useState<FilterState>({ statuses: [], categories: [] });
 
     // Sync pending from applied when panel opens
@@ -198,7 +204,7 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Categories</p>
                         <div className="flex flex-wrap gap-2">
-                            {ALL_CATEGORIES.map(c => (
+                            {allCategories.map(c => (
                                 <Pill
                                     key={c}
                                     label={c}

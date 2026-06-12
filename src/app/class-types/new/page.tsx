@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore, CLASS_CATEGORIES, type Membership, type Package } from "@/lib/store";
+import { useAppStore, type Membership, type Package } from "@/lib/store";
 import {
     XClose, UploadCloud02, Grid01, User01,
     ClockFastForward, Users01,
@@ -19,9 +19,9 @@ type TemplateStatus = "Active" | "Archived" | "Inactive";
 type LocationType   = "Group" | "Private";
 
 const CLASS_TYPES: LocationType[] = ["Group", "Private"];
-// Sourced from the live `class_categories` seed so the dropdown always
-// matches real categories (and resolves to a valid `categoryId` on create).
-const CATEGORIES = CLASS_CATEGORIES.map(c => c.name);
+// Categories are read from the LIVE `classCategories` store slice inside
+// the component (Phase 4) so add / edit / delete in Booking Rules
+// surfaces here on the same render.
 
 // Membership items for step 2 — built from LIVE store state so the picker
 // reflects products the admin has just added / deactivated / archived in
@@ -311,10 +311,14 @@ function BasicInformationStep({
     data,
     onChange,
     onContinue,
+    categoryOptions,
 }: {
     data: Step1Data;
     onChange: (d: Partial<Step1Data>) => void;
     onContinue: () => void;
+    /** Live category list — passed in so this step doesn't re-subscribe to
+     *  the store. Phase 4 wiring (Booking Rules → class template). */
+    categoryOptions: string[];
 }) {
     const canContinue =
         data.name.trim() &&
@@ -377,7 +381,7 @@ function BasicInformationStep({
                                 placeholder="Select class category"
                                 value={data.category}
                                 onChange={v => onChange({ category: v })}
-                                options={CATEGORIES.map(o => ({ value: o, label: o }))}
+                                options={categoryOptions.map(o => ({ value: o, label: o }))}
                                 width="w-full"
                             />
                         </FormField>
@@ -544,7 +548,9 @@ export default function NewClassTemplatePage() {
     // Live store-derived items so newly-created memberships/packages in the
     // Memberships & Packages module appear in the picker without a refresh.
     const allMemberships = useAppStore(s => s.memberships);
-    const allPackages = useAppStore(s => s.packages);
+    const allPackages    = useAppStore(s => s.packages);
+    const classCategories = useAppStore(s => s.classCategories);
+    const categoryOptions = classCategories.map(c => c.name);
     const membershipItems = buildMembershipItems(allMemberships, allPackages);
 
     function handleToggle(id: string) {
@@ -562,7 +568,7 @@ export default function NewClassTemplatePage() {
     const { addClassTemplate, showToast } = useAppStore();
 
     function handleCreate() {
-        const cat = CLASS_CATEGORIES.find(c => c.name === step1.category);
+        const cat = classCategories.find(c => c.name === step1.category);
         const membershipIds = selectedMemberships.filter(x => allMemberships.some(m => m.id === x));
         const packageIds    = selectedMemberships.filter(x => allPackages.some(p => p.id === x));
         addClassTemplate({
@@ -630,6 +636,7 @@ export default function NewClassTemplatePage() {
                                 data={step1}
                                 onChange={d => setStep1(prev => ({ ...prev, ...d }))}
                                 onContinue={() => setStep(2)}
+                                categoryOptions={categoryOptions}
                             />
                         ) : (
                             <ApplicableMembershipsStep

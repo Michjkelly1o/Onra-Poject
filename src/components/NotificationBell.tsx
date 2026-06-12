@@ -25,6 +25,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bell01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { instructor_profile } from "@/data/mock/instructor_profile";
 import { cn } from "@/lib/utils";
 import { iconForNotification, relativeTime, routeForNotification } from "./notifications/notification-utils";
 
@@ -35,6 +36,8 @@ export default function NotificationBell() {
     const router = useRouter();
     const notifications        = useAppStore(s => s.notifications);
     const markNotificationRead = useAppStore(s => s.markNotificationRead);
+    const currentRole          = useAppStore(s => s.currentRole);
+    const currentUser          = useAppStore(s => s.currentUser);
 
     const [open, setOpen] = useState(false);
     const wrapRef = useRef<HTMLDivElement>(null);
@@ -48,8 +51,27 @@ export default function NotificationBell() {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
+    // Audience-scoped feed — instructor sees only instructor rows; admin
+    // sees admin rows (and legacy rows where audience is undefined). For
+    // instructor rows there's a second filter on `targetInstructorId`
+    // so each instructor sees ONLY notifications for their own classes
+    // — without this, every instructor's bell would surface every other
+    // instructor's cancellations.
+    const isInstructor = currentRole === "instructor";
+    const currentStaffId = (currentUser as typeof currentUser & { staff_profile_id?: string }).staff_profile_id
+        ?? instructor_profile.staff_profile_id;
+    const scoped = notifications.filter(n => {
+        if (isInstructor) {
+            if (n.audience !== "instructor") return false;
+            // Backwards-compat: rows without a `targetInstructorId` (legacy
+            // seeds, system-wide events) stay visible to every instructor.
+            return !n.targetInstructorId || n.targetInstructorId === currentStaffId;
+        }
+        return n.audience !== "instructor";
+    });
+
     // Newest first — the dropdown shows the most recent slice.
-    const sorted = [...notifications].sort(
+    const sorted = [...scoped].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     const visible = sorted.slice(0, DROPDOWN_MAX);
@@ -65,7 +87,7 @@ export default function NotificationBell() {
 
     function handleViewAll() {
         setOpen(false);
-        router.push("/admin/notifications");
+        router.push(isInstructor ? "/instructor/notifications" : "/admin/notifications");
     }
 
     return (

@@ -16,14 +16,21 @@
 // Only "present" attendees can rate — every rating below has a corresponding
 // `present` booking in class_bookings.ts.
 //
+// Liam's rich-data ratings live in
+// [prototype_demo_data.ts](src/data/mock/prototype_demo_data.ts) under
+// `DEMO_NOW_LIAM_RATINGS` so they auto-anchor to the current real date
+// alongside their parent schedules.
+//
 // FKs:
 //   class_schedule_id → class_schedule.id
 //   customer_id       → customers.id
 //   instructor_id     → staff_profiles.id
 
 import type { ClassRating } from "./_types";
+import { DEMO_NOW_LIAM_RATINGS } from "./prototype_demo_data";
 
 export const class_ratings: ClassRating[] = [
+    ...DEMO_NOW_LIAM_RATINGS,
     // ── Row 1: Reformer Pilates 2026-05-08 (Sara) — 3 visible ratings + 1 deleted ──
     {
         id: "rt_001",

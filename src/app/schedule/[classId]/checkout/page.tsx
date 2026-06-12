@@ -126,7 +126,7 @@ function ScheduleCheckoutInner() {
      *  paymentSuccess handler clears pendingPurchase after the modal re-opens. */
     function handleComplete() {
         if (!customer || !pendingPurchase) return;
-        applyPurchase(customer.id, pendingPurchase.items);
+        applyPurchase(customer.id, pendingPurchase.items, "pos");
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }
 

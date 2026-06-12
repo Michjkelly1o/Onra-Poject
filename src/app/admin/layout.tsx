@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { account_profile } from "@/data/mock/account_profile";
 
 export default function AdminLayout({
     children,
@@ -12,6 +14,15 @@ export default function AdminLayout({
     children: React.ReactNode;
 }) {
     const { sidebarCollapsed } = useAppStore();
+    const currentRole = useAppStore(s => s.currentRole);
+    const setCurrentUser = useAppStore(s => s.setCurrentUser);
+
+    // URL-driven role reset — if the user came in from a previous
+    // `/instructor/*` visit, flip `currentUser` back to the admin demo
+    // persona so the welcome chip and avatar render the right identity.
+    useEffect(() => {
+        if (currentRole !== "admin") setCurrentUser(account_profile);
+    }, [currentRole, setCurrentUser]);
 
     return (
         <>

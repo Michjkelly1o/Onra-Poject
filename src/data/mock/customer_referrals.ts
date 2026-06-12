@@ -15,8 +15,10 @@
 // FK: `referrer_customer_id` → customers.id
 
 import type { CustomerReferral } from "./_types";
+import { DEMO_NOW_REFERRALS } from "./prototype_demo_data";
 
 export const customer_referrals: CustomerReferral[] = [
+    ...DEMO_NOW_REFERRALS,
     // ── Ahmed Zayn — 2 referrals ─────────────────────────────────────────────
     {
         id: "ref_ahmed_1",

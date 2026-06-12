@@ -25,8 +25,8 @@ import {
     UserCircle,
 } from "@untitledui/icons";
 
-type NavChild = { label: string; href: string };
-type NavItemDef = {
+export type NavChild = { label: string; href: string };
+export type NavItemDef = {
     label: string;
     href?: string;
     icon: React.FC<{ className?: string }>;
@@ -94,7 +94,10 @@ const NAV_ITEMS: NavItemDef[] = [
 // `/admin/settings/account` would prefix-match the Settings → "Business &
 // locations" child (`/admin/settings`) and light up the Settings group while
 // the user is viewing their account page.
-const USER_MENU_ROUTES = ["/admin/settings/account"];
+//
+// Instructor variant adds `/instructor/account` so the bottom popover's
+// "Account settings" link doesn't double-light the instructor nav.
+const USER_MENU_ROUTES = ["/admin/settings/account", "/instructor/account"];
 function isUserMenuRoute(pathname: string): boolean {
     return USER_MENU_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
 }
@@ -153,10 +156,23 @@ function SlimNavItem({ label, enabled, children }: {
     );
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+    /** Override the nav items. Defaults to the admin nav array. The
+     *  instructor layout passes its own list (Dashboard / Schedule /
+     *  Earnings / Account settings) so the same component drives both
+     *  experiences with zero duplication. */
+    navItems?: NavItemDef[];
+    /** Override the bottom user-menu "Account settings" link. Defaults
+     *  to the admin account route. */
+    accountHref?: string;
+}
+
+export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
+    const effectiveNavItems = navItems ?? NAV_ITEMS;
+    const effectiveAccountHref = accountHref ?? "/admin/settings/account";
     // Phase 3 sync — brand label uses the centralized `brandingSettings`.
     // Editing the display name through Settings → Branding → Customize
     // design settings flips this immediately.
@@ -166,7 +182,7 @@ export default function Sidebar() {
     // All open groups tracked here — no sub-component state
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
         const init: Record<string, boolean> = {};
-        NAV_ITEMS.forEach((item) => {
+        effectiveNavItems.forEach((item) => {
             if (item.children) {
                 const anyChildActive = item.children.some(
                     (c) => pathname === c.href || pathname.startsWith(c.href + "/")
@@ -193,7 +209,7 @@ export default function Sidebar() {
             : "Admin"
             }&background=c4edd6&color=0c2d34&bold=true`;
 
-    const visibleItems = NAV_ITEMS.filter((item) => {
+    const visibleItems = effectiveNavItems.filter((item) => {
         if (!item.permission) return true;
         if (currentUser.permissions?.includes("all")) return true;
         return currentUser.permissions?.includes(item.permission ?? "");
@@ -420,7 +436,7 @@ export default function Sidebar() {
                 {/* Hover popover */}
                 <div className="absolute bottom-5 left-[calc(100%+8px)] w-52 bg-white rounded-xl border border-[#e4e7ec] shadow-lg opacity-0 invisible group-hover/acct:opacity-100 group-hover/acct:visible transition-all duration-150 z-50 overflow-hidden">
                     <Link
-                        href="/admin/settings/account"
+                        href={effectiveAccountHref}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-[#344054] hover:bg-[#f9fafb] border-b border-[#f2f4f7]"
                     >
                         <UserCircle className="w-4 h-4 text-[#667085]" />

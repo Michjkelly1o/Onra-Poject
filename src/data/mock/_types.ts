@@ -100,7 +100,91 @@ export interface BusinessHours {
     is_closed: boolean;
 }
 
-// ─── Staff ──────────────────────────────────────────────────────────────────
+// ─── Booking Rules — Classes settings (PRD 11 §6) ──────────────────────────
+
+/** Global classes-settings record. Single row per studio — the Customize
+ *  classes settings 3-step page (Booking window / SMS cutoff window /
+ *  Overbooking) reads from + writes to this same row. Landing-page summary
+ *  cards (`/admin/settings/booking-rules`, the Classes container) read the
+ *  display values directly. Connections per the brief:
+ *    • bookings_open / bookings_close → schedule form (advance booking
+ *      window enforcement) + member booking flow
+ *    • waitlist_* → booking cancel flow (auto-promotion behaviour) +
+ *      waitlist tab on class detail
+ *    • refund_class_session → booking cancel flow (credit refund timing)
+ *    • sms_cutoff_* → notification dispatch (Module 12)
+ *    • overbooking_* + auto_cancel_* → schedule capacity enforcement
+ *  Phase 4 wires every consumer; Phase 1 only persists the values. */
+export interface ClassesSettings {
+    id: string;                                   // "classes_settings_default"
+    // ── Step 1 — Booking window ────────────────────────────────────────────
+    booking_open_value: number;                   // 7
+    booking_open_unit: "days" | "hours" | "minutes";        // "days"
+    booking_close_value: number;                  // 1
+    booking_close_unit: "hours" | "minutes";      // "minutes"
+    // ── Step 1 — Auto-submit attendance ────────────────────────────────────
+    auto_submit_attendance_value: number;         // 2
+    auto_submit_attendance_unit: "hours" | "minutes";       // "hours"
+    // ── Step 1 — Waitlist ──────────────────────────────────────────────────
+    waitlist_enabled: boolean;                    // true
+    waitlist_mode: "inform_everyone" | "auto_book_first";   // "inform_everyone"
+    /** Only respected when waitlist_mode === "auto_book_first" — the input
+     *  is shown disabled in the other mode (Figma 7228:47890). */
+    notify_waitlist_value: number;                // 2
+    notify_waitlist_unit: "hours" | "minutes";    // "hours"
+    max_waiting_spots: number;                    // 10
+    refund_class_session: "immediately" | "after_class_ends" | "next_business_day"; // "immediately"
+    // ── Step 2 — SMS cutoff window ─────────────────────────────────────────
+    sms_cutoff_enabled: boolean;                  // true
+    sms_cutoff_value: number;                     // 2
+    sms_cutoff_unit: "hours" | "minutes";         // "hours"
+    sms_cutoff_note: string;                      // customer-facing copy
+    // ── Step 3 — Overbooking ───────────────────────────────────────────────
+    overbooking_enabled: boolean;                 // true
+    overbooking_mode: "fixed" | "percentage";     // "fixed"
+    overbooking_fixed_value: number;              // 10
+    overbooking_percentage_value: number;         // 0
+    auto_cancel_enabled: boolean;                 // true
+    auto_cancel_value: number;                    // 2
+    auto_cancel_unit: "hours" | "minutes";        // "minutes"
+    notify_overbooked_enabled: boolean;           // true
+}
+
+// ─── Booking Rules — Cancellation & no-show policies (PRD 11 §6.1) ────────
+
+/** Top-level policy bucket — drives which of the two policy-choice radio
+ *  groups is shown on the form (Figma 4580:30598 step 1). */
+export type PolicyType = "cancellation" | "no_show";
+
+/** Cancellation-policy choice — only set when `type === "cancellation"`.
+ *  `fee_if_late` reveals the "Cancel window" hours/minutes input on the
+ *  form (Figma 7228:48716). */
+export type CancellationChoice = "anytime_no_charge" | "fee_if_late";
+
+/** No-show-policy choice — only set when `type === "no_show"`.
+ *  `charge_session` reveals the "Charge class session" currency input on
+ *  the form (Figma 7228:48751). */
+export type NoShowChoice = "no_charge" | "charge_session";
+
+/** One row per saved policy. The four Figma content variants
+ *  (Cancellation × 2 choices, No-show × 2 choices) all map to one row
+ *  shape — the extra inputs (`cancel_window_*` / `charge_class_session`)
+ *  are only populated for the variant that uses them. Phase 4 wires
+ *  these into the booking-cancel flow + booking-no-show flow. */
+export interface CancellationPolicy {
+    id: string;
+    name: string;
+    type: PolicyType;
+    // Conditional payload — set per variant; left undefined otherwise.
+    cancellation_choice?: CancellationChoice;
+    cancel_window_value?: number;                       // "fee_if_late"
+    cancel_window_unit?: "hours" | "minutes";           // "fee_if_late"
+    no_show_choice?: NoShowChoice;
+    charge_class_session?: number;                      // "charge_session"
+    created_at: string;
+}
+
+// ─── Booking Rules — Classes settings (PRD 11 §6) ──────────────────────────
 
 /** Instructor / staff profile. For now we only seed instructors. */
 export interface StaffProfile {
@@ -284,6 +368,9 @@ export interface CustomerPlan {
     // ── Freeze ──
     freeze_start_iso?: string;
     freeze_end_iso?: string;
+    /** Origin surface that initiated the freeze. Drives the All frozen
+     *  packages + Freeze impact "Freeze source" column. */
+    freeze_source?: "customer_portal" | "admin" | "front_desk";
     // ── Complimentary grant ──
     /** Number of free credits granted — complimentary plans only. */
     free_credits?: number;
@@ -347,6 +434,9 @@ export interface CustomerTransaction {
     status: "complete" | "pending" | "failed" | "refunded";
     /** Method the customer paid with at purchase time. */
     payment_method: "card" | "cash";
+    /** Origin surface that processed the payment. Drives the Payments
+     *  + Total sales "Payment source" column. */
+    payment_source?: "pos" | "customer_portal" | "admin";
     /** ISO 8601 — when the transaction was created. */
     created_at: string;
     // ─ Refund (set when status === "refunded") ───────────────────────────
@@ -714,6 +804,11 @@ export interface ClassCategory {
     /** Resolved hex from tokens.json (Brand primary/secondary/tertiary or Teal). */
     color_hex: string;
     status: "active" | "inactive";
+    /** Optional data-URL or remote URL for the category avatar. Populated by
+     *  the Service category modal's "Upload image" flow (Booking Rules
+     *  Phase 3). When empty the list row and the modal preview both fall
+     *  back to a placeholder image-icon avatar. */
+    image_url?: string;
     // +later: branch_id (if categories become per-branch)
 }
 
@@ -821,6 +916,15 @@ export interface ClassBooking {
     plan_kind_used?: "membership" | "package";
     /** FK to memberships.id or packages.id depending on `plan_kind_used`. */
     plan_id_used?: string;
+    /** Origin surface where the booking was created. Drives the Reports
+     *  module "Booking source" column + the future class-detail per-
+     *  attendee source badge. */
+    booking_source?: "customer_portal" | "admin" | "front_desk" | "pos";
+    /** Origin surface that cancelled the booking — set when
+     *  `status === "cancelled"` OR `attendance_status === "late_cancel"`.
+     *  Drives the All cancellations / All bookings "Cancelled source"
+     *  column. */
+    cancelled_source?: "customer_portal" | "admin" | "front_desk" | "system";
 }
 
 /** Class rating (one per booked customer per class). */
@@ -875,6 +979,10 @@ interface PayRateBaseSeed {
     /** Staff assignments + payroll uses combined. Delete gate is `0`. */
     usage_count: number;
     created_at?: string;
+    /** Optional per-rate tax override (PRD 11 §10 / Module 10 §6.3).
+     *  Maps to `tax_rates.id`. Unset = "No tax rate" — inherits the
+     *  global pay-rate tax rule. */
+    tax_rate_id?: string;
     // +later: archived_at, superseded_by_id, version, notes
 }
 
@@ -1148,7 +1256,14 @@ export interface NotificationSettingSeed {
 // ─── Notification records (in-app feed — PRD 12 §6.1) ────────────────────────
 
 /** The exact event the notification represents. Drives icon + title + which
- *  module the click-through navigates to. */
+ *  module the click-through navigates to.
+ *
+ *  Admin events: booking_confirmation / late_cancellation / no_show /
+ *  waitlist_promoted / class_cancelled / payment_confirmed / refund_processed.
+ *
+ *  Instructor-only events: new_booking / class_full / cancellation /
+ *  payment_earned / weekly_earnings — these surface ONLY in the instructor
+ *  notification feed (filtered by `audience === "instructor"`). */
 export type NotificationEventSeed =
     | "booking_confirmation"
     | "late_cancellation"
@@ -1156,32 +1271,67 @@ export type NotificationEventSeed =
     | "waitlist_promoted"
     | "class_cancelled"
     | "payment_confirmed"
-    | "refund_processed";
+    | "refund_processed"
+    // ── Instructor events ──
+    | "new_booking"
+    | "class_full"
+    | "cancellation"
+    | "payment_earned"
+    | "weekly_earnings"
+    // ── Admin → instructor sync events (Phase 4 extension) ──
+    //    Fired by admin mutators that change something on the instructor's
+    //    side. Each emit pairs an admin row (audit trail) with an
+    //    instructor row scoped via `targetInstructorId`.
+    | "class_scheduled"     // new class assigned to instructor
+    | "class_rescheduled"   // class moved / time / room / instructor change
+    | "pay_rate_assigned"   // instructor reassigned to a different pay rate
+    | "pay_rate_updated";   // existing pay rate's amount or name changed
 
-/** Tab grouping on the notifications page (matches Figma's All / Bookings /
- *  Payments tabs). Pure presentation field — kept on the row so a single
- *  filter expression can drive the tab badges. */
-export type NotificationTabSeed = "booking" | "payment";
+/** Tab grouping on the notifications page.
+ *
+ *  Admin tabs (`/admin/notifications`): All / Bookings / Payments
+ *    → row.tab is "booking" or "payment".
+ *
+ *  Instructor tabs (`/instructor/notifications`): All / Bookings / Earnings
+ *    → row.tab is "booking" or "earnings".
+ *
+ *  Pure presentation field — kept on the row so a single filter expression
+ *  can drive the tab badges. */
+export type NotificationTabSeed = "booking" | "payment" | "earnings";
 
 /** Featured-icon glyph rendered in the 48px (page) / 40px (dropdown) tile.
- *  Mapped to a `@untitledui/icons` component at render time. */
+ *  Mapped to a `@untitledui/icons` component at render time.
+ *
+ *  `bank-note` is used by the instructor earnings notifications (payment
+ *  earned, weekly summary). */
 export type NotificationIconSeed =
     | "calendar-check"
     | "calendar-minus"
     | "user-x"
     | "credit-card"
     | "refresh"
-    | "calendar-x";
+    | "calendar-x"
+    | "bank-note";
 
 /** Which module the click-through should navigate to. Pairs with `source_id`
  *  to build the destination URL (e.g. `/schedule/{source_id}` for class). */
 export type NotificationSourceSeed = "booking" | "class" | "transaction";
+
+/** Who the notification is for. Drives audience-scoped feed filtering:
+ *  the admin bell + `/admin/notifications` page show "admin" (and legacy
+ *  undefined) rows; the instructor bell + `/instructor/notifications`
+ *  page show "instructor" rows. Existing rows pre-dating this field stay
+ *  undefined and behave like admin notifications. */
+export type NotificationAudienceSeed = "admin" | "instructor";
 
 /** One row per in-app notification record. This is the **feed** table —
  *  separate from `notification_settings` which configures customer-facing
  *  channel/template config. */
 export interface NotificationSeed {
     id: string;
+    /** Audience scope — see `NotificationAudienceSeed`. Optional; treat
+     *  undefined as "admin" so legacy seeds keep working unchanged. */
+    audience?: NotificationAudienceSeed;
     /** Tab grouping — "booking" for booking/class events, "payment" for sale
      *  & refund events. */
     tab: NotificationTabSeed;
@@ -1211,6 +1361,12 @@ export interface NotificationSeed {
      *  `class_cancelled`, `late_cancellation`, `no_show`, and
      *  `waitlist_promoted` events. */
     class_schedule_id?: string;
+    /** Specific instructor the notification is attributed to (FK to
+     *  `staff_profiles.id`). Populated when `audience === "instructor"`
+     *  so the instructor bell + page can filter to a single staff
+     *  member — without this, every instructor would see every other
+     *  instructor's cancellations. Undefined for admin rows. */
+    target_instructor_id?: string;
     /** Customer transaction id — populated for payment events so the
      *  click-through opens the customer profile with the receipt visible. */
     transaction_id?: string;
@@ -1219,6 +1375,42 @@ export interface NotificationSeed {
     is_read: boolean;
     /** ISO timestamp — drives "Today/Past" sectioning and "2 min ago". */
     created_at: string;
+}
+
+// ─── Instructor integrations (per-instructor calendar sync) ────────────────
+//
+// Distinct from the studio-level `integrations` table (which holds
+// org-wide providers like Stripe / Google Analytics / WhatsApp). Each row
+// here pairs ONE instructor with ONE calendar provider — Liam's Google
+// Calendar is a different record from Maya's, because the OAuth tokens
+// would belong to each instructor's account.
+//
+// When this app moves to Supabase, this becomes the
+// `instructor_integrations` table with a (staff_profile_id, slug) unique
+// constraint.
+
+/** Calendar providers the instructor can connect — narrower than the
+ *  studio integration `slug` because instructor-side sync is calendar-only. */
+export type InstructorIntegrationSlugSeed = "google_calendar" | "apple_calendar";
+
+/** Same `connected | not_connected` shape the studio integrations use, so
+ *  the rendered "Connected" badge + button-state branches stay shareable. */
+export type InstructorIntegrationStatusSeed = "connected" | "not_connected";
+
+export interface InstructorIntegrationSeed {
+    id: string;
+    /** FK → `staff_profiles.id`. Drives per-instructor scoping in the
+     *  store + on the instructor's Integrations tab. */
+    staff_profile_id: string;
+    slug: InstructorIntegrationSlugSeed;
+    status: InstructorIntegrationStatusSeed;
+    /** ISO timestamp when the instructor connected the provider.
+     *  Cleared on disconnect. */
+    connected_at?: string;
+    /** Account identifier the provider returned at connect time —
+     *  rendered on the View modal so the instructor can confirm which
+     *  account is linked. */
+    account_label?: string;
 }
 
 // ─── Tax module (PRD 11 §10) ─────────────────────────────────────────────────

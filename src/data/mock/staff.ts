@@ -146,7 +146,11 @@ export const staff: StaffSeed[] = [
     {
         id: "staff_liam_chen",
         first_name: "Liam", last_name: "Chen", full_name: "Liam Chen",
-        email: "liam@formastudio.ae", phone: "+971 55 200 2002",
+        // Aligned with `instructor_profile.ts` so the Edit profile cascade
+        // in `updateAccountProfile` operates against a consistent baseline
+        // (Phase 4 centralization audit). Edits made on /instructor/account
+        // propagate here through that cascade.
+        email: "liam@email.com", phone: "+971 55 200 2001",
         initials: "LC", color_hex: "#4b8c9a",
         image_url: "/images/instructors/liam-chen.webp",
         role_id: "role_instructor_south",

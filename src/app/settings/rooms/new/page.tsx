@@ -13,9 +13,13 @@ export default function NewRoomRoute() {
 }
 
 function NewRoomInner() {
-    // When the user enters via a branch row's "Add room" action, the parent
-    // branch is pre-selected through the `branchId` query param.
-    const params = useSearchParams();
+    // When the user enters via a branch row's "Add room" action OR via the
+    // schedule form's location dropdown, the parent branch is pre-selected
+    // through the `branchId` query param. `returnTo` lets the entry point
+    // (e.g. the schedule form) tell the form where to redirect after
+    // Save / Cancel so the admin lands back where they came from.
+    const params   = useSearchParams();
     const branchId = params.get("branchId") ?? undefined;
-    return <RoomFormPage mode="create" defaultBranchId={branchId} />;
+    const returnTo = params.get("returnTo") ?? undefined;
+    return <RoomFormPage mode="create" defaultBranchId={branchId} returnTo={returnTo} />;
 }

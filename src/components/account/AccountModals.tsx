@@ -44,13 +44,14 @@ import {
     splitPhone,
     type PhoneCountry,
 } from "@/components/customers/CustomerFormPage";
+import { isValidEmail } from "@/lib/validation";
 
 // ─── Shell primitives ───────────────────────────────────────────────────────
 
 /** Shared modal overlay + card. The two shell variants in the Figma differ
  *  only in their header shape — left-aligned title (Edit profile) vs centered
  *  featured-icon + title + supporting text (verification flows). */
-function ModalShell({
+export function ModalShell({
     onClose,
     children,
     width = 400,
@@ -91,7 +92,7 @@ function ModalShell({
 
 /** Left-aligned modal header — used by Edit profile only.
  *  Title at top, then a 20px gap and a 1px divider line. */
-function ModalHeaderLeft({ title }: { title: string }) {
+export function ModalHeaderLeft({ title }: { title: string }) {
     return (
         <div className="flex flex-col w-full">
             <div className="pt-6 px-6 pb-0">
@@ -137,7 +138,7 @@ function FeaturedIcon({ children }: { children: React.ReactNode }) {
 /** Two-button footer: Cancel (secondary-gray) + a primary/disabled action.
  *  Both buttons split the width 50/50. The primary action's label and
  *  disabled state are passed in by the caller. */
-function ModalFooter({
+export function ModalFooter({
     onCancel,
     onPrimary,
     primaryLabel,
@@ -186,7 +187,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     );
 }
 
-function LabeledInput({
+export function LabeledInput({
     label,
     value,
     onChange,
@@ -567,7 +568,11 @@ export function ChangeEmailNewModal({
 }) {
     const [newEmail, setNewEmail] = useState("");
     const [password, setPassword] = useState("");
-    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim());
+    // Use the shared validator so every form (Account → Change email,
+    // Customer create, Staff create, Instructor Edit profile) gates on
+    // the SAME rule.
+    const validEmail = isValidEmail(newEmail);
+    const emailDirty = newEmail.trim().length > 0;
     const ready = validEmail && password.length > 0;
     return (
         <ModalShell onClose={onClose}>
@@ -577,14 +582,21 @@ export function ChangeEmailNewModal({
                 supporting="Enter the new email address to update your account."
             />
             <div className="flex flex-col gap-4 px-6 py-5 w-full">
-                <LabeledInput
-                    label="Email address"
-                    value={newEmail}
-                    onChange={setNewEmail}
-                    placeholder="Enter email address"
-                    type="email"
-                    autoFocus
-                />
+                <div className="flex flex-col gap-1.5 w-full">
+                    <LabeledInput
+                        label="Email address"
+                        value={newEmail}
+                        onChange={setNewEmail}
+                        placeholder="Enter email address"
+                        type="email"
+                        autoFocus
+                    />
+                    {emailDirty && !validEmail && (
+                        <p className="text-[14px] text-[#b42318] leading-5">
+                            Please enter a valid email address.
+                        </p>
+                    )}
+                </div>
                 <PasswordInput
                     label="Current password"
                     value={password}

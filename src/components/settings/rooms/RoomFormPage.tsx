@@ -21,16 +21,23 @@ import {
 } from "@/components/settings/business/StudioProfileFormPage";
 import { SeatingChartView } from "@/components/settings/rooms/SeatingChartView";
 
-const RETURN_ROUTE = "/admin/settings";
+const DEFAULT_RETURN_ROUTE = "/admin/settings";
 
-export function RoomFormPage({ mode, roomId, defaultBranchId }: {
+export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
     mode: "create" | "edit";
     roomId?: string;
     /** When the create form is opened from a branch's "Add room" row
      *  action, the parent branch is pre-selected. */
     defaultBranchId?: string;
+    /** Optional path to navigate to on Close / Save. When omitted, falls
+     *  back to the Business & Locations landing (the default for the
+     *  "+ Add room" affordance there). Schedule form pushes this so the
+     *  admin lands back on their in-progress schedule, not the Settings
+     *  page. */
+    returnTo?: string;
 }) {
     const router = useRouter();
+    const RETURN_ROUTE = returnTo || DEFAULT_RETURN_ROUTE;
     const showToast = useAppStore(s => s.showToast);
     const branches = useAppStore(s => s.branches);
     const rooms = useAppStore(s => s.rooms);

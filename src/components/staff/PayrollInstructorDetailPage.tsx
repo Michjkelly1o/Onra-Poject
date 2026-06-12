@@ -42,6 +42,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, type DateRange } from "@/lib/period-filter";
+import { earningsForClass, aed } from "@/lib/payroll-calc";
 import { Toast } from "@/components/ui/Toast";
 import {
     useAppStore, computePayRateDisplay,
@@ -50,10 +51,12 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
-
-function aed(n: number): string {
-    return `AED ${Math.round(n).toLocaleString("en-US")}`;
-}
+//
+// `aed()` + `earningsForClass()` are now imported from `@/lib/payroll-calc`
+// — the single source of truth shared with the instructor Earnings page
+// (Phase 3 centralization). When the math changes (different attendee
+// proxy, real attendance, new pay-rate type), edit the helper once and
+// both surfaces pick it up.
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -381,37 +384,11 @@ function scheduleInRange(s: ClassSchedule, r: DateRange): boolean {
 //   • Monthly         → fixedSalary / classes_in_month (approx for prototype)
 //
 // Cancelled classes earn 0 (PRD 10 §8 — substitute logic deferred).
-
-function earningsForClass(s: ClassSchedule, payRate: PayRate | undefined, classesInMonth: number = 1): number {
-    if (!payRate || s.status === "Cancelled") return 0;
-    if (s.status !== "Completed") return 0; // Upcoming / Ongoing don't earn yet
-    const attendees = s.booked; // approximation — real attendance comes from class_bookings
-    switch (payRate.type) {
-        case "flat":    return payRate.flatAmount;
-        case "tiered": {
-            const tier = payRate.tiers.find(t => attendees >= t.from && attendees <= t.to);
-            return tier?.aed ?? 0;
-        }
-        case "revenue": {
-            // Prototype: assume class revenue ≈ attendees × 150 AED (avg drop-in).
-            const classRevenue = attendees * 150;
-            return classRevenue * (payRate.splitPercent / 100) + attendees * (payRate.payPerCustomer ?? 0);
-        }
-        case "hybrid": {
-            const base = payRate.baseRate;
-            if (payRate.condition.kind === "bonus_attendance") {
-                const bonus = attendees >= payRate.condition.bonusThreshold
-                    ? attendees * payRate.condition.bonusPerCustomer : 0;
-                return base + bonus;
-            }
-            const classRevenue = attendees * 150;
-            return base + classRevenue * (payRate.condition.splitPercent / 100);
-        }
-        case "monthly":
-            // Monthly salary divided evenly across the month's classes.
-            return classesInMonth > 0 ? payRate.fixedSalary / classesInMonth : 0;
-    }
-}
+//
+// Math lives in `@/lib/payroll-calc` (Phase 3 centralization). Both this
+// page and the instructor Earnings page import the same `earningsForClass`,
+// so the per-class number is guaranteed identical whichever surface you
+// open the data on.
 
 // ─── Row view-model ────────────────────────────────────────────────────────
 
@@ -626,20 +603,30 @@ export default function PayrollInstructorDetailPage({
         [filteredRows],
     );
 
-    // Sidebar "Total earnings this month" — sums payroll entries for the
-    // instructor in the current month so it matches the comp list page.
-    const sidebarMonthly = useMemo(() => {
+    // Sidebar "Total earnings this month" + classes-this-month — both pull
+    // from `payrollEntries` (the canonical month rollup) so they always
+    // reflect the real per-instructor month-to-date data. We can't lean on
+    // `completedThisMonth` for the classes count because the `class_schedule`
+    // seed dates are static (May 2026) — they'd resolve to 0 every month
+    // after May. `payroll_entries.period_start` is computed at load time =
+    // current month, so it stays accurate as the demo runs.
+    const sidebarThisMonth = useMemo(() => {
         const now = new Date();
         const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
         const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        return payrollEntries
+        const inMonth = payrollEntries
             .filter(e => e.instructorId === instructorId)
             .filter(e => {
                 const t = new Date(e.periodStart + "T00:00:00").getTime();
                 return t >= mFrom.getTime() && t <= mTo.getTime();
-            })
-            .reduce((s, e) => s + e.totalEarnings, 0);
+            });
+        return {
+            earnings: inMonth.reduce((s, e) => s + e.totalEarnings, 0),
+            classes:  inMonth.reduce((s, e) => s + e.classesCount,  0),
+        };
     }, [payrollEntries, instructorId]);
+    const sidebarMonthly       = sidebarThisMonth.earnings;
+    const sidebarClassesCount  = sidebarThisMonth.classes;
 
     // ─── Pagination ───────────────────────────────────────────────────────
     const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
@@ -716,8 +703,8 @@ export default function PayrollInstructorDetailPage({
                             <div className="px-6 pb-6 flex flex-col gap-5">
                                 <SidebarEarningsCard
                                     totalThisMonth={sidebarMonthly}
-                                    classesCount={completedThisMonth}
-                                    classCap={Math.max(10, completedThisMonth)}
+                                    classesCount={sidebarClassesCount}
+                                    classCap={Math.max(10, sidebarClassesCount)}
                                     payRateName={payRate?.name ?? "—"}
                                     payRateAmount={payRateAmount}
                                     branchId={ins.branchId}

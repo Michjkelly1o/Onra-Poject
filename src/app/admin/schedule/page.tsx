@@ -16,7 +16,8 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
-import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, type ClassInstance, type ClassStatus, type ScheduleInstructor, type BusinessHours, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 
 // Alias for compatibility with existing code in this file
@@ -1294,7 +1295,7 @@ function Pagination({ page, total, pageSize, onPage, onPageSize }: {
 
 const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
 
-function ExportDropdown() {
+function ExportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -1314,7 +1315,12 @@ function ExportDropdown() {
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[140px]">
                     {EXPORT_FORMATS.map(fmt => (
-                        <button key={fmt} type="button" onClick={() => setOpen(false)}
+                        <button key={fmt} type="button"
+                            onClick={() => {
+                                setOpen(false);
+                                // Only CSV is wired today; PDF / Excel come later.
+                                if (fmt === "CSV") onExportCsv();
+                            }}
                             className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             {fmt}
                         </button>
@@ -1323,6 +1329,25 @@ function ExportDropdown() {
             )}
         </div>
     );
+}
+
+// ─── CSV export ──────────────────────────────────────────────────────────────
+
+function exportScheduleCsv(rows: ClassSchedule[]) {
+    const header = ["Class", "Category", "Date", "Time", "Instructor", "Branch", "Room", "Capacity", "Booked", "Status"];
+    const body = rows.map(c => [
+        c.name,
+        c.category,
+        c.dateISO,
+        `${c.startTime}-${c.endTime}`,
+        c.instructorName,
+        c.location,
+        c.room,
+        String(c.capacity),
+        String(c.booked),
+        c.status,
+    ]);
+    downloadCsv(`schedule-${todayISO()}.csv`, buildCsv(header, body));
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -1525,7 +1550,16 @@ function SchedulePage() {
                         className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
-                <ExportDropdown />
+                <ExportDropdown
+                    onExportCsv={() => {
+                        exportScheduleCsv(filteredClasses);
+                        showToast(
+                            "Schedule exported",
+                            `${filteredClasses.length} class${filteredClasses.length === 1 ? "" : "es"} exported to CSV.`,
+                            "success", "check",
+                        );
+                    }}
+                />
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/schedule/new")}>Add Class</Button>
             </div>
 

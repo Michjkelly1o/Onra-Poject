@@ -25,6 +25,7 @@
 //     `product_id` → memberships.id / packages.id
 
 import type { CustomerTransaction } from "./_types";
+import { DEMO_NOW_TRANSACTIONS } from "./prototype_demo_data";
 
 const SOUTH = "branch_forma_south";
 
@@ -36,6 +37,7 @@ const minutesAgo = (n: number) => new Date(NOW_MS - n * 60_000).toISOString();
 const daysAgo    = (n: number) => minutesAgo(n * 60 * 24);
 
 export const customer_transactions: CustomerTransaction[] = [
+    ...DEMO_NOW_TRANSACTIONS,
     // ── Ahmed Zayn ───────────────────────────────────────────────────────────
     {
         id: "txn_ahmed_1",

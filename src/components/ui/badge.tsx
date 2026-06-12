@@ -84,12 +84,21 @@ export function NoPlanBadge({ className }: { className?: string }) {
  * Booking-status badge — both variants use the red error palette per the Figma cancelled-badge spec.
  *  - "no-charge" → cancelled with enough notice (≥24h before class) — full refund / no penalty
  *  - "late"      → cancelled inside the 24h window — credit forfeited
+ *  - "class"     → CLASS itself was cancelled (not the customer). Plain
+ *                  "Cancelled" label. Used on the Booked tab when the
+ *                  parent class.status === "Cancelled" — the booking row
+ *                  preserves its original "booked" status so it stays
+ *                  on the Booked tab, and this badge visually flips it
+ *                  to cancelled. See store.ts cancelClassSchedule for
+ *                  the tab-preservation model.
  */
 export function BookingStatusBadge({ kind, className }: {
-    kind: "no-charge" | "late";
+    kind: "no-charge" | "late" | "class";
     className?: string;
 }) {
-    const label = kind === "no-charge" ? "Cancelled (no charge)" : "Cancelled (late)";
+    const label = kind === "no-charge" ? "Cancelled (no charge)"
+        : kind === "late" ? "Cancelled (late)"
+        : "Cancelled";
     return (
         <span className={cn(
             "inline-flex items-center px-2 py-0.5 rounded-full border text-[12px] font-medium leading-[18px] whitespace-nowrap",

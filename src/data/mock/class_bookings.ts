@@ -2,12 +2,24 @@
 // Onra Studio — `class_bookings` seed
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// 34 booking rows across the 12 schedules in class_schedule.ts.
+// 36 booking rows across the 12 schedules in class_schedule.ts.
 //
 // Breakdown matches the denormalized `booked` counts on class_schedule rows:
-//   • 30 bookings with status="booked"      (sum of `booked` field)
-//   •  1 booking with status="waitlisted"   (row 10 — full Barre + waitlist demo)
-//   •  3 bookings with status="cancelled"   (row 4 — class-level cancellation refund)
+//   • 33 bookings with status="booked"      (sum of `booked` field; row 4
+//                                            Cancelled class preserves its
+//                                            3 originally-booked rows)
+//   •  2 bookings with status="waitlisted"  (row 10 — full Barre + waitlist
+//                                            demo + row 4 — 1 waitlisted
+//                                            when the class died)
+//   •  1 booking  with status="cancelled"   (row 4 — 1 customer self-
+//                                            cancelled BEFORE the class
+//                                            was cancelled)
+//
+// Liam (`staff_liam_chen`) rich-data bookings live in
+// [prototype_demo_data.ts](src/data/mock/prototype_demo_data.ts) under
+// `DEMO_NOW_LIAM_BOOKINGS` so they auto-anchor to the current real date
+// and always fall inside the instructor Earnings module's "This week" /
+// "Last week" period filters.
 //
 // Customer participation:
 //   • cust_mia_anderson has NO bookings (plan_kind=null — used by the
@@ -24,8 +36,11 @@
 //   plan_id_used      → memberships.id | packages.id (matches plan_kind_used)
 
 import type { ClassBooking } from "./_types";
+import { DEMO_NOW_BOOKINGS, DEMO_NOW_LIAM_BOOKINGS } from "./prototype_demo_data";
 
 export const class_bookings: ClassBooking[] = [
+    ...DEMO_NOW_BOOKINGS,
+    ...DEMO_NOW_LIAM_BOOKINGS,
     // ─── Row 1: Reformer Pilates 2026-05-08 (Completed) — 3 booked, all present, 3 ratings ──
     {
         id: "bk_001", class_schedule_id: "class_sched_2026_05_08_0900",
@@ -103,35 +118,59 @@ export const class_bookings: ClassBooking[] = [
     },
 
     // ─── Row 4: Reformer Pilates 2026-05-13 (Cancelled by class) — 3 cancelled, refunds issued ──
+    // Tab-preservation cancel seed — these rows keep their ORIGINAL
+    // status (booked / waitlisted) so each tab on the class detail
+    // page renders populated. The Booked tab will render the class-
+    // level "Cancelled" badge per row (via store.ts cancelClassSchedule's
+    // tab-preservation model). `refund_credit_issued=true` flags that
+    // the studio committed to a refund when the class died.
     {
         id: "bk_011", class_schedule_id: "class_sched_2026_05_13_1800",
         customer_id: "cust_rosale_martin", branch_id: "branch_forma_south",
-        status: "cancelled", attendance_status: "pending",
+        status: "booked", attendance_status: "pending",
         booked_at: "2026-05-08T11:00:00Z",
-        cancelled_at: "2026-05-12T10:00:00Z",
-        cancellation_reason: "Class cancelled",
         refund_credit_issued: true,
         plan_kind_used: "package", plan_id_used: "pkg_10_class",
     },
     {
         id: "bk_012", class_schedule_id: "class_sched_2026_05_13_1800",
         customer_id: "cust_sophia_lee", branch_id: "branch_forma_south",
-        status: "cancelled", attendance_status: "pending",
+        status: "booked", attendance_status: "pending",
         booked_at: "2026-05-09T14:00:00Z",
-        cancelled_at: "2026-05-12T10:00:00Z",
-        cancellation_reason: "Class cancelled",
         refund_credit_issued: true,
         plan_kind_used: "membership", plan_id_used: "mem_unlimited_monthly",
     },
     {
         id: "bk_013", class_schedule_id: "class_sched_2026_05_13_1800",
         customer_id: "cust_james_taylor", branch_id: "branch_forma_south",
-        status: "cancelled", attendance_status: "pending",
+        status: "booked", attendance_status: "pending",
         booked_at: "2026-05-10T08:30:00Z",
-        cancelled_at: "2026-05-12T10:00:00Z",
-        cancellation_reason: "Class cancelled",
         refund_credit_issued: true,
         plan_kind_used: "package", plan_id_used: "pkg_5_class",
+    },
+    // 1 customer who was waitlisted when the class died.
+    {
+        id: "bk_013a", class_schedule_id: "class_sched_2026_05_13_1800",
+        customer_id: "cust_ahmed_zayn", branch_id: "branch_forma_south",
+        status: "waitlisted", attendance_status: "pending",
+        booked_at: "2026-05-11T12:00:00Z",
+        waitlist_position: 1,
+        refund_credit_issued: true,
+        plan_kind_used: "membership", plan_id_used: "mem_unlimited_monthly",
+    },
+    // 1 customer who self-cancelled BEFORE the class was cancelled
+    // (early cancellation — populates the Cancelled tab with its
+    // existing "Cancelled (no charge)" badge variant).
+    {
+        id: "bk_013b", class_schedule_id: "class_sched_2026_05_13_1800",
+        customer_id: "cust_ava_wright", branch_id: "branch_forma_south",
+        status: "cancelled", attendance_status: "pending",
+        booked_at: "2026-05-09T10:00:00Z",
+        cancelled_at: "2026-05-10T15:00:00Z",
+        cancellation_reason: "Customer cancelled — schedule conflict",
+        refund_credit_issued: false,
+        plan_kind_used: "package", plan_id_used: "pkg_10_class",
+        cancelled_source: "customer_portal",
     },
 
     // ─── Row 5: Reformer Pilates TODAY (Ongoing) — 4 booked, attendance pending ──

@@ -20,88 +20,118 @@
 // ── To re-activate a module ──
 //   Delete its prefix(es) from the array. That single change fully restores the
 //   module — nothing else to touch.
+//
+// ── Today's push state (18/25 modules live) ──
+//   ENABLED (already pushed): Dashboard, Class template, Class schedule, POS,
+//   Membership & Package, Gift Cards, Promo, Marketing, Customer, Insights,
+//   Pay rate.
+//   ENABLED (pushing today):  Payroll, Staff & Permissions, Tax, Agreements,
+//   Payments, Integrations, Referral.
+//   DISABLED (next pushes):   Reports, Notifications, Customer notifications,
+//   Booking rules, Business & Locations, Account settings, Branding, and the
+//   entire Instructor experience (including the /class + /earnings full-screen
+//   detail pages that live outside the /instructor folder).
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
-    // ── Point of Sale module ──
+    // ── Point of Sale module ── (ENABLED — pushed)
     //"/admin/pos",                    // POS terminal
     //"/pos",                          // checkout flow
 
-    // ── Promo module ──
+    // ── Promo module ── (ENABLED — pushed)
     //"/admin/products/promo-codes",   // list view
     //"/products/promo-codes",         // create / detail / edit
 
-    // ── Marketing module ──
+    // ── Marketing module ── (ENABLED — pushed)
     //"/admin/marketing",              // list view
     //"/marketing",                    // create / detail / edit
 
-    // ── Gift Cards module ──
+    // ── Gift Cards module ── (ENABLED — pushed)
     //"/admin/products/gift-cards",    // list view
     //"/products/gift-cards",          // create / detail / edit
 
-    // ── Customer Management module ──
+    // ── Customer Management module ── (ENABLED — pushed)
     //"/admin/customers",              // list view
     //"/customers",                    // create / detail / edit / add-credit
 
-    // ── Insights module ──
+    // ── Insights module ── (ENABLED — pushed)
     //"/admin/insights",               // tabs: Finance / Memberships / Classes
 
-    // ── Pay rate module ──
+    // ── Pay rate module ── (ENABLED — pushed)
     //"/admin/staff/pay-rate",         // list view
     //"/staff/pay-rate",               // create / detail / edit
 
-    // ── Payroll module ──
-    "/admin/compensation",           // list view
-    "/compensation",                 // run payroll / instructor earnings detail
+    // ── Payroll module ── (ENABLED — pushing today)
+    //"/admin/compensation",           // list view
+    //"/compensation",                 // run payroll / instructor earnings detail
 
-    // ── Staff & Permissions module ──
+    // ── Reports module ── (DISABLED — not in this push)
+    "/admin/reports",                // landing (5 category containers)
+    "/reports",                      // 20 detail pages (full-bleed, X-close chrome)
+
+    // ── Staff & Permissions module ── (ENABLED — pushing today)
     // Exact-match only on the list — otherwise this prefix would also catch
     // `/admin/staff/pay-rate`, which we want LIVE.
-    "=/admin/staff",                 // list view (Roles + Staff tabs)
-    "/staff/roles",                  // role create / detail / edit / edit-permissions
-    "/staff/members",                // staff create / detail / edit
+    //"=/admin/staff",                 // list view (Roles + Staff tabs)
+    //"/staff/roles",                  // role create / detail / edit / edit-permissions
+    //"/staff/members",                // staff create / detail / edit
 
-    // ── Notifications module ──
+    // ── Notifications module ── (DISABLED — not in this push)
     "/admin/notifications",          // full page (All / Bookings / Payments tabs)
 
-    // ── Customer notifications module ──
+    // ── Customer notifications module ── (DISABLED — not in this push)
     "/admin/settings/notifications", // per-event channel + template config
 
-    // ── Referral module ──
-    "/admin/settings/referral",      // list view
-    "/settings/referral",            // edit-rewards / edit-information
+    // ── Referral module ── (ENABLED — pushing today)
+    //"/admin/settings/referral",      // list view
+    //"/settings/referral",            // edit-rewards / edit-information
 
-    // ── Agreements module ──
-    "/admin/settings/agreements",    // list view
-    "/settings/agreements",          // create / detail / edit / new-version
+    // ── Agreements module ── (ENABLED — pushing today)
+    //"/admin/settings/agreements",    // list view
+    //"/settings/agreements",          // create / detail / edit / new-version
 
-    // ── Integrations module ──
-    "/admin/settings/integrations",  // card grid (list view)
+    // ── Integrations module ── (ENABLED — pushing today)
+    //"/admin/settings/integrations",  // card grid (list view)
 
-    // ── Tax module ──
-    "/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
+    // ── Tax module ── (ENABLED — pushing today)
+    //"/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
 
-    // ── Payments module ──
-    "/admin/settings/payments",      // provider card grid (Stripe + Apple Pay + Google Pay)
+    // ── Payments module ── (ENABLED — pushing today)
+    //"/admin/settings/payments",      // provider card grid (Stripe + Apple Pay + Google Pay)
 
-    // ── Business & Locations module ──
+    // ── Booking rules module ── (DISABLED — not in this push)
+    "/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
+    "/settings/booking-rules",       // customize classes / policy new+edit
+
+    // ── Business & Locations module ── (DISABLED — not in this push)
     // NB: `/admin/settings` is the Business & Locations LANDING page, but
-    // it's also the parent of every other settings sub-module above. If you
-    // uncomment the landing prefix below, every settings page falls under
-    // the 404 too — uncomment only when you really want all of Settings
-    // hidden. To hide just the create/edit/detail surfaces of B&L while
-    // keeping siblings working, uncomment the three `/settings/*` lines
-    // instead.
-    "/admin/settings",               // landing (Business & Locations table)
+    // it's also the parent of every other settings sub-module above. We use
+    // `=/admin/settings` (exact match) to 404 ONLY the B&L landing and
+    // leave Tax / Agreement / Payment / Integrations / Referral reachable
+    // at their /admin/settings/[name] sub-routes.
+    "=/admin/settings",              // landing (Business & Locations table)
     "/settings/business",            // studio profile edit
     "/settings/branches",            // branch new / detail / edit
     "/settings/rooms",               // room new / edit
 
-    // ── Account settings module ──
+    // ── Account settings module ── (DISABLED — not in this push)
     "/admin/settings/account",       // change email / phone / password / avatar
 
-    // ── Branding module ──
+    // ── Branding module ── (DISABLED — not in this push)
     "/admin/settings/branding",      // brand identity + customer portal config
     "/settings/branding",            // edit sub-pages (portal / design)
+
+    // ── Instructor experience ── (DISABLED — not in this push)
+    // Standalone role-scoped surface (separate sidebar, separate header
+    // titles, audience-filtered notification feed).
+    //
+    // NB: the two FULL-SCREEN takeover detail pages (`/class/[id]` +
+    // `/earnings/[id]`) live OUTSIDE the `/instructor/*` folder so they
+    // can render edge-to-edge without the layout chrome. That means the
+    // single `/instructor` flag DOESN'T cover them — they're listed
+    // separately below so the entire instructor side is hidden in one go.
+    "/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
+    "/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
+    "/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning
