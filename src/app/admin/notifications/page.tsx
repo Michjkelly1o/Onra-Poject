@@ -23,7 +23,7 @@
 // dropdown uses — so the page and the bell stay in lock-step with every
 // create / mark-read / dismiss event across the app.
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell01, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore, DEFAULT_BRANCH_ID, type Notification } from "@/lib/store";
@@ -187,7 +187,10 @@ const TAB_EMPTY_COPY: Record<TabKey, { title: string; subtitle: string }> = {
     },
 };
 
-export default function NotificationsPage() {
+// The default export below wraps this component in a `<Suspense>` boundary
+// because `useSearchParams()` triggers a Next.js prerender bail-out without
+// one (see the same pattern in /customers/new/page.tsx + /[id]/edit/page.tsx).
+function NotificationsPage() {
     const router = useRouter();
     const notifications = useAppStore(s => s.notifications);
     const branches = useAppStore(s => s.branches);
@@ -379,5 +382,16 @@ export default function NotificationsPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+// Suspense wrapper — required because `NotificationsPage` reads `?tab=` via
+// `useSearchParams()`, which triggers Next.js's CSR-bailout error at build
+// time when the page is statically prerendered without a boundary.
+export default function NotificationsRoute() {
+    return (
+        <Suspense fallback={null}>
+            <NotificationsPage />
+        </Suspense>
     );
 }
