@@ -689,7 +689,20 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                         <th className={cn(TH, "w-[140px]")}>Completed classes</th>
                                         <th className={cn(TH, "w-[120px]")}>Total time (hour)</th>
                                         <th className={cn(TH, "w-[140px]")}>Gross revenue</th>
-                                        <th className={cn(TH, "w-[140px]")}>Instructor payout</th>
+                                        {/* Tax annotation sits in the column
+                                            header rather than on every row —
+                                            matches the Memberships & Packages
+                                            list pattern so the table doesn't
+                                            repeat "Inc. X% tax" per instructor. */}
+                                        <th className={cn(TH, "w-[140px]")}>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span>Instructor payout</span>
+                                                <TaxSuffix
+                                                    category="pay_rate"
+                                                    className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap"
+                                                />
+                                            </div>
+                                        </th>
                                         <th className={cn(TH, "w-[120px]")}>Status</th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
@@ -713,12 +726,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{r.totalHours}h</td>
                                                 <td className={TD}>{aed(r.grossRevenue)}</td>
-                                                <td className={TD}>
-                                                    <div className="flex flex-col">
-                                                        <span>{aed(r.payout)}</span>
-                                                        <TaxSuffix category="pay_rate" branchId={r.branchId} />
-                                                    </div>
-                                                </td>
+                                                <td className={TD}>{aed(r.payout)}</td>
                                                 <td className={TD}><StatusBadge status={r.status} /></td>
                                                 <td className={TD}>
                                                     <RowActions

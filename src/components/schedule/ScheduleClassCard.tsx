@@ -109,15 +109,26 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
         ?? (cls.endTime ? `${fmt12(cls.startTime)} - ${fmt12(cls.endTime)}` : startLabel);
     const hasMore = !!moreCount && moreCount > 0;
 
+    // `minHeight: 72` guarantees a 45-min class still has room for title +
+    // instructor + meta row at the current 88px-per-hour week-view scale
+    // (45 min ≈ 66px). Without it, short classes truncate their meta row
+    // and look "broken".
+    //
+    // When the card lives in an overlap lane (widthPct + leftPct set), we
+    // bump the gap between adjacent cards from 2px to 4px AND add a soft
+    // drop shadow so each card reads as its own surface — without this,
+    // side-by-side cards in the same time slot looked visually identical
+    // and ran together.
     const baseStyle: React.CSSProperties = absolute
         ? (absolute.widthPct !== undefined && absolute.leftPct !== undefined
             ? {
                 position: "absolute",
-                top: absolute.top, height: absolute.height,
-                left: `calc(${absolute.leftPct}% + 1px)`,
-                width: `calc(${absolute.widthPct}% - 2px)`,
+                top: absolute.top, height: absolute.height, minHeight: 72,
+                left: `calc(${absolute.leftPct}% + 2px)`,
+                width: `calc(${absolute.widthPct}% - 4px)`,
+                boxShadow: "0 1px 2px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.04)",
             }
-            : { position: "absolute", top: absolute.top, height: absolute.height, left: 2, right: 2 })
+            : { position: "absolute", top: absolute.top, height: absolute.height, minHeight: 72, left: 2, right: 2 })
         : {};
 
     // ── LG ───────────────────────────────────────────────────────────────────

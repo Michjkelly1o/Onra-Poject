@@ -309,17 +309,22 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
     const cancelled = cls.status === "Cancelled";
     const hasMore = !!moreCount && moreCount > 0;
 
+    // `minHeight: 72` keeps short classes (≤ 45 min) tall enough for the
+    // title + meta row. Overlap-lane cards get a 4px gap (vs 2px solo) +
+    // a soft drop shadow so adjacent cards in the same slot read as
+    // distinct surfaces instead of one merged block.
     const baseStyle: React.CSSProperties = absolute
         ? (absolute.widthPct !== undefined && absolute.leftPct !== undefined
             ? {
                 position: "absolute",
-                top: absolute.top, height: absolute.height,
-                left: `calc(${absolute.leftPct}% + 1px)`,
-                width: `calc(${absolute.widthPct}% - 2px)`,
+                top: absolute.top, height: absolute.height, minHeight: 72,
+                left: `calc(${absolute.leftPct}% + 2px)`,
+                width: `calc(${absolute.widthPct}% - 4px)`,
                 backgroundColor: c.bg,
                 borderLeft: `3px solid ${c.border}`,
+                boxShadow: "0 1px 2px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.04)",
             }
-            : { position: "absolute", top: absolute.top, height: absolute.height, left: 2, right: 2, backgroundColor: c.bg, borderLeft: `${size === "md" ? 3 : 3}px solid ${c.border}` })
+            : { position: "absolute", top: absolute.top, height: absolute.height, minHeight: 72, left: 2, right: 2, backgroundColor: c.bg, borderLeft: `${size === "md" ? 3 : 3}px solid ${c.border}` })
         : { backgroundColor: c.bg, borderLeft: `${size === "xs" ? 2 : 3}px solid ${c.border}` };
 
     if (size === "md") {
@@ -356,6 +361,12 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
 
     if (size === "sm") {
         // Week view — admin's sm chrome: rounded-[6px], px-1.5 py-1.5, gap-0.5.
+        // Card surfaces the same meta line the day view shows (start time +
+        // booked/capacity + FULL badge) so the instructor can read class
+        // load at a glance without opening the detail page. When this card
+        // hosts the "+N more" badge for an overlap group, the meta row is
+        // swapped for the badge (the same trade-off the admin week view
+        // makes — the badge takes the place of the info row, not adds to it).
         return (
             <button
                 type="button"
@@ -370,10 +381,23 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
                 <p className="text-[13px] font-medium leading-[16px] line-clamp-1" style={{ color: c.text }}>
                     {cls.name}
                 </p>
-                {hasMore && (
+                {hasMore ? (
                     <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[#475467] bg-white border border-[#e4e7ec] rounded-full px-2 py-[1px]">
                         +{moreCount} more
                     </span>
+                ) : (
+                    <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1">
+                            <Clock className="w-[11px] h-[11px] text-[#667085] shrink-0" />
+                            <span className="text-[11px] text-[#667085]">{startLabel}</span>
+                        </div>
+                        <span className="text-[#98a2b3] text-[11px]">•</span>
+                        <div className="flex items-center gap-1">
+                            <Users01 className="w-[11px] h-[11px] text-[#667085] shrink-0" />
+                            <span className="text-[11px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
+                        </div>
+                        {isFull && <span className="text-[10px] font-semibold text-[#b42318]">(FULL)</span>}
+                    </div>
                 )}
             </button>
         );

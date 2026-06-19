@@ -63,9 +63,13 @@ export const staff: StaffSeed[] = [
         joined_date: "May 20, 2026",
     },
     {
+        // Renamed from "Phoenix Baker" — that name collided with the
+        // South-branch instructor `staff_phoenix_baker`, and the demo
+        // brief asks for every staff name to be unique. ID kept stable
+        // because it has no downstream FKs.
         id: "user_phoenix_baker_admin",
-        first_name: "Phoenix", last_name: "Baker", full_name: "Phoenix Baker",
-        email: "phoenix.admin@email.com", phone: "+971 55 200 3002",
+        first_name: "Pierre", last_name: "Bennett", full_name: "Pierre Bennett",
+        email: "pierre.bennett@email.com", phone: "+971 55 200 3002",
         initials: "PB", color_hex: "#0e7090",
         role_id: "role_branch_admin_east",
         branch_id: "branch_forma_east",
@@ -87,9 +91,12 @@ export const staff: StaffSeed[] = [
         joined_date: "Feb 14, 2024",
     },
     {
+        // Renamed from "Natali Craig" — that name collided with the
+        // East-branch instructor `staff_natali_craig`. ID kept stable
+        // because it has no downstream FKs.
         id: "user_natali_craig_op",
-        first_name: "Natali", last_name: "Craig", full_name: "Natali Craig",
-        email: "natali.craig@email.com", phone: "+971 55 200 3003",
+        first_name: "Nora", last_name: "Carlson", full_name: "Nora Carlson",
+        email: "nora.carlson@email.com", phone: "+971 55 200 3003",
         initials: "NC", color_hex: "#f79009",
         role_id: "role_operator_south",
         branch_id: "branch_forma_south",
@@ -111,9 +118,12 @@ export const staff: StaffSeed[] = [
         joined_date: "Feb 14, 2024",
     },
     {
+        // Renamed from "Candice Wu" — that name collided with the
+        // East-branch instructor `staff_candice_wu`. ID kept stable
+        // because it has no downstream FKs.
         id: "user_candice_wu_fd",
-        first_name: "Candice", last_name: "Wu", full_name: "Candice Wu",
-        email: "candice.wu@email.com", phone: "+971 55 200 3004",
+        first_name: "Claire", last_name: "Walsh", full_name: "Claire Walsh",
+        email: "claire.walsh@email.com", phone: "+971 55 200 3004",
         initials: "CW", color_hex: "#9e77ed",
         role_id: "role_front_desk_south",
         branch_id: "branch_forma_south",
