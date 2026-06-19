@@ -115,6 +115,37 @@ export function PosNewCustomerModal({
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
+    // Slide-in + slide-out animation. Two-state machine + two effects so
+    // both transitions actually play:
+    //   • `mounted` — controls whether the modal is in the DOM. Flips true
+    //                 the moment `open` becomes true; flips false ~280ms
+    //                 AFTER `open` becomes false (so the exit animation has
+    //                 time to play).
+    //   • `shown`   — drives the `translate-x` class. Critically, it stays
+    //                 false on the first render after mount so the panel
+    //                 commits to the DOM at `translate-x-full`. A small
+    //                 setTimeout (20ms — not rAF, which React can batch
+    //                 into the same commit) then flips it to true, and the
+    //                 CSS transition pulls the panel to `translate-x-0`.
+    //                 On close, `shown` flips false first, the slide-out
+    //                 plays, then the mount timer unmounts.
+    const [mounted, setMounted] = useState(false);
+    const [shown, setShown] = useState(false);
+    useEffect(() => {
+        if (open) {
+            setMounted(true);
+            return;
+        }
+        setShown(false);
+        const t = setTimeout(() => setMounted(false), 280);
+        return () => clearTimeout(t);
+    }, [open]);
+    useEffect(() => {
+        if (!mounted) return;
+        const t = setTimeout(() => setShown(true), 20);
+        return () => clearTimeout(t);
+    }, [mounted]);
+
     const emailValid = isValidEmail(email);
     const emailDirty = email.trim().length > 0;
     const canSaveBase = !!firstName.trim() && !!lastName.trim() && emailValid && !!branchId;
@@ -178,12 +209,33 @@ export function PosNewCustomerModal({
         onClose();
     }
 
-    if (!open) return null;
+    if (!mounted) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[480px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+        <div className="fixed inset-0 z-[200]">
+            {/* Backdrop fades in/out alongside the panel slide. */}
+            <div
+                onClick={onClose}
+                className={cn(
+                    "absolute inset-0 bg-[#0c111d]/40 transition-opacity duration-300 ease-out",
+                    shown ? "opacity-100" : "opacity-0",
+                )}
+            />
+            {/* Panel slides in from the right edge by animating `right` from
+                -480px → 0 (instead of `transform: translateX`). We have to
+                avoid any `transform` on this element because a transformed
+                ancestor breaks `position: fixed` for descendants — and
+                `SelectInput`'s dropdown menu relies on `position: fixed`
+                anchored to the viewport. Without this trick, the Country
+                picker (and any other Select inside the form) would render
+                in the wrong place or be invisible. */}
+            <div
+                style={{ right: shown ? 0 : -480 }}
+                className={cn(
+                    "fixed top-0 w-[480px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "transition-[right] duration-300 ease-out",
+                )}
+            >
                 {/* Header — matches the customer-module filter panel chrome */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Add new customer</p>
