@@ -140,29 +140,37 @@ function StatusBadge({ status }: { status: ProductStatus }) {
 // "credit_package"). When no rule is set or the rate is archived, the suffix
 // is omitted and the cell looks exactly like before.
 
-function PriceCell({ priceAed, kind }: { priceAed: number; kind: "membership" | "package" }) {
+function PriceCell({ priceAed }: { priceAed: number }) {
+    // Tax annotation moved from the per-cell rendering to the Price column
+    // header (see `PriceColumnHeaderTaxLine` below). One row in the header
+    // says it once for the whole column instead of repeating per row.
+    return (
+        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{formatAed(priceAed)}</span>
+    );
+}
+
+/** Sub-line that sits directly under the "Price" column header showing
+ *  the active tax rule's percentage. Reads from the live `taxRules` +
+ *  `taxRates` slices so edits in Settings → Tax flip the label same tick.
+ *
+ *  Skipped when the table has no rows (nothing to infer the row kind
+ *  from) or when there's no active tax rule for the category. */
+function PriceColumnHeaderTaxLine({ rows }: { rows: ProductRow[] }) {
     const taxRules = useAppStore(s => s.taxRules);
     const taxRates = useAppStore(s => s.taxRates);
     const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
-
+    const kind = rows[0]?.kind;
+    if (!kind) return null;
     const category = categoryForProductType(kind);
-    // List view has no branch context, so we resolve against `undefined` —
-    // that picks up `all_locations` rules only (the most generic match).
-    const match = category
-        ? findActiveTaxRuleFor({ taxRules, taxRates }, category, undefined)
-        : null;
-
+    if (!category) return null;
+    const match = findActiveTaxRuleFor({ taxRules, taxRates }, category, undefined);
+    if (!match) return null;
     return (
-        <div className="flex flex-col">
-            <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{formatAed(priceAed)}</span>
-            {match && (
-                <span className="text-[12px] text-[#667085] whitespace-nowrap">
-                    {pricesIncludeTax
-                        ? `Inc. ${match.rate.ratePercentage}% tax`
-                        : `+ ${match.rate.ratePercentage}% tax`}
-                </span>
-            )}
-        </div>
+        <span className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap">
+            {pricesIncludeTax
+                ? `Inc. ${match.rate.ratePercentage}% tax`
+                : `+ ${match.rate.ratePercentage}% tax`}
+        </span>
     );
 }
 
@@ -834,7 +842,10 @@ function ListView({
                             <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[120px]")}>
-                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
+                            <div className="flex flex-col gap-0.5">
+                                <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
+                                <PriceColumnHeaderTaxLine rows={rows} />
+                            </div>
                         </th>
                         <th className={cn(TH, "w-[140px] !text-center")}>
                             <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={onSort} className="whitespace-nowrap">Credit amount</SortableHeader>
@@ -873,7 +884,7 @@ function ListView({
                                         <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                     </div>
                                 </td>
-                                <td className={cn(TD, "whitespace-nowrap")}><PriceCell priceAed={r.priceAed} kind={r.kind} /></td>
+                                <td className={cn(TD, "whitespace-nowrap")}><PriceCell priceAed={r.priceAed} /></td>
                                 <td className={cn(TD, "whitespace-nowrap text-center")}>{r.creditsLabel}</td>
                                 <td className={TD}>{r.branchesLabel}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationLabel}</td>
@@ -1202,18 +1213,6 @@ export default function ProductsPage() {
                         ))}
                     </div>
 
-                    <div className="ml-auto">
-                        <Button variant="secondary-gray" size="md"
-                            leftIcon={
-                                <div className="relative">
-                                    <FilterLines className="w-4 h-4" />
-                                    {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                                </div>
-                            }
-                            onClick={() => setFilterOpen(true)}>
-                            Filter
-                        </Button>
-                    </div>
                 </div>
 
                 {/* Table + bulk bar + pagination (px-6 shared wrapper per CLAUDE.md #5) */}
@@ -1259,13 +1258,6 @@ export default function ProductsPage() {
                     />
                 </div>
             </div>
-
-            <FilterPanel
-                open={filterOpen}
-                onClose={() => setFilterOpen(false)}
-                applied={applied}
-                onApply={f => { setApplied(f); setPage(1); }}
-            />
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);

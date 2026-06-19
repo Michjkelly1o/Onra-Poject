@@ -1897,13 +1897,18 @@ export default function ClassDetailPage() {
     const allBookings = classBookings.filter(b => b.classScheduleId === classId);
     const classIsCancelled = classInstance?.status === "Cancelled";
 
-    // The class-scoped POS catalog is filtered by the underlying template's
-    // applicable plans (per CLAUDE.md mini-POS rule). Pull the template once
-    // and pass the id lists down to POSModal.
+    // The class-scoped POS catalog is filtered by the schedule's applicable
+    // plans (per CLAUDE.md mini-POS rule). Resolution order:
+    //   1) schedule's own override (set when admin edited applicable plans
+    //      from the schedule form, or when class was created from scratch)
+    //   2) parent template's list (cascade — most schedules)
+    //   3) empty (scratch + never set — no one can book)
     const classTemplates = useAppStore(s => s.classTemplates);
     const classTemplate = classTemplates.find(t => t.id === classInstance?.templateId);
-    const applicableMembershipIds = classTemplate?.applicableMembershipIds ?? [];
-    const applicablePackageIds    = classTemplate?.applicablePackageIds    ?? [];
+    const applicableMembershipIds =
+        classInstance?.applicableMembershipIds ?? classTemplate?.applicableMembershipIds ?? [];
+    const applicablePackageIds =
+        classInstance?.applicablePackageIds ?? classTemplate?.applicablePackageIds ?? [];
 
     // Live POS catalog from store (mirrors POSModal subscription) so handlePosContinue
     // can resolve cart product ids without referencing stale module constants.

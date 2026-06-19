@@ -21,16 +21,17 @@
 //   Delete its prefix(es) from the array. That single change fully restores the
 //   module — nothing else to touch.
 //
-// ── Today's push state (18/25 modules live) ──
-//   ENABLED (already pushed): Dashboard, Class template, Class schedule, POS,
-//   Membership & Package, Gift Cards, Promo, Marketing, Customer, Insights,
-//   Pay rate.
-//   ENABLED (pushing today):  Payroll, Staff & Permissions, Tax, Agreements,
-//   Payments, Integrations, Referral.
-//   DISABLED (next pushes):   Reports, Notifications, Customer notifications,
-//   Booking rules, Business & Locations, Account settings, Branding, and the
-//   entire Instructor experience (including the /class + /earnings full-screen
-//   detail pages that live outside the /instructor folder).
+// ── Current state ──
+//   ENABLED:  every admin-side module — Dashboard, Class template, Class
+//   schedule, POS, Membership & Package, Gift Cards, Promo, Marketing,
+//   Customer, Insights, Pay rate, Payroll, Staff & Permissions, Tax,
+//   Agreements, Payments, Integrations, Referral, Reports, Notifications,
+//   Customer notifications, Booking rules, Business & Locations, Account
+//   settings, Branding.
+//   DISABLED: the entire Instructor experience — `/instructor/*` plus the
+//   two full-screen detail pages `/class/[id]` and `/earnings/[id]` that
+//   live outside the `/instructor/*` folder so they can render edge-to-
+//   edge without the layout chrome.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -64,9 +65,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/compensation",           // list view
     //"/compensation",                 // run payroll / instructor earnings detail
 
-    // ── Reports module ── (DISABLED — not in this push)
-    "/admin/reports",                // landing (5 category containers)
-    "/reports",                      // 20 detail pages (full-bleed, X-close chrome)
+    // ── Reports module ── (ENABLED — admin)
+    //"/admin/reports",                // landing (5 category containers)
+    //"/reports",                      // 20 detail pages (full-bleed, X-close chrome)
 
     // ── Staff & Permissions module ── (ENABLED — pushing today)
     // Exact-match only on the list — otherwise this prefix would also catch
@@ -75,11 +76,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/staff/roles",                  // role create / detail / edit / edit-permissions
     //"/staff/members",                // staff create / detail / edit
 
-    // ── Notifications module ── (DISABLED — not in this push)
-    "/admin/notifications",          // full page (All / Bookings / Payments tabs)
+    // ── Notifications module ── (ENABLED — admin)
+    //"/admin/notifications",          // full page (All / Bookings / Payments tabs)
 
-    // ── Customer notifications module ── (DISABLED — not in this push)
-    "/admin/settings/notifications", // per-event channel + template config
+    // ── Customer notifications module ── (ENABLED — admin)
+    //"/admin/settings/notifications", // per-event channel + template config
 
     // ── Referral module ── (ENABLED — pushing today)
     //"/admin/settings/referral",      // list view
@@ -98,27 +99,27 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Payments module ── (ENABLED — pushing today)
     //"/admin/settings/payments",      // provider card grid (Stripe + Apple Pay + Google Pay)
 
-    // ── Booking rules module ── (DISABLED — not in this push)
-    "/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
-    "/settings/booking-rules",       // customize classes / policy new+edit
+    // ── Booking rules module ── (ENABLED — admin)
+    //"/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
+    //"/settings/booking-rules",       // customize classes / policy new+edit
 
-    // ── Business & Locations module ── (DISABLED — not in this push)
+    // ── Business & Locations module ── (ENABLED — admin)
     // NB: `/admin/settings` is the Business & Locations LANDING page, but
     // it's also the parent of every other settings sub-module above. We use
     // `=/admin/settings` (exact match) to 404 ONLY the B&L landing and
     // leave Tax / Agreement / Payment / Integrations / Referral reachable
     // at their /admin/settings/[name] sub-routes.
-    "=/admin/settings",              // landing (Business & Locations table)
-    "/settings/business",            // studio profile edit
-    "/settings/branches",            // branch new / detail / edit
-    "/settings/rooms",               // room new / edit
+    //"=/admin/settings",              // landing (Business & Locations table)
+    //"/settings/business",            // studio profile edit
+    //"/settings/branches",            // branch new / detail / edit
+    //"/settings/rooms",               // room new / edit
 
-    // ── Account settings module ── (DISABLED — not in this push)
-    "/admin/settings/account",       // change email / phone / password / avatar
+    // ── Account settings module ── (ENABLED — admin)
+    //"/admin/settings/account",       // change email / phone / password / avatar
 
-    // ── Branding module ── (DISABLED — not in this push)
-    "/admin/settings/branding",      // brand identity + customer portal config
-    "/settings/branding",            // edit sub-pages (portal / design)
+    // ── Branding module ── (ENABLED — admin)
+    //"/admin/settings/branding",      // brand identity + customer portal config
+    //"/settings/branding",            // edit sub-pages (portal / design)
 
     // ── Instructor experience ── (DISABLED — not in this push)
     // Standalone role-scoped surface (separate sidebar, separate header

@@ -20,6 +20,7 @@
 // ──────────────────────────────────────────────────────────────────
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
     ResponsiveContainer,
     LineChart,
@@ -37,11 +38,10 @@ import {
     Users01,
     SlashCircle01,
     Calendar,
-    Clock,
-    Users02,
 } from "@untitledui/icons";
 
 import { useAppStore, type ClassSchedule, type ClassBooking } from "@/lib/store";
+import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { InstructorMetricCard } from "@/components/instructor/InstructorMetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -181,99 +181,25 @@ function ChartTooltip(props: {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Empty-state event card — used when a time slot has no class
-// (e.g. the "Lunch Break" placeholder in the Figma).
+// Category palette — verbatim copy of the schedule module's mapping so the
+// upcoming-classes cards in the dashboard pick up the same green/blue/
+// amber/violet tint per category that the schedule day/week view uses.
 // ────────────────────────────────────────────────────────────────────────────
-function LunchBreakSlot() {
-    return (
-        <div className="relative flex-1 h-[68px] rounded-[10px] border-1 border-dashed border-[#e4e7ec] bg-[#fbfffd] overflow-hidden flex items-center justify-center">
-            <div className="text-sm font-medium text-[#98a2b3]">Lunch Break</div>
-        </div>
-    );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// One row in the "Upcoming classes" timeline — time label on the left,
-// then a class card whose left edge is tinted with the category color.
-// ────────────────────────────────────────────────────────────────────────────
-function ScheduleTimeBlock({
-    timeLabel,
-    klass,
-    isLunch,
-}: {
-    timeLabel: string;
-    klass?: ClassSchedule;
-    isLunch?: boolean;
-}) {
-    return (
-        <div className="flex flex-col gap-2">
-            {/* Time row + divider */}
-            <div className="flex items-center gap-2">
-                <span className="w-10 shrink-0 text-xs font-medium text-[#475467] leading-[18px]">{timeLabel}</span>
-                <div className="flex-1 h-px bg-[#e4e7ec]" />
-            </div>
-
-            {/* Card row */}
-            <div className="flex items-stretch gap-2 pl-10">
-                {isLunch ? (
-                    <LunchBreakSlot />
-                ) : klass ? (
-                    <ScheduleCard klass={klass} />
-                ) : (
-                    <div className="flex-1 h-[68px] rounded-[10px] border-1 border-dashed border-[#e4e7ec] bg-white" />
-                )}
-            </div>
-        </div>
-    );
-}
-
-function ScheduleCard({ klass }: { klass: ClassSchedule }) {
-    return (
-        <div
-            className="relative flex-1 h-[68px] rounded-[10px] overflow-hidden flex items-center pl-4 pr-5 gap-2"
-            style={{ backgroundColor: tintFor(klass.coverColor || "#aad4bd") }}
-        >
-            {/* Left color bar */}
-            <span
-                className="absolute left-0 top-0 bottom-0 w-1"
-                style={{ backgroundColor: klass.coverColor || "#7ba08c" }}
-            />
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#101828] leading-5 truncate">{klass.name}</p>
-                <div className="mt-1 flex items-center gap-3 text-xs font-normal text-[#475467] leading-[18px]">
-                    <span className="inline-flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-[#667085]" />
-                        {klass.displayTime}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                        <Users02 className="w-3.5 h-3.5 text-[#667085]" />
-                        {klass.booked}/{klass.capacity}
-                        {klass.booked >= klass.capacity && " (FULL)"}
-                    </span>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/** Lighten a hex color to ~12% opacity by mixing with white — yields
- *  the pastel band the Figma uses for the class card background. */
-function tintFor(hex: string): string {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-    if (!m) return "#f1f2ed";
-    const v = m[1];
-    const r = parseInt(v.slice(0, 2), 16);
-    const g = parseInt(v.slice(2, 4), 16);
-    const b = parseInt(v.slice(4, 6), 16);
-    // Mix 12% tint over white.
-    const mix = (c: number) => Math.round(c * 0.12 + 255 * 0.88);
-    return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
+    default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
+};
+function getCategoryColor(category: string) {
+    return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.default;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // Main page
 // ────────────────────────────────────────────────────────────────────────────
 export default function InstructorDashboardPage() {
+    const router        = useRouter();
     const currentUser   = useAppStore(s => s.currentUser);
     const classSchedules = useAppStore(s => s.classSchedules);
     const classBookings  = useAppStore(s => s.classBookings);
@@ -406,36 +332,34 @@ export default function InstructorDashboardPage() {
     const xInterval = xAxisInterval(retentionSeries.length);
 
     // ── Upcoming classes for "today" ───────────────────────────────────────
-    const upcomingSlots = useMemo(() => {
+    //
+    // Compact time-grouped layout per Figma 7368-36130: real classes only
+    // (no empty hour rows, no lunch break placeholder), grouped by their
+    // own start hour. Each group renders the hour label on the left + a
+    // stack of `ScheduleClassCard md` cards on the right — same component
+    // the schedule module uses, so the visual style stays consistent.
+    const upcomingByHour = useMemo(() => {
         const todayStr = today.toLocaleDateString("en-CA"); // YYYY-MM-DD
         const todayClasses = myClasses
             .filter(c => c.dateISO.startsWith(todayStr))
             .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-        // Slot grid 9 AM → 6 PM with a built-in lunch break at 12 PM.
-        type Slot = { timeLabel: string; hour: number; klass?: ClassSchedule; isLunch?: boolean };
-        const slots: Slot[] = [];
-        for (let h = 9; h <= 18; h++) {
-            const isLunch  = h === 12;
-            const inHour   = todayClasses.find(c => {
-                const hour = parseInt(c.startTime.split(":")[0] ?? "0", 10);
-                return hour === h;
-            });
-            slots.push({
-                timeLabel: hourLabel(h),
-                hour: h,
-                klass: inHour,
-                isLunch: isLunch && !inHour,
-            });
+        const buckets = new Map<number, ClassSchedule[]>();
+        for (const c of todayClasses) {
+            const h = parseInt(c.startTime.split(":")[0] ?? "0", 10);
+            const list = buckets.get(h) ?? [];
+            list.push(c);
+            buckets.set(h, list);
         }
-        return slots;
+        return Array.from(buckets.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([hour, classes]) => ({ hour, timeLabel: hourLabel(hour), classes }));
     }, [myClasses, today]);
 
     const upcomingDateLabel = today.toLocaleDateString("en-US", {
         weekday: "short", day: "numeric", month: "short", year: "numeric",
     });
 
-    const hasAnyClassesToday = upcomingSlots.some(s => s.klass);
+    const hasAnyClassesToday = upcomingByHour.length > 0;
 
     return (
         <div className="flex flex-col gap-6">
@@ -524,8 +448,13 @@ export default function InstructorDashboardPage() {
                 </div>
             </SectionCard>
 
-            {/* ── Upcoming classes ──────────────────────────────────────── */}
-            <SectionCard>
+            {/* ── Upcoming classes — Figma 7368-36130. Fixed-height card
+                (matches the admin dashboard's Today's classes pattern), inner
+                content scrolls when there are more classes than fit, and a
+                bottom gradient overlay cues the user that more rows live
+                below the fold. Lunch-break placeholder removed; every row
+                is now a real class card. ─────────────────────────────── */}
+            <SectionCard className="relative overflow-hidden flex flex-col gap-4">
                 <SectionHeader
                     title="Upcoming classes"
                     right={
@@ -537,16 +466,71 @@ export default function InstructorDashboardPage() {
                 />
 
                 {hasAnyClassesToday ? (
-                    <div className="flex flex-col gap-3">
-                        {upcomingSlots.map(slot => (
-                            <ScheduleTimeBlock
-                                key={slot.hour}
-                                timeLabel={slot.timeLabel}
-                                klass={slot.klass}
-                                isLunch={slot.isLunch}
-                            />
-                        ))}
-                    </div>
+                    <>
+                        {/* `max-h-[420px]` caps the scroll area so a packed
+                            day (~10+ classes) becomes scrollable, while a
+                            light day (3 classes) lets the card hug its
+                            content — no more half-empty white box. */}
+                        <div className="max-h-[420px] w-full overflow-y-auto scrollbar-hide">
+                            <div className="flex flex-col">
+                                {upcomingByHour.map((slot, idx) => {
+                                    const isLast = idx === upcomingByHour.length - 1;
+                                    const multi  = slot.classes.length > 1;
+                                    return (
+                                        <div
+                                            key={slot.hour}
+                                            className={cn(
+                                                "flex items-stretch w-full flex-shrink-0",
+                                                !isLast && "border-b border-[#e4e7ec]",
+                                            )}
+                                        >
+                                            {/* Time column — right-aligned hour
+                                                label matches the admin pattern */}
+                                            <div className="w-[70px] flex items-center justify-end px-4 py-3 flex-shrink-0">
+                                                <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
+                                                    {slot.timeLabel}
+                                                </p>
+                                            </div>
+                                            {/* Class cards — uses the shared
+                                                ScheduleClassCard so chrome,
+                                                tints, and avatar match the
+                                                schedule module exactly. */}
+                                            <div className={cn(
+                                                "flex flex-1 min-w-0 py-3",
+                                                multi ? "flex-col gap-3" : "items-center",
+                                            )}>
+                                                {slot.classes.map(c => (
+                                                    <ScheduleClassCard key={c.id}
+                                                        size="md"
+                                                        onClick={() => router.push(`/schedule/${c.id}`)}
+                                                        cls={{
+                                                            name: c.name,
+                                                            color: getCategoryColor(c.category),
+                                                            startTime: c.startTime,
+                                                            endTime: c.endTime,
+                                                            displayTime: c.displayTime,
+                                                            instructorName: c.instructorName,
+                                                            instructorInitials: c.instructorInitials,
+                                                            instructorColor: c.instructorColor,
+                                                            room: c.room,
+                                                            booked: c.booked,
+                                                            capacity: c.capacity,
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Fade gradient at the bottom of the scrollable
+                            area — soft visual hint that there's more
+                            content below the fold. Pointer-events-none so
+                            it doesn't intercept clicks on the bottom card. */}
+                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none rounded-b-[20px]" />
+                    </>
                 ) : (
                     <div className="relative h-[280px]">
                         <EmptyState

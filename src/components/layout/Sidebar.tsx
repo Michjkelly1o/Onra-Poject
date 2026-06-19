@@ -410,47 +410,9 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
                 })}
             </nav>
 
-            {/* ── Account ────────────────────────────────────────── */}
-            <div className="shrink-0 px-4 pb-5 pt-4 relative group/acct">
-                {slim ? (
-                    <div className="flex justify-center">
-                        <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full" />
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-3 p-3 bg-[#fbfffd] border border-[#e4e7ec] rounded-xl cursor-pointer hover:bg-white transition-colors">
-                        <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-[#344054] truncate leading-5">
-                                {currentUser.first_name
-                                    ? `${currentUser.first_name} ${currentUser.last_name ?? ""}`.trim()
-                                    : "Jonathan Miles"}
-                            </p>
-                            <p className="text-xs text-[#475467] leading-[18px] truncate">
-                                {currentUser.email || "jonathan@email.com"}
-                            </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-[#98a2b3] shrink-0" />
-                    </div>
-                )}
-
-                {/* Hover popover */}
-                <div className="absolute bottom-5 left-[calc(100%+8px)] w-52 bg-white rounded-xl border border-[#e4e7ec] shadow-lg opacity-0 invisible group-hover/acct:opacity-100 group-hover/acct:visible transition-all duration-150 z-50 overflow-hidden">
-                    <Link
-                        href={effectiveAccountHref}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-[#344054] hover:bg-[#f9fafb] border-b border-[#f2f4f7]"
-                    >
-                        <UserCircle className="w-4 h-4 text-[#667085]" />
-                        Account settings
-                    </Link>
-                    <button
-                        type="button"
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[#344054] hover:bg-[#f9fafb]"
-                    >
-                        <LogOut01 className="w-4 h-4 text-[#667085]" />
-                        Sign out
-                    </button>
-                </div>
-            </div>
+            {/* Account section moved to the header (global profile
+                dropdown). Sidebar now ends at the nav so the design stays
+                consistent across admin + instructor surfaces. */}
         </aside>
     );
 }

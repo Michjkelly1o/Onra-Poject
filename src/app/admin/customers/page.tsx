@@ -19,7 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, Plus, DotsVertical, ChevronLeft,
+    SearchMd, FilterLines, DotsVertical, ChevronLeft,
     Eye, Edit02, Trash01, Trash02, Archive, Check, Download01, Upload01,
     MarkerPin01, AlignLeft, XClose, RefreshCcw01, SlashCircle01, HeartHand,
 } from "@untitledui/icons";
@@ -607,39 +607,6 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     );
 }
 
-// ─── Add-new split dropdown ──────────────────────────────────────────────────
-
-function AddNewMenu({ onAddNew, onImport }: { onAddNew: () => void; onImport: () => void }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    return (
-        <div ref={ref} className="relative">
-            <Button variant="primary" size="md"
-                leftIcon={<Plus className="w-4 h-4" />}
-                onClick={() => setOpen(p => !p)}>
-                Add new
-            </Button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[180px]">
-                    <button type="button" onClick={() => { setOpen(false); onAddNew(); }}
-                        className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Plus className="w-4 h-4 text-[#667085]" />Add new
-                    </button>
-                    <button type="button" onClick={() => { setOpen(false); onImport(); }}
-                        className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Upload01 className="w-4 h-4 text-[#667085]" />Import data
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-}
-
 // ─── Export dropdown ─────────────────────────────────────────────────────────
 
 const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
@@ -1008,10 +975,14 @@ export default function CustomersPage() {
                     onClick={() => setFilterOpen(true)}>
                     Filter
                 </Button>
-                <AddNewMenu
-                    onAddNew={() => router.push("/customers/new?returnTo=/admin/customers")}
-                    onImport={() => setImportOpen(true)}
-                />
+                {/* Import-only entry from the customers module — direct
+                    create flow lives only on POS / class-schedule add-
+                    customer paths (`/customers/new?returnTo=...`). */}
+                <Button variant="primary" size="md"
+                    leftIcon={<Upload01 className="w-4 h-4" />}
+                    onClick={() => setImportOpen(true)}>
+                    Import data
+                </Button>
             </div>
 
             {/* ── Table area — sits flush on the admin chrome, no outer

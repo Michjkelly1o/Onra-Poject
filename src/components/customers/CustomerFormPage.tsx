@@ -23,14 +23,13 @@ import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore, DEFAULT_BRANCH_ID } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
+import { COUNTRIES, getCountryInfo } from "./country-states";
+import { AlertCircle, ArrowUpRight } from "@untitledui/icons";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STEPS = [{ n: 1, label: "Customer details" }];
 const GENDER_OPTIONS = ["Male", "Female"];
-const COUNTRY_OPTIONS = ["United Arab Emirates", "Saudi Arabia", "Qatar", "Kuwait", "Oman", "Bahrain"];
-const STATE_OPTIONS = ["Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"];
-const CITY_OPTIONS = ["Dubai", "Abu Dhabi", "Sharjah", "Al Ain", "Ajman", "Ras Al Khaimah"];
 
 // Common international dialing codes, ordered for the dropdown.
 //
@@ -294,7 +293,60 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     // forms reject identical typos.
     const emailValid = isValidEmail(email);
     const emailDirty = email.trim().length > 0;
-    const canSave = !!firstName.trim() && !!lastName.trim() && emailValid && !!branchId;
+    // Note: `duplicate` is computed below and gated into `canSave` once
+    // available — so the Save button stays disabled while an existing
+    // record matches the typed email or phone. Without this, an admin
+    // could silently push a duplicate through and only realize after the
+    // fact when the customer list shows two rows for the same person.
+    const canSaveBase = !!firstName.trim() && !!lastName.trim() && emailValid && !!branchId;
+
+    // ─── Duplicate detection ───────────────────────────────────────────────
+    //
+    // Flag email + phone collisions against the live customers slice. Open-
+    // existing shortcut routes the admin to the matched record so they can
+    // edit it instead of accidentally creating a duplicate.
+    //
+    // The current customer (in edit mode) is excluded from the search so
+    // re-saving the same email/phone on the same record doesn't self-flag.
+    const normalizedPhone = phone ? `${phoneCountry.dial} ${phone}`.replace(/\s+/g, "") : "";
+    const duplicateByEmail = email.trim() && emailValid
+        ? customers.find(c => c.id !== editing?.id && c.email && c.email.trim().toLowerCase() === email.trim().toLowerCase())
+        : undefined;
+    const duplicateByPhone = normalizedPhone
+        ? customers.find(c => c.id !== editing?.id && c.phone && c.phone.replace(/\s+/g, "") === normalizedPhone)
+        : undefined;
+    const duplicate = duplicateByEmail ?? duplicateByPhone;
+    // Final gate — block Save while a duplicate is detected. The footer
+    // alert below tells the admin what's wrong + offers a shortcut to
+    // open the existing record.
+    const canSave = canSaveBase && !duplicate;
+
+    // ─── Country-dependent address fields ──────────────────────────────────
+    //
+    // The state-label, sub-division options, and whether City + Postal-code
+    // render at all are all derived from the picked country. UAE hides the
+    // City + Postal rows entirely. Switching country clears the state field
+    // when the prior pick isn't valid for the new country's option list.
+    const countryInfo = useMemo(() => country ? getCountryInfo(country) : null, [country]);
+    const stateLabel  = countryInfo?.stateLabel ?? "Region";
+    const stateOptions = countryInfo?.states;
+    const showCityPostal = countryInfo ? countryInfo.showCityPostal !== false : true;
+
+    useEffect(() => {
+        // Drop a stale state pick once the country swaps to a list that
+        // doesn't contain it — prevents submitting "Dubai" while Country is
+        // "Canada".
+        if (!stateRegion) return;
+        if (stateOptions && !stateOptions.includes(stateRegion)) setStateRegion("");
+    }, [country, stateOptions, stateRegion]);
+
+    useEffect(() => {
+        // Clear city / postal when the country hides those rows (UAE).
+        if (!showCityPostal) {
+            if (city) setCity("");
+            if (postalCode) setPostalCode("");
+        }
+    }, [showCityPostal, city, postalCode]);
 
     // Edit mode opened for an id that no longer exists (deleted in another
     // tab / stale link) — bail with a clear message instead of a blank form.
@@ -430,26 +482,60 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Country">
+                                    {/* Flag icon per option (matches the phone
+                                        country-code picker). The trigger icon
+                                        is set dynamically so the selected
+                                        country's flag also shows on the
+                                        collapsed input. */}
                                     <SelectInput value={country} onChange={setCountry} placeholder="Select country"
-                                        options={COUNTRY_OPTIONS.map(o => ({ value: o, label: o }))} width="w-full" />
+                                        options={COUNTRIES.map(c => ({
+                                            value: c.name, label: c.name,
+                                            icon: <span className="text-[16px] leading-none">{c.flag}</span>,
+                                        }))}
+                                        triggerIcon={countryInfo ? (
+                                            <span className="text-[16px] leading-none">{countryInfo.flag}</span>
+                                        ) : undefined}
+                                        width="w-full" />
                                 </Field>
-                                <Field label="State">
-                                    <SelectInput value={stateRegion} onChange={setStateRegion} placeholder="Select state"
-                                        options={STATE_OPTIONS.map(o => ({ value: o, label: o }))} width="w-full" />
+                                {/* State-label + options vary by country. When
+                                    we have a curated list we render a Select;
+                                    otherwise the field falls back to free
+                                    text so customers from any country can
+                                    type their region in. */}
+                                <Field label={stateLabel}>
+                                    {stateOptions ? (
+                                        <SelectInput value={stateRegion} onChange={setStateRegion}
+                                            placeholder={`Select ${stateLabel.toLowerCase()}`}
+                                            options={stateOptions.map(o => ({ value: o, label: o }))}
+                                            width="w-full" />
+                                    ) : (
+                                        <input type="text" value={stateRegion}
+                                            onChange={e => setStateRegion(e.target.value)}
+                                            placeholder={`Enter ${stateLabel.toLowerCase()}...`}
+                                            className={inputCls} />
+                                    )}
                                 </Field>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="City">
-                                    <SelectInput value={city} onChange={setCity} placeholder="Select city"
-                                        options={CITY_OPTIONS.map(o => ({ value: o, label: o }))} width="w-full" />
-                                </Field>
-                                <Field label="Postal code">
-                                    <input type="text" value={postalCode}
-                                        onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
-                                        placeholder="Enter postal code..." className={inputCls} />
-                                </Field>
-                            </div>
+                            {/* City + Postal — hidden for countries that don't
+                                use them on the form (UAE). The free-text city
+                                input replaces the previous Dubai-only dropdown
+                                so visitors from other countries can fill in
+                                their own city. */}
+                            {showCityPostal && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Field label="City">
+                                        <input type="text" value={city}
+                                            onChange={e => setCity(e.target.value)}
+                                            placeholder="Enter city..." className={inputCls} />
+                                    </Field>
+                                    <Field label="Postal code">
+                                        <input type="text" value={postalCode}
+                                            onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
+                                            placeholder="Enter postal code..." className={inputCls} />
+                                    </Field>
+                                </div>
+                            )}
 
                             <Field label="Street address">
                                 <textarea value={streetAddress} onChange={e => setStreetAddress(e.target.value)}
@@ -457,6 +543,35 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                                     className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none" />
                             </Field>
                         </div>
+
+                        {/* Duplicate-customer warning — anchored at the
+                            BOTTOM of the form (per Figma 7355-31018) so it
+                            sits right above the Continue / Save CTA. The
+                            CTA itself is gated via `canSave`, so
+                            submission is blocked while this alert is
+                            visible. Title → body → "View existing
+                            customer" link with arrow, spaced apart. */}
+                        {duplicate && (
+                            <div className="flex items-start gap-3 p-4 rounded-[12px] bg-[#fffaeb] border-1 border-[#fedf89]">
+                                <div className="shrink-0 w-10 h-10 rounded-full bg-[#fef0c7] border-1 border-[#fedf89] flex items-center justify-center">
+                                    <AlertCircle className="w-5 h-5 text-[#dc6803]" />
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                    <p className="text-[16px] font-semibold text-[#7a2e0e] leading-6">
+                                        Looks like {duplicate.firstName} {duplicate.lastName} already exists
+                                    </p>
+                                    <p className="text-[14px] text-[#7a2e0e] leading-5">
+                                        We found an existing customer matching {duplicate.firstName} {duplicate.lastName}&apos;s details.
+                                    </p>
+                                    <button type="button"
+                                        onClick={() => router.push(`/customers/${duplicate.id}`)}
+                                        className="mt-3 inline-flex items-center gap-1.5 self-start text-[14px] font-semibold text-[#7a2e0e] hover:text-[#542708] transition-colors">
+                                        View existing customer
+                                        <ArrowUpRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Footer */}

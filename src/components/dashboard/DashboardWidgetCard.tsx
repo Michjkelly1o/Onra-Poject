@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { DotsVertical, Trash01, Plus } from "@untitledui/icons";
+import { DotsVertical, Trash01, Plus, DotsGrid } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG } from "./widget-catalog";
 import type { DateFilter } from "@/components/ui/date-range-filter";
@@ -480,20 +480,51 @@ interface DashboardWidgetCardProps {
     action?: "add" | "kebab";
     onAdd?: () => void;
     onRemove?: () => void;
+    /** Show a `DotsGrid` drag handle to the left of the title — same icon
+     *  the Branding portal preferences menu-bar uses
+     *  ([/settings/branding/portal/page.tsx:349](src/app/settings/branding/portal/page.tsx#L349)).
+     *  Communicates "this card can be dragged to reorder". */
+    dragHandle?: boolean;
+    /** When passed alongside `dragHandle`, the DotsGrid icon becomes the
+     *  ONLY draggable element on the card — clicking anywhere else (title,
+     *  chart, kebab) won't initiate a drag. Parent owns drop / dragover /
+     *  dragend handlers on its wrapper. */
+    onDragStart?: (e: React.DragEvent) => void;
     className?: string;
 }
 
-export function DashboardWidgetCard({ widgetId, period, action, onAdd, onRemove, className }: DashboardWidgetCardProps) {
+export function DashboardWidgetCard({ widgetId, period, action, onAdd, onRemove, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
     const meta = WIDGET_CATALOG.find(w => w.id === widgetId);
     if (!meta) return null;
 
     return (
-        <div className={cn("bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]", className)}>
+        // `data-widget-card` is a target marker — the DotsGrid icon below
+        // walks UP to this element via `closest("[data-widget-card]")`
+        // when a drag starts, then passes it to
+        // `dataTransfer.setDragImage(...)`. Result: dragging the icon
+        // visually lifts the WHOLE card as the cursor ghost.
+        <div
+            data-widget-card="true"
+            className={cn("bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]", className)}
+        >
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">{meta.title}</p>
-                    <p className="text-[14px] text-[#6e776f] truncate mt-0.5">{meta.description}</p>
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {dragHandle && (
+                        <span
+                            draggable={onDragStart !== undefined}
+                            onDragStart={onDragStart}
+                            aria-label="Drag to reorder"
+                            role="button"
+                            className="mt-1 shrink-0 text-[#98a2b3] hover:text-[#475467] cursor-grab active:cursor-grabbing transition-colors"
+                        >
+                            <DotsGrid className="w-5 h-5" />
+                        </span>
+                    )}
+                    <div className="min-w-0">
+                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">{meta.title}</p>
+                        <p className="text-[14px] text-[#6e776f] truncate mt-0.5">{meta.description}</p>
+                    </div>
                 </div>
                 {action === "add" && (
                     <button

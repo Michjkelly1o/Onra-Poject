@@ -26,11 +26,11 @@ const CLASS_TYPES: LocationType[] = ["Group", "Private"];
 // Membership items for step 2 — built from LIVE store state so the picker
 // reflects products the admin has just added / deactivated / archived in
 // the Memberships & Packages module.
-type MembershipItem = { id: string; label: string; group: "Membership" | "Class package"; enabled: boolean };
+type MembershipItem = { id: string; label: string; group: "Membership" | "Class package" };
 function buildMembershipItems(memberships: Membership[], packages: Package[]): MembershipItem[] {
     return [
-        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const, enabled: m.status === "active" })),
-        ...packages   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const, enabled: p.status === "active" })),
+        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const })),
+        ...packages   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
     ];
 }
 
@@ -426,28 +426,43 @@ const GROUPS = ["Membership", "Class package"] as const;
 function ApplicableMembershipsStep({
     items,
     selected,
-    onToggle,
-    onSelectAll,
+    onChange,
     onBack,
     onCreate,
 }: {
     items: MembershipItem[];
     selected: string[];
-    onToggle: (id: string) => void;
-    onSelectAll: () => void;
+    onChange: (next: string[]) => void;
     onBack: () => void;
     onCreate: () => void;
 }) {
     const [expanded, setExpanded] = useState(true);
     const [membershipFilter, setMembershipFilter] = useState<MembershipFilterValue>(null);
 
+    // Filter by selection state — matches the Agreements module's
+    // Applicable services pattern (MultiSelectCard in AgreementFormPage):
+    //   • "Only enabled"  → rows the admin has CHECKED
+    //   • "Only disabled" → rows the admin has NOT CHECKED
     const visibleItems = items.filter(m => {
         if (membershipFilter === null) return true;
-        if (membershipFilter === "enabled") return m.enabled;
-        return !m.enabled;
+        if (membershipFilter === "enabled") return selected.includes(m.id);
+        return !selected.includes(m.id);
     });
+    const visibleIds = visibleItems.map(m => m.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selected.includes(id));
 
-    const allSelected = visibleItems.every(m => selected.includes(m.id));
+    function onToggle(id: string) {
+        onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+    }
+    function onSelectAll() {
+        if (allSelected) {
+            onChange(selected.filter(id => !visibleIds.includes(id)));
+        } else {
+            const merged = selected.slice();
+            for (const id of visibleIds) if (!merged.includes(id)) merged.push(id);
+            onChange(merged);
+        }
+    }
 
     return (
         <div className="bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
@@ -490,6 +505,7 @@ function ApplicableMembershipsStep({
                             {/* List grouped by type */}
                             {GROUPS.map(group => {
                                 const items = visibleItems.filter(m => m.group === group);
+                                if (items.length === 0) return null;
                                 return (
                                     <div key={group} className="flex flex-col gap-3">
                                         <p className="text-[12px] text-[#667085]">{group}</p>
@@ -553,17 +569,6 @@ export default function NewClassTemplatePage() {
     const categoryOptions = classCategories.map(c => c.name);
     const membershipItems = buildMembershipItems(allMemberships, allPackages);
 
-    function handleToggle(id: string) {
-        setSelectedMemberships(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        );
-    }
-
-    function handleSelectAll() {
-        const allIds = membershipItems.map(m => m.id);
-        const allSelected = allIds.every(id => selectedMemberships.includes(id));
-        setSelectedMemberships(allSelected ? [] : allIds);
-    }
 
     const { addClassTemplate, showToast } = useAppStore();
 
@@ -642,8 +647,7 @@ export default function NewClassTemplatePage() {
                             <ApplicableMembershipsStep
                                 items={membershipItems}
                                 selected={selectedMemberships}
-                                onToggle={handleToggle}
-                                onSelectAll={handleSelectAll}
+                                onChange={setSelectedMemberships}
                                 onBack={() => setStep(1)}
                                 onCreate={handleCreate}
                             />

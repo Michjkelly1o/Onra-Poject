@@ -44,6 +44,7 @@ import { ProductPosCard, type ProductPosCardType } from "@/components/ui/Product
 import { PlanBadge, NoPlanBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RangeSlider } from "@/components/ui/RangeSlider";
+import { PosNewCustomerModal } from "@/components/pos/PosNewCustomerModal";
 import {
     useAppStore,
     MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS, DEFAULT_BRANCH_ID,
@@ -224,7 +225,10 @@ function POSInner() {
     const [activeTab, setActiveTab] = useState<TabId>("all");
     const [search, setSearch] = useState("");
     const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
-    const [cartOpen, setCartOpen] = useState(false);
+    // Cart starts VISIBLE by default. Operators can still collapse it via
+    // the `CartToggleButton` (the chevron rail to the left of the cart)
+    // when they want a wider catalog view.
+    const [cartOpen, setCartOpen] = useState(true);
     const [filterOpen, setFilterOpen] = useState(false);
     const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
     const hasActiveFilter = filter.creditsMin != null || filter.creditsMax != null
@@ -233,6 +237,10 @@ function POSInner() {
     // Cart state — single source of truth for the right panel
     const [cart, setCart] = useState<CartLine[]>([]);
     const [customerId, setCustomerId] = useState<string | null>(null);
+    // "Add new customer" side modal — replaces the previous full-page jump
+    // to /customers/new so the admin keeps cart context (lines, promo, etc.)
+    // while creating a customer mid-checkout.
+    const [newCustomerModalOpen, setNewCustomerModalOpen] = useState(false);
     // Resolved cart customer — used by the gift card modal's "Sender" row
     // and by the cart-sync effect that re-binds gift-card sender names when
     // the customer changes.
@@ -621,18 +629,6 @@ function POSInner() {
                                     </button>
                                 ))}
                             </div>
-                            <div className="ml-auto">
-                                <Button variant="secondary-gray" size="md"
-                                    leftIcon={
-                                        <div className="relative">
-                                            <FilterLines className="w-4 h-4" />
-                                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                                        </div>
-                                    }
-                                    onClick={() => setFilterOpen(true)}>
-                                    Filter
-                                </Button>
-                            </div>
                         </div>
 
                         {/* Product grid */}
@@ -693,18 +689,10 @@ function POSInner() {
                         taxRate={taxRate} taxAmount={taxAmount} taxIncluded={taxIncluded}
                         total={total}
                         onProceed={handleProceed}
-                        onNewCustomer={() => router.push("/customers/new?returnTo=/admin/pos")}
+                        onNewCustomer={() => setNewCustomerModalOpen(true)}
                     />
                 )}
             </div>
-
-            <PosFilterPanel
-                open={filterOpen}
-                onClose={() => setFilterOpen(false)}
-                applied={filter}
-                onApply={setFilter}
-                showCredits={activeTab !== "gift-cards"}
-            />
 
             <GiftCardRecipientModal
                 open={giftCardModalDesignId !== null}
@@ -712,6 +700,17 @@ function POSInner() {
                 customer={cartCustomer}
                 onClose={() => setGiftCardModalDesignId(null)}
                 onConfirm={handleConfirmGiftCard}
+            />
+
+            {/* New-customer side modal — replaces the previous full-page
+                /customers/new navigation. On save, the newly created
+                customer is auto-selected in the cart so the admin can
+                continue checkout without an extra picker tap. */}
+            <PosNewCustomerModal
+                open={newCustomerModalOpen}
+                defaultBranchId={branchId || undefined}
+                onClose={() => setNewCustomerModalOpen(false)}
+                onCustomerCreated={(id) => setCustomerId(id)}
             />
 
             <Toast />

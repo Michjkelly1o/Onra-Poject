@@ -51,8 +51,15 @@ interface Props {
     onClick?: (e: React.MouseEvent) => void;
     className?: string;
     /** Pin to a parent's absolute layout (used by the day/week time-grid
-     *  columns). When set the card uses absolute positioning + inset 2px L/R. */
-    absolute?: { top: number; height: number };
+     *  columns). When set the card uses absolute positioning. With only
+     *  top/height the card spans the full column (inset 2px L/R). With
+     *  leftPct/widthPct it's narrowed to a lane so overlapping classes
+     *  render side by side. */
+    absolute?: { top: number; height: number; leftPct?: number; widthPct?: number };
+    /** When > 0, the card surfaces a "+N more" badge in place of its
+     *  bookings count — used on the rightmost-visible card of an overlap
+     *  group to flag classes that fell into overflow lanes. */
+    moreCount?: number;
 }
 
 // ─── Avatar (image + initials fallback) ──────────────────────────────────────
@@ -95,14 +102,22 @@ function instructorShortName(full: string): string {
 
 // ─── Card ────────────────────────────────────────────────────────────────────
 
-export function ScheduleClassCard({ cls, size, onClick, className, absolute }: Props) {
+export function ScheduleClassCard({ cls, size, onClick, className, absolute, moreCount }: Props) {
     const isFull = cls.booked >= cls.capacity;
     const startLabel = fmt12(cls.startTime);
     const rangeLabel = cls.displayTime
         ?? (cls.endTime ? `${fmt12(cls.startTime)} - ${fmt12(cls.endTime)}` : startLabel);
+    const hasMore = !!moreCount && moreCount > 0;
 
     const baseStyle: React.CSSProperties = absolute
-        ? { position: "absolute", top: absolute.top, height: absolute.height, left: 2, right: 2 }
+        ? (absolute.widthPct !== undefined && absolute.leftPct !== undefined
+            ? {
+                position: "absolute",
+                top: absolute.top, height: absolute.height,
+                left: `calc(${absolute.leftPct}% + 1px)`,
+                width: `calc(${absolute.widthPct}% - 2px)`,
+            }
+            : { position: "absolute", top: absolute.top, height: absolute.height, left: 2, right: 2 })
         : {};
 
     // ── LG ───────────────────────────────────────────────────────────────────
@@ -186,12 +201,11 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute }: P
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
                     <span className="text-[11px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-[#667085]">{startLabel}</span>
-                    <span className="text-[11px] text-[#98a2b3]">•</span>
-                    <span className="text-[11px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
-                    {isFull && <span className="text-[10px] font-semibold text-[#b42318] ml-0.5">(FULL)</span>}
-                </div>
+                {hasMore && (
+                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[#475467] bg-white border border-[#e4e7ec] rounded-full px-2 py-[1px]">
+                        +{moreCount} more
+                    </span>
+                )}
             </button>
         );
     }

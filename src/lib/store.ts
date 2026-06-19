@@ -685,6 +685,14 @@ export interface ClassSchedule {
     cancelledBy?: string;
     coverColor: string;
     coverImage?: string;
+    /** Per-schedule override for applicable memberships. When undefined, fall
+     *  back to the parent template's `applicableMembershipIds` (cascade). When
+     *  set, the schedule is detached from the template for this field. Empty
+     *  array is a meaningful "no plans allowed" state — distinct from undefined. */
+    applicableMembershipIds?: string[];
+    /** Per-schedule override for applicable packages. Same cascade as
+     *  `applicableMembershipIds`. */
+    applicablePackageIds?: string[];
 }
 
 /** @deprecated use `ClassSchedule`. */
@@ -717,7 +725,16 @@ export interface ClassBooking {
      *  of `ClassBookingSeed.booking_source`). */
     bookingSource?: "customer_portal" | "admin" | "front_desk" | "pos";
     /** Origin surface that cancelled the booking. */
-    cancelledSource?: "customer_portal" | "admin" | "front_desk" | "system";
+    cancelledSource?: "customer_portal" | "admin" | "front_desk" | "instructor" | "system";
+    /** ISO timestamp recorded the moment a staff member flipped
+     *  `attendanceStatus` away from "pending" via `updateAttendance`.
+     *  Drives the team-activity feed's attendance event. */
+    attendanceMarkedAt?: string;
+    /** Display name of the staff member who marked attendance. Stamped
+     *  by `updateAttendance` from `currentUser` (the persona auto-flip
+     *  guarantees this is the instructor when the action originates from
+     *  /instructor/*). */
+    attendanceMarkedBy?: string;
 }
 
 /** Customer record — store shape (camelCase). Extends the lean seed shape
@@ -1174,6 +1191,46 @@ export interface ToastData {
     icon?: "check" | "trash" | "archive" | "slash" | "refresh";
 }
 
+/**
+ * Audit log entry — captures every back-office action across every persona
+ * so the team-activity feed can surface configuration / management events
+ * (membership edits, comp credits, settings changes, payroll runs, etc.)
+ * alongside the customer-facing event stream.
+ *
+ * Each entry is created by the `recordAudit(...)` mutator. The actor is
+ * resolved from `currentUser` at write time — when an instructor edits
+ * their profile via `/instructor/account`, `actorRole === "instructor"`;
+ * when an admin freezes a membership from `/admin/customers/[id]`,
+ * `actorRole === "admin"`.
+ *
+ * `targetName` is denormalized so an entry survives a downstream delete of
+ * the target (the feed never goes "edited <undefined>").
+ */
+export interface AuditLogEntry {
+    id: string;
+    actorId: string;
+    actorName: string;
+    actorRole: UserRole | string;
+    /** Verb phrase shown in the feed, e.g. "Edited customer profile",
+     *  "Froze membership", "Updated booking rules". */
+    action: string;
+    /** Entity category — drives the icon picker in the deriver. */
+    targetType:
+        | "customer" | "customer_plan" | "class_template" | "class_schedule"
+        | "membership" | "package" | "gift_card" | "promo_code"
+        | "branch" | "room" | "settings" | "marketing" | "staff"
+        | "pay_rate" | "payroll" | "rating" | "account";
+    targetId: string;
+    /** Display name of the target — read at write time and frozen here so
+     *  the audit row survives even if the target is later renamed / deleted. */
+    targetName: string;
+    /** Free-form context (e.g. `{ from: "2026-07-01", to: "2026-07-31" }`
+     *  for a freeze; `{ creditsGranted: 2 }` for a comp credit). Surfaced
+     *  in the feed copy when meaningful. */
+    metadata?: Record<string, string | number | boolean>;
+    createdAt: string;
+}
+
 export interface PurchaseLineItem {
     productId: string;
     productType: "membership" | "package" | "gift_card";
@@ -1293,6 +1350,8 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         cancelledBy: s.cancelled_by,
         coverColor: tpl?.coverColor ?? "#f1f2ed",
         coverImage: tpl?.coverImage,
+        applicableMembershipIds: s.applicable_membership_ids,
+        applicablePackageIds: s.applicable_package_ids,
     };
 }
 
@@ -1325,6 +1384,8 @@ function bookingFromSeed(b: SeedClassBooking): ClassBooking {
         waitlistPosition: b.waitlist_position,
         bookingSource: b.booking_source,
         cancelledSource: b.cancelled_source,
+        attendanceMarkedAt: b.attendance_marked_at,
+        attendanceMarkedBy: b.attendance_marked_by,
     };
 }
 
@@ -2254,6 +2315,15 @@ interface AppState {
      *  (`addClassBooking`, `applyPurchase`, `cancelClassBooking`, etc.) so
      *  the feed stays in lock-step with the rest of the data. */
     notifications: Notification[];
+    /** Audit log — every back-office mutation that the team-activity feed
+     *  needs to surface. Capped at the 200 most-recent entries so the
+     *  persisted blob stays small (older rows roll off automatically when
+     *  `recordAudit` pushes a new one). */
+    auditLog: AuditLogEntry[];
+    /** One-liner helper called by mutators across the store to record a
+     *  back-office action. Reads `currentUser` internally for the actor;
+     *  callers only pass action + target + optional metadata. */
+    recordAudit: (action: string, targetType: AuditLogEntry["targetType"], targetId: string, targetName: string, metadata?: AuditLogEntry["metadata"]) => void;
     /** Append a new notification — used by the cross-module triggers below. */
     addNotification: (input: Omit<Notification, "id" | "createdAt" | "isRead"> & { id?: string; createdAt?: string; isRead?: boolean }) => string;
     /** Fan-out emitter — single point through which every cross-module
@@ -2536,6 +2606,7 @@ export const useAppStore = create<AppState>()(persist(
     staff: [...INITIAL_STAFF],
     notificationSettings: [...INITIAL_NOTIFICATION_SETTINGS],
     notifications: [...INITIAL_NOTIFICATIONS],
+    auditLog: [],
     referralSettings: { ...INITIAL_REFERRAL_SETTINGS },
     taxRates: [...INITIAL_TAX_RATES],
     taxSettings: { ...INITIAL_TAX_SETTINGS },
@@ -2548,51 +2619,86 @@ export const useAppStore = create<AppState>()(persist(
     pendingPurchase: null,
     toast: null,
 
-    updateBusinessProfile: (patch) =>
+    updateBusinessProfile: (patch) => {
+        const name = get().businessProfile.name;
         set(state => ({
             businessProfile: { ...state.businessProfile, ...patch },
-        })),
+        }));
+        get().recordAudit("Updated business profile", "settings", "business_profile", name);
+    },
 
-    addBranch:    (b)         => set(state => ({ branches: [b, ...state.branches] })),
-    updateBranch: (id, patch) => set(state => {
-        const nextBranches = state.branches.map(b => b.id === id ? { ...b, ...patch } : b);
-        // Phase 3 cascade — `classSchedules.location` is a denormalized
-        // snapshot of the branch's name. Renaming a branch must update
-        // every schedule row that lives there, otherwise the admin +
-        // instructor schedule cards keep showing the old branch name.
-        if (patch.name === undefined) return { branches: nextBranches };
-        const newName = patch.name;
-        return {
-            branches: nextBranches,
-            classSchedules: state.classSchedules.map(s =>
-                s.branchId === id ? { ...s, location: newName } : s,
-            ),
-        };
-    }),
-    setBranchHours: (branchId, hours) => set(state => ({
-        businessHours: [
-            ...state.businessHours.filter(h => h.branch_id !== branchId),
-            ...hours,
-        ],
-    })),
-    updateClassesSettings: (patch) => set(state => ({
-        classesSettings: { ...state.classesSettings, ...patch },
-    })),
-    addCancellationPolicy: (policy) => set(state => ({
-        cancellationPolicies: [policy, ...state.cancellationPolicies],
-    })),
-    updateCancellationPolicy: (id, patch) => set(state => ({
-        cancellationPolicies: state.cancellationPolicies.map(p => p.id === id ? { ...p, ...patch } : p),
-    })),
-    deleteCancellationPolicy: (id) => set(state => ({
-        cancellationPolicies: state.cancellationPolicies.filter(p => p.id !== id),
-    })),
-    addClassCategory: (category) => set(state => ({
-        classCategories: [category, ...state.classCategories],
-    })),
-    updateClassCategory: (id, patch) => set(state => ({
-        classCategories: state.classCategories.map(c => c.id === id ? { ...c, ...patch } : c),
-    })),
+    addBranch:    (b)         => {
+        set(state => ({ branches: [b, ...state.branches] }));
+        get().recordAudit("Created branch", "branch", b.id, b.name);
+    },
+    updateBranch: (id, patch) => {
+        const target = get().branches.find(b => b.id === id);
+        set(state => {
+            const nextBranches = state.branches.map(b => b.id === id ? { ...b, ...patch } : b);
+            // Phase 3 cascade — `classSchedules.location` is a denormalized
+            // snapshot of the branch's name. Renaming a branch must update
+            // every schedule row that lives there, otherwise the admin +
+            // instructor schedule cards keep showing the old branch name.
+            if (patch.name === undefined) return { branches: nextBranches };
+            const newName = patch.name;
+            return {
+                branches: nextBranches,
+                classSchedules: state.classSchedules.map(s =>
+                    s.branchId === id ? { ...s, location: newName } : s,
+                ),
+            };
+        });
+        if (target) get().recordAudit("Edited branch", "branch", id, target.name);
+    },
+    setBranchHours: (branchId, hours) => {
+        const target = get().branches.find(b => b.id === branchId);
+        set(state => ({
+            businessHours: [
+                ...state.businessHours.filter(h => h.branch_id !== branchId),
+                ...hours,
+            ],
+        }));
+        if (target) get().recordAudit("Updated business hours", "branch", branchId, target.name);
+    },
+    updateClassesSettings: (patch) => {
+        set(state => ({
+            classesSettings: { ...state.classesSettings, ...patch },
+        }));
+        get().recordAudit("Updated booking rules", "settings", "classes_settings", "Booking rules");
+    },
+    addCancellationPolicy: (policy) => {
+        set(state => ({
+            cancellationPolicies: [policy, ...state.cancellationPolicies],
+        }));
+        get().recordAudit("Created cancellation policy", "settings", policy.id, policy.name);
+    },
+    updateCancellationPolicy: (id, patch) => {
+        const target = get().cancellationPolicies.find(p => p.id === id);
+        set(state => ({
+            cancellationPolicies: state.cancellationPolicies.map(p => p.id === id ? { ...p, ...patch } : p),
+        }));
+        if (target) get().recordAudit("Edited cancellation policy", "settings", id, target.name);
+    },
+    deleteCancellationPolicy: (id) => {
+        const target = get().cancellationPolicies.find(p => p.id === id);
+        set(state => ({
+            cancellationPolicies: state.cancellationPolicies.filter(p => p.id !== id),
+        }));
+        if (target) get().recordAudit("Deleted cancellation policy", "settings", id, target.name);
+    },
+    addClassCategory: (category) => {
+        set(state => ({
+            classCategories: [category, ...state.classCategories],
+        }));
+        get().recordAudit("Created class category", "settings", category.id, category.name);
+    },
+    updateClassCategory: (id, patch) => {
+        const target = get().classCategories.find(c => c.id === id);
+        set(state => ({
+            classCategories: state.classCategories.map(c => c.id === id ? { ...c, ...patch } : c),
+        }));
+        if (target) get().recordAudit("Edited class category", "settings", id, target.name);
+    },
     deleteClassCategory: (id) => set(state => {
         // Refuse the delete when any class template still references the
         // category. The UI consults `canDeleteClassCategory` first and
@@ -2611,25 +2717,36 @@ export const useAppStore = create<AppState>()(persist(
         rooms:         state.rooms.filter(r => r.branch_id !== id),
         businessHours: state.businessHours.filter(h => h.branch_id !== id),
     })),
-    addRoom:    (r)         => set(state => ({ rooms: [r, ...state.rooms] })),
-    updateRoom: (id, patch) => set(state => {
-        const nextRooms = state.rooms.map(r => r.id === id ? { ...r, ...patch } : r);
-        // Phase 3 cascade — `classSchedules.room` is a denormalized snapshot
-        // of the room's name. Without this cascade, renaming a room leaves
-        // every existing schedule card (admin + instructor) showing the OLD
-        // name. Patch all schedules whose roomId matches.
-        if (patch.name === undefined) return { rooms: nextRooms };
-        const newName = patch.name;
-        return {
-            rooms: nextRooms,
-            classSchedules: state.classSchedules.map(s =>
-                s.roomId === id ? { ...s, room: newName } : s,
-            ),
-        };
-    }),
-    deleteRoom: (id)        => set(state => ({ rooms: state.rooms.filter(r => r.id !== id) })),
+    addRoom:    (r)         => {
+        set(state => ({ rooms: [r, ...state.rooms] }));
+        get().recordAudit("Created room", "room", r.id, r.name);
+    },
+    updateRoom: (id, patch) => {
+        const target = get().rooms.find(r => r.id === id);
+        set(state => {
+            const nextRooms = state.rooms.map(r => r.id === id ? { ...r, ...patch } : r);
+            // Phase 3 cascade — `classSchedules.room` is a denormalized snapshot
+            // of the room's name. Without this cascade, renaming a room leaves
+            // every existing schedule card (admin + instructor) showing the OLD
+            // name. Patch all schedules whose roomId matches.
+            if (patch.name === undefined) return { rooms: nextRooms };
+            const newName = patch.name;
+            return {
+                rooms: nextRooms,
+                classSchedules: state.classSchedules.map(s =>
+                    s.roomId === id ? { ...s, room: newName } : s,
+                ),
+            };
+        });
+        if (target) get().recordAudit("Edited room", "room", id, target.name);
+    },
+    deleteRoom: (id)        => {
+        const target = get().rooms.find(r => r.id === id);
+        set(state => ({ rooms: state.rooms.filter(r => r.id !== id) }));
+        if (target) get().recordAudit("Deleted room", "room", id, target.name);
+    },
 
-    updateBrandingSettings: (patch) =>
+    updateBrandingSettings: (patch) => {
         set((state) => ({
             brandingSettings: {
                 ...state.brandingSettings,
@@ -2640,11 +2757,15 @@ export const useAppStore = create<AppState>()(persist(
                     ? patch.menuItems.map(i => ({ ...i }))
                     : state.brandingSettings.menuItems,
             },
-        })),
+        }));
+        get().recordAudit("Updated branding", "settings", "branding", "Branding");
+    },
 
     setRole: (role) => set({ currentRole: role }),
     setCurrentUser: (user) => set({ currentUser: user, currentRole: user.role }),
-    updateAccountProfile: (patch) =>
+    updateAccountProfile: (patch) => {
+        const before = get().currentUser;
+        const beforeName = before ? `${before.first_name} ${before.last_name}`.trim() : "Account";
         // Phase 4 centralization cascade — when the currently-logged-in user
         // is an instructor (role === "instructor" + staff_profile_id set),
         // mirror identity edits to every other slice that holds a copy of
@@ -2732,15 +2853,21 @@ export const useAppStore = create<AppState>()(persist(
                         : c,
                 ),
             };
-        }),
+        });
+        get().recordAudit("Updated own profile", "account", before?.id ?? "self", beforeName);
+    },
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
-    addClassTemplate: (template) =>
+    addClassTemplate: (template) => {
+        const id = `t-${Date.now()}`;
         set((state) => ({
-            classTemplates: [{ ...template, id: `t-${Date.now()}` }, ...state.classTemplates],
-        })),
-    updateClassTemplate: (id, updates) =>
+            classTemplates: [{ ...template, id }, ...state.classTemplates],
+        }));
+        get().recordAudit("Created class template", "class_template", id, template.name);
+    },
+    updateClassTemplate: (id, updates) => {
+        const target = get().classTemplates.find(t => t.id === id);
         set((state) => {
             const nextTemplates = state.classTemplates.map(t => t.id === id ? { ...t, ...updates } : t);
             // Cascade the fields that schedules denormalize from the template —
@@ -2761,9 +2888,14 @@ export const useAppStore = create<AppState>()(persist(
                     coverColor: tpl.coverColor,
                 } : s),
             };
-        }),
-    deleteClassTemplate: (id) =>
-        set((state) => ({ classTemplates: state.classTemplates.filter(t => t.id !== id) })),
+        });
+        if (target) get().recordAudit("Edited class template", "class_template", id, updates.name ?? target.name);
+    },
+    deleteClassTemplate: (id) => {
+        const target = get().classTemplates.find(t => t.id === id);
+        set((state) => ({ classTemplates: state.classTemplates.filter(t => t.id !== id) }));
+        if (target) get().recordAudit("Deleted class template", "class_template", id, target.name);
+    },
 
     addClassSchedule: (schedule) => {
         const id = `cs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -3196,9 +3328,25 @@ export const useAppStore = create<AppState>()(persist(
         const stateBefore = get();
         const booking = stateBefore.classBookings.find(b => b.id === bookingId);
         const wasNoShow = booking?.attendanceStatus === "no_show";
+        // Audit stamps for the team-activity feed — drop attribution back
+        // to undefined when the user is RESETTING a marking to "pending"
+        // (no live action), but keep stamps for every active mark.
+        const u = stateBefore.currentUser;
+        const markedByName = u ? `${u.first_name} ${u.last_name}`.trim() : "";
+        const stamping = status !== "pending";
+        const nowISO = new Date().toISOString();
         set((state) => ({
             classBookings: state.classBookings.map(b =>
-                b.id === bookingId ? { ...b, attendanceStatus: status } : b
+                b.id === bookingId
+                    ? {
+                        ...b,
+                        attendanceStatus: status,
+                        attendanceMarkedAt: stamping ? nowISO : undefined,
+                        attendanceMarkedBy: stamping
+                            ? (markedByName.length > 0 ? markedByName : "Studio team")
+                            : undefined,
+                    }
+                    : b
             ),
         }));
         // Feed: a fresh no-show stamp surfaces on BOTH feeds. Admin sees
@@ -3240,12 +3388,18 @@ export const useAppStore = create<AppState>()(persist(
         }
     },
 
-    deleteClassRating: (id, deletedBy) =>
+    deleteClassRating: (id, deletedBy) => {
+        const target = get().classRatings.find(r => r.id === id);
         set((state) => ({
             classRatings: state.classRatings.map(r =>
                 r.id === id ? { ...r, deletedAt: new Date().toISOString(), deletedBy } : r
             ),
-        })),
+        }));
+        if (target) {
+            const schedule = get().classSchedules.find(s => s.id === target.classScheduleId);
+            get().recordAudit("Deleted class rating", "rating", id, schedule?.name ?? "Class rating");
+        }
+    },
 
     addCustomer: (input) => {
         const id = `cu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -3267,15 +3421,28 @@ export const useAppStore = create<AppState>()(persist(
         set((state) => ({ customers: [customer, ...state.customers] }));
         return id;
     },
-    updateCustomer: (id, patch) =>
+    updateCustomer: (id, patch) => {
+        const target = get().customers.find(c => c.id === id);
         set((state) => ({
             customers: state.customers.map(c => c.id === id ? { ...c, ...patch } : c),
-        })),
-    setCustomerStatus: (ids, status) =>
+        }));
+        if (target) {
+            get().recordAudit("Edited customer profile", "customer", id, `${target.firstName} ${target.lastName}`.trim());
+        }
+    },
+    setCustomerStatus: (ids, status) => {
+        const targets = get().customers.filter(c => ids.includes(c.id));
         set((state) => {
             const idSet = new Set(ids);
             return { customers: state.customers.map(c => idSet.has(c.id) ? { ...c, status } : c) };
-        }),
+        });
+        const actionLabel = status === "active" ? "Reactivated customer"
+            : status === "inactive" ? "Deactivated customer"
+            : "Archived customer";
+        targets.forEach(t => {
+            get().recordAudit(actionLabel, "customer", t.id, `${t.firstName} ${t.lastName}`.trim(), { status });
+        });
+    },
     deleteCustomers: (ids) => {
         const state = get();
         const deleted: string[] = [];
@@ -3289,14 +3456,19 @@ export const useAppStore = create<AppState>()(persist(
         }
         if (deleted.length > 0) {
             const deletedSet = new Set(deleted);
+            const deletedTargets = state.customers.filter(c => deletedSet.has(c.id));
             set(s => ({ customers: s.customers.filter(c => !deletedSet.has(c.id)) }));
+            deletedTargets.forEach(t => {
+                get().recordAudit("Deleted customer", "customer", t.id, `${t.firstName} ${t.lastName}`.trim());
+            });
         }
         return { deleted, blocked };
     },
 
     // ── Customer plans ─────────────────────────────────────────────────────
 
-    freezeCustomerPlan: (planId, startISO, endISO, source) =>
+    freezeCustomerPlan: (planId, startISO, endISO, source) => {
+        const target = get().customerPlans.find(p => p.id === planId);
         set(state => ({
             customerPlans: state.customerPlans.map(p => {
                 if (p.id !== planId) return p;
@@ -3318,18 +3490,34 @@ export const useAppStore = create<AppState>()(persist(
                     expiryISO: extendedExpiry,
                 };
             }),
-        })),
+        }));
+        if (target) {
+            const customer = get().customers.find(c => c.id === target.customerId);
+            const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
+            get().recordAudit(`Froze ${customerName}'s plan`, "customer_plan", planId, target.name, { from: startISO, to: endISO });
+        }
+    },
 
-    unfreezeCustomerPlan: (planId) =>
+    unfreezeCustomerPlan: (planId) => {
+        const target = get().customerPlans.find(p => p.id === planId);
         set(state => ({
             customerPlans: state.customerPlans.map(p =>
                 p.id === planId
                     ? { ...p, status: "active" as const, freezeStartISO: undefined, freezeEndISO: undefined }
                     : p,
             ),
-        })),
+        }));
+        if (target) {
+            const customer = get().customers.find(c => c.id === target.customerId);
+            const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
+            get().recordAudit(`Unfroze ${customerName}'s plan`, "customer_plan", planId, target.name);
+        }
+    },
 
-    cancelCustomerPlan: (planId, mode, reason) =>
+    cancelCustomerPlan: (planId, mode, reason) => {
+        const targetPlan = get().customerPlans.find(p => p.id === planId);
+        const targetCustomer = targetPlan ? get().customers.find(c => c.id === targetPlan.customerId) : undefined;
+        const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
         set(state => {
             const target = state.customerPlans.find(p => p.id === planId);
             const customerPlans = state.customerPlans.map(p =>
@@ -3363,9 +3551,16 @@ export const useAppStore = create<AppState>()(persist(
                 return { ...c, creditsRemaining: Math.min(c.creditsRemaining ?? 0, cap) };
             });
             return { customerPlans, customers };
-        }),
+        });
+        if (targetPlan) {
+            get().recordAudit(`Cancelled ${customerName}'s plan`, "customer_plan", planId, targetPlan.name, { mode });
+        }
+    },
 
-    removeComplimentaryPlan: (planId, reason, removedBy, removedByRole) =>
+    removeComplimentaryPlan: (planId, reason, removedBy, removedByRole) => {
+        const targetPlan = get().customerPlans.find(p => p.id === planId);
+        const targetCustomer = targetPlan ? get().customers.find(c => c.id === targetPlan.customerId) : undefined;
+        const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
         set(state => {
             const plan = state.customerPlans.find(p => p.id === planId);
             const customerPlans = state.customerPlans.map(p =>
@@ -3389,7 +3584,11 @@ export const useAppStore = create<AppState>()(persist(
                 )
                 : state.customers;
             return { customerPlans, customers };
-        }),
+        });
+        if (targetPlan) {
+            get().recordAudit(`Removed ${customerName}'s complimentary credit`, "customer_plan", planId, targetPlan.name, { reason });
+        }
+    },
 
     addComplimentaryPlan: (input) => {
         const id = `cp_comp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -3401,12 +3600,16 @@ export const useAppStore = create<AppState>()(persist(
             planTypeLabel: "Free credit",
         };
         set(state => ({ customerPlans: [plan, ...state.customerPlans] }));
+        const targetCustomer = get().customers.find(c => c.id === input.customerId);
+        const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
+        get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });
         return id;
     },
 
     // ── Customer transactions ──────────────────────────────────────────────
 
-    refundTransaction: (id, method) =>
+    refundTransaction: (id, method) => {
+        const target = get().customerTransactions.find(t => t.id === id);
         set(state => ({
             customerTransactions: state.customerTransactions.map(t =>
                 t.id === id && t.status === "complete"
@@ -3418,7 +3621,13 @@ export const useAppStore = create<AppState>()(persist(
                     }
                     : t,
             ),
-        })),
+        }));
+        if (target) {
+            const targetCustomer = get().customers.find(c => c.id === target.customerId);
+            const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
+            get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
+        }
+    },
 
     // ── Memberships / Packages ─────────────────────────────────────────────
 
@@ -3433,15 +3642,23 @@ export const useAppStore = create<AppState>()(persist(
         // when sorted by insertion order. Sort columns on the list view
         // will re-order as appropriate.
         set(state => ({ memberships: [...state.memberships, next] }));
+        get().recordAudit("Created membership", "membership", id, next.name);
         return id;
     },
-    updateMembership: (id, patch) =>
-        set(state => ({ memberships: state.memberships.map(m => m.id === id ? { ...m, ...patch } : m) })),
-    setMembershipStatus: (ids, status) =>
+    updateMembership: (id, patch) => {
+        const target = get().memberships.find(m => m.id === id);
+        set(state => ({ memberships: state.memberships.map(m => m.id === id ? { ...m, ...patch } : m) }));
+        if (target) get().recordAudit("Edited membership", "membership", id, target.name);
+    },
+    setMembershipStatus: (ids, status) => {
+        const targets = get().memberships.filter(m => ids.includes(m.id));
         set(state => {
             const idSet = new Set(ids);
             return { memberships: state.memberships.map(m => idSet.has(m.id) ? { ...m, status } : m) };
-        }),
+        });
+        const verb = status === "active" ? "Reactivated" : status === "inactive" ? "Deactivated" : "Archived";
+        targets.forEach(t => get().recordAudit(`${verb} membership`, "membership", t.id, t.name, { status }));
+    },
     deleteMembership: (id) => {
         // Block deletion if any customer currently holds this membership.
         // Returns false so the UI can show "X customers still hold this — archive instead".
@@ -3474,15 +3691,23 @@ export const useAppStore = create<AppState>()(persist(
             created_at: input.created_at ?? new Date().toISOString(),
         };
         set(state => ({ packages: [...state.packages, next] }));
+        get().recordAudit("Created class package", "package", id, next.name);
         return id;
     },
-    updatePackage: (id, patch) =>
-        set(state => ({ packages: state.packages.map(p => p.id === id ? { ...p, ...patch } : p) })),
-    setPackageStatus: (ids, status) =>
+    updatePackage: (id, patch) => {
+        const target = get().packages.find(p => p.id === id);
+        set(state => ({ packages: state.packages.map(p => p.id === id ? { ...p, ...patch } : p) }));
+        if (target) get().recordAudit("Edited class package", "package", id, target.name);
+    },
+    setPackageStatus: (ids, status) => {
+        const targets = get().packages.filter(p => ids.includes(p.id));
         set(state => {
             const idSet = new Set(ids);
             return { packages: state.packages.map(p => idSet.has(p.id) ? { ...p, status } : p) };
-        }),
+        });
+        const verb = status === "active" ? "Reactivated" : status === "inactive" ? "Deactivated" : "Archived";
+        targets.forEach(t => get().recordAudit(`${verb} class package`, "package", t.id, t.name, { status }));
+    },
     deletePackage: (id) => {
         const holders = get().customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
         if (holders) return false;
@@ -3515,15 +3740,23 @@ export const useAppStore = create<AppState>()(persist(
             created_at: input.created_at ?? new Date().toISOString(),
         };
         set(state => ({ giftCardDesigns: [...state.giftCardDesigns, next] }));
+        get().recordAudit("Created gift card design", "gift_card", id, next.name);
         return id;
     },
-    updateGiftCardDesign: (id, patch) =>
-        set(state => ({ giftCardDesigns: state.giftCardDesigns.map(g => g.id === id ? { ...g, ...patch } : g) })),
-    setGiftCardDesignStatus: (ids, status) =>
+    updateGiftCardDesign: (id, patch) => {
+        const target = get().giftCardDesigns.find(g => g.id === id);
+        set(state => ({ giftCardDesigns: state.giftCardDesigns.map(g => g.id === id ? { ...g, ...patch } : g) }));
+        if (target) get().recordAudit("Edited gift card design", "gift_card", id, target.name);
+    },
+    setGiftCardDesignStatus: (ids, status) => {
+        const targets = get().giftCardDesigns.filter(g => ids.includes(g.id));
         set(state => {
             const idSet = new Set(ids);
             return { giftCardDesigns: state.giftCardDesigns.map(g => idSet.has(g.id) ? { ...g, status } : g) };
-        }),
+        });
+        const verb = status === "active" ? "Reactivated" : status === "inactive" ? "Deactivated" : "Archived";
+        targets.forEach(t => get().recordAudit(`${verb} gift card design`, "gift_card", t.id, t.name, { status }));
+    },
     deleteGiftCardDesign: (id) => {
         // Block deletion when the design has issued cards on file — those are
         // financial records, so the design can only be archived/deactivated.
@@ -3570,10 +3803,14 @@ export const useAppStore = create<AppState>()(persist(
             created_at: input.created_at ?? new Date().toISOString(),
         };
         set(state => ({ promoCodes: [...state.promoCodes, next] }));
+        get().recordAudit("Created promo code", "promo_code", id, next.code);
         return id;
     },
-    updatePromoCode: (id, patch) =>
-        set(state => ({ promoCodes: state.promoCodes.map(p => p.id === id ? { ...p, ...patch } : p) })),
+    updatePromoCode: (id, patch) => {
+        const target = get().promoCodes.find(p => p.id === id);
+        set(state => ({ promoCodes: state.promoCodes.map(p => p.id === id ? { ...p, ...patch } : p) }));
+        if (target) get().recordAudit("Edited promo code", "promo_code", id, target.code);
+    },
     deletePromoCode: (id) => {
         // Block deletion once the code has been redeemed — archive instead so
         // the financial trail survives. Returns false so the UI can explain.
@@ -3591,10 +3828,14 @@ export const useAppStore = create<AppState>()(persist(
             created_at: input.created_at ?? new Date().toISOString(),
         };
         set(state => ({ marketingItems: [...state.marketingItems, next] }));
+        get().recordAudit("Created marketing campaign", "marketing", id, next.title);
         return id;
     },
-    updateMarketingItem: (id, patch) =>
-        set(state => ({ marketingItems: state.marketingItems.map(m => m.id === id ? { ...m, ...patch } : m) })),
+    updateMarketingItem: (id, patch) => {
+        const target = get().marketingItems.find(m => m.id === id);
+        set(state => ({ marketingItems: state.marketingItems.map(m => m.id === id ? { ...m, ...patch } : m) }));
+        if (target) get().recordAudit("Edited marketing campaign", "marketing", id, target.title);
+    },
     deleteMarketingItem: (id) => {
         // Block deletion once the item has been seen — archive instead so the
         // analytics trail survives (PRD 08 §8.4 — delete only at 0 views).
@@ -3612,6 +3853,7 @@ export const useAppStore = create<AppState>()(persist(
             createdAt: input.createdAt ?? new Date().toISOString(),
         } as PayRate;
         set(state => ({ payRates: [...state.payRates, next] }));
+        get().recordAudit("Created pay rate", "pay_rate", id, next.name);
         return id;
     },
     updatePayRate: (id, patch) => {
@@ -3671,11 +3913,16 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         });
+        get().recordAudit("Edited pay rate", "pay_rate", id, after.name);
     },
-    setPayRatesStatus: (ids, status) =>
+    setPayRatesStatus: (ids, status) => {
+        const targets = get().payRates.filter(p => ids.includes(p.id));
         set(state => ({
             payRates: state.payRates.map(p => ids.includes(p.id) ? { ...p, status } : p),
-        })),
+        }));
+        const verb = status === "active" ? "Reactivated" : "Archived";
+        targets.forEach(t => get().recordAudit(`${verb} pay rate`, "pay_rate", t.id, t.name, { status }));
+    },
     deletePayRates: (ids) => {
         const deletable = get().payRates.filter(p => ids.includes(p.id) && p.status === "active" && p.usageCount === 0);
         const deletableIds = deletable.map(p => p.id);
@@ -3745,8 +3992,15 @@ export const useAppStore = create<AppState>()(persist(
                 targetInstructorId: instructorId,
             },
         });
+        get().recordAudit(
+            newRate ? `Assigned pay rate to ${beforeInstructor?.name ?? "instructor"}` : `Cleared pay rate for ${beforeInstructor?.name ?? "instructor"}`,
+            "pay_rate",
+            payRateId ?? previousPayRateId ?? "—",
+            newRate?.name ?? "—",
+        );
     },
-    setInstructorStatus: (ids, status) =>
+    setInstructorStatus: (ids, status) => {
+        const targets = get().instructors.filter(i => ids.includes(i.id));
         // Mirror status back to staff (instructor statuses are a strict
         // subset of staff statuses — no mapping needed in this direction).
         set(state => ({
@@ -3756,24 +4010,37 @@ export const useAppStore = create<AppState>()(persist(
             staff: state.staff.map(s =>
                 ids.includes(s.id) ? { ...s, status } : s,
             ),
-        })),
+        }));
+        const verb = status === "active" ? "Reactivated" : status === "inactive" ? "Deactivated" : "Archived";
+        targets.forEach(t => get().recordAudit(`${verb} instructor`, "staff", t.id, t.name, { status }));
+    },
 
-    setPayrollEntriesStatus: (ids, status, payrollRunId) =>
+    setPayrollEntriesStatus: (ids, status, payrollRunId) => {
         set(state => ({
             payrollEntries: state.payrollEntries.map(e =>
                 ids.includes(e.id)
                     ? { ...e, status, ...(payrollRunId ? { payrollRunId } : {}) }
                     : e,
             ),
-        })),
-    setPayrollEntryAdjustment: (id, amount, reason) =>
+        }));
+        if (status === "paid") {
+            get().recordAudit("Ran payroll", "payroll", payrollRunId ?? "run", `${ids.length} entries`, { entries: ids.length });
+        }
+    },
+    setPayrollEntryAdjustment: (id, amount, reason) => {
         set(state => ({
             payrollEntries: state.payrollEntries.map(e =>
                 e.id === id
                     ? { ...e, adjustmentAmount: amount, adjustmentReason: reason, totalEarnings: e.baseEarnings + amount }
                     : e,
             ),
-        })),
+        }));
+        const target = get().payrollEntries.find(e => e.id === id);
+        if (target) {
+            const instructor = get().instructors.find(i => i.id === target.instructorId);
+            get().recordAudit("Adjusted payroll entry", "payroll", id, instructor?.name ?? target.payRateName, { amount, reason: reason ?? "" });
+        }
+    },
 
     // ── Customer notification settings ────────────────────────────────────
     setNotificationEventChannel: (id, channel, enabled) =>
@@ -3810,6 +4077,28 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({ notifications: [record, ...state.notifications] }));
         return id;
     },
+
+    recordAudit: (action, targetType, targetId, targetName, metadata) => {
+        const state = get();
+        const u = state.currentUser;
+        const actorName = u ? `${u.first_name} ${u.last_name}`.trim() : "Studio team";
+        const actorRole = state.currentRole;
+        const entry: AuditLogEntry = {
+            id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            actorId: u?.id ?? "unknown",
+            actorName: actorName.length > 0 ? actorName : "Studio team",
+            actorRole,
+            action,
+            targetType,
+            targetId,
+            targetName,
+            metadata,
+            createdAt: new Date().toISOString(),
+        };
+        // Cap at 200 most-recent entries so the persisted blob stays small.
+        // The team-activity feed only ever surfaces the top N anyway.
+        set(s => ({ auditLog: [entry, ...s.auditLog].slice(0, 200) }));
+    },
     emitNotifications: (input) => {
         // Stamp the `audience` field per payload + delegate to
         // `addNotification` so both feeds (admin bell, instructor bell)
@@ -3840,18 +4129,24 @@ export const useAppStore = create<AppState>()(persist(
         })),
 
     // ── Referral settings ─────────────────────────────────────────────────
-    setReferralProgramActive: (active) =>
+    setReferralProgramActive: (active) => {
         set(state => ({
             referralSettings: { ...state.referralSettings, programActive: active },
-        })),
-    updateReferralRewards: (patch) =>
+        }));
+        get().recordAudit(active ? "Activated referral program" : "Deactivated referral program", "settings", "referral_program", "Referral program");
+    },
+    updateReferralRewards: (patch) => {
         set(state => ({
             referralSettings: { ...state.referralSettings, ...patch },
-        })),
-    updateReferralInformation: (patch) =>
+        }));
+        get().recordAudit("Updated referral rewards", "settings", "referral_rewards", "Referral rewards");
+    },
+    updateReferralInformation: (patch) => {
         set(state => ({
             referralSettings: { ...state.referralSettings, ...patch },
-        })),
+        }));
+        get().recordAudit("Updated referral information", "settings", "referral_information", "Referral information");
+    },
 
     // ── Tax module ────────────────────────────────────────────────────────
     setPricesIncludeTax: (value) =>
@@ -3869,12 +4164,16 @@ export const useAppStore = create<AppState>()(persist(
         // Note: no bell-feed entry. Tax events are admin-only config — the
         // toast emitted by the TaxRateModal is sufficient feedback, and the
         // bell is reserved for customer-visible events (bookings / payments).
+        get().recordAudit("Created tax rate", "settings", id, record.name);
         return id;
     },
-    updateTaxRate: (id, patch) =>
+    updateTaxRate: (id, patch) => {
+        const target = get().taxRates.find(t => t.id === id);
         set(state => ({
             taxRates: state.taxRates.map(t => t.id === id ? { ...t, ...patch } : t),
-        })),
+        }));
+        if (target) get().recordAudit("Edited tax rate", "settings", id, target.name);
+    },
     setTaxRatesStatus: (ids, status) =>
         set(state => {
             const idSet = new Set(ids);
@@ -3962,16 +4261,20 @@ export const useAppStore = create<AppState>()(persist(
             updatedAt: input.updatedAt ?? now,
         };
         set(state => ({ agreements: [record, ...state.agreements] }));
+        get().recordAudit("Created agreement", "settings", id, record.name);
         return id;
     },
-    updateAgreement: (id, patch) =>
+    updateAgreement: (id, patch) => {
+        const target = get().agreements.find(a => a.id === id);
         set(state => ({
             agreements: state.agreements.map(a =>
                 a.id === id
                     ? { ...a, ...patch, updatedAt: new Date().toISOString() }
                     : a,
             ),
-        })),
+        }));
+        if (target) get().recordAudit("Edited agreement", "settings", id, target.name);
+    },
     setAgreementsStatus: (ids, status) =>
         set(state => {
             const idSet = new Set(ids);

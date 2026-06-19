@@ -5,15 +5,10 @@ import {
     CurrencyDollar,
     Users01,
     ShoppingBag01,
-    TrendUp01,
     ArrowUp,
     ArrowDown,
     MarkerPin01,
     CalendarCheck01,
-    CreditCard02,
-    User01,
-    UserCheck01,
-    RefreshCw04,
     BarChartSquare01,
     Plus,
     DownloadCloud01,
@@ -30,6 +25,7 @@ import { SelectInput } from "@/components/ui/select-input"; // used for location
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
+import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
 import { Toast } from "@/components/ui/Toast";
 
@@ -71,87 +67,12 @@ const CATEGORY_PALETTE: Record<string, { bg: string; border: string; text: strin
 };
 const FALLBACK_PALETTE = { bg: "#f7f3f7", border: "#b892ba", text: "#4a1fb8" };
 
-interface ActivityItem {
-    id: string;
-    name: string;
-    timeAgo: string;
-    description: string;
-    icon: typeof CreditCard02;
-}
-
-// ── Mock Data for Dashboard ──
-const recentActivity: ActivityItem[] = [
-    {
-        id: "a1",
-        name: "Jhon Martin",
-        timeAgo: "14 min ago",
-        description: "Purchased the Unlimited membership",
-        icon: CreditCard02,
-    },
-    {
-        id: "a2",
-        name: "Sara Williams",
-        timeAgo: "28 min ago",
-        description: "Booked Mat Pilates class for tomorrow",
-        icon: CalendarCheck01,
-    },
-    {
-        id: "a3",
-        name: "Ahmed Al-Farsi",
-        timeAgo: "1 hr ago",
-        description: "Purchased the 10-Class Pack",
-        icon: CreditCard02,
-    },
-    {
-        id: "a4",
-        name: "Emma Dawson",
-        timeAgo: "2 hr ago",
-        description: "Cancelled Reformer Pilates session",
-        icon: CalendarCheck01,
-    },
-    {
-        id: "a5",
-        name: "Noah Park",
-        timeAgo: "3 hr ago",
-        description: "Signed up as a new member",
-        icon: Users01,
-    },
-    {
-        id: "a6",
-        name: "Mia Anderson",
-        timeAgo: "5 hr ago",
-        description: "Renewed Unlimited Monthly membership",
-        icon: CreditCard02,
-    },
-    {
-        id: "a7",
-        name: "Lena Torres",
-        timeAgo: "6 hr ago",
-        description: "Checked in to Barre class",
-        icon: UserCheck01,
-    },
-    {
-        id: "a8",
-        name: "James Kim",
-        timeAgo: "7 hr ago",
-        description: "Purchased the 5-Class Pack",
-        icon: CreditCard02,
-    },
-    {
-        id: "a9",
-        name: "Sofia Reyes",
-        timeAgo: "8 hr ago",
-        description: "Auto-renewed Unlimited Monthly",
-        icon: RefreshCw04,
-    },
-    {
-        id: "a10",
-        name: "Omar Hassan",
-        timeAgo: "9 hr ago",
-        description: "Booked Reformer Pilates for Friday",
-        icon: CalendarCheck01,
-    },
-];
+// Recent activity feed — now LIVE-derived inside the component via
+// `useTeamActivity()`. The dashboard widget slices the top 10; the
+// notifications "Team activity" tab consumes the full feed. Bookings,
+// cancellations, sales, refunds, and customer signups across every
+// surface (customer portal / POS / admin / front desk) all flow into
+// this stream automatically — no static seed maintenance.
 
 interface DashboardMetric {
     label: string;
@@ -226,23 +147,95 @@ function PerformanceTab({
     activeWidgets,
     period,
     onRemoveWidget,
+    onReorderWidgets,
     onOpenModal,
 }: {
     activeWidgets: string[];
     period: DateFilter;
     onRemoveWidget: (id: string) => void;
+    /** Swap widgets at `fromIndex` and `toIndex` in the active list.
+     *  Called by the native HTML5 drag-and-drop handlers below — no
+     *  external dnd library required. */
+    onReorderWidgets: (fromIndex: number, toIndex: number) => void;
     onOpenModal: () => void;
 }) {
+    // Track which widget is being dragged (by its position) so the drop
+    // handler knows what to move. Reset on dragend / drop so a fresh
+    // drag starts clean.
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+    const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
     return (
         <div className="grid grid-cols-2 gap-6">
-            {activeWidgets.map(id => (
-                <DashboardWidgetCard
+            {activeWidgets.map((id, idx) => (
+                <div
                     key={id}
-                    widgetId={id}
-                    period={period}
-                    action="kebab"
-                    onRemove={() => onRemoveWidget(id)}
-                />
+                    // Drop target only — `draggable` lives on the DotsGrid
+                    // icon inside the card so dragging is ONLY initiated
+                    // from the handle. Clicks anywhere else (title, chart,
+                    // kebab) don't start a drag.
+                    onDragOver={(e) => {
+                        // Allow drop + signal the visual hover target.
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (hoverIndex !== idx) setHoverIndex(idx);
+                    }}
+                    onDragLeave={(e) => {
+                        // Only clear when leaving the actual card boundary,
+                        // not when the cursor crosses child elements.
+                        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                        if (hoverIndex === idx) setHoverIndex(null);
+                    }}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        if (dragIndex !== null && dragIndex !== idx) {
+                            onReorderWidgets(dragIndex, idx);
+                        }
+                        setDragIndex(null);
+                        setHoverIndex(null);
+                    }}
+                    onDragEnd={() => {
+                        setDragIndex(null);
+                        setHoverIndex(null);
+                    }}
+                    className={cn(
+                        "transition-all",
+                        dragIndex === idx && "opacity-40",
+                        hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
+                            "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
+                    )}
+                >
+                    <DashboardWidgetCard
+                        widgetId={id}
+                        period={period}
+                        action="kebab"
+                        dragHandle
+                        onDragStart={(e) => {
+                            setDragIndex(idx);
+                            // Some browsers require dataTransfer to be set
+                            // for a drag to actually start.
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", id);
+                            // Drag image = the WHOLE card, not just the
+                            // icon. The card shell is tagged with
+                            // `data-widget-card` so we can walk up the DOM
+                            // from the icon to find it. Offset positions
+                            // the ghost so the cursor stays roughly where
+                            // it grabbed the handle.
+                            const handle = e.currentTarget as HTMLElement;
+                            const card = handle.closest("[data-widget-card]") as HTMLElement | null;
+                            if (card) {
+                                const rect = card.getBoundingClientRect();
+                                e.dataTransfer.setDragImage(
+                                    card,
+                                    e.clientX - rect.left,
+                                    e.clientY - rect.top,
+                                );
+                            }
+                        }}
+                        onRemove={() => onRemoveWidget(id)}
+                    />
+                </div>
             ))}
 
             {/* Add widget entry point */}
@@ -310,7 +303,7 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
     );
 }
 
-function ActivityRow({ item }: { item: ActivityItem }) {
+function ActivityRow({ item }: { item: TeamActivityItem }) {
     const Icon = item.icon;
     return (
         <div className="flex gap-3 items-center w-full">
@@ -376,20 +369,11 @@ function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     );
 }
 
-const instructorOptions = [
-    { value: "all", label: "All instructors" },
-    { value: "sara", label: "Sara Al-Rashid" },
-    { value: "maya", label: "Maya Johnson" },
-    { value: "liam", label: "Liam Chen" },
-];
-
-
 // ── Main Dashboard ──
 export default function AdminDashboard() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"today" | "performance">("today");
     const [location, setLocation] = useState<string>(DEFAULT_BRANCH_ID);
-    const [instructor, setInstructor] = useState("all");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
     const [widgetModalOpen, setWidgetModalOpen] = useState(false);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
@@ -401,6 +385,12 @@ export default function AdminDashboard() {
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const branches = useAppStore(s => s.branches);
     const showToast = useAppStore(s => s.showToast);
+
+    // Live "Recent activity" feed — derived from bookings, transactions,
+    // and customer signups across every surface (customer portal / POS /
+    // admin / front desk). Top 10 fills the dashboard widget; the full
+    // feed lives on /admin/notifications?tab=team.
+    const recentActivity = useTeamActivity(10);
     // Phase 3 cross-module sync — welcome header reads from the centralized
     // Branding `displayName` so editing it through Settings → Branding flips
     // the dashboard greeting in the same render cycle.
@@ -567,7 +557,6 @@ export default function AdminDashboard() {
         const title = WIDGET_CATALOG.find(w => w.id === id)?.title ?? "Widget";
         showToast("Widget removed", `${title} has been removed from your dashboard.`, "success", "trash");
     }
-    const formattedDate = format(today, "EEE, dd MMM yyyy");
 
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
@@ -619,15 +608,6 @@ export default function AdminDashboard() {
                 {/* Performance-only controls */}
                 {activeTab === "performance" && (
                     <>
-                        <SelectInput
-                            triggerIcon={<User01 className="w-5 h-5" />}
-                            placeholder="All instructors"
-                            options={instructorOptions}
-                            value={instructor}
-                            onChange={setInstructor}
-                            width="w-[180px]"
-                        />
-
                         <DateRangeFilter
                             value={period}
                             onChange={setPeriod}
@@ -672,6 +652,22 @@ export default function AdminDashboard() {
                     activeWidgets={activeWidgets}
                     period={period}
                     onRemoveWidget={handleRemoveWidget}
+                    onReorderWidgets={(fromIndex, toIndex) => {
+                        // Reorder via splice + setState — same semantics as
+                        // a drag-and-drop reorder library would use, no
+                        // extra dependency required.
+                        setActiveWidgets(prev => {
+                            const next = [...prev];
+                            const [moved] = next.splice(fromIndex, 1);
+                            next.splice(toIndex, 0, moved);
+                            return next;
+                        });
+                        showToast(
+                            "Widget reordered",
+                            "Your dashboard layout has been updated.",
+                            "success", "check",
+                        );
+                    }}
                     onOpenModal={() => setWidgetModalOpen(true)}
                 />
             )}
@@ -681,24 +677,19 @@ export default function AdminDashboard() {
 
                 {/* Today's Classes */}
                 <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
-                    {/* Header */}
-                    <div className="flex gap-5 items-center w-full flex-shrink-0">
-                        <div className="flex flex-1 flex-col gap-5 items-start min-w-0 relative">
-                            <div className="flex gap-4 items-start w-full">
-                                <div className="flex flex-1 flex-col gap-1 items-start justify-center min-w-0 relative self-stretch">
-                                    <p className="font-semibold text-lg text-[#101828] w-full">
-                                        Today&apos;s classes
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Date badge */}
-                        <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] flex gap-1 items-center pl-2.5 pr-3 py-1 relative rounded-full flex-shrink-0">
-                            <CalendarCheck01 size={12} className="text-[#344054]" />
-                            <p className="font-medium text-sm text-[#344054] text-center whitespace-nowrap">
-                                {formattedDate}
-                            </p>
-                        </div>
+                    {/* Header — Today's classes title + See all button.
+                        Click navigates to the schedule list per the brief. */}
+                    <div className="flex gap-3 items-center w-full flex-shrink-0">
+                        <p className="font-semibold text-lg text-[#101828] flex-1 truncate">
+                            Today&apos;s classes
+                        </p>
+                        <Button
+                            variant="secondary-gray"
+                            size="sm"
+                            onClick={() => router.push("/admin/schedule")}
+                        >
+                            See all
+                        </Button>
                     </div>
 
                     {/* Schedule Timeline — one flex row per slot keeps the divider continuous across time + cards. */}
@@ -763,15 +754,21 @@ export default function AdminDashboard() {
 
                 {/* Recent Activity */}
                 <div className="bg-white border-1 border-[#e4e7ec] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
-                    {/* Header */}
-                    <div className="flex flex-col gap-5 items-start w-full flex-shrink-0">
-                        <div className="flex gap-4 items-start w-full">
-                            <div className="flex flex-1 flex-col gap-1 items-start justify-center min-w-0 relative self-stretch">
-                                <p className="font-semibold text-lg text-[#101828] w-full">
-                                    Recent activity
-                                </p>
-                            </div>
-                        </div>
+                    {/* Header — Recent activity title + See all button.
+                        "See all" routes to the notifications module's
+                        Team activity tab, which surfaces the full feed
+                        (same data source). */}
+                    <div className="flex gap-3 items-center w-full flex-shrink-0">
+                        <p className="font-semibold text-lg text-[#101828] flex-1 truncate">
+                            Recent activity
+                        </p>
+                        <Button
+                            variant="secondary-gray"
+                            size="sm"
+                            onClick={() => router.push("/admin/notifications?tab=team")}
+                        >
+                            See all
+                        </Button>
                     </div>
 
                     {/* Activity list */}

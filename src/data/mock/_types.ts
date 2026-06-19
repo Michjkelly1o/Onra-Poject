@@ -890,6 +890,14 @@ export interface ClassSchedule {
     waitlist_enabled?: boolean;
     /** Shared id linking every instance generated from one recurring config. */
     recurrence_group_id?: string;
+    /** Per-schedule override for applicable memberships. When undefined, falls
+     *  back to the parent template's `applicable_membership_ids`. When set
+     *  (admin edited or scratch-created), this list is authoritative and
+     *  detached from the template. */
+    applicable_membership_ids?: string[]; // → memberships.id[]
+    /** Per-schedule override for applicable packages. Same cascade as
+     *  `applicable_membership_ids`. */
+    applicable_package_ids?: string[]; // → packages.id[]
     // +later: substitute_instructor_id, cancelled_reason
 }
 
@@ -924,7 +932,16 @@ export interface ClassBooking {
      *  `status === "cancelled"` OR `attendance_status === "late_cancel"`.
      *  Drives the All cancellations / All bookings "Cancelled source"
      *  column. */
-    cancelled_source?: "customer_portal" | "admin" | "front_desk" | "system";
+    cancelled_source?: "customer_portal" | "admin" | "front_desk" | "instructor" | "system";
+    /** ISO timestamp recorded the moment a staff member flips
+     *  `attendance_status` away from "pending" via `updateAttendance`. Drives
+     *  the team-activity feed's attendance events ("River Teach marked
+     *  Sara Williams present in Hot Yoga"). */
+    attendance_marked_at?: string;
+    /** Display name of the staff member who marked attendance. Resolved from
+     *  `currentUser` at mutation time so the audit trail survives even when
+     *  the user later changes their display name. */
+    attendance_marked_by?: string;
 }
 
 /** Class rating (one per booked customer per class). */

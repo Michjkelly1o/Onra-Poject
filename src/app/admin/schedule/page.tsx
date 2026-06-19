@@ -19,6 +19,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
+import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 
 // Alias for compatibility with existing code in this file
 type Instructor = ScheduleInstructor;
@@ -372,21 +373,27 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 
 // ─── Filter panel ─────────────────────────────────────────────────────────────
 
+// FilterState — sections per Figma 2337:111898:
+//   Type · Status · Time of the day · Location · Instructor · Template.
+//
+// Removed in this revision: `dayOfWeek` + `dateFrom` / `dateTo` (Day of
+// week + Custom date range sections dropped from the Figma). Added:
+// `types` (Group / Private multi-select pills, new top-of-panel section).
+type ClassTypeFilter = "Group" | "Private";
 type FilterState = {
+    types: ClassTypeFilter[];
     statuses: ClassStatus[];
-    dayOfWeek: string[];
     timeOfDay: string[];
     locationRoom: string;
     instructors: string[];
     templateId: string;
-    dateFrom: string;
-    dateTo: string;
 };
 const EMPTY_FILTER: FilterState = {
-    statuses: [], dayOfWeek: [], timeOfDay: [],
-    locationRoom: "", instructors: [], templateId: "", dateFrom: "", dateTo: "",
+    types: [], statuses: [], timeOfDay: [],
+    locationRoom: "", instructors: [], templateId: "",
 };
-const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Completed", "Cancelled"];
+const ALL_TYPES: ClassTypeFilter[] = ["Group", "Private"];
+const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Cancelled", "Completed"];
 
 // Branch → room-name groups for the location filter, derived from the live
 // `branches` + `rooms` seeds so the filter always matches the room names the
@@ -535,10 +542,9 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel, 
 
     function toggle<T>(arr: T[], val: T): T[] { return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]; }
 
-    const hasAny = pending.statuses.length > 0 || pending.dayOfWeek.length > 0 ||
+    const hasAny = pending.types.length > 0 || pending.statuses.length > 0 ||
         pending.timeOfDay.length > 0 || !!pending.locationRoom ||
-        pending.instructors.length > 0 || !!pending.templateId ||
-        !!pending.dateFrom || !!pending.dateTo;
+        pending.instructors.length > 0 || !!pending.templateId;
 
     const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
     const templateOptions = templates.map(t => ({ value: t.id, label: t.name }));
@@ -560,8 +566,22 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel, 
                     </button>
                 </div>
 
-                {/* Scrollable content */}
+                {/* Scrollable content — section order matches Figma
+                    2337:111898: Type → Status → Time of the day →
+                    Location → Instructor → Template. */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* Type — Group / Private (multi-select pills) */}
+                    <div className="flex flex-col gap-2">
+                        <SectionLabel label="Type" />
+                        <div className="flex flex-wrap gap-2">
+                            {ALL_TYPES.map(t => (
+                                <FilterPill key={t} label={t} selected={pending.types.includes(t)}
+                                    onClick={() => setPending(p => ({ ...p, types: toggle(p.types, t) }))} />
+                            ))}
+                        </div>
+                    </div>
+                    <Divider />
+
                     {/* Status */}
                     <div className="flex flex-col gap-2">
                         <SectionLabel label="Status" />
@@ -569,38 +589,6 @@ function FilterPanel({ open, onClose, applied, onApply, templates, branchLabel, 
                             {ALL_STATUSES.map(s => (
                                 <FilterPill key={s} label={s} selected={pending.statuses.includes(s)}
                                     onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
-                            ))}
-                        </div>
-                    </div>
-                    <Divider />
-
-                    {/* Custom date range */}
-                    <div className="flex flex-col gap-2">
-                        <SectionLabel label="Custom date range" />
-                        <div className="flex items-center gap-2">
-                            <DatePicker className="flex-1" value={pending.dateFrom}
-                                onChange={v => setPending(p => {
-                                    // Clear the end date if it now falls before the new start.
-                                    const next = { ...p, dateFrom: v };
-                                    if (p.dateTo && v && p.dateTo < v) next.dateTo = "";
-                                    return next;
-                                })}
-                                placeholder="Start date" />
-                            <DatePicker className="flex-1" value={pending.dateTo}
-                                onChange={v => setPending(p => ({ ...p, dateTo: v }))}
-                                placeholder="End date"
-                                minDate={pending.dateFrom || undefined} />
-                        </div>
-                    </div>
-                    <Divider />
-
-                    {/* Day of week */}
-                    <div className="flex flex-col gap-2">
-                        <SectionLabel label="Day of week" />
-                        <div className="flex flex-wrap gap-2">
-                            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-                                <FilterPill key={d} label={d} selected={pending.dayOfWeek.includes(d)}
-                                    onClick={() => setPending(p => ({ ...p, dayOfWeek: toggle(p.dayOfWeek, d) }))} />
                             ))}
                         </div>
                     </div>
@@ -858,16 +846,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                             <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
                         ))}
 
-                        {/* Lunch break */}
-                        <div className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
-                            style={{ top: topFromTime("12:00", gridStartHour), height: HOUR_HEIGHT }}>
-                            <div className="absolute inset-0 opacity-50"
-                                style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
-                            <div className="relative z-10 text-center">
-                                <p className="text-[12px] font-medium text-[#98a2b3]">Lunch Break · 12:00 – 01:00 PM</p>
-                            </div>
-                        </div>
-
                         {/* Current time line */}
                         {showCurrentTime && (
                             <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
@@ -986,13 +964,6 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                             <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
                         ))}
 
-                        {/* Lunch break */}
-                        <div className="absolute left-0 right-0 pointer-events-none"
-                            style={{ top: weekTopFromTime("12:00", gridStartHour), height: WEEK_HOUR_HEIGHT }}>
-                            <div className="absolute inset-0 opacity-40"
-                                style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
-                        </div>
-
                         {/* Current time line */}
                         {showCurrentTime && (
                             <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
@@ -1005,13 +976,24 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                         <div className="absolute inset-0 flex">
                             {cols.map(col => {
                                 const dayClasses = classes.filter(c => c.dateISO === col.iso);
+                                // Overlap layout — group classes that share a
+                                // time window and assign each a horizontal
+                                // lane so they render side by side instead of
+                                // stacking on top of each other. Excess
+                                // classes show up as "+N more" on the badge
+                                // holder of their group.
+                                const lanes = computeOverlapLanes(dayClasses);
                                 return (
                                     <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
                                         style={{ minHeight: gridHeight }}>
                                         {dayClasses.map(cls => {
+                                            const lane = lanes.get(cls.id);
+                                            if (lane && !lane.visible) return null;
                                             const top = weekTopFromTime(cls.startTime, gridStartHour);
                                             const height = weekHeightFromTime(cls.startTime, cls.endTime);
                                             const colors = getCategoryColor(cls.category);
+                                            const widthPct = lane && lane.totalLanes > 1 ? 100 / lane.totalLanes : undefined;
+                                            const leftPct  = lane && lane.totalLanes > 1 ? lane.lane * (100 / lane.totalLanes) : undefined;
                                             return (
                                                 <ScheduleClassCard key={cls.id}
                                                     size="sm"
@@ -1025,7 +1007,8 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                                                         room: cls.room,
                                                         booked: cls.booked, capacity: cls.capacity,
                                                     }}
-                                                    absolute={{ top, height }}
+                                                    absolute={{ top, height, leftPct, widthPct }}
+                                                    moreCount={lane?.moreCount ?? 0}
                                                     onClick={(e) => onClassClick(cls, e)}
                                                 />
                                             );
@@ -1425,10 +1408,9 @@ function SchedulePage() {
         setPopup({ cls, anchor: { x: rect.right, y: rect.top } });
     }
 
-    const hasActiveFilter = applied.statuses.length > 0 || applied.dayOfWeek.length > 0 ||
+    const hasActiveFilter = applied.types.length > 0 || applied.statuses.length > 0 ||
         applied.timeOfDay.length > 0 || !!applied.locationRoom ||
-        applied.instructors.length > 0 || !!applied.templateId ||
-        !!applied.dateFrom || !!applied.dateTo;
+        applied.instructors.length > 0 || !!applied.templateId;
 
     const filteredClasses = classSchedules.filter(c => {
         // Branch picker — empty string = "All locations", otherwise scope to
@@ -1437,18 +1419,16 @@ function SchedulePage() {
         if (location && c.branchId !== location) return false;
         const q = search.toLowerCase();
         if (q && !c.name.toLowerCase().includes(q) && !c.instructorName.toLowerCase().includes(q) && !c.location.toLowerCase().includes(q)) return false;
+        if (applied.types.length > 0 && !applied.types.includes(c.classType)) return false;
         if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
         if (applied.instructors.length > 0 && !applied.instructors.includes(c.instructorId)) return false;
         if (applied.templateId && c.templateId !== applied.templateId) return false;
         if (applied.locationRoom && c.room !== applied.locationRoom) return false;
-        if (applied.dayOfWeek.length > 0 && !applied.dayOfWeek.includes(c.dayOfWeek)) return false;
         if (applied.timeOfDay.length > 0) {
             const [h] = c.startTime.split(":").map(Number);
             const slot = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
             if (!applied.timeOfDay.includes(slot)) return false;
         }
-        if (applied.dateFrom && c.dateISO < applied.dateFrom) return false;
-        if (applied.dateTo && c.dateISO > applied.dateTo) return false;
         return true;
     });
 

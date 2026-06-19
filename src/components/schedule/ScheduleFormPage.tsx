@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronDown, ChevronUp, ChevronRight, Check, SearchMd,
@@ -15,6 +15,25 @@ import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
+import {
+    ApplicableMembershipsCard,
+    buildMembershipItems,
+    type MembershipItem,
+} from "@/components/shared/ApplicableMembershipsCard";
+
+/**
+ * Sentinel "template id" that drives the from-scratch create path. When the
+ * admin picks this option from the template dropdown the form keeps all
+ * downstream behaviour identical to a real template — except:
+ *  • Step 1's Class-details fields start empty (admin fills them in)
+ *  • The "Applicable memberships" step is inserted right after Class details
+ *    (admin must explicitly pick which plans grant access — there's no
+ *    parent template to cascade from)
+ *  • At persist time the value is rewritten to `""` so the schedule row has
+ *    no template FK — consumers fall back to the schedule's own applicable
+ *    lists (see ClassSchedule resolver in src/app/schedule/[classId]).
+ */
+const SCRATCH_TEMPLATE_ID = "__scratch__";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -36,15 +55,19 @@ function genderLabelFromAccess(access?: GenderAccess): string {
     if (access === "male")   return "Male only";
     return "All genders";
 }
-const STEPS = [
-    { n: 1, label: "Class details" },
-    { n: 2, label: "Location & instructor" },
-    { n: 3, label: "Date & time" },
-];
-const EDIT_STEPS = [
-    { n: 1, label: "Class details" },
-    { n: 2, label: "Location & instructor" },
-];
+/**
+ * Step-kind model — the form's visible steps are derived from this. Each
+ * surface (create-with-template / create-from-scratch / edit-reschedule /
+ * edit-locked) builds its own ordered list of step kinds; the renderer
+ * picks which step body to show by looking up the kind at `step - 1`.
+ */
+type StepKind = "details" | "applicable" | "location" | "datetime";
+const STEP_KIND_LABEL: Record<StepKind, string> = {
+    details:    "Class details",
+    applicable: "Applicable memberships",
+    location:   "Location & instructor",
+    datetime:   "Date & time",
+};
 
 /** Shape of the dropdown groups used inside `LocationDropdown` and the
  *  schedule form's lookup paths (`flatMap`/`find` calls). Keeping the
@@ -122,7 +145,7 @@ function coverColor(cat: string) { return CATEGORY_COLORS[cat] ?? "#f0ecff"; }
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
 
-function StepItem({ step, current, total }: { step: typeof STEPS[0]; current: number; total: number }) {
+function StepItem({ step, current, total }: { step: { n: number; label: string }; current: number; total: number }) {
     const active   = step.n === current;
     const complete = step.n < current;
     const isLast   = step.n === total;
@@ -211,6 +234,10 @@ function TemplateDropdown({ templates, value, onChange, disabled = false }: {
     }, []);
 
     const selected = templates.find(t => t.id === value);
+    const isScratch = value === SCRATCH_TEMPLATE_ID;
+    const triggerLabel = isScratch
+        ? "Create from scratch"
+        : selected?.name ?? "Select template";
 
     return (
         <div ref={ref} className="relative">
@@ -218,12 +245,37 @@ function TemplateDropdown({ templates, value, onChange, disabled = false }: {
                 className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
                         ? "bg-[#f9fafb] border-[#d0d5dd] cursor-not-allowed text-[#667085]"
-                        : cn("bg-white border-[#d0d5dd]", selected ? "text-[#101828]" : "text-[#667085]", open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]"))}>
-                <span className="flex-1 text-left truncate">{selected?.name ?? "Select template"}</span>
+                        : cn("bg-white border-[#d0d5dd]", (selected || isScratch) ? "text-[#101828]" : "text-[#667085]", open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]"))}>
+                <span className="flex-1 text-left truncate">{triggerLabel}</span>
                 <ChevronDown className={cn("w-4 h-4 shrink-0", disabled ? "text-[#98a2b3]" : "text-[#667085]")} />
             </button>
             {open && (
                 <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] z-50 p-[8px] max-h-[420px] overflow-y-auto">
+                    {/* "Create from scratch" — always pinned at top. Lets the
+                        admin build a one-off class without inheriting from
+                        any template. Selecting this routes the form through
+                        the 4-step path with the Applicable memberships step
+                        inserted after Class details. */}
+                    <button
+                        type="button"
+                        onClick={() => { onChange(SCRATCH_TEMPLATE_ID); setOpen(false); }}
+                        className={cn(
+                            "flex items-center gap-[16px] w-full pl-[8px] pr-[10px] py-[10px] text-left rounded-[12px] transition-colors",
+                            isScratch ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                        )}
+                    >
+                        {/* Plus tile in place of a thumbnail */}
+                        <div className="w-[82px] h-[82px] shrink-0 rounded-[10px] border-1 border-dashed border-[#d0d5dd] bg-[#fcfcfd] flex items-center justify-center">
+                            <Plus className="w-7 h-7 text-[#667085]" />
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
+                            <p className="text-[14px] font-medium text-[#101828] truncate">Create from scratch</p>
+                            <p className="text-[12px] text-[#475467] line-clamp-2 leading-[18px]">
+                                Build a one-off class without using an existing template.
+                            </p>
+                        </div>
+                    </button>
+                    {templates.length > 0 && <div className="h-px bg-[#e4e7ec] my-[8px]" />}
                     {templates.map(t => (
                         <button key={t.id} type="button" onClick={() => { onChange(t.id); setOpen(false); }}
                             className={cn("flex items-center gap-[16px] w-full pl-[8px] pr-[10px] py-[10px] text-left rounded-[12px] transition-colors",
@@ -445,24 +497,23 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                         return otherStartMins.some(sj => c < sj + duration && sj < c + duration);
                     });
                     const rowUnavailable = [...(unavailable ?? []), ...overlapBlocked];
+                    // Single combined slot input — shows "HH:MM – HH:MM" on
+                    // one line per Figma. The dropdown still picks the START
+                    // time; the END is auto-derived from start + duration and
+                    // baked into the trigger label via the `displayValue`
+                    // override. Trash sits on the right of the input.
+                    const combinedLabel = slot.start ? fmtSlotRange(slot.start, slot.end) : "";
                     return (
-                    <div key={i} className="flex items-end gap-4">
-                        <div className="flex flex-col gap-1.5 flex-1">
-                            <label className="text-[14px] font-medium text-[#344054]">Start time</label>
+                    <div key={i} className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
                             <TimeDropdown
                                 value={slot.start} onChange={v => onChange(i, "start", v)}
                                 unavailable={rowUnavailable} placeholder="Select time"
                                 slots={availableSlots}
                                 disabled={branchClosed}
                                 emptyLabel={branchClosed ? "Branch is closed this day." : undefined}
+                                displayValue={combinedLabel}
                             />
-                        </div>
-                        <div className="flex flex-col gap-1.5 flex-1">
-                            <label className="text-[14px] font-medium text-[#344054]">End time</label>
-                            <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                <ClockFastForward className="w-5 h-5 text-[#98a2b3] shrink-0" />
-                                <span className="flex-1 text-[16px] text-[#667085]">{slot.end ? fmtTime(slot.end) : "Select time"}</span>
-                            </div>
                         </div>
                         <button type="button" onClick={() => onDeleteSlot(i)} disabled={i === 0}
                             className={cn(
@@ -715,7 +766,7 @@ function calcMinutes(start: string, end: string): number {
     return (eh * 60 + em) - (sh * 60 + sm);
 }
 
-function TimeDropdown({ value, onChange, slots, unavailable = [], placeholder = "Select time", minAfter, disabled, emptyLabel }: {
+function TimeDropdown({ value, onChange, slots, unavailable = [], placeholder = "Select time", minAfter, disabled, emptyLabel, displayValue }: {
     value: string; onChange: (t: string) => void;
     /** Selectable slots — defaults to 06:00–22:00 when not provided. The
      *  schedule form passes branch-business-hours-derived slots so the form
@@ -727,17 +778,64 @@ function TimeDropdown({ value, onChange, slots, unavailable = [], placeholder = 
     disabled?: boolean;
     /** Message shown in the dropdown when `slots` is empty (branch is closed). */
     emptyLabel?: string;
+    /** Optional label override for the trigger — when set, overrides the
+     *  default `fmtTime(value)` rendering. The General-schedule day card
+     *  uses this to show the combined "HH:MM – HH:MM" start/end range on a
+     *  single line, so each slot collapses to one input instead of two. */
+    displayValue?: string;
 }) {
     const visibleSlots = slots ?? DEFAULT_TIME_SLOTS;
     const [open, setOpen] = useState(false);
     const ref  = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
+    // Fixed-positioning state so the menu can escape any `overflow:auto`
+    // ancestor (the General-schedule horizontal-scroll row clips its
+    // children when overflow-x is auto — see memory[feedback_dropdown_overflow]).
+    const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
 
     useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        function h(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node) &&
+                listRef.current && !listRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        }
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
     }, []);
+
+    // Recompute menu position whenever it opens, the trigger moves, or the
+    // user scrolls. Anchored to the trigger's bounding rect so the dropdown
+    // always lines up with the input.
+    useEffect(() => {
+        if (!open) { setMenuStyle(null); return; }
+        function position() {
+            const t = triggerRef.current;
+            if (!t) return;
+            const r = t.getBoundingClientRect();
+            const menuH = 220;
+            const margin = 8;
+            const spaceBelow = window.innerHeight - r.bottom;
+            const flipUp = spaceBelow < menuH + margin && r.top > menuH + margin;
+            setMenuStyle({
+                position: "fixed",
+                left: r.left,
+                width: r.width,
+                zIndex: 9999,
+                ...(flipUp
+                    ? { bottom: window.innerHeight - r.top + 4 }
+                    : { top: r.bottom + 4 }),
+            });
+        }
+        position();
+        window.addEventListener("scroll", position, true);
+        window.addEventListener("resize", position);
+        return () => {
+            window.removeEventListener("scroll", position, true);
+            window.removeEventListener("resize", position);
+        };
+    }, [open]);
 
     useEffect(() => {
         if (open && value && listRef.current) {
@@ -748,16 +846,17 @@ function TimeDropdown({ value, onChange, slots, unavailable = [], placeholder = 
 
     return (
         <div ref={ref} className="relative">
-            <button type="button" onClick={() => { if (!disabled) setOpen(p => !p); }} disabled={disabled}
+            <button ref={triggerRef} type="button" onClick={() => { if (!disabled) setOpen(p => !p); }} disabled={disabled}
                 className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     value ? "text-[#101828]" : "text-[#667085]",
                     disabled ? "opacity-60 cursor-not-allowed" : open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
                 <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                <span className="flex-1 text-left">{value ? fmtTime(value) : placeholder}</span>
+                <span className="flex-1 text-left truncate">{value ? (displayValue ?? fmtTime(value)) : placeholder}</span>
                 {open ? <ChevronUp className="w-4 h-4 text-[#667085] shrink-0" /> : <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />}
             </button>
-            {open && (
-                <div ref={listRef} className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 max-h-[220px] overflow-y-auto py-1">
+            {open && menuStyle && (
+                <div ref={listRef} style={menuStyle}
+                    className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] max-h-[220px] overflow-y-auto py-1">
                     {visibleSlots.length === 0 ? (
                         <p className="px-4 py-3 text-[14px] text-[#667085]">{emptyLabel ?? "No time slots available."}</p>
                     ) : visibleSlots.map(slot => {
@@ -768,9 +867,12 @@ function TimeDropdown({ value, onChange, slots, unavailable = [], placeholder = 
                                 disabled={isUnavail}
                                 onClick={() => { if (!isUnavail) { onChange(slot); setOpen(false); } }}
                                 className={cn("flex items-center justify-between w-full px-4 py-3 text-left transition-colors",
-                                    isUnavail ? "cursor-not-allowed" : "hover:bg-[#f9fafb]",
-                                    isSel && "bg-[#f0fff8]")}>
-                                <span className={cn("text-[16px]", isUnavail ? "text-[#98a2b3]" : isSel ? "font-semibold text-[#101828]" : "text-[#344054]")}>
+                                    isUnavail ? "cursor-not-allowed bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                    !isUnavail && isSel && "bg-[#f0fff8]")}>
+                                <span className={cn(
+                                    "text-[16px]",
+                                    isUnavail ? "text-[#98a2b3]" : isSel ? "font-semibold text-[#101828]" : "text-[#344054]",
+                                )}>
                                     {fmtTime(slot)}
                                 </span>
                                 {isUnavail && (
@@ -878,6 +980,15 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // Phase 4 wiring (Booking Rules → schedule form).
     const classCategories   = useAppStore(s => s.classCategories);
     const categoryOptions   = classCategories.map(c => c.name);
+    // Live memberships + packages — drive the Applicable memberships step
+    // picker so every active/inactive product the admin has just touched
+    // in the Memberships & Packages module shows up here without a refresh.
+    const allMemberships    = useAppStore(s => s.memberships);
+    const allPackages       = useAppStore(s => s.packages);
+    const membershipItems = useMemo(
+        () => buildMembershipItems(allMemberships, allPackages),
+        [allMemberships, allPackages],
+    );
     // Live branch + room slices — drive the Location dropdown so adds
     // performed via the "+ Add room" affordance below reflect immediately.
     const liveBranches      = useAppStore(s => s.branches);
@@ -906,6 +1017,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 locationId, equipment, spotEnabled, instructorId, instrSearch,
                 repeat, repeatEvery, repeatEnd, endDate, endAfter,
                 selectedDate, startTime, selectedDays, daySlots,
+                applicableMembershipIds, applicablePackageIds,
             };
             sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
         } catch {
@@ -936,6 +1048,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 endDate: string; endAfter: number; selectedDate: string;
                 startTime: string; selectedDays: string[];
                 daySlots: Record<string, TimeSlot[]>;
+                applicableMembershipIds: string[];
+                applicablePackageIds: string[];
             }>;
             if (d.step              !== undefined) setStep(d.step);
             if (d.templateId        !== undefined) setTemplateId(d.templateId);
@@ -963,6 +1077,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             if (d.startTime         !== undefined) setStartTime(d.startTime);
             if (d.selectedDays      !== undefined) setSelectedDays(d.selectedDays);
             if (d.daySlots          !== undefined) setDaySlots(d.daySlots);
+            if (d.applicableMembershipIds !== undefined) setApplicableMembershipIds(d.applicableMembershipIds);
+            if (d.applicablePackageIds    !== undefined) setApplicablePackageIds(d.applicablePackageIds);
         } catch {
             // Corrupt or stale draft — silently fall back to defaults.
         }
@@ -1004,6 +1120,29 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     const [templateCapacity, setTemplateCapacity] = useState(sourceClass?.capacity ?? 15);
     const [coverImage, setCoverImage]   = useState(sourceClass?.coverImage ?? "");
     const [coverCol,   setCoverCol]     = useState(sourceClass?.coverColor ?? "#f2f4f7");
+
+    // Applicable memberships + packages — schedule-level OVERRIDE state.
+    //
+    // Initial value follows the resolver cascade used everywhere else
+    // (POS booking, add-customer-to-class picker, customer profile):
+    //   1. Source schedule's own override (set when admin previously edited
+    //      these lists on the schedule, or when the class was scratch-built).
+    //   2. Parent template's lists (cascade — the common case).
+    //   3. Empty arrays (scratch-create with no source).
+    //
+    // Editing these arrays on the form ALWAYS persists to the schedule row
+    // (not the template). That gives "edit a single class without disturbing
+    // the template" exactly as the user described.
+    const [applicableMembershipIds, setApplicableMembershipIds] = useState<string[]>(() => {
+        if (sourceClass?.applicableMembershipIds) return [...sourceClass.applicableMembershipIds];
+        const srcTpl = sourceClass ? classTemplates.find(t => t.id === sourceClass.templateId) : undefined;
+        return srcTpl?.applicableMembershipIds ? [...srcTpl.applicableMembershipIds] : [];
+    });
+    const [applicablePackageIds, setApplicablePackageIds] = useState<string[]>(() => {
+        if (sourceClass?.applicablePackageIds) return [...sourceClass.applicablePackageIds];
+        const srcTpl = sourceClass ? classTemplates.find(t => t.id === sourceClass.templateId) : undefined;
+        return srcTpl?.applicablePackageIds ? [...srcTpl.applicablePackageIds] : [];
+    });
 
     // Step 2
     const [locationId,    setLocationId]    = useState(editingRoomId);
@@ -1114,8 +1253,10 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         if (repeatEnd === "End on date" && endDate) {
             limitTime = new Date(endDate + "T23:59:59Z").getTime();
         } else if (repeatEnd === "No end date") {
+            // 52 weeks (1 year) — matches generatePreview's window so the
+            // conflict scan covers exactly the dates that will be created.
             const l = new Date(base);
-            l.setUTCDate(base.getUTCDate() + ((7 - baseDow) % 7));
+            l.setUTCDate(base.getUTCDate() + 52 * 7);
             limitTime = l.getTime() + 86_400_000;
         }
         // "End after N" caps the whole series — over-approximate by letting
@@ -1141,9 +1282,30 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         classSchedules, instructorId, locationId, duration, editingId,
     ]);
 
-    // When template is selected — populate fields
+    // When template is selected — populate fields. Two paths:
+    //   • Scratch — clear every template-driven field so the admin builds
+    //     from an empty form, and start with empty applicable lists (they
+    //     must explicitly pick which plans grant access).
+    //   • Real template — pre-fill class-details fields AND seed the
+    //     applicable lists from the template's lists (the cascade default).
+    //     Editing the seeded lists on the schedule's Applicable step
+    //     promotes them to a per-schedule override at persist time.
     function handleSelectTemplate(id: string) {
         setTemplateId(id);
+        if (id === SCRATCH_TEMPLATE_ID) {
+            setName("");
+            setDesc("");
+            setClassType("Group");
+            setCategory("");
+            setDuration(60);
+            setCapacity(15);
+            setTemplateCapacity(15);
+            setCoverImage("");
+            setCoverCol("#f2f4f7");
+            setApplicableMembershipIds([]);
+            setApplicablePackageIds([]);
+            return;
+        }
         const t = classTemplates.find(x => x.id === id);
         if (!t) return;
         setName(t.name);
@@ -1157,6 +1319,26 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         // have its own banner inherits the parent category's image.
         setCoverImage(resolveTemplateCoverImage(t, classCategories) ?? "");
         setCoverCol(t.coverColor);
+        // Seed applicable lists from the template (cascade). The admin can
+        // still narrow / widen the list on Step 2; that promotes it to a
+        // schedule-level override.
+        setApplicableMembershipIds([...(t.applicableMembershipIds ?? [])]);
+        setApplicablePackageIds([...(t.applicablePackageIds ?? [])]);
+    }
+
+    // Applicable step — the card owns selection (combined list of membership
+    // + package ids) and the filter / select-all UX. We split the combined
+    // list back into the two persisted state buckets by id lookup against the
+    // live memberships / packages slices.
+    const applicableSelected = useMemo(
+        () => [...applicableMembershipIds, ...applicablePackageIds],
+        [applicableMembershipIds, applicablePackageIds],
+    );
+    function handleApplicableChange(next: string[]) {
+        const membershipIdSet = new Set(allMemberships.map(m => m.id));
+        const packageIdSet    = new Set(allPackages.map(p => p.id));
+        setApplicableMembershipIds(next.filter(id => membershipIdSet.has(id)));
+        setApplicablePackageIds(next.filter(id => packageIdSet.has(id)));
     }
 
     const selectedRoom = branchRooms.flatMap(b => b.rooms).find(r => r.id === locationId);
@@ -1332,14 +1514,37 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         });
     }
     function updateSlot(day: string, i: number, field: "start" | "end", val: string) {
-        setDaySlots(ds => ({
-            ...ds,
-            [day]: ds[day].map((s, idx) => {
-                if (idx !== i) return s;
-                if (field === "start") return { start: val, end: calcEndTime(val, duration) };
-                return { ...s, [field]: val };
-            }),
-        }));
+        setDaySlots(ds => {
+            const list = ds[day] ?? [];
+            // Hard-block: never let two slots on the same day overlap. The
+            // dropdown's `unavailable` list already greys these out, but this
+            // is the authoritative guard at the state level — if anything
+            // upstream slips a duplicate through, we refuse it here.
+            //
+            // Two slots overlap when [val, val+duration) intersects any
+            // sibling's [start, start+duration). For a 60-min class at 06:00,
+            // any other start in 05:01–06:59 (exclusive) conflicts.
+            if (field === "start" && val) {
+                const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+                const candidateStart = toMin(val);
+                const candidateEnd   = candidateStart + duration;
+                const conflicts = list.some((s, idx) => {
+                    if (idx === i || !s.start) return false;
+                    const sStart = toMin(s.start);
+                    const sEnd   = sStart + duration;
+                    return candidateStart < sEnd && sStart < candidateEnd;
+                });
+                if (conflicts) return ds; // refuse the update — keep prior state
+            }
+            return {
+                ...ds,
+                [day]: list.map((s, idx) => {
+                    if (idx !== i) return s;
+                    if (field === "start") return { start: val, end: calcEndTime(val, duration) };
+                    return { ...s, [field]: val };
+                }),
+            };
+        });
     }
     function addSlot(day: string) {
         // Add an empty slot — the admin picks the start time themselves
@@ -1372,13 +1577,16 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         let count = 0;
         // Effective date cap — an inclusive "YYYY-MM-DD" upper bound:
         //  - "End on date"  → user-picked end
-        //  - "No end date"  → Sunday of the calendar week containing `base`
-        //  - "End after"    → no date cap; the count cap (hardCap) does the work
+        //  - "No end date"  → 52 weeks (1 year) of the recurring series so
+        //    the open-ended config still generates meaningful coverage. The
+        //    count cap (hardCap = 365) is the secondary backstop so a daily
+        //    series can't blow past one year of occurrences either.
+        //  - "End after"    → no date cap; the count cap does the work
         let limitISO: string | null = null;
         if (repeatEnd === "End on date" && endDate) {
             limitISO = endDate;
         } else if (repeatEnd === "No end date") {
-            limitISO = addDaysISO(baseISO, (7 - baseDow) % 7);
+            limitISO = addDaysISO(baseISO, 52 * 7);
         }
         const step = Math.max(1, repeatEvery);
         for (let week = 0; week < 260 && count < hardCap; week += step) {
@@ -1408,29 +1616,76 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         return out;
     }
 
-    // Memoised preview + grouped-by-month structure for the calendar card
+    // Memoised preview — the calendar card derives its month grid + day-of-
+    // week layout from these items (see previewByDay below).
     const previewItems = useMemo(generatePreview, [repeat, repeatEvery, repeatEnd, endDate, endAfter, selectedDate, selectedDays, daySlots, duration]);
-    const previewGrouped = useMemo(() => {
-        const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-        const months = new Map<string, { label: string; days: Map<number, string[]> }>();
-        for (const item of previewItems) {
-            const d = new Date(item.dateISO + "T00:00:00Z");
-            const year = d.getUTCFullYear(), monthIdx = d.getUTCMonth(), day = d.getUTCDate();
-            const key = `${year}-${monthIdx}`;
-            if (!months.has(key)) {
-                months.set(key, { label: `${MONTHS_LONG[monthIdx]} ${year}`, days: new Map() });
-            }
-            const m = months.get(key)!;
-            if (!m.days.has(day)) m.days.set(day, []);
-            m.days.get(day)!.push(fmtSlotRange(item.startTime, item.endTime));
-        }
-        return Array.from(months.values()).map(m => ({
-            label: m.label,
-            days: Array.from(m.days.entries()).map(([day, times]) => ({ day, times })).sort((a, b) => a.day - b.day),
-        }));
-    }, [previewItems]);
 
     const [previewOpen, setPreviewOpen] = useState(true);
+
+    // ─── Calendar preview state ────────────────────────────────────────────
+    //
+    // The preview surface (per Figma 7349:156209) renders a month calendar
+    // with forward-only navigation, capped at 12 months past the anchor
+    // month — the recurring config never needs to look further out than
+    // that for a useful preview, and capping prevents the chevron from
+    // running into 2099.
+    //
+    // The anchor month is the FIRST month that contains a scheduled class:
+    //   • If `selectedDate` is set, that month.
+    //   • Otherwise today's month.
+    // The visible month is independent state that the user advances with the
+    // forward chevron.
+    const anchorMonth = useMemo(() => {
+        const base = selectedDate ? new Date(selectedDate + "T00:00:00Z") : new Date();
+        return { year: base.getUTCFullYear(), month: base.getUTCMonth() };
+    }, [selectedDate]);
+    const CAL_FORWARD_CAP_MONTHS = 12;
+    const [calMonthOffset, setCalMonthOffset] = useState(0);
+    // Reset the calendar back to the anchor month whenever the anchor itself
+    // moves (admin changes the start date). Without this the calendar could
+    // be stranded on a month that no longer contains any classes.
+    useEffect(() => {
+        setCalMonthOffset(0);
+    }, [anchorMonth.year, anchorMonth.month]);
+
+    const visibleCalMonth = useMemo(() => {
+        const d = new Date(Date.UTC(anchorMonth.year, anchorMonth.month + calMonthOffset, 1));
+        return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+    }, [anchorMonth, calMonthOffset]);
+
+    const MONTH_NAMES_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+    // Map preview items to their formatted time strings, keyed by ISO date,
+    // so each calendar day cell renders its slot pills in O(1).
+    const previewByDay = useMemo(() => {
+        const map = new Map<string, string[]>();
+        for (const item of previewItems) {
+            const list = map.get(item.dateISO) ?? [];
+            list.push(fmtSlotRange(item.startTime, item.endTime));
+            map.set(item.dateISO, list);
+        }
+        return map;
+    }, [previewItems]);
+
+    // Forward-only nav — cap honored.
+    const canCalGoBack    = calMonthOffset > 0;
+    const canCalGoForward = calMonthOffset < CAL_FORWARD_CAP_MONTHS;
+
+    // Bottom info banner — describes the recurrence config in plain English so
+    // the admin can sanity-check what the calendar is showing.
+    const recurrenceSummary = (() => {
+        if (repeat !== "Repeat weekly") return "";
+        const every = repeatEvery > 1 ? `every ${repeatEvery} weeks` : "every week";
+        let end = "";
+        if (repeatEnd === "End on date" && endDate) {
+            end = ` and ends on ${isoDateLabel(endDate)}`;
+        } else if (repeatEnd === "End after" && endAfter > 0) {
+            end = ` and ends after ${endAfter} ${endAfter === 1 ? "class" : "classes"}`;
+        } else if (repeatEnd === "No end date") {
+            end = " with no end date";
+        }
+        return `Repeats ${every}${end}.`;
+    })();
 
     // Create class instances
     function handleCreate() {
@@ -1440,6 +1695,25 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
         const now          = new Date().toISOString();
+        // Scratch sentinel never persists — rewrite to "" so the schedule has
+        // no template FK. The override resolver then drives applicable plans
+        // off the schedule's own lists (set on the Applicable step).
+        const persistedTemplateId = isScratch ? "" : templateId;
+        // Scratch classes ALWAYS persist their applicable lists (the override
+        // is the only source). Template-based classes only persist the lists
+        // when they DIFFER from the template (admin actively narrowed/widened
+        // them on the Applicable step) — that way the cascade keeps working.
+        const sourceTpl = !isScratch ? classTemplates.find(t => t.id === templateId) : undefined;
+        const tplMembershipIds = sourceTpl?.applicableMembershipIds ?? [];
+        const tplPackageIds    = sourceTpl?.applicablePackageIds ?? [];
+        const arraysEqual = (a: string[], b: string[]) =>
+            a.length === b.length && a.every(x => b.includes(x));
+        const persistedMemberships = isScratch
+            ? applicableMembershipIds
+            : (arraysEqual(applicableMembershipIds, tplMembershipIds) ? undefined : applicableMembershipIds);
+        const persistedPackages = isScratch
+            ? applicablePackageIds
+            : (arraysEqual(applicablePackageIds, tplPackageIds) ? undefined : applicablePackageIds);
         // Spot-grid layout — only persisted when spot selection is enabled.
         const spotLayout = spotEnabled
             ? { cols: csCols, rows: csRows, blockedSpots: Array.from(csBlocked) }
@@ -1453,7 +1727,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
 
         if (repeat === "Does not repeat" && selectedDate) {
             instances.push({
-                templateId, name, description: desc, category,
+                templateId: persistedTemplateId, name, description: desc, category,
                 branchId,
                 instructorId, instructorName: instName?.name ?? "",
                 instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
@@ -1469,11 +1743,13 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 rating: 0, ratingCount: 0, status: "Upcoming",
                 genderAccess: genderAccessFromLabel(gender),
                 coverColor: coverCol, coverImage: coverImage || undefined,
+                applicableMembershipIds: persistedMemberships,
+                applicablePackageIds: persistedPackages,
             });
         } else {
             for (const p of previewItems) {
                 instances.push({
-                    templateId, name, description: desc, category,
+                    templateId: persistedTemplateId, name, description: desc, category,
                     branchId,
                     instructorId, instructorName: instName?.name ?? "",
                     instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
@@ -1490,6 +1766,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                     genderAccess: genderAccessFromLabel(gender),
                     recurrenceGroupId,
                     coverColor: coverCol, coverImage: coverImage || undefined,
+                    applicableMembershipIds: persistedMemberships,
+                    applicablePackageIds: persistedPackages,
                 });
             }
         }
@@ -1541,6 +1819,42 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             };
         }
 
+        // Applicable lists — promote to a schedule-level override ONLY when
+        // the admin actually MODIFIED the list:
+        //   • Scratch edit (templateId === "") → always persist; there's no
+        //     template to cascade from.
+        //   • Existing override on the schedule → keep persisting override
+        //     (the schedule is already detached from the template cascade).
+        //   • Pure cascade + admin didn't change anything on Step 2 →
+        //     keep cascade (write undefined so future template edits flow
+        //     through to this schedule again).
+        //   • Pure cascade + admin DID change something → promote to override.
+        const editTpl = editing.templateId
+            ? classTemplates.find(x => x.id === editing.templateId)
+            : undefined;
+        const origMembershipIds = editing.applicableMembershipIds
+            ?? editTpl?.applicableMembershipIds
+            ?? [];
+        const origPackageIds = editing.applicablePackageIds
+            ?? editTpl?.applicablePackageIds
+            ?? [];
+        const arraysEqual = (a: string[], b: string[]) =>
+            a.length === b.length && a.every(x => b.includes(x));
+        const editedMemberships = !arraysEqual(applicableMembershipIds, origMembershipIds);
+        const editedPackages    = !arraysEqual(applicablePackageIds,    origPackageIds);
+        const persistedMembershipsEdit = (() => {
+            if (editing.templateId === "") return [...applicableMembershipIds];
+            if (editing.applicableMembershipIds) return [...applicableMembershipIds];
+            if (!editedMemberships) return undefined;
+            return [...applicableMembershipIds];
+        })();
+        const persistedPackagesEdit = (() => {
+            if (editing.templateId === "") return [...applicablePackageIds];
+            if (editing.applicablePackageIds) return [...applicablePackageIds];
+            if (!editedPackages) return undefined;
+            return [...applicablePackageIds];
+        })();
+
         updateClassSchedule(editingId, {
             templateId, name, description: desc, category,
             branchId,
@@ -1558,6 +1872,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             genderAccess: genderAccessFromLabel(gender),
             coverColor: coverCol,
             coverImage: coverImage || undefined,
+            applicableMembershipIds: persistedMembershipsEdit,
+            applicablePackageIds: persistedPackagesEdit,
             ...datePatch,
         });
         showToast(
@@ -1569,8 +1885,50 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         router.push(`/schedule/${editingId}`);
     }
 
-    const canProceedStep1 = !!templateId;
-    const canProceedStep2 = !!locationId && !!instructorId;
+    // ─── Step list (dynamic) ───────────────────────────────────────────────
+    //
+    // The form's visible steps depend on three flags:
+    //   • isScratch     → applicable step inserted after Class details
+    //   • isEditing     → applicable step always shown (admin can adjust)
+    //   • canReschedule → Date & time step appended; otherwise locked
+    //
+    // Matrix:
+    //   Create + template   → [details, location, datetime]                (3)
+    //   Create + scratch    → [details, applicable, location, datetime]    (4)
+    //   Edit + reschedule   → [details, applicable, location, datetime]    (4)
+    //   Edit + locked       → [details, applicable, location]              (3)
+    const isScratch = templateId === SCRATCH_TEMPLATE_ID;
+    const stepKinds: StepKind[] = (() => {
+        const out: StepKind[] = ["details"];
+        if (isScratch || isEditing) out.push("applicable");
+        out.push("location");
+        if (!isEditing || canReschedule) out.push("datetime");
+        return out;
+    })();
+    const stepItems = stepKinds.map((kind, i) => ({ n: i + 1, label: STEP_KIND_LABEL[kind] }));
+    const currentKind: StepKind | undefined = stepKinds[step - 1];
+    const isLastStep = step === stepKinds.length;
+
+    // Class-details gate. Template path → templateId is enough (auto-fills
+    // fields). Scratch path → admin must fill the four core fields manually.
+    const canProceedDetails = (() => {
+        if (!templateId) return false;
+        if (isScratch) {
+            return name.trim().length > 0 && !!category && duration > 0 && capacity > 0;
+        }
+        return true;
+    })();
+    // Applicable step has no required selection — an empty list is a
+    // meaningful "no plans" state. Always proceed.
+    const canProceedApplicable = true;
+    const canProceedLocation = !!locationId && !!instructorId;
+
+    // Back-compat names — every footer / continue button below still references
+    // these. New step kinds add new gates on top without renaming the existing
+    // pair, so the diff stays small and the existing call sites keep working.
+    const canProceedStep1 = canProceedDetails;
+    const canProceedStep2 = canProceedLocation;
+
     const canCreate = (() => {
         if (repeat === "Does not repeat") return !!selectedDate && !!startTime;
         if (!selectedDate || !selectedDays.length) return false;
@@ -1627,24 +1985,17 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             <div className="flex flex-1 overflow-hidden gap-8 px-6 py-6">
                 {/* Steps sidebar */}
                 <div className="w-[260px] shrink-0 flex flex-col gap-0 pt-2">
-                    {(() => {
-                        // 3-step flow when creating, duplicating, OR editing
-                        // an Upcoming class >24hrs out (reschedule allowed).
-                        // 2-step flow when editing an ongoing/within-24hrs
-                        // class (date/time locked).
-                        const items = isEditing
-                            ? (canReschedule ? STEPS : EDIT_STEPS)
-                            : STEPS;
-                        return items.map(s => <StepItem key={s.n} step={s} current={step} total={items.length} />);
-                    })()}
+                    {stepItems.map(s => (
+                        <StepItem key={s.n} step={s} current={step} total={stepItems.length} />
+                    ))}
                 </div>
 
                 {/* Form card */}
                 <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
 
-                        {/* ── Step 1: Class details ── */}
-                        {step === 1 && (
+                        {/* ── Class details ── */}
+                        {currentKind === "details" && (
                             <>
                                 {/* Edit-only: Date & time read-only summary above the template selector.
                                     Hidden when canReschedule — that flow uses Step 3 for an editable
@@ -1698,7 +2049,9 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                 {/* Template detail (visible after template selected) */}
                                 {templateId && (
                                     <div className="flex flex-col gap-5">
-                                        <p className="text-[18px] font-semibold text-[#101828]">Class template detail</p>
+                                        <p className="text-[18px] font-semibold text-[#101828]">
+                                            {isScratch ? "Class details" : "Class template detail"}
+                                        </p>
 
                                         {/* Image banner */}
                                         <div className="flex flex-col gap-1.5">
@@ -1775,8 +2128,17 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                             </>
                         )}
 
-                        {/* ── Step 2: Location & instructor ── */}
-                        {step === 2 && (
+                        {/* ── Applicable memberships (scratch + every edit) ── */}
+                        {currentKind === "applicable" && (
+                            <ApplicableMembershipsCard
+                                items={membershipItems}
+                                selected={applicableSelected}
+                                onChange={handleApplicableChange}
+                            />
+                        )}
+
+                        {/* ── Location & instructor ── */}
+                        {currentKind === "location" && (
                             <>
                                 {/* Class location */}
                                 <div className="flex flex-col gap-4">
@@ -1872,8 +2234,8 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                             </>
                         )}
 
-                        {/* ── Step 3: Date & time ── */}
-                        {step === 3 && (
+                        {/* ── Date & time ── */}
+                        {currentKind === "datetime" && (
                             <>
                                 <div className="flex flex-col gap-8">
                                     {/* Date & time section */}
@@ -2036,17 +2398,28 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                                 </div>
                                             )}
 
-                                            <div className="flex flex-col gap-4">
-                                                {WEEK_DAYS.filter(d => selectedDays.includes(d)).map(day => (
-                                                    <TimeSlotRow key={day} day={day}
-                                                        slots={daySlots[day] ?? [{ start: "", end: "" }]}
-                                                        availableSlots={repeatSlotsByDay[day]}
-                                                        unavailable={blockedSlotsByDay[day] ?? []}
-                                                        duration={duration}
-                                                        onChange={(i, field, val) => updateSlot(day, i, field, val)}
-                                                        onAddSlot={() => addSlot(day)}
-                                                        onDeleteSlot={(i) => deleteSlot(day, i)} />
-                                                ))}
+                                            {/* Horizontal scroll row — one day card per selected weekday.
+                                                Layout per Figma 7353:146718: each day card is fixed-width
+                                                so the row scrolls horizontally when many days are picked,
+                                                keeping the section compact instead of stacking vertically
+                                                down the form. The card body + logic is unchanged. */}
+                                            <div className="relative">
+                                                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                                                    {WEEK_DAYS.filter(d => selectedDays.includes(d)).map(day => (
+                                                        <div key={day} className="w-[320px] shrink-0">
+                                                            <TimeSlotRow day={day}
+                                                                slots={daySlots[day] ?? [{ start: "", end: "" }]}
+                                                                availableSlots={repeatSlotsByDay[day]}
+                                                                unavailable={blockedSlotsByDay[day] ?? []}
+                                                                duration={duration}
+                                                                onChange={(i, field, val) => updateSlot(day, i, field, val)}
+                                                                onAddSlot={() => addSlot(day)}
+                                                                onDeleteSlot={(i) => deleteSlot(day, i)} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {/* Right fade — hint that the row scrolls when overflowing. */}
+                                                <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-white to-transparent" />
                                             </div>
                                         </div>
                                     )}
@@ -2071,41 +2444,123 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                                 </button>
                                             </div>
 
-                                            {/* Body */}
-                                            {previewOpen && (
-                                                <div className="flex flex-col gap-3">
-                                                    {previewGrouped.length === 0 && (
-                                                        <p className="text-center text-[14px] text-[#98a2b3] py-6">Configure your schedule to see the preview.</p>
-                                                    )}
-                                                    {previewGrouped.map((month, mi) => (
-                                                        <Fragment key={month.label}>
-                                                            {mi > 0 && <div className="h-px w-full bg-[#e4e7ec]" />}
-                                                            <div className="flex flex-col gap-2">
-                                                                <p className="text-[12px] text-[#667085]">{month.label}</p>
-                                                                <div className="grid grid-cols-4 gap-y-1">
-                                                                    {month.days.map(d => (
-                                                                        <div key={d.day} className="flex flex-col items-stretch self-start">
-                                                                            <div className="w-full flex justify-center px-3 py-1">
-                                                                                <div className="w-6 h-6 rounded-full bg-[#658774] flex items-center justify-center">
-                                                                                    <span className="text-[14px] font-semibold leading-5 text-white">{d.day}</span>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div className="flex flex-col gap-1 px-2 pt-1">
-                                                                                {d.times.map((t, ti) => (
-                                                                                    <div key={ti} className="relative bg-[#e9fff3] rounded-[4px] h-6 px-2 flex items-center overflow-hidden">
-                                                                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-[90px] bg-[#92baa4] rounded-tl-[24px] rounded-bl-[8px]" />
-                                                                                        <p className="text-[12px] leading-[18px] text-[#667085] truncate">{t}</p>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
+                                            {/* Body — month calendar per Figma 7349:156209.
+                                                Forward-only chevron (capped at 12 months ahead of the
+                                                anchor month); back-chevron disabled at the anchor.
+                                                Each scheduled day renders a green number circle plus a
+                                                stacked list of time pills underneath. */}
+                                            {previewOpen && (() => {
+                                                const { year, month } = visibleCalMonth;
+                                                const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay();
+                                                const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+                                                const cells: ({ day: number; iso: string; times: string[] } | null)[] = [];
+                                                for (let i = 0; i < firstDow; i++) cells.push(null);
+                                                for (let d = 1; d <= daysInMonth; d++) {
+                                                    const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                                                    cells.push({ day: d, iso, times: previewByDay.get(iso) ?? [] });
+                                                }
+                                                // Pad to a multiple of 7 so the grid renders flush.
+                                                while (cells.length % 7 !== 0) cells.push(null);
+                                                const WEEKDAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+                                                return (
+                                                    <div className="flex flex-col gap-4">
+                                                        {/* Month nav row — chevrons hug the edges; the centered
+                                                            label sits between them so the calendar reads like
+                                                            the Figma reference. Calendar icon prefixes the
+                                                            month name. */}
+                                                        <div className="flex items-center justify-between">
+                                                            <button
+                                                                type="button"
+                                                                disabled={!canCalGoBack}
+                                                                onClick={() => setCalMonthOffset(o => Math.max(0, o - 1))}
+                                                                className={cn(
+                                                                    "w-8 h-8 flex items-center justify-center rounded-[6px] transition-colors",
+                                                                    canCalGoBack ? "text-[#344054] hover:bg-[#f9fafb]" : "text-[#d0d5dd] cursor-not-allowed",
+                                                                )}
+                                                                aria-label="Previous month"
+                                                            >
+                                                                <ChevronLeft className="w-4 h-4" />
+                                                            </button>
+                                                            <div className="flex items-center gap-2">
+                                                                <Calendar className="w-4 h-4 text-[#344054]" />
+                                                                <p className="text-[14px] font-semibold text-[#101828]">
+                                                                    {MONTH_NAMES_LONG[month]} {year}
+                                                                </p>
                                                             </div>
-                                                        </Fragment>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                            <button
+                                                                type="button"
+                                                                disabled={!canCalGoForward}
+                                                                onClick={() => setCalMonthOffset(o => Math.min(CAL_FORWARD_CAP_MONTHS, o + 1))}
+                                                                className={cn(
+                                                                    "w-8 h-8 flex items-center justify-center rounded-[6px] transition-colors",
+                                                                    canCalGoForward ? "text-[#344054] hover:bg-[#f9fafb]" : "text-[#d0d5dd] cursor-not-allowed",
+                                                                )}
+                                                                aria-label="Next month"
+                                                            >
+                                                                <ChevronRight className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Calendar grid — bordered cells per Figma so
+                                                            day separators are clearly visible. The 1px
+                                                            "border" between cells is built from a grey
+                                                            background + 1px gap; each cell paints itself
+                                                            white over the top. Outer rounded wrapper keeps
+                                                            the edges clean. */}
+                                                        <div className="rounded-[10px] overflow-hidden border-1 border-[#e4e7ec]">
+                                                            {/* Weekday header */}
+                                                            <div className="grid grid-cols-7 bg-white border-b border-[#e4e7ec]">
+                                                                {WEEKDAYS_SHORT.map(d => (
+                                                                    <div key={d} className="text-center text-[12px] font-medium text-[#667085] py-2">{d.toUpperCase()}</div>
+                                                                ))}
+                                                            </div>
+                                                            {/* Day grid */}
+                                                            <div className="grid grid-cols-7 bg-[#e4e7ec] gap-[1px]">
+                                                                {cells.map((cell, i) => {
+                                                                    if (!cell) {
+                                                                        return <div key={`empty-${i}`} className="min-h-[88px] bg-white" />;
+                                                                    }
+                                                                    const hasClasses = cell.times.length > 0;
+                                                                    return (
+                                                                        <div key={cell.iso} className="min-h-[88px] bg-white flex flex-col items-stretch gap-1 p-2">
+                                                                            <div className="flex justify-center">
+                                                                                {hasClasses ? (
+                                                                                    <div className="w-6 h-6 rounded-full bg-[#658774] flex items-center justify-center">
+                                                                                        <span className="text-[12px] font-semibold leading-5 text-white">{cell.day}</span>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <span className="w-6 h-6 flex items-center justify-center text-[12px] text-[#667085]">{cell.day}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            {hasClasses && (
+                                                                                <div className="flex flex-col gap-1">
+                                                                                    {cell.times.map((t, ti) => (
+                                                                                        <div key={ti} className="relative bg-[#e9fff3] border-1 border-[#c4edd6] rounded-[4px] h-5 px-1.5 flex items-center overflow-hidden">
+                                                                                            <p className="text-[10px] leading-[14px] text-[#475467] truncate">{t}</p>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Bottom info banner */}
+                                                        {recurrenceSummary && (
+                                                            <div className="flex items-start gap-3 p-3 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec]">
+                                                                <AlertCircle className="w-4 h-4 text-[#667085] shrink-0 mt-[2px]" />
+                                                                <p className="text-[13px] text-[#475467] leading-[18px]">{recurrenceSummary}</p>
+                                                            </div>
+                                                        )}
+
+                                                        {previewItems.length === 0 && (
+                                                            <p className="text-center text-[14px] text-[#98a2b3] py-2">Configure your schedule to see the preview.</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                 </div>
@@ -2113,53 +2568,66 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                         )}
                     </div>
 
-                    {/* Footer */}
+                    {/* Footer.
+                        The Continue gate is the validity check for the CURRENT
+                        step kind. The final-step button switches between
+                        Create / Publish (create flow) and Save changes (edit
+                        flow). The locked-edit path still ends on Location, so
+                        Save changes lands there; the reschedule + create paths
+                        end on Date & time. */}
                     <div className="shrink-0 px-6 py-4 flex items-center justify-between">
                         {step > 1 ? (
                             <Button variant="secondary-gray" size="md" onClick={() => setStep(s => s - 1)}>Back</Button>
                         ) : <div />}
 
-                        {isEditing ? (
-                            // 3-step reschedule path mirrors the create-flow nav exactly —
-                            // Continue on steps 1 & 2, "Save changes" on step 3 with the
-                            // single-class date/time validity check.
-                            canReschedule ? (
-                                step < 3 ? (
-                                    <Button variant="primary" size="md"
-                                        disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
+                        {(() => {
+                            const continueGate = (() => {
+                                switch (currentKind) {
+                                    case "details":    return canProceedDetails;
+                                    case "applicable": return canProceedApplicable;
+                                    case "location":   return canProceedLocation;
+                                    case "datetime":   return false; // datetime is always last — no Continue
+                                    default:           return false;
+                                }
+                            })();
+
+                            // Non-final step → "Continue".
+                            if (!isLastStep) {
+                                return (
+                                    <Button variant="primary" size="md" disabled={!continueGate}
                                         onClick={() => setStep(s => s + 1)}>
                                         Continue
                                     </Button>
-                                ) : (
-                                    <Button variant="primary" size="md"
-                                        disabled={!selectedDate || !startTime}
-                                        onClick={handleSaveEdit}>
+                                );
+                            }
+
+                            // Final step.
+                            if (isEditing) {
+                                // Locked-edit path ends on Location → Save with
+                                // canProceedLocation. Reschedule path ends on
+                                // Date & time → Save with the date/time gate.
+                                if (currentKind === "datetime") {
+                                    return (
+                                        <Button variant="primary" size="md"
+                                            disabled={!selectedDate || !startTime}
+                                            onClick={handleSaveEdit}>
+                                            Save changes
+                                        </Button>
+                                    );
+                                }
+                                return (
+                                    <Button variant="primary" size="md" disabled={!canProceedLocation} onClick={handleSaveEdit}>
                                         Save changes
                                     </Button>
-                                )
-                            ) : (
-                                // 2-step locked path — original behavior.
-                                step < 2 ? (
-                                    <Button variant="primary" size="md" disabled={!canProceedStep1}
-                                        onClick={() => setStep(s => s + 1)}>
-                                        Continue
-                                    </Button>
-                                ) : (
-                                    <Button variant="primary" size="md" disabled={!canProceedStep2} onClick={handleSaveEdit}>
-                                        Save changes
-                                    </Button>
-                                )
-                            )
-                        ) : (step < 3 ? (
-                            <Button variant="primary" size="md" disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
-                                onClick={() => setStep(s => s + 1)}>
-                                Continue
-                            </Button>
-                        ) : (
-                            <Button variant="primary" size="md" disabled={!canCreate} onClick={handleCreate}>
-                                {repeat === "Does not repeat" ? "Create class" : "Publish classes"}
-                            </Button>
-                        ))}
+                                );
+                            }
+                            // Create flow always ends on Date & time.
+                            return (
+                                <Button variant="primary" size="md" disabled={!canCreate} onClick={handleCreate}>
+                                    {repeat === "Does not repeat" ? "Create class" : "Publish classes"}
+                                </Button>
+                            );
+                        })()}
                     </div>
                 </div>
 

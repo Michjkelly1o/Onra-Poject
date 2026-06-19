@@ -111,6 +111,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, hourFloatFromTime, type ClassSchedule, type ClassStatus, type BusinessHours, type HoursWindow } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
+import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 
 // ─── Category colors — same palette admin uses (verbatim) ───────────────────
 
@@ -290,18 +291,35 @@ function fmt12(time: string): string {
 interface ClassCardProps {
     cls: ClassSchedule;
     size: "md" | "sm" | "xs";
-    absolute?: { top: number; height: number };
+    /** With only top/height the card spans the full column. With leftPct/
+     *  widthPct it's narrowed to a lane so overlapping classes render side
+     *  by side (week view overlap layout). */
+    absolute?: { top: number; height: number; leftPct?: number; widthPct?: number };
+    /** When > 0, swap the bookings count for a "+N more" pill — used on the
+     *  rightmost-visible card of an overlap group to surface classes that
+     *  fell into overflow lanes. */
+    moreCount?: number;
     onClick: (e: React.MouseEvent) => void;
 }
 
-function ClassCard({ cls, size, absolute, onClick }: ClassCardProps) {
+function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) {
     const c = getCategoryColor(cls.category);
     const isFull = cls.booked >= cls.capacity;
     const startLabel = fmt12(cls.startTime);
     const cancelled = cls.status === "Cancelled";
+    const hasMore = !!moreCount && moreCount > 0;
 
     const baseStyle: React.CSSProperties = absolute
-        ? { position: "absolute", top: absolute.top, height: absolute.height, left: 2, right: 2, backgroundColor: c.bg, borderLeft: `${size === "md" ? 3 : 3}px solid ${c.border}` }
+        ? (absolute.widthPct !== undefined && absolute.leftPct !== undefined
+            ? {
+                position: "absolute",
+                top: absolute.top, height: absolute.height,
+                left: `calc(${absolute.leftPct}% + 1px)`,
+                width: `calc(${absolute.widthPct}% - 2px)`,
+                backgroundColor: c.bg,
+                borderLeft: `3px solid ${c.border}`,
+            }
+            : { position: "absolute", top: absolute.top, height: absolute.height, left: 2, right: 2, backgroundColor: c.bg, borderLeft: `${size === "md" ? 3 : 3}px solid ${c.border}` })
         : { backgroundColor: c.bg, borderLeft: `${size === "xs" ? 2 : 3}px solid ${c.border}` };
 
     if (size === "md") {
@@ -352,12 +370,11 @@ function ClassCard({ cls, size, absolute, onClick }: ClassCardProps) {
                 <p className="text-[13px] font-medium leading-[16px] line-clamp-1" style={{ color: c.text }}>
                     {cls.name}
                 </p>
-                <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-[#667085]">{startLabel}</span>
-                    <span className="text-[11px] text-[#98a2b3]">•</span>
-                    <span className="text-[11px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
-                    {isFull && <span className="text-[10px] font-semibold text-[#b42318] ml-0.5">(FULL)</span>}
-                </div>
+                {hasMore && (
+                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[#475467] bg-white border border-[#e4e7ec] rounded-full px-2 py-[1px]">
+                        +{moreCount} more
+                    </span>
+                )}
             </button>
         );
     }
@@ -803,16 +820,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, onClassClick }
                         <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
                     ))}
 
-                    {/* Lunch break — admin's exact crosshatch + centered label */}
-                    <div className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
-                        style={{ top: topFromTime("12:00", gridStartHour), height: HOUR_HEIGHT }}>
-                        <div className="absolute inset-0 opacity-50"
-                            style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
-                        <div className="relative z-10 text-center">
-                            <p className="text-[12px] font-medium text-[#98a2b3]">Lunch Break · 12:00 – 01:00 PM</p>
-                        </div>
-                    </div>
-
                     {/* Current time line — admin's exact orange */}
                     {showCurrentTime && (
                         <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
@@ -920,15 +927,6 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, onClassClic
                                 <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
                             ))}
 
-                            <div className="absolute left-0 right-0 pointer-events-none flex items-center justify-center"
-                                style={{ top: topFromTime("12:00", gridStartHour, WEEK_HOUR_HEIGHT), height: WEEK_HOUR_HEIGHT }}>
-                                <div className="absolute inset-0 opacity-40"
-                                    style={{ backgroundImage: "repeating-linear-gradient(45deg, #f2f4f7 0, #f2f4f7 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
-                                <div className="relative z-10 text-center">
-                                    <p className="text-[12px] font-medium text-[#98a2b3]">Lunch Break · 12:00 – 01:00 PM</p>
-                                </div>
-                            </div>
-
                             {showCurrentTime && (
                                 <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
                                     <div className="w-2.5 h-2.5 rounded-full bg-[#f79009] shrink-0 -ml-1" />
@@ -939,23 +937,37 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, onClassClic
                             <div className="absolute inset-0 flex">
                                 {cols.map(col => {
                                     const dayClasses = classes.filter(c => c.dateISO === col.iso);
+                                    // Overlap layout — classes that share a
+                                    // time window split the column into lanes
+                                    // and render side by side. Excess classes
+                                    // collapse into a "+N more" badge on the
+                                    // rightmost-visible card of the group.
+                                    const lanes = computeOverlapLanes(dayClasses);
                                     return (
                                         <div key={col.day} className={cn(
                                             "flex-1 min-w-0 relative border-l border-[#f2f4f7]",
                                             col.isToday && "bg-[#f5fffa]/30",
                                         )} style={{ minHeight: gridHeight }}>
-                                            {dayClasses.map(cls => (
-                                                <ClassCard
-                                                    key={cls.id}
-                                                    cls={cls}
-                                                    size="sm"
-                                                    absolute={{
-                                                        top: topFromTime(cls.startTime, gridStartHour, WEEK_HOUR_HEIGHT),
-                                                        height: heightFromTime(cls.startTime, cls.endTime, WEEK_HOUR_HEIGHT),
-                                                    }}
-                                                    onClick={(e) => onClassClick(cls, e)}
-                                                />
-                                            ))}
+                                            {dayClasses.map(cls => {
+                                                const lane = lanes.get(cls.id);
+                                                if (lane && !lane.visible) return null;
+                                                const widthPct = lane && lane.totalLanes > 1 ? 100 / lane.totalLanes : undefined;
+                                                const leftPct  = lane && lane.totalLanes > 1 ? lane.lane * (100 / lane.totalLanes) : undefined;
+                                                return (
+                                                    <ClassCard
+                                                        key={cls.id}
+                                                        cls={cls}
+                                                        size="sm"
+                                                        absolute={{
+                                                            top: topFromTime(cls.startTime, gridStartHour, WEEK_HOUR_HEIGHT),
+                                                            height: heightFromTime(cls.startTime, cls.endTime, WEEK_HOUR_HEIGHT),
+                                                            leftPct, widthPct,
+                                                        }}
+                                                        moreCount={lane?.moreCount ?? 0}
+                                                        onClick={(e) => onClassClick(cls, e)}
+                                                    />
+                                                );
+                                            })}
                                         </div>
                                     );
                                 })}

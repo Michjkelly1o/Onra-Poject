@@ -869,6 +869,17 @@ export const DEMO_NOW_LIAM_BOOKINGS: ClassBooking[] = LIAM_SPECS.flatMap(spec =>
     // For class-level Cancelled, `refund_credit_issued=true` flags that
     // the studio owed these customers a refund — same field admin sets
     // via the cancel-class confirmation modal.
+    // Attendance audit stamps — for Completed classes we synthesize an
+    // `attendance_marked_at` ~10 min after class-end and attribute it to
+    // Liam, so the team-activity feed surfaces recent instructor
+    // attendance actions out of the box. The 10-minute offset mirrors
+    // typical real-world behaviour (mark-up at desk after class wraps).
+    const classEndMs = daysAgo(spec.daysAgo).getTime() + 60 * 60 * 1000; // ~1hr from class start
+    const attendanceMarkedAt = spec.status === "Completed"
+        ? isoStamp(new Date(classEndMs + 10 * 60 * 1000))
+        : undefined;
+    const attendanceMarkedBy = spec.status === "Completed" ? "Liam Chen" : undefined;
+
     spec.bookedCustomerIds.forEach((custId, i) => {
         rows.push({
             id: `bk_demo_liam_${spec.n}_b${String(i + 1).padStart(2, "0")}`,
@@ -882,6 +893,8 @@ export const DEMO_NOW_LIAM_BOOKINGS: ClassBooking[] = LIAM_SPECS.flatMap(spec =>
             plan_kind_used: i % 2 === 0 ? "membership" : "package",
             plan_id_used:   i % 2 === 0 ? "mem_unlimited_monthly" : "pkg_10_class",
             booking_source: BOOKING_SOURCE_DIST[i % BOOKING_SOURCE_DIST.length],
+            attendance_marked_at: attendanceMarkedAt,
+            attendance_marked_by: attendanceMarkedBy,
         });
     });
 
@@ -898,6 +911,8 @@ export const DEMO_NOW_LIAM_BOOKINGS: ClassBooking[] = LIAM_SPECS.flatMap(spec =>
             plan_kind_used: "package",
             plan_id_used:   "pkg_10_class",
             booking_source: BOOKING_SOURCE_DIST[(i + 3) % BOOKING_SOURCE_DIST.length],
+            attendance_marked_at: attendanceMarkedAt,
+            attendance_marked_by: attendanceMarkedBy,
         });
     });
 

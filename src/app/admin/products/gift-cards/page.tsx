@@ -883,7 +883,6 @@ export default function GiftCardsPage() {
                         );
                     }}
                 />
-                <StatusFilterDropdown value={filter} onChange={setFilter} />
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push("/products/gift-cards/new")}>
                     Add new
