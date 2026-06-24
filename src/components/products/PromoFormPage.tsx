@@ -517,9 +517,11 @@ export interface PromoFormPageProps {
     mode: "create" | "edit";
     promoId?: string;
     initial?: Partial<PromoFormData>;
+    /** Where the close / list-bound nav should return to. */
+    returnTo?: string;
 }
 
-export function PromoFormPage({ mode, promoId, initial }: PromoFormPageProps) {
+export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/products/promo-codes" }: PromoFormPageProps) {
     const router = useRouter();
     const isEdit = mode === "edit";
 
@@ -560,7 +562,7 @@ export function PromoFormPage({ mode, promoId, initial }: PromoFormPageProps) {
     const patch = (p: Partial<PromoFormData>) => setForm(prev => ({ ...prev, ...p }));
 
     function handleClose() {
-        router.push("/admin/products/promo-codes");
+        router.push(returnTo);
     }
 
     // Step-1 gate — an action must be picked, then the essentials filled.

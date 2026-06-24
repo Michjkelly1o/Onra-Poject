@@ -864,11 +864,12 @@ function ListView({
                         const isSelected = selectedIds.has(r.id);
                         return (
                             <tr key={r.id}
+                                onClick={() => onViewOrEdit(r, "view")}
                                 className={cn(
-                                    "transition-colors",
+                                    "transition-colors cursor-pointer",
                                     isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
                                 )}>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <CheckboxCell
                                         checked={isSelected}
                                         onChange={() => onToggleOne(r.id)}
@@ -886,7 +887,7 @@ function ListView({
                                 <td className={TD}>{r.branchesLabel}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationLabel}</td>
                                 <td className={TD}><StatusBadge status={r.status} /></td>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         status={r.status}
                                         hasHolders={r.hasHolders}
@@ -1041,7 +1042,8 @@ export default function ProductsPage() {
         setPendingConfirm({ mode: "row", row, kind });
     }
     function openViewOrEdit(row: ProductRow, mode: "view" | "edit") {
-        router.push(mode === "edit" ? `/products/${row.id}/edit` : `/products/${row.id}`);
+        const rt = encodeURIComponent("/admin/products");
+        router.push(mode === "edit" ? `/products/${row.id}/edit?returnTo=${rt}` : `/products/${row.id}?returnTo=${rt}`);
     }
     function openBulkConfirm(kind: RowActionKind) {
         const rowsForKind = (() => {

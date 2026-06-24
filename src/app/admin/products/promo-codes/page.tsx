@@ -408,7 +408,7 @@ export default function PromoListPage() {
                 </Button>
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/products/promo-codes/new")}>
+                    onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>
                     Add promo
                 </Button>
             </div>
@@ -427,7 +427,7 @@ export default function PromoListPage() {
                 <div className="grid grid-cols-3 gap-4">
                     {visible.map(p => (
                         <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/products/promo-codes/${p.id}`)} />
+                            onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
                     ))}
                 </div>
             )}

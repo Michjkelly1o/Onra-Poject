@@ -40,7 +40,7 @@ import {
     Calendar,
 } from "@untitledui/icons";
 
-import { useAppStore, type ClassSchedule, type ClassBooking } from "@/lib/store";
+import { useAppStore, isAppointmentId, type ClassSchedule, type ClassBooking } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { InstructorMetricCard } from "@/components/instructor/InstructorMetricCard";
@@ -49,6 +49,9 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
 import { cn } from "@/lib/utils";
 import { CancellationsModal } from "./CancellationsModal";
+import { ClassesModal } from "./ClassesModal";
+import { AttendanceModal } from "./AttendanceModal";
+import { ClientsModal } from "./ClientsModal";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Period helpers — same `DateFilter` shape the admin dashboard uses
@@ -110,6 +113,39 @@ function SectionCard({ children, className }: { children: React.ReactNode; class
         <div className={cn("bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6", className)}>
             {children}
         </div>
+    );
+}
+
+// ─── ClassStatusBadge ──────────────────────────────────────────────────────
+//
+// Top-right overlay badge for the dashboard's upcoming-class cards. Mirrors
+// the customer module's "Booked / Waitlist #N" badge pattern (absolute
+// position, rounded-full pill, status-colored chrome) — only the value
+// changes: the customer module shows the customer's BOOKING status, the
+// instructor module shows the CLASS status. Color palette matches the
+// schedule grid + Classes modal status badges so a Cancelled class reads
+// red wherever it surfaces, an Ongoing class reads blue, etc.
+//
+// `pointer-events-none` lets clicks pass straight through to the underlying
+// ScheduleClassCard button — the badge is purely decorative chrome on top.
+
+const CLASS_STATUS_BADGE_STYLES: Record<ClassSchedule["status"], string> = {
+    Upcoming: "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]",
+    Ongoing:  "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]",
+    Completed:"bg-[#ecfdf3] border-[#abefc6] text-[#067647]",
+    Cancelled:"bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
+};
+
+function ClassStatusBadge({ status }: { status: ClassSchedule["status"] }) {
+    return (
+        <span
+            className={cn(
+                "absolute right-3 top-3 pointer-events-none inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap shadow-[0_1px_2px_rgba(16,24,40,0.06)]",
+                CLASS_STATUS_BADGE_STYLES[status],
+            )}
+        >
+            {status}
+        </span>
     );
 }
 function SectionHeader({
@@ -205,7 +241,10 @@ export default function InstructorDashboardPage() {
     const classBookings  = useAppStore(s => s.classBookings);
 
     const [period, setPeriod] = useState<DateFilter>(DEFAULT_PERIOD);
-    const [cancelOpen, setCancelOpen] = useState(false);
+    const [cancelOpen,   setCancelOpen]   = useState(false);
+    const [classesOpen,  setClassesOpen]  = useState(false);
+    const [attendanceOpen, setAttendanceOpen] = useState(false);
+    const [clientsOpen,  setClientsOpen]  = useState(false);
 
     // Resolve the staff_profile_id behind the currently-logged-in instructor.
     // `instructor_profile` carries it; for any future demo persona we fall
@@ -265,6 +304,12 @@ export default function InstructorDashboardPage() {
             clients:        { value: currClients,        delta: deltaPercent(currClients, prevClients) },
             cancellations:  { value: currCancellations,  delta: deltaPercent(currCancellations, prevCancellations) },
             currCancelledBookings: currBookings.filter((b: ClassBooking) => b.status === "cancelled"),
+            // Exposed so the Classes / Attendance / Clients modals can
+            // read the same period-scoped slices the KPI numbers are
+            // computed from — guarantees the modal contents always
+            // agree with the count on the card that opened it.
+            currClasses,
+            currBookings,
         };
     }, [myClasses, myBookings, currentRange, prevRange]);
 
@@ -342,6 +387,14 @@ export default function InstructorDashboardPage() {
         const todayStr = today.toLocaleDateString("en-CA"); // YYYY-MM-DD
         const todayClasses = myClasses
             .filter(c => c.dateISO.startsWith(todayStr))
+            // Section header says "Upcoming classes" — keep the contents
+            // honest: drop Ongoing / Completed / Cancelled so the list
+            // shows only classes still ahead of "now". Ongoing /
+            // Completed classes from today are reachable through the
+            // Classes KPI modal where every status is intentionally
+            // surfaced; the dashboard's at-a-glance view stays focused
+            // on what's coming up.
+            .filter(c => c.status === "Upcoming")
             .sort((a, b) => a.startTime.localeCompare(b.startTime));
         const buckets = new Map<number, ClassSchedule[]>();
         for (const c of todayClasses) {
@@ -383,6 +436,7 @@ export default function InstructorDashboardPage() {
                         value={kpis.classes.value}
                         deltaPercent={kpis.classes.delta}
                         deltaSuffix={deltaSuffix}
+                        onClick={() => setClassesOpen(true)}
                     />
                     <InstructorMetricCard
                         icon={CheckCircle}
@@ -390,6 +444,7 @@ export default function InstructorDashboardPage() {
                         value={`${kpis.attendanceRate.value}%`}
                         deltaPercent={kpis.attendanceRate.delta}
                         deltaSuffix={deltaSuffix}
+                        onClick={() => setAttendanceOpen(true)}
                     />
                     <InstructorMetricCard
                         icon={Users01}
@@ -397,6 +452,7 @@ export default function InstructorDashboardPage() {
                         value={kpis.clients.value}
                         deltaPercent={kpis.clients.delta}
                         deltaSuffix={deltaSuffix}
+                        onClick={() => setClientsOpen(true)}
                     />
                     <InstructorMetricCard
                         icon={SlashCircle01}
@@ -500,23 +556,48 @@ export default function InstructorDashboardPage() {
                                                 multi ? "flex-col gap-3" : "items-center",
                                             )}>
                                                 {slot.classes.map(c => (
-                                                    <ScheduleClassCard key={c.id}
-                                                        size="md"
-                                                        onClick={() => router.push(`/schedule/${c.id}`)}
-                                                        cls={{
-                                                            name: c.name,
-                                                            color: getCategoryColor(c.category),
-                                                            startTime: c.startTime,
-                                                            endTime: c.endTime,
-                                                            displayTime: c.displayTime,
-                                                            instructorName: c.instructorName,
-                                                            instructorInitials: c.instructorInitials,
-                                                            instructorColor: c.instructorColor,
-                                                            room: c.room,
-                                                            booked: c.booked,
-                                                            capacity: c.capacity,
-                                                        }}
-                                                    />
+                                                    // Wrap each card in a relative container so we can
+                                                    // overlay a status badge in the top-right corner —
+                                                    // mirrors the customer module's upcoming-card
+                                                    // badge pattern. The badge uses `pointer-events-none`
+                                                    // so clicks pass straight through to the underlying
+                                                    // card button.
+                                                    <div key={c.id} className="relative w-full">
+                                                        <ScheduleClassCard
+                                                            size="md"
+                                                            onClick={() => {
+                                                                // Route to instructor-scope detail (NOT admin).
+                                                                // Mirrors /instructor/schedule's branching:
+                                                                // appointments → /appointments/[id], completed
+                                                                // or cancelled classes → /earnings/[id], all
+                                                                // other classes → /class/[id]. `returnTo`
+                                                                // bounces the close button back to the
+                                                                // dashboard instead of the detail page's
+                                                                // default landing.
+                                                                const qs = new URLSearchParams({ returnTo: "/instructor/dashboard" }).toString();
+                                                                const base = isAppointmentId(c.id)
+                                                                    ? `/appointments/${c.id}`
+                                                                    : (c.status === "Completed" || c.status === "Cancelled")
+                                                                        ? `/earnings/${c.id}`
+                                                                        : `/class/${c.id}`;
+                                                                router.push(`${base}?${qs}`);
+                                                            }}
+                                                            cls={{
+                                                                name: c.name,
+                                                                color: getCategoryColor(c.category),
+                                                                startTime: c.startTime,
+                                                                endTime: c.endTime,
+                                                                displayTime: c.displayTime,
+                                                                instructorName: c.instructorName,
+                                                                instructorInitials: c.instructorInitials,
+                                                                instructorColor: c.instructorColor,
+                                                                room: c.room,
+                                                                booked: c.booked,
+                                                                capacity: c.capacity,
+                                                            }}
+                                                        />
+                                                        <ClassStatusBadge status={c.status} />
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
@@ -534,8 +615,8 @@ export default function InstructorDashboardPage() {
                 ) : (
                     <div className="relative h-[280px]">
                         <EmptyState
-                            title="No classes scheduled for today"
-                            subtitle="When the admin adds a class with you assigned as the instructor, it will appear here."
+                            title="No upcoming classes today"
+                            subtitle="When the admin adds a class with you assigned as the instructor, it will appear here. Classes that have already finished or were cancelled don't surface in this view."
                             icon={CalendarCheck01}
                         />
                     </div>
@@ -623,11 +704,34 @@ export default function InstructorDashboardPage() {
                 </SectionCard>
             </div>
 
-            {/* ── Cancellations modal ───────────────────────────────────── */}
+            {/* ── KPI modals ────────────────────────────────────────────── */}
+            {/* All four modals read from the same `kpis` object the metric
+                cards' numbers come from — guarantees what the modal lists
+                always reconciles with what the card showed. Period scope
+                flows through `currClasses` / `currBookings`, so changing
+                the dashboard period filter rescopes the modal contents on
+                the next render. */}
             <CancellationsModal
                 open={cancelOpen}
                 onClose={() => setCancelOpen(false)}
                 cancelledBookings={kpis.currCancelledBookings}
+            />
+            <ClassesModal
+                open={classesOpen}
+                onClose={() => setClassesOpen(false)}
+                classes={kpis.currClasses}
+            />
+            <AttendanceModal
+                open={attendanceOpen}
+                onClose={() => setAttendanceOpen(false)}
+                classes={kpis.currClasses}
+                bookings={kpis.currBookings}
+            />
+            <ClientsModal
+                open={clientsOpen}
+                onClose={() => setClientsOpen(false)}
+                classes={kpis.currClasses}
+                bookings={kpis.currBookings}
             />
         </div>
     );

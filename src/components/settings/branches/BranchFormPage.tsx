@@ -13,7 +13,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, MarkerPin01, Clock, UploadCloud02, Building01, Plus, Trash01 } from "@untitledui/icons";
+import { Phone, MarkerPin01, Clock, UploadCloud02, Building01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
@@ -46,11 +46,6 @@ interface WorkingHourState {
     open: string;
     close: string;
     closed: boolean;
-    /** Optional "block time" within open/close — e.g. lunch. Only one block
-     *  per day is supported; admin adds via the "+" affordance and removes
-     *  via the trash icon. */
-    blockStart?: string;
-    blockEnd?: string;
 }
 
 function dowKey(dow: number): string {
@@ -76,8 +71,6 @@ function workingHoursFromLive(branchId: string, live: BusinessHours[]): WorkingH
             open:   row?.open_time  ?? "07:00",
             close:  row?.close_time ?? "22:00",
             closed: row?.is_closed  ?? false,
-            blockStart: row?.block_start,
-            blockEnd:   row?.block_end,
         };
     });
 }
@@ -168,11 +161,6 @@ export function BranchFormPage({ mode, branchId }: {
             open_time: h.open,
             close_time: h.close,
             is_closed: h.closed,
-            // Block fields are only persisted when both endpoints are set
-            // AND the day isn't closed. Avoids dangling half-set blocks.
-            ...(h.blockStart && h.blockEnd && !h.closed
-                ? { block_start: h.blockStart, block_end: h.blockEnd }
-                : {}),
         }));
         setBranchHoursStore(newBranchId, hoursPayload);
         showToast(
@@ -273,85 +261,31 @@ export function BranchFormPage({ mode, branchId }: {
 
                                 <SectionHeader title="Working hours" small />
 
-                                {/* Per-day rows.
-                                    Row 1: Day name | open toggle | open time | close time | [+] add block.
-                                    Row 2 (when block exists): empty label | empty toggle col | block-start | block-end | [trash] remove block.
-                                    The "+" affordance is hidden when a block already exists; the
-                                    trash icon replaces it on the second row. Block is hidden when
-                                    the day is closed (toggling Closed wipes the block). */}
+                                {/* Per-day rows. Single row: Day name | open toggle | open time | close time.
+                                    The break-time / "lunch block" concept was removed — branches now have
+                                    a single open/close window per day. Staff-level blocked-time entries
+                                    (sick, training, off-day) are managed in the Blocked time module instead. */}
                                 <div className="flex flex-col gap-3">
                                     {DAYS.map(d => {
                                         const h = workingHours.find(w => w.dow === d.dow)!;
-                                        const hasBlock = !!h.blockStart && !!h.blockEnd;
                                         return (
-                                            <div key={d.key} className="flex flex-col gap-2 w-full">
-                                                <div className="grid grid-cols-[120px_60px_1fr_1fr_36px] gap-3 items-center w-full">
-                                                    <span className="text-[14px] font-medium text-[#344054]">{d.label}</span>
-                                                    <Toggle
-                                                        on={!h.closed}
-                                                        onChange={() => updateHour(d.dow, {
-                                                            closed: !h.closed,
-                                                            // Toggling Closed wipes any pending block.
-                                                            ...(!h.closed ? { blockStart: undefined, blockEnd: undefined } : {}),
-                                                        })}
-                                                        ariaLabel={`Open ${d.label}`}
-                                                    />
-                                                    <TimeInput
-                                                        value={h.open}
-                                                        onChange={(v) => updateHour(d.dow, { open: v })}
-                                                        disabled={h.closed}
-                                                    />
-                                                    <TimeInput
-                                                        value={h.close}
-                                                        onChange={(v) => updateHour(d.dow, { close: v })}
-                                                        disabled={h.closed}
-                                                    />
-                                                    {/* "+" add-block affordance. Hidden when day is
-                                                        closed or a block already exists — the trash
-                                                        on row 2 takes over the remove action. */}
-                                                    {!h.closed && !hasBlock && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateHour(d.dow, {
-                                                                blockStart: "12:00",
-                                                                blockEnd:   "13:00",
-                                                            })}
-                                                            aria-label={`Add block time for ${d.label}`}
-                                                            title="Add block time (lunch / break)"
-                                                            className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#d0d5dd] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                                        >
-                                                            <Plus className="w-4 h-4 text-[#344054]" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                {!h.closed && hasBlock && (
-                                                    <div className="grid grid-cols-[120px_60px_1fr_1fr_36px] gap-3 items-center w-full">
-                                                        <span />
-                                                        <span />
-                                                        <TimeInput
-                                                            value={h.blockStart ?? "12:00"}
-                                                            onChange={(v) => updateHour(d.dow, { blockStart: v })}
-                                                            disabled={false}
-                                                        />
-                                                        <TimeInput
-                                                            value={h.blockEnd ?? "13:00"}
-                                                            onChange={(v) => updateHour(d.dow, { blockEnd: v })}
-                                                            disabled={false}
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateHour(d.dow, {
-                                                                blockStart: undefined,
-                                                                blockEnd:   undefined,
-                                                            })}
-                                                            aria-label={`Remove block time for ${d.label}`}
-                                                            title="Remove block time"
-                                                            className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#fda29b] bg-white hover:bg-[#fef3f2] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                                        >
-                                                            <Trash01 className="w-4 h-4 text-[#d92d20]" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                            <div key={d.key} className="grid grid-cols-[120px_60px_1fr_1fr] gap-3 items-center w-full">
+                                                <span className="text-[14px] font-medium text-[#344054]">{d.label}</span>
+                                                <Toggle
+                                                    on={!h.closed}
+                                                    onChange={() => updateHour(d.dow, { closed: !h.closed })}
+                                                    ariaLabel={`Open ${d.label}`}
+                                                />
+                                                <TimeInput
+                                                    value={h.open}
+                                                    onChange={(v) => updateHour(d.dow, { open: v })}
+                                                    disabled={h.closed}
+                                                />
+                                                <TimeInput
+                                                    value={h.close}
+                                                    onChange={(v) => updateHour(d.dow, { close: v })}
+                                                    disabled={h.closed}
+                                                />
                                             </div>
                                         );
                                     })}

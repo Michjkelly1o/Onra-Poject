@@ -6,8 +6,20 @@
 // takes over the whole viewport (outside the admin sidebar chrome), matching
 // /products/new, /products/gift-cards/new and /class-types/new.
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { PromoFormPage } from "@/components/products/PromoFormPage";
 
+function CreatePromoRouteInner() {
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
+    return <PromoFormPage mode="create" returnTo={returnTo} />;
+}
+
 export default function CreatePromoRoute() {
-    return <PromoFormPage mode="create" />;
+    return (
+        <Suspense fallback={null}>
+            <CreatePromoRouteInner />
+        </Suspense>
+    );
 }

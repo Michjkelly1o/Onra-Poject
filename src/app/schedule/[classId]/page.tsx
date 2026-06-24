@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
     UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
@@ -1867,6 +1867,7 @@ const COMPLETED_TABS: { id: DetailTab; label: string }[] = [
 
 export default function ClassDetailPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams();
     const classId = String(params.classId);
     const {
@@ -1969,6 +1970,11 @@ export default function ClassDetailPage() {
     // Re-open the Add Customer modal automatically when returning from /customers/new
     // (the new-customer page appends ?openAddCustomer=1 to the returnTo path).
     const searchParams = useSearchParams();
+    // Where the X-close button should bounce back to. Entry points that opened
+    // this page (dashboard widget, schedule list row, notification panel, etc.)
+    // pass `?returnTo=<their pathname>`. Falls back to the schedule list when
+    // unset (e.g. user reached this page via direct URL).
+    const returnTo = searchParams.get("returnTo") ?? "/admin/schedule";
     useEffect(() => {
         if (searchParams.get("openAddCustomer") === "1") {
             setAddCustomerOpen(true);
@@ -2051,7 +2057,7 @@ export default function ClassDetailPage() {
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Class not found</p>
-                    <button type="button" onClick={() => router.push("/admin/schedule")}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Back to schedule
                     </button>
@@ -2353,7 +2359,7 @@ export default function ClassDetailPage() {
         });
         setCheckoutItems(null);
         // Keep paymentCustomer set so the modal re-opens after the receipt flow returns.
-        router.push(`/schedule/${ci.id}/checkout`);
+        router.push(`/schedule/${ci.id}/checkout?returnTo=${encodeURIComponent(pathname)}`);
     }
 
     const bookedCount = bookedBookings.length;
@@ -2401,7 +2407,7 @@ export default function ClassDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/schedule")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
@@ -2415,7 +2421,7 @@ export default function ClassDetailPage() {
                         ci={ci}
                         isUpcoming={isUpcoming} isOngoing={isOngoing} isCancelled={isCancelled} isCompleted={isCompleted} canCancelClass={canCancelClass}
                         onAddCustomer={() => setAddCustomerOpen(true)}
-                        onEdit={() => router.push(`/schedule/${ci.id}/edit`)}
+                        onEdit={() => router.push(`/schedule/${ci.id}/edit?returnTo=${encodeURIComponent(pathname)}`)}
                         onCancelClass={() => setCancelClassOpen(true)}
                     />
 

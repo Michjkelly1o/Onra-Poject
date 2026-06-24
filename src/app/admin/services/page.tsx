@@ -593,8 +593,9 @@ function ListView({
                         const isSelected = selectedIds.has(r.id);
                         return (
                             <tr key={r.id}
-                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                <td className={TD}>
+                                onClick={() => onView(r)}
+                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <CheckboxCell
                                         checked={isSelected}
                                         onChange={() => onToggleOne(r.id)}
@@ -616,7 +617,7 @@ function ListView({
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.branchName || "—"}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.openSession ? "Open session" : "Private"}</td>
                                 <td className={TD}><StatusBadge status={r.status} /></td>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         status={r.status}
                                         hasHistory={r.hasHistory}
@@ -831,13 +832,13 @@ export default function ServicesPage() {
     // the admin sidebar + header chrome. Same convention as class templates
     // (`/class-types/new`) and customers (`/customers/[id]/edit`).
     function handleAdd() {
-        router.push("/services/new");
+        router.push(`/services/new?returnTo=${encodeURIComponent("/admin/services")}`);
     }
     function handleView(row: ServiceRow) {
-        router.push(`/services/${row.id}`);
+        router.push(`/services/${row.id}?returnTo=${encodeURIComponent("/admin/services")}`);
     }
     function handleEdit(row: ServiceRow) {
-        router.push(`/services/${row.id}/edit`);
+        router.push(`/services/${row.id}/edit?returnTo=${encodeURIComponent("/admin/services")}`);
     }
 
     const hasActiveFilter = applied.statuses.length > 0 || applied.categories.length > 0;

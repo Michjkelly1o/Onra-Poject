@@ -181,7 +181,11 @@ const PERM_OWNER: PermissionsMapSeed = {
     customers: {
         customer_profiles:       ALL(),
         payment_history:         cell({ create: "na", edit: "na", delete: "na", view: true }),
-        refunds:                 cell({ create: true,  edit: true,  delete: "na", view: true }),
+        // Refunds is a full CRUD row in Figma 158420 — every action cell
+        // is checked. The earlier "delete: na" was incorrect (Figma shows
+        // a checked Delete column, not a dash). Both Branch Admin and
+        // Operator inherit / copy this matrix, so the fix propagates.
+        refunds:                 ALL(),
         freeze_unfreeze_package: ALL(),
         cancel_membership:       ALL(),
     },
@@ -212,10 +216,13 @@ const PERM_OWNER: PermissionsMapSeed = {
 };
 
 /** BRANCH ADMIN — Figma 158419. Loses business-level dashboard,
- *  pay-rates/payroll, and most settings (just Booking rules). */
+ *  pay-rates/payroll create/edit/delete (still views payroll reports),
+ *  and most settings (just Booking rules). */
 const PERM_BRANCH_ADMIN: PermissionsMapSeed = {
     dashboard: {
-        dashboard_business: VIEW_NA(false), // Edit unchecked
+        // Dashboard (Business) is OWNER-only — Branch Admin sees neither
+        // the Edit affordance nor the View affordance per Figma 158419.
+        dashboard_business: cell({ create: "na", edit: false, delete: "na", view: false }),
         dashboard_branch:   VIEW_NA(true),
     },
     classes: PERM_OWNER.classes,
@@ -227,8 +234,11 @@ const PERM_BRANCH_ADMIN: PermissionsMapSeed = {
     reports: PERM_OWNER.reports,
     staff: {
         staff:             ALL(),
-        staff_permissions: NONE(),
-        pay_rates_payroll: NONE(),
+        // Branch Admin can VIEW the global Staff permissions matrix +
+        // pay rate definitions (so they understand who has what), but
+        // not mutate them. Figma 158419 shows ☐☐☐✓ on both rows.
+        staff_permissions: VIEW_ONLY(),
+        pay_rates_payroll: VIEW_ONLY(),
         payroll_reports:   VIEW_ONLY(),
     },
     settings: {
@@ -244,10 +254,13 @@ const PERM_BRANCH_ADMIN: PermissionsMapSeed = {
     },
 };
 
-/** OPERATOR — Figma 158418. Daily ops focus. */
+/** OPERATOR — Figma 158418. Daily ops focus. Read-only on reports + the
+ *  staff list (so they can see who's on shift), no settings access. */
 const PERM_OPERATOR: PermissionsMapSeed = {
     dashboard: {
-        dashboard_business: VIEW_NA(false),
+        // Same as Branch Admin: Dashboard (Business) is hidden from
+        // every non-Owner role per Figma.
+        dashboard_business: cell({ create: "na", edit: false, delete: "na", view: false }),
         dashboard_branch:   VIEW_NA(true),
     },
     classes: {
@@ -264,19 +277,27 @@ const PERM_OPERATOR: PermissionsMapSeed = {
     customers: {
         customer_profiles:       ALL(),
         payment_history:         cell({ create: "na", edit: "na", delete: "na", view: true }),
-        refunds:                 cell({ create: true,  edit: true,  delete: "na", view: true }),
+        // Refunds is full CRUD on Operator per Figma 158418 (✓✓✓✓).
+        refunds:                 ALL(),
         freeze_unfreeze_package: NONE(),
         cancel_membership:       NONE(),
     },
     reports: {
-        financial_reports:          NONE(),
-        membership_package_reports: NONE(),
+        // Every report is read-only for Operator per Figma 158418
+        // (☐☐☐✓ across the column). Previously only Activity reports
+        // was VIEW_ONLY; the rest were NONE which made them disappear
+        // entirely for Operator — a regression from the spec.
+        financial_reports:          VIEW_ONLY(),
+        membership_package_reports: VIEW_ONLY(),
         activity_reports:           VIEW_ONLY(),
-        customer_reports:           NONE(),
-        frozen_package_reports:     NONE(),
+        customer_reports:           VIEW_ONLY(),
+        frozen_package_reports:     VIEW_ONLY(),
     },
     staff: {
-        staff:             NONE(),
+        // Operator can SEE the staff list (☐☐☐✓ in Figma 158418) to
+        // know who's working, but can't mutate. The remaining rows
+        // stay fully off — they're admin/owner-only.
+        staff:             VIEW_ONLY(),
         staff_permissions: NONE(),
         pay_rates_payroll: NONE(),
         payroll_reports:   NONE(),

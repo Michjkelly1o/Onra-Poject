@@ -19,7 +19,7 @@
 //   • Query w/ zero matches → canonical `<EmptyState>` with `SearchLg`
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { SearchLg, XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -40,6 +40,7 @@ export interface GlobalSearchModalProps {
 
 export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const [query, setQuery]       = useState("");
     const [category, setCategory] = useState<"All" | SearchCategory>("All");
     const [highlight, setHighlight] = useState(0);
@@ -102,7 +103,12 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
         // Persist before navigating — opening the modal next time should
         // surface the just-clicked entry under "Recent".
         pushRecentResult(r);
-        router.push(r.href);
+        // Append `returnTo` so the destination detail page's close button
+        // bounces back to wherever the modal was opened from. Preserve any
+        // existing query string on the href.
+        const sep = r.href.includes("?") ? "&" : "?";
+        const returnTo = pathname ?? "/admin/dashboard";
+        router.push(`${r.href}${sep}returnTo=${encodeURIComponent(returnTo)}`);
         onClose();
     }
 

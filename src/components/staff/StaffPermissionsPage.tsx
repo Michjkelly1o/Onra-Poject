@@ -1409,8 +1409,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         const staffCount = staffByRole.get(r.id) ?? 0;
                                         const isSelected = selectedRoleIds.has(r.id);
                                         return (
-                                            <tr key={r.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                            <tr key={r.id}
+                                                onClick={() => router.push(`/staff/roles/${r.id}?returnTo=${encodeURIComponent(returnTo)}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     {/* Owner (locked) cannot be bulk-selected. */}
                                                     <CheckboxCell
                                                         checked={isSelected}
@@ -1434,14 +1436,14 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     {ROLE_STATUS_LABEL[r.status]}
                                                 </span>
                                             </td>
-                                            <td className={TD}>
+                                            <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <ToggleSwitch
                                                     on={r.status === "active"}
                                                     disabled={r.locked || r.status === "archive"}
                                                     onChange={() => handleRoleToggle(r)}
                                                 />
                                             </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RoleRowActions role={r} staffCount={staffCount}
                                                         onAction={k => handleRoleAction(r, k)} />
                                                 </td>
@@ -1506,8 +1508,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         const hasHistory = !canDeleteStaff(s.id);
                                         const isSelected = selectedStaffIds.has(s.id);
                                         return (
-                                            <tr key={s.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                            <tr key={s.id}
+                                                onClick={() => router.push(`/staff/members/${s.id}?returnTo=${encodeURIComponent(returnTo)}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleStaffSelection(s.id)}
@@ -1536,7 +1540,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                         {STAFF_STATUS_LABEL[s.status]}
                                                     </span>
                                                 </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <StaffRowActions staff={s} hasHistory={hasHistory}
                                                         onAction={k => handleStaffAction(s, k)} />
                                                 </td>

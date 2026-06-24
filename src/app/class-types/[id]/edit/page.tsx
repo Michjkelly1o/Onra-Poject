@@ -3,7 +3,7 @@
 // Edit class template — same layout as /class-types/new but pre-filled with
 // existing template data. On save: updateClassTemplate + toast + back to detail.
 
-import { useState, useRef, useEffect } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
@@ -376,7 +376,7 @@ function ApplicableMembershipsStep({ items, selected, onChange, onBack, onSave }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function EditClassTemplatePage() {
+function EditClassTemplatePageInner() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const { classTemplates, updateClassTemplate, showToast } = useAppStore();
@@ -494,5 +494,13 @@ export default function EditClassTemplatePage() {
             </div>
             <Toast />
         </div>
+    );
+}
+
+export default function EditClassTemplatePage() {
+    return (
+        <Suspense fallback={null}>
+            <EditClassTemplatePageInner />
+        </Suspense>
     );
 }

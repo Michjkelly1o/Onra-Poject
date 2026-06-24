@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { Suspense, useState, useRef, useEffect } from "react";
+import { useRouter, useParams, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01,
     RefreshCcw01, Trash01, Trash02, DotsVertical,
@@ -447,7 +447,9 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                 </thead>
                 <tbody>
                     {sessions.map(s => (
-                        <tr key={s.id} className="hover:bg-[#f9fafb] transition-colors">
+                        <tr key={s.id}
+                            onClick={() => onViewSession(s.id)}
+                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="text-[14px] font-medium text-[#101828]">{s.date}</div>
                                 <div className="text-[13px] text-[#667085] mt-0.5">{s.timeRange}</div>
@@ -475,7 +477,7 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                             <td className={TD}>
                                 <SessionBadge status={s.status} />
                             </td>
-                            <td className={TD}>
+                            <td className={TD} onClick={e => e.stopPropagation()}>
                                 <RowActions
                                     status={s.status}
                                     onView={() => onViewSession(s.id)}
@@ -803,6 +805,7 @@ const TABS: { id: RightTab; label: string }[] = [
 
 function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTemplate }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [tab, setTab] = useState<RightTab>("classes");
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -824,10 +827,10 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
     /** Row dropdown handlers — route to the schedule module so we share its full pages. */
     function handleViewSession(id: string) {
-        router.push(`/schedule/${id}`);
+        router.push(`/schedule/${id}?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleEditSession(id: string) {
-        router.push(`/schedule/${id}/edit`);
+        router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleConfirmCancel() {
         if (!cancelSessionId) return;
@@ -1034,7 +1037,9 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                     </thead>
                                     <tbody>
                                         {paginatedMemberships.map(m => (
-                                            <tr key={m.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={m.id}
+                                                onClick={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1044,7 +1049,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${m.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1079,7 +1084,9 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                     </thead>
                                     <tbody>
                                         {paginatedPackages.map(p => (
-                                            <tr key={p.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={p.id}
+                                                onClick={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1089,7 +1096,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${p.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1167,9 +1174,12 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ClassTemplateDetailPage() {
+function ClassTemplateDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const { id } = useParams<{ id: string }>();
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/class-types";
     const { classTemplates, classSchedules, updateClassTemplate, deleteClassTemplate, showToast } = useAppStore();
 
     const template = classTemplates.find(t => t.id === id);
@@ -1181,7 +1191,7 @@ export default function ClassTemplateDetailPage() {
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Template not found</p>
-                    <button type="button" onClick={() => router.push("/admin/class-types")}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Back to class templates
                     </button>
@@ -1197,7 +1207,7 @@ export default function ClassTemplateDetailPage() {
 
     function handleAction(action: "edit" | ModalAction) {
         if (action === "edit") {
-            router.push(`/class-types/${id}/edit`);
+            router.push(`/class-types/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(action);
@@ -1211,7 +1221,7 @@ export default function ClassTemplateDetailPage() {
             deleteClassTemplate(id);
             showToast("Class template deleted successfully", `"${name}" class template is no longer available for new classes.`, "error", "trash");
             setConfirmAction(null);
-            router.push("/admin/class-types");
+            router.push(returnTo);
         } else if (confirmAction === "archive") {
             updateClassTemplate(id, { status: "Archived" });
             showToast("Class template is now archived", "The class template has been archived and is no longer in use.", "success", "archive");
@@ -1237,7 +1247,7 @@ export default function ClassTemplateDetailPage() {
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button
                     type="button"
-                    onClick={() => router.push("/admin/class-types")}
+                    onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -1262,5 +1272,13 @@ export default function ClassTemplateDetailPage() {
             )}
             <Toast />
         </div>
+    );
+}
+
+export default function ClassTemplateDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <ClassTemplateDetailPageInner />
+        </Suspense>
     );
 }

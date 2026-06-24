@@ -31,7 +31,7 @@
 //   • deactivate / delete           → red tone (bg-[#fee4e2], destructive button)
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, Trash01, SlashCircle01, RefreshCcw01, Plus,
     Check, Building01, LayoutGrid01, Eye, Pencil01, DotsVertical,
@@ -43,10 +43,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore } from "@/lib/store";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
-
-// ─── Return route ─────────────────────────────────────────────────────────────
-
-const RETURN_ROUTE = "/admin/settings";
 
 // ─── Day labels (Mon → Sun display order) ────────────────────────────────────
 
@@ -562,10 +558,12 @@ function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: () => void
 
 export interface BranchDetailPageProps {
     branchId: string;
+    returnTo?: string;
 }
 
-export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
+export function BranchDetailPage({ branchId, returnTo = "/admin/settings" }: BranchDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const branches       = useAppStore(s => s.branches);
     const rooms          = useAppStore(s => s.rooms);
     const businessHours  = useAppStore(s => s.businessHours);
@@ -592,13 +590,13 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
     useEffect(() => {
         if (!branch && branches.length > 0) {
             showToast("Branch not found", "Returned to the settings list.", "error");
-            router.push(RETURN_ROUTE);
+            router.push(returnTo);
         }
     }, [branch, branches.length, router, showToast]);
 
-    function handleClose() { router.push(RETURN_ROUTE); }
-    function handleEdit()  { if (branch) router.push(`/settings/branches/${branch.id}/edit`); }
-    function handleAddRoom() { if (branch) router.push(`/settings/rooms/new?branchId=${branch.id}`); }
+    function handleClose() { router.push(returnTo); }
+    function handleEdit()  { if (branch) router.push(`/settings/branches/${branch.id}/edit?returnTo=${encodeURIComponent(pathname)}`); }
+    function handleAddRoom() { if (branch) router.push(`/settings/rooms/new?branchId=${branch.id}&returnTo=${encodeURIComponent(pathname)}`); }
 
     function performBranchConfirm(kind: ConfirmKind) {
         if (!branch) return;
@@ -619,7 +617,7 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
             deleteBranchFn(branch.id);
             showToast("Branch deleted", `${subject} permanently removed.`, "success", "trash");
             setPendingBranchConfirm(null);
-            router.push(RETURN_ROUTE);
+            router.push(returnTo);
             return;
         }
         setPendingBranchConfirm(null);
@@ -725,7 +723,7 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
                                 onToggleRoomActions={(id) => setRoomActionsId(prev => prev === id ? null : id)}
                                 onCloseRoomActions={() => setRoomActionsId(null)}
                                 onRoomView={(r) => { setRoomActionsId(null); setRoomDetailId(r.id); }}
-                                onRoomEdit={(r) => { setRoomActionsId(null); router.push(`/settings/rooms/${r.id}/edit`); }}
+                                onRoomEdit={(r) => { setRoomActionsId(null); router.push(`/settings/rooms/${r.id}/edit?returnTo=${encodeURIComponent(pathname)}`); }}
                                 onRoomAction={(r, a) => { setRoomActionsId(null); setPendingRoomConfirm({ room: r, kind: a }); }}
                                 onRoomToggle={requestRoomToggle}
                             />

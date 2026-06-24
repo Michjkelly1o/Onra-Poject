@@ -32,8 +32,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { X, DotsVertical, Eye } from "@untitledui/icons";
-import { useAppStore, type ClassBooking, type ClassSchedule, type Customer } from "@/lib/store";
+import { useAppStore, isAppointmentId, type ClassBooking, type ClassSchedule, type Customer } from "@/lib/store";
 import { Badge } from "@/components/reports/badges";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,13 @@ type TabKey = "all" | "late" | "on_time";
 
 interface CancellationRow {
     bookingId: string;
+    /** FK back to the class the booking sat on — drives the "View
+     *  details" kebab action's navigation target. */
+    classScheduleId: string;
+    /** Class status at modal open time — drives the branching between
+     *  `/class/[id]` (Upcoming/Ongoing) and `/earnings/[id]`
+     *  (Completed/Cancelled) when the user clicks "View details". */
+    classStatus: ClassSchedule["status"];
     customerName: string;
     customerEmail: string;
     customerImageUrl?: string;
@@ -63,6 +71,7 @@ interface CancellationRow {
 }
 
 export function CancellationsModal({ open, onClose, cancelledBookings }: CancellationsModalProps) {
+    const router         = useRouter();
     const customers      = useAppStore(s => s.customers);
     const classSchedules = useAppStore(s => s.classSchedules);
 
@@ -92,6 +101,8 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                 const isLate = b.attendanceStatus === "late_cancel";
                 return {
                     bookingId: b.id,
+                    classScheduleId: klass.id,
+                    classStatus: klass.status,
                     customerName: `${customer.firstName} ${customer.lastName}`.trim(),
                     customerEmail: customer.email,
                     customerImageUrl: customer.imageUrl,
@@ -108,6 +119,26 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
     const lateRows    = useMemo(() => allRows.filter(r =>  r.isLate), [allRows]);
     const onTimeRows  = useMemo(() => allRows.filter(r => !r.isLate), [allRows]);
     const visibleRows = tab === "late" ? lateRows : tab === "on_time" ? onTimeRows : allRows;
+
+    /** Navigate to the class schedule detail for the row's underlying
+     *  class. Instructor-scope routing (per memory: instructor side stays
+     *  on instructor side) — appointments → `/appointments/[id]`,
+     *  Completed/Cancelled classes → `/earnings/[id]`, otherwise
+     *  `/class/[id]`. `returnTo` bounces the close button back to the
+     *  dashboard (where this modal was opened from). Modal is closed
+     *  before the navigation so reopening the dashboard doesn't
+     *  re-trigger the cancellations overlay. */
+    function handleViewDetails(row: CancellationRow) {
+        const base = isAppointmentId(row.classScheduleId)
+            ? `/appointments/${row.classScheduleId}`
+            : (row.classStatus === "Completed" || row.classStatus === "Cancelled")
+                ? `/earnings/${row.classScheduleId}`
+                : `/class/${row.classScheduleId}`;
+        const qs = new URLSearchParams({ returnTo: "/instructor/dashboard" }).toString();
+        setOpenMenu(null);
+        onClose();
+        router.push(`${base}?${qs}`);
+    }
 
     if (!open) return null;
 
@@ -221,7 +252,17 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                         <button
                             type="button"
                             role="menuitem"
-                            onClick={e => { e.stopPropagation(); setOpenMenu(null); }}
+                            onClick={e => {
+                                e.stopPropagation();
+                                // Look up the row that owns this open menu
+                                // (we keep the menu state keyed by bookingId
+                                // only, so we resolve the row out of the
+                                // visible list here) and navigate to its
+                                // class schedule detail.
+                                const row = visibleRows.find(r => r.bookingId === openMenu.id);
+                                if (row) handleViewDetails(row);
+                                else setOpenMenu(null);
+                            }}
                             className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
                         >
                             <Eye className="w-4 h-4 text-[#667085]" />

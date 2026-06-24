@@ -20,8 +20,8 @@
 // State source of truth: useAppStore(s => s.giftCardDesigns). Status flips and
 // deletes propagate to the gift-cards list view + POS catalog instantly.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     DotsVertical, SearchMd, Eye, ChevronLeft,
@@ -560,6 +560,7 @@ function ActiveCustomersTab({ holders, cardName }: {
 
 function HolderRow({ holder }: { holder: GiftCardHolder }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
     const c = holder.customer;
@@ -592,7 +593,7 @@ function HolderRow({ holder }: { holder: GiftCardHolder }) {
                     </button>
                     <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                         <button type="button"
-                            onClick={() => { setOpen(false); router.push(`/customers/${c.id}`); }}
+                            onClick={() => { setOpen(false); router.push(`/customers/${c.id}?returnTo=${encodeURIComponent(pathname)}`); }}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             <Eye className="w-4 h-4 text-[#667085]" />View customer
                         </button>
@@ -659,10 +660,13 @@ function CustomersPagination({ page, total, pageSize, onPage, onPageSize }: {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export default function GiftCardDetailPage() {
+function GiftCardDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/gift-cards";
 
     const giftCardDesigns         = useAppStore(s => s.giftCardDesigns);
     const issuedGiftCards         = useAppStore(s => s.issuedGiftCards);
@@ -684,7 +688,7 @@ export default function GiftCardDetailPage() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Gift card not found</p>
-                <button type="button" onClick={() => router.push("/admin/products/gift-cards")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to gift cards
                 </button>
@@ -694,7 +698,7 @@ export default function GiftCardDetailPage() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/products/gift-cards/${id}/edit`);
+            router.push(`/products/gift-cards/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(a);
@@ -723,7 +727,7 @@ export default function GiftCardDetailPage() {
             deleteGiftCardDesign(id);
             showToast("Gift card deleted", `${name} has been deleted.`, "success", "trash");
             setConfirmAction(null);
-            router.push("/admin/products/gift-cards");
+            router.push(returnTo);
         }
     }
 
@@ -731,7 +735,7 @@ export default function GiftCardDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header — same 72px chrome as the membership/package detail page */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/products/gift-cards")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -760,5 +764,13 @@ export default function GiftCardDetailPage() {
             )}
             <Toast />
         </div>
+    );
+}
+
+export default function GiftCardDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <GiftCardDetailPageInner />
+        </Suspense>
     );
 }

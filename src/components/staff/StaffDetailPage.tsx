@@ -21,7 +21,7 @@
 // Pending status: sidebar actions footer ONLY shows "Resend invitation".
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Check, Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01,
     Trash01, Send01, ArrowUp, ArrowDown, ArrowUpRight,
@@ -713,6 +713,7 @@ type TabId = "overview" | "permissions";
 
 export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: StaffDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const allStaff           = useAppStore(s => s.staff);
     const allRoles           = useAppStore(s => s.roles);
     const payRates           = useAppStore(s => s.payRates);
@@ -802,7 +803,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
         setPendingConfirm(null);
     }
     function handleSidebarAction(kind: "edit_details" | "change_role" | "resend_invite" | ConfirmKind) {
-        if (kind === "edit_details")  return router.push(`/staff/members/${staff!.id}/edit?returnTo=/staff/members/${staff!.id}`);
+        if (kind === "edit_details")  return router.push(`/staff/members/${staff!.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
         if (kind === "change_role")   return setChangeRoleOpen(true);
         if (kind === "resend_invite") return handleResend();
         setPendingConfirm(kind);

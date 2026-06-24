@@ -22,7 +22,7 @@
 //   • View-content modal             — 4209-156334
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Plus, Edit02, Archive, DotsVertical, Eye, Send03, File06, File02,
     Calendar, ChevronUp, ChevronDown, ChevronLeft, Check, RefreshCcw01, SearchLg,
@@ -37,8 +37,6 @@ import {
 } from "@/lib/store";
 import { AgreementContentModal } from "./AgreementContentModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
-
-const RETURN_ROUTE = "/admin/settings/agreements";
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
@@ -637,8 +635,9 @@ function ConfirmModal({ kind, agreementName, onConfirm, onCancel }: {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
+export function AgreementDetailPage({ agreementId, returnTo = "/admin/settings/agreements" }: { agreementId: string; returnTo?: string }) {
     const router = useRouter();
+    const pathname = usePathname();
 
     const agreement = useAppStore(s => s.agreements.find(a => a.id === agreementId));
     const allVersions = useAppStore(s => s.agreementVersions);
@@ -652,7 +651,7 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
     const [confirm, setConfirm] = useState<"archive" | "recover" | null>(null);
 
     useEffect(() => {
-        if (!agreement) router.replace(RETURN_ROUTE);
+        if (!agreement) router.replace(returnTo);
     }, [agreement, router]);
 
     const versions = useMemo(
@@ -689,13 +688,13 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
     if (!agreement) return null;
 
     function handleClose() {
-        router.push(RETURN_ROUTE);
+        router.push(returnTo);
     }
     function handleAddVersion() {
-        router.push(`/settings/agreements/${agreementId}/new-version`);
+        router.push(`/settings/agreements/${agreementId}/new-version?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleEdit() {
-        router.push(`/settings/agreements/${agreementId}/edit`);
+        router.push(`/settings/agreements/${agreementId}/edit?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleArchiveConfirmed() {
         if (!agreement) return;

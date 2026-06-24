@@ -18,7 +18,7 @@
 //                  Staff list)
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronDown, ChevronUp, User01, Check,
     Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01, Trash01, Trash02,
@@ -848,8 +848,13 @@ function StaffListTab({ role, onChangeRoleFor }: {
                                     const isSelected = selectedIds.has(s.id);
                                     const branch = s.branchId === null ? "All locations" : branches.find(b => b.id === s.branchId)?.name ?? "—";
                                     return (
-                                        <tr key={s.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                            <td className={TD}>
+                                        <tr key={s.id}
+                                            onClick={() => handleAction(s, "view")}
+                                            className={cn(
+                                                "transition-colors cursor-pointer",
+                                                isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                            )}>
+                                            <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <CheckboxCell checked={isSelected} onChange={() => toggleOne(s.id)} ariaLabel={`Select ${s.fullName}`} />
                                             </td>
                                             <td className={TD}>
@@ -872,7 +877,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
                                                     {STAFF_STATUS_LABEL[s.status]}
                                                 </span>
                                             </td>
-                                            <td className={TD}>
+                                            <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <StaffRowMenu staff={s} hasHistory={hasHistory(s)}
                                                     onAction={k => handleAction(s, k)} />
                                             </td>
@@ -979,6 +984,7 @@ type TabId = "permissions" | "staff";
 
 export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: RoleDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const roles            = useAppStore(s => s.roles);
     const staff            = useAppStore(s => s.staff);
     const branches         = useAppStore(s => s.branches);
@@ -1024,8 +1030,8 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
     function handleSidebarAction(kind: "add_staff" | "edit_details" | "edit_permissions" | ConfirmKind) {
         if (!role) return;
         if (kind === "add_staff")        return router.push(`/staff/members/new?roleId=${role.id}&returnTo=/staff/roles/${role.id}`);
-        if (kind === "edit_details")     return router.push(`/staff/roles/${role.id}/edit?returnTo=/staff/roles/${role.id}`);
-        if (kind === "edit_permissions") return router.push(`/staff/roles/${role.id}/permissions/edit?returnTo=/staff/roles/${role.id}`);
+        if (kind === "edit_details")     return router.push(`/staff/roles/${role.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
+        if (kind === "edit_permissions") return router.push(`/staff/roles/${role.id}/permissions/edit?returnTo=${encodeURIComponent(pathname)}`);
         setSidebarConfirm(kind);
     }
     function performSidebarConfirm(kind: ConfirmKind) {

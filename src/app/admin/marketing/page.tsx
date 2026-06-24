@@ -412,7 +412,7 @@ export default function MarketingListPage() {
                 </Button>
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/marketing/new")}>
+                    onClick={() => router.push(`/marketing/new?returnTo=${encodeURIComponent("/admin/marketing")}`)}>
                     Add marketing
                 </Button>
             </div>
@@ -431,7 +431,7 @@ export default function MarketingListPage() {
                 <div className="grid grid-cols-3 gap-4">
                     {visible.map(m => (
                         <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/marketing/${m.id}`)} />
+                            onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />
                     ))}
                 </div>
             )}

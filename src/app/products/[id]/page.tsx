@@ -18,8 +18,8 @@
 //                                  rules cards)
 //   • Customers tab — 2744:57991
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     CreditCard02, Package as PackageIcon,
@@ -835,6 +835,7 @@ function DisabledCheckbox({ checked }: { checked: boolean }) {
 function ApplicableTemplatesServicesCard({ productId, productNoun }: { productId: string; productNoun: string }) {
     const [open, setOpen] = useState(true);
     const router = useRouter();
+    const pathname = usePathname();
     const classTemplates = useAppStore(s => s.classTemplates);
     const services       = useAppStore(s => s.services);
 
@@ -882,7 +883,7 @@ function ApplicableTemplatesServicesCard({ productId, productNoun }: { productId
                                     <p className="text-[12px] font-medium text-[#667085] uppercase tracking-wide">Class templates</p>
                                     {linkedTemplates.map(t => (
                                         <button key={t.id} type="button"
-                                            onClick={() => router.push(`/class-types/${t.id}`)}
+                                            onClick={() => router.push(`/class-types/${t.id}?returnTo=${encodeURIComponent(pathname)}`)}
                                             className="flex items-center gap-3 -mx-2 px-2 py-1.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
                                             <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054]"
                                                 style={{ backgroundColor: t.coverColor || "#f1f2ed" }}>
@@ -902,7 +903,7 @@ function ApplicableTemplatesServicesCard({ productId, productNoun }: { productId
                                     <p className="text-[12px] font-medium text-[#667085] uppercase tracking-wide">Services</p>
                                     {linkedServices.map(s => (
                                         <button key={s.id} type="button"
-                                            onClick={() => router.push(`/services/${s.id}`)}
+                                            onClick={() => router.push(`/services/${s.id}?returnTo=${encodeURIComponent(pathname)}`)}
                                             className="flex items-center gap-3 -mx-2 px-2 py-1.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
                                             <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054] overflow-hidden"
                                                 style={{ backgroundColor: s.coverColor || "#f1f2ed" }}>
@@ -1154,6 +1155,7 @@ function ActiveCustomersTab({ customers, productName, renewalFor }: {
 
 function CustomerRow({ customer, renewal }: { customer: Customer; renewal: string }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -1180,7 +1182,7 @@ function CustomerRow({ customer, renewal }: { customer: Customer; renewal: strin
                     </button>
                     <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                         <button type="button"
-                            onClick={() => { setOpen(false); router.push(`/customers/${customer.id}`); }}
+                            onClick={() => { setOpen(false); router.push(`/customers/${customer.id}?returnTo=${encodeURIComponent(pathname)}`); }}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             <Eye className="w-4 h-4 text-[#667085]" />View customer
                         </button>
@@ -1354,10 +1356,13 @@ function buildPackageVM(p: Package, tierName: string): MembershipDetailVM {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export default function ProductDetailPage() {
+function ProductDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products";
 
     const memberships         = useAppStore(s => s.memberships);
     const packages            = useAppStore(s => s.packages);
@@ -1388,7 +1393,7 @@ export default function ProductDetailPage() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
-                <button type="button" onClick={() => router.push("/admin/products")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to memberships &amp; packages
                 </button>
@@ -1423,7 +1428,7 @@ export default function ProductDetailPage() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/products/${id}/edit`);
+            router.push(`/products/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(a);
@@ -1457,7 +1462,7 @@ export default function ProductDetailPage() {
             if (ok) {
                 showToast("Product deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
-                router.push("/admin/products");
+                router.push(returnTo);
             } else {
                 showToast(
                     "Cannot delete",
@@ -1475,7 +1480,7 @@ export default function ProductDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header — same 72px chrome as class-types/[id] */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/products")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -1509,5 +1514,13 @@ export default function ProductDetailPage() {
             )}
             <Toast />
         </div>
+    );
+}
+
+export default function ProductDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <ProductDetailPageInner />
+        </Suspense>
     );
 }

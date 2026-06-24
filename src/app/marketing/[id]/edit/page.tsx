@@ -5,7 +5,8 @@
 // the shared MarketingFormPage in edit mode. Saving patches the same row via
 // `updateMarketingItem`, so the detail page reflects the change immediately.
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { MarketingFormPage } from "@/components/marketing/MarketingFormPage";
 import { useAppStore } from "@/lib/store";
 
@@ -17,9 +18,11 @@ function splitIso(iso?: string): { date: string; time: string } {
     return { date: m[1], time: m[2] };
 }
 
-export default function EditMarketingRoute() {
+function EditMarketingRouteInner() {
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/marketing";
     const item = useAppStore(s => s.marketingItems.find(m => m.id === id));
 
     if (!item) {
@@ -39,6 +42,7 @@ export default function EditMarketingRoute() {
         <MarketingFormPage
             mode="edit"
             marketingId={id}
+            returnTo={returnTo}
             initial={{
                 bannerPreview: item.cover_image_url ?? "",
                 name: item.title,
@@ -60,5 +64,13 @@ export default function EditMarketingRoute() {
                 customerTargeting: item.customer_targeting ?? "",
             }}
         />
+    );
+}
+
+export default function EditMarketingRoute() {
+    return (
+        <Suspense fallback={null}>
+            <EditMarketingRouteInner />
+        </Suspense>
     );
 }

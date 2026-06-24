@@ -37,7 +37,7 @@
 // `onra-demo-state` blob — cross-tab propagation works automatically.
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Trash02,
     DotsVertical, SearchMd, FilterLines, Eye, Check,
@@ -697,7 +697,9 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                 </thead>
                 <tbody>
                     {rows.map(a => (
-                        <tr key={a.id} className="hover:bg-[#f9fafb] transition-colors">
+                        <tr key={a.id}
+                            onClick={() => onView(a)}
+                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="text-[14px] font-medium text-[#101828]">{a.date}</div>
                                 <div className="text-[13px] text-[#667085] mt-0.5">{a.displayTime}</div>
@@ -730,7 +732,7 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                             <td className={TD}><AttendanceBar booked={a.booked} capacity={a.capacity} /></td>
                             <td className={TD}><RatingCell rating={a.rating} count={a.ratingCount} /></td>
                             <td className={TD}><AppointmentStatusBadge status={a.status} /></td>
-                            <td className={TD}>
+                            <td className={TD} onClick={e => e.stopPropagation()}>
                                 <AppointmentRowActions
                                     status={a.status}
                                     onView={() => onView(a)}
@@ -827,6 +829,7 @@ const TABS: { id: RightTab; label: string }[] = [
 
 function RightPanel({ service }: { service: Service }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [tab, setTab]                       = useState<RightTab>("appointments");
     const [search, setSearch]                 = useState("");
     const [page, setPage]                     = useState(1);
@@ -897,6 +900,12 @@ function RightPanel({ service }: { service: Service }) {
         const q = search.trim().toLowerCase();
         return appointments
             .filter(a => a.serviceId === service.id)
+            // Same render rule the schedule grid uses (admin + instructor):
+            // an appointment slot only surfaces once a customer has booked
+            // it. Cancelled appointments still surface so admins can see
+            // what was cancelled — mirrors the schedule view's
+            // `booked > 0 || status === "Cancelled"` filter.
+            .filter(a => a.booked > 0 || a.status === "Cancelled")
             .filter(a => {
                 if (applied.statuses.length && !applied.statuses.includes(a.status)) return false;
                 if (applied.startDate && a.dateISO < applied.startDate) return false;
@@ -1015,14 +1024,20 @@ function RightPanel({ service }: { service: Service }) {
                                     sortKey={aSortKey}
                                     sortDir={aSortDir}
                                     onSort={toggleASort}
-                                    onView={(a) => router.push(`/appointments/${a.id}`)}
+                                    onView={(a) => router.push(`/appointments/${a.id}?returnTo=${encodeURIComponent(pathname)}`)}
                                     onCancel={(a) => setCancelTarget(a)}
                                 />
                             </div>
                         ) : (
                             <EmptyTablePane
-                                title={appointments.some(a => a.serviceId === service.id) ? "No appointments found" : "No appointments yet"}
-                                subtitle={appointments.some(a => a.serviceId === service.id)
+                                // `hasAnyBooked` mirrors the post-filter
+                                // contract — only appointments that have
+                                // been booked (or were booked then
+                                // cancelled) ever surface in the table.
+                                title={appointments.some(a => a.serviceId === service.id && (a.booked > 0 || a.status === "Cancelled"))
+                                    ? "No appointments found"
+                                    : "No appointments yet"}
+                                subtitle={appointments.some(a => a.serviceId === service.id && (a.booked > 0 || a.status === "Cancelled"))
                                     ? "Try adjusting your search or filters."
                                     : "Appointments booked for this service will appear here."}
                             />
@@ -1047,7 +1062,9 @@ function RightPanel({ service }: { service: Service }) {
                                     </thead>
                                     <tbody>
                                         {pagedMemberships.map(m => (
-                                            <tr key={m.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={m.id}
+                                                onClick={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border-1 border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1057,7 +1074,7 @@ function RightPanel({ service }: { service: Service }) {
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${m.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1089,7 +1106,9 @@ function RightPanel({ service }: { service: Service }) {
                                     </thead>
                                     <tbody>
                                         {pagedPackages.map(p => (
-                                            <tr key={p.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={p.id}
+                                                onClick={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border-1 border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1099,7 +1118,7 @@ function RightPanel({ service }: { service: Service }) {
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${p.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1158,10 +1177,12 @@ function RightPanel({ service }: { service: Service }) {
 
 export interface ServiceDetailPageProps {
     serviceId: string;
+    returnTo?: string;
 }
 
-export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
+export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: ServiceDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
 
     const services         = useAppStore(s => s.services);
     const appointments     = useAppStore(s => s.appointments);
@@ -1178,7 +1199,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Service not found</p>
-                    <button type="button" onClick={() => router.push("/admin/services")}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Back to services
                     </button>
@@ -1194,7 +1215,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
     function handleAction(action: "edit" | ModalAction) {
         if (!service) return;
         if (action === "edit") {
-            router.push(`/services/${service.id}/edit`);
+            router.push(`/services/${service.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(action);
@@ -1212,7 +1233,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
                 "success", "trash",
             );
             setConfirmAction(null);
-            router.push("/admin/services");
+            router.push(returnTo);
             return;
         }
 
@@ -1251,7 +1272,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button
                     type="button"
-                    onClick={() => router.push("/admin/services")}
+                    onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />

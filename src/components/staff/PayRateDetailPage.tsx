@@ -25,7 +25,7 @@
 // out the same way.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, RefreshCcw01, SlashCircle01, Trash01, Check, CoinsHand,
     SearchMd, FilterLines, DotsVertical, Eye, ChevronLeft, MarkerPin01,
@@ -658,8 +658,12 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                 const branch = branches.find(b => b.id === r.branchId);
                                 return (
                                     <tr key={r.id}
-                                        className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                        <td className={TD}>
+                                        onClick={() => onPlaceholderAction("view", r)}
+                                        className={cn(
+                                            "transition-colors cursor-pointer",
+                                            isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                        )}>
+                                        <td className={TD} onClick={e => e.stopPropagation()}>
                                             <CheckboxCell
                                                 checked={isSelected}
                                                 onChange={() => toggleOne(r.id)}
@@ -684,7 +688,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                         <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
                                         <td className={TD}>{payRateName}</td>
                                         <td className={TD}><InstructorStatusBadge status={r.status} /></td>
-                                        <td className={TD}>
+                                        <td className={TD} onClick={e => e.stopPropagation()}>
                                             <InstructorRowActions
                                                 status={r.status}
                                                 onAction={kind => handleRowAction(r, kind)}
@@ -819,6 +823,7 @@ export interface PayRateDetailPageProps {
 
 export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/pay-rate" }: PayRateDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const payRates           = useAppStore(s => s.payRates);
     const branches           = useAppStore(s => s.branches);
     const setPayRatesStatus  = useAppStore(s => s.setPayRatesStatus);
@@ -843,7 +848,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
     function handleSidebarAction(kind: "edit" | ConfirmKind) {
         if (!payRate) return;
         if (kind === "edit") {
-            router.push(`/staff/pay-rate/${payRate.id}/edit?returnTo=/staff/pay-rate/${payRate.id}`);
+            router.push(`/staff/pay-rate/${payRate.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setSidebarConfirm({ kind });

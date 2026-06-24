@@ -50,7 +50,7 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
     const effectiveCover  = resolveTemplateCoverImage(template, classCategories);
     return (
         <div
-            onClick={() => router.push(`/class-types/${template.id}`)}
+            onClick={() => router.push(`/class-types/${template.id}?returnTo=${encodeURIComponent("/admin/class-types")}`)}
             className={cn(
                 "bg-white border border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
                 "transition-all duration-150",
@@ -311,7 +311,7 @@ export default function ClassTypesPage() {
                 </Button>
 
                 {/* Add template */}
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/class-types/new")}>
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`)}>
                     Add template
                 </Button>
             </div>

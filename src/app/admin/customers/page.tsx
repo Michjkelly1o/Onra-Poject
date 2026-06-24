@@ -1046,8 +1046,12 @@ export default function CustomersPage() {
                                         const isSelected = selectedIds.has(r.id);
                                         return (
                                             <tr key={r.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                                onClick={() => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`)}
+                                                className={cn(
+                                                    "transition-colors cursor-pointer",
+                                                    isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                                )}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(r.id)}
@@ -1074,11 +1078,11 @@ export default function CustomersPage() {
                                                 <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                                     {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
                                                 </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
                                                         status={r.status}
                                                         hasHistory={r.hasHistory}
-                                                        onView={() => router.push(`/customers/${r.id}`)}
+                                                        onView={() => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`)}
                                                         onEdit={() => router.push(`/customers/${r.id}/edit?returnTo=/admin/customers`)}
                                                         onAddCredit={() => router.push(`/customers/${r.id}/add-credit?returnTo=/admin/customers`)}
                                                         onAction={k => openRowConfirm(r, k)}

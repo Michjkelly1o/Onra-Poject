@@ -24,7 +24,7 @@
 // instructor detail page, and any future schedule grid all stay coherent.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, ChevronDown, Check, Clock,
     Edit02, Archive, RefreshCcw01, SlashCircle01, Trash01, Trash02,
@@ -914,6 +914,7 @@ export interface ShiftDetailPageProps {
 
 export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: ShiftDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const shifts          = useAppStore(s => s.shifts);
     const staff           = useAppStore(s => s.staff);
     const branches        = useAppStore(s => s.branches);
@@ -960,7 +961,7 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
 
     function handleSidebarAction(kind: "assign_staff" | "edit_details" | ConfirmKind) {
         if (kind === "assign_staff") return setShowAssign(true);
-        if (kind === "edit_details") return router.push(`/staff/shifts/${shift!.id}/edit?returnTo=/staff/shifts/${shift!.id}`);
+        if (kind === "edit_details") return router.push(`/staff/shifts/${shift!.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
         setSidebarConfirm(kind);
     }
     function performSidebarConfirm(kind: ConfirmKind) {

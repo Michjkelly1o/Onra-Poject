@@ -96,8 +96,8 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"=/admin/staff",                 // list view (Roles + Staff + Shift management + Blocked time tabs)
     //"/staff/roles",                  // role create / detail / edit / edit-permissions
     //"/staff/members",                // staff create / detail / edit
-    "/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab)
-    "/staff/blocked-time",           // blocked-time create / edit (Blocked time sub-tab)
+    //"/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab)
+    //"/staff/blocked-time",           // blocked-time create / edit (Blocked time sub-tab)
 
     // ── Notifications module ── (ENABLED — admin)
     //"/admin/notifications",          // full page (All / Bookings / Payments tabs)

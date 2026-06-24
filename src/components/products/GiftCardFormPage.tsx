@@ -540,9 +540,11 @@ export interface GiftCardFormPageProps {
     /** Required when mode === "edit" — the design id the save action writes to. */
     designId?: string;
     initial?: GiftCardFormInitial;
+    /** Where the close / list-bound nav should return to. */
+    returnTo?: string;
 }
 
-export function GiftCardFormPage({ mode, designId, initial }: GiftCardFormPageProps) {
+export function GiftCardFormPage({ mode, designId, initial, returnTo = "/admin/products/gift-cards" }: GiftCardFormPageProps) {
     const router = useRouter();
     const isEdit = mode === "edit";
 
@@ -585,7 +587,7 @@ export function GiftCardFormPage({ mode, designId, initial }: GiftCardFormPagePr
     function handleClose() {
         // Edit mode returns to the detail page; create mode returns to the list.
         if (isEdit && designId) router.push(`/products/gift-cards/${designId}`);
-        else                    router.push("/admin/products/gift-cards");
+        else                    router.push(returnTo);
     }
 
     /** Final step primary action — writes the `gift_card_designs` row, fires
@@ -655,7 +657,7 @@ export function GiftCardFormPage({ mode, designId, initial }: GiftCardFormPagePr
             "success",
             "check",
         );
-        router.push("/admin/products/gift-cards");
+        router.push(returnTo);
     }
 
     // ─── Preview labels — derived live so the right rail tracks the form ─────

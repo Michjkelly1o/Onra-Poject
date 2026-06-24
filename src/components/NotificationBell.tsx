@@ -22,7 +22,7 @@
 //   • Empty state: in-line message when no notifications exist.
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Bell01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
@@ -34,6 +34,7 @@ const DROPDOWN_MAX = 4;
 
 export default function NotificationBell() {
     const router = useRouter();
+    const pathname = usePathname();
     const notifications        = useAppStore(s => s.notifications);
     const markNotificationRead = useAppStore(s => s.markNotificationRead);
     const currentRole          = useAppStore(s => s.currentRole);
@@ -82,7 +83,18 @@ export default function NotificationBell() {
         if (!n) return;
         markNotificationRead(id);
         setOpen(false);
-        router.push(routeForNotification(n));
+        const route = routeForNotification(n);
+        // Append `returnTo` so the destination detail page's close button
+        // bounces back to where the bell was opened from. Some routes
+        // (instructor booking notifications) already carry their own
+        // `returnTo` — leave those untouched.
+        const hasReturnTo = /[?&]returnTo=/.test(route);
+        if (hasReturnTo) {
+            router.push(route);
+        } else {
+            const sep = route.includes("?") ? "&" : "?";
+            router.push(`${route}${sep}returnTo=${encodeURIComponent(pathname ?? "/admin/notifications")}`);
+        }
     }
 
     function handleViewAll() {

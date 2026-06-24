@@ -21,8 +21,8 @@
 // (edit / archive / deactivate / reactivate / recover / delete) writes back
 // through the store so the list view + this page stay in lock-step.
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
@@ -557,10 +557,13 @@ interface PromoDetailVM {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function PromoDetailPage() {
+function PromoDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
 
     const promoCodes      = useAppStore(s => s.promoCodes);
     const memberships     = useAppStore(s => s.memberships);
@@ -579,7 +582,7 @@ export default function PromoDetailPage() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Promo not found</p>
-                <button type="button" onClick={() => router.push("/admin/products/promo-codes")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to promos
                 </button>
@@ -639,7 +642,7 @@ export default function PromoDetailPage() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/products/promo-codes/${id}/edit`);
+            router.push(`/products/promo-codes/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(a);
@@ -669,7 +672,7 @@ export default function PromoDetailPage() {
             if (ok) {
                 showToast("Promo deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
-                router.push("/admin/products/promo-codes");
+                router.push(returnTo);
             } else {
                 showToast(
                     "Cannot delete",
@@ -685,7 +688,7 @@ export default function PromoDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header — same 72px chrome as /products/[id] */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/products/promo-codes")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -710,5 +713,13 @@ export default function PromoDetailPage() {
             )}
             <Toast />
         </div>
+    );
+}
+
+export default function PromoDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <PromoDetailPageInner />
+        </Suspense>
     );
 }

@@ -501,7 +501,9 @@ export default function CompensationPage() {
                                     {pageRows.map(r => {
                                         const branch = branches.find(b => b.id === r.branchId);
                                         return (
-                                            <tr key={r.entryId} className="transition-colors hover:bg-[#f9fafb]">
+                                            <tr key={r.entryId}
+                                                onClick={() => handleViewDetails(r)}
+                                                className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <InstructorAvatar instructor={r.instructor} />
@@ -515,7 +517,7 @@ export default function CompensationPage() {
                                                 <td className={TD}>{r.payRateName}</td>
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{aed(r.earnings)}</td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions onView={() => handleViewDetails(r)} />
                                                 </td>
                                             </tr>

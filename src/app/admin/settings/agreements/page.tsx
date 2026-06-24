@@ -681,13 +681,13 @@ export default function AgreementsPage() {
 
     // ─── Navigation handlers ────────────────────────────────────────────────
     function handleAddNew() {
-        router.push("/settings/agreements/new");
+        router.push(`/settings/agreements/new?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
     function handleEdit(row: Agreement) {
-        router.push(`/settings/agreements/${row.id}/edit`);
+        router.push(`/settings/agreements/${row.id}/edit?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
     function handleView(row: Agreement) {
-        router.push(`/settings/agreements/${row.id}`);
+        router.push(`/settings/agreements/${row.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
 
     function handleExportCsv() {
@@ -812,8 +812,9 @@ export default function AgreementsPage() {
                                         const isSelected = selectedIds.has(r.id);
                                         return (
                                             <tr key={r.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                                onClick={() => router.push(`/settings/agreements/${r.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(r.id)}
@@ -832,7 +833,7 @@ export default function AgreementsPage() {
                                                 <td className={TD}>{SCOPE_LABEL[scopeFor(r)]}</td>
                                                 <td className={TD}>{formatDateISO(r.effectiveUntil)}</td>
                                                 <td className={TD}><StatusBadge status={r.status} /></td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
                                                         status={r.status}
                                                         onView={() => handleView(r)}

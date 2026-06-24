@@ -20,7 +20,6 @@ import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, appointmentToClassIn
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
-import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // Alias for compatibility with existing code in this file
@@ -146,14 +145,7 @@ function lookupBusinessHours(rows: BusinessHours[], branchId: string, dateISO: s
     const dow = d.getUTCDay();
     const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
     if (!row || row.is_closed) return null;
-    // Carry the optional `block` window so the schedule grid can render its
-    // diagonal-striped strip + the `buildTimeSlots` helper can filter it
-    // out of the form's time picker. Without this branch, the grid would
-    // never see the block even when the branch form persisted it.
-    const block = row.block_start && row.block_end
-        ? { start: row.block_start, end: row.block_end }
-        : undefined;
-    return { open: row.open_time, close: row.close_time, ...(block ? { block } : {}) };
+    return { open: row.open_time, close: row.close_time };
 }
 
 function lookupUnionBusinessHours(rows: BusinessHours[], branchIds: string[], dateISO: string): HoursWindow {
@@ -270,8 +262,9 @@ function RowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
     function go(path: string) { setOpen(false); router.push(path); }
     function trigger(fn: () => void) { setOpen(false); fn(); }
 
-    const viewPath = isAppt ? `/appointments/${id}` : `/schedule/${id}`;
-    const editPath = isAppt ? `/appointments/${id}` : `/schedule/${id}/edit`;
+    const rt = encodeURIComponent("/admin/schedule");
+    const viewPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}?returnTo=${rt}`;
+    const editPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}/edit?returnTo=${rt}`;
 
     return (
         <div className="relative">
@@ -697,6 +690,7 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
     onDuplicate: (id: string) => void;
     onAddCustomer: (id: string) => void;
 }) {
+    const router = useRouter();
     if (classes.length === 0) {
         return <div className="relative flex-1" style={{ minHeight: 300 }}><EmptyState title="No classes found" subtitle="Try adjusting your search or filters." /></div>;
     }
@@ -729,7 +723,9 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                 </thead>
                 <tbody>
                     {classes.map(c => (
-                        <tr key={c.id} className="hover:bg-[#f9fafb] transition-colors">
+                        <tr key={c.id}
+                            onClick={() => router.push(isAppointmentId(c.id) ? `/appointments/${c.id}?returnTo=${encodeURIComponent("/admin/schedule")}` : `/schedule/${c.id}?returnTo=${encodeURIComponent("/admin/schedule")}`)}
+                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="font-medium text-[#101828]">{c.date}</div>
                                 <div className="text-[13px] text-[#667085] mt-0.5">{c.displayTime}</div>
@@ -765,7 +761,7 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}><StarRating rating={c.rating} count={c.ratingCount} /></td>
                             <td className={TD}><StatusBadge status={c.status} /></td>
-                            <td className={TD}><RowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
+                            <td className={TD} onClick={e => e.stopPropagation()}><RowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
                         </tr>
                     ))}
                 </tbody>
@@ -907,15 +903,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                 const instrClasses = dayClasses.filter(c => c.instructorId === instructor.id);
                                 return (
                                     <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
-                                        {businessHours?.block && (
-                                            <BlockedStrip
-                                                blockStart={businessHours.block.start}
-                                                blockEnd={businessHours.block.end}
-                                                gridStartHour={gridStartHour}
-                                                hourHeight={HOUR_HEIGHT}
-                                                hideLabel
-                                            />
-                                        )}
                                         {instrClasses.map(cls => (
                                             <ClassBlock key={cls.id} cls={cls} gridStartHour={gridStartHour} onClick={(e) => onClassClick(cls, e)} />
                                         ))}
@@ -923,19 +910,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                 );
                             })}
                         </div>
-
-                        {/* Centered "Blocked HH:MM – HH:MM" badge overlay —
-                            floats over the full grid so it's visually
-                            centered regardless of column count. */}
-                        {businessHours?.block && (
-                            <BlockedStrip
-                                blockStart={businessHours.block.start}
-                                blockEnd={businessHours.block.end}
-                                gridStartHour={gridStartHour}
-                                hourHeight={HOUR_HEIGHT}
-                                labelOnly
-                            />
-                        )}
                     </div>
                 </div>
             </div>
@@ -992,38 +966,6 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 
-    // ─── Centered "Blocked HH:MM – HH:MM" overlay spans ───────────────────
-    //
-    // Group contiguous days that share the SAME block window into spans so
-    // the badge centers across exactly that run of cells. Examples:
-    //   • Tue–Fri all have 12:00–13:00 lunch → one badge centered over Tue–Fri.
-    //   • Mon and Thu block 12–13, Tue/Wed don't → two separate badges,
-    //     each centered over its own day cell.
-    //   • Mon has 12–13, Tue has 13–14 → two separate badges (different
-    //     windows can't share a span even if adjacent).
-    // The per-column shaded strips render independently of these spans —
-    // every blocked day shows its diagonal stripe regardless of grouping.
-    type BlockSpan = { startIdx: number; endIdx: number; block: { start: string; end: string } };
-    const blockSpans: BlockSpan[] = [];
-    if (branchId) {
-        const dayBlocks = cols.map(c => lookupBusinessHours(businessHoursRows, branchId, c.iso)?.block ?? null);
-        let current: BlockSpan | null = null;
-        for (let i = 0; i < dayBlocks.length; i++) {
-            const b = dayBlocks[i];
-            if (!b) {
-                if (current) { blockSpans.push(current); current = null; }
-                continue;
-            }
-            if (current && current.block.start === b.start && current.block.end === b.end) {
-                current.endIdx = i;
-            } else {
-                if (current) blockSpans.push(current);
-                current = { startIdx: i, endIdx: i, block: b };
-            }
-        }
-        if (current) blockSpans.push(current);
-    }
-
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes() - gridStartHour * 60;
     const currentTop = (currentMinutes * WEEK_HOUR_HEIGHT) / 60;
@@ -1078,26 +1020,9 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                             {cols.map(col => {
                                 const dayClasses = classes.filter(c => c.dateISO === col.iso);
                                 const lanes = computeOverlapLanes(dayClasses);
-                                // Per-day block-time lookup. Single-branch view
-                                // only — when "All locations" is selected the
-                                // union envelope doesn't carry a block (different
-                                // branches may have different lunch breaks, and
-                                // overlaying them would be misleading).
-                                const dayHours = branchId
-                                    ? lookupBusinessHours(businessHoursRows, branchId, col.iso)
-                                    : null;
                                 return (
                                     <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
                                         style={{ minHeight: gridHeight }}>
-                                        {dayHours?.block && (
-                                            <BlockedStrip
-                                                blockStart={dayHours.block.start}
-                                                blockEnd={dayHours.block.end}
-                                                gridStartHour={gridStartHour}
-                                                hourHeight={WEEK_HOUR_HEIGHT}
-                                                hideLabel
-                                            />
-                                        )}
                                         {dayClasses.map(cls => {
                                             const lane = lanes.get(cls.id);
                                             if (lane && !lane.visible) return null;
@@ -1130,24 +1055,6 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                             })}
                         </div>
 
-                        {/* Centered "Blocked HH:MM – HH:MM" badge overlays —
-                            one per contiguous span of days sharing the same
-                            block window. Each badge floats centered above
-                            its own run of cells (Tue–Fri lunch → single
-                            wide badge; isolated Mon + isolated Thu → two
-                            badges, one per day). */}
-                        {blockSpans.map((span, i) => (
-                            <BlockedStrip
-                                key={`blockspan-${i}`}
-                                blockStart={span.block.start}
-                                blockEnd={span.block.end}
-                                gridStartHour={gridStartHour}
-                                hourHeight={WEEK_HOUR_HEIGHT}
-                                labelOnly
-                                leftPct={(span.startIdx / cols.length) * 100}
-                                widthPct={((span.endIdx - span.startIdx + 1) / cols.length) * 100}
-                            />
-                        ))}
                     </div>
                 </div>
             </div>
@@ -1551,7 +1458,7 @@ function SchedulePage() {
     }
 
     function handleDuplicateClass(id: string) {
-        router.push(`/schedule/new?duplicateFrom=${encodeURIComponent(id)}`);
+        router.push(`/schedule/new?duplicateFrom=${encodeURIComponent(id)}&returnTo=${encodeURIComponent("/admin/schedule")}`);
     }
 
     function prevDay() { setDayDateISO(d => isoAddDays(d, -1)); }
@@ -1667,10 +1574,11 @@ function SchedulePage() {
     }
 
     return (
-        // No flex-1 — the page root hugs its content (toolbar + 760px View card) so
-        // there's no trailing empty space below the table when the screen is taller
-        // than the content.
-        <div className="flex flex-col gap-6">
+        // Fill the AdminLayout main height — `flex-1 min-h-0` lets the View card
+        // below grow to absorb every remaining pixel between the toolbar and
+        // the viewport bottom. Only the inner view body scrolls; the outer
+        // page chrome (toolbar + tab nav + pagination) stays pinned.
+        <div className="flex flex-col gap-6 flex-1 min-h-0">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1702,11 +1610,13 @@ function SchedulePage() {
                         );
                     }}
                 />
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/schedule/new")}>Add Class</Button>
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add Class</Button>
             </div>
 
-            {/* ── View card ── Fixed 760px tall so tabs/table/pagination layout is predictable. */}
-            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            {/* ── View card ── Fills the remaining viewport height (was a fixed 760px
+                surface before — now `flex-1 min-h-0` so a tall screen uses every
+                pixel and a short screen lets the inner view body scroll). */}
+            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}
@@ -1776,10 +1686,10 @@ function SchedulePage() {
                                             classes={paginatedClasses}
                                             sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort}
                                             onCancel={id => isAppointmentId(id)
-                                                ? router.push(`/appointments/${id}`)
+                                                ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
                                                 : setCancelTargetId(id)}
                                             onDuplicate={handleDuplicateClass}
-                                            onAddCustomer={id => router.push(`/schedule/${id}?openAddCustomer=1`)}
+                                            onAddCustomer={id => router.push(`/schedule/${id}?openAddCustomer=1&returnTo=${encodeURIComponent("/admin/schedule")}`)}
                                         />
                                     </div>
                                 )}
@@ -1826,19 +1736,19 @@ function SchedulePage() {
                     // are class-schedule-only actions (the brief is explicit:
                     // appointments come from the customer side, admins can't
                     // add a customer or duplicate an appointment).
-                    onViewDetails={(id) => router.push(isAppointmentId(id) ? `/appointments/${id}` : `/schedule/${id}`)}
-                    onAddCustomer={(id) => router.push(`/schedule/${id}?openAddCustomer=1`)}
+                    onViewDetails={(id) => router.push(isAppointmentId(id) ? `/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}` : `/schedule/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)}
+                    onAddCustomer={(id) => router.push(`/schedule/${id}?openAddCustomer=1&returnTo=${encodeURIComponent("/admin/schedule")}`)}
                     // Edit is class-schedule only; appointments don't expose
                     // an edit flow (customer-side bookings, admin can't edit).
                     onEdit={(id) => isAppointmentId(id)
-                        ? router.push(`/appointments/${id}`)
-                        : router.push(`/schedule/${id}/edit`)}
+                        ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
+                        : router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent("/admin/schedule")}`)}
                     onDuplicate={handleDuplicateClass}
                     // Appointments use a different cancel flow (reason
                     // required) — route to the appointment detail page so
                     // the admin can cancel there with the full modal.
                     onCancel={(id) => isAppointmentId(id)
-                        ? router.push(`/appointments/${id}`)
+                        ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
                         : setCancelTargetId(id)}
                 />
             )}

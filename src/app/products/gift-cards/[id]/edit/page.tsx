@@ -9,7 +9,8 @@
 // only expose Edit on active cards; a direct visit to a non-active card's
 // edit URL is caught here with a back-link guard.
 
-import { useParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, type GiftCardDesign } from "@/lib/store";
 import {
     GiftCardFormPage,
@@ -43,10 +44,12 @@ function designToInitial(g: GiftCardDesign): GiftCardFormInitial {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function EditGiftCardRoute() {
+function EditGiftCardRouteInner() {
     const router = useRouter();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/gift-cards";
 
     const design = useAppStore(s => s.giftCardDesigns.find(g => g.id === id) ?? null);
 
@@ -54,7 +57,7 @@ export default function EditGiftCardRoute() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Gift card not found</p>
-                <button type="button" onClick={() => router.push("/admin/products/gift-cards")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to gift cards
                 </button>
@@ -80,6 +83,14 @@ export default function EditGiftCardRoute() {
     }
 
     return (
-        <GiftCardFormPage mode="edit" designId={id} initial={designToInitial(design)} />
+        <GiftCardFormPage mode="edit" designId={id} initial={designToInitial(design)} returnTo={returnTo} />
+    );
+}
+
+export default function EditGiftCardRoute() {
+    return (
+        <Suspense fallback={null}>
+            <EditGiftCardRouteInner />
+        </Suspense>
     );
 }

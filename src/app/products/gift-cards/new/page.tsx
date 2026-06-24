@@ -6,8 +6,20 @@
 // 3-step flow takes over the whole viewport (outside the admin sidebar chrome),
 // matching /products/new and /class-types/new.
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { GiftCardFormPage } from "@/components/products/GiftCardFormPage";
 
+function CreateGiftCardRouteInner() {
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/gift-cards";
+    return <GiftCardFormPage mode="create" returnTo={returnTo} />;
+}
+
 export default function CreateGiftCardRoute() {
-    return <GiftCardFormPage mode="create" />;
+    return (
+        <Suspense fallback={null}>
+            <CreateGiftCardRouteInner />
+        </Suspense>
+    );
 }

@@ -245,12 +245,7 @@ function lookupBusinessHours(rows: BusinessHours[], branchId: string, dateISO: s
     const dow = d.getUTCDay();
     const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
     if (!row || row.is_closed) return null;
-    // Surface the optional block window so the schedule grid can render the
-    // diagonal-striped strip during a branch's lunch/break time.
-    const block = row.block_start && row.block_end
-        ? { start: row.block_start, end: row.block_end }
-        : undefined;
-    return { open: row.open_time, close: row.close_time, ...(block ? { block } : {}) };
+    return { open: row.open_time, close: row.close_time };
 }
 function isBranchClosed(rows: BusinessHours[], branchId: string, dateISO: string): boolean {
     if (!branchId) return false;
@@ -859,18 +854,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
                         <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
                     ))}
 
-                    {/* Block-time strip — branch's lunch / break window. The
-                        instructor sees the same band the admin sees so their
-                        scheduling intuition matches what's actually bookable. */}
-                    {businessHours?.block && (
-                        <BlockedStrip
-                            blockStart={businessHours.block.start}
-                            blockEnd={businessHours.block.end}
-                            gridStartHour={gridStartHour}
-                            hourHeight={HOUR_HEIGHT}
-                        />
-                    )}
-
                     {/* Personal blocked-time strips — instructor's own
                         sick days / appointments / training windows.
                         Rendered with the same chrome as the branch
@@ -938,45 +921,15 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 
-    // ─── Centered "Blocked HH:MM – HH:MM" overlay spans ───────────────────
-    //
-    // Group contiguous days that share the same block window into spans so
-    // the badge centers across exactly that run of cells. Same algorithm as
-    // the admin week view — kept inline rather than extracted because the
-    // two grids own their own typing (admin's `cols` vs instructor's `cols`).
-    type BlockSpan = { startIdx: number; endIdx: number; block: { start: string; end: string } };
-    const blockSpans: BlockSpan[] = [];
-    if (branchId) {
-        const dayBlocks = cols.map(c => lookupBusinessHours(businessHoursRows, branchId, c.iso)?.block ?? null);
-        let current: BlockSpan | null = null;
-        for (let i = 0; i < dayBlocks.length; i++) {
-            const b = dayBlocks[i];
-            if (!b) {
-                if (current) { blockSpans.push(current); current = null; }
-                continue;
-            }
-            if (current && current.block.start === b.start && current.block.end === b.end) {
-                current.endIdx = i;
-            } else {
-                if (current) blockSpans.push(current);
-                current = { startIdx: i, endIdx: i, block: b };
-            }
-        }
-        if (current) blockSpans.push(current);
-    }
-
-    // Personal blocked-time spans — same merge-contiguous-days-with-
-    // identical-windows algorithm as the branch blockSpans above. The
-    // resulting overlays render the centered "Blocked HH:MM – HH:MM"
-    // label across the matching column run, identical chrome to the
-    // branch break label so the instructor's "unavailable" mental
-    // model is uniform.
+    // Personal blocked-time spans — merge contiguous days that share
+    // the same (start, end) tuple into a single centered overlay.
     //
     // A staff can have multiple blocks per day (e.g. morning sick day +
     // afternoon training). Each (start, end) tuple gets its own span,
     // so we group by `${date}|${start}|${end}` and emit one span per
     // tuple. Contiguous days that share the SAME tuple merge into a
     // single wider overlay.
+    type BlockSpan = { startIdx: number; endIdx: number; block: { start: string; end: string } };
     const personalBlockSpans: BlockSpan[] = [];
     // Build a per-day list of (start, end) tuples for blocks that fall
     // on this week. Skips days outside the week.
@@ -1080,22 +1033,11 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                                     // collapse into a "+N more" badge on the
                                     // rightmost-visible card of the group.
                                     const lanes = computeOverlapLanes(dayClasses);
-                                    // Per-day block lookup (branch-scoped).
-                                    const dayHours = branchId ? lookupBusinessHours(businessHoursRows, branchId, col.iso) : null;
                                     return (
                                         <div key={col.day} className={cn(
                                             "flex-1 min-w-0 relative border-l border-[#f2f4f7]",
                                             col.isToday && "bg-[#f5fffa]/30",
                                         )} style={{ minHeight: gridHeight }}>
-                                            {dayHours?.block && (
-                                                <BlockedStrip
-                                                    blockStart={dayHours.block.start}
-                                                    blockEnd={dayHours.block.end}
-                                                    gridStartHour={gridStartHour}
-                                                    hourHeight={WEEK_HOUR_HEIGHT}
-                                                    hideLabel
-                                                />
-                                            )}
                                             {/* Personal blocked-time strips on this column. */}
                                             {blockedTimes.filter(b => b.date === col.iso).map(b => (
                                                 <BlockedStrip
@@ -1132,29 +1074,11 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                                 })}
                             </div>
 
-                            {/* Centered "Blocked HH:MM – HH:MM" badge overlays —
-                                one per contiguous span of days sharing the
-                                same block window. */}
-                            {blockSpans.map((span, i) => (
-                                <BlockedStrip
-                                    key={`blockspan-${i}`}
-                                    blockStart={span.block.start}
-                                    blockEnd={span.block.end}
-                                    gridStartHour={gridStartHour}
-                                    hourHeight={WEEK_HOUR_HEIGHT}
-                                    labelOnly
-                                    leftPct={(span.startIdx / cols.length) * 100}
-                                    widthPct={((span.endIdx - span.startIdx + 1) / cols.length) * 100}
-                                />
-                            ))}
-
                             {/* Personal blocked-time label overlays — one
                                 per (start, end) tuple-day-run. Same
-                                `labelOnly` chrome as the branch breaks
-                                above so the instructor's "Blocked HH:MM
-                                – HH:MM" mental model is uniform whether
-                                the block is isolated to one column or
-                                spans several contiguous days. */}
+                                `labelOnly` chrome whether the block is
+                                isolated to one column or spans several
+                                contiguous days. */}
                             {personalBlockSpans.map((span, i) => (
                                 <BlockedStrip
                                     key={`personal-blockspan-${i}`}
@@ -1439,9 +1363,10 @@ export default function InstructorSchedulePage() {
     }
 
     return (
-        // No flex-1 — page hugs its content (top row + 760px view card) so
-        // there's no trailing empty space below the view card.
-        <div className="flex flex-col gap-6">
+        // Fill the InstructorLayout main height — `flex-1 min-h-0` lets the
+        // View card grow to fill every remaining pixel between the toolbar
+        // and the viewport bottom. Only the inner view body scrolls.
+        <div className="flex flex-col gap-6 flex-1 min-h-0">
             {/* ── Top row: Total counter + Search — admin pattern ──────── */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1462,8 +1387,10 @@ export default function InstructorSchedulePage() {
                 </div>
             </div>
 
-            {/* ── View card ── h-[760px] + rounded-[20px] — verbatim admin */}
-            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            {/* ── View card ── Fills remaining viewport height (was a fixed
+                760px surface — now `flex-1 min-h-0` so the inner view body
+                absorbs every available pixel). */}
+            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row — verbatim admin chrome (relative + absolute-centered date nav) */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs — admin's exact bg-surface-secondary container */}

@@ -591,9 +591,10 @@ export interface ServiceFormPageProps {
     mode: "create" | "edit";
     /** Service id — required in edit mode, ignored in create mode. */
     serviceId?: string;
+    returnTo?: string;
 }
 
-export function ServiceFormPage({ mode, serviceId }: ServiceFormPageProps) {
+export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" }: ServiceFormPageProps) {
     const router = useRouter();
 
     // Live store reads — every dropdown updates when the underlying module
@@ -696,7 +697,7 @@ export function ServiceFormPage({ mode, serviceId }: ServiceFormPageProps) {
                 "success", "check",
             );
         }
-        router.push("/admin/services");
+        router.push(returnTo);
     }
 
     // Edit-mode safety — if the id is missing, surface a friendly hand-off.
@@ -705,7 +706,7 @@ export function ServiceFormPage({ mode, serviceId }: ServiceFormPageProps) {
             <div className="h-screen bg-white flex flex-col items-center justify-center gap-3">
                 <p className="font-semibold text-[18px] text-[#101828]">Service not found</p>
                 <p className="text-[14px] text-[#667085]">The service you're trying to edit no longer exists.</p>
-                <Button variant="primary" size="md" onClick={() => router.push("/admin/services")}>
+                <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
                     Back to services
                 </Button>
             </div>
@@ -731,7 +732,7 @@ export function ServiceFormPage({ mode, serviceId }: ServiceFormPageProps) {
                 {/* Header */}
                 <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                     <button type="button"
-                        onClick={() => router.push("/admin/services")}
+                        onClick={() => router.push(returnTo)}
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                         <XClose className="w-5 h-5 text-[#667085]" />
                     </button>

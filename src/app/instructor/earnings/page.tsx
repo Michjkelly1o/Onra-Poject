@@ -269,7 +269,7 @@ export default function InstructorEarningsPage() {
         // layout) so it can render as a full-screen takeover — same pattern
         // admin uses for `/schedule/[classId]`. The detail page handles the
         // persona auto-flip itself.
-        router.push(`/earnings/${classId}`);
+        router.push(`/earnings/${classId}?returnTo=${encodeURIComponent("/instructor/earnings")}`);
     }
 
     return (
@@ -484,7 +484,8 @@ function EarningsRow({ schedule, payRate, onViewDetails }: EarningsRowProps) {
     const earnings = earningsForClass(schedule, payRate, 1);
 
     return (
-        <tr className="transition-colors hover:bg-[#f9fafb]">
+        <tr onClick={onViewDetails}
+            className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
             {/* Class name — name on top, date below; admin's exact fonts. */}
             <td className={TD}>
                 <div className="flex flex-col">
@@ -527,7 +528,7 @@ function EarningsRow({ schedule, payRate, onViewDetails }: EarningsRowProps) {
             <td className={TD}><ClassStatusBadge status={schedule.status} /></td>
             <td className={TD}>{payRate?.name ?? "—"}</td>
             <td className={TD}>{earnings > 0 ? aed(earnings) : "—"}</td>
-            <td className={TD}><RowKebab onView={onViewDetails} /></td>
+            <td className={TD} onClick={e => e.stopPropagation()}><RowKebab onView={onViewDetails} /></td>
         </tr>
     );
 }

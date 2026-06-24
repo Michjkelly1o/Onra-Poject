@@ -98,14 +98,6 @@ export interface BusinessHours {
     close_time: string;
     /** Branch is fully closed that weekday — open/close are placeholders. */
     is_closed: boolean;
-    /** Optional "block time" window inside the open/close range — e.g. a
-     *  lunch break. When set, the schedule day/week grid renders a
-     *  diagonal-striped strip over this window and the schedule form's
-     *  time picker excludes slots whose [start, start+duration) interval
-     *  would overlap it. Only one block slot per day is supported by
-     *  design. Block fields are ignored when `is_closed` is true. */
-    block_start?: string;
-    block_end?: string;
 }
 
 // ─── Booking Rules — Classes settings (PRD 11 §6) ──────────────────────────

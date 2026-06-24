@@ -527,7 +527,7 @@ export default function PayRatePage() {
 
     function handleRowAction(row: PayRate, kind: RowActionKind) {
         if (kind === "view") {
-            router.push(`/staff/pay-rate/${row.id}`);
+            router.push(`/staff/pay-rate/${row.id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`);
             return;
         }
         if (kind === "edit") {
@@ -640,8 +640,9 @@ export default function PayRatePage() {
                                         const isSelected = selectedIds.has(r.id);
                                         return (
                                             <tr key={r.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                                onClick={() => router.push(`/staff/pay-rate/${r.id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(r.id)}
@@ -675,7 +676,7 @@ export default function PayRatePage() {
                                                         {STATUS_LABEL[r.status]}
                                                     </span>
                                                 </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions row={r} onAction={kind => handleRowAction(r, kind)} />
                                                 </td>
                                             </tr>

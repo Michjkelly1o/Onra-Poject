@@ -1230,9 +1230,10 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
 
 export interface AppointmentDetailPageProps {
     appointmentId: string;
+    returnTo?: string;
 }
 
-export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPageProps) {
+export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedule" }: AppointmentDetailPageProps) {
     const router = useRouter();
 
     const appointments         = useAppStore(s => s.appointments);
@@ -1279,7 +1280,7 @@ export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPagePr
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Appointment not found</p>
-                    <button type="button" onClick={() => router.back()}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Go back
                     </button>
@@ -1294,7 +1295,7 @@ export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPagePr
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.back()}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>

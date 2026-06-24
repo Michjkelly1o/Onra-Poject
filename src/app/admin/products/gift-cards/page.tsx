@@ -639,11 +639,12 @@ function ListView({
                         const isSelected = selectedIds.has(r.id);
                         return (
                             <tr key={r.id}
+                                onClick={() => onView(r)}
                                 className={cn(
-                                    "transition-colors",
+                                    "transition-colors cursor-pointer",
                                     isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
                                 )}>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <CheckboxCell
                                         checked={isSelected}
                                         onChange={() => onToggleOne(r.id)}
@@ -660,7 +661,7 @@ function ListView({
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.activeCustomers}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.validUntil}</td>
                                 <td className={TD}><StatusBadge status={r.status} /></td>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         status={r.status}
                                         hasHolders={r.hasHolders}
@@ -763,10 +764,10 @@ export default function GiftCardsPage() {
         setPendingConfirm({ mode: "row", row, kind });
     }
     function handleView(row: GiftCardRow) {
-        router.push(`/products/gift-cards/${row.id}`);
+        router.push(`/products/gift-cards/${row.id}?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`);
     }
     function handleEdit(row: GiftCardRow) {
-        router.push(`/products/gift-cards/${row.id}/edit`);
+        router.push(`/products/gift-cards/${row.id}/edit?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`);
     }
     function openBulkConfirm(kind: RowActionKind) {
         const rowsForKind = (() => {
@@ -884,7 +885,7 @@ export default function GiftCardsPage() {
                     }}
                 />
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/products/gift-cards/new")}>
+                    onClick={() => router.push(`/products/gift-cards/new?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`)}>
                     Add new
                 </Button>
             </div>

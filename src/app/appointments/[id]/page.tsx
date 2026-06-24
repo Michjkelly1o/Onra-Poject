@@ -8,11 +8,22 @@
 // /services/[id] route pattern. Reads the dynamic [id] segment and hands
 // it to the shared AppointmentDetailPage component.
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { AppointmentDetailPage } from "@/components/services/AppointmentDetailPage";
 
-export default function AppointmentDetailRoute() {
+function AppointmentDetailRouteInner() {
     const params = useParams();
     const id = String(params.id);
-    return <AppointmentDetailPage appointmentId={id} />;
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/schedule";
+    return <AppointmentDetailPage appointmentId={id} returnTo={returnTo} />;
+}
+
+export default function AppointmentDetailRoute() {
+    return (
+        <Suspense fallback={null}>
+            <AppointmentDetailRouteInner />
+        </Suspense>
+    );
 }

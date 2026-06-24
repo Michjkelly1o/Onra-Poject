@@ -17,7 +17,7 @@
 // all re-render in the same cycle. Every action emits a toast.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft,
     Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
@@ -785,8 +785,9 @@ type PlanModalState =
     | { kind: "freeze" | "unfreeze" | "cancel" | "remove" | "view"; plan: CustomerPlan }
     | null;
 
-export function CustomerDetailPage({ customerId }: { customerId: string }) {
+export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }: { customerId: string; returnTo?: string }) {
     const router = useRouter();
+    const pathname = usePathname();
     const customers = useAppStore(s => s.customers);
     const customerPlans = useAppStore(s => s.customerPlans);
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
@@ -914,7 +915,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         return (
             <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white">
                 <p className="text-[16px] text-[#667085]">This customer could not be found.</p>
-                <Button variant="secondary-gray" size="md" onClick={() => router.push("/admin/customers")}>
+                <Button variant="secondary-gray" size="md" onClick={() => router.push(returnTo)}>
                     Back to customers
                 </Button>
             </div>
@@ -986,7 +987,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/customers")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
@@ -1068,9 +1069,9 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                                     {customer.status === "active" && (
                                         <>
                                             <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit customer"
-                                                onClick={() => router.push(`/customers/${customer.id}/edit?returnTo=/customers/${customer.id}`)} />
+                                                onClick={() => router.push(`/customers/${customer.id}/edit?returnTo=${encodeURIComponent(pathname)}`)} />
                                             <ActionBtn icon={<HeartHand className="w-5 h-5" />} label="Add complimentary credit"
-                                                onClick={() => router.push(`/customers/${customer.id}/add-credit?returnTo=/customers/${customer.id}`)} />
+                                                onClick={() => router.push(`/customers/${customer.id}/add-credit?returnTo=${encodeURIComponent(pathname)}`)} />
                                         </>
                                     )}
                                     {customer.status !== "archived" && (

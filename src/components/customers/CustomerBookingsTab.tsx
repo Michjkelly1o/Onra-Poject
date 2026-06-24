@@ -68,6 +68,12 @@ interface BookingRow {
     bookingStatus: "booked" | "waitlisted" | "cancelled";
     classStatus: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
     displayStatus: BookingDisplayStatus;
+    /** 1-based position in the waitlist queue for this class — only set
+     *  when `bookingStatus === "waitlisted"`. Computed live from the
+     *  classBookings slice so it stays accurate after promotions /
+     *  cancellations. Appointments never carry a waitlist position
+     *  (open sessions + private sessions don't queue beyond capacity). */
+    waitlistPosition?: number;
 }
 
 interface BookingFilter {
@@ -108,7 +114,7 @@ function classInitials(name: string): string {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function BookingStatusBadge({ status }: { status: BookingDisplayStatus }) {
+function BookingStatusBadge({ status, waitlistPosition }: { status: BookingDisplayStatus; waitlistPosition?: number }) {
     const styles: Record<BookingDisplayStatus, string> = {
         Upcoming: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
         Waitlisted: "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
@@ -118,9 +124,15 @@ function BookingStatusBadge({ status }: { status: BookingDisplayStatus }) {
         Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         "Cancelled (late)": "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
+    // Surface the 1-based queue position for waitlisted entries — e.g.
+    // "Waitlist #3". Mirrors the upcoming card so a customer's status
+    // reads the same wherever it appears.
+    const label = status === "Waitlisted" && waitlistPosition != null
+        ? `Waitlist #${waitlistPosition}`
+        : status;
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>
-            {status}
+            {label}
         </span>
     );
 }
@@ -379,6 +391,25 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
     //   • The new "Type" column in the history table.
     //   • Click-through routing in RowActions / upcoming card.
     const rows = useMemo<BookingRow[]>(() => {
+        // Per-class waitlist queues — sort each class's waitlisted bookings
+        // by `bookingTime` ASC so position #1 is the first to join. Cancelled
+        // entries don't occupy a queue slot. Computed live so promotions
+        // (waitlist → booked) recalculate every position on the same render.
+        const positionLookup = new Map<string, number>();
+        type WaitlistedBooking = typeof classBookings[number];
+        const queuesByClass = new Map<string, WaitlistedBooking[]>();
+        for (const b of classBookings) {
+            if (b.status !== "waitlisted") continue;
+            const existing = queuesByClass.get(b.classScheduleId) ?? [];
+            existing.push(b);
+            queuesByClass.set(b.classScheduleId, existing);
+        }
+        Array.from(queuesByClass.values()).forEach(queue => {
+            queue
+                .sort((a, c) => a.bookingTime.localeCompare(c.bookingTime))
+                .forEach((entry, idx) => positionLookup.set(entry.id, idx + 1));
+        });
+
         const classRows = classBookings
             .filter(b => b.customerId === customerId)
             .flatMap<BookingRow>(b => {
@@ -416,6 +447,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     bookingStatus: b.status,
                     classStatus,
                     displayStatus,
+                    ...(b.status === "waitlisted" && positionLookup.has(b.id)
+                        ? { waitlistPosition: positionLookup.get(b.id) }
+                        : {}),
                 }];
             });
 
@@ -603,6 +637,19 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                             <div className="flex flex-col gap-3">
                                 {upcoming.map(r => {
                                     const waitlisted = r.bookingStatus === "waitlisted";
+                                    // "Waitlisted #4" — surfaces the customer's
+                                    // 1-based position in the class waitlist so
+                                    // the admin / customer can see how close
+                                    // they are to being promoted. Falls back to
+                                    // plain "Waitlisted" if the position can't
+                                    // be resolved (defensive — should never
+                                    // happen since the row builder always
+                                    // populates it for waitlisted entries).
+                                    const waitlistLabel = waitlisted
+                                        ? r.waitlistPosition != null
+                                            ? `Waitlist #${r.waitlistPosition}`
+                                            : "Waitlisted"
+                                        : "Booked";
                                     return (
                                         <div key={r.bookingId} className="relative bg-[#e9fff3] rounded-[6px] overflow-hidden pl-5 pr-3 py-3">
                                             {/* Left accent bar — spans the full card height so it never looks clipped */}
@@ -614,7 +661,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                     ? "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]"
                                                     : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
                                             )}>
-                                                {waitlisted ? "Waitlisted" : "Booked"}
+                                                {waitlistLabel}
                                             </span>
                                             <div className="flex flex-col gap-1 pr-20">
                                                 <p className="text-[14px] font-medium text-[#101828]">{r.className}</p>
@@ -708,7 +755,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                     </thead>
                                     <tbody>
                                         {pagedHistory.map(r => (
-                                            <tr key={r.bookingId} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={r.bookingId}
+                                                onClick={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <TableAvatar initials={classInitials(r.className)} imageUrl={r.coverImage} size={40} />
@@ -724,10 +773,10 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                         <span className="text-[14px] text-[#475467]">{r.instructorName}</span>
                                                     </div>
                                                 </td>
-                                                <td className={TD}><BookingStatusBadge status={r.displayStatus} /></td>
+                                                <td className={TD}><BookingStatusBadge status={r.displayStatus} waitlistPosition={r.waitlistPosition} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
-                                                <td className={TD}>
-                                                    <RowActions onView={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}` : `/appointments/${r.routeId}`)} />
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                                    <RowActions onView={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)} />
                                                 </td>
                                             </tr>
                                         ))}
