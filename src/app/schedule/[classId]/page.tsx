@@ -19,6 +19,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, planKindFromName, cancellationBadgeKind } from "@/components/ui/badge";
 import { TableAvatar } from "@/components/ui/avatar";
 import type { ClassRating } from "@/lib/store";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,6 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     function togglePlan(p: "membership" | "package") {
         setPending(prev => ({
@@ -117,10 +117,8 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
     const hasAny = pending.plans.length > 0 || !!pending.startDate || !!pending.endDate;
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                {/* Header */}
+        <SlidePanel open={open} onClose={onClose} width={400}>
+{/* Header */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose}
@@ -172,8 +170,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -202,7 +199,6 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     function toggleTag(t: string) {
         setPending(p => ({ ...p, tags: p.tags.includes(t) ? p.tags.filter(x => x !== t) : [...p.tags, t] }));
@@ -214,10 +210,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
     const hasAny = !!pending.startDate || !!pending.endDate || pending.tags.length > 0 || pending.ratings.length > 0;
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                {/* Header */}
+        <SlidePanel open={open} onClose={onClose} width={400}>
+{/* Header */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose}
@@ -291,8 +285,7 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -1031,7 +1024,7 @@ function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds
             <div className="relative bg-white rounded-[16px] w-full max-w-[1080px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6">
-                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Point of sale</p>
+                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">POS</p>
                     <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
                         <XClose className="w-6 h-6 text-[#667085]" />
                     </button>
@@ -1777,11 +1770,9 @@ function LeftPanel({ ci, isUpcoming, isOngoing, isCancelled, isCompleted, canCan
                             <p className="text-[14px] text-[#667085]">Date &amp; time</p>
                             <p className="text-[16px] font-medium text-[#101828]">{ci.date} • {ci.displayTime}</p>
                         </div>
+                        {/* Class type row removed — class schedules always represent
+                            Group classes; Private 1-on-1 lives in the Services module. */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Class type</p>
-                                <p className="text-[16px] font-medium text-[#101828]">{ci.classType} class</p>
-                            </div>
                             <div className="flex flex-col gap-1">
                                 <p className="text-[14px] text-[#667085]">Gender access</p>
                                 <p className="text-[16px] font-medium text-[#101828]">

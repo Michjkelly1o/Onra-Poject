@@ -148,13 +148,18 @@ function formFromPayRate(p: PayRate): FormValue {
  *  letting the store discard or honour the supplied id. */
 function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate {
     const resolvedId = id ?? `pr_preview_${form.type}`;
+    // Flat pay doesn't depend on attendance — force both attendance toggles
+    // off so a stale value can't leak through when an admin swaps an
+    // existing Tiered/Hybrid row to Flat. The form already hides the
+    // toggles for flat; this is the safety net at the save layer.
+    const isFlat = form.type === "flat";
     const baseShared = {
         id: resolvedId,
         name: form.name.trim(),
         branchId: form.branchId,
         status: "active" as const,
-        onlyCheckedIn: form.onlyCheckedIn,
-        includeLateCancelled: form.includeLateCancelled,
+        onlyCheckedIn:        isFlat ? false : form.onlyCheckedIn,
+        includeLateCancelled: isFlat ? false : form.includeLateCancelled,
         usageCount,
         // Empty-string sentinel → undefined so the persisted record reads
         // as "no override" instead of holding an empty FK string.
@@ -771,6 +776,12 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
     const addPayRate     = useAppStore(s => s.addPayRate);
     const updatePayRate  = useAppStore(s => s.updatePayRate);
     const showToast      = useAppStore(s => s.showToast);
+    // Country drives the Tax rates section visibility — UAE-based studios
+    // don't tax instructor pay, so the input is hidden when the studio's
+    // Business & Locations profile country is set to United Arab Emirates.
+    // Every other country still sees Tax rates (optional).
+    const businessCountry = useAppStore(s => s.businessProfile.country);
+    const isUAE = businessCountry === "United Arab Emirates";
 
     const existing = mode === "edit" && payRateId ? payRates.find(p => p.id === payRateId) : undefined;
 
@@ -827,14 +838,20 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
 
     function handleSave() {
         if (!step1Valid || !step2Valid) return;
+        // UAE studios don't tax instructor pay — strip any stale taxRateId
+        // before persisting so the data layer can't carry an inert field
+        // that the UI never exposes (mirrors the flat-rate Additional
+        // settings reset pattern further up in `payloadFromForm`).
         if (mode === "create") {
             // Strip the placeholder id so the store mints a real one.
             const { id: _placeholder, ...rest } = payloadFromForm(form);
             void _placeholder;
+            if (isUAE) rest.taxRateId = undefined;
             addPayRate(rest);
             showToast("Pay rate created", `"${form.name.trim()}" is now active.`, "success", "check");
         } else if (payRateId) {
             const payload = payloadFromForm(form, payRateId, existing?.usageCount ?? 0);
+            if (isUAE) payload.taxRateId = undefined;
             updatePayRate(payRateId, payload as Partial<PayRate>);
             showToast("Pay rate updated", `"${form.name.trim()}" changes saved.`, "success", "check");
         }
@@ -897,39 +914,50 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
 
                                 {/* Tax rates — Figma 6106:10962. Lists the global pay-rate
                                     tax rules so the admin can override the inherited
-                                    rate for this specific pay rate. */}
-                                <div className="flex flex-col gap-4 w-full">
-                                    <SectionHeader title="Tax rates" />
-                                    <div className="flex flex-col gap-[6px] w-full">
-                                        <FieldLabel>Tax rate (optional)</FieldLabel>
-                                        <SelectInput
-                                            value={form.taxRateId}
-                                            onChange={v => set({ taxRateId: v })}
-                                            options={payRateTaxOptions}
-                                            placeholder="Select"
-                                            width="w-full"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Additional settings */}
-                                <div className="flex flex-col gap-4 w-full">
-                                    <SectionHeader title="Additional settings" />
+                                    rate for this specific pay rate. Hidden for UAE
+                                    studios per the brief — every other country still
+                                    sees this as an optional input. */}
+                                {!isUAE && (
                                     <div className="flex flex-col gap-4 w-full">
-                                        <ToggleCard
-                                            title="Only count checked-in customers"
-                                            subtitle="Pay only for members marked Present (not just booked)."
-                                            value={form.onlyCheckedIn}
-                                            onChange={v => set({ onlyCheckedIn: v })}
-                                        />
-                                        <ToggleCard
-                                            title="Include late-cancelled customers"
-                                            subtitle="Counts late-cancel members toward pay."
-                                            value={form.includeLateCancelled}
-                                            onChange={v => set({ includeLateCancelled: v })}
-                                        />
+                                        <SectionHeader title="Tax rates" />
+                                        <div className="flex flex-col gap-[6px] w-full">
+                                            <FieldLabel>Tax rate (optional)</FieldLabel>
+                                            <SelectInput
+                                                value={form.taxRateId}
+                                                onChange={v => set({ taxRateId: v })}
+                                                options={payRateTaxOptions}
+                                                placeholder="Select"
+                                                width="w-full"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {/* Additional settings — hidden for "Flat rate"
+                                    since both toggles ("Only count checked-in"
+                                    + "Include late-cancelled") depend on
+                                    attendance to drive pay, and flat rate
+                                    pays the same amount regardless of who
+                                    showed up. */}
+                                {form.type !== "flat" && (
+                                    <div className="flex flex-col gap-4 w-full">
+                                        <SectionHeader title="Additional settings" />
+                                        <div className="flex flex-col gap-4 w-full">
+                                            <ToggleCard
+                                                title="Only count checked-in customers"
+                                                subtitle="Pay only for members marked Present (not just booked)."
+                                                value={form.onlyCheckedIn}
+                                                onChange={v => set({ onlyCheckedIn: v })}
+                                            />
+                                            <ToggleCard
+                                                title="Include late-cancelled customers"
+                                                subtitle="Counts late-cancel members toward pay."
+                                                value={form.includeLateCancelled}
+                                                onChange={v => set({ includeLateCancelled: v })}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <BranchStep form={form} set={set} branches={branches} />

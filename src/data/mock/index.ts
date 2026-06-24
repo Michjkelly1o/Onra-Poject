@@ -33,6 +33,16 @@ export {
 // `instructors` table; the existing one stays in place until phase 4
 // folds it in via a derived selector.
 export { staff } from "./staff";
+
+// Shifts (placeholder for the Shift management module — Phase 4 of the
+// staff overhaul). Carries 3 starter shifts so the staff-create form's
+// "Assign shift (optional)" dropdown has options + the instructor
+// detail page can render the Shift hours line. Full schema (per-branch,
+// recurring rules, exceptions) lands when the Shift management designs ship.
+export { shifts } from "./shifts";
+// Blocked times — Staff & shift module's "Blocked time" tab. One row per
+// blocked-time entry (admin marks staff unavailable for a date window).
+export { blocked_times } from "./blocked_times";
 export { branches } from "./branches";
 export { class_categories } from "./class_categories";
 
@@ -63,6 +73,19 @@ export { payment_methods } from "./payment_methods";
 
 // Class catalog (FK → class_categories, memberships, packages)
 export { class_templates } from "./class_templates";
+
+// Services (Appointment services — FK → class_categories, branches, memberships, packages)
+// Sibling of class_templates: services spawn appointments the way templates
+// spawn class schedules. List view ships in Phase 1; create/edit, detail
+// page, and appointment-spawn integration follow in Phases 2-4.
+export { services } from "./services";
+
+// Appointments + bookings (FK → services, branches, rooms, staff_profiles, customers)
+// Concrete scheduled occurrences of a Service + the customer roster on
+// each one. Every demo service ships with appointments in all 5 status
+// states so the detail page + schedule grid + customer profile have
+// something to render on first load.
+export { appointments, appointment_bookings, appointment_ratings } from "./appointments";
 
 // Booking rules — global classes settings (no FKs; single-row config)
 export { classes_settings } from "./classes_settings";

@@ -75,12 +75,13 @@ interface PageEntry {
 const PAGES: PageEntry[] = [
     // Top-level sidebar items — icon mirrors `src/components/layout/Sidebar.tsx`
     { title: "Dashboard",              href: "/admin/dashboard",                  icon: BarChartSquare02 },
-    { title: "Point of Sale",          href: "/admin/pos",                        icon: ShoppingBag03 },
+    { title: "POS",                    href: "/admin/pos",                        icon: ShoppingBag03 },
     { title: "Marketing",              href: "/admin/marketing",                  icon: Announcement01 },
     { title: "Customers",              href: "/admin/customers",                  icon: User01 },
     // Classes group — Sidebar parent is CalendarCheck01; reuse for both children
     { title: "Schedule",               href: "/admin/schedule",                   icon: CalendarCheck01 },
     { title: "Class Templates",        href: "/admin/class-types",                icon: CalendarCheck01 },
+    { title: "Services",               href: "/admin/services",                   icon: CalendarCheck01 },
     // Services & products group — Sidebar parent is ShoppingBag01; Gift Cards
     // + Promo keep their own glyphs since those are universally recognised.
     { title: "Memberships & Packages", href: "/admin/products",                   icon: ShoppingBag01 },
@@ -91,7 +92,8 @@ const PAGES: PageEntry[] = [
     // Staff group — Sidebar parent is Users01; Pay rate + Payroll keep
     // money-specific glyphs (CoinsHand / CreditCard02) so they're
     // distinguishable at a glance.
-    { title: "Staff & Permissions",    href: "/admin/staff",                      icon: Users01 },
+    { title: "Role & permissions",     href: "/admin/staff/roles",                icon: Users01 },
+    { title: "Staff & shift",          href: "/admin/staff",                      icon: Users01 },
     { title: "Pay rate",               href: "/admin/staff/pay-rate",             icon: CoinsHand },
     { title: "Payroll",                href: "/admin/compensation",               icon: CreditCard02 },
     // Notifications top-level

@@ -28,10 +28,12 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { useAppStore, DEFAULT_BRANCH_ID, type Customer } from "@/lib/store";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -369,7 +371,6 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     function toggle<T>(arr: T[], val: T): T[] {
         return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
@@ -384,10 +385,8 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
         pending.planExpiryEnd !== "";
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[420px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={420}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -483,8 +482,7 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -796,9 +794,25 @@ export default function CustomersPage() {
     }, [allRows, branchId, search, applied, today]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
-    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    // ── Sortable columns — Name / Contact / Plan / Status / Last visit. ──
+    const STATUS_ORDER: Record<CustomerStatus, number> = { active: 0, inactive: 1, archived: 2 };
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<CustomerRow>(filteredRows, {
+        name:      (a, b) => a.name.localeCompare(b.name),
+        contact:   (a, b) => a.email.localeCompare(b.email),
+        plan:      (a, b) => a.planType.localeCompare(b.planType),
+        status:    (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
+        lastVisit: (a, b) => {
+            // No-visit rows sort to the end regardless of direction by
+            // pegging them to a sentinel that's larger than any real ISO.
+            const av = a.lastVisitISO ?? "9999-99-99";
+            const bv = b.lastVisitISO ?? "9999-99-99";
+            return av.localeCompare(bv);
+        },
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedRows = filteredRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // ─── Selection ──────────────────────────────────────────────────────────
     function toggleOne(id: string) {
@@ -1009,11 +1023,21 @@ export default function CustomersPage() {
                                                 ariaLabel="Select all rows on this page"
                                             />
                                         </th>
-                                        <th className={cn(TH, "w-[280px]")}>Name</th>
-                                        <th className={cn(TH, "w-[240px]")}>Contact</th>
-                                        <th className={cn(TH, "w-[150px]")}>Plan</th>
-                                        <th className={cn(TH, "w-[120px]")}>Status</th>
-                                        <th className={cn(TH, "w-[140px]")}>Last visit</th>
+                                        <th className={cn(TH, "w-[280px]")}>
+                                            <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[240px]")}>
+                                            <SortableHeader sortKey="contact"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[150px]")}>
+                                            <SortableHeader sortKey="plan"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Plan</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[120px]")}>
+                                            <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Last visit</SortableHeader>
+                                        </th>
                                         <th className={cn(TH, "w-[52px]")}></th>
                                     </tr>
                                 </thead>
@@ -1079,7 +1103,7 @@ export default function CustomersPage() {
 
                 <div className="shrink-0">
                     <Pagination
-                        page={clampedPage} total={filteredRows.length} pageSize={pageSize}
+                        page={clampedPage} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>

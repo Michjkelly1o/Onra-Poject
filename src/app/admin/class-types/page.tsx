@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -158,17 +159,10 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
 
     const hasSelection = pending.statuses.length > 0 || pending.categories.length > 0;
 
-    if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-end">
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-
-            {/* Panel */}
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-
-                {/* Header */}
+        <SlidePanel open={open} onClose={onClose} width={400} zIndex={50}>
+{/* Header */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button
@@ -239,8 +233,7 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 

@@ -37,6 +37,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { SelectInput } from "@/components/ui/select-input";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import {
     useAppStore, computePayRateDisplay,
     type PayRate, type PayRateType, type Instructor, type InstructorStatus, type Branch,
@@ -388,7 +390,6 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    if (!open) return null;
 
     function toggleStatus(s: InstructorStatus) {
         setPending(p => ({
@@ -403,10 +404,8 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
     }));
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[420px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={420}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -450,8 +449,7 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -505,9 +503,27 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
 
     const hasActiveFilter = filter.branchId !== "" || filter.statuses.length > 0;
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Assigned instructor sort — Name / Contact (email) / Branch /
+    //    Default pay rate (no-op since every row shares this pay rate's
+    //    name, kept for visual header consistency) / Status. ──
+    const INSTR_STATUS_ORDER: Record<InstructorStatus, number> = {
+        active: 0, inactive: 1, archive: 2,
+    } as Record<InstructorStatus, number>;
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Instructor>(filtered, {
+        name:    (a, b) => a.name.localeCompare(b.name),
+        contact: (a, b) => a.email.localeCompare(b.email),
+        branch:  (a, b) => {
+            const an = branches.find(x => x.id === a.branchId)?.name ?? "";
+            const bn = branches.find(x => x.id === b.branchId)?.name ?? "";
+            return an.localeCompare(bn);
+        },
+        payRate: () => 0,
+        status:  (a, b) => (INSTR_STATUS_ORDER[a.status] ?? 99) - (INSTR_STATUS_ORDER[b.status] ?? 99),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
-    const pageRows = filtered.slice((clamped - 1) * pageSize, clamped * pageSize);
+    const pageRows = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
     const pageIds = pageRows.map(r => r.id);
     const allChecked = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
@@ -618,11 +634,21 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                         ariaLabel="Select all instructors on this page"
                                     />
                                 </th>
-                                <th className={cn(TH, "w-[280px]")}>Name</th>
-                                <th className={cn(TH, "w-[240px]")}>Contact</th>
-                                <th className={cn(TH, "w-[200px]")}>Branch location</th>
-                                <th className={cn(TH, "w-[160px]")}>Default pay rate</th>
-                                <th className={cn(TH, "w-[120px]")}>Status</th>
+                                <th className={cn(TH, "w-[280px]")}>
+                                    <SortableHeader sortKey="name"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
+                                </th>
+                                <th className={cn(TH, "w-[240px]")}>
+                                    <SortableHeader sortKey="contact" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
+                                </th>
+                                <th className={cn(TH, "w-[200px]")}>
+                                    <SortableHeader sortKey="branch"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
+                                </th>
+                                <th className={cn(TH, "w-[160px]")}>
+                                    <SortableHeader sortKey="payRate" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Default pay rate</SortableHeader>
+                                </th>
+                                <th className={cn(TH, "w-[120px]")}>
+                                    <SortableHeader sortKey="status"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                </th>
                                 <th className={cn(TH, "w-[52px]")} />
                             </tr>
                         </thead>
@@ -676,7 +702,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
             {!isEmpty && pageRows.length > 0 && (
                 <Pagination
                     page={clamped}
-                    total={filtered.length}
+                    total={sortedRows.length}
                     pageSize={pageSize}
                     onPage={setPage}
                     onPageSize={s => { setPageSize(s); setPage(1); }}
@@ -844,10 +870,17 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
     }
 
     function placeholderInstructorAction(kind: "view" | "edit", instructor: Instructor) {
-        // Staff module isn't built yet — surface the intent with a toast so
-        // the demo doesn't dead-end.
-        const verb = kind === "view" ? "View" : "Edit";
-        showToast(`${verb} instructor`, `${instructor.name} — coming in the staff module.`, "success", "check");
+        // The Staff & Permissions module is now live — wire View / Edit to
+        // the real staff detail + edit routes. The instructor id IS the
+        // staff id (both modules key off the same `staff_profiles.id`).
+        // Carry `returnTo` so the X-close on the staff detail page lands
+        // the admin back here on this pay rate's detail tab.
+        const returnTo = `/admin/staff/pay-rate/${payRate?.id ?? ""}`;
+        const base = `/staff/members/${instructor.id}`;
+        const href = kind === "view"
+            ? `${base}?returnTo=${encodeURIComponent(returnTo)}`
+            : `${base}/edit?returnTo=${encodeURIComponent(returnTo)}`;
+        router.push(href);
     }
 
     return (
@@ -873,13 +906,20 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
                             <div className="flex gap-1">
                                 <TabBtn label="Assigned instructor" active={tab === "instructor"} onClick={() => setTab("instructor")} />
-                                <TabBtn label="Additional settings" active={tab === "settings"} onClick={() => setTab("settings")} />
+                                {/* "Additional settings" is hidden for Flat
+                                    rate — the two attendance toggles
+                                    don't apply when pay is fixed per class
+                                    (matches the form, which also hides
+                                    this section for `type === "flat"`). */}
+                                {payRate.type !== "flat" && (
+                                    <TabBtn label="Additional settings" active={tab === "settings"} onClick={() => setTab("settings")} />
+                                )}
                             </div>
                         </div>
 
                         {/* Tab body */}
                         <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
-                            {tab === "instructor" ? (
+                            {tab === "instructor" || payRate.type === "flat" ? (
                                 <AssignedInstructorTab
                                     payRateId={payRate.id}
                                     payRateName={payRate.name}

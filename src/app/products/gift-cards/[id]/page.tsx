@@ -36,6 +36,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import { giftCardHolders, type GiftCardHolder } from "@/lib/giftCardHolders";
 import { useAppStore, type GiftCardDesign } from "@/lib/store";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
@@ -476,9 +477,22 @@ function ActiveCustomersTab({ holders, cardName }: {
         return hay.includes(q);
     }), [holders, q]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Sortable columns — Name / Contact (email) / Amount left & expired
+    //    (sort by `current_balance_aed` since that's the headline figure
+    //    in the cell; expiry kept as a stable tiebreaker). ──
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<GiftCardHolder>(filtered, {
+        name:    (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+        contact: (a, b) => a.customer.email.localeCompare(b.customer.email),
+        balance: (a, b) => {
+            const d = a.issuedCard.current_balance_aed - b.issuedCard.current_balance_aed;
+            if (d !== 0) return d;
+            return a.issuedCard.expires_at.localeCompare(b.issuedCard.expires_at);
+        },
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
-    const paged = filtered.slice((clamped - 1) * pageSize, clamped * pageSize);
+    const paged = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
     return (
         <>
@@ -513,9 +527,15 @@ function ActiveCustomersTab({ holders, cardName }: {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">Name</th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">Contact</th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">Amount left &amp; expired</th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                        <SortableHeader sortKey="name"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                        <SortableHeader sortKey="contact" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                        <SortableHeader sortKey="balance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Amount left &amp; expired</SortableHeader>
+                                    </th>
                                     <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec] w-[52px]"></th>
                                 </tr>
                             </thead>
@@ -530,7 +550,7 @@ function ActiveCustomersTab({ holders, cardName }: {
             {/* Pagination */}
             <div className="px-6 shrink-0">
                 <CustomersPagination
-                    page={clamped} total={filtered.length} pageSize={pageSize}
+                    page={clamped} total={sortedRows.length} pageSize={pageSize}
                     onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                 />
             </div>

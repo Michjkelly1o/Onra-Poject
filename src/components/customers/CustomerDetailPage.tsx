@@ -31,12 +31,14 @@ import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { useAppStore, type Customer, type CustomerPlan } from "@/lib/store";
 import { CustomerBookingsTab } from "./CustomerBookingsTab";
 import { CustomerPaymentsTab } from "./CustomerPaymentsTab";
 import { CustomerDetailsTab } from "./CustomerDetailsTab";
 import { CustomerAgreementsTab } from "./CustomerAgreementsTab";
 import { CustomerReferralsTab } from "./CustomerReferralsTab";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -629,17 +631,14 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    if (!open) return null;
 
     function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; }
     const hasAny = pending.statuses.length > 0 || pending.kinds.length > 0 ||
         pending.dateStart !== "" || pending.dateEnd !== "";
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={400}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -687,8 +686,7 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
                     <Button variant="primary" size="md" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -842,9 +840,20 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         });
     }, [plans, search, applied]);
 
-    const totalPages = Math.max(1, Math.ceil(filteredPlans.length / pageSize));
+    // ── Plan tab sort — Transaction name / Plan type / Status / Expiry. ──
+    const PLAN_STATUS_ORDER: Record<PlanStatus, number> = {
+        active: 0, frozen: 1, expired: 2, cancelled: 3, removed: 4,
+    };
+    const { sorted: sortedPlans, sortKey: planSortKey, sortDir: planSortDir, toggle: togglePlanSort } = useSort<CustomerPlan>(filteredPlans, {
+        name:     (a, b) => a.name.localeCompare(b.name),
+        planType: (a, b) => a.planTypeLabel.localeCompare(b.planTypeLabel),
+        status:   (a, b) => (PLAN_STATUS_ORDER[a.status] ?? 99) - (PLAN_STATUS_ORDER[b.status] ?? 99),
+        expiry:   (a, b) => a.expiryISO.localeCompare(b.expiryISO),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedPlans.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedPlans = filteredPlans.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedPlans = sortedPlans.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // ─── Credit-balance widget data ─────────────────────────────────────────
     // Everything in this widget reflects the LIVE remaining balance:
@@ -1145,10 +1154,18 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                                             <table className="w-full border-collapse">
                                                 <thead>
                                                     <tr>
-                                                        <th className={TH}>Transaction name</th>
-                                                        <th className={cn(TH, "w-[160px]")}>Plan type</th>
-                                                        <th className={cn(TH, "w-[120px]")}>Status</th>
-                                                        <th className={cn(TH, "w-[200px]")}>Expiry date</th>
+                                                        <th className={TH}>
+                                                            <SortableHeader sortKey="name"     currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Transaction name</SortableHeader>
+                                                        </th>
+                                                        <th className={cn(TH, "w-[160px]")}>
+                                                            <SortableHeader sortKey="planType" currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Plan type</SortableHeader>
+                                                        </th>
+                                                        <th className={cn(TH, "w-[120px]")}>
+                                                            <SortableHeader sortKey="status"   currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Status</SortableHeader>
+                                                        </th>
+                                                        <th className={cn(TH, "w-[200px]")}>
+                                                            <SortableHeader sortKey="expiry"   currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Expiry date</SortableHeader>
+                                                        </th>
                                                         <th className={cn(TH, "w-[52px]")} />
                                                     </tr>
                                                 </thead>
@@ -1189,7 +1206,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                                 </div>
 
                                 <div className="px-6 shrink-0">
-                                    <Pagination page={clampedPage} total={filteredPlans.length} pageSize={pageSize}
+                                    <Pagination page={clampedPage} total={sortedPlans.length} pageSize={pageSize}
                                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
                                 </div>
                             </>

@@ -37,6 +37,7 @@ import {
 } from "@/lib/store";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
@@ -354,9 +355,13 @@ type TabId = "details" | "customers";
 
 // ─── Right panel ────────────────────────────────────────────────────────────
 
-function RightPanel({ kind, vm, activeCustomers, renewalFor, branches }: {
+function RightPanel({ kind, vm, productId, activeCustomers, renewalFor, branches }: {
     kind: ProductKind;
     vm: MembershipDetailVM;
+    /** Product id — passed through so the details tab can resolve which
+     *  class templates + services list this product in their applicable
+     *  arrays (reverse-link surface). */
+    productId: string;
     activeCustomers: Customer[];
     renewalFor: (c: Customer) => string;
     branches: Branch[];
@@ -391,7 +396,7 @@ function RightPanel({ kind, vm, activeCustomers, renewalFor, branches }: {
             </div>
 
             {tab === "details" ? (
-                <DetailsTab vm={vm} branches={branches} />
+                <DetailsTab vm={vm} productId={productId} branches={branches} />
             ) : (
                 <ActiveCustomersTab customers={activeCustomers} productName={vm.name} renewalFor={renewalFor} />
             )}
@@ -422,7 +427,7 @@ function RightPanel({ kind, vm, activeCustomers, renewalFor, branches }: {
 //                              Usage cap), each with disabled-checkbox rule
 //                              rows + descriptive subtext under each rule
 
-function DetailsTab({ vm, branches }: { vm: MembershipDetailVM; branches: Branch[] }) {
+function DetailsTab({ vm, productId, branches }: { vm: MembershipDetailVM; productId: string; branches: Branch[] }) {
     const groups = buildPurchaseRuleGroups(vm);
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
@@ -478,6 +483,9 @@ function DetailsTab({ vm, branches }: { vm: MembershipDetailVM; branches: Branch
 
             {/* ── Applicable branches ── (kind- and multi-location-aware subtitle) */}
             <BranchesCard branchIds={vm.branchIds} productNoun={vm.productNoun} branches={branches} />
+
+            {/* ── Applicable templates & services (reverse-link) ── */}
+            <ApplicableTemplatesServicesCard productId={productId} productNoun={vm.productNoun} />
 
             {/* ── Duration block ──
                 Membership: "Duration & renewal" with 3 stats (Duration,
@@ -816,6 +824,109 @@ function DisabledCheckbox({ checked }: { checked: boolean }) {
     );
 }
 
+// ─── Applicable templates & services — reverse-link card ───────────────────
+//
+// Mirrors `BranchesCard`'s collapsible chrome. Lists every class template +
+// service that has THIS product in its `applicableMembershipIds` or
+// `applicablePackageIds`. Read live from the store so deactivating /
+// archiving a template or service in its own module disappears from
+// this list on the same render. Each row links to its detail page.
+
+function ApplicableTemplatesServicesCard({ productId, productNoun }: { productId: string; productNoun: string }) {
+    const [open, setOpen] = useState(true);
+    const router = useRouter();
+    const classTemplates = useAppStore(s => s.classTemplates);
+    const services       = useAppStore(s => s.services);
+
+    // Reverse-link derivation — a product is "applicable" to a template /
+    // service when its id appears in either of the applicable arrays.
+    // Hides Archived rows from the visible list (matches what a customer
+    // sees in the booking portal).
+    const linkedTemplates = useMemo(
+        () => classTemplates.filter(t => t.status !== "Archived"
+            && (t.applicableMembershipIds.includes(productId) || t.applicablePackageIds.includes(productId))),
+        [classTemplates, productId],
+    );
+    const linkedServices = useMemo(
+        () => services.filter(s => s.status !== "Archived"
+            && (s.applicableMembershipIds.includes(productId) || s.applicablePackageIds.includes(productId))),
+        [services, productId],
+    );
+
+    const total = linkedTemplates.length + linkedServices.length;
+
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5">Applicable on</p>
+                    <p className="text-[14px] text-[#667085] leading-5">Class templates and services this {productNoun} can be redeemed against.</p>
+                </div>
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                    {total} linked
+                </span>
+                <button type="button" onClick={() => setOpen(p => !p)}
+                    aria-label={open ? "Collapse" : "Expand"}
+                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+            </div>
+            {open && (
+                <div className="flex flex-col gap-3">
+                    {total === 0 ? (
+                        <p className="text-[14px] text-[#667085]">Not linked to any class template or service yet.</p>
+                    ) : (
+                        <>
+                            {linkedTemplates.length > 0 && (
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-[12px] font-medium text-[#667085] uppercase tracking-wide">Class templates</p>
+                                    {linkedTemplates.map(t => (
+                                        <button key={t.id} type="button"
+                                            onClick={() => router.push(`/class-types/${t.id}`)}
+                                            className="flex items-center gap-3 -mx-2 px-2 py-1.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
+                                            <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054]"
+                                                style={{ backgroundColor: t.coverColor || "#f1f2ed" }}>
+                                                {(t.name?.[0] ?? "T").toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[14px] font-medium text-[#101828] truncate">{t.name}</p>
+                                                <p className="text-[12px] text-[#667085] truncate">{t.category} · {t.durationMin} min</p>
+                                            </div>
+                                            <ChevronLeft className="w-4 h-4 text-[#98a2b3] rotate-180 shrink-0" />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {linkedServices.length > 0 && (
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-[12px] font-medium text-[#667085] uppercase tracking-wide">Services</p>
+                                    {linkedServices.map(s => (
+                                        <button key={s.id} type="button"
+                                            onClick={() => router.push(`/services/${s.id}`)}
+                                            className="flex items-center gap-3 -mx-2 px-2 py-1.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
+                                            <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054] overflow-hidden"
+                                                style={{ backgroundColor: s.coverColor || "#f1f2ed" }}>
+                                                {s.coverImage
+                                                    ? <img src={s.coverImage} alt={s.name} className="w-full h-full object-cover" />
+                                                    : (s.name?.[0] ?? "S").toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[14px] font-medium text-[#101828] truncate">{s.name}</p>
+                                                <p className="text-[12px] text-[#667085] truncate">{s.openSession ? "Open session" : "Private"} · {s.durationMin} min</p>
+                                            </div>
+                                            <ChevronLeft className="w-4 h-4 text-[#98a2b3] rotate-180 shrink-0" />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Applicable branches — collapsible card, disabled checkboxes ────────────
 //
 // Subtitle is kind- AND mode-aware:
@@ -968,9 +1079,16 @@ function ActiveCustomersTab({ customers, productName, renewalFor }: {
         return hay.includes(q);
     }), [customers, q]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Sortable columns — Name / Contact (email) / Exp./Renewal (ISO). ──
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Customer>(filtered, {
+        name:    (a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
+        contact: (a, b) => a.email.localeCompare(b.email),
+        renewal: (a, b) => renewalFor(a).localeCompare(renewalFor(b)),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
-    const paged = filtered.slice((clamped - 1) * pageSize, clamped * pageSize);
+    const paged = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
     return (
         <>
@@ -1003,9 +1121,15 @@ function ActiveCustomersTab({ customers, productName, renewalFor }: {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">Name</th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">Contact</th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">Exp./Renewal</th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                        <SortableHeader sortKey="name"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                        <SortableHeader sortKey="contact" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                        <SortableHeader sortKey="renewal" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Exp./Renewal</SortableHeader>
+                                    </th>
                                     <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec] w-[52px]"></th>
                                 </tr>
                             </thead>
@@ -1020,7 +1144,7 @@ function ActiveCustomersTab({ customers, productName, renewalFor }: {
             {/* Pagination — same shell as class-types pagination */}
             <div className="px-6 shrink-0">
                 <CustomersPagination
-                    page={clamped} total={filtered.length} pageSize={pageSize}
+                    page={clamped} total={sortedRows.length} pageSize={pageSize}
                     onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                 />
             </div>
@@ -1372,7 +1496,7 @@ export default function ProductDetailPage() {
                         status={product.status}
                         onAction={handleAction}
                     />
-                    <RightPanel kind={kind} vm={vm} activeCustomers={activeCustomers} renewalFor={renewalDate} branches={branches} />
+                    <RightPanel kind={kind} vm={vm} productId={id} activeCustomers={activeCustomers} renewalFor={renewalDate} branches={branches} />
                 </div>
             </div>
 

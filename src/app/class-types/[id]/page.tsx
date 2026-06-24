@@ -17,6 +17,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Sort helpers ─────────────────────────────────────────────────────────────
 
@@ -365,12 +366,8 @@ function LeftPanel({
                         <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-2">{template.description}</p>
                     </div>
 
-                    {/* Info fields */}
+                    {/* Info fields — Class type row removed (always Group). */}
                     <div className="flex flex-col gap-3">
-                        <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class type</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{template.locationType} class</p>
-                        </div>
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Class category</p>
                             <p className="text-[16px] font-medium text-[#101828]">{template.category}</p>
@@ -542,17 +539,14 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     function toggle<T>(arr: T[], val: T): T[] { return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]; }
 
     const hasAny = pending.statuses.length > 0 || !!pending.startDate || !!pending.endDate || pending.days.length > 0 || pending.times.length > 0;
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                {/* Header */}
+        <SlidePanel open={open} onClose={onClose} width={400}>
+{/* Header */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose}
@@ -625,8 +619,7 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 

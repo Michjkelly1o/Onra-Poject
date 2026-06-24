@@ -46,6 +46,8 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Agreement, type AgreementStatus, type Branch } from "@/lib/store";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -271,7 +273,6 @@ function FilterPanel({ open, onClose, applied, onApply }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     function toggle<T>(arr: T[], val: T): T[] {
         return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
@@ -284,10 +285,8 @@ function FilterPanel({ open, onClose, applied, onApply }: {
         pending.effectiveEnd !== "";
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[420px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={420}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -354,8 +353,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -600,9 +598,17 @@ export default function AgreementsPage() {
             });
     }, [agreements, search, branchId, applied]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Sortable columns — Name / Type / Effective until / Status. ──
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Agreement>(filtered, {
+        name:       (a, b) => a.name.localeCompare(b.name),
+        type:       (a, b) => a.type.localeCompare(b.type),
+        effective:  (a, b) => a.effectiveUntil.localeCompare(b.effectiveUntil),
+        status:     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedRows = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // ─── Selection helpers ──────────────────────────────────────────────────
     const allChecked = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
@@ -786,10 +792,18 @@ export default function AgreementsPage() {
                                                 ariaLabel="Select all rows on this page"
                                             />
                                         </th>
-                                        <th className={TH}>Agreement name</th>
-                                        <th className={cn(TH, "w-[180px]")}>Type</th>
-                                        <th className={cn(TH, "w-[160px]")}>Effective until</th>
-                                        <th className={cn(TH, "w-[140px]")}>Status</th>
+                                        <th className={TH}>
+                                            <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Agreement name</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[180px]")}>
+                                            <SortableHeader sortKey="type"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective until</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                        </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
                                 </thead>
@@ -845,7 +859,7 @@ export default function AgreementsPage() {
 
                 <div className="shrink-0">
                     <Pagination
-                        page={clampedPage} total={filtered.length} pageSize={pageSize}
+                        page={clampedPage} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>

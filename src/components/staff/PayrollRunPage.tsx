@@ -45,6 +45,7 @@ import {
     type Instructor, type PayrollEntry, type PayrollEntryStatus, type Branch,
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 
@@ -542,9 +543,29 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
 
     // ─── Pagination slice ─────────────────────────────────────────────────
-    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    // ── Run payroll sort — Name / Branch / Pay rate / Classes / Hours /
+    //    Gross revenue / Payout / Status. ──
+    const RUN_STATUS_ORDER: Record<PayrollEntryStatus, number> = {
+        pending: 0, paid: 1,
+    } as Record<PayrollEntryStatus, number>;
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<RunRow>(filteredRows, {
+        name:    (a, b) => a.instructor.name.localeCompare(b.instructor.name),
+        branch:  (a, b) => {
+            const an = branches.find(x => x.id === a.branchId)?.name ?? "";
+            const bn = branches.find(x => x.id === b.branchId)?.name ?? "";
+            return an.localeCompare(bn);
+        },
+        payRate: (a, b) => a.payRateName.localeCompare(b.payRateName),
+        classes: (a, b) => a.classesCount - b.classesCount,
+        hours:   (a, b) => a.totalHours - b.totalHours,
+        gross:   (a, b) => a.grossRevenue - b.grossRevenue,
+        payout:  (a, b) => a.payout - b.payout,
+        status:  (a, b) => (RUN_STATUS_ORDER[a.status] ?? 99) - (RUN_STATUS_ORDER[b.status] ?? 99),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
-    const pageRows = filteredRows.slice((clamped - 1) * pageSize, clamped * pageSize);
+    const pageRows = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
     // ─── Branch options (live `branches` slice) ───────────────────────────
     const branchOptions = useMemo(
@@ -683,27 +704,43 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
-                                        <th className={cn(TH, "w-[280px]")}>Name</th>
-                                        <th className={cn(TH, "w-[200px]")}>Branch location</th>
-                                        <th className={cn(TH, "w-[180px]")}>Default pay rate</th>
-                                        <th className={cn(TH, "w-[140px]")}>Completed classes</th>
-                                        <th className={cn(TH, "w-[120px]")}>Total time (hour)</th>
-                                        <th className={cn(TH, "w-[140px]")}>Gross revenue</th>
+                                        <th className={cn(TH, "w-[280px]")}>
+                                            <SortableHeader sortKey="name"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[200px]")}>
+                                            <SortableHeader sortKey="branch"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[180px]")}>
+                                            <SortableHeader sortKey="payRate" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Default pay rate</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="classes" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Completed classes</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[120px]")}>
+                                            <SortableHeader sortKey="hours"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Total time (hour)</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="gross"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Gross revenue</SortableHeader>
+                                        </th>
                                         {/* Tax annotation sits in the column
                                             header rather than on every row —
                                             matches the Memberships & Packages
                                             list pattern so the table doesn't
                                             repeat "Inc. X% tax" per instructor. */}
                                         <th className={cn(TH, "w-[140px]")}>
-                                            <div className="flex flex-col gap-0.5">
-                                                <span>Instructor payout</span>
-                                                <TaxSuffix
-                                                    category="pay_rate"
-                                                    className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap"
-                                                />
-                                            </div>
+                                            <SortableHeader sortKey="payout" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span>Instructor payout</span>
+                                                    <TaxSuffix
+                                                        category="pay_rate"
+                                                        className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap"
+                                                    />
+                                                </div>
+                                            </SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[120px]")}>Status</th>
+                                        <th className={cn(TH, "w-[120px]")}>
+                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                        </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
                                 </thead>
@@ -743,7 +780,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     )}
 
                     <Pagination
-                        page={clamped} total={filteredRows.length} pageSize={pageSize}
+                        page={clamped} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>

@@ -359,7 +359,7 @@ function ProductConfigurationStep({ data, numberError, onChange, onBack, onConti
                 ) : (
                     <FormField
                         label="Gift card amount"
-                        hint="The customer will be able to apply this gift card when making purchases through the Point of Sale."
+                        hint="The customer will be able to apply this gift card when making purchases through the POS."
                     >
                         <PriceInput
                             value={data.amount}

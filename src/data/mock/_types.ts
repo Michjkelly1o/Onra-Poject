@@ -98,6 +98,14 @@ export interface BusinessHours {
     close_time: string;
     /** Branch is fully closed that weekday — open/close are placeholders. */
     is_closed: boolean;
+    /** Optional "block time" window inside the open/close range — e.g. a
+     *  lunch break. When set, the schedule day/week grid renders a
+     *  diagonal-striped strip over this window and the schedule form's
+     *  time picker excludes slots whose [start, start+duration) interval
+     *  would overlap it. Only one block slot per day is supported by
+     *  design. Block fields are ignored when `is_closed` is true. */
+    block_start?: string;
+    block_end?: string;
 }
 
 // ─── Booking Rules — Classes settings (PRD 11 §6) ──────────────────────────
@@ -839,6 +847,155 @@ export interface ClassTemplate {
     branch_ids?: string[]; // → branches.id[]
 }
 
+// ─── Services (Appointment services) ──────────────────────────────────────────
+
+/**
+ * Service template — the reusable "blueprint" for scheduled appointments.
+ * Conceptually mirrors `class_templates`: a service is to an appointment
+ * what a class template is to a class schedule. Two distinct shapes:
+ *
+ *   • Open session  (open_session = true)  — multi-customer, has capacity.
+ *                                            Behaves like a small class.
+ *   • Private       (open_session = false) — 1 customer + 1 instructor.
+ *                                            No capacity field.
+ *
+ * Both flavours carry `duration_min` + `category_id`. Category drives the
+ * cross-module gating dimension (which instructor can teach this, which
+ * customers see it on their portal — phase later).
+ *
+ * `applicable_membership_ids` / `applicable_package_ids` mirror the class
+ * template pattern so a single FK shape powers the "Applicable" tabs on
+ * the service detail page (phase 3) and the customer-side booking gate.
+ *
+ * +later: price_aed, instructor_ids (Private services only — pre-pickable
+ * instructors for the appointment create flow), appointment-spawn rules.
+ */
+export interface Service {
+    /** e.g. "svc_private_reformer" */
+    id: string;
+    category_id: string;          // → class_categories.id
+    name: string;                 // "Private Reformer"
+    description: string;
+    /** True = Open session (multi-customer w/ capacity). False = Private. */
+    open_session: boolean;
+    duration_min: number;
+    /** Only meaningful when `open_session = true`. Persisted as 0 for
+     *  Private services to keep the column shape stable in the future
+     *  Postgres schema. */
+    capacity: number;
+    /** Branch where this service is offered. Single-branch in Phase 1 to
+     *  match the Figma step 3 "select location" single-select; Phase 2+
+     *  may widen to a multi-branch array depending on customer-portal
+     *  rollout. */
+    branch_id: string;            // → branches.id
+    cover_image_url?: string;
+    status: "Active" | "Inactive" | "Archived";
+    /** Memberships that grant access to this service. */
+    applicable_membership_ids: string[]; // → memberships.id[]
+    /** Packages that grant access to this service. */
+    applicable_package_ids: string[];    // → packages.id[]
+}
+
+// ─── Appointments (Module 13 — Phase 4) ────────────────────────────────────
+
+/**
+ * Appointment — one concrete scheduled occurrence of a Service.
+ *
+ * Service is to Appointment what ClassTemplate is to ClassSchedule. Status
+ * transitions mirror ClassSchedule:
+ *   • Upcoming  — start_time > now
+ *   • Ongoing   — now ∈ [start_time, end_time]
+ *   • Completed — end_time < now (and not cancelled)
+ *   • Cancelled — admin cancelled via the appointment detail page
+ *
+ * `instructor_id` is REQUIRED for Private services (the 1-on-1 contract)
+ * and OMITTED for Open session services (no instructor — the brief is
+ * explicit: "open session WITHOUT instructor").
+ *
+ * `booked` is denormalized for fast list rendering — recomputed from
+ * `appointment_bookings` rows (status='Booked') at write-time + matched
+ * to the live count by the store's mutators.
+ */
+export interface Appointment {
+    /** e.g. "appt_2026_05_15_0900_svc_private_reformer" */
+    id: string;
+    service_id: string;            // → services.id
+    branch_id: string;             // → branches.id (denormalized for fast filter)
+    room_id: string;               // → rooms.id
+    /** Required for Private services, omitted for Open session. */
+    instructor_id?: string;        // → staff_profiles.id
+    /** "2026-05-15" — used for sorting and date-range filtering. */
+    date_iso: string;
+    start_time: string;            // "09:00" — 24h
+    end_time: string;              // "10:00" — 24h
+    display_time: string;          // "9:00 - 10:00 AM" — human-friendly
+    /** Capacity at the time of booking. 1 for Private, N for Open session. */
+    capacity: number;
+    /** Denormalized count of appointment_bookings where status='Booked'. */
+    booked: number;
+    status: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
+    /** Set when status='Cancelled' — surfaced on the detail page. */
+    cancelled_reason?: string;
+    cancelled_at?: string;         // ISO timestamp
+    cancelled_by?: string;         // human-readable attribution
+    /** Aggregate rating (1–5) for Completed appointments. Denormalized
+     *  from `appointment_ratings` rows so list views render without an
+     *  extra join. 0 when no ratings exist yet. */
+    rating?: number;
+    /** Count of visible ratings (excludes soft-deleted). */
+    rating_count?: number;
+    created_at: string;            // ISO timestamp
+}
+
+/**
+ * AppointmentRating — one customer's rating of a completed Appointment.
+ * Mirrors `ClassRating` 1:1 so the rating tab + filters reuse the same
+ * patterns. Only customers whose booking status is `Attended` can rate.
+ */
+export interface AppointmentRating {
+    /** e.g. "appt_rating_..." */
+    id: string;
+    appointment_id: string;        // → appointments.id
+    customer_id: string;           // → customers.id
+    /** Optional — Private appointments have an instructor; Open session
+     *  ratings rate the experience itself (no instructor FK). */
+    instructor_id?: string;        // → staff_profiles.id
+    /** 1-5 inclusive. */
+    score: number;
+    comment: string;
+    /** Optional "What stood out" tags. */
+    tags?: string[];
+    submitted_at: string;          // ISO 8601
+    deleted_at?: string;
+    deleted_by?: string;
+}
+
+/**
+ * AppointmentBooking — one customer occupying one slot inside an Appointment.
+ *
+ * For Open session appointments multiple bookings share an appointment_id.
+ * For Private appointments exactly one booking exists per appointment_id.
+ *
+ * Status:
+ *   • Booked    — confirmed, customer hasn't been marked yet
+ *   • Attended  — admin marked them present on the ongoing tab
+ *   • NoShow    — admin marked them absent on the ongoing tab
+ *   • Cancelled — customer or admin cancelled this seat
+ *                (also set when the parent appointment is cancelled)
+ */
+export interface AppointmentBooking {
+    /** e.g. "appt_book_2026_05_15_..." */
+    id: string;
+    appointment_id: string;        // → appointments.id
+    customer_id: string;           // → customers.id
+    status: "Booked" | "Attended" | "NoShow" | "Cancelled";
+    booked_at: string;             // ISO timestamp
+    cancelled_at?: string;
+    /** Who set the cancellation — "customer" | "admin" | "system". */
+    cancelled_by?: string;
+    attendance_marked_at?: string;
+}
+
 // ─── Schedule (renamed from `class_instances`) ──────────────────────────────
 
 /**
@@ -1194,6 +1351,68 @@ export interface RoleSeed {
 
 export type StaffStatusSeed = "pending" | "active" | "inactive" | "archive";
 
+/**
+ * Shift — the Shift management module's data shape. Drives the Shift
+ * management tab (table + bulk actions) + the staff form's Assign shift
+ * dropdown + the instructor detail Shift hours line.
+ *
+ * Status mirrors the standard archive/delete matrix used elsewhere:
+ *   • "active"   — visible, enable-toggle on, assignable to staff
+ *   • "inactive" — temporarily paused, NOT assignable but staff history kept
+ *   • "archive"  — hidden from default list, surfaces only via Archive filter
+ */
+export type ShiftStatusSeed = "active" | "inactive" | "archive";
+
+export interface Shift {
+    /** e.g. "shift_morning" */
+    id: string;
+    name: string;             // "Morning shift"
+    /** FK → branches.id. Shifts are per-branch. */
+    branch_id: string;
+    start_time: string;       // "07:00" — 24h
+    end_time: string;         // "12:00" — 24h
+    /** 7-bit array [Sun..Sat] — true means the shift covers that day. */
+    working_days: boolean[];
+    status: ShiftStatusSeed;
+    created_at: string;       // ISO 8601
+}
+
+// ─── Blocked time (Staff & shift module) ──────────────────────────────────
+//
+// One row per blocked-time entry — a single date window when one or more
+// staff are unavailable (sick day, training, personal appointment, etc.).
+// Drives the Staff & shift module's Blocked time tab (Figma 7413:239407)
+// and a future schedule grid overlay.
+//
+// Rules:
+//   • `title` is OPTIONAL (admin can leave it blank — defaults to "Blocked"
+//     in the table).
+//   • `date` is an ISO date string ("YYYY-MM-DD"). Admins can only pick
+//     today or a future date in the form, but past entries are still
+//     historically valid and shown in the list.
+//   • `staff_ids` is multi-select — one blocked-time entry can cover one
+//     or many staff (e.g. branch-wide training session).
+//   • Branch is derived at read time from the assigned staff so it stays
+//     in sync if a staff member moves branches.
+
+export interface BlockedTime {
+    /** e.g. "blocked_2025_03_18" */
+    id: string;
+    /** Optional label — leave blank for a generic block. */
+    title: string;
+    date: string;             // "2025-03-18"
+    start_time: string;       // "13:00"
+    end_time: string;         // "14:00"
+    /** Free-text reason / context. Empty string when unused. */
+    note: string;
+    /** FK array → staff.id. At least one entry. */
+    staff_ids: string[];
+    /** FK → branches.id. Convenience denorm so the branch filter on the
+     *  list view runs without a per-row staff lookup. */
+    branch_id: string;
+    created_at: string;       // ISO 8601
+}
+
 export interface StaffSeed {
     id: string;
     first_name: string;
@@ -1218,7 +1437,22 @@ export interface StaffSeed {
     bio?: string;
     specialties?: string[];
     pay_rate_id?: string;
-    // +later: dob, gender, address, emergency_contact
+    /** Short introduction paragraph — surfaces on the instructor detail
+     *  page + the customer-facing instructor portal. Multi-line text. */
+    short_intro?: string;
+    /** Years of working experience — single integer. Surfaces on the
+     *  instructor detail + the customer-facing instructor portal. */
+    working_experience_years?: number;
+    /** Assigned shift id — FK → shifts.id. Optional per the brief
+     *  (instructors can be unassigned and assigned later). */
+    shift_id?: string;
+    /** Class categories this instructor is qualified to teach. Multi-
+     *  select. Drives the cross-module instructor gating: an instructor
+     *  can only be selected on a class template / schedule / service /
+     *  appointment whose category appears in this array. Empty array =
+     *  no categories assigned yet → can't be picked anywhere. */
+    category_ids?: string[];
+    // +later: dob, gender, address, emergency_contact, working_days
 }
 
 // ─── Customer notification settings (PRD 11 §12) ──────────────────────────
@@ -1302,7 +1536,18 @@ export type NotificationEventSeed =
     | "class_scheduled"     // new class assigned to instructor
     | "class_rescheduled"   // class moved / time / room / instructor change
     | "pay_rate_assigned"   // instructor reassigned to a different pay rate
-    | "pay_rate_updated";   // existing pay rate's amount or name changed
+    | "pay_rate_updated"    // existing pay rate's amount or name changed
+    // ── Appointment events (Module 13 — Phase 4E) ──────────────────────
+    | "appointment_booked"      // new customer booking on an appointment
+    | "appointment_cancelled"   // whole appointment cancelled by admin
+    | "customer_marked_present"  // customer attendance marked on ongoing
+    // ── Staff & shift events (Phase 4F) ──────────────────────────────
+    //    Fired when admin mutates a staff member's availability — the
+    //    instructor bell + the admin audit log both pick these up.
+    | "shift_assigned"           // staff (re)assigned to a shift
+    | "shift_removed"            // staff removed from a shift
+    | "blocked_time_added"       // admin blocked time for instructor
+    | "blocked_time_removed";    // admin deleted a blocked-time entry
 
 /** Tab grouping on the notifications page.
  *

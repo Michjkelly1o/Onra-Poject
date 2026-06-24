@@ -49,6 +49,7 @@ import {
     type Instructor, type ClassSchedule, type PayRate,
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 //
@@ -629,9 +630,22 @@ export default function PayrollInstructorDetailPage({
     const sidebarClassesCount  = sidebarThisMonth.classes;
 
     // ─── Pagination ───────────────────────────────────────────────────────
-    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    // ── Bookings sort — Class name / Attendance / Rating / Status /
+    //    Pay rate (no-op since every row shares this pay rate, kept
+    //    for header consistency) / Earnings. ──
+    const CLASS_STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, {
+        name:       (a, b) => a.schedule.name.localeCompare(b.schedule.name),
+        attendance: (a, b) => a.attendees - b.attendees,
+        rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
+        status:     (a, b) => CLASS_STATUS_ORDER[a.schedule.status] - CLASS_STATUS_ORDER[b.schedule.status],
+        payRate:    () => 0,
+        earnings:   (a, b) => a.earnings - b.earnings,
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
-    const pageRows = filteredRows.slice((clamped - 1) * pageSize, clamped * pageSize);
+    const pageRows = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
     // ─── Sidebar pay rate amount (e.g. "AED 147/Class") ───────────────────
     const payRateAmount = (() => {
@@ -794,12 +808,24 @@ export default function PayrollInstructorDetailPage({
                                         <table className="w-full border-collapse">
                                             <thead>
                                                 <tr>
-                                                    <th className={cn(TH, "w-[280px]")}>Class name</th>
-                                                    <th className={cn(TH, "w-[120px]")}>Attendance</th>
-                                                    <th className={cn(TH, "w-[160px]")}>Rating</th>
-                                                    <th className={cn(TH, "w-[140px]")}>Status</th>
-                                                    <th className={cn(TH, "w-[140px]")}>Pay rate</th>
-                                                    <th className={cn(TH, "w-[140px]")}>Earnings</th>
+                                                    <th className={cn(TH, "w-[280px]")}>
+                                                        <SortableHeader sortKey="name"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class name</SortableHeader>
+                                                    </th>
+                                                    <th className={cn(TH, "w-[120px]")}>
+                                                        <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
+                                                    </th>
+                                                    <th className={cn(TH, "w-[160px]")}>
+                                                        <SortableHeader sortKey="rating"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rating</SortableHeader>
+                                                    </th>
+                                                    <th className={cn(TH, "w-[140px]")}>
+                                                        <SortableHeader sortKey="status"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                                    </th>
+                                                    <th className={cn(TH, "w-[140px]")}>
+                                                        <SortableHeader sortKey="payRate"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate</SortableHeader>
+                                                    </th>
+                                                    <th className={cn(TH, "w-[140px]")}>
+                                                        <SortableHeader sortKey="earnings"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earnings</SortableHeader>
+                                                    </th>
                                                     <th className={cn(TH, "w-[52px]")} />
                                                 </tr>
                                             </thead>
@@ -847,7 +873,7 @@ export default function PayrollInstructorDetailPage({
 
                                 {pageRows.length > 0 && (
                                     <Pagination
-                                        page={clamped} total={filteredRows.length} pageSize={pageSize}
+                                        page={clamped} total={sortedRows.length} pageSize={pageSize}
                                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                                     />
                                 )}

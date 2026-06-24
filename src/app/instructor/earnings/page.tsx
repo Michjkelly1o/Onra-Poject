@@ -35,10 +35,12 @@ import { instructor_profile } from "@/data/mock/instructor_profile";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
 import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel } from "@/lib/payroll-calc";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -106,13 +108,10 @@ const EMPTY_FILTER: FilterState = {
     categories: [],
 };
 
-/** Twelve category options from Figma 6616:334795 — fixed list so the
- *  filter panel always shows the same chips regardless of which
- *  categories the studio happens to have seeded. */
-const ALL_CATEGORIES = [
-    "Yoga", "Pilates", "HIIT", "Strength", "Crossfit", "Cycling",
-    "Boxing", "Dance", "Barre", "Martial Arts", "Meditation", "Recovery",
-];
+// Categories used to be a hardcoded 12-name list. They now come from the
+// live `classCategories` slice via the FilterSidePanel's `categories` prop
+// so any admin edit on /admin/categories reflects on the instructor side
+// in the same render cycle — no orphan options the studio doesn't have.
 
 /** Detect "user has actually constrained something" — the time inputs
  *  default to a full-day window so empty defaults aren't treated as a
@@ -135,6 +134,12 @@ export default function InstructorEarningsPage() {
     const classSchedules = useAppStore(s => s.classSchedules);
     const instructors    = useAppStore(s => s.instructors);
     const payRates       = useAppStore(s => s.payRates);
+    // Live category list — drives the Filter panel's Categories pills.
+    const classCategories = useAppStore(s => s.classCategories);
+    const categoryNames = useMemo(
+        () => classCategories.map(c => c.name).sort((a, b) => a.localeCompare(b)),
+        [classCategories],
+    );
     const showToast      = useAppStore(s => s.showToast);
 
     // Resolve current instructor + pay rate.
@@ -225,11 +230,26 @@ export default function InstructorEarningsPage() {
     // Reset to page 1 every time filters/search/period/pageSize change.
     useEffect(() => { setPage(1); }, [filters, search, period, pageSize]);
 
-    const totalRows = filteredRows.length;
+    // ── Sortable columns — Class name / Attendance (booked/capacity) /
+    //    Rating / Status / Pay rate / Earnings. ──
+    const STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<ClassSchedule>(filteredRows, {
+        name:       (a, b) => a.name.localeCompare(b.name),
+        attendance: (a, b) => (a.booked ?? 0) - (b.booked ?? 0),
+        rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
+        status:     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
+        // `defaultRateLabel(payRate)` is class-independent — every row
+        // shares the same label, so sorting by it is a stable no-op (kept
+        // here for header consistency).
+        payRate:    () => 0,
+        earnings:   (a, b) => earningsForClass(a, payRate) - earningsForClass(b, payRate),
+    });
+
+    const totalRows = sortedRows.length;
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
     const safePage = Math.min(page, totalPages);
     const pageStart = (safePage - 1) * pageSize;
-    const pagedRows = filteredRows.slice(pageStart, pageStart + pageSize);
+    const pagedRows = sortedRows.slice(pageStart, pageStart + pageSize);
 
     // ── Handlers ──
     function handleApplyFilters(next: FilterState) {
@@ -329,12 +349,24 @@ export default function InstructorEarningsPage() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className={cn(TH, "w-[280px]")}>Class name</th>
-                                    <th className={cn(TH, "w-[120px]")}>Attendance</th>
-                                    <th className={cn(TH, "w-[160px]")}>Rating</th>
-                                    <th className={cn(TH, "w-[140px]")}>Status</th>
-                                    <th className={cn(TH, "w-[140px]")}>Pay rate</th>
-                                    <th className={cn(TH, "w-[140px]")}>Earnings</th>
+                                    <th className={cn(TH, "w-[280px]")}>
+                                        <SortableHeader sortKey="name"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class name</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[120px]")}>
+                                        <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[160px]")}>
+                                        <SortableHeader sortKey="rating"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rating</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[140px]")}>
+                                        <SortableHeader sortKey="status"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[140px]")}>
+                                        <SortableHeader sortKey="payRate"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[140px]")}>
+                                        <SortableHeader sortKey="earnings"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earnings</SortableHeader>
+                                    </th>
                                     <th className={cn(TH, "w-[52px]")} />
                                 </tr>
                             </thead>
@@ -371,6 +403,7 @@ export default function InstructorEarningsPage() {
                 applied={filters}
                 onApply={handleApplyFilters}
                 onClear={handleClearFilters}
+                categories={categoryNames}
             />
         </div>
     );
@@ -556,8 +589,10 @@ interface FilterSidePanelProps {
     applied: FilterState;
     onApply: (next: FilterState) => void;
     onClear: () => void;
+    /** Live category-name list from the `classCategories` slice. */
+    categories: string[];
 }
-function FilterSidePanel({ open, onClose, applied, onApply, onClear }: FilterSidePanelProps) {
+function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories }: FilterSidePanelProps) {
     const [pending, setPending] = useState<FilterState>(applied);
 
     // Sync draft with parent state every time the panel re-opens so
@@ -573,8 +608,6 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear }: FilterSid
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
-
     function toggleCategory(c: string) {
         setPending(p => ({
             ...p,
@@ -585,9 +618,9 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear }: FilterSid
     }
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative bg-white w-[420px] h-full flex flex-col shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)]">
+        <SlidePanel open={open} onClose={onClose} width={420}
+            panelClassName="shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)]"
+        >
                 {/* Header — verbatim admin chrome
                     ([admin/schedule/page.tsx:556-561](src/app/admin/schedule/page.tsx#L556)). */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
@@ -672,7 +705,7 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear }: FilterSid
                         canonical multi-select pill style across admin). */}
                     <Section title="Categories">
                         <div className="flex flex-wrap gap-2">
-                            {ALL_CATEGORIES.map(cat => {
+                            {categories.map(cat => {
                                 const on = pending.categories.includes(cat);
                                 return (
                                     <button
@@ -716,8 +749,7 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear }: FilterSid
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 

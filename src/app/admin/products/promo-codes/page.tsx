@@ -27,6 +27,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, DEFAULT_BRANCH_ID, type PromoCode } from "@/lib/store";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -240,7 +241,6 @@ function FilterPanel({ open, applied, onClose, onApply }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     const hasAny = pending.statuses.length > 0 || !!pending.startDate || !!pending.endDate;
 
@@ -252,10 +252,8 @@ function FilterPanel({ open, applied, onClose, onApply }: {
     }
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={400}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
@@ -316,8 +314,7 @@ function FilterPanel({ open, applied, onClose, onApply }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 

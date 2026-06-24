@@ -47,6 +47,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { TaxRateModal } from "@/components/settings/TaxRateModal";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
 import { useAppStore, type TaxRate, type TaxRateStatus } from "@/lib/store";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -600,9 +601,16 @@ export default function TaxPage() {
             });
     }, [taxRates, statusFilter]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Tax rate sort — Name / Rate (numeric) / Status. ──
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<TaxRate>(filtered, {
+        name:   (a, b) => a.name.localeCompare(b.name),
+        rate:   (a, b) => a.ratePercentage - b.ratePercentage,
+        status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedRows = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // ─── Selection helpers ──────────────────────────────────────────────────
     const allChecked = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
@@ -893,9 +901,15 @@ export default function TaxPage() {
                                                     ariaLabel="Select all rows on this page"
                                                 />
                                             </th>
-                                            <th className={TH}>Tax name</th>
-                                            <th className={cn(TH, "w-[160px]")}>Tax rate</th>
-                                            <th className={cn(TH, "w-[140px]")}>Status</th>
+                                            <th className={TH}>
+                                                <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax name</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[160px]")}>
+                                                <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax rate</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[140px]")}>
+                                                <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                            </th>
                                             <th className={cn(TH, "w-[52px]")} />
                                         </tr>
                                     </thead>
@@ -949,7 +963,7 @@ export default function TaxPage() {
 
                     <div className="px-6 shrink-0">
                         <Pagination
-                            page={clampedPage} total={filtered.length} pageSize={pageSize}
+                            page={clampedPage} total={sortedRows.length} pageSize={pageSize}
                             onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                         />
                     </div>

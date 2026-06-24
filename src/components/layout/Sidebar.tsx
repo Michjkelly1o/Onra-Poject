@@ -41,9 +41,11 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Class templates", href: "/admin/class-types" },
             { label: "Schedule", href: "/admin/schedule" },
+            { label: "Services", href: "/admin/services" },
+            { label: "Categories", href: "/admin/categories" },
         ],
     },
-    { label: "Point of sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
+    { label: "POS", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
     {
         label: "Services & products", icon: ShoppingBag01, permission: "manage_products",
         children: [
@@ -64,9 +66,10 @@ const NAV_ITEMS: NavItemDef[] = [
     {
         label: "Staff", icon: Users01, permission: "manage_instructors",
         children: [
-            { label: "Staff & Permissions", href: "/admin/staff" },
-            { label: "Pay rate", href: "/admin/staff/pay-rate" },
-            { label: "Payroll", href: "/admin/compensation" },
+            { label: "Role & permissions", href: "/admin/staff/roles" },
+            { label: "Staff & shift",      href: "/admin/staff"       },
+            { label: "Pay rate",            href: "/admin/staff/pay-rate" },
+            { label: "Payroll",             href: "/admin/compensation"   },
         ],
     },
     {

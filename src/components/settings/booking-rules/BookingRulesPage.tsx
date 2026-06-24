@@ -5,127 +5,54 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Figma 4580:29847 (empty) + 4580:34127 (populated policies container) —
-// three stacked white cards:
+// two stacked white cards:
 //   1. Classes  — read-only summary (Bookings open / Bookings close /
 //      Auto-submit attendance / Waitlist enabled / Max waiting spots).
 //      Top-right "Customize" navigates to /settings/booking-rules/customize.
 //   2. Cancellation & no-show policies — Add new button + list of saved
 //      policies with edit + delete row actions. Empty state when none.
-//   3. Service categories — list w/ "Add new" CTA. Phase 3 wires the
-//      add/edit modal; Phase 2 still renders the empty state only.
 //
-// The Phase 2 delete confirm modal matches the canonical pattern (RED
-// destructive icon + variant) — clicking the trash icon opens the modal
-// instead of mutating directly.
+// ── Phase 4 module reshuffle ────────────────────────────────────────────
+// "Service categories" used to live here as the third card. It moved to
+// its own page at /admin/categories under the Classes sidebar group so
+// admins manage class taxonomy alongside Class templates / Schedule /
+// Services instead of buried inside Settings. The data layer is
+// unchanged — the new page reads the same `classCategories` slice and
+// calls the same mutators.
+//
+// The delete confirm modal stays here for the policy delete flow.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    Edit02, Plus, ShieldTick, Grid01, Pencil01, Trash04, XClose, Image01,
+    Edit02, Plus, ShieldTick, Pencil01, Trash04, XClose,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore } from "@/lib/store";
-import type { ClassesSettings, CancellationPolicy, ClassCategory } from "@/lib/store";
-import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
+import type { ClassesSettings, CancellationPolicy } from "@/lib/store";
 
 export default function BookingRulesPage() {
     const router          = useRouter();
     const classesSettings = useAppStore(s => s.classesSettings);
     const policies        = useAppStore(s => s.cancellationPolicies);
-    const categories      = useAppStore(s => s.classCategories);
-    const deletePolicy             = useAppStore(s => s.deleteCancellationPolicy);
-    const addCategory              = useAppStore(s => s.addClassCategory);
-    const updateCategory           = useAppStore(s => s.updateClassCategory);
-    const deleteCategory           = useAppStore(s => s.deleteClassCategory);
-    const canDeleteClassCategoryFn = useAppStore(s => s.canDeleteClassCategory);
-    const showToast                = useAppStore(s => s.showToast);
+    const deletePolicy    = useAppStore(s => s.deleteCancellationPolicy);
+    const showToast       = useAppStore(s => s.showToast);
 
-    // Delete-confirm state — `kind` discriminates so one modal serves
-    // both policy and category rows without two parallel state slots.
-    const [pendingDelete, setPendingDelete] = useState<
-        | { kind: "policy";   policy:   CancellationPolicy }
-        | { kind: "category"; category: ClassCategory }
-        | null
-    >(null);
-
-    // Category modal — null = closed, "new" = create, ClassCategory = edit.
-    const [categoryModal, setCategoryModal] = useState<"new" | ClassCategory | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<CancellationPolicy | null>(null);
 
     function handleCustomize()             { router.push("/settings/booking-rules/customize"); }
     function handleAddPolicy()             { router.push("/settings/booking-rules/policies/new"); }
     function handleEditPolicy(id: string)  { router.push(`/settings/booking-rules/policies/${id}/edit`); }
 
-    function handleAddCategory()           { setCategoryModal("new"); }
-    function handleEditCategory(c: ClassCategory) { setCategoryModal(c); }
-
-    /** Category-delete request — refuses with a friendly toast when the
-     *  category is still referenced by any class template (Phase 4 cross-
-     *  module guard via `canDeleteClassCategory`). Otherwise opens the
-     *  canonical destructive confirm modal. */
-    function requestDeleteCategory(c: ClassCategory) {
-        if (!canDeleteClassCategoryFn(c.id)) {
-            showToast(
-                "Can’t delete this category",
-                `"${c.name}" is in use by one or more class templates. Reassign them before deleting.`,
-                "error", "slash",
-            );
-            return;
-        }
-        setPendingDelete({ kind: "category", category: c });
-    }
-
-    function handleCategorySubmit({ name, image_url }: { name: string; image_url: string }) {
-        if (categoryModal === "new") {
-            const newCategory: ClassCategory = {
-                id: `cat_new_${Date.now()}`,
-                name,
-                color_hex: "#f9fafb",
-                status: "active",
-                image_url: image_url || undefined,
-            };
-            addCategory(newCategory);
-            showToast(
-                "Service category created",
-                `"${name}" has been added to your service categories.`,
-                "success", "check",
-            );
-        } else if (categoryModal) {
-            // After the "new" check above, TS narrows to ClassCategory.
-            updateCategory(categoryModal.id, {
-                name,
-                image_url: image_url || undefined,
-            });
-            showToast(
-                "Service category updated",
-                `"${name}" has been saved.`,
-                "success", "check",
-            );
-        }
-        setCategoryModal(null);
-    }
-
     function confirmDelete() {
         if (!pendingDelete) return;
-        if (pendingDelete.kind === "policy") {
-            const name = pendingDelete.policy.name;
-            deletePolicy(pendingDelete.policy.id);
-            showToast("Policy deleted", `"${name}" has been removed.`, "success", "trash");
-        } else {
-            const name = pendingDelete.category.name;
-            deleteCategory(pendingDelete.category.id);
-            showToast("Service category deleted", `"${name}" has been removed.`, "success", "trash");
-        }
+        const name = pendingDelete.name;
+        deletePolicy(pendingDelete.id);
+        showToast("Policy deleted", `"${name}" has been removed.`, "success", "trash");
         setPendingDelete(null);
     }
-
-    const pendingDeleteName = pendingDelete
-        ? (pendingDelete.kind === "policy" ? pendingDelete.policy.name : pendingDelete.category.name)
-        : "";
-    const pendingDeleteCopy = pendingDelete?.kind === "policy"
-        ? "This policy will be removed from your booking rules. Existing bookings that referenced it keep their record. This can’t be undone."
-        : "This service category will be removed from your booking rules. Class templates and schedules that referenced it will need to be reassigned. This can’t be undone.";
 
     return (
         <div className="flex flex-col gap-5 w-full">
@@ -135,28 +62,13 @@ export default function BookingRulesPage() {
                 policies={policies}
                 onAdd={handleAddPolicy}
                 onEdit={handleEditPolicy}
-                onDelete={p => setPendingDelete({ kind: "policy", policy: p })}
+                onDelete={p => setPendingDelete(p)}
             />
-
-            <CategoriesCard
-                categories={categories}
-                onAdd={handleAddCategory}
-                onEdit={handleEditCategory}
-                onDelete={requestDeleteCategory}
-            />
-
-            {categoryModal && (
-                <CategoryModal
-                    existing={categoryModal === "new" ? undefined : categoryModal}
-                    onClose={() => setCategoryModal(null)}
-                    onSubmit={handleCategorySubmit}
-                />
-            )}
 
             {pendingDelete && (
                 <DeleteConfirmModal
-                    name={pendingDeleteName}
-                    description={pendingDeleteCopy}
+                    name={pendingDelete.name}
+                    description="This policy will be removed from your booking rules. Existing bookings that referenced it keep their record. This can’t be undone."
                     onCancel={() => setPendingDelete(null)}
                     onConfirm={confirmDelete}
                 />
@@ -339,111 +251,11 @@ function PolicyRow({ policy, onEdit, onDelete }: {
     );
 }
 
-// ─── Card 3 — Service categories (Phase 3 wired) ────────────────────────────
-
-function CategoriesCard({ categories, onAdd, onEdit, onDelete }: {
-    categories: ClassCategory[];
-    onAdd: () => void;
-    onEdit: (c: ClassCategory) => void;
-    onDelete: (c: ClassCategory) => void;
-}) {
-    const isEmpty = categories.length === 0;
-    return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 w-full">
-            <div className="flex items-center gap-6 w-full">
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-6">
-                        Service categories
-                    </p>
-                    <p className="text-[14px] text-[#475467] leading-5">
-                        Manage how your services are categorized.
-                    </p>
-                </div>
-                <Button
-                    variant="primary"
-                    size="md"
-                    leftIcon={<Plus className="w-5 h-5" />}
-                    onClick={onAdd}
-                >
-                    Add new
-                </Button>
-            </div>
-
-            {isEmpty ? (
-                <div className="relative flex-1" style={{ minHeight: 160 }}>
-                    <EmptyState
-                        title="No categories found"
-                        subtitle="You haven’t created any category yet."
-                        icon={Grid01}
-                    />
-                </div>
-            ) : (
-                <div className="flex flex-col gap-4 w-full">
-                    {categories.map(c => (
-                        <CategoryRow
-                            key={c.id}
-                            category={c}
-                            onEdit={() => onEdit(c)}
-                            onDelete={() => onDelete(c)}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function CategoryRow({ category, onEdit, onDelete }: {
-    category: ClassCategory;
-    onEdit: () => void;
-    onDelete: () => void;
-}) {
-    return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 h-[72px] flex items-center gap-3 w-full">
-            <CategoryRowAvatar src={category.image_url} />
-            <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[#344054] leading-5 truncate">
-                    {category.name}
-                </p>
-            </div>
-            <button
-                type="button"
-                onClick={onEdit}
-                aria-label={`Edit ${category.name}`}
-                className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors text-[#667085]"
-            >
-                <Pencil01 className="w-5 h-5" />
-            </button>
-            <button
-                type="button"
-                onClick={onDelete}
-                aria-label={`Delete ${category.name}`}
-                className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#fef3f2] transition-colors text-[#d92d20]"
-            >
-                <Trash04 className="w-5 h-5" />
-            </button>
-        </div>
-    );
-}
-
-/** 40×40 row avatar — uploaded image OR gray Image01 placeholder. */
-function CategoryRowAvatar({ src }: { src?: string }) {
-    return (
-        <div className="relative w-10 h-10 rounded-full bg-[#f2f4f7] shrink-0 overflow-hidden flex items-center justify-center shadow-[0px_1.235px_2.469px_-1.111px_rgba(16,24,40,0.1),0px_0.617px_1.235px_-1.111px_rgba(16,24,40,0.06)]">
-            {src
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={src} alt="" className="w-full h-full object-cover rounded-full" />
-                : <Image01 className="w-5 h-5 text-[#475467]" />
-            }
-            <div className="absolute inset-0 rounded-full border-1 border-[rgba(0,0,0,0.08)] pointer-events-none" />
-        </div>
-    );
-}
-
 // ─── Delete confirm modal (canonical destructive pattern) ───────────────────
 
 /** Generic delete-confirm — `description` is the only thing that changes
- *  between policy and category callers, so one component serves both. */
+ *  between callers (currently only the policy delete flow lives here;
+ *  /admin/categories carries its own copy). */
 function DeleteConfirmModal({ name, description, onCancel, onConfirm }: {
     name: string;
     description: string;

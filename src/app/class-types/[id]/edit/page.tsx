@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import {
-    XClose, UploadCloud02, Grid01, User01,
+    XClose, UploadCloud02, Grid01,
     ClockFastForward, Users01,
     ChevronDown, ChevronUp, Check, Lightbulb02, FilterLines,
 } from "@untitledui/icons";
@@ -19,9 +19,9 @@ import { NumericStringInput } from "@/components/ui/NumericInput";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type LocationType = "Group" | "Private";
+// Class type was removed (class templates are always Group; Private goes
+// via the Services module). The legacy LocationType alias is gone.
 
-const CLASS_TYPES: LocationType[] = ["Group", "Private"];
 // Categories are read from the LIVE `classCategories` store slice inside
 // the page component (Phase 4) so adds / edits / deletes performed in
 // Booking Rules show up here without a refresh.
@@ -173,7 +173,7 @@ function ImageUploadArea({ preview, onChange }: {
 
 interface PreviewData {
     name: string; description: string; category: string;
-    classType: string; durationMin: string; capacity: string;
+    durationMin: string; capacity: string;
     coverPreview: string | null;
 }
 
@@ -195,15 +195,14 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
                         {data.description.trim() || "This is the default description of the class template."}
                     </p>
                 </div>
+                {/* Class type row removed — class templates always represent
+                    Group classes; Private services live in the Services module. */}
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0"><Grid01 className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085] truncate">{data.category || "Category"}</span></div>
-                        <div className="flex items-center gap-1 flex-1 min-w-0"><User01 className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085] truncate">{data.classType || "Class type"}</span></div>
-                    </div>
-                    <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0"><ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085]">{data.durationMin ? `${data.durationMin} min` : "Duration"}</span></div>
-                        <div className="flex items-center gap-1 flex-1 min-w-0"><Users01 className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085]">{data.capacity ? `${data.capacity} max` : "Capacity"}</span></div>
                     </div>
+                    <div className="flex items-center gap-1 flex-1 min-w-0"><Users01 className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085]">{data.capacity ? `${data.capacity} max` : "Capacity"}</span></div>
                 </div>
             </div>
         </div>
@@ -225,7 +224,7 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 interface Step1Data {
-    name: string; description: string; classType: string; category: string;
+    name: string; description: string; category: string;
     durationMin: string; capacity: string; coverPreview: string | null; coverFile: File | null;
 }
 
@@ -235,7 +234,7 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions }: {
      *  re-subscribe to the store (Phase 4 wiring). */
     categoryOptions: string[];
 }) {
-    const canContinue = data.name.trim() && data.description.trim() && data.classType && data.category && data.durationMin && data.capacity;
+    const canContinue = data.name.trim() && data.description.trim() && data.category && data.durationMin && data.capacity;
     return (
         <div className="bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
@@ -251,16 +250,11 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions }: {
                         <textarea rows={3} value={data.description} onChange={e => onChange({ description: e.target.value })} placeholder="Enter class description..."
                             className="w-full px-[14px] py-[10px] border border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none" />
                     </FormField>
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField label="Class type">
-                            <SelectInput placeholder="Select class type" value={data.classType} onChange={v => onChange({ classType: v })}
-                                options={CLASS_TYPES.map(o => ({ value: o, label: o }))} width="w-full" />
-                        </FormField>
-                        <FormField label="Class category">
-                            <SelectInput placeholder="Select class category" value={data.category} onChange={v => onChange({ category: v })}
-                                options={categoryOptions.map(o => ({ value: o, label: o }))} width="w-full" />
-                        </FormField>
-                    </div>
+                    {/* Class category — class type field removed (always Group). */}
+                    <FormField label="Class category">
+                        <SelectInput placeholder="Select class category" value={data.category} onChange={v => onChange({ category: v })}
+                            options={categoryOptions.map(o => ({ value: o, label: o }))} width="w-full" />
+                    </FormField>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField label="Duration" hint="in minutes">
                             <NumericStringInput value={data.durationMin} onChange={v => onChange({ durationMin: v })} min={0} suffix="min" />
@@ -400,7 +394,6 @@ export default function EditClassTemplatePage() {
     const [step1, setStep1] = useState<Step1Data>({
         name:         template?.name         ?? "",
         description:  template?.description  ?? "",
-        classType:    template?.locationType ?? "",
         category:     template?.category     ?? "",
         durationMin:  template ? String(template.durationMin) : "",
         capacity:     template ? String(template.capacity)    : "",
@@ -425,7 +418,10 @@ export default function EditClassTemplatePage() {
         updateClassTemplate(id, {
             name:                   step1.name,
             description:            step1.description,
-            locationType:           step1.classType,
+            // Class type was removed from the edit flow — keep the
+            // persisted locationType as "Group" since class templates
+            // always model group classes. Private goes via Services.
+            locationType:           "Group",
             categoryId:             cat?.id ?? template.categoryId,
             category:               step1.category,
             coverColor:             cat?.color_hex ?? template.coverColor,
@@ -452,7 +448,6 @@ export default function EditClassTemplatePage() {
         name:         step1.name,
         description:  step1.description,
         category:     step1.category,
-        classType:    step1.classType,
         durationMin:  step1.durationMin,
         capacity:     step1.capacity,
         coverPreview: step1.coverPreview,

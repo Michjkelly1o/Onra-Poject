@@ -112,6 +112,8 @@ function auditIcon(targetType: AuditLogEntry["targetType"]): ActivityIcon {
         case "customer_plan":
         case "account":        return Users01;
         case "class_template": return Edit05;
+        case "service":        return Edit05;
+        case "appointment":    return CalendarCheck01;
         case "class_schedule": return CalendarCheck01;
         case "membership":
         case "package":
@@ -121,6 +123,11 @@ function auditIcon(targetType: AuditLogEntry["targetType"]): ActivityIcon {
         case "room":           return Building01;
         case "marketing":      return Announcement01;
         case "staff":          return UserCheck01;
+        // Staff & shift module (Phase 4F) — shift CRUD + blocked time CRUD
+        // both surface here via the audit feed. Reuse the calendar glyph
+        // since both events affect the staff schedule grid.
+        case "shift":
+        case "blocked_time":   return CalendarCheck01;
         case "pay_rate":
         case "payroll":        return CoinsHand;
         case "rating":         return Star01;

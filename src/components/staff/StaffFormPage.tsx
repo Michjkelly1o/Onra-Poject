@@ -21,11 +21,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, User01, Upload01, MarkerPin01, Lightbulb02,
-    Mail01, Phone, UserSquare, CoinsHand, Calendar,
+    Mail01, Phone, UserSquare, CoinsHand, Calendar, Lock01,
     Check, ChevronDown, SearchMd,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
+import { cn } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
 import {
     useAppStore,
@@ -45,6 +46,19 @@ interface FormValue {
     imageUrl?: string;
     roleId: string;
     payRateId: string;
+    // ── Instructor-only (Figma 7471:170327) ─────────────────────────────────
+    /** Short introduction paragraph — drives the customer-facing instructor
+     *  card + the Personal information section on the staff detail page. */
+    shortIntro: string;
+    /** Years of experience as a single integer; "" until typed. */
+    workingExperienceYears: string;
+    /** Assigned shift id (optional). Empty = no shift assigned yet. */
+    shiftId: string;
+    /** Categories the instructor is qualified to teach. Drives the
+     *  cross-module instructor gating — class template / schedule /
+     *  service / appointment dropdowns disable instructors who don't
+     *  hold the picked category. */
+    categoryIds: string[];
 }
 
 function emptyForm(): FormValue {
@@ -53,6 +67,8 @@ function emptyForm(): FormValue {
         phone: "", phoneCountry: PHONE_COUNTRIES[0],
         imageUrl: undefined,
         roleId: "", payRateId: "",
+        shortIntro: "", workingExperienceYears: "",
+        shiftId: "", categoryIds: [],
     };
 }
 
@@ -68,6 +84,10 @@ function formFromStaff(s: Staff): FormValue {
         imageUrl: s.imageUrl,
         roleId: s.roleId,
         payRateId: s.payRateId ?? "",
+        shortIntro: s.shortIntro ?? "",
+        workingExperienceYears: s.workingExperienceYears != null ? String(s.workingExperienceYears) : "",
+        shiftId: s.shiftId ?? "",
+        categoryIds: s.categoryIds ?? [],
     };
 }
 
@@ -193,6 +213,94 @@ const NEUTRAL_AVATAR_BG = "#f2f4f7";
 
 // ─── Form atoms ────────────────────────────────────────────────────────────
 
+// ─── Multi-select dropdown — used by the Categories field ──────────────────
+//
+// Behaviour mirrors `SelectInput` chrome (left chevron, focus ring, sage
+// hover) but the trigger renders SELECTED ITEMS AS PILLS instead of one
+// label, and the panel rows are checkable. Closes on outside click + Esc.
+
+function MultiCategoryDropdown({ options, selectedIds, onChange }: {
+    options: { id: string; name: string }[];
+    selectedIds: string[];
+    onChange: (next: string[]) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function clickAway(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        function escape(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+        document.addEventListener("mousedown", clickAway);
+        document.addEventListener("keydown", escape);
+        return () => {
+            document.removeEventListener("mousedown", clickAway);
+            document.removeEventListener("keydown", escape);
+        };
+    }, []);
+
+    function toggle(id: string) {
+        onChange(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
+    }
+    function remove(id: string) { onChange(selectedIds.filter(x => x !== id)); }
+
+    const selectedOptions = selectedIds
+        .map(id => options.find(o => o.id === id))
+        .filter((o): o is { id: string; name: string } => !!o);
+
+    return (
+        <div ref={ref} className="relative w-full">
+            <button type="button" onClick={() => setOpen(p => !p)}
+                className={cn(
+                    "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#aad4bd]",
+                )}>
+                <div className="flex-1 flex flex-wrap items-center gap-1.5">
+                    {selectedOptions.length === 0 ? (
+                        <span className="text-[14px] text-[#667085]">Select categories</span>
+                    ) : (
+                        selectedOptions.map(o => (
+                            <span key={o.id}
+                                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
+                                {o.name}
+                                <span role="button" tabIndex={0} aria-label={`Remove ${o.name}`}
+                                    onClick={e => { e.stopPropagation(); remove(o.id); }}
+                                    onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); remove(o.id); } }}
+                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] hover:bg-[#f2f4f7] transition-colors text-[16px] leading-none cursor-pointer">×</span>
+                            </span>
+                        ))
+                    )}
+                </div>
+                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && (
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 max-h-[260px] overflow-y-auto">
+                    {options.length === 0 ? (
+                        <p className="px-4 py-3 text-[14px] text-[#667085]">No categories available.</p>
+                    ) : (
+                        options.map(opt => {
+                            const selected = selectedIds.includes(opt.id);
+                            return (
+                                <button key={opt.id} type="button" onClick={() => toggle(opt.id)}
+                                    className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
+                                    <span className={cn(
+                                        "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
+                                        selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                    )}>
+                                        {selected && <Check className="w-3 h-3 text-white" />}
+                                    </span>
+                                    {opt.name}
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function FieldLabel({ children }: { children: React.ReactNode }) {
     return <p className="text-[14px] font-medium text-[#344054] leading-[20px]">{children}</p>;
 }
@@ -283,10 +391,7 @@ function StaffPreview({ form, roleName, payRateName, branchLabel, joinedLabel }:
                         <div className="flex items-center gap-2"><Calendar className="w-4 h-4 shrink-0" />{joinedLabel || "Joined date"}</div>
                         <div className="flex items-center gap-2"><Mail01 className="w-4 h-4 shrink-0" />{form.email.trim() || "Email"}</div>
                         <div className="flex items-center gap-2">
-                            <span className="w-4 h-4 shrink-0 inline-flex items-center justify-center text-[#667085]">
-                                {/* Use a key icon to indicate the temp password row. */}
-                                <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M10.5 6.5a2.5 2.5 0 1 0-3.999 2.001L3 12v1h1v1h1v1h2v-1.5L9.499 11.5A2.5 2.5 0 0 0 10.5 6.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
-                            </span>
+                            <Lock01 className="w-4 h-4 shrink-0" />
                             <span className="font-mono tracking-wider">{passwordMask || "Temporary password"}</span>
                         </div>
                         <div className="flex items-center gap-2"><Phone className="w-4 h-4 shrink-0" />{phoneDisplay}</div>
@@ -332,6 +437,8 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     const allStaff    = useAppStore(s => s.staff);
     const allPayRates = useAppStore(s => s.payRates);
     const branches    = useAppStore(s => s.branches);
+    const shifts      = useAppStore(s => s.shifts);
+    const classCategories = useAppStore(s => s.classCategories);
     const addStaff    = useAppStore(s => s.addStaff);
     const updateStaff = useAppStore(s => s.updateStaff);
     const showToast   = useAppStore(s => s.showToast);
@@ -418,6 +525,15 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                 tempPassword: form.tempPassword,
                 payRateId: form.payRateId || undefined,
                 joinedDate,
+                // Instructor-only — guarded behind isInstructor so non-
+                // instructor rows don't pick up empty optional fields.
+                ...(isInstructor ? {
+                    shortIntro: form.shortIntro.trim() || undefined,
+                    workingExperienceYears: form.workingExperienceYears
+                        ? Number(form.workingExperienceYears) : undefined,
+                    shiftId: form.shiftId || undefined,
+                    categoryIds: form.categoryIds.length > 0 ? form.categoryIds : undefined,
+                } : {}),
             });
             showToast("Invitation sent", `Invite sent to ${form.email.trim().toLowerCase()}.`, "success", "check");
             router.push(returnTo);
@@ -437,6 +553,15 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             imageUrl: form.imageUrl,
             initials,
             payRateId: form.payRateId || undefined,
+            // Same guard as create — instructor-specific fields only
+            // patched when the row is an instructor.
+            ...(isInstructor ? {
+                shortIntro: form.shortIntro.trim() || undefined,
+                workingExperienceYears: form.workingExperienceYears
+                    ? Number(form.workingExperienceYears) : undefined,
+                shiftId: form.shiftId || undefined,
+                categoryIds: form.categoryIds.length > 0 ? form.categoryIds : undefined,
+            } : {}),
         });
         showToast("Staff updated", `${fullName} details saved.`, "success", "check");
         router.push(returnTo);
@@ -548,6 +673,51 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 </>
                             )}
 
+                            {/* Instructor-only fields (Figma 7471:170327) —
+                                Short introduction, Working experience, Assign
+                                shift. Categories live below the pay rate. */}
+                            {isInstructor && (
+                                <>
+                                    <div className="flex flex-col gap-[6px]">
+                                        <FieldLabel>Short introduction</FieldLabel>
+                                        <textarea
+                                            value={form.shortIntro}
+                                            onChange={e => set({ shortIntro: e.target.value })}
+                                            placeholder="Briefly introduce this instructor — surfaces on the customer-facing profile."
+                                            rows={4}
+                                            className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none"
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col gap-[6px]">
+                                        <FieldLabel>Working experience</FieldLabel>
+                                        <input
+                                            type="number"
+                                            value={form.workingExperienceYears}
+                                            onChange={e => set({ workingExperienceYears: e.target.value.replace(/[^\d]/g, "") })}
+                                            placeholder="0"
+                                            min={0}
+                                            className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                        />
+                                        <p className="text-[14px] text-[#475467]">in year</p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-[6px]">
+                                        <FieldLabel>Assign shift (optional)</FieldLabel>
+                                        <SelectInput
+                                            placeholder="Select shift"
+                                            options={[
+                                                { value: "", label: "No shift assigned" },
+                                                ...shifts.map(sh => ({ value: sh.id, label: sh.name })),
+                                            ]}
+                                            value={form.shiftId}
+                                            onChange={v => set({ shiftId: v })}
+                                            width="w-full"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             {/* Default pay rate — always visible per Figma 6236-395249.
                                 For non-instructor roles it stays optional (the
                                 field can be left empty); instructors get a
@@ -562,6 +732,22 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                     width="w-full"
                                 />
                             </div>
+
+                            {/* Categories — instructor-only multi-select
+                                dropdown. Drives the cross-module instructor
+                                gating (templates / schedules / services /
+                                appts). 1 instructor → many categories. */}
+                            {isInstructor && (
+                                <div className="flex flex-col gap-[6px]">
+                                    <FieldLabel>Categories</FieldLabel>
+                                    <MultiCategoryDropdown
+                                        options={classCategories.filter(c => c.status === "active").map(c => ({ id: c.id, name: c.name }))}
+                                        selectedIds={form.categoryIds}
+                                        onChange={ids => set({ categoryIds: ids })}
+                                    />
+                                    <p className="text-[14px] text-[#475467]">Instructors can only be assigned to classes whose category they hold.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -24,14 +24,19 @@
 // ── Current state ──
 //   ENABLED:  every admin-side module — Dashboard, Class template, Class
 //   schedule, POS, Membership & Package, Gift Cards, Promo, Marketing,
-//   Customer, Insights, Pay rate, Payroll, Staff & Permissions, Tax,
-//   Agreements, Payments, Integrations, Referral, Reports, Notifications,
-//   Customer notifications, Booking rules, Business & Locations, Account
-//   settings, Branding.
-//   DISABLED: the entire Instructor experience — `/instructor/*` plus the
-//   two full-screen detail pages `/class/[id]` and `/earnings/[id]` that
-//   live outside the `/instructor/*` folder so they can render edge-to-
-//   edge without the layout chrome.
+//   Customer, Services (incl. appointments), Insights, Pay rate, Payroll,
+//   Staff & Permissions (Roles + Staff + Shift management + Blocked time),
+//   Tax, Agreements, Payments, Integrations, Referral, Reports,
+//   Notifications, Customer notifications, Booking rules, Business &
+//   Locations, Account settings, Branding.
+//
+//   Most of the Instructor experience is ENABLED for the client demo —
+//   Dashboard, Schedule, Earnings, and the takeover detail pages
+//   (`/class/[id]` + `/earnings/[id]`) are reachable.
+//
+//   DISABLED on the Instructor side ONLY: Notifications + Account /
+//   Profile. Sidebar menu items stay visible; clicking either route
+//   404s. Re-enable by removing the matching entry from the array.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -54,6 +59,20 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/customers",              // list view
     //"/customers",                    // create / detail / edit / add-credit
 
+    // ── Services module ── (ENABLED — pushed)
+    // Service templates that spawn appointment bookings + the per-appointment
+    // detail page. Appointments live OUTSIDE `/services/` so the detail page
+    // can render edge-to-edge — listed separately below.
+    //"/admin/services",               // list view (Services + Open sessions tabs)
+    //"/services",                     // create / detail / edit
+    //"/appointments",                 // appointment detail (full-screen takeover)
+
+    // ── Service categories module ── (ENABLED — pushed)
+    // Moved out of Booking Rules into its own page under the Classes nav
+    // group. Same `classCategories` slice + same mutators as before — only
+    // the location changed.
+    //"/admin/categories",             // list view + create/edit/delete
+
     // ── Insights module ── (ENABLED — pushed)
     //"/admin/insights",               // tabs: Finance / Memberships / Classes
 
@@ -72,9 +91,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Staff & Permissions module ── (ENABLED — pushing today)
     // Exact-match only on the list — otherwise this prefix would also catch
     // `/admin/staff/pay-rate`, which we want LIVE.
-    //"=/admin/staff",                 // list view (Roles + Staff tabs)
+    //"=/admin/staff",                 // list view (Roles + Staff + Shift management + Blocked time tabs)
     //"/staff/roles",                  // role create / detail / edit / edit-permissions
     //"/staff/members",                // staff create / detail / edit
+    "/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab)
+    "/staff/blocked-time",           // blocked-time create / edit (Blocked time sub-tab)
 
     // ── Notifications module ── (ENABLED — admin)
     //"/admin/notifications",          // full page (All / Bookings / Payments tabs)
@@ -121,18 +142,31 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/settings/branding",      // brand identity + customer portal config
     //"/settings/branding",            // edit sub-pages (portal / design)
 
-    // ── Instructor experience ── (DISABLED — not in this push)
+    // ── Instructor experience ── (ENABLED with two exceptions)
     // Standalone role-scoped surface (separate sidebar, separate header
-    // titles, audience-filtered notification feed).
+    // titles, audience-filtered notification feed). The dashboard,
+    // schedule, earnings, and the two full-screen takeover detail pages
+    // (`/class/[id]` + `/earnings/[id]`) are all live for the client
+    // demo. Only Notifications and Account/Profile are 404'd below —
+    // the rest of the instructor menu stays usable.
     //
-    // NB: the two FULL-SCREEN takeover detail pages (`/class/[id]` +
-    // `/earnings/[id]`) live OUTSIDE the `/instructor/*` folder so they
-    // can render edge-to-edge without the layout chrome. That means the
-    // single `/instructor` flag DOESN'T cover them — they're listed
-    // separately below so the entire instructor side is hidden in one go.
-    "/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
-    "/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
+    // NB: the takeover detail pages live OUTSIDE the `/instructor/*`
+    // folder so they can render edge-to-edge without the layout chrome.
+    // A single `/instructor` flag wouldn't cover them — they'd have to
+    // be listed separately if we ever needed to hide the entire side
+    // again. Left commented here for documentation:
+    //"/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
+    //"/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
     "/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page
+
+    // ── Instructor → Notifications module ── (DISABLED — not for client demo)
+    // The sidebar menu item stays visible per the file convention; the
+    // route 404s when clicked. Re-enable by commenting the line below.
+    "/instructor/notifications",     // instructor notification feed
+
+    // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
+    // Same convention: menu item visible, route 404s.
+    "/instructor/account",           // instructor account / profile page
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning

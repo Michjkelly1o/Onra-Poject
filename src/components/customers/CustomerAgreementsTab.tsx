@@ -30,6 +30,8 @@ import {
     type CustomerAgreement, type AgreementVersion, type Branch,
 } from "@/lib/store";
 import { AgreementContentModal } from "@/components/settings/AgreementContentModal";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -114,7 +116,6 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    if (!open) return null;
 
     function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; }
     const hasAny =
@@ -124,10 +125,8 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
     const STATUSES: AgreementStatus[] = ["unsigned", "signed"];
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={400}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -175,8 +174,7 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
                     <Button variant="primary" size="md" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -371,9 +369,19 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
         });
     }, [rows, search, applied]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Agreements sort — Version (name) / Branch / Class template /
+    //    Status / Signed date. ──
+    const { sorted: sortedAgreements, sortKey: agreementSortKey, sortDir: agreementSortDir, toggle: toggleAgreementSort } = useSort<CustomerAgreement>(filtered, {
+        version:  (a, b) => liveAgreementName(a).localeCompare(liveAgreementName(b)),
+        branch:   (a, b) => branchName(a.branchId).localeCompare(branchName(b.branchId)),
+        template: (a, b) => liveClassTemplateNames(a).localeCompare(liveClassTemplateNames(b)),
+        status:   (a, b) => a.status.localeCompare(b.status),
+        signed:   (a, b) => (a.signedAtISO ?? "").localeCompare(b.signedAtISO ?? ""),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedAgreements.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const paged = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const paged = sortedAgreements.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     const hasActiveFilter =
         applied.statuses.length > 0 || applied.branchId !== "" ||
@@ -432,11 +440,21 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className={TH}>Version</th>
-                                    <th className={cn(TH, "w-[200px]")}>Branch location</th>
-                                    <th className={cn(TH, "w-[240px]")}>Class template</th>
-                                    <th className={cn(TH, "w-[130px]")}>Status</th>
-                                    <th className={cn(TH, "w-[190px]")}>Signed date</th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="version"  currentSort={agreementSortKey} dir={agreementSortDir} onSort={toggleAgreementSort}>Version</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[200px]")}>
+                                        <SortableHeader sortKey="branch"   currentSort={agreementSortKey} dir={agreementSortDir} onSort={toggleAgreementSort}>Branch location</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[240px]")}>
+                                        <SortableHeader sortKey="template" currentSort={agreementSortKey} dir={agreementSortDir} onSort={toggleAgreementSort}>Class template</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[130px]")}>
+                                        <SortableHeader sortKey="status"   currentSort={agreementSortKey} dir={agreementSortDir} onSort={toggleAgreementSort}>Status</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[190px]")}>
+                                        <SortableHeader sortKey="signed"   currentSort={agreementSortKey} dir={agreementSortDir} onSort={toggleAgreementSort}>Signed date</SortableHeader>
+                                    </th>
                                     <th className={cn(TH, "w-[52px]")} />
                                 </tr>
                             </thead>
@@ -468,7 +486,7 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
             </div>
 
             <div className="px-6 shrink-0">
-                <Pagination page={clampedPage} total={filtered.length} pageSize={pageSize}
+                <Pagination page={clampedPage} total={sortedAgreements.length} pageSize={pageSize}
                     onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
             </div>
 

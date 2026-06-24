@@ -27,6 +27,8 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore } from "@/lib/store";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,9 +37,24 @@ type BookingDisplayStatus =
 type BookingFilterStatus = "Ongoing" | "Upcoming" | "Completed" | "Cancelled" | "No show";
 type TimeOfDay = "Morning" | "Afternoon" | "Evening";
 
+/** Unified booking row that covers BOTH a regular class booking
+ *  (`kind: "Group"`) AND an appointment booking (`kind: "Appointment"`).
+ *  Appointments are the customer's open-session or private bookings —
+ *  per the latest brief they sit alongside class history rather than
+ *  inside a separate tab. The `kind` field drives:
+ *    • The "Group" / "Appointment" chip on the upcoming card.
+ *    • The "Type" column in the history table.
+ *    • Click-through routing: classes → `/schedule/[id]`, appointments
+ *      → `/appointments/[id]`. */
+type BookingKind = "Group" | "Appointment";
 interface BookingRow {
     bookingId: string;
-    classScheduleId: string;
+    /** "Group" → normal class schedule. "Appointment" → open session or
+     *  private appointment service. */
+    kind: BookingKind;
+    /** Route target id — class schedule id for classes, appointment id
+     *  for appointments. Click-through uses this + `kind` to dispatch. */
+    routeId: string;
     className: string;
     coverImage?: string;
     instructorName: string;
@@ -54,6 +71,10 @@ interface BookingRow {
 }
 
 interface BookingFilter {
+    /** Type filter (Figma reference — matches the class schedule filter
+     *  panel's segmented Group/Appointments toggle). Single-select; "" =
+     *  no filter applied (show both). */
+    type: "" | BookingKind;
     dateStart: string;
     dateEnd: string;
     statuses: BookingFilterStatus[];
@@ -62,8 +83,9 @@ interface BookingFilter {
     className: string;
 }
 const EMPTY_BOOKING_FILTER: BookingFilter = {
-    dateStart: "", dateEnd: "", statuses: [], times: [], instructor: "", className: "",
+    type: "", dateStart: "", dateEnd: "", statuses: [], times: [], instructor: "", className: "",
 };
+const ALL_BOOKING_KINDS: BookingKind[] = ["Group", "Appointment"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -130,10 +152,10 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    if (!open) return null;
 
     function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; }
     const hasAny =
+        !!pending.type ||
         pending.statuses.length > 0 || pending.times.length > 0 ||
         pending.dateStart !== "" || pending.dateEnd !== "" ||
         pending.instructor !== "" || pending.className !== "";
@@ -142,16 +164,38 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
     const TIMES: TimeOfDay[] = ["Morning", "Afternoon", "Evening"];
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={400}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* Type — single-select 2-button toggle (Group /
+                        Appointment). Mirrors the class schedule filter
+                        panel pattern. Click the active option to clear. */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Type</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {ALL_BOOKING_KINDS.map(k => {
+                                const selected = pending.type === k;
+                                return (
+                                    <button key={k} type="button"
+                                        onClick={() => setPending(p => ({ ...p, type: selected ? "" : k }))}
+                                        className={cn(
+                                            "h-10 px-3 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
+                                            selected
+                                                ? "bg-[#f5fffa] border-2 border-[#7ba08c] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                                : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                        )}>
+                                        {k}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Date range</p>
@@ -211,8 +255,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                     <Button variant="primary" size="md" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -313,8 +356,10 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 export function CustomerBookingsTab({ customerId }: { customerId: string }) {
     const router = useRouter();
-    const classBookings = useAppStore(s => s.classBookings);
-    const classSchedules = useAppStore(s => s.classSchedules);
+    const classBookings        = useAppStore(s => s.classBookings);
+    const classSchedules       = useAppStore(s => s.classSchedules);
+    const appointmentBookings  = useAppStore(s => s.appointmentBookings);
+    const appointments         = useAppStore(s => s.appointments);
 
     const [inner, setInner] = useState<"overview" | "history">("overview");
     const [search, setSearch] = useState("");
@@ -325,9 +370,16 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
 
     useEffect(() => { setPage(1); }, [search, applied, inner]);
 
-    // ─── Build this customer's booking rows (joined with schedules) ─────────
+    // ─── Build this customer's booking rows ─────────────────────────────────
+    //
+    // Per the latest brief there's no longer a "Classes vs Appointments"
+    // top-level toggle — both feeds merge into one unified list. The
+    // `kind` field on each row drives:
+    //   • The "Group" / "Appointment" chip on the upcoming card.
+    //   • The new "Type" column in the history table.
+    //   • Click-through routing in RowActions / upcoming card.
     const rows = useMemo<BookingRow[]>(() => {
-        return classBookings
+        const classRows = classBookings
             .filter(b => b.customerId === customerId)
             .flatMap<BookingRow>(b => {
                 const s = classSchedules.find(cs => cs.id === b.classScheduleId);
@@ -349,7 +401,8 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                 }
                 return [{
                     bookingId: b.id,
-                    classScheduleId: s.id,
+                    kind: "Group" as const,
+                    routeId: s.id,
                     className: s.name,
                     coverImage: s.coverImage,
                     instructorName: s.instructorName,
@@ -365,7 +418,60 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     displayStatus,
                 }];
             });
-    }, [classBookings, classSchedules, customerId]);
+
+        // Appointment-derived rows — both "Open session" (multi-customer,
+        // visible capacity) and "Private" (1-on-1) collapse into the
+        // unified shape with `kind: "Appointment"`. The display-status
+        // mapping mirrors how the class side derives its label, just
+        // sourced from `AppointmentBookingStatus` + `Appointment.status`.
+        const APPT_STATUS_TO_DISPLAY = (
+            apptStatus: typeof appointments[number]["status"],
+            bookingStatus: "Booked" | "Attended" | "NoShow" | "Cancelled",
+        ): BookingDisplayStatus => {
+            if (bookingStatus === "Cancelled") return "Cancelled";
+            if (bookingStatus === "NoShow")   return "No show";
+            if (bookingStatus === "Attended") return "Completed";
+            // Booked + look at parent status.
+            if (apptStatus === "Upcoming")  return "Upcoming";
+            if (apptStatus === "Ongoing")   return "Ongoing";
+            if (apptStatus === "Cancelled") return "Cancelled";
+            return "Completed";
+        };
+        const APPT_STATUS_TO_CLASS = (
+            apptStatus: typeof appointments[number]["status"],
+        ): BookingRow["classStatus"] => {
+            if (apptStatus === "Upcoming")  return "Upcoming";
+            if (apptStatus === "Ongoing")   return "Ongoing";
+            if (apptStatus === "Cancelled") return "Cancelled";
+            return "Completed";
+        };
+        const apptRows = appointmentBookings
+            .filter(b => b.customerId === customerId)
+            .flatMap<BookingRow>(b => {
+                const a = appointments.find(ap => ap.id === b.appointmentId);
+                if (!a) return [];
+                return [{
+                    bookingId: b.id,
+                    kind: "Appointment" as const,
+                    routeId: a.id,
+                    className: a.serviceName,
+                    coverImage: a.coverImage,
+                    instructorName: a.instructorName ?? (a.openSession ? "Open session" : "—"),
+                    instructorInitials: a.instructorInitials ?? "—",
+                    room: a.roomName,
+                    dateISO: a.dateISO,
+                    startTime: a.startTime,
+                    endTime: a.endTime,
+                    booked: a.booked,
+                    capacity: a.capacity,
+                    bookingStatus: b.status === "Cancelled" ? "cancelled" : "booked",
+                    classStatus: APPT_STATUS_TO_CLASS(a.status),
+                    displayStatus: APPT_STATUS_TO_DISPLAY(a.status, b.status),
+                }];
+            });
+
+        return [...classRows, ...apptRows];
+    }, [classBookings, classSchedules, appointmentBookings, appointments, customerId]);
 
     // ─── Overview metrics ───────────────────────────────────────────────────
     const totalBookings = rows.length;
@@ -398,6 +504,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
         return rows
             .filter(r => {
                 if (q && !r.className.toLowerCase().includes(q)) return false;
+                if (applied.type && r.kind !== applied.type) return false;
                 if (applied.dateStart && r.dateISO < applied.dateStart) return false;
                 if (applied.dateEnd && r.dateISO > applied.dateEnd) return false;
                 if (applied.instructor && r.instructorName !== applied.instructor) return false;
@@ -418,11 +525,24 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
             .sort((a, b) => `${b.dateISO} ${b.startTime}`.localeCompare(`${a.dateISO} ${a.startTime}`));
     }, [rows, search, applied]);
 
-    const totalPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize));
+    // ── History sort — Class name / Type / Instructor / Status / Date & time. ──
+    const HISTORY_STATUS_ORDER: Record<BookingDisplayStatus, number> = {
+        Upcoming: 0, Ongoing: 1, Completed: 2, "No show": 3, "Cancelled (late)": 4, Cancelled: 5, Waitlisted: 6,
+    };
+    const { sorted: sortedHistory, sortKey: historySortKey, sortDir: historySortDir, toggle: toggleHistorySort } = useSort<BookingRow>(filteredHistory, {
+        className:  (a, b) => a.className.localeCompare(b.className),
+        type:       (a, b) => a.kind.localeCompare(b.kind),
+        instructor: (a, b) => a.instructorName.localeCompare(b.instructorName),
+        status:     (a, b) => (HISTORY_STATUS_ORDER[a.displayStatus] ?? 99) - (HISTORY_STATUS_ORDER[b.displayStatus] ?? 99),
+        date:       (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedHistory.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedHistory = filteredHistory.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedHistory = sortedHistory.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     const hasActiveFilter =
+        !!applied.type ||
         applied.statuses.length > 0 || applied.times.length > 0 ||
         applied.dateStart !== "" || applied.dateEnd !== "" ||
         applied.instructor !== "" || applied.className !== "";
@@ -438,7 +558,11 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Inner-tab toggle */}
+            {/* Inner-tab toggle — Overview / Booking history. The kind
+                toggle (Classes vs Appointments) was removed per the
+                latest brief; appointment bookings now merge into the
+                unified rows above and surface via the `kind` field on
+                each row. */}
             <div className="shrink-0 px-6 pt-5 pb-4">
                 <div className="flex bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1">
                     {([["overview", "Overview"], ["history", "Booking history"]] as const).map(([id, label]) => (
@@ -508,6 +632,12 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                     <span className="flex items-center gap-1">
                                                         <Users01 className="w-4 h-4 text-[#667085]" />{r.booked}/{r.capacity}
                                                     </span>
+                                                    <span className="w-px h-3 bg-[#e4e7ec]" />
+                                                    {/* Type — plain text beside the capacity
+                                                        ratio. "Group" for normal class
+                                                        schedules, "Appointment" for open
+                                                        sessions + private. */}
+                                                    <span>{r.kind}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -558,10 +688,21 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr>
-                                            <th className={TH}>Class name</th>
-                                            <th className={cn(TH, "w-[220px]")}>Instructor</th>
-                                            <th className={cn(TH, "w-[160px]")}>Status</th>
-                                            <th className={cn(TH, "w-[200px]")}>Date &amp; Time</th>
+                                            <th className={TH}>
+                                                <SortableHeader sortKey="className"  currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Class name</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[140px]")}>
+                                                <SortableHeader sortKey="type"       currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Type</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[220px]")}>
+                                                <SortableHeader sortKey="instructor" currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Instructor</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[160px]")}>
+                                                <SortableHeader sortKey="status"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Status</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[200px]")}>
+                                                <SortableHeader sortKey="date"       currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Date &amp; Time</SortableHeader>
+                                            </th>
                                             <th className={cn(TH, "w-[52px]")} />
                                         </tr>
                                     </thead>
@@ -574,6 +715,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                         <span className="text-[14px] font-medium text-[#101828]">{r.className}</span>
                                                     </div>
                                                 </td>
+                                                <td className={cn(TD, "text-[#475467]")}>
+                                                    {r.kind}
+                                                </td>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-2">
                                                         <TableAvatar initials={r.instructorInitials} size={24} />
@@ -583,7 +727,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                 <td className={TD}><BookingStatusBadge status={r.displayStatus} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
                                                 <td className={TD}>
-                                                    <RowActions onView={() => router.push(`/schedule/${r.classScheduleId}`)} />
+                                                    <RowActions onView={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}` : `/appointments/${r.routeId}`)} />
                                                 </td>
                                             </tr>
                                         ))}
@@ -594,7 +738,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     </div>
 
                     <div className="px-6 shrink-0">
-                        <Pagination page={clampedPage} total={filteredHistory.length} pageSize={pageSize}
+                        <Pagination page={clampedPage} total={sortedHistory.length} pageSize={pageSize}
                             onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
                     </div>
                 </>
@@ -606,3 +750,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
         </div>
     );
 }
+
+// `CustomerAppointmentsView` was retired in this revision. Appointment
+// bookings now merge into the unified `rows` list above and surface via
+// the `kind` field on each BookingRow ("Group" or "Appointment"), with
+// the chip on the upcoming card and a dedicated "Type" column in the
+// history table doing the visual differentiation.

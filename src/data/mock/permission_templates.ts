@@ -65,7 +65,7 @@ export const STAFF_PERMISSION_SECTIONS: PermissionSectionSpec[] = [
         { key: "waitlist_management",       label: "Waitlist management" },
         { key: "no_show_late_cancel_fees",  label: "No-show & late cancel fees" },
     ] },
-    { key: "pos", label: "Point of sale", modules: [
+    { key: "pos", label: "POS", modules: [
         { key: "sales_transaction",  label: "Sales transaction" },
         { key: "promo_codes",        label: "Promo codes" },
         { key: "custom_discount",    label: "Custom discount" },

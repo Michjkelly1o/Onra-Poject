@@ -60,6 +60,7 @@ import {
     cancellationBadgeKind,
 } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -1059,7 +1060,6 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
 
-    if (!open) return null;
 
     function toggleTag(t: string) {
         setPending(p => ({ ...p, tags: p.tags.includes(t) ? p.tags.filter(x => x !== t) : [...p.tags, t] }));
@@ -1071,10 +1071,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
     const hasAny = reviewFilterHasAny(pending);
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                {/* Header */}
+        <SlidePanel open={open} onClose={onClose} width={400}>
+{/* Header */}
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button
@@ -1179,7 +1177,6 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                         Apply
                     </Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }

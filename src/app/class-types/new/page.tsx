@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
 import {
-    XClose, UploadCloud02, Grid01, User01,
+    XClose, UploadCloud02, Grid01,
     ClockFastForward, Users01,
     ChevronDown, ChevronUp, Check, Lightbulb02, FilterLines,
 } from "@untitledui/icons";
@@ -16,9 +16,10 @@ import { NumericStringInput } from "@/components/ui/NumericInput";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TemplateStatus = "Active" | "Archived" | "Inactive";
-type LocationType   = "Group" | "Private";
 
-const CLASS_TYPES: LocationType[] = ["Group", "Private"];
+// Class type was removed from the create flow — class templates always
+// represent group classes. Private 1-on-1 sessions are modelled via the
+// Services module instead. Persisted locationType stays "Group" forever.
 // Categories are read from the LIVE `classCategories` store slice inside
 // the component (Phase 4) so add / edit / delete in Booking Rules
 // surfaces here on the same render.
@@ -207,7 +208,6 @@ interface PreviewData {
     name: string;
     description: string;
     category: string;
-    classType: string;
     durationMin: string;
     capacity: string;
     coverPreview: string | null;
@@ -243,7 +243,7 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
                     </p>
                 </div>
 
-                {/* Attributes */}
+                {/* Attributes — class type field was removed (always Group). */}
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -251,23 +251,17 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
                             <span className="text-[14px] text-[#667085] truncate">{data.category || "Category"}</span>
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <User01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{data.classType || "Class type"}</span>
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="flex items-center gap-1 flex-1 min-w-0">
                             <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
                             <span className="text-[14px] text-[#667085]">
                                 {data.durationMin ? `${data.durationMin} min` : "Duration"}
                             </span>
                         </div>
-                        <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085]">
-                                {data.capacity ? `${data.capacity} max` : "Capacity"}
-                            </span>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
+                        <span className="text-[14px] text-[#667085]">
+                            {data.capacity ? `${data.capacity} max` : "Capacity"}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -299,7 +293,6 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
 interface Step1Data {
     name: string;
     description: string;
-    classType: string;
     category: string;
     durationMin: string;
     capacity: string;
@@ -323,7 +316,6 @@ function BasicInformationStep({
     const canContinue =
         data.name.trim() &&
         data.description.trim() &&
-        data.classType &&
         data.category &&
         data.durationMin &&
         data.capacity;
@@ -365,27 +357,17 @@ function BasicInformationStep({
                         />
                     </FormField>
 
-                    {/* Class type + Category */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField label="Class type">
-                            <SelectInput
-                                placeholder="Select class type"
-                                value={data.classType}
-                                onChange={v => onChange({ classType: v })}
-                                options={CLASS_TYPES.map(o => ({ value: o, label: o }))}
-                                width="w-full"
-                            />
-                        </FormField>
-                        <FormField label="Class category">
-                            <SelectInput
-                                placeholder="Select class category"
-                                value={data.category}
-                                onChange={v => onChange({ category: v })}
-                                options={categoryOptions.map(o => ({ value: o, label: o }))}
-                                width="w-full"
-                            />
-                        </FormField>
-                    </div>
+                    {/* Class category — class type field removed; class
+                        templates always represent Group classes. */}
+                    <FormField label="Class category">
+                        <SelectInput
+                            placeholder="Select class category"
+                            value={data.category}
+                            onChange={v => onChange({ category: v })}
+                            options={categoryOptions.map(o => ({ value: o, label: o }))}
+                            width="w-full"
+                        />
+                    </FormField>
 
                     {/* Duration + Capacity */}
                     <div className="grid grid-cols-2 gap-4">
@@ -552,7 +534,6 @@ export default function NewClassTemplatePage() {
     const [step1, setStep1] = useState<Step1Data>({
         name: "",
         description: "",
-        classType: "",
         category: "",
         durationMin: "",
         capacity: "",
@@ -581,7 +562,10 @@ export default function NewClassTemplatePage() {
             description: step1.description,
             categoryId: cat?.id ?? "",
             category: step1.category,
-            locationType: step1.classType,
+            // Class type was removed from the form — class templates always
+            // represent group classes. Private 1-on-1 sessions live in the
+            // Services module instead.
+            locationType: "Group",
             durationMin: Number(step1.durationMin),
             capacity: Number(step1.capacity),
             status: "Active",
@@ -602,7 +586,6 @@ export default function NewClassTemplatePage() {
         name:         step1.name,
         description:  step1.description,
         category:     step1.category,
-        classType:    step1.classType,
         durationMin:  step1.durationMin,
         capacity:     step1.capacity,
         coverPreview: step1.coverPreview,

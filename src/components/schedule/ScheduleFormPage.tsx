@@ -10,7 +10,8 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, getBlockedSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
+import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByInstructor as gateSlotsByInstructorHelper } from "@/lib/instructor-availability";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
@@ -417,25 +418,40 @@ const INSTRUCTOR_RATINGS: Record<string, { score: number; reviews: string }> = {
     i4: { score: 4.7, reviews: "1K reviews" },
 };
 
-function InstructorCard({ instructor, selected, onClick }: {
-    instructor: typeof SCHEDULE_INSTRUCTORS[0]; selected: boolean; onClick: () => void;
+function InstructorCard({ instructor, selected, disabled = false, disabledReason, onClick }: {
+    instructor: typeof SCHEDULE_INSTRUCTORS[0];
+    selected: boolean;
+    disabled?: boolean;
+    /** Tooltip text describing why the card is disabled (category mismatch,
+     *  outside shift, blocked time, etc.). Rendered via title attr. */
+    disabledReason?: string;
+    onClick: () => void;
 }) {
     const rating = INSTRUCTOR_RATINGS[instructor.id] ?? { score: 4.5, reviews: "1K reviews" };
     return (
-        <button type="button" onClick={onClick}
-            className={cn("flex flex-col items-center w-[150px] shrink-0 rounded-[12px] border overflow-hidden transition-all",
-                selected ? "border-[#658774]" : "border-[#e4e7ec] hover:border-[#aad4bd]")}>
+        <button type="button"
+            disabled={disabled}
+            onClick={() => !disabled && onClick()}
+            title={disabled ? disabledReason : undefined}
+            aria-disabled={disabled}
+            className={cn(
+                "flex flex-col items-center w-[150px] shrink-0 rounded-[12px] border overflow-hidden transition-all relative",
+                selected && !disabled ? "border-[#658774]" : "border-[#e4e7ec]",
+                disabled ? "opacity-50 cursor-not-allowed grayscale" : "hover:border-[#aad4bd]",
+            )}>
             {/* Avatar area */}
             <div className="relative w-full flex justify-center pt-5 px-4">
                 <div className="w-[80px] h-[80px] rounded-full flex items-center justify-center text-white text-[28px] font-semibold"
                     style={{ backgroundColor: instructor.color }}>
                     {instructor.initials}
                 </div>
-                {/* Radio */}
-                <div className={cn("absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                    selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white")}>
-                    {selected && <div className="w-2 h-2 rounded-full bg-white" />}
-                </div>
+                {/* Radio — hidden when disabled. */}
+                {!disabled && (
+                    <div className={cn("absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                        selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white")}>
+                        {selected && <div className="w-2 h-2 rounded-full bg-white" />}
+                    </div>
+                )}
             </div>
             {/* Info */}
             <div className="w-full p-4 pt-3 flex flex-col gap-1">
@@ -985,6 +1001,19 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // in the Memberships & Packages module shows up here without a refresh.
     const allMemberships    = useAppStore(s => s.memberships);
     const allPackages       = useAppStore(s => s.packages);
+    // Live staff + shifts + blocked-time slices — drive instructor gating
+    // in the Location & instructor step + the Date & time step.
+    //   • Category gate    — only instructors whose `categoryIds` include
+    //                        the selected category are selectable.
+    //   • Shift gate       — when picked, time options are bounded by the
+    //                        instructor's assigned shift window.
+    //   • Blocked-time gate — time windows the instructor is unavailable
+    //                        for on the selected date are excluded.
+    // Instructors with no shift fall back to branch working hours, same as
+    // before this revision.
+    const staffSlice        = useAppStore(s => s.staff);
+    const shiftsSlice       = useAppStore(s => s.shifts);
+    const blockedTimesSlice = useAppStore(s => s.blockedTimes);
     const membershipItems = useMemo(
         () => buildMembershipItems(allMemberships, allPackages),
         [allMemberships, allPackages],
@@ -1178,6 +1207,18 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
 
     const activeTemplates = classTemplates.filter(t => t.status === "Active");
 
+    // ─── Selected branch resolution (hoisted) ──────────────────────────────
+    // Needed by the slot-availability useMemos below — the branch picks the
+    // business-hours window the form uses for open/close + block. Hoisted
+    // above the useMemos so the block-time lookup doesn't reference a
+    // not-yet-declared variable. Local BRANCH_ROOMS is the form's room
+    // dropdown source; the East branch is the only non-South one in seeds
+    // today.
+    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
+    const selectedBranchId = selectedBranchGroup?.branch.includes("East")
+        ? "branch_forma_east"
+        : "branch_forma_south";
+
     // ─── Conflict scan ─────────────────────────────────────────────────────
     // Given a list of dates, return every start-time slot that would
     // double-book the picked INSTRUCTOR or ROOM. Duration-aware: a slot is
@@ -1232,11 +1273,23 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
         return blocked;
     }
 
-    // Single-date path — slots barred on the picked date.
+    // Single-date path — slots barred on the picked date. Combines:
+    //   1. Conflict scan — instructor / room already booked for that slot
+    //   2. Branch block window (lunch / break) — any candidate whose
+    //      [start, start+duration) interval overlaps the block
+    // The TimeDropdown receives the union and greys those slots out with
+    // an "Unavailable" tag, so the admin can SEE that 12:00 is blocked by
+    // lunch rather than having the slot silently vanish.
     const unavailableTimes = useMemo(
-        () => blockedSlotsForDates(selectedDate ? [selectedDate] : []),
+        () => {
+            const conflicts = blockedSlotsForDates(selectedDate ? [selectedDate] : []);
+            const block = selectedDate && selectedBranchGroup
+                ? getBlockedSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration)
+                : [];
+            return Array.from(new Set([...conflicts, ...block]));
+        },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [instructorId, locationId, selectedDate, classSchedules, editingId, duration],
+        [instructorId, locationId, selectedDate, classSchedules, editingId, duration, liveBusinessHours, selectedBranchId, selectedBranchGroup],
     );
 
     // Recurring path — slots barred per selected weekday, checked against
@@ -1273,13 +1326,23 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 if (d.getTime() < base.getTime()) continue;
                 dates.push(d.toISOString().slice(0, 10));
             }
-            result[day] = blockedSlotsForDates(dates);
+            const conflicts = blockedSlotsForDates(dates);
+            // Branch block (lunch / break) — sample the first occurrence
+            // date to grab the day-of-week's hours window, which carries
+            // the block. Recurring weekdays share the same block since
+            // it's keyed on day_of_week.
+            const blockBase = dates[0];
+            const blockSlots = blockBase && selectedBranchGroup
+                ? getBlockedSlots(getBusinessHours(liveBusinessHours, selectedBranchId, blockBase), duration)
+                : [];
+            result[day] = Array.from(new Set([...conflicts, ...blockSlots]));
         }
         return result;
     }, [
         // eslint-disable-next-line react-hooks/exhaustive-deps
         repeat, selectedDate, selectedDays, repeatEnd, endDate, endAfter, repeatEvery,
         classSchedules, instructorId, locationId, duration, editingId,
+        liveBusinessHours, selectedBranchId, selectedBranchGroup,
     ]);
 
     // When template is selected — populate fields. Two paths:
@@ -1343,13 +1406,49 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
 
     const selectedRoom = branchRooms.flatMap(b => b.rooms).find(r => r.id === locationId);
 
-    // Resolve the seed branch_id from the picked room so we can look up
-    // business hours for it. Local BRANCH_ROOMS is the form's room dropdown
-    // source; the East branch is the only non-South one in seeds today.
-    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
-    const selectedBranchId = selectedBranchGroup?.branch.includes("East")
-        ? "branch_forma_east"
-        : "branch_forma_south";
+    // ── Instructor → staff lookup (used by category + time gates below) ──
+    const staffById = useMemo(
+        () => new Map(staffSlice.map(s => [s.id, s] as const)),
+        [staffSlice],
+    );
+
+    // ── Category-id resolved from the selected category NAME ─────────────
+    const selectedCategoryId = useMemo(
+        () => resolveCategoryId(category, classCategories),
+        [category, classCategories],
+    );
+
+    /** Category gate — only instructors whose `categoryIds` include the
+     *  picked category are selectable. Backed by the shared helper in
+     *  `src/lib/instructor-availability.ts` so the same logic powers any
+     *  future service / appointment instructor picker. */
+    function instructorTeachesCategory(staffId: string): boolean {
+        return staffTeachesCategoryById(staffById, staffId, selectedCategoryId);
+    }
+
+    // Auto-clear the picked instructor when the category change makes them
+    // ineligible — no modal, the admin just notices the radio is reset.
+    useEffect(() => {
+        if (!instructorId) return;
+        if (!instructorTeachesCategory(instructorId)) {
+            setInstructorId("");
+        }
+    }, [selectedCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** Time gate — filters a candidate start-time list by the picked
+     *  instructor's shift + blocked-time entries on the given ISO date.
+     *  Thin wrapper around the shared helper so the per-render call site
+     *  reads exactly the same as the previous inline implementation. */
+    function gateSlotsByInstructor(slots: string[], iso: string): string[] {
+        if (!instructorId) return slots;
+        return gateSlotsByInstructorHelper(slots, iso, {
+            instructorId,
+            durationMins: duration,
+            staffById,
+            shifts: shiftsSlice,
+            blockedTimes: blockedTimesSlice,
+        });
+    }
 
     // Slots available on the picked date for the picked branch (single-date path).
     // Capped at `close - duration` so the auto-derived end-time can't fall
@@ -1360,17 +1459,19 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     // class that begins in the past. Slots on a future date are unaffected.
     const singleDateSlots = useMemo(() => {
         if (!selectedDate || !selectedBranchGroup) return [];
-        const slots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration);
+        let slots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration);
         if (selectedDate === todayISO()) {
             const now = new Date();
             const nowMinutes = now.getHours() * 60 + now.getMinutes();
-            return slots.filter(s => {
+            slots = slots.filter(s => {
                 const [h, m] = s.split(":").map(Number);
                 return (h * 60 + m) >= nowMinutes;
             });
         }
-        return slots;
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours]);
+        // Instructor shift + blocked-time gate (no-op when no instructor
+        // is picked yet).
+        return gateSlotsByInstructor(slots, selectedDate);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, blockedTimesSlice]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
@@ -1387,10 +1488,14 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             const d = new Date(anchor);
             d.setUTCDate(anchor.getUTCDate() + delta);
             const iso = d.toISOString().slice(0, 10);
-            map[label] = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, iso), duration);
+            const baseSlots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, iso), duration);
+            // Same instructor gate as singleDateSlots — applies per weekday
+            // because each label's representative date can resolve to a
+            // distinct blocked-time entry.
+            map[label] = gateSlotsByInstructor(baseSlots, iso);
         }
         return map;
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, blockedTimesSlice]);
 
     // True when a recurring slot's FIRST occurrence lands on today AND its
     // start time has already passed the current live time. Drives the
@@ -2078,17 +2183,14 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                             </div>
                                         </div>
 
-                                        {/* Class name + Class type */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className={labelCls}>Class name</label>
-                                                <input type="text" value={name} onChange={e => setName(e.target.value)}
-                                                    className={inputCls} placeholder="Enter class name" />
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className={labelCls}>Class type</label>
-                                                <SimpleSelect label="Select type" value={classType} options={CLASS_TYPES as unknown as string[]} onChange={setClassType} />
-                                            </div>
+                                        {/* Class name — class type input was removed
+                                            since class schedules always represent Group
+                                            classes; Private 1-on-1 is modelled via the
+                                            Services module instead. */}
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className={labelCls}>Class name</label>
+                                            <input type="text" value={name} onChange={e => setName(e.target.value)}
+                                                className={inputCls} placeholder="Enter class name" />
                                         </div>
 
                                         {/* Description */}
@@ -2221,11 +2323,16 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                                     <div className="relative">
                                         {/* pt-2 pb-2 gives room for the focus ring not to be clipped */}
                                         <div className="flex gap-4 overflow-x-auto pt-2 pb-3 scrollbar-hide">
-                                            {filteredInstructors.map(instr => (
-                                                <InstructorCard key={instr.id} instructor={instr}
-                                                    selected={instructorId === instr.id}
-                                                    onClick={() => setInstructorId(instr.id)} />
-                                            ))}
+                                            {filteredInstructors.map(instr => {
+                                                const canTeach = instructorTeachesCategory(instr.id);
+                                                return (
+                                                    <InstructorCard key={instr.id} instructor={instr}
+                                                        selected={instructorId === instr.id}
+                                                        disabled={!canTeach}
+                                                        disabledReason={`${instr.name} doesn't teach ${category}.`}
+                                                        onClick={() => setInstructorId(instr.id)} />
+                                                );
+                                            })}
                                         </div>
                                         {/* Fade overlay — sibling of scrollable div so it stays fixed */}
                                         <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white to-transparent pointer-events-none" />

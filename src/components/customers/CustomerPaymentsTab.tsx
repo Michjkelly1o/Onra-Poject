@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import {
     useAppStore, PAYMENT_METHODS,
     type CustomerTransaction, type IssuedGiftCard, type GiftCardDesign, type PaymentMethod,
@@ -240,7 +242,6 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    if (!open) return null;
 
     function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; }
     const hasAny =
@@ -251,10 +252,8 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
     const KINDS: TxnKind[] = ["membership", "package"];
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+        <SlidePanel open={open} onClose={onClose} width={400}>
+<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -304,8 +303,7 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
                     <Button variant="primary" size="md" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -570,9 +568,19 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         });
     }, [txns, search, applied]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Payment-history sort — Transaction name / Plan type (kind) /
+    //    Amount (numeric) / Status / Date & time. ──
+    const { sorted: sortedTxns, sortKey: txnSortKey, sortDir: txnSortDir, toggle: toggleTxnSort } = useSort<CustomerTransaction>(filtered, {
+        name:     (a, b) => a.name.localeCompare(b.name),
+        planType: (a, b) => a.kind.localeCompare(b.kind),
+        amount:   (a, b) => a.amountAed - b.amountAed,
+        status:   (a, b) => a.status.localeCompare(b.status),
+        date:     (a, b) => a.createdAtISO.localeCompare(b.createdAtISO),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedTxns.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const paged = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const paged = sortedTxns.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // When a `?tx=` is present, jump to the page containing that row and
     // pulse-highlight it for 2.5s. Runs once when the inner tab + tx id
@@ -712,11 +720,21 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr>
-                                            <th className={TH}>Transaction name</th>
-                                            <th className={cn(TH, "w-[160px]")}>Plan type</th>
-                                            <th className={cn(TH, "w-[120px]")}>Amount</th>
-                                            <th className={cn(TH, "w-[140px]")}>Status</th>
-                                            <th className={cn(TH, "w-[200px]")}>Date &amp; Time</th>
+                                            <th className={TH}>
+                                                <SortableHeader sortKey="name"     currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Transaction name</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[160px]")}>
+                                                <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Plan type</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[120px]")}>
+                                                <SortableHeader sortKey="amount"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Amount</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[140px]")}>
+                                                <SortableHeader sortKey="status"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Status</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[200px]")}>
+                                                <SortableHeader sortKey="date"     currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Date &amp; Time</SortableHeader>
+                                            </th>
                                             <th className={cn(TH, "w-[52px]")} />
                                         </tr>
                                     </thead>
@@ -753,7 +771,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     </div>
 
                     <div className="px-6 shrink-0">
-                        <Pagination page={clampedPage} total={filtered.length} pageSize={pageSize}
+                        <Pagination page={clampedPage} total={sortedTxns.length} pageSize={pageSize}
                             onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
                     </div>
                 </>

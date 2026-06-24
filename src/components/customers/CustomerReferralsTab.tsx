@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type CustomerReferral } from "@/lib/store";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -64,14 +66,11 @@ function ReferralFilterPanel({ open, onClose, applied, onApply }: {
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    if (!open) return null;
 
     const hasAny = pending.dateStart !== "" || pending.dateEnd !== "";
 
     return (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+        <SlidePanel open={open} onClose={onClose} width={400}>
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                     <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
@@ -100,8 +99,7 @@ function ReferralFilterPanel({ open, onClose, applied, onApply }: {
                     <Button variant="primary" size="md" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
-            </div>
-        </div>
+        </SlidePanel>
     );
 }
 
@@ -224,9 +222,16 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
         });
     }, [rows, search, applied]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Referrals sort — Referred customer / Benefit / Date referred. ──
+    const { sorted: sortedReferrals, sortKey: referralSortKey, sortDir: referralSortDir, toggle: toggleReferralSort } = useSort<CustomerReferral>(filtered, {
+        referred: (a, b) => a.referredName.localeCompare(b.referredName),
+        benefit:  (a, b) => a.benefitCredits - b.benefitCredits,
+        date:     (a, b) => a.referredAtISO.localeCompare(b.referredAtISO),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedReferrals.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const paged = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const paged = sortedReferrals.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     const hasActiveFilter = applied.dateStart !== "" || applied.dateEnd !== "";
 
@@ -321,9 +326,15 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className={cn(TH, "w-[320px]")}>Referred customer</th>
-                                    <th className={TH}>Benefit</th>
-                                    <th className={cn(TH, "w-[240px]")}>Date referred</th>
+                                    <th className={cn(TH, "w-[320px]")}>
+                                        <SortableHeader sortKey="referred" currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Referred customer</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="benefit"  currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Benefit</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[240px]")}>
+                                        <SortableHeader sortKey="date"     currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Date referred</SortableHeader>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -351,7 +362,7 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
             </div>
 
             <div className="px-6 shrink-0">
-                <Pagination page={clampedPage} total={filtered.length} pageSize={pageSize}
+                <Pagination page={clampedPage} total={sortedReferrals.length} pageSize={pageSize}
                     onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
             </div>
 

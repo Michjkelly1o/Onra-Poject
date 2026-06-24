@@ -93,6 +93,10 @@ import {
     class_bookings as SEED_CLASS_BOOKINGS,
     class_ratings as SEED_CLASS_RATINGS,
     class_templates as SEED_CLASS_TEMPLATES,
+    services as SEED_SERVICES,
+    appointments as SEED_APPOINTMENTS,
+    appointment_bookings as SEED_APPOINTMENT_BOOKINGS,
+    appointment_ratings as SEED_APPOINTMENT_RATINGS,
     class_categories as SEED_CLASS_CATEGORIES,
     classes_settings as SEED_CLASSES_SETTINGS,
     cancellation_policies as SEED_CANCELLATION_POLICIES,
@@ -113,6 +117,8 @@ import {
     DEFAULT_PERMISSIONS_BY_TYPE as SEED_DEFAULT_PERMISSIONS_BY_TYPE,
     DEFAULT_GRANT_LIMITS as SEED_DEFAULT_GRANT_LIMITS,
     staff as SEED_STAFF,
+    shifts as SEED_SHIFTS,
+    blocked_times as SEED_BLOCKED_TIMES,
     payroll_entries as SEED_PAYROLL_ENTRIES,
     notification_settings as SEED_NOTIFICATION_SETTINGS,
     notifications as SEED_NOTIFICATIONS,
@@ -142,6 +148,10 @@ import {
     type ClassBooking as SeedClassBooking,
     type ClassRating as SeedClassRating,
     type ClassTemplate as SeedClassTemplate,
+    type Service as SeedService,
+    type Appointment as SeedAppointment,
+    type AppointmentBooking as SeedAppointmentBooking,
+    type AppointmentRating as SeedAppointmentRating,
     type ClassCategory,
     type ClassesSettings,
     type CancellationPolicy,
@@ -168,6 +178,8 @@ import {
     type RoleTypeSeed,
     type RoleStatusSeed,
     type StaffSeed,
+    type Shift,
+    type BlockedTime,
     type StaffStatusSeed,
     type NotificationSettingSeed,
     type NotificationCategorySeed,
@@ -253,8 +265,15 @@ export const DEFAULT_BRANCH_ID: string =
 // form's Start/End time dropdowns AND the day/week grid agree on what's
 // inside business hours.
 
-/** Hours window in 24h "HH:mm" strings. `null` when the branch is closed. */
-export type HoursWindow = { open: string; close: string } | null;
+/** Hours window in 24h "HH:mm" strings. `null` when the branch is closed.
+ *  `block` is the optional "blocked" sub-window (e.g. lunch break) — the
+ *  schedule grid renders a striped strip over it and the schedule form's
+ *  time picker excludes overlapping slots. */
+export type HoursWindow = {
+    open: string;
+    close: string;
+    block?: { start: string; end: string };
+} | null;
 
 /** Return the open/close hours for `branchId` on the weekday of `dateISO`.
  *  Pass the live `businessHours` slice (`useAppStore(s => s.businessHours)`)
@@ -265,12 +284,20 @@ export function getBusinessHours(rows: BusinessHours[], branchId: string, dateIS
     const dow = d.getUTCDay();
     const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
     if (!row || row.is_closed) return null;
-    return { open: row.open_time, close: row.close_time };
+    const block = row.block_start && row.block_end
+        ? { start: row.block_start, end: row.block_end }
+        : undefined;
+    return { open: row.open_time, close: row.close_time, ...(block ? { block } : {}) };
 }
 
 /** Union of every branch's open hours for a weekday — used when a view shows
  *  more than one branch and the grid needs the widest envelope. Same
- *  contract as `getBusinessHours`: pass the live slice. */
+ *  contract as `getBusinessHours`: pass the live slice.
+ *
+ *  Block window is intentionally omitted in the union case — different
+ *  branches may have different lunch breaks, and overlaying every branch's
+ *  block would be misleading. The all-locations view shows no block strip;
+ *  scope to a single branch to see them. */
 export function getUnionBusinessHours(rows: BusinessHours[], branchIds: string[], dateISO: string): HoursWindow {
     const d = new Date(dateISO + "T00:00:00Z");
     const dow = d.getUTCDay();
@@ -310,7 +337,11 @@ export function resolveTemplateCoverImage(
  *  a 7am–10pm branch + 60min class lists 07:00…21:00 (not 22:00) because
  *  starting at 22:00 would push the end-time past close.
  *
- *  Without `durationMin` the full open→close range is returned. */
+ *  The block window (lunch / break) is NOT filtered out here — block-
+ *  overlapping slots are returned alongside everything else so the schedule
+ *  form's TimeDropdown can show them in their natural position, just greyed
+ *  out + tagged "Unavailable". Use `getBlockedSlots(window, durationMin)`
+ *  to get the list of starts to pass as `unavailable` to the picker. */
 export function buildTimeSlots(window: HoursWindow, durationMin?: number): string[] {
     if (!window) return [];
     const [oh, om] = window.open.split(":").map(Number);
@@ -320,6 +351,34 @@ export function buildTimeSlots(window: HoursWindow, durationMin?: number): strin
     const lastStartMins = durationMin != null ? closeMins - durationMin : closeMins;
     const out: string[] = [];
     for (let mins = startMins; mins <= lastStartMins; mins += 15) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+    return out;
+}
+
+/** Return every 15-min slot whose `[start, start+durationMin)` interval
+ *  overlaps the window's block (lunch / break). Pass this directly as the
+ *  `unavailable` prop on TimeDropdown — the picker greys those rows out +
+ *  shows the "Unavailable" tag instead of silently dropping them, which
+ *  was confusing the admin ("the dropdown isn't showing 12:00?"). */
+export function getBlockedSlots(window: HoursWindow, durationMin?: number): string[] {
+    if (!window || !window.block) return [];
+    const [oh, om] = window.open.split(":").map(Number);
+    const [ch, cm] = window.close.split(":").map(Number);
+    const [bsH, bsM] = window.block.start.split(":").map(Number);
+    const [beH, beM] = window.block.end.split(":").map(Number);
+    const startMins     = oh * 60 + (om ?? 0);
+    const closeMins     = ch * 60 + (cm ?? 0);
+    const lastStartMins = durationMin != null ? closeMins - durationMin : closeMins;
+    const blockStartMins = bsH * 60 + (bsM ?? 0);
+    const blockEndMins   = beH * 60 + (beM ?? 0);
+    const out: string[] = [];
+    for (let mins = startMins; mins <= lastStartMins; mins += 15) {
+        const candidateEnd = mins + (durationMin ?? 0);
+        const overlaps = mins < blockEndMins && candidateEnd > blockStartMins;
+        if (!overlaps) continue;
         const h = Math.floor(mins / 60);
         const m = mins % 60;
         out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
@@ -494,6 +553,144 @@ export interface ClassTemplate {
     applicableMemberships: string[];
 }
 
+/** Service status mirrors `TemplateStatus` — separate alias kept so UI
+ *  + future appointment surfaces can evolve independently. */
+export type ServiceStatus = "Active" | "Archived" | "Inactive";
+
+/**
+ * Service — camelCase shape consumed by the Services list, future detail
+ * page, and (Phase 4) the appointment / schedule-grid surfaces. Mirrors
+ * `ClassTemplate` in spirit; the differentiators are `openSession` +
+ * `branchId` (single-branch vs multi-branch in the legacy template).
+ *
+ * `category` + `coverColor` are denormalized from class_categories at
+ * adapter-time so the table row never needs a join to render.
+ *
+ * +later: instructorIds (Private services with pre-pickable trainers),
+ * priceAed, applicableMembershipIds wired into POS-side checkout gating.
+ */
+export interface Service {
+    id: string;
+    name: string;
+    description: string;
+    categoryId: string;
+    /** Category display name — denormalized from class_categories. */
+    category: string;
+    /** True = Open session (multi-customer, capacity meaningful). */
+    openSession: boolean;
+    durationMin: number;
+    /** 0 for Private services. UI hides it when openSession=false. */
+    capacity: number;
+    /** FK → branches.id. Single-branch in Phase 1. */
+    branchId: string;
+    /** Branch display name — denormalized from branches for fast list render. */
+    branchName: string;
+    status: ServiceStatus;
+    coverImage?: string;
+    /** Tile background hex — resolved from class_categories.color_hex. */
+    coverColor: string;
+    applicableMembershipIds: string[];
+    applicablePackageIds: string[];
+}
+
+// ─── Appointments (Module 13 — Phase 4) ─────────────────────────────────────
+
+export type AppointmentStatus = "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
+export type AppointmentBookingStatus = "Booked" | "Attended" | "NoShow" | "Cancelled";
+
+/** Appointment — camelCase shape consumed by the Service detail Appointments
+ *  tab, the /appointments/[id] page, the schedule grid, and the customer
+ *  profile Appointments sub-tab. Denormalizes the parent service's name +
+ *  category + branchName + coverColor at adapter-time so list views render
+ *  without an extra join.
+ *
+ *  Why denormalize: every list/grid surface that renders an appointment
+ *  needs the service name + category color, and they're hot paths. The
+ *  trade-off — name/color cascades when the service is edited — is handled
+ *  in `updateService` by repatching denormalized fields on dependent
+ *  appointments. */
+export interface Appointment {
+    id: string;
+    serviceId: string;
+    serviceName: string;
+    serviceCategory: string;
+    /** Tile background hex — resolved from class_categories.color_hex. */
+    coverColor: string;
+    coverImage?: string;
+    branchId: string;
+    branchName: string;
+    roomId: string;
+    roomName: string;
+    /** Set for Private services, omitted for Open session. */
+    instructorId?: string;
+    instructorName?: string;
+    instructorInitials?: string;
+    instructorColor?: string;
+    instructorImageUrl?: string;
+    /** True when the parent service is open_session — drives "Open session"
+     *  badges + the bulk-select roster on the appointment detail page. */
+    openSession: boolean;
+    /** "2026-05-15" — used for sorting / range filters. */
+    dateISO: string;
+    /** "Sat, 27 Feb 2026" — UI-friendly. */
+    date: string;
+    startTime: string;
+    endTime: string;
+    /** "9:00 - 10:00 AM" */
+    displayTime: string;
+    capacity: number;
+    booked: number;
+    status: AppointmentStatus;
+    cancelledReason?: string;
+    cancelledAt?: string;
+    cancelledBy?: string;
+    /** Aggregate rating (1–5) for Completed appointments — denormalized
+     *  from `appointmentRatings` rows for fast list-view rendering. 0
+     *  when there are no ratings. */
+    rating: number;
+    ratingCount: number;
+    createdAt: string;
+}
+
+/** AppointmentRating — camelCase shape consumed by the appointment detail
+ *  Ratings tab + the service detail Rating column aggregate. Mirrors
+ *  `ClassRating`. */
+export interface AppointmentRating {
+    id: string;
+    appointmentId: string;
+    customerId: string;
+    customerName: string;
+    customerInitials: string;
+    customerImageUrl?: string;
+    instructorId?: string;
+    instructorName?: string;
+    /** 1-5. */
+    score: number;
+    comment: string;
+    tags?: string[];
+    submittedAt: string;
+    deletedAt?: string;
+    deletedBy?: string;
+}
+
+/** One customer slot inside an Appointment. Roster on the detail page is
+ *  derived from these rows for the parent appointment. */
+export interface AppointmentBooking {
+    id: string;
+    appointmentId: string;
+    customerId: string;
+    /** Customer display name — denormalized for fast roster render. */
+    customerName: string;
+    customerInitials: string;
+    customerColor: string;
+    customerImageUrl?: string;
+    status: AppointmentBookingStatus;
+    bookedAt: string;
+    cancelledAt?: string;
+    cancelledBy?: string;
+    attendanceMarkedAt?: string;
+}
+
 /** Instructor display shape used by Schedule list / form pickers / class detail. */
 export interface ScheduleInstructor {
     id: string;
@@ -585,6 +782,15 @@ export type {
 
 export type StaffStatus = StaffStatusSeed;
 
+/** Re-export the seed-defined Shift type so consumer modules import a
+ *  single canonical name. Mirrors the StaffStatus pattern above. */
+export type { Shift } from "@/data/mock/_types";
+
+/** Re-export the seed-defined BlockedTime type so consumer modules import
+ *  it from the same canonical name as every other store type. (`ClassCategory`
+ *  is already re-exported via the bulk barrel above; see top of file.) */
+export type { BlockedTime } from "@/data/mock/_types";
+
 export interface Staff {
     id: string;
     firstName: string;
@@ -605,6 +811,18 @@ export interface Staff {
     bio?: string;
     specialties?: string[];
     payRateId?: string;
+    /** Short introduction (instructor-only). Surfaces on the instructor
+     *  detail page + (later) the customer-facing instructor portal. */
+    shortIntro?: string;
+    /** Years of working experience (instructor-only). */
+    workingExperienceYears?: number;
+    /** Assigned shift id — FK to a future shifts slice (placeholder for
+     *  now — Shift management module designs land next). */
+    shiftId?: string;
+    /** Class categories this instructor can teach. Drives the
+     *  cross-module instructor gating (templates / schedules / services
+     *  / appointments). 1:N — one instructor → many categories. */
+    categoryIds?: string[];
 }
 
 /** Payroll entry — one row per (instructor, period). Camel-case mirror of
@@ -697,6 +915,66 @@ export interface ClassSchedule {
 
 /** @deprecated use `ClassSchedule`. */
 export type ClassInstance = ClassSchedule;
+
+/**
+ * Project an `Appointment` into the schedule grid's `ClassInstance` shape so
+ * the admin + instructor day/week/month views can render both surfaces
+ * through the same code path. Per the brief, appointments only appear on
+ * the grid when they have ≥1 customer booked (the renderer can also check
+ * `booked > 0` itself; we leave that to the caller for visibility).
+ *
+ *   • Open session appointments fill `instructor*` fields with empty
+ *     defaults — the grid card hides the instructor row when name is "".
+ *   • `classType` is set to "Private" for Private appointments so the
+ *     legacy filter UI on the admin schedule still works without a
+ *     schema change.
+ *   • The id is preserved verbatim (always starts with "appt_") so click
+ *     handlers can branch on the prefix to route to /appointments/[id].
+ */
+export function appointmentToClassInstance(a: Appointment): ClassInstance {
+    return {
+        id: a.id,
+        templateId: a.serviceId,
+        name: a.serviceName,
+        description: "",
+        category: a.serviceCategory,
+        branchId: a.branchId,
+        instructorId: a.instructorId ?? "",
+        instructorName: a.instructorName ?? "",
+        instructorInitials: a.instructorInitials ?? "",
+        instructorColor: a.instructorColor ?? "#e0e0e0",
+        location: a.branchName,
+        roomId: a.roomId,
+        room: a.roomName,
+        date: a.date,
+        dateISO: a.dateISO,
+        dayOfWeek: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date(a.dateISO + "T00:00:00Z").getUTCDay()] ?? "",
+        startTime: a.startTime,
+        endTime: a.endTime,
+        displayTime: a.displayTime,
+        booked: a.booked,
+        capacity: a.capacity,
+        classType: a.openSession ? "Group" : "Private",
+        equipment: "",
+        spotSelectionEnabled: false,
+        waitlistEnabled: false,
+        rating: a.rating,
+        ratingCount: a.ratingCount,
+        status: a.status,
+        genderAccess: "all",
+        cancelledAt: a.cancelledAt,
+        cancelledBy: a.cancelledBy,
+        coverColor: a.coverColor,
+        coverImage: a.coverImage,
+    };
+}
+
+/** True when the given id was minted by the appointments seed/store.
+ *  Used by grid click handlers to route to /appointments/[id] vs
+ *  /schedule/[id]. */
+export function isAppointmentId(id: string): boolean {
+    return id.startsWith("appt_");
+}
 
 /**
  * Booking record. Customer details are looked up via `customers` at render
@@ -1219,7 +1497,11 @@ export interface AuditLogEntry {
         | "customer" | "customer_plan" | "class_template" | "class_schedule"
         | "membership" | "package" | "gift_card" | "promo_code"
         | "branch" | "room" | "settings" | "marketing" | "staff"
-        | "pay_rate" | "payroll" | "rating" | "account";
+        | "pay_rate" | "payroll" | "rating" | "account"
+        | "service"        // Services module — appointment templates (Phase 1+)
+        | "appointment"    // Services module — concrete appointments (Phase 4)
+        | "shift"          // Staff & shift module — shifts CRUD
+        | "blocked_time";  // Staff & shift module — blocked time CRUD
     targetId: string;
     /** Display name of the target — read at write time and frozen here so
      *  the audit row survives even if the target is later renamed / deleted. */
@@ -1304,6 +1586,112 @@ function templateFromSeed(t: SeedClassTemplate): ClassTemplate {
         applicableMembershipIds: t.applicable_membership_ids,
         applicablePackageIds: t.applicable_package_ids,
         applicableMemberships: [...t.applicable_membership_ids, ...t.applicable_package_ids],
+    };
+}
+
+function serviceFromSeed(s: SeedService): Service {
+    const cat    = SEED_CLASS_CATEGORIES.find(c => c.id === s.category_id);
+    const branch = SEED_BRANCHES.find(b => b.id === s.branch_id);
+    return {
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        categoryId: s.category_id,
+        category: cat?.name ?? "",
+        openSession: s.open_session,
+        durationMin: s.duration_min,
+        capacity: s.capacity,
+        branchId: s.branch_id,
+        branchName: branch?.name ?? "",
+        status: s.status,
+        coverImage: s.cover_image_url,
+        coverColor: cat?.color_hex ?? "#f1f2ed",
+        applicableMembershipIds: s.applicable_membership_ids,
+        applicablePackageIds: s.applicable_package_ids,
+    };
+}
+
+function appointmentFromSeed(a: SeedAppointment, services: Service[]): Appointment {
+    const service = services.find(s => s.id === a.service_id);
+    const branch  = SEED_BRANCHES.find(b => b.id === a.branch_id);
+    const room    = SEED_ROOMS.find(r => r.id === a.room_id);
+    const inst    = a.instructor_id ? SEED_STAFF_PROFILES.find(p => p.id === a.instructor_id) : undefined;
+    return {
+        id: a.id,
+        serviceId: a.service_id,
+        serviceName: service?.name ?? "",
+        serviceCategory: service?.category ?? "",
+        coverColor: service?.coverColor ?? "#f1f2ed",
+        coverImage: service?.coverImage,
+        branchId: a.branch_id,
+        branchName: branch?.name ?? "",
+        roomId: a.room_id,
+        roomName: room?.name ?? "",
+        ...(inst ? {
+            instructorId: a.instructor_id,
+            instructorName: inst.full_name,
+            instructorInitials: inst.initials,
+            instructorColor: inst.color_hex,
+            instructorImageUrl: inst.image_url,
+        } : {}),
+        openSession: service?.openSession ?? false,
+        dateISO: a.date_iso,
+        date: dateLabelFromISO(a.date_iso),
+        startTime: a.start_time,
+        endTime: a.end_time,
+        displayTime: a.display_time,
+        capacity: a.capacity,
+        booked: a.booked,
+        status: a.status,
+        cancelledReason: a.cancelled_reason,
+        cancelledAt: a.cancelled_at,
+        cancelledBy: a.cancelled_by,
+        rating: a.rating ?? 0,
+        ratingCount: a.rating_count ?? 0,
+        createdAt: a.created_at,
+    };
+}
+
+function appointmentRatingFromSeed(r: SeedAppointmentRating): AppointmentRating {
+    const customer = SEED_CUSTOMERS.find(c => c.id === r.customer_id);
+    const fullName = customer ? `${customer.first_name} ${customer.last_name}`.trim() : "";
+    const inst = r.instructor_id ? SEED_STAFF_PROFILES.find(p => p.id === r.instructor_id) : undefined;
+    return {
+        id: r.id,
+        appointmentId: r.appointment_id,
+        customerId: r.customer_id,
+        customerName: fullName,
+        customerInitials: customer?.initials ?? "?",
+        customerImageUrl: customer?.image_url,
+        instructorId: r.instructor_id,
+        instructorName: inst?.full_name,
+        score: r.score,
+        comment: r.comment,
+        tags: r.tags,
+        submittedAt: r.submitted_at,
+        deletedAt: r.deleted_at,
+        deletedBy: r.deleted_by,
+    };
+}
+
+function appointmentBookingFromSeed(b: SeedAppointmentBooking): AppointmentBooking {
+    const customer = SEED_CUSTOMERS.find(c => c.id === b.customer_id);
+    const fullName = customer ? `${customer.first_name} ${customer.last_name}`.trim() : "";
+    return {
+        id: b.id,
+        appointmentId: b.appointment_id,
+        customerId: b.customer_id,
+        customerName: fullName,
+        customerInitials: customer?.initials ?? "?",
+        // Customer seed doesn't carry a per-row tint — use a neutral pool
+        // deterministically per id so avatars stay stable across renders.
+        customerColor: "#e0e0e0",
+        customerImageUrl: customer?.image_url,
+        status: b.status,
+        bookedAt: b.booked_at,
+        cancelledAt: b.cancelled_at,
+        cancelledBy: b.cancelled_by,
+        attendanceMarkedAt: b.attendance_marked_at,
     };
 }
 
@@ -1726,6 +2114,10 @@ function staffFromSeed(s: StaffSeed): Staff {
         bio: s.bio,
         specialties: s.specialties,
         payRateId: s.pay_rate_id,
+        shortIntro: s.short_intro,
+        workingExperienceYears: s.working_experience_years,
+        shiftId: s.shift_id,
+        categoryIds: s.category_ids,
     };
 }
 
@@ -1894,6 +2286,8 @@ const INITIAL_INSTRUCTORS:      Instructor[]     = SEED_INSTRUCTORS.map(instruct
 const INITIAL_PAYROLL_ENTRIES:  PayrollEntry[]   = SEED_PAYROLL_ENTRIES.map(payrollEntryFromSeed);
 const INITIAL_ROLES:            Role[]           = SEED_ROLES.map(roleFromSeed);
 const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed);
+const INITIAL_SHIFTS:           Shift[]          = SEED_SHIFTS;
+const INITIAL_BLOCKED_TIMES:    BlockedTime[]    = SEED_BLOCKED_TIMES;
 const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = SEED_NOTIFICATION_SETTINGS.map(notificationSettingFromSeed);
 // Admin + instructor notifications live in one initial array — the bell +
 // page components filter by `audience` based on the current user role.
@@ -2009,6 +2403,10 @@ function syncInstructorsFromStaff(
 // ─── Initial state — adapt seeds at boot ────────────────────────────────────
 
 const INITIAL_TEMPLATES: ClassTemplate[] = SEED_CLASS_TEMPLATES.map(templateFromSeed);
+const INITIAL_SERVICES:  Service[]       = SEED_SERVICES.map(serviceFromSeed);
+const INITIAL_APPOINTMENTS:         Appointment[]        = SEED_APPOINTMENTS.map(a => appointmentFromSeed(a, INITIAL_SERVICES));
+const INITIAL_APPOINTMENT_BOOKINGS: AppointmentBooking[] = SEED_APPOINTMENT_BOOKINGS.map(appointmentBookingFromSeed);
+const INITIAL_APPOINTMENT_RATINGS:  AppointmentRating[]  = SEED_APPOINTMENT_RATINGS.map(appointmentRatingFromSeed);
 const INITIAL_SCHEDULES: ClassSchedule[] = SEED_CLASS_SCHEDULE.map(s => scheduleFromSeed(s, INITIAL_TEMPLATES));
 const INITIAL_BOOKINGS:  ClassBooking[]  = SEED_CLASS_BOOKINGS.map(bookingFromSeed);
 const INITIAL_RATINGS:   ClassRating[]   = SEED_CLASS_RATINGS.map(ratingFromSeed);
@@ -2034,6 +2432,16 @@ interface AppState {
     currentUser: User;
     sidebarCollapsed: boolean;
     classTemplates: ClassTemplate[];
+    /** Appointment-service blueprints (Phase 1 build). Mirrors
+     *  `classTemplates`. Future: appointments derived from these will
+     *  flow into the schedule grid (only when ≥1 customer is booked). */
+    services: Service[];
+    /** Concrete scheduled appointment occurrences (Phase 4 — Module 13). */
+    appointments: Appointment[];
+    /** Customer slots inside appointments (Phase 4 — Module 13). */
+    appointmentBookings: AppointmentBooking[];
+    /** Appointment ratings (Phase 4 — Module 13). */
+    appointmentRatings: AppointmentRating[];
     /** Renamed from `classInstances`. */
     classSchedules: ClassSchedule[];
     classBookings: ClassBooking[];
@@ -2082,6 +2490,36 @@ interface AppState {
      *  page. Phase 4 folds the dedicated `instructors` slice into a
      *  derived selector off this one. */
     staff: Staff[];
+    /** Shifts — drives the Shift management table + the staff-create
+     *  form's Assign shift dropdown + the instructor detail Shift
+     *  hours line. */
+    shifts: Shift[];
+
+    // ── Shift actions (Shift management module) ──────────────────────────
+    /** Create a new shift. Returns the generated id. */
+    addShift: (input: Omit<Shift, "id" | "created_at"> & { id?: string }) => string;
+    /** Patch an existing shift — name / branch / hours / days / status. */
+    updateShift: (id: string, patch: Partial<Omit<Shift, "id" | "created_at">>) => void;
+    /** Bulk status flip (Archive / Reactivate / Deactivate / Recover).
+     *  Mirrors `setRolesStatus` shape. */
+    setShiftsStatus: (ids: string[], status: Shift["status"]) => void;
+    /** Bulk delete — only succeeds when NO staff has the shift assigned.
+     *  Returns the ids that were actually removed + the blocked ones so
+     *  the caller can toast the right counts. */
+    deleteShifts: (ids: string[]) => { deleted: string[]; blocked: string[] };
+
+    // ── Blocked time slice (Staff & shift module → Blocked time tab) ─────
+    /** Blocked-time entries — drives the Blocked time tab + any future
+     *  schedule grid overlay. */
+    blockedTimes: BlockedTime[];
+    /** Create a new blocked-time entry. Returns the generated id. */
+    addBlockedTime: (input: Omit<BlockedTime, "id" | "created_at"> & { id?: string }) => string;
+    /** Patch an existing blocked-time entry — title / date / hours /
+     *  note / staff / branch. */
+    updateBlockedTime: (id: string, patch: Partial<Omit<BlockedTime, "id" | "created_at">>) => void;
+    /** Bulk delete — blocked-time has no archive concept, deletion is
+     *  always available. */
+    deleteBlockedTimes: (ids: string[]) => void;
     pendingPurchase: PendingPurchase | null;
     toast: ToastData | null;
 
@@ -2168,6 +2606,42 @@ interface AppState {
     addClassTemplate: (template: Omit<ClassTemplate, "id">) => void;
     updateClassTemplate: (id: string, updates: Partial<Omit<ClassTemplate, "id">>) => void;
     deleteClassTemplate: (id: string) => void;
+
+    /** Services (Phase 1) — create + edit are scaffolded so future Phase 2
+     *  add/edit pages can call into the store without another migration.
+     *  `setServiceStatus` is the one mutation that ALL Phase 1 row actions
+     *  funnel through (archive / deactivate / reactivate / recover), with
+     *  `deleteService` reserved for the zero-history terminal action. */
+    addService:    (service: Omit<Service, "id">) => string;
+    updateService: (id: string, updates: Partial<Omit<Service, "id">>) => void;
+    setServiceStatus: (id: string, status: ServiceStatus) => void;
+    deleteService: (id: string) => void;
+
+    /** ── Appointments (Phase 4) ────────────────────────────────────────────
+     *  Cancel the whole appointment — flips status to "Cancelled", cascades
+     *  every Booked customer slot to Cancelled, and clears the booked count.
+     *  Mirrors `cancelClassSchedule` 1:1, including the `refund` flag.
+     *  Refund-on by default: admin cancellation always returns credits. */
+    cancelAppointment: (id: string, refund: boolean, cancelledBy?: string) => void;
+    /** Cancel a single customer's booking. Mirrors `cancelClassBooking`
+     *  including the `refund` flag — when true the customer's credit is
+     *  returned (no-op for the prototype since credit ledgers aren't
+     *  wired, but the audit row records the intent). */
+    cancelAppointmentBooking: (bookingId: string, refund: boolean, cancelledBy?: string) => void;
+    /** Hard remove a customer from an Open session appointment roster.
+     *  Mirrors `removeClassBooking`. `refund` matches the modal toggle. */
+    removeAppointmentCustomer: (bookingId: string, refund: boolean) => void;
+    /** Mark a customer Present (Attended) on an Ongoing appointment.
+     *  Mirrors the class-schedule `Present` action — no No-show counterpart
+     *  per the brief. Bulk variant supplied for the bulk-action bar. */
+    markAppointmentPresent: (bookingId: string) => void;
+    markAppointmentPresentBulk: (bookingIds: string[]) => void;
+    /** Soft-delete a customer's rating on a completed appointment.
+     *  Mirrors the class-schedule rating deletion — moves the row to
+     *  the Deletion log sub-tab and decrements the parent appointment's
+     *  `ratingCount` + recomputes the aggregate. */
+    deleteAppointmentRating: (id: string, deletedBy?: string) => void;
+    deleteAppointmentRatings: (ids: string[], deletedBy?: string) => void;
 
     addClassSchedule: (schedule: Omit<ClassSchedule, "id">) => string;
     addClassSchedules: (schedules: Omit<ClassSchedule, "id">[]) => void;
@@ -2585,6 +3059,10 @@ export const useAppStore = create<AppState>()(persist(
     classCategories: SEED_CLASS_CATEGORIES.map(c => ({ ...c })),
     sidebarCollapsed: false,
     classTemplates: INITIAL_TEMPLATES,
+    services: INITIAL_SERVICES,
+    appointments: INITIAL_APPOINTMENTS,
+    appointmentBookings: INITIAL_APPOINTMENT_BOOKINGS,
+    appointmentRatings: INITIAL_APPOINTMENT_RATINGS,
     classSchedules: INITIAL_SCHEDULES,
     classBookings: INITIAL_BOOKINGS,
     classRatings: INITIAL_RATINGS,
@@ -2604,6 +3082,8 @@ export const useAppStore = create<AppState>()(persist(
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
     roles: [...INITIAL_ROLES],
     staff: [...INITIAL_STAFF],
+    shifts: [...INITIAL_SHIFTS],
+    blockedTimes: [...INITIAL_BLOCKED_TIMES],
     notificationSettings: [...INITIAL_NOTIFICATION_SETTINGS],
     notifications: [...INITIAL_NOTIFICATIONS],
     auditLog: [],
@@ -2694,22 +3174,77 @@ export const useAppStore = create<AppState>()(persist(
     },
     updateClassCategory: (id, patch) => {
         const target = get().classCategories.find(c => c.id === id);
+        const oldName = target?.name;
+        const newName = patch.name;
+        // Cascade name renames into every denormalised display string that
+        // froze the category name at boot — class templates and class
+        // schedules both store `category` as a string for fast list render.
+        // Without this, a "Pilates → Mat Pilates" rename would leave the
+        // schedule grid showing "Pilates" indefinitely. Color hex is
+        // cascaded the same way so a category color edit propagates to
+        // the schedule tile background.
+        const renaming   = newName !== undefined && newName !== oldName;
+        const recoloring = patch.color_hex !== undefined && patch.color_hex !== target?.color_hex;
         set(state => ({
             classCategories: state.classCategories.map(c => c.id === id ? { ...c, ...patch } : c),
+            classTemplates:  (renaming || recoloring)
+                ? state.classTemplates.map(t => t.categoryId === id
+                    ? { ...t, ...(renaming ? { category: newName! } : {}), ...(recoloring ? { coverColor: patch.color_hex! } : {}) }
+                    : t)
+                : state.classTemplates,
+            classSchedules:  (renaming || recoloring) && oldName
+                ? state.classSchedules.map(s => s.category === oldName
+                    ? { ...s, ...(renaming ? { category: newName! } : {}), ...(recoloring ? { coverColor: patch.color_hex! } : {}) }
+                    : s)
+                : state.classSchedules,
+            services:        (renaming || recoloring)
+                ? state.services.map(s => s.categoryId === id
+                    // Service interface uses `category` (not `serviceCategory`
+                    // — that name belongs to Appointment, which carries a
+                    // denormalised snapshot of the service's category at
+                    // spawn time). Writing the wrong field would silently
+                    // add an orphan property and leave the real one stale.
+                    ? { ...s, ...(renaming ? { category: newName! } : {}), ...(recoloring ? { coverColor: patch.color_hex! } : {}) }
+                    : s)
+                : state.services,
+            // Appointments carry a serviceId pointer — cascade by joining
+            // through the service slice rather than guessing from the
+            // category string (so renames of categories with same-named
+            // services don't accidentally mass-update unrelated rows).
+            appointments:    (renaming || recoloring)
+                ? state.appointments.map(a => {
+                    const svc = state.services.find(s => s.id === a.serviceId);
+                    if (svc?.categoryId !== id) return a;
+                    return { ...a, ...(renaming ? { serviceCategory: newName! } : {}), ...(recoloring ? { coverColor: patch.color_hex! } : {}) };
+                })
+                : state.appointments,
         }));
         if (target) get().recordAudit("Edited class category", "settings", id, target.name);
     },
     deleteClassCategory: (id) => set(state => {
-        // Refuse the delete when any class template still references the
-        // category. The UI consults `canDeleteClassCategory` first and
-        // surfaces a friendly toast; this guard is the belt-and-suspenders
-        // store-side enforcement.
-        const referenced = state.classTemplates.some(t => t.categoryId === id);
+        // Refuse the delete when ANY downstream record still references
+        // the category — class templates, services (appointment templates),
+        // OR staff specialty arrays. The UI consults `canDeleteClassCategory`
+        // first and surfaces a friendly toast; this is the belt-and-
+        // suspenders store-side enforcement.
+        //
+        // Class schedule rows aren't checked here because they spawn
+        // from templates — guarding the template is sufficient (you can't
+        // have a schedule without the parent template still referencing
+        // the category).
+        const referenced =
+            state.classTemplates.some(t => t.categoryId === id) ||
+            state.services.some(s => s.categoryId === id) ||
+            state.staff.some(s => s.categoryIds?.includes(id));
         if (referenced) return {};
         return { classCategories: state.classCategories.filter(c => c.id !== id) };
     }),
     canDeleteClassCategory: (id) => {
-        return !get().classTemplates.some(t => t.categoryId === id);
+        // Mirror the in-store guard above so the toast surfaces the same
+        // decision the mutator would make.
+        return !get().classTemplates.some(t => t.categoryId === id)
+            && !get().services.some(s => s.categoryId === id)
+            && !get().staff.some(s => s.categoryIds?.includes(id));
     },
     deleteBranch: (id)        => set(state => ({
         branches: state.branches.filter(b => b.id !== id),
@@ -2895,6 +3430,266 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().classTemplates.find(t => t.id === id);
         set((state) => ({ classTemplates: state.classTemplates.filter(t => t.id !== id) }));
         if (target) get().recordAudit("Deleted class template", "class_template", id, target.name);
+    },
+
+    // ─── Services (Module 13 — Phase 1) ─────────────────────────────────────
+    addService: (service) => {
+        const id = `svc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        set((state) => ({ services: [{ ...service, id }, ...state.services] }));
+        get().recordAudit("Created service", "service", id, service.name);
+        return id;
+    },
+    updateService: (id, updates) => {
+        const target = get().services.find(s => s.id === id);
+        set((state) => {
+            const nextServices = state.services.map(s => s.id === id ? { ...s, ...updates } : s);
+            // Cascade the denormalized fields appointments inherit at
+            // adapter-time — name, category, coverColor, coverImage — so
+            // the service detail Appointments tab + the schedule grid
+            // cards + the customer-profile appointments list all reflect
+            // edits in the same render cycle. Mirrors `updateClassTemplate`.
+            const svc = nextServices.find(s => s.id === id);
+            if (!svc) return { services: nextServices };
+            return {
+                services: nextServices,
+                appointments: state.appointments.map(a => a.serviceId === id ? {
+                    ...a,
+                    serviceName:     svc.name,
+                    serviceCategory: svc.category,
+                    coverColor:      svc.coverColor,
+                    coverImage:      svc.coverImage,
+                    openSession:     svc.openSession,
+                } : a),
+            };
+        });
+        if (target) get().recordAudit("Edited service", "service", id, updates.name ?? target.name);
+    },
+    setServiceStatus: (id, status) => {
+        const target = get().services.find(s => s.id === id);
+        if (!target || target.status === status) return;
+        set((state) => ({
+            services: state.services.map(s => s.id === id ? { ...s, status } : s),
+        }));
+        // Human-readable audit verb per transition target.
+        const verb = status === "Active"   ? (target.status === "Inactive" ? "Reactivated" : "Recovered")
+                   : status === "Inactive" ? "Deactivated"
+                   : /* Archived */           "Archived";
+        get().recordAudit(`${verb} service`, "service", id, target.name);
+    },
+    deleteService: (id) => {
+        const target = get().services.find(s => s.id === id);
+        set((state) => ({ services: state.services.filter(s => s.id !== id) }));
+        if (target) get().recordAudit("Deleted service", "service", id, target.name);
+    },
+
+    // ─── Appointments (Module 13 — Phase 4) ─────────────────────────────────
+    cancelAppointment: (id, refund, cancelledBy) => {
+        const target = get().appointments.find(a => a.id === id);
+        if (!target || target.status === "Cancelled") return;
+        const actorUser = get().currentUser;
+        const actorName = cancelledBy
+            ?? (actorUser ? `${actorUser.first_name} ${actorUser.last_name}`.trim() : undefined)
+            ?? "Alex Owen";
+        const stamp = new Date().toISOString();
+        set((state) => ({
+            appointments: state.appointments.map(a => a.id === id ? {
+                ...a, status: "Cancelled" as AppointmentStatus,
+                // Per the brief + class-schedule parity, admin cancellation
+                // no longer requires a reason. The string is still emitted
+                // for the audit trail so support can trace what happened.
+                cancelledReason: refund ? "Cancelled by studio (credits refunded)" : "Cancelled by studio",
+                cancelledAt: stamp, cancelledBy: actorName,
+                booked: 0,
+            } : a),
+            // Cascade — every Booked customer slot flips to Cancelled. Already-
+            // Attended / NoShow rows on Completed appointments are untouched.
+            appointmentBookings: state.appointmentBookings.map(b => b.appointmentId === id && b.status === "Booked" ? {
+                ...b, status: "Cancelled" as AppointmentBookingStatus,
+                cancelledAt: stamp, cancelledBy: "admin",
+            } : b),
+        }));
+        get().recordAudit(
+            refund ? "Cancelled appointment (refunded)" : "Cancelled appointment",
+            "appointment", id, target.serviceName,
+        );
+        // Notify admin + (Private only) the assigned instructor that the
+        // appointment was cancelled. Mirrors the class-schedule cancel
+        // notification pair. Open session appointments have no instructor
+        // so we skip the instructor emit there.
+        const wasBookedCount = target.booked;
+        const noteSuffix = wasBookedCount > 0
+            ? ` ${wasBookedCount} booking${wasBookedCount === 1 ? "" : "s"} ${wasBookedCount === 1 ? "was" : "were"} affected.`
+            : "";
+        get().emitNotifications({
+            admin: {
+                tab: "booking",
+                event: "appointment_cancelled",
+                title: "Appointment cancelled",
+                body: `${target.serviceName} on ${target.date} • ${target.displayTime} was cancelled.${noteSuffix}`,
+                icon: "calendar-x",
+                sourceModule: "class",
+                sourceId: id,
+                branchId: target.branchId,
+            },
+            ...(target.instructorId ? {
+                instructor: {
+                    tab: "booking",
+                    event: "appointment_cancelled",
+                    title: "Appointment cancelled",
+                    body: `Your ${target.serviceName} appointment on ${target.date} • ${target.displayTime} was cancelled.${noteSuffix}`,
+                    icon: "calendar-x",
+                    sourceModule: "class",
+                    sourceId: id,
+                    branchId: target.branchId,
+                    targetInstructorId: target.instructorId,
+                },
+            } : {}),
+        });
+    },
+
+    cancelAppointmentBooking: (bookingId, refund, cancelledBy) => {
+        const booking = get().appointmentBookings.find(b => b.id === bookingId);
+        if (!booking || booking.status === "Cancelled") return;
+        const stamp = new Date().toISOString();
+        set((state) => ({
+            appointmentBookings: state.appointmentBookings.map(b => b.id === bookingId ? {
+                ...b, status: "Cancelled" as AppointmentBookingStatus,
+                cancelledAt: stamp, cancelledBy: cancelledBy ?? "admin",
+            } : b),
+            // Decrement the parent appointment's booked count only when the
+            // cancelled booking was actually counted (Booked → not yet
+            // Attended / NoShow).
+            appointments: booking.status === "Booked"
+                ? state.appointments.map(a => a.id === booking.appointmentId
+                    ? { ...a, booked: Math.max(0, a.booked - 1) } : a)
+                : state.appointments,
+        }));
+        const appt = get().appointments.find(a => a.id === booking.appointmentId);
+        if (appt) {
+            get().recordAudit(
+                refund ? "Cancelled appointment booking (refunded)" : "Cancelled appointment booking",
+                "appointment", booking.appointmentId,
+                `${booking.customerName} — ${appt.serviceName}`,
+            );
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "appointment_cancelled",
+                    title: "Customer cancelled",
+                    body: `${booking.customerName}'s booking on ${appt.serviceName} (${appt.date} • ${appt.displayTime}) was cancelled.`,
+                    icon: "calendar-x",
+                    sourceModule: "class",
+                    sourceId: appt.id,
+                    customerId: booking.customerId,
+                    branchId: appt.branchId,
+                },
+            });
+        }
+    },
+
+    removeAppointmentCustomer: (bookingId, refund) => {
+        const booking = get().appointmentBookings.find(b => b.id === bookingId);
+        if (!booking) return;
+        const wasActive = booking.status === "Booked";
+        set((state) => ({
+            appointmentBookings: state.appointmentBookings.filter(b => b.id !== bookingId),
+            appointments: wasActive
+                ? state.appointments.map(a => a.id === booking.appointmentId
+                    ? { ...a, booked: Math.max(0, a.booked - 1) } : a)
+                : state.appointments,
+        }));
+        const appt = get().appointments.find(a => a.id === booking.appointmentId);
+        if (appt) get().recordAudit(
+            refund ? "Removed customer from appointment (refunded)" : "Removed customer from appointment",
+            "appointment", booking.appointmentId,
+            `${booking.customerName} — ${appt.serviceName}`,
+        );
+    },
+
+    markAppointmentPresent: (bookingId) => {
+        const booking = get().appointmentBookings.find(b => b.id === bookingId);
+        if (!booking || booking.status === "Cancelled") return;
+        const stamp = new Date().toISOString();
+        set((state) => ({
+            appointmentBookings: state.appointmentBookings.map(b => b.id === bookingId
+                ? { ...b, status: "Attended" as AppointmentBookingStatus, attendanceMarkedAt: stamp } : b),
+        }));
+        const appt = get().appointments.find(a => a.id === booking.appointmentId);
+        if (appt) {
+            get().recordAudit("Marked customer present", "appointment", booking.appointmentId,
+                `${booking.customerName} — ${appt.serviceName}`);
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "customer_marked_present",
+                    title: "Customer attendance marked",
+                    body: `${booking.customerName} marked present on ${appt.serviceName} (${appt.date} • ${appt.displayTime}).`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: appt.id,
+                    customerId: booking.customerId,
+                    branchId: appt.branchId,
+                },
+            });
+        }
+    },
+
+    markAppointmentPresentBulk: (bookingIds) => {
+        const ids = new Set(bookingIds);
+        const stamp = new Date().toISOString();
+        set((state) => ({
+            appointmentBookings: state.appointmentBookings.map(b => ids.has(b.id) && b.status !== "Cancelled"
+                ? { ...b, status: "Attended" as AppointmentBookingStatus, attendanceMarkedAt: stamp } : b),
+        }));
+        const sampleBooking = get().appointmentBookings.find(b => ids.has(b.id));
+        const appt = sampleBooking ? get().appointments.find(a => a.id === sampleBooking.appointmentId) : undefined;
+        if (appt) get().recordAudit("Marked customers present", "appointment", appt.id,
+            `${ids.size} ${ids.size === 1 ? "customer" : "customers"} — ${appt.serviceName}`);
+    },
+
+    deleteAppointmentRating: (id, deletedBy) => {
+        const target = get().appointmentRatings.find(r => r.id === id);
+        if (!target || target.deletedAt) return;
+        const actor = deletedBy ?? "Alex Owen";
+        const stamp = new Date().toISOString();
+        set((state) => ({
+            appointmentRatings: state.appointmentRatings.map(r => r.id === id
+                ? { ...r, deletedAt: stamp, deletedBy: actor } : r),
+            // Recompute the parent appointment's denormalized rating count
+            // + aggregate so the Rating column + summary panel stay in sync
+            // with the visible review list.
+            appointments: state.appointments.map(a => {
+                if (a.id !== target.appointmentId) return a;
+                const visible = state.appointmentRatings.filter(r =>
+                    r.appointmentId === a.id && !r.deletedAt && r.id !== id);
+                const count = visible.length;
+                const avg = count > 0 ? visible.reduce((sum, r) => sum + r.score, 0) / count : 0;
+                return { ...a, rating: avg, ratingCount: count };
+            }),
+        }));
+        get().recordAudit("Deleted appointment rating", "appointment", target.appointmentId, target.customerName);
+    },
+
+    deleteAppointmentRatings: (ids, deletedBy) => {
+        const idSet = new Set(ids);
+        const actor = deletedBy ?? "Alex Owen";
+        const stamp = new Date().toISOString();
+        const affected = new Set<string>();
+        get().appointmentRatings.forEach(r => { if (idSet.has(r.id) && !r.deletedAt) affected.add(r.appointmentId); });
+        set((state) => ({
+            appointmentRatings: state.appointmentRatings.map(r => idSet.has(r.id) && !r.deletedAt
+                ? { ...r, deletedAt: stamp, deletedBy: actor } : r),
+            appointments: state.appointments.map(a => {
+                if (!affected.has(a.id)) return a;
+                const visible = state.appointmentRatings.filter(r =>
+                    r.appointmentId === a.id && !r.deletedAt && !idSet.has(r.id));
+                const count = visible.length;
+                const avg = count > 0 ? visible.reduce((sum, r) => sum + r.score, 0) / count : 0;
+                return { ...a, rating: avg, ratingCount: count };
+            }),
+        }));
+        if (affected.size > 0) get().recordAudit("Deleted appointment ratings", "appointment",
+            Array.from(affected)[0], `${ids.length} rating${ids.length === 1 ? "" : "s"}`);
     },
 
     addClassSchedule: (schedule) => {
@@ -4511,6 +5306,197 @@ export const useAppStore = create<AppState>()(persist(
         return { deleted: deletable, blocked };
     },
 
+    // ── Shift actions (Shift management module) ───────────────────────────
+    addShift: (input) => {
+        const id = input.id ?? `shift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next: Shift = { ...input, id, created_at: new Date().toISOString() };
+        set(state => ({ shifts: [...state.shifts, next] }));
+        get().recordAudit("Created shift", "shift", id, next.name);
+        return id;
+    },
+    updateShift: (id, patch) => {
+        const before = get().shifts.find(s => s.id === id);
+        set(state => ({
+            shifts: state.shifts.map(s => s.id === id ? { ...s, ...patch } : s),
+        }));
+        if (before) get().recordAudit("Edited shift", "shift", id, patch.name ?? before.name);
+    },
+    setShiftsStatus: (ids, status) => {
+        const before = get().shifts.filter(s => ids.includes(s.id));
+        set(state => ({
+            shifts: state.shifts.map(s =>
+                ids.includes(s.id) ? { ...s, status } : s,
+            ),
+        }));
+        // Audit verb mirrors the toast — keeps the activity feed legible.
+        const verb = status === "archive"  ? "Archived shift"
+                   : status === "inactive" ? "Deactivated shift"
+                                           : "Reactivated shift";
+        for (const s of before) get().recordAudit(verb, "shift", s.id, s.name);
+    },
+    deleteShifts: (ids) => {
+        // Delete only when NO staff has the shift assigned. Otherwise the
+        // caller must Deactivate / Archive. Mirrors the gift card / service
+        // delete gate.
+        const staffByShift = new Map<string, number>();
+        for (const s of get().staff) {
+            if (!s.shiftId) continue;
+            staffByShift.set(s.shiftId, (staffByShift.get(s.shiftId) ?? 0) + 1);
+        }
+        const deletable = ids.filter(i => (staffByShift.get(i) ?? 0) === 0);
+        const blocked = ids.filter(i => !deletable.includes(i));
+        const before = get().shifts.filter(s => deletable.includes(s.id));
+        if (deletable.length > 0) {
+            set(state => ({ shifts: state.shifts.filter(s => !deletable.includes(s.id)) }));
+        }
+        for (const s of before) get().recordAudit("Deleted shift", "shift", s.id, s.name);
+        return { deleted: deletable, blocked };
+    },
+
+    // ── Blocked time actions (Staff & shift module) ──────────────────────
+    //
+    // Adds also fan out an instructor-bell notification to every staff in
+    // the entry so the affected instructors see their schedule change in
+    // real time. Removals fire the inverse "removed" notification so the
+    // bell can show a "your blocked time was cleared" row.
+    addBlockedTime: (input) => {
+        const id = input.id ?? `bt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next: BlockedTime = { ...input, id, created_at: new Date().toISOString() };
+        set(state => ({ blockedTimes: [...state.blockedTimes, next] }));
+        const targetName = next.title.trim() || "Blocked";
+        get().recordAudit("Added blocked time", "blocked_time", id, targetName, {
+            date: next.date, staff: next.staff_ids.length,
+        });
+        // One instructor-bell row per assigned staff so each instructor's
+        // feed scopes correctly via targetInstructorId.
+        const staffById = new Map(get().staff.map(s => [s.id, s] as const));
+        for (const sid of next.staff_ids) {
+            const s = staffById.get(sid);
+            if (!s) continue;
+            get().emitNotifications({
+                instructor: {
+                    tab: "booking",
+                    event: "blocked_time_added",
+                    title: "Blocked time added",
+                    body: `${targetName} on ${next.date} (${next.start_time}–${next.end_time}).`,
+                    icon: "calendar-x",
+                    sourceModule: "class",
+                    sourceId: id,
+                    branchId: next.branch_id,
+                    targetInstructorId: sid,
+                },
+            });
+        }
+        return id;
+    },
+    updateBlockedTime: (id, patch) => {
+        const before = get().blockedTimes.find(b => b.id === id);
+        set(state => ({
+            blockedTimes: state.blockedTimes.map(b => b.id === id ? { ...b, ...patch } : b),
+        }));
+        if (!before) return;
+        const after = get().blockedTimes.find(b => b.id === id);
+        if (!after) return;
+        const targetName = after.title.trim() || "Blocked";
+        get().recordAudit("Edited blocked time", "blocked_time", id, targetName);
+
+        // Fan out instructor notifications based on the diff between the
+        // pre-edit and post-edit row. Three buckets:
+        //   • Newly added staff      → blocked_time_added
+        //   • Removed staff          → blocked_time_removed
+        //   • Still-assigned staff   → blocked_time_added (treated as an
+        //                              update — same icon + tab, body
+        //                              reflects the current state)
+        // Without this fan-out a window or staff-list change wouldn't
+        // reach the affected instructors' bell until next refresh.
+        const beforeStaff = new Set(before.staff_ids);
+        const afterStaff  = new Set(after.staff_ids);
+        const addedStaff   = after.staff_ids.filter(sid => !beforeStaff.has(sid));
+        const removedStaff = before.staff_ids.filter(sid => !afterStaff.has(sid));
+        const stillStaff   = after.staff_ids.filter(sid => beforeStaff.has(sid));
+
+        for (const sid of addedStaff) {
+            get().emitNotifications({
+                instructor: {
+                    tab: "booking",
+                    event: "blocked_time_added",
+                    title: "Blocked time added",
+                    body: `${targetName} on ${after.date} (${after.start_time}–${after.end_time}).`,
+                    icon: "calendar-x",
+                    sourceModule: "class",
+                    sourceId: id,
+                    branchId: after.branch_id,
+                    targetInstructorId: sid,
+                },
+            });
+        }
+        for (const sid of removedStaff) {
+            get().emitNotifications({
+                instructor: {
+                    tab: "booking",
+                    event: "blocked_time_removed",
+                    title: "Blocked time removed",
+                    body: `${targetName} on ${before.date} was removed — you're available again.`,
+                    icon: "calendar-check",
+                    sourceModule: "class",
+                    sourceId: id,
+                    branchId: before.branch_id,
+                    targetInstructorId: sid,
+                },
+            });
+        }
+        // Detect substantive changes (window or date) so we only notify
+        // still-assigned staff when something actually moved. Title or
+        // note tweaks don't ping the instructor — too noisy.
+        const windowMoved = before.date !== after.date
+            || before.start_time !== after.start_time
+            || before.end_time !== after.end_time;
+        if (windowMoved) {
+            for (const sid of stillStaff) {
+                get().emitNotifications({
+                    instructor: {
+                        tab: "booking",
+                        event: "blocked_time_added",
+                        title: "Blocked time updated",
+                        body: `${targetName} moved to ${after.date} (${after.start_time}–${after.end_time}).`,
+                        icon: "calendar-x",
+                        sourceModule: "class",
+                        sourceId: id,
+                        branchId: after.branch_id,
+                        targetInstructorId: sid,
+                    },
+                });
+            }
+        }
+    },
+    deleteBlockedTimes: (ids) => {
+        const before = get().blockedTimes.filter(b => ids.includes(b.id));
+        set(state => ({
+            blockedTimes: state.blockedTimes.filter(b => !ids.includes(b.id)),
+        }));
+        for (const b of before) {
+            const targetName = b.title.trim() || "Blocked";
+            get().recordAudit("Deleted blocked time", "blocked_time", b.id, targetName, {
+                date: b.date, staff: b.staff_ids.length,
+            });
+            for (const sid of b.staff_ids) {
+                get().emitNotifications({
+                    instructor: {
+                        tab: "booking",
+                        event: "blocked_time_removed",
+                        title: "Blocked time removed",
+                        body: `${targetName} on ${b.date} was removed — you're available again.`,
+                        icon: "calendar-check",
+                        sourceModule: "class",
+                        sourceId: b.id,
+                        branchId: b.branch_id,
+                        targetInstructorId: sid,
+                    },
+                });
+            }
+        }
+    },
+
     // ── Staff actions ──────────────────────────────────────────────────────
     //
     // Every mutation here also syncs the legacy `instructors` slice through
@@ -4535,7 +5521,20 @@ export const useAppStore = create<AppState>()(persist(
         });
         return id;
     },
-    updateStaff: (id, patch) =>
+    updateStaff: (id, patch) => {
+        // Detect a shift CHANGE so we can fire the instructor-bell sync
+        // notification ("Shift assigned" / "Shift removed") after the
+        // staff slice is updated. Compared against the row's value
+        // BEFORE the patch so the same handler covers all three flows:
+        //   • Assigned for the first time (before = undefined, patch ≠ undefined)
+        //   • Reassigned (before ≠ patch, both ≠ undefined)
+        //   • Removed (patch = undefined explicitly)
+        // No notification when the patch doesn't touch `shiftId` at all.
+        const prevShiftId = get().staff.find(s => s.id === id)?.shiftId;
+        const shiftPatchTouched = Object.prototype.hasOwnProperty.call(patch, "shiftId");
+        const nextShiftId = shiftPatchTouched ? patch.shiftId : prevShiftId;
+        const shiftActuallyChanged = shiftPatchTouched && prevShiftId !== nextShiftId;
+
         // Phase 4 reverse cascade — admin → instructor.
         // If the edited staff row is the currently-logged-in instructor,
         // mirror identity edits back to `currentUser` so the instructor
@@ -4580,7 +5579,54 @@ export const useAppStore = create<AppState>()(persist(
                 staff: nextStaff,
                 instructors: nextInstructors,
             };
-        }),
+        });
+
+        // Fan out the shift-change instructor notification + audit. Runs
+        // AFTER the cascading set() above so the staff slice is current
+        // when consumers click through the bell.
+        if (shiftActuallyChanged) {
+            const target = get().staff.find(s => s.id === id);
+            if (target) {
+                const newShift = nextShiftId ? get().shifts.find(x => x.id === nextShiftId) : undefined;
+                const oldShift = prevShiftId ? get().shifts.find(x => x.id === prevShiftId) : undefined;
+                if (newShift) {
+                    get().recordAudit("Assigned to shift", "shift", newShift.id, newShift.name, {
+                        staff: target.fullName,
+                    });
+                    get().emitNotifications({
+                        instructor: {
+                            tab: "booking",
+                            event: "shift_assigned",
+                            title: "Shift assigned",
+                            body: `You've been assigned to ${newShift.name} (${newShift.start_time}–${newShift.end_time}).`,
+                            icon: "calendar-check",
+                            sourceModule: "class",
+                            sourceId: newShift.id,
+                            branchId: target.branchId ?? undefined,
+                            targetInstructorId: id,
+                        },
+                    });
+                } else if (oldShift) {
+                    get().recordAudit("Removed from shift", "shift", oldShift.id, oldShift.name, {
+                        staff: target.fullName,
+                    });
+                    get().emitNotifications({
+                        instructor: {
+                            tab: "booking",
+                            event: "shift_removed",
+                            title: "Shift removed",
+                            body: `You've been removed from ${oldShift.name}.`,
+                            icon: "calendar-minus",
+                            sourceModule: "class",
+                            sourceId: oldShift.id,
+                            branchId: target.branchId ?? undefined,
+                            targetInstructorId: id,
+                        },
+                    });
+                }
+            }
+        }
+    },
     setStaffStatus: (ids, status) =>
         set(state => {
             const nextStaff = state.staff.map(s => ids.includes(s.id) ? { ...s, status } : s);

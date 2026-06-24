@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import {
     useAppStore, DEFAULT_BRANCH_ID,
     type PayRate, type PayRateStatus, type PayRateType,
@@ -430,9 +431,34 @@ export default function PayRatePage() {
         });
     }, [payRates, branchId, search, filter]);
 
-    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    // ── Sortable columns — Name / Type / Rate (numeric where possible) /
+    //    Branch / Status. The Rate comparator falls back to the display
+    //    string when an item doesn't have a sortable numeric amount
+    //    (e.g. Hybrid rates show a phrase, not a single number). ──
+    const STATUS_ORDER: Record<PayRateStatus, number> = { active: 0, inactive: 1, archive: 2 } as Record<PayRateStatus, number>;
+    function rateSortValue(r: PayRate): number {
+        if (r.type === "flat")    return r.flatAmount ?? 0;
+        if (r.type === "monthly") return r.fixedSalary ?? 0;
+        if (r.type === "revenue") return r.splitPercent ?? 0;
+        if (r.type === "tiered")  return r.tiers?.[0]?.aed ?? 0;
+        if (r.type === "hybrid")  return r.baseRate ?? 0;
+        return 0;
+    }
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<PayRate>(filteredRows, {
+        name:   (a, b) => a.name.localeCompare(b.name),
+        type:   (a, b) => TYPE_LABEL[a.type].localeCompare(TYPE_LABEL[b.type]),
+        rate:   (a, b) => rateSortValue(a) - rateSortValue(b),
+        branch: (a, b) => {
+            const an = branches.find(x => x.id === a.branchId)?.name ?? "";
+            const bn = branches.find(x => x.id === b.branchId)?.name ?? "";
+            return an.localeCompare(bn);
+        },
+        status: (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedRows = filteredRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // ─── Bulk select ───────────────────────────────────────────────────────
     const pageIds = useMemo(() => pagedRows.map(r => r.id), [pagedRows]);
@@ -591,11 +617,21 @@ export default function PayRatePage() {
                                                 ariaLabel="Select all rows on this page"
                                             />
                                         </th>
-                                        <th className={cn(TH, "w-[260px]")}>Pay rate name</th>
-                                        <th className={cn(TH, "w-[160px]")}>Pay rate type</th>
-                                        <th className={cn(TH, "w-[260px]")}>Rate</th>
-                                        <th className={cn(TH, "w-[220px]")}>Branch location</th>
-                                        <th className={cn(TH, "w-[120px]")}>Status</th>
+                                        <th className={cn(TH, "w-[260px]")}>
+                                            <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate name</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate type</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[260px]")}>
+                                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rate</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[220px]")}>
+                                            <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[120px]")}>
+                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                        </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
                                 </thead>
@@ -653,7 +689,7 @@ export default function PayRatePage() {
 
                 <div className="shrink-0">
                     <Pagination
-                        page={clampedPage} total={filteredRows.length} pageSize={pageSize}
+                        page={clampedPage} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>

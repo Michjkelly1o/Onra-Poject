@@ -192,7 +192,13 @@ const TAB_EMPTY_COPY: Record<TabKey, { title: string; subtitle: string }> = {
 // one (see the same pattern in /customers/new/page.tsx + /[id]/edit/page.tsx).
 function NotificationsPage() {
     const router = useRouter();
-    const notifications = useAppStore(s => s.notifications);
+    // Admin feed scope — every instructor-audience row is dropped here so
+    // shift_assigned / blocked_time_added / blocked_time_removed don't
+    // leak into the admin bell (those are instructor-only by design).
+    // Legacy rows with `audience` undefined behave like admin rows.
+    const notifications = useAppStore(s =>
+        s.notifications.filter(n => n.audience === undefined || n.audience === "admin"),
+    );
     const branches = useAppStore(s => s.branches);
     const markNotificationRead = useAppStore(s => s.markNotificationRead);
     // Live team-activity feed — same hook the dashboard widget reads.

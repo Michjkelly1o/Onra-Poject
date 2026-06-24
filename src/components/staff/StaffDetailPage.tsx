@@ -514,10 +514,80 @@ function buildAttendanceSeries(): AttendancePoint[] {
     }));
 }
 
+// ─── Personal information helpers ──────────────────────────────────────────
+
+const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
+
+function WorkingDaysStrip({ workingDays }: { workingDays: boolean[] }) {
+    // Strip mirrors Figma 7449:161921: 7 single-letter slots [Sun..Sat],
+    // working days in dark ink, off-days red (weekends typically off).
+    return (
+        <div className="flex items-center gap-3 text-[16px] font-medium">
+            {DAY_LETTERS.map((d, i) => (
+                <span key={i} className={workingDays[i] ? "text-[#101828]" : "text-[#b42318]"}>{d}</span>
+            ))}
+        </div>
+    );
+}
+
+function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <p className="text-[14px] text-[#667085]">{label}</p>
+            <div className="text-[16px] font-medium text-[#101828]">{value || "—"}</div>
+        </div>
+    );
+}
+
+// ─── Introduction section (with See more toggle) ───────────────────────────
+
+function IntroductionSection({ intro }: { intro: string }) {
+    const [expanded, setExpanded] = useState(false);
+    if (!intro) return null;
+    const long = intro.length > 180;
+    // Figma 7449:161957 — the "Introduction" label sits INSIDE the bordered
+    // card (not above it like the surrounding sections), and the See more
+    // toggle is a sage-coloured link beneath the truncated body text.
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <p className="text-[14px] text-[#667085]">Introduction</p>
+            <p className={cn(
+                "text-[16px] text-[#101828] leading-[24px] break-words whitespace-normal",
+                !expanded && long && "line-clamp-2",
+            )}>
+                {intro}
+            </p>
+            {long && (
+                <button type="button" onClick={() => setExpanded(p => !p)}
+                    className="self-start text-[14px] font-medium text-[#658774] hover:text-[#3b5446] transition-colors mt-1">
+                    {expanded ? "See less" : "See more"}
+                </button>
+            )}
+        </div>
+    );
+}
+
 function InstructorOverviewTab({ staff }: { staff: Staff }) {
     const classSchedule = useAppStore(s => s.classSchedules);
     const classRatings  = useAppStore(s => s.classRatings);
     const classBookings = useAppStore(s => s.classBookings);
+    const shifts        = useAppStore(s => s.shifts);
+    const classCategories = useAppStore(s => s.classCategories);
+
+    // Resolve shift + categories for the Personal information section.
+    const assignedShift = staff.shiftId ? shifts.find(sh => sh.id === staff.shiftId) : undefined;
+    const assignedCategoryNames = (staff.categoryIds ?? [])
+        .map(id => classCategories.find(c => c.id === id)?.name)
+        .filter((n): n is string => !!n);
+
+    // 12-hour formatter for the Shift hours line — matches Figma's
+    // "Morning shift (07:00 AM – 12:00 AM)" copy.
+    function fmtShiftTime(t: string): string {
+        const [h, m] = t.split(":").map(Number);
+        const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+        const ampm = h < 12 ? "AM" : "PM";
+        return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
+    }
 
     // Derive metrics live from the existing slices — the staff seed only
     // carries identity + role + branch, so schedule + ratings + bookings
@@ -554,6 +624,35 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
 
     return (
         <div className="px-6 pb-6 flex flex-col gap-6">
+            {/* Personal information — Figma 7449:161921. Flush 2-column
+                grid (no card border / padding) so the section reads as
+                pure content above the Overall performance block. */}
+            <div className="flex flex-col gap-3">
+                <p className="text-[14px] text-[#667085]">Personal information</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                    <InfoField label="Full name"   value={staff.fullName} />
+                    <InfoField label="Joined date" value={staff.joinedDate} />
+                    <InfoField label="Email"       value={staff.email} />
+                    <InfoField label="Phone"       value={staff.phone} />
+                    <InfoField label="Work experience"
+                        value={staff.workingExperienceYears != null
+                            ? `${staff.workingExperienceYears} year${staff.workingExperienceYears === 1 ? "" : "s"}`
+                            : "—"} />
+                    <InfoField label="Categories"
+                        value={assignedCategoryNames.length > 0 ? assignedCategoryNames.join(", ") : "—"} />
+                    <InfoField label="Working days"
+                        value={assignedShift ? <WorkingDaysStrip workingDays={assignedShift.working_days} /> : "—"} />
+                    <InfoField label="Shift hours"
+                        value={assignedShift
+                            ? `${assignedShift.name} (${fmtShiftTime(assignedShift.start_time)} – ${fmtShiftTime(assignedShift.end_time)})`
+                            : "—"} />
+                </div>
+            </div>
+
+            {/* Introduction — Figma 7449:161957. Long-form bio with See more
+                toggle. Hidden entirely when the instructor hasn't filled it. */}
+            <IntroductionSection intro={staff.shortIntro ?? ""} />
+
             {/* Overall performance — 4 metric cards in horizontal row */}
             <div className="flex flex-col gap-3">
                 <p className="text-[14px] text-[#667085]">Overall performance</p>

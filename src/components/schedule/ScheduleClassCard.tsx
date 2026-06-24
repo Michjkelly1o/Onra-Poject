@@ -140,7 +140,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     "w-full rounded-[10px] pl-4 pr-4 py-3 flex flex-col gap-1 text-left cursor-pointer hover:brightness-95 transition-all",
                     className,
                 )}>
-                <p className="text-[14px] font-medium text-[#101828] truncate" style={{ color: cls.color.text }}>{cls.name}</p>
+                <span className="block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
                 <p className="text-[14px] text-[#667085]">{rangeLabel}</p>
                 <div className="flex items-center gap-2 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -176,7 +176,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     !absolute && "w-full",
                     className,
                 )}>
-                <p className="text-[14px] font-medium leading-[18px] line-clamp-1" style={{ color: cls.color.text }}>{cls.name}</p>
+                <span className="block text-[14px] font-medium leading-[20px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
                 <div className="flex items-center gap-1.5 min-w-0">
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
                     <span className="text-[12px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
@@ -207,7 +207,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     !absolute && "w-full",
                     className,
                 )}>
-                <p className="text-[13px] font-medium leading-[16px] line-clamp-1" style={{ color: cls.color.text }}>{cls.name}</p>
+                <span className="block text-[13px] font-medium leading-[18px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
                 <div className="flex items-center gap-1 min-w-0">
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
                     <span className="text-[11px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>

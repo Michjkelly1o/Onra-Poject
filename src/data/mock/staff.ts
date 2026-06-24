@@ -152,6 +152,10 @@ export const staff: StaffSeed[] = [
         bio: "Pilates instructor with 5 years of teaching experience.",
         specialties: ["Pilates", "Barre"],
         pay_rate_id: "pr_standard",
+        short_intro: "With 5 years of experience, Maya brings dedicated expertise to every Pilates session. With a strong background in fitness, Maya empowers clients to master body awareness, functional movement, and core strength.",
+        working_experience_years: 5,
+        shift_id: "shift_morning",
+        category_ids: ["cat_pilates", "cat_barre"],
     },
     {
         id: "staff_liam_chen",
@@ -170,6 +174,11 @@ export const staff: StaffSeed[] = [
         joined_date: "Mar 12, 2024",
         specialties: ["Reformer Pilates"],
         pay_rate_id: "pr_standard",
+        // Demo exemplar — fields match the Figma 7449:161921 personal info card.
+        short_intro: "With 7 years of experience, Liam Chen brings dedicated expertise to every Pilates session. With a strong background in fitness, Liam empowers clients to master body awareness, functional movement, and core strength.",
+        working_experience_years: 1,
+        shift_id: "shift_morning",
+        category_ids: ["cat_yoga", "cat_pilates"],
     },
     {
         id: "staff_sara_al_rashid",
@@ -184,6 +193,10 @@ export const staff: StaffSeed[] = [
         joined_date: "Apr 5, 2024",
         specialties: ["Pilates", "Yoga"],
         pay_rate_id: "pr_class_tiers",
+        short_intro: "Sara blends classical Pilates with mindful flow yoga. With 6 years on the mat, she's known for helping clients reset both body and breath.",
+        working_experience_years: 6,
+        shift_id: "shift_morning",
+        category_ids: ["cat_pilates", "cat_yoga"],
     },
     {
         id: "staff_lucy_hale",
@@ -202,6 +215,8 @@ export const staff: StaffSeed[] = [
         joined_date: "Jan 18, 2024",
         specialties: ["Senior Wellness"],
         pay_rate_id: "pr_senior",
+        shift_id: "shift_east_day",
+        category_ids: ["cat_yoga"],
     },
     {
         id: "staff_olivia_rhye",
@@ -215,6 +230,8 @@ export const staff: StaffSeed[] = [
         joined_date: "Mar 4, 2024",
         specialties: ["Pilates"],
         pay_rate_id: "pr_standard",
+        shift_id: "shift_afternoon",
+        category_ids: ["cat_pilates"],
     },
     {
         id: "staff_phoenix_baker",
@@ -228,6 +245,10 @@ export const staff: StaffSeed[] = [
         joined_date: "Feb 19, 2024",
         specialties: ["Pilates", "Reformer"],
         pay_rate_id: "pr_split_rate",
+        short_intro: "Phoenix specialises in reformer-based progressions. Three years coaching beginners through to advanced practitioners with a calm, methodical style.",
+        working_experience_years: 3,
+        shift_id: "shift_evening",
+        category_ids: ["cat_pilates", "cat_barre"],
     },
     {
         id: "staff_lana_steiner",
@@ -241,6 +262,8 @@ export const staff: StaffSeed[] = [
         joined_date: "Apr 22, 2024",
         specialties: ["Pilates"],
         pay_rate_id: "pr_senior",
+        shift_id: "shift_afternoon",
+        category_ids: ["cat_pilates", "cat_barre"],
     },
     {
         id: "staff_demi_wilkinson",
@@ -254,6 +277,8 @@ export const staff: StaffSeed[] = [
         joined_date: "May 9, 2024",
         specialties: ["Yoga", "Mindful Flow"],
         pay_rate_id: "pr_private_sess",
+        shift_id: "shift_east_day",
+        category_ids: ["cat_yoga"],
     },
     {
         id: "staff_candice_wu",
@@ -265,8 +290,13 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Jun 14, 2024",
-        specialties: ["Strength"],
+        // Specialty matches her teaching category — keeps the seed
+        // consistent now that the studio only offers Pilates / Barre /
+        // Yoga (no "Strength" category exists).
+        specialties: ["Barre"],
         pay_rate_id: "pr_monthly",
+        shift_id: "shift_east_day",
+        category_ids: ["cat_barre"],
     },
     {
         id: "staff_natali_craig",
@@ -280,6 +310,8 @@ export const staff: StaffSeed[] = [
         joined_date: "Jul 1, 2024",
         specialties: ["Trial Classes"],
         pay_rate_id: "pr_trial_class",
+        shift_id: "shift_east_day",
+        category_ids: ["cat_yoga", "cat_pilates"],
     },
     // ── Extra Pending invite — demoes the resend-invite flow ──────────────
     {
@@ -295,5 +327,6 @@ export const staff: StaffSeed[] = [
         first_login_completed: false,
         joined_date: "May 22, 2026",
         specialties: ["Pilates"],
+        category_ids: ["cat_pilates"],
     },
 ];

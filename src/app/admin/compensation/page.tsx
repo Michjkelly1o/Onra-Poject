@@ -37,6 +37,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import {
     useAppStore, type Branch,
     type Instructor, type PayrollEntry,
@@ -371,10 +372,24 @@ export default function CompensationPage() {
         return period.label;
     })();
 
+    // ── Sortable columns — Name / Branch / Default pay rate / Completed
+    //    classes (numeric) / Earnings (numeric). ──
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<CompRow>(filteredRows, {
+        name:    (a, b) => a.instructor.name.localeCompare(b.instructor.name),
+        branch:  (a, b) => {
+            const an = branches.find(x => x.id === a.branchId)?.name ?? "";
+            const bn = branches.find(x => x.id === b.branchId)?.name ?? "";
+            return an.localeCompare(bn);
+        },
+        payRate: (a, b) => a.payRateName.localeCompare(b.payRateName),
+        classes: (a, b) => a.classesCount - b.classesCount,
+        earnings:(a, b) => a.earnings - b.earnings,
+    });
+
     // ─── Pagination slice ──────────────────────────────────────────────────
-    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
-    const pageRows = filteredRows.slice((clamped - 1) * pageSize, clamped * pageSize);
+    const pageRows = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
 
     // ─── Branch options (live `branches` slice — single source of truth) ────
     const branchOptions = useMemo(
@@ -464,11 +479,21 @@ export default function CompensationPage() {
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
-                                        <th className={cn(TH, "w-[320px]")}>Name</th>
-                                        <th className={cn(TH, "w-[220px]")}>Branch location</th>
-                                        <th className={cn(TH, "w-[200px]")}>Default pay rate</th>
-                                        <th className={cn(TH, "w-[160px]")}>Completed classes</th>
-                                        <th className={cn(TH, "w-[160px]")}>Earnings</th>
+                                        <th className={cn(TH, "w-[320px]")}>
+                                            <SortableHeader sortKey="name"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[220px]")}>
+                                            <SortableHeader sortKey="branch"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[200px]")}>
+                                            <SortableHeader sortKey="payRate"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Default pay rate</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="classes"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Completed classes</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="earnings" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earnings</SortableHeader>
+                                        </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
                                 </thead>
@@ -504,7 +529,7 @@ export default function CompensationPage() {
 
                 <div className="shrink-0">
                     <Pagination
-                        page={clamped} total={filteredRows.length} pageSize={pageSize}
+                        page={clamped} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>

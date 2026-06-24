@@ -95,6 +95,22 @@ export default function InstructorAccountPage() {
     const instructor  = instructors.find(i => i.id === staffProfileId);
     const branch      = branches.find(b => b.id === instructor?.branchId);
 
+    // ── Live admin-side fields (Phase 4 sync) ─────────────────────────────
+    //
+    // The instructor's professional info — Work experience, Categories,
+    // Shift hours, Working days — lives in the `staff` slice that the
+    // admin Staff & Permissions module mutates. Reading it here ensures
+    // every admin edit on /admin/staff propagates to /instructor/account
+    // in the same render cycle (no cascade fan-out needed).
+    const staffSlice      = useAppStore(s => s.staff);
+    const shiftsSlice     = useAppStore(s => s.shifts);
+    const classCategories = useAppStore(s => s.classCategories);
+    const myStaffRow      = staffSlice.find(s => s.id === staffProfileId);
+    const myShift         = myStaffRow?.shiftId ? shiftsSlice.find(s => s.id === myStaffRow.shiftId) : undefined;
+    const myCategoryNames = (myStaffRow?.categoryIds ?? [])
+        .map(id => classCategories.find(c => c.id === id)?.name)
+        .filter((n): n is string => !!n);
+
     // ── Edit profile flow ──────────────────────────────────────────────────
     function openEditProfile() {
         setFlow({ kind: "edit_profile" });
@@ -161,6 +177,12 @@ export default function InstructorAccountPage() {
                     <PersonalInformationTab
                         user={currentUser}
                         branchName={branch?.name}
+                        workingExperienceYears={myStaffRow?.workingExperienceYears}
+                        categories={myCategoryNames}
+                        shiftName={myShift?.name}
+                        shiftStart={myShift?.start_time}
+                        shiftEnd={myShift?.end_time}
+                        shiftWorkingDays={myShift?.working_days}
                         onEditProfile={openEditProfile}
                         onChangePassword={openChangePassword}
                     />
@@ -205,12 +227,30 @@ export default function InstructorAccountPage() {
 interface PersonalInformationTabProps {
     user: ReturnType<typeof useAppStore.getState>["currentUser"];
     branchName: string | undefined;
+    /** Admin-side staff fields synced through the `staff` slice. Undefined
+     *  when the instructor's staff row isn't loaded yet. */
+    workingExperienceYears?: number;
+    categories?: string[];
+    /** Shift label + window. When provided drives the Shift hours row;
+     *  otherwise falls back to the legacy `user.working_hours_*` window. */
+    shiftName?: string;
+    shiftStart?: string;
+    shiftEnd?: string;
+    /** Shift's [Sun..Sat] boolean array. When provided drives the
+     *  Working days glyph row; otherwise falls back to `user.working_days`. */
+    shiftWorkingDays?: boolean[];
     onEditProfile: () => void;
     onChangePassword: () => void;
 }
 function PersonalInformationTab({
     user,
     branchName,
+    workingExperienceYears,
+    categories,
+    shiftName,
+    shiftStart,
+    shiftEnd,
+    shiftWorkingDays,
     onEditProfile,
     onChangePassword,
 }: PersonalInformationTabProps) {
@@ -218,9 +258,45 @@ function PersonalInformationTab({
     const initials = `${(user.first_name?.[0] ?? "").toUpperCase()}${(user.last_name?.[0] ?? "").toUpperCase()}`;
     const avatarSrc = user.avatar_url || "";
 
-    const workingDays = user.working_days ?? [];
-    const workingDaySet = new Set<string>(workingDays);
+    // Build the per-glyph "on" set from the shift's working_days array when
+    // the shift exists; otherwise fall back to the legacy `user.working_days`
+    // codes. The shift array is indexed [Sun..Sat] but the DAY_ROW glyphs
+    // run Mon..Sun, so we map per code-index here.
+    const SHIFT_INDEX: Record<typeof DAY_ROW[number]["code"], number> = {
+        M: 1, T: 2, W: 3, Th: 4, F: 5, Sa: 6, Su: 0,
+    };
+    const workingDaySet = new Set<string>();
+    if (shiftWorkingDays && shiftWorkingDays.length === 7) {
+        for (const d of DAY_ROW) {
+            if (shiftWorkingDays[SHIFT_INDEX[d.code]]) workingDaySet.add(d.code);
+        }
+    } else {
+        for (const code of user.working_days ?? []) workingDaySet.add(code);
+    }
     const introduction = user.introduction ?? "";
+
+    // Categories: comma-separated string, "—" when empty (matches the
+    // Figma reference at the top of this conversation turn).
+    const categoriesLabel = categories && categories.length > 0
+        ? categories.join(", ")
+        : "—";
+
+    // Work experience: "1 year" / "5 years" / "—" when missing or 0.
+    const workExpLabel = workingExperienceYears && workingExperienceYears > 0
+        ? `${workingExperienceYears} ${workingExperienceYears === 1 ? "year" : "years"}`
+        : "—";
+
+    // Shift hours row — prefer the live shift slice ("Morning shift (07:00
+    // AM - 12:00 PM)") and fall back to the user's working_hours window
+    // when no shift is assigned (matches admin-side behaviour where
+    // shiftless instructors follow branch hours).
+    const shiftHoursLabel = (() => {
+        const startSrc = shiftStart ?? user.working_hours_start;
+        const endSrc   = shiftEnd   ?? user.working_hours_end;
+        const window = `${fmt12h(startSrc)} - ${fmt12h(endSrc)}`;
+        if (shiftName) return `${shiftName} (${window})`;
+        return window;
+    })();
 
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
@@ -256,25 +332,20 @@ function PersonalInformationTab({
 
                 <Divider />
 
-                {/* ── Personal information ─────────────────────────────── */}
+                {/* ── Personal information ─────────────────────────────────
+                     Single consolidated grid per Figma reference shared in
+                     chat — 4 rows × 2 columns. Work experience, Categories,
+                     Working days and Shift hours all read live from the
+                     admin `staff` slice so admin edits propagate here in
+                     the same render cycle. */}
                 <Section title="Personal information">
                     <FieldGrid>
-                        <ReadOnlyField label="Full name"   value={fullName} />
-                        <ReadOnlyField label="Joined date" value={fmtJoinedDate(user.joined_at ?? user.created_at)} />
-                        <ReadOnlyField label="Email"       value={user.email || "—"} />
-                        <ReadOnlyField label="Phone"       value={user.phone || "—"} />
-                    </FieldGrid>
-
-                    {/* Introduction (tinted card with "See more" toggle) */}
-                    <IntroductionCard text={introduction} />
-                </Section>
-
-                <Divider />
-
-                {/* ── Branch information ───────────────────────────────── */}
-                <Section title="Branch information">
-                    <FieldGrid>
-                        <ReadOnlyField label="Branch" value={branchName ?? "—"} />
+                        <ReadOnlyField label="Full name"       value={fullName} />
+                        <ReadOnlyField label="Joined date"     value={fmtJoinedDate(user.joined_at ?? user.created_at)} />
+                        <ReadOnlyField label="Email"           value={user.email || "—"} />
+                        <ReadOnlyField label="Phone"           value={user.phone || "—"} />
+                        <ReadOnlyField label="Work experience" value={workExpLabel} />
+                        <ReadOnlyField label="Categories"      value={categoriesLabel} />
                         <div className="flex flex-col gap-1.5 min-w-0">
                             <p className="text-[14px] text-[#667085] leading-5">Working days</p>
                             <div className="flex items-center gap-4">
@@ -294,10 +365,19 @@ function PersonalInformationTab({
                                 })}
                             </div>
                         </div>
-                        <ReadOnlyField
-                            label="Working hours"
-                            value={`${fmt12h(user.working_hours_start)} - ${fmt12h(user.working_hours_end)}`}
-                        />
+                        <ReadOnlyField label="Shift hours" value={shiftHoursLabel} />
+                    </FieldGrid>
+
+                    {/* Introduction (tinted card with "See more" toggle) */}
+                    <IntroductionCard text={introduction} />
+                </Section>
+
+                <Divider />
+
+                {/* ── Branch information ───────────────────────────────── */}
+                <Section title="Branch information">
+                    <FieldGrid>
+                        <ReadOnlyField label="Branch"  value={branchName ?? "—"} />
                         <ReadOnlyField label="Address" value={user.address ?? "—"} />
                     </FieldGrid>
                 </Section>

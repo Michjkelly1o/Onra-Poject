@@ -597,7 +597,7 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
     }, [branch, branches.length, router, showToast]);
 
     function handleClose() { router.push(RETURN_ROUTE); }
-    function handleEdit()  { if (branch) router.push(`/admin/settings/branches/${branch.id}/edit`); }
+    function handleEdit()  { if (branch) router.push(`/settings/branches/${branch.id}/edit`); }
     function handleAddRoom() { if (branch) router.push(`/settings/rooms/new?branchId=${branch.id}`); }
 
     function performBranchConfirm(kind: ConfirmKind) {

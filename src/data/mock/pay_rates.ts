@@ -24,18 +24,25 @@
 import type { PayRateSeed } from "./_types";
 
 // Additional-settings mix (only_checked_in / include_late_cancelled):
-//   • include_late_cancelled defaults to true on most rows — matches the
-//     create-form default and the studio's everyday "generous" policy.
+//   • Flat-rate rows ALWAYS carry both flags as false — the toggles are
+//     hidden in the create/edit form + the detail page for `type: "flat"`
+//     because flat pay doesn't depend on who showed up.
+//   • include_late_cancelled defaults to true on most non-flat rows —
+//     matches the create-form default and the studio's everyday
+//     "generous" policy.
 //   • only_checked_in is true on attendance-/revenue-driven rates where
 //     paying for booked-but-absent customers would distort the math
-//     (per-attendee tiered, revenue split, trial classes).
+//     (per-attendee tiered, revenue split).
 
 export const pay_rates: PayRateSeed[] = [
     {
         id: "pr_standard", name: "Standard", type: "flat",
         flat_amount: 147,
         branch_id: "branch_forma_south", status: "active", usage_count: 8,
-        only_checked_in: false, include_late_cancelled: true,
+        // Flat rate pays a fixed amount per class regardless of attendance,
+        // so the additional-settings toggles are forced off — matches the
+        // form which hides that section entirely for `type === "flat"`.
+        only_checked_in: false, include_late_cancelled: false,
     },
     {
         id: "pr_class_tiers", name: "Class Tiers", type: "tiered",
@@ -84,25 +91,26 @@ export const pay_rates: PayRateSeed[] = [
         id: "pr_workshop", name: "Workshop Rate", type: "flat",
         flat_amount: 200,
         branch_id: "branch_forma_south", status: "active", usage_count: 6,
-        only_checked_in: false, include_late_cancelled: true,
+        // Flat — toggles inert by design.
+        only_checked_in: false, include_late_cancelled: false,
     },
     {
         id: "pr_trial_class", name: "Trial Class Compensation", type: "flat",
         flat_amount: 100,
         branch_id: "branch_forma_east", status: "archive", usage_count: 12,
-        // Trial class is per-conversion — no-shows shouldn't trigger pay.
-        only_checked_in: true,  include_late_cancelled: false,
+        // Flat — toggles inert by design.
+        only_checked_in: false, include_late_cancelled: false,
     },
     {
         id: "pr_community", name: "Community Class Rate", type: "flat",
         flat_amount: 120,
         branch_id: "branch_forma_south", status: "archive", usage_count: 0,
-        only_checked_in: false, include_late_cancelled: true,
+        only_checked_in: false, include_late_cancelled: false,
     },
     {
         id: "pr_elite_master", name: "Elite Master Trainer", type: "flat",
         flat_amount: 110,
         branch_id: "branch_forma_south", status: "archive", usage_count: 0,
-        only_checked_in: false, include_late_cancelled: true,
+        only_checked_in: false, include_late_cancelled: false,
     },
 ];

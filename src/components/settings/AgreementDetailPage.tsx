@@ -36,6 +36,7 @@ import {
     type Agreement, type AgreementStatus, type AgreementVersion,
 } from "@/lib/store";
 import { AgreementContentModal } from "./AgreementContentModal";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 
 const RETURN_ROUTE = "/admin/settings/agreements";
 
@@ -359,9 +360,20 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
             .sort((a, b) => b.versionNumber - a.versionNumber);
     }, [versions, search]);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // ── Version sort — Version number / Status (current vs. archived,
+    //    derived from agreement.currentVersion). ──
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<AgreementVersion>(filtered, {
+        version: (a, b) => a.versionNumber - b.versionNumber,
+        status:  (a, b) => {
+            const aCur = a.versionNumber === agreement.currentVersion ? 0 : 1;
+            const bCur = b.versionNumber === agreement.currentVersion ? 0 : 1;
+            return aCur - bCur;
+        },
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const pagedRows = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
@@ -390,8 +402,12 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="border-b border-[#e4e7ec]">
-                            <th className="py-3 pr-3 text-left text-[12px] font-medium text-[#475467]">Version</th>
-                            <th className="py-3 pr-3 text-center text-[12px] font-medium text-[#475467] w-[140px]">Status</th>
+                            <th className="py-3 pr-3 text-left text-[12px] font-medium text-[#475467]">
+                                <SortableHeader sortKey="version" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Version</SortableHeader>
+                            </th>
+                            <th className="py-3 pr-3 text-center text-[12px] font-medium text-[#475467] w-[140px]">
+                                <SortableHeader sortKey="status"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                            </th>
                             <th className="py-3 pr-3 w-[52px]" />
                         </tr>
                     </thead>
@@ -440,7 +456,7 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
             <div className="shrink-0 px-6">
                 <VersionPagination
                     page={clampedPage}
-                    total={filtered.length}
+                    total={sortedRows.length}
                     pageSize={pageSize}
                     onPage={setPage}
                     onPageSize={s => { setPageSize(s); setPage(1); }}
