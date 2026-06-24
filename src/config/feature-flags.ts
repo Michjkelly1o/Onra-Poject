@@ -31,12 +31,14 @@
 //   Locations, Account settings, Branding.
 //
 //   Most of the Instructor experience is ENABLED for the client demo —
-//   Dashboard, Schedule, Earnings, and the takeover detail pages
-//   (`/class/[id]` + `/earnings/[id]`) are reachable.
+//   Dashboard, Schedule, and the upcoming/ongoing takeover detail page
+//   (`/class/[id]`) are reachable.
 //
-//   DISABLED on the Instructor side ONLY: Notifications + Account /
-//   Profile. Sidebar menu items stay visible; clicking either route
-//   404s. Re-enable by removing the matching entry from the array.
+//   DISABLED on the Instructor side: Earnings (list + `/earnings/[id]`
+//   takeover detail page), Notifications, and Account / Profile.
+//   Sidebar menu items stay visible per the file convention; clicking
+//   any of them 404s. Re-enable by removing the matching entry from
+//   the array.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -158,6 +160,13 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
     //"/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
     "/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page
+
+    // ── Instructor → Earnings module ── (DISABLED — not for client demo)
+    // Closes off the main earnings list page at /instructor/earnings.
+    // Pairs with the `/earnings` entry above which closes off the
+    // takeover detail page at /earnings/[classId] (different folder ⇒
+    // different URL prefix ⇒ both need their own entry to fully hide).
+    "/instructor/earnings",          // instructor earnings list + filters
 
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)
     // The sidebar menu item stays visible per the file convention; the
