@@ -825,14 +825,15 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                         {/* Tabs — same h-[48px] underline pattern as membership/package detail */}
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
                             {/* "Additional settings" is hidden for Flat
-                                rate — the two attendance toggles don't
-                                apply when pay is fixed per class (matches
-                                the form, which also hides this section
-                                for `type === "flat"`). */}
+                                rate AND Monthly salary — the two attendance
+                                toggles don't apply when pay is a fixed
+                                amount regardless of attendance (matches the
+                                form, which hides this section for the same
+                                two types). */}
                             <DetailPageTabs
                                 tabs={[
                                     { key: "instructor", label: "Assigned instructor" },
-                                    { key: "settings", label: "Additional settings", hidden: payRate.type === "flat" },
+                                    { key: "settings", label: "Additional settings", hidden: payRate.type === "flat" || payRate.type === "monthly" },
                                 ]}
                                 activeKey={tab}
                                 onChange={(k) => setTab(k as typeof tab)}
@@ -841,7 +842,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
 
                         {/* Tab body */}
                         <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
-                            {tab === "instructor" || payRate.type === "flat" ? (
+                            {tab === "instructor" || payRate.type === "flat" || payRate.type === "monthly" ? (
                                 <AssignedInstructorTab
                                     payRateId={payRate.id}
                                     payRateName={payRate.name}
