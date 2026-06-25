@@ -72,6 +72,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore, type ClassBooking, type ClassSchedule, type ClassStatus } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { TableAvatar } from "@/components/ui/avatar";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 // Badges:
 //   • PresentBadge — shows once the instructor marks the booking present
 //   • NoShowBadge  — admin can also mark no-show on an Ongoing class;
@@ -87,6 +88,7 @@ import { Pagination } from "@/components/ui/Pagination";
 // doesn't inherit the layout's <Toast /> portal — render our own here
 // (same pattern as [/earnings/[classId]](src/app/earnings/[classId]/page.tsx)).
 import { Toast } from "@/components/ui/Toast";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Helpers — verbatim admin ───────────────────────────────────────────────
 
@@ -119,24 +121,6 @@ function fmtBookingTime(iso: string): string {
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
-// ─── Status badge — verbatim admin chrome ───────────────────────────────────
-
-function ClassStatusBadge({ status }: { status: ClassStatus }) {
-    const styles: Record<ClassStatus, string> = {
-        Upcoming:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        Ongoing:   "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {status}
-        </span>
-    );
-}
 
 // ─── First-timer pill — Figma 6338:456387 ───────────────────────────────────
 //
@@ -282,7 +266,7 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
                     </div>
                 )}
                 <div className="absolute top-3 right-3">
-                    <ClassStatusBadge status={schedule.status} />
+                    <StatusBadge type="class" status={schedule.status} />
                 </div>
             </div>
 
@@ -617,10 +601,10 @@ export default function InstructorClassDetailPage() {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
             </div>
 
-            {/* Two-column content — admin's exact gap-6 + h-[832px] layout */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    <LeftPanel schedule={schedule} />
+            {/* Two-column content — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={<LeftPanel schedule={schedule} />}
+                main={<>
 
                     {/* Right panel — admin's exact border-1 rounded-[20px] card */}
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px] relative">
@@ -848,8 +832,8 @@ export default function InstructorClassDetailPage() {
                             />
                         )}
                     </div>
-                </div>
-            </div>
+                </>}
+            />
 
             {/* Standalone Toast portal — instructor layout isn't wrapping
                 us here (full-screen takeover), so we render it ourselves. */}

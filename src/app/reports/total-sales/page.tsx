@@ -95,12 +95,12 @@ function StatusPill({ status }: { status: Status }) {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
-    pos:             "POS",
+    pos:             "Point of Sale",
     customer_portal: "Customer portal",
     admin:           "Admin",
 };
 function sourceLabel(s: string | undefined): string {
-    return s ? (SOURCE_LABEL[s] ?? s) : "POS";
+    return s ? (SOURCE_LABEL[s] ?? s) : "Point of Sale";
 }
 
 function orderNumberOf(txnId: string): string {

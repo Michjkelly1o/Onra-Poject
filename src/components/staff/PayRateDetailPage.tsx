@@ -25,7 +25,7 @@
 // out the same way.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, RefreshCcw01, SlashCircle01, Trash01, Check, CoinsHand,
     SearchMd, FilterLines, DotsVertical, Eye, ChevronLeft, MarkerPin01,
@@ -38,6 +38,14 @@ import { Toast } from "@/components/ui/Toast";
 import { SelectInput } from "@/components/ui/select-input";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import {
     useAppStore, computePayRateDisplay,
@@ -250,37 +258,8 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     },
 };
 
-function ConfirmModal({ kind, subject, onCancel, onConfirm }: {
-    kind: ConfirmKind; subject: string; onCancel: () => void; onConfirm: () => void;
-}) {
-    const cfg = CONFIRM_CFG[kind];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", cfg.iconBg)}>
-                        <cfg.Icon className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title(subject)}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.destructive ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ConfirmModal removed — uses canonical from
+// `@/components/modals/ConfirmModal`, driven by CONFIRM_CFG above.
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 
@@ -362,19 +341,6 @@ interface InstructorFilter {
 }
 const EMPTY_INSTRUCTOR_FILTER: InstructorFilter = { branchId: "", statuses: [] };
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "px-4 py-2 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-            )}>
-            {label}
-        </button>
-    );
-}
 
 function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
     open: boolean; onClose: () => void;
@@ -581,29 +547,13 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
         <div className="flex flex-col gap-6 px-6 pb-6">
             {/* Toolbar */}
             <div className="flex items-center gap-3 w-full">
-                <div className="flex-1">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[14px] font-medium text-[#101828]">
-                        {filtered.length} {filtered.length === 1 ? "instructor" : "instructors"}
-                    </p>
-                </div>
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search instructor..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
-                <Button variant="secondary-gray" size="md"
-                    leftIcon={
-                        <div className="relative">
-                            <FilterLines className="w-4 h-4" />
-                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                        </div>
-                    }
-                    onClick={() => setFilterOpen(true)}>
-                    Filter
-                </Button>
+                <ToolbarTotal count={filtered.length} entitySingular="instructor" size="sm" />
+                <ToolbarSearch
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="Search instructor..."
+                />
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>
 
             {/* Body */}
@@ -658,8 +608,12 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                 const branch = branches.find(b => b.id === r.branchId);
                                 return (
                                     <tr key={r.id}
-                                        className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                        <td className={TD}>
+                                        onClick={() => onPlaceholderAction("view", r)}
+                                        className={cn(
+                                            "transition-colors cursor-pointer",
+                                            isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                        )}>
+                                        <td className={TD} onClick={e => e.stopPropagation()}>
                                             <CheckboxCell
                                                 checked={isSelected}
                                                 onChange={() => toggleOne(r.id)}
@@ -684,7 +638,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                         <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
                                         <td className={TD}>{payRateName}</td>
                                         <td className={TD}><InstructorStatusBadge status={r.status} /></td>
-                                        <td className={TD}>
+                                        <td className={TD} onClick={e => e.stopPropagation()}>
                                             <InstructorRowActions
                                                 status={r.status}
                                                 onAction={kind => handleRowAction(r, kind)}
@@ -709,14 +663,22 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                 />
             )}
 
-            {pendingConfirm && (
-                <ConfirmModal
-                    kind={pendingConfirm.kind}
-                    subject={`"${pendingConfirm.row.name}"`}
-                    onCancel={() => setPendingConfirm(null)}
-                    onConfirm={() => performAction(pendingConfirm)}
-                />
-            )}
+            {pendingConfirm && (() => {
+                const cfg = CONFIRM_CFG[pendingConfirm.kind];
+                const subject = `"${pendingConfirm.row.name}"`;
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={cfg.description(subject)}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => performAction(pendingConfirm)}
+                    />
+                );
+            })()}
 
             <InstructorFilterPanel
                 open={filterOpen}
@@ -729,48 +691,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     );
 }
 
-// ─── Pagination (same chrome the pay-rate list uses) ────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="flex items-center gap-3 pt-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Additional settings tab ───────────────────────────────────────────────
 
@@ -819,6 +740,7 @@ export interface PayRateDetailPageProps {
 
 export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/pay-rate" }: PayRateDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const payRates           = useAppStore(s => s.payRates);
     const branches           = useAppStore(s => s.branches);
     const setPayRatesStatus  = useAppStore(s => s.setPayRatesStatus);
@@ -843,7 +765,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
     function handleSidebarAction(kind: "edit" | ConfirmKind) {
         if (!payRate) return;
         if (kind === "edit") {
-            router.push(`/staff/pay-rate/${payRate.id}/edit?returnTo=/staff/pay-rate/${payRate.id}`);
+            router.push(`/staff/pay-rate/${payRate.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setSidebarConfirm({ kind });
@@ -895,26 +817,26 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Pay rate details</h1>
             </div>
 
-            {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    <Sidebar payRate={payRate} onAction={handleSidebarAction} branches={branches} />
-
-                    {/* Content card */}
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={<Sidebar payRate={payRate} onAction={handleSidebarAction} branches={branches} />}
+                main={
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
                         {/* Tabs — same h-[48px] underline pattern as membership/package detail */}
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
-                            <div className="flex gap-1">
-                                <TabBtn label="Assigned instructor" active={tab === "instructor"} onClick={() => setTab("instructor")} />
-                                {/* "Additional settings" is hidden for Flat
-                                    rate — the two attendance toggles
-                                    don't apply when pay is fixed per class
-                                    (matches the form, which also hides
-                                    this section for `type === "flat"`). */}
-                                {payRate.type !== "flat" && (
-                                    <TabBtn label="Additional settings" active={tab === "settings"} onClick={() => setTab("settings")} />
-                                )}
-                            </div>
+                            {/* "Additional settings" is hidden for Flat
+                                rate — the two attendance toggles don't
+                                apply when pay is fixed per class (matches
+                                the form, which also hides this section
+                                for `type === "flat"`). */}
+                            <DetailPageTabs
+                                tabs={[
+                                    { key: "instructor", label: "Assigned instructor" },
+                                    { key: "settings", label: "Additional settings", hidden: payRate.type === "flat" },
+                                ]}
+                                activeKey={tab}
+                                onChange={(k) => setTab(k as typeof tab)}
+                            />
                         </div>
 
                         {/* Tab body */}
@@ -930,33 +852,30 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                             )}
                         </div>
                     </div>
-                </div>
-            </div>
+                }
+            />
 
-            {sidebarConfirm && (
-                <ConfirmModal
-                    kind={sidebarConfirm.kind}
-                    subject={`"${payRate.name}"`}
-                    onCancel={() => setSidebarConfirm(null)}
-                    onConfirm={() => performSidebarAction(sidebarConfirm.kind)}
-                />
-            )}
+            {sidebarConfirm && (() => {
+                const cfg = CONFIRM_CFG[sidebarConfirm.kind];
+                const subject = `"${payRate.name}"`;
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setSidebarConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={cfg.description(subject)}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => performSidebarAction(sidebarConfirm.kind)}
+                    />
+                );
+            })()}
 
             <Toast />
         </div>
     );
 }
 
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
-                active
-                    ? "border-b-2 border-[#101828] text-[#101828]"
-                    : "text-[#667085] hover:text-[#344054]",
-            )}>
-            {label}
-        </button>
-    );
-}
+// Local TabBtn removed — uses canonical `<DetailPageTabs>` from
+// `@/components/patterns/DetailPageTabs`.

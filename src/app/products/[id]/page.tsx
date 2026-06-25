@@ -18,8 +18,8 @@
 //                                  rules cards)
 //   • Customers tab — 2744:57991
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     CreditCard02, Package as PackageIcon,
@@ -28,8 +28,9 @@ import {
     CreditCardCheck, Coins01, RefreshCcw02, Announcement01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
     useAppStore,
@@ -38,33 +39,12 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
 type ProductKind = "membership" | "package";
 type ProductStatus = Membership["status"]; // active | inactive | archived
-
-const STATUS_LABEL: Record<ProductStatus, string> = {
-    active: "Active",
-    inactive: "Inactive",
-    archived: "Archived",
-};
-
-function StatusBadge({ status }: { status: ProductStatus }) {
-    const styles: Record<ProductStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
 
 function formatAed(n: number): string {
     return `AED ${n.toLocaleString("en-US")}`;
@@ -128,76 +108,50 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 
 type ModalAction = "archive" | "deactivate" | "recover" | "reactivate" | "delete";
 
-const DESTRUCTIVE_ACTIONS = new Set<ModalAction>(["deactivate", "delete"]);
+const MODAL_TONE: Record<ModalAction, "danger" | "success"> = {
+    archive: "success",
+    deactivate: "danger",
+    recover: "success",
+    reactivate: "success",
+    delete: "danger",
+};
 
 const MODAL_CONFIG: Record<ModalAction, {
-    iconBg: string; IconComp: React.ElementType; iconColor: string;
+    IconComp: React.ElementType;
     title: string; description: string;
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        IconComp: Archive,
         title: "Archive this product?",
-        description: "This product will be hidden from the POS catalog and the class-types Applicable Plans list. You can recover archived products at any time.",
+        description: "This product will be hidden from the Point of Sale catalog and the class-types Applicable Plans list. You can recover archived products at any time.",
         confirmLabel: "Archive",
     },
     deactivate: {
-        iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
+        IconComp: SlashCircle01,
         title: "Deactivate this product?",
-        description: "This product will be hidden from new POS sales. Customers who already hold it keep their access.",
+        description: "This product will be hidden from new Point of Sale sales. Customers who already hold it keep their access.",
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        IconComp: RefreshCcw01,
         title: "Recover this product?",
         description: "This product will be restored to Active status and become sellable again.",
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        IconComp: Check,
         title: "Reactivate this product?",
-        description: "This product will become available again in the POS catalog.",
+        description: "This product will become available again in the Point of Sale catalog.",
         confirmLabel: "Reactivate",
     },
     delete: {
-        iconBg: "bg-[#fee4e2]", IconComp: Trash01, iconColor: "text-[#d92d20]",
+        IconComp: Trash01,
         title: "Delete this product?",
         description: "This product will be permanently removed. This action cannot be undone.",
         confirmLabel: "Delete",
     },
 };
-
-function ActionModal({ action, onConfirm, onCancel }: {
-    action: ModalAction; onConfirm: () => void; onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ─── Pattern banner (Figma 2744:57990 indigo-line decorative) ───────────────
 //
@@ -309,7 +263,7 @@ function LeftSidebar({
             <div className="relative shrink-0">
                 <PatternBanner kind={kind} />
                 <div className="absolute top-3 right-3">
-                    <StatusBadge status={status} />
+                    <StatusBadge type="product" status={status} size="lg" />
                 </div>
             </div>
 
@@ -483,9 +437,6 @@ function DetailsTab({ vm, productId, branches }: { vm: MembershipDetailVM; produ
 
             {/* ── Applicable branches ── (kind- and multi-location-aware subtitle) */}
             <BranchesCard branchIds={vm.branchIds} productNoun={vm.productNoun} branches={branches} />
-
-            {/* ── Applicable templates & services (reverse-link) ── */}
-            <ApplicableTemplatesServicesCard productId={productId} productNoun={vm.productNoun} />
 
             {/* ── Duration block ──
                 Membership: "Duration & renewal" with 3 stats (Duration,
@@ -824,108 +775,13 @@ function DisabledCheckbox({ checked }: { checked: boolean }) {
     );
 }
 
-// ─── Applicable templates & services — reverse-link card ───────────────────
-//
-// Mirrors `BranchesCard`'s collapsible chrome. Lists every class template +
-// service that has THIS product in its `applicableMembershipIds` or
-// `applicablePackageIds`. Read live from the store so deactivating /
-// archiving a template or service in its own module disappears from
-// this list on the same render. Each row links to its detail page.
-
-function ApplicableTemplatesServicesCard({ productId, productNoun }: { productId: string; productNoun: string }) {
-    const [open, setOpen] = useState(true);
-    const router = useRouter();
-    const classTemplates = useAppStore(s => s.classTemplates);
-    const services       = useAppStore(s => s.services);
-
-    // Reverse-link derivation — a product is "applicable" to a template /
-    // service when its id appears in either of the applicable arrays.
-    // Hides Archived rows from the visible list (matches what a customer
-    // sees in the booking portal).
-    const linkedTemplates = useMemo(
-        () => classTemplates.filter(t => t.status !== "Archived"
-            && (t.applicableMembershipIds.includes(productId) || t.applicablePackageIds.includes(productId))),
-        [classTemplates, productId],
-    );
-    const linkedServices = useMemo(
-        () => services.filter(s => s.status !== "Archived"
-            && (s.applicableMembershipIds.includes(productId) || s.applicablePackageIds.includes(productId))),
-        [services, productId],
-    );
-
-    const total = linkedTemplates.length + linkedServices.length;
-
-    return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Applicable on</p>
-                    <p className="text-[14px] text-[#667085] leading-5">Class templates and services this {productNoun} can be redeemed against.</p>
-                </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
-                    {total} linked
-                </span>
-                <button type="button" onClick={() => setOpen(p => !p)}
-                    aria-label={open ? "Collapse" : "Expand"}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
-                    {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </button>
-            </div>
-            {open && (
-                <div className="flex flex-col gap-3">
-                    {total === 0 ? (
-                        <p className="text-[14px] text-[#667085]">Not linked to any class template or service yet.</p>
-                    ) : (
-                        <>
-                            {linkedTemplates.length > 0 && (
-                                <div className="flex flex-col gap-2">
-                                    <p className="text-[12px] font-medium text-[#667085] uppercase tracking-wide">Class templates</p>
-                                    {linkedTemplates.map(t => (
-                                        <button key={t.id} type="button"
-                                            onClick={() => router.push(`/class-types/${t.id}`)}
-                                            className="flex items-center gap-3 -mx-2 px-2 py-1.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
-                                            <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054]"
-                                                style={{ backgroundColor: t.coverColor || "#f1f2ed" }}>
-                                                {(t.name?.[0] ?? "T").toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[14px] font-medium text-[#101828] truncate">{t.name}</p>
-                                                <p className="text-[12px] text-[#667085] truncate">{t.category} · {t.durationMin} min</p>
-                                            </div>
-                                            <ChevronLeft className="w-4 h-4 text-[#98a2b3] rotate-180 shrink-0" />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            {linkedServices.length > 0 && (
-                                <div className="flex flex-col gap-2">
-                                    <p className="text-[12px] font-medium text-[#667085] uppercase tracking-wide">Services</p>
-                                    {linkedServices.map(s => (
-                                        <button key={s.id} type="button"
-                                            onClick={() => router.push(`/services/${s.id}`)}
-                                            className="flex items-center gap-3 -mx-2 px-2 py-1.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
-                                            <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054] overflow-hidden"
-                                                style={{ backgroundColor: s.coverColor || "#f1f2ed" }}>
-                                                {s.coverImage
-                                                    ? <img src={s.coverImage} alt={s.name} className="w-full h-full object-cover" />
-                                                    : (s.name?.[0] ?? "S").toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[14px] font-medium text-[#101828] truncate">{s.name}</p>
-                                                <p className="text-[12px] text-[#667085] truncate">{s.openSession ? "Open session" : "Private"} · {s.durationMin} min</p>
-                                            </div>
-                                            <ChevronLeft className="w-4 h-4 text-[#98a2b3] rotate-180 shrink-0" />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
+// The reverse-link "Applicable on" card was removed per the Figma spec —
+// memberships/packages don't surface the reverse list of class templates +
+// services that link to them. The forward link is still authored on the
+// other side: class templates (`applicableMembershipIds` /
+// `applicablePackageIds`) and services own those arrays, and their
+// create/edit forms let admins pick which memberships/packages a class or
+// service can be redeemed against.
 
 // ─── Applicable branches — collapsible card, disabled checkboxes ────────────
 //
@@ -1154,11 +1010,15 @@ function ActiveCustomersTab({ customers, productName, renewalFor }: {
 
 function CustomerRow({ customer, renewal }: { customer: Customer; renewal: string }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
 
+    const goToCustomer = () => router.push(`/customers/${customer.id}?returnTo=${encodeURIComponent(pathname)}`);
+
     return (
-        <tr className="hover:bg-[#f9fafb] transition-colors">
+        <tr onClick={goToCustomer}
+            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
             <td className="px-4 py-4 border-b border-[#f2f4f7]">
                 <div className="flex items-center gap-3">
                     <CustomerAvatar customer={customer} />
@@ -1172,7 +1032,8 @@ function CustomerRow({ customer, renewal }: { customer: Customer; renewal: strin
                 </div>
             </td>
             <td className="px-4 py-4 border-b border-[#f2f4f7] text-[14px] text-[#344054] whitespace-nowrap">{renewal}</td>
-            <td className="px-4 py-4 border-b border-[#f2f4f7]">
+            <td onClick={e => e.stopPropagation()}
+                className="px-4 py-4 border-b border-[#f2f4f7]">
                 <div className="relative">
                     <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
@@ -1180,7 +1041,7 @@ function CustomerRow({ customer, renewal }: { customer: Customer; renewal: strin
                     </button>
                     <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                         <button type="button"
-                            onClick={() => { setOpen(false); router.push(`/customers/${customer.id}`); }}
+                            onClick={() => { setOpen(false); goToCustomer(); }}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             <Eye className="w-4 h-4 text-[#667085]" />View customer
                         </button>
@@ -1354,10 +1215,13 @@ function buildPackageVM(p: Package, tierName: string): MembershipDetailVM {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export default function ProductDetailPage() {
+function ProductDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products";
 
     const memberships         = useAppStore(s => s.memberships);
     const packages            = useAppStore(s => s.packages);
@@ -1388,7 +1252,7 @@ export default function ProductDetailPage() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
-                <button type="button" onClick={() => router.push("/admin/products")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to memberships &amp; packages
                 </button>
@@ -1423,7 +1287,7 @@ export default function ProductDetailPage() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/products/${id}/edit`);
+            router.push(`/products/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(a);
@@ -1457,7 +1321,7 @@ export default function ProductDetailPage() {
             if (ok) {
                 showToast("Product deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
-                router.push("/admin/products");
+                router.push(returnTo);
             } else {
                 showToast(
                     "Cannot delete",
@@ -1475,7 +1339,7 @@ export default function ProductDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header — same 72px chrome as class-types/[id] */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/products")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -1483,9 +1347,9 @@ export default function ProductDetailPage() {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{headerTitle}</h1>
             </div>
 
-            {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
                     <LeftSidebar
                         kind={kind}
                         name={vm.name}
@@ -1496,18 +1360,34 @@ export default function ProductDetailPage() {
                         status={product.status}
                         onAction={handleAction}
                     />
-                    <RightPanel kind={kind} vm={vm} productId={id} activeCustomers={activeCustomers} renewalFor={renewalDate} branches={branches} />
-                </div>
-            </div>
+                }
+                main={<RightPanel kind={kind} vm={vm} productId={id} activeCustomers={activeCustomers} renewalFor={renewalDate} branches={branches} />}
+            />
 
-            {confirmAction && (
-                <ActionModal
-                    action={confirmAction}
-                    onConfirm={handleConfirm}
-                    onCancel={() => setConfirmAction(null)}
-                />
-            )}
+            {confirmAction && (() => {
+                const cfg = MODAL_CONFIG[confirmAction];
+                return (
+                    <ConfirmModal
+                        open={true}
+                        onClose={() => setConfirmAction(null)}
+                        icon={cfg.IconComp}
+                        tone={MODAL_TONE[confirmAction]}
+                        title={cfg.title}
+                        description={cfg.description}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={handleConfirm}
+                    />
+                );
+            })()}
             <Toast />
         </div>
+    );
+}
+
+export default function ProductDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <ProductDetailPageInner />
+        </Suspense>
     );
 }

@@ -75,7 +75,7 @@ interface PageEntry {
 const PAGES: PageEntry[] = [
     // Top-level sidebar items — icon mirrors `src/components/layout/Sidebar.tsx`
     { title: "Dashboard",              href: "/admin/dashboard",                  icon: BarChartSquare02 },
-    { title: "POS",                    href: "/admin/pos",                        icon: ShoppingBag03 },
+    { title: "Point of Sale",          href: "/admin/pos",                        icon: ShoppingBag03 },
     { title: "Marketing",              href: "/admin/marketing",                  icon: Announcement01 },
     { title: "Customers",              href: "/admin/customers",                  icon: User01 },
     // Classes group — Sidebar parent is CalendarCheck01; reuse for both children

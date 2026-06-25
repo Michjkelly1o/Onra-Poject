@@ -32,6 +32,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
@@ -61,21 +69,8 @@ type RowActionKind = "deactivate" | "reactivate" | "archive" | "recover" | "dele
 
 // ─── Status badge (gift-cards palette) ───────────────────────────────────────
 
-function StatusBadge({ status }: { status: ServiceStatus }) {
-    const styles: Record<ServiceStatus, string> = {
-        Active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        Archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
+// Local StatusBadge removed — uses canonical `<StatusBadge type="service">`
+// from `@/components/patterns/StatusBadge`.
 
 // ─── Service avatar — circular image with category-tinted fallback ─────────
 //
@@ -117,77 +112,9 @@ function ServiceAvatar({ name, coverImage, coverColor, status }: {
 
 // ─── Row actions (⋮) — same state-aware matrix as gift cards ───────────────
 
-function RowActions({ status, hasHistory, onView, onEdit, onAction }: {
-    status: ServiceStatus;
-    hasHistory: boolean;
-    onView: () => void;
-    onEdit: () => void;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => trigger(onView)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-
-                {status === "Active" && (
-                    <button type="button" onClick={() => trigger(onEdit)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit details
-                    </button>
-                )}
-
-                {(status === "Active" || status === "Inactive") && (
-                    <button type="button" onClick={() => trigger(() => onAction("archive"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {status === "Inactive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("reactivate"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
-                    </button>
-                )}
-
-                {status === "Archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("recover"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-
-                {/* Deactivate ↔ Delete — Active rows only.
-                    With appointment history → Deactivate (preserves audit).
-                    Zero appointments       → Delete (hard remove). */}
-                {status === "Active" && (
-                    hasHistory ? (
-                        <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                        </button>
-                    ) : (
-                        <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                        </button>
-                    )
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `<RowActions items={[...]}>` from
+// `@/components/patterns/RowActions`. Items array is built per-row at the
+// call site below based on status + hasHistory.
 
 // ─── Confirmation modal (gift-cards tone matrix) ────────────────────────────
 
@@ -240,85 +167,10 @@ const MODAL_CONFIG: Record<RowActionKind, {
     },
 };
 
-function ActionModal({ action, count, subject, onConfirm, onCancel }: {
-    action: RowActionKind;
-    count: number;
-    subject: React.ReactNode;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject, count)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.tone === "destructive" ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — uses canonical `<ConfirmModal>` driven by
+// MODAL_CONFIG above.
 
-// ─── Pagination (gift-cards twin) ───────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Floating bulk-action pill (gift-cards twin) ────────────────────────────
 
@@ -334,7 +186,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -381,8 +233,6 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 
 // ─── Table header/cell constants (verbatim from gift-cards) ─────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Checkbox cell (verbatim from gift-cards) ───────────────────────────────
 
@@ -593,8 +443,9 @@ function ListView({
                         const isSelected = selectedIds.has(r.id);
                         return (
                             <tr key={r.id}
-                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                <td className={TD}>
+                                onClick={() => onView(r)}
+                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <CheckboxCell
                                         checked={isSelected}
                                         onChange={() => onToggleOne(r.id)}
@@ -615,15 +466,17 @@ function ListView({
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationMin} minutes</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.branchName || "—"}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.openSession ? "Open session" : "Private"}</td>
-                                <td className={TD}><StatusBadge status={r.status} /></td>
-                                <td className={TD}>
-                                    <RowActions
-                                        status={r.status}
-                                        hasHistory={r.hasHistory}
-                                        onView={() => onView(r)}
-                                        onEdit={() => onEdit(r)}
-                                        onAction={k => onRowAction(r, k)}
-                                    />
+                                <td className={TD}><StatusBadge type="service" status={r.status} /></td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions items={[
+                                        { label: "View details", icon: Eye, onClick: () => onView(r) },
+                                        { label: "Edit details", icon: Edit02, onClick: () => onEdit(r), hidden: r.status !== "Active" },
+                                        { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status !== "Active" && r.status !== "Inactive" },
+                                        { label: "Reactivate", icon: Check, onClick: () => onRowAction(r, "reactivate"), hidden: r.status !== "Inactive" },
+                                        { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status !== "Archived" },
+                                        { label: "Deactivate", icon: SlashCircle01, onClick: () => onRowAction(r, "deactivate"), danger: true, hidden: !(r.status === "Active" && r.hasHistory) },
+                                        { label: "Delete", icon: Trash01, onClick: () => onRowAction(r, "delete"), danger: true, hidden: !(r.status === "Active" && !r.hasHistory) },
+                                    ]} />
                                 </td>
                             </tr>
                         );
@@ -831,13 +684,13 @@ export default function ServicesPage() {
     // the admin sidebar + header chrome. Same convention as class templates
     // (`/class-types/new`) and customers (`/customers/[id]/edit`).
     function handleAdd() {
-        router.push("/services/new");
+        router.push(`/services/new?returnTo=${encodeURIComponent("/admin/services")}`);
     }
     function handleView(row: ServiceRow) {
-        router.push(`/services/${row.id}`);
+        router.push(`/services/${row.id}?returnTo=${encodeURIComponent("/admin/services")}`);
     }
     function handleEdit(row: ServiceRow) {
-        router.push(`/services/${row.id}/edit`);
+        router.push(`/services/${row.id}/edit?returnTo=${encodeURIComponent("/admin/services")}`);
     }
 
     const hasActiveFilter = applied.statuses.length > 0 || applied.categories.length > 0;
@@ -846,12 +699,7 @@ export default function ServicesPage() {
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
-                        {filteredRows.length} {filteredRows.length === 1 ? "service" : "services"}
-                    </p>
-                </div>
+                <ToolbarTotal count={filteredRows.length} entitySingular="service" />
 
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
@@ -862,24 +710,9 @@ export default function ServicesPage() {
                     width="w-[220px]"
                 />
 
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search service..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search service..." />
 
-                <Button variant="secondary-gray" size="md"
-                    leftIcon={
-                        <div className="relative">
-                            <FilterLines className="w-4 h-4" />
-                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                        </div>
-                    }
-                    onClick={() => setFilterOpen(true)}>
-                    Filter
-                </Button>
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={handleAdd}>
@@ -940,13 +773,18 @@ export default function ServicesPage() {
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);
+                const cfg = MODAL_CONFIG[pendingConfirm.kind];
+                const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
                 return (
-                    <ActionModal
-                        action={pendingConfirm.kind}
-                        count={count}
-                        subject={subject}
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.IconComp}
+                        tone={cfg.tone === "destructive" ? "danger" : "success"}
+                        title={title}
+                        description={cfg.description(subject, count)}
+                        confirmLabel={cfg.confirmLabel}
                         onConfirm={() => performAction(pendingConfirm)}
-                        onCancel={() => setPendingConfirm(null)}
                     />
                 );
             })()}

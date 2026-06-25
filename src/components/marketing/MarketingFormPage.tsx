@@ -557,9 +557,10 @@ export interface MarketingFormPageProps {
     mode: "create" | "edit";
     marketingId?: string;
     initial?: Partial<MarketingFormData>;
+    returnTo?: string;
 }
 
-export function MarketingFormPage({ mode, marketingId, initial }: MarketingFormPageProps) {
+export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/admin/marketing" }: MarketingFormPageProps) {
     const router = useRouter();
     const isEdit = mode === "edit";
 
@@ -595,7 +596,7 @@ export function MarketingFormPage({ mode, marketingId, initial }: MarketingFormP
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
 
     function handleClose() {
-        router.push("/admin/marketing");
+        router.push(returnTo);
     }
 
     /** Switching marketing type resets the action + its config — the action

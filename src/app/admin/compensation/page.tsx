@@ -37,7 +37,9 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
+import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
 import {
     useAppStore, type Branch,
     type Instructor, type PayrollEntry,
@@ -116,24 +118,8 @@ function MetricCard({ label, value, period, Icon }: {
 
 // ─── Avatar ────────────────────────────────────────────────────────────────
 
-function InstructorAvatar({ instructor }: { instructor: Instructor }) {
-    if (instructor.imageUrl) {
-        return (
-            <img src={instructor.imageUrl} alt={instructor.name}
-                className="w-10 h-10 rounded-full object-cover shrink-0"
-                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-        );
-    }
-    // Single neutral chrome — matches the Staff & Permissions staff tab so
-    // every fallback initials avatar across the module reads as one surface
-    // (gray-100 bg + dark initials), not a colourful per-row palette.
-    return (
-        <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center text-[14px] font-medium text-[#475467] shrink-0">
-            {instructor.initials}
-        </div>
-    );
-}
+// Local InstructorAvatar removed — uses canonical `<NeutralAvatar>` from
+// `@/components/patterns/NeutralAvatar`.
 
 // ─── Row actions (⋮) ──────────────────────────────────────────────────────
 
@@ -156,48 +142,7 @@ function RowActions({ onView }: { onView: () => void }) {
     );
 }
 
-// ─── Pagination (same chrome as pay-rate list) ─────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Row VM + period helpers ───────────────────────────────────────────────
 
@@ -501,10 +446,12 @@ export default function CompensationPage() {
                                     {pageRows.map(r => {
                                         const branch = branches.find(b => b.id === r.branchId);
                                         return (
-                                            <tr key={r.entryId} className="transition-colors hover:bg-[#f9fafb]">
+                                            <tr key={r.entryId}
+                                                onClick={() => handleViewDetails(r)}
+                                                className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
-                                                        <InstructorAvatar instructor={r.instructor} />
+                                                        <NeutralAvatar initials={r.instructor.initials} imageUrl={r.instructor.imageUrl} />
                                                         <div className="flex flex-col">
                                                             <span className="text-[14px] font-medium text-[#101828]">{r.instructor.name}</span>
                                                             <span className="text-[13px] text-[#667085]">{r.instructor.email}</span>
@@ -515,7 +462,7 @@ export default function CompensationPage() {
                                                 <td className={TD}>{r.payRateName}</td>
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{aed(r.earnings)}</td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions onView={() => handleViewDetails(r)} />
                                                 </td>
                                             </tr>

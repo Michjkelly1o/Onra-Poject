@@ -91,7 +91,7 @@ const SOURCE_LABEL: Record<string, string> = {
     customer_portal: "Customer portal",
     admin:           "Admin",
     front_desk:      "Front desk",
-    pos:             "POS",
+    pos:             "Point of Sale",
     system:          "System",
 };
 function sourceLabel(s: string | undefined): string {

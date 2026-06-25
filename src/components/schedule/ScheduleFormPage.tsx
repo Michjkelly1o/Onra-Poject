@@ -10,12 +10,13 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, getBlockedSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByInstructor as gateSlotsByInstructorHelper } from "@/lib/instructor-availability";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
+import { FieldLabel } from "@/components/patterns/FieldLabel";
 import {
     ApplicableMembershipsCard,
     buildMembershipItems,
@@ -174,14 +175,8 @@ const inputCls  = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px]
 const labelCls  = "text-[14px] font-medium text-[#344054]";
 const hintCls   = "text-[14px] text-[#475467]";
 
-function FieldLabel({ label, hint }: { label: string; hint?: string }) {
-    return (
-        <div className="flex flex-col gap-[2px]">
-            <span className={labelCls}>{label}</span>
-            {hint && <span className={hintCls}>{hint}</span>}
-        </div>
-    );
-}
+// Local FieldLabel removed — uses canonical `<FieldLabel label hint />` from
+// `@/components/patterns/FieldLabel`.
 
 function SimpleSelect({ label, value, options, onChange, disabled = false }: {
     label: string; value: string; options: string[]; onChange: (v: string) => void; disabled?: boolean;
@@ -984,7 +979,7 @@ function CsBlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
+export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { editingId?: string; returnTo?: string } = {}) {
     const router  = useRouter();
     const searchParams = useSearchParams();
     const { classTemplates, classSchedules, addClassSchedules, updateClassSchedule, showToast } = useAppStore();
@@ -1277,19 +1272,12 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
     //   1. Conflict scan — instructor / room already booked for that slot
     //   2. Branch block window (lunch / break) — any candidate whose
     //      [start, start+duration) interval overlaps the block
-    // The TimeDropdown receives the union and greys those slots out with
-    // an "Unavailable" tag, so the admin can SEE that 12:00 is blocked by
-    // lunch rather than having the slot silently vanish.
+    // Only same-instructor / same-location double-bookings make a slot
+    // unavailable now that the branch break-time concept has been retired.
     const unavailableTimes = useMemo(
-        () => {
-            const conflicts = blockedSlotsForDates(selectedDate ? [selectedDate] : []);
-            const block = selectedDate && selectedBranchGroup
-                ? getBlockedSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration)
-                : [];
-            return Array.from(new Set([...conflicts, ...block]));
-        },
+        () => blockedSlotsForDates(selectedDate ? [selectedDate] : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [instructorId, locationId, selectedDate, classSchedules, editingId, duration, liveBusinessHours, selectedBranchId, selectedBranchGroup],
+        [instructorId, locationId, selectedDate, classSchedules, editingId, duration],
     );
 
     // Recurring path — slots barred per selected weekday, checked against
@@ -1326,16 +1314,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 if (d.getTime() < base.getTime()) continue;
                 dates.push(d.toISOString().slice(0, 10));
             }
-            const conflicts = blockedSlotsForDates(dates);
-            // Branch block (lunch / break) — sample the first occurrence
-            // date to grab the day-of-week's hours window, which carries
-            // the block. Recurring weekdays share the same block since
-            // it's keyed on day_of_week.
-            const blockBase = dates[0];
-            const blockSlots = blockBase && selectedBranchGroup
-                ? getBlockedSlots(getBusinessHours(liveBusinessHours, selectedBranchId, blockBase), duration)
-                : [];
-            result[day] = Array.from(new Set([...conflicts, ...blockSlots]));
+            result[day] = blockedSlotsForDates(dates);
         }
         return result;
     }, [
@@ -1894,7 +1873,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
             );
         }
         try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
-        router.push("/admin/schedule");
+        router.push(returnTo);
     }
 
     function handleSaveEdit() {
@@ -2077,7 +2056,7 @@ export function ScheduleFormPage({ editingId }: { editingId?: string } = {}) {
                 <div className="flex items-center gap-3">
                     <button type="button" onClick={() => {
                         try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
-                        router.push("/admin/schedule");
+                        router.push(returnTo);
                     }}
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <XClose className="w-5 h-5 text-[#667085]" />

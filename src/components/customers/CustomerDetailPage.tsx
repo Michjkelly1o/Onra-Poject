@@ -17,7 +17,7 @@
 // all re-render in the same cycle. Every action emits a toast.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft,
     Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
@@ -28,10 +28,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { TableAvatar } from "@/components/ui/avatar";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore, type Customer, type CustomerPlan } from "@/lib/store";
 import { CustomerBookingsTab } from "./CustomerBookingsTab";
 import { CustomerPaymentsTab } from "./CustomerPaymentsTab";
@@ -610,16 +614,6 @@ const PLAN_KIND_LABEL: Record<PlanKind, string> = {
     membership: "Membership", package: "Credit package", complimentary: "Free credit",
 };
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn("px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]")}>
-            {label}
-        </button>
-    );
-}
 
 function PlanFilterPanel({ open, onClose, applied, onApply }: {
     open: boolean; onClose: () => void; applied: PlanFilter; onApply: (f: PlanFilter) => void;
@@ -690,48 +684,7 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
     );
 }
 
-// ─── Pagination ──────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Empty state — absolute-centred (mirrors the class-types detail page) ────
 
@@ -776,8 +729,6 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
     );
 }
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -785,8 +736,9 @@ type PlanModalState =
     | { kind: "freeze" | "unfreeze" | "cancel" | "remove" | "view"; plan: CustomerPlan }
     | null;
 
-export function CustomerDetailPage({ customerId }: { customerId: string }) {
+export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }: { customerId: string; returnTo?: string }) {
     const router = useRouter();
+    const pathname = usePathname();
     const customers = useAppStore(s => s.customers);
     const customerPlans = useAppStore(s => s.customerPlans);
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
@@ -914,7 +866,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         return (
             <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white">
                 <p className="text-[16px] text-[#667085]">This customer could not be found.</p>
-                <Button variant="secondary-gray" size="md" onClick={() => router.push("/admin/customers")}>
+                <Button variant="secondary-gray" size="md" onClick={() => router.push(returnTo)}>
                     Back to customers
                 </Button>
             </div>
@@ -986,18 +938,17 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/customers")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Customer details</h1>
             </div>
 
-            {/* Two-column content — fixed-height block, page scrolls (mirrors
-                the class-types / products detail pages). */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    {/* ── Left panel ── */}
+            {/* Two-column content — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
+                    /* ── Left panel ── */
                     <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
                         <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                             <div className="flex flex-col gap-5 px-6 pt-6 pb-6 flex-1">
@@ -1068,9 +1019,9 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                                     {customer.status === "active" && (
                                         <>
                                             <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit customer"
-                                                onClick={() => router.push(`/customers/${customer.id}/edit?returnTo=/customers/${customer.id}`)} />
+                                                onClick={() => router.push(`/customers/${customer.id}/edit?returnTo=${encodeURIComponent(pathname)}`)} />
                                             <ActionBtn icon={<HeartHand className="w-5 h-5" />} label="Add complimentary credit"
-                                                onClick={() => router.push(`/customers/${customer.id}/add-credit?returnTo=/customers/${customer.id}`)} />
+                                                onClick={() => router.push(`/customers/${customer.id}/add-credit?returnTo=${encodeURIComponent(pathname)}`)} />
                                         </>
                                     )}
                                     {customer.status !== "archived" && (
@@ -1093,8 +1044,9 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                             </div>
                         </div>
                     </div>
-
-                    {/* ── Right panel ── */}
+                }
+                main={
+                    /* ── Right panel ── */
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
                         {/* Tab strip */}
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
@@ -1222,8 +1174,8 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                             <CustomerReferralsTab customerId={customerId} />
                         )}
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* ── Plan modals ── */}
             {planModal?.kind === "freeze" && (

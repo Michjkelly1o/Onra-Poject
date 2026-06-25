@@ -41,6 +41,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { TableAvatar } from "@/components/ui/avatar";
 import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { PlanBadge, NoPlanBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RangeSlider } from "@/components/ui/RangeSlider";
@@ -616,19 +617,14 @@ function POSInner() {
                     <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
                         {/* Tab row */}
                         <div className="flex items-center px-6 py-4 gap-3">
-                            <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
-                                {(Object.keys(TAB_FILTER) as TabId[]).map(id => (
-                                    <button key={id} type="button" onClick={() => setActiveTab(id)}
-                                        className={cn(
-                                            "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
-                                            activeTab === id
-                                                ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                                : "text-[#667085] hover:text-[#344054]",
-                                        )}>
-                                        {TAB_LABEL[id].label}
-                                    </button>
-                                ))}
-                            </div>
+                            <SegmentedTabs
+                                tabs={(Object.keys(TAB_FILTER) as TabId[]).map(id => ({
+                                    key: id,
+                                    label: TAB_LABEL[id].label,
+                                }))}
+                                activeKey={activeTab}
+                                onChange={(k) => setActiveTab(k as TabId)}
+                            />
                         </div>
 
                         {/* Product grid */}

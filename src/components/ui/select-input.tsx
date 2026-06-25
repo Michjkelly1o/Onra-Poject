@@ -38,6 +38,10 @@ export interface SelectInputProps {
     className?: string;
     menuClassName?: string;
     width?: string;
+    /** Disables the trigger button — used when the parent form is locked
+     *  (e.g. editing the Owner role). Greys the trigger and prevents the
+     *  menu from opening. */
+    disabled?: boolean;
 }
 
 export function SelectInput({
@@ -49,6 +53,7 @@ export function SelectInput({
     className,
     menuClassName,
     width = "w-[220px]",
+    disabled = false,
 }: SelectInputProps) {
     const [open, setOpen] = React.useState(false);
     const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({ position: "fixed", visibility: "hidden" });
@@ -112,7 +117,8 @@ export function SelectInput({
             {/* Trigger */}
             <button
                 type="button"
-                onClick={() => setOpen((p) => !p)}
+                disabled={disabled}
+                onClick={() => !disabled && setOpen((p) => !p)}
                 className={cn(
                     "flex items-center gap-[8px] w-full h-[40px]",
                     "bg-white border-1 border-[#d0d5dd] rounded-[8px]",
@@ -120,6 +126,7 @@ export function SelectInput({
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]",
                     "transition-all",
+                    disabled && "opacity-60 cursor-not-allowed bg-[#f9fafb]",
                 )}
             >
                 {/* Leading icon */}

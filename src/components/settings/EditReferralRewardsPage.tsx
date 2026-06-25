@@ -24,6 +24,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { useAppStore, type ReferralTrigger } from "@/lib/store";
+import { FieldLabel } from "@/components/patterns/FieldLabel";
 
 const TRIGGER_OPTIONS: { value: ReferralTrigger; label: string }[] = [
     { value: "sign_up",  label: "Customer sign up" },
@@ -65,11 +66,8 @@ function StepRow({ index, label, active, done, isLast }: {
     );
 }
 
-// ─── Form atoms ──────────────────────────────────────────────────────────
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] font-medium text-[#344054] leading-[20px]">{children}</p>;
-}
+// Local FieldLabel removed — uses canonical `<FieldLabel label="..." />`
+// from `@/components/patterns/FieldLabel`.
 
 // ─── Page ────────────────────────────────────────────────────────────────
 
@@ -151,12 +149,12 @@ export default function EditReferralRewardsPage({ returnTo = "/admin/settings/re
                                 <p className="font-semibold text-[18px] leading-[28px] text-[#101828] shrink-0">New customer benefit</p>
 
                                 <div className="flex flex-col gap-[6px] w-full shrink-0">
-                                    <FieldLabel>Number of free credits</FieldLabel>
+                                    <FieldLabel label="Number of free credits" />
                                     <NumericInput value={newCredits} onChange={setNewCredits} min={0} max={50} placeholder="Enter class amount..." />
                                 </div>
 
                                 <div className="flex-1 min-h-0 flex flex-col gap-[6px] w-full">
-                                    <FieldLabel>Message to new customer</FieldLabel>
+                                    <FieldLabel label="Message to new customer" />
                                     <RichTextEditor
                                         value={newMessage}
                                         onChange={setNewMessage}
@@ -171,7 +169,7 @@ export default function EditReferralRewardsPage({ returnTo = "/admin/settings/re
                                 <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Existing customer benefit</p>
 
                                 <div className="flex flex-col gap-[6px] w-full">
-                                    <FieldLabel>Trigger for successful referral</FieldLabel>
+                                    <FieldLabel label="Trigger for successful referral" />
                                     <SelectInput
                                         placeholder="Select trigger"
                                         options={TRIGGER_OPTIONS}
@@ -182,7 +180,7 @@ export default function EditReferralRewardsPage({ returnTo = "/admin/settings/re
                                 </div>
 
                                 <div className="flex flex-col gap-[6px] w-full">
-                                    <FieldLabel>Minimal of referred customer</FieldLabel>
+                                    <FieldLabel label="Minimal of referred customer" />
                                     <NumericInput value={minReferred} onChange={setMinReferred} min={1} max={20} />
                                     <p className="text-[13px] text-[#667085] leading-[18px]">
                                         This is the minimum number of people that existing customers must refer in order to get the benefit.
@@ -190,12 +188,12 @@ export default function EditReferralRewardsPage({ returnTo = "/admin/settings/re
                                 </div>
 
                                 <div className="flex flex-col gap-[6px] w-full">
-                                    <FieldLabel>Number of free credits</FieldLabel>
+                                    <FieldLabel label="Number of free credits" />
                                     <NumericInput value={existingCredits} onChange={setExistingCredits} min={1} max={50} />
                                 </div>
 
                                 <div className="flex flex-col gap-[6px] w-full">
-                                    <FieldLabel>Message to existing customer</FieldLabel>
+                                    <FieldLabel label="Message to existing customer" />
                                     <RichTextEditor
                                         value={existingMessage}
                                         onChange={setExistingMessage}

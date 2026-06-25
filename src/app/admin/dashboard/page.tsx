@@ -725,7 +725,7 @@ export default function AdminDashboard() {
                                         {slot.classes.map(c => (
                                             <ScheduleClassCard key={c.id}
                                                 size="lg"
-                                                onClick={() => router.push(`/schedule/${c.id}`)}
+                                                onClick={() => router.push(`/schedule/${c.id}?returnTo=${encodeURIComponent("/admin/dashboard")}`)}
                                                 cls={{
                                                     name: c.name,
                                                     color: c.color,

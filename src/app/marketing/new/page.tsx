@@ -6,8 +6,20 @@
 // 2-step flow takes over the whole viewport (outside the admin sidebar chrome),
 // matching /products/promo-codes/new.
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { MarketingFormPage } from "@/components/marketing/MarketingFormPage";
 
+function CreateMarketingRouteInner() {
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/marketing";
+    return <MarketingFormPage mode="create" returnTo={returnTo} />;
+}
+
 export default function CreateMarketingRoute() {
-    return <MarketingFormPage mode="create" />;
+    return (
+        <Suspense fallback={null}>
+            <CreateMarketingRouteInner />
+        </Suspense>
+    );
 }

@@ -18,10 +18,10 @@
 //   • Customers tab — 3726:26990
 //
 // State source of truth: useAppStore(s => s.giftCardDesigns). Status flips and
-// deletes propagate to the gift-cards list view + POS catalog instantly.
+// deletes propagate to the gift-cards list view + Point of Sale catalog instantly.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     DotsVertical, SearchMd, Eye, ChevronLeft,
@@ -29,40 +29,20 @@ import {
     HelpCircle, Gift01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import { giftCardHolders, type GiftCardHolder } from "@/lib/giftCardHolders";
 import { useAppStore, type GiftCardDesign } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
 type GiftCardStatus = GiftCardDesign["status"]; // active | inactive | archived
-
-const STATUS_LABEL: Record<GiftCardStatus, string> = {
-    active: "Active",
-    inactive: "Inactive",
-    archived: "Archive",
-};
-
-function StatusBadge({ status }: { status: GiftCardStatus }) {
-    const styles: Record<GiftCardStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
 
 function formatAed(n: number): string {
     return `AED ${n.toLocaleString("en-US")}`;
@@ -137,76 +117,50 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 
 type ModalAction = "archive" | "deactivate" | "recover" | "reactivate" | "delete";
 
-const DESTRUCTIVE_ACTIONS = new Set<ModalAction>(["deactivate", "delete"]);
+const MODAL_TONE: Record<ModalAction, "danger" | "success"> = {
+    archive: "success",
+    deactivate: "danger",
+    recover: "success",
+    reactivate: "success",
+    delete: "danger",
+};
 
 const MODAL_CONFIG: Record<ModalAction, {
-    iconBg: string; IconComp: React.ElementType; iconColor: string;
+    IconComp: React.ElementType;
     title: string; description: string;
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        IconComp: Archive,
         title: "Archive this gift card?",
-        description: "This gift card will be removed from the POS catalog. You can recover archived gift cards at any time.",
+        description: "This gift card will be removed from the Point of Sale catalog. You can recover archived gift cards at any time.",
         confirmLabel: "Archive",
     },
     deactivate: {
-        iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
+        IconComp: SlashCircle01,
         title: "Deactivate this gift card?",
-        description: "This gift card will be hidden from new POS sales. Customers who already hold it keep their balance.",
+        description: "This gift card will be hidden from new Point of Sale sales. Customers who already hold it keep their balance.",
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        IconComp: RefreshCcw01,
         title: "Recover this gift card?",
         description: "This gift card will be restored to Active status and become sellable again.",
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        IconComp: Check,
         title: "Reactivate this gift card?",
-        description: "This gift card will become available again in the POS catalog.",
+        description: "This gift card will become available again in the Point of Sale catalog.",
         confirmLabel: "Reactivate",
     },
     delete: {
-        iconBg: "bg-[#fee4e2]", IconComp: Trash01, iconColor: "text-[#d92d20]",
+        IconComp: Trash01,
         title: "Delete this gift card?",
         description: "This gift card will be permanently removed. This action cannot be undone.",
         confirmLabel: "Delete",
     },
 };
-
-function ActionModal({ action, onConfirm, onCancel }: {
-    action: ModalAction; onConfirm: () => void; onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ─── Left sidebar (Figma 6096:312094) ───────────────────────────────────────
 
@@ -262,7 +216,7 @@ function LeftSidebar({ design, customerCount, onAction }: {
                         <SidebarField label="Active customers" value={`${customerCount} ${customerCount === 1 ? "Customer" : "Customers"}`} />
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Status</p>
-                            <div><StatusBadge status={status} /></div>
+                            <div><StatusBadge type="gift-card" status={status} size="lg" label={status === "archived" ? "Archive" : undefined} /></div>
                         </div>
                     </div>
                 </div>
@@ -560,12 +514,15 @@ function ActiveCustomersTab({ holders, cardName }: {
 
 function HolderRow({ holder }: { holder: GiftCardHolder }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
     const c = holder.customer;
+    const goToCustomer = () => router.push(`/customers/${c.id}?returnTo=${encodeURIComponent(pathname)}`);
 
     return (
-        <tr className="hover:bg-[#f9fafb] transition-colors">
+        <tr onClick={goToCustomer}
+            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
             <td className="px-4 py-4 border-b border-[#f2f4f7]">
                 <div className="flex items-center gap-3">
                     <CustomerAvatar customer={c} />
@@ -584,7 +541,8 @@ function HolderRow({ holder }: { holder: GiftCardHolder }) {
                     <span className="text-[14px] text-[#475467]">{formatExpiry(holder.issuedCard.expires_at)}</span>
                 </div>
             </td>
-            <td className="px-4 py-4 border-b border-[#f2f4f7]">
+            <td onClick={e => e.stopPropagation()}
+                className="px-4 py-4 border-b border-[#f2f4f7]">
                 <div className="relative">
                     <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
@@ -592,7 +550,7 @@ function HolderRow({ holder }: { holder: GiftCardHolder }) {
                     </button>
                     <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                         <button type="button"
-                            onClick={() => { setOpen(false); router.push(`/customers/${c.id}`); }}
+                            onClick={() => { setOpen(false); goToCustomer(); }}
                             className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             <Eye className="w-4 h-4 text-[#667085]" />View customer
                         </button>
@@ -659,10 +617,13 @@ function CustomersPagination({ page, total, pageSize, onPage, onPageSize }: {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export default function GiftCardDetailPage() {
+function GiftCardDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/gift-cards";
 
     const giftCardDesigns         = useAppStore(s => s.giftCardDesigns);
     const issuedGiftCards         = useAppStore(s => s.issuedGiftCards);
@@ -684,7 +645,7 @@ export default function GiftCardDetailPage() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Gift card not found</p>
-                <button type="button" onClick={() => router.push("/admin/products/gift-cards")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to gift cards
                 </button>
@@ -694,7 +655,7 @@ export default function GiftCardDetailPage() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/products/gift-cards/${id}/edit`);
+            router.push(`/products/gift-cards/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(a);
@@ -723,7 +684,7 @@ export default function GiftCardDetailPage() {
             deleteGiftCardDesign(id);
             showToast("Gift card deleted", `${name} has been deleted.`, "success", "trash");
             setConfirmAction(null);
-            router.push("/admin/products/gift-cards");
+            router.push(returnTo);
         }
     }
 
@@ -731,7 +692,7 @@ export default function GiftCardDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header — same 72px chrome as the membership/package detail page */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/products/gift-cards")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -739,26 +700,42 @@ export default function GiftCardDetailPage() {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Gift card details</h1>
             </div>
 
-            {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
                     <LeftSidebar
                         design={design}
                         customerCount={holders.length}
                         onAction={handleAction}
                     />
-                    <RightPanel design={design} holders={holders} />
-                </div>
-            </div>
+                }
+                main={<RightPanel design={design} holders={holders} />}
+            />
 
-            {confirmAction && (
-                <ActionModal
-                    action={confirmAction}
-                    onConfirm={handleConfirm}
-                    onCancel={() => setConfirmAction(null)}
-                />
-            )}
+            {confirmAction && (() => {
+                const cfg = MODAL_CONFIG[confirmAction];
+                return (
+                    <ConfirmModal
+                        open={true}
+                        onClose={() => setConfirmAction(null)}
+                        icon={cfg.IconComp}
+                        tone={MODAL_TONE[confirmAction]}
+                        title={cfg.title}
+                        description={cfg.description}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={handleConfirm}
+                    />
+                );
+            })()}
             <Toast />
         </div>
+    );
+}
+
+export default function GiftCardDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <GiftCardDetailPageInner />
+        </Suspense>
     );
 }

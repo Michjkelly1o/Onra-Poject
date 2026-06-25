@@ -5,7 +5,8 @@
 // shared PromoFormPage in edit mode. Saving patches the same row via
 // `updatePromoCode`, so the detail page reflects the change immediately.
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { PromoFormPage } from "@/components/products/PromoFormPage";
 import { useAppStore } from "@/lib/store";
 
@@ -17,9 +18,11 @@ function splitIso(iso?: string): { date: string; time: string } {
     return { date: m[1], time: m[2] };
 }
 
-export default function EditPromoRoute() {
+function EditPromoRouteInner() {
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
     const promo = useAppStore(s => s.promoCodes.find(p => p.id === id));
 
     if (!promo) {
@@ -40,6 +43,7 @@ export default function EditPromoRoute() {
         <PromoFormPage
             mode="edit"
             promoId={id}
+            returnTo={returnTo}
             initial={{
                 bannerPreview: promo.banner_image_url ?? "",
                 name: promo.name ?? "",
@@ -66,5 +70,13 @@ export default function EditPromoRoute() {
                 customerTargeting: promo.customer_targeting ?? "",
             }}
         />
+    );
+}
+
+export default function EditPromoRoute() {
+    return (
+        <Suspense fallback={null}>
+            <EditPromoRouteInner />
+        </Suspense>
     );
 }

@@ -41,6 +41,7 @@ import { XClose, Share04, Copy03, Trash01, DotsGrid, Check } from "@untitledui/i
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type PortalMenuItem } from "@/lib/store";
+import { SectionHeader } from "@/components/patterns/SectionHeader";
 
 const RETURN_ROUTE = "/admin/settings/branding";
 
@@ -470,9 +471,7 @@ function StepItem({ n, label, current, total }: {
     );
 }
 
-function SectionHeader({ title }: { title: string }) {
-    return <p className="text-[18px] font-semibold text-[#101828] leading-7">{title}</p>;
-}
+// Local SectionHeader removed — uses canonical from `@/components/patterns/SectionHeader`.
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (

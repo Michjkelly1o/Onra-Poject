@@ -34,6 +34,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, type Shift } from "@/lib/store";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { RowActions } from "@/components/patterns/RowActions";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Status badge ────────────────────────────────────────────────────────────
@@ -116,84 +120,9 @@ type RowActionKind =
     | "view" | "edit" | "assign_staff"
     | "archive" | "deactivate" | "reactivate" | "recover" | "delete";
 
-function RowActions({ status, hasStaff, onAction }: {
-    status: Shift["status"];
-    hasStaff: boolean;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => trigger(() => onAction("view"))}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(() => onAction("edit"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit details
-                    </button>
-                )}
-
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(() => onAction("assign_staff"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <UserPlus01 className="w-4 h-4 text-[#667085]" />Assign staff
-                    </button>
-                )}
-
-                {/* Archive — Active + Inactive (no archive of already-archived). */}
-                {status !== "archive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("archive"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {/* Reactivate — Inactive only. */}
-                {status === "inactive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("reactivate"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
-                    </button>
-                )}
-
-                {/* Recover — Archived only. */}
-                {status === "archive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("recover"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-
-                {/* Destructive — Active rows only. Delete shows ONLY when no
-                    staff is assigned; otherwise Deactivate replaces it. */}
-                {status === "active" && (
-                    hasStaff ? (
-                        <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                        </button>
-                    ) : (
-                        <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                        </button>
-                    )
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `<RowActions items={[...]}>` from
+// `@/components/patterns/RowActions`. Items array is built per-row at the
+// call site below based on status + hasStaff.
 
 // ─── Confirmation modal ────────────────────────────────────────────────────
 
@@ -249,42 +178,8 @@ const MODAL_CONFIG: Record<RowActionKind, {
     },
 };
 
-function ActionModal({ action, count, subject, onConfirm, onCancel }: {
-    action: Exclude<RowActionKind, "view" | "edit" | "assign_staff">;
-    count: number;
-    subject: React.ReactNode;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject, count)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.tone === "destructive" ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — uses canonical `<ConfirmModal>` from
+// `@/components/modals/ConfirmModal`, driven by MODAL_CONFIG above.
 
 // ─── Bulk action bar (floating pill) ───────────────────────────────────────
 
@@ -300,7 +195,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected<XClose className="w-5 h-5 text-[#667085]" />
@@ -435,53 +330,10 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     );
 }
 
-// ─── Pagination — same shape as the staff-permissions table ───────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Table constants ───────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Main tab component ───────────────────────────────────────────────────
 
@@ -780,11 +632,16 @@ export function ShiftManagementTab({
                                                 />
                                             </td>
                                             <td className={TD}>
-                                                <RowActions
-                                                    status={s.status}
-                                                    hasStaff={assignedCount > 0}
-                                                    onAction={k => handleRowAction(s, k)}
-                                                />
+                                                <RowActions items={[
+                                                    { label: "View details", icon: Eye, onClick: () => handleRowAction(s, "view") },
+                                                    { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit"), hidden: s.status !== "active" },
+                                                    { label: "Assign staff", icon: UserPlus01, onClick: () => handleRowAction(s, "assign_staff"), hidden: s.status !== "active" },
+                                                    { label: "Archive", icon: Archive, onClick: () => handleRowAction(s, "archive"), hidden: s.status === "archive" },
+                                                    { label: "Reactivate", icon: Check, onClick: () => handleRowAction(s, "reactivate"), hidden: s.status !== "inactive" },
+                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archive" },
+                                                    { label: "Deactivate", icon: SlashCircle01, onClick: () => handleRowAction(s, "deactivate"), danger: true, hidden: !(s.status === "active" && assignedCount > 0) },
+                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: !(s.status === "active" && assignedCount === 0) },
+                                                ]} />
                                             </td>
                                         </tr>
                                     );
@@ -833,13 +690,18 @@ export function ShiftManagementTab({
                 const subject = pendingConfirm.mode === "row"
                     ? <span className="font-medium text-[#344054]">{pendingConfirm.row.name}</span>
                     : <><span className="font-medium text-[#344054]">{pendingConfirm.rows.length}</span> selected shifts</>;
+                const cfg = MODAL_CONFIG[pendingConfirm.kind];
+                const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
                 return (
-                    <ActionModal
-                        action={pendingConfirm.kind}
-                        count={count}
-                        subject={subject}
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.IconComp}
+                        tone={cfg.tone === "destructive" ? "danger" : "success"}
+                        title={title}
+                        description={cfg.description(subject, count)}
+                        confirmLabel={cfg.confirmLabel}
                         onConfirm={performAction}
-                        onCancel={() => setPendingConfirm(null)}
                     />
                 );
             })()}

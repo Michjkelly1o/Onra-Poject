@@ -48,6 +48,13 @@ import { TaxRateModal } from "@/components/settings/TaxRateModal";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
 import { useAppStore, type TaxRate, type TaxRateStatus } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { IconAvatar } from "@/components/patterns/IconAvatar";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -64,8 +71,6 @@ const STATUS_ORDER: Record<TaxRateStatus, number> = {
 type StatusFilter = TaxRateStatus | null;
 type TabId = "list" | "apply";
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
@@ -75,32 +80,11 @@ function formatPct(r: number): string {
 
 // ─── Status badge ────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: TaxRateStatus }) {
-    const styles: Record<TaxRateStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
+// Local StatusBadge removed — uses canonical `<StatusBadge type="tax-rate">`
+// from `@/components/patterns/StatusBadge`.
 
-// ─── Percent avatar (Figma 5006:74021 — `percent-03` in 40px gray circle) ────
-
-function PercentAvatar() {
-    return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <Percent03 className="w-5 h-5 text-[#475467]" />
-            <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
-        </div>
-    );
-}
+// Local PercentAvatar removed — uses canonical `<IconAvatar icon={Percent03} />`
+// from `@/components/patterns/IconAvatar`.
 
 // ─── Toggle (mirrors referral settings) ──────────────────────────────────────
 
@@ -137,79 +121,9 @@ function Toggle({ on, onChange, ariaLabel }: {
 
 type RowActionKind = "deactivate" | "reactivate" | "archive" | "recover" | "delete";
 
-function RowActions({ status, hasUsage, onEdit, onAction }: {
-    status: TaxRateStatus;
-    /** True when ≥1 `tax_rule` references this rate. Phase 3 wires this. */
-    hasUsage: boolean;
-    onEdit: () => void;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                {/* Edit — Active only (cannot edit archived/inactive per brief). */}
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(onEdit)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit
-                    </button>
-                )}
-
-                {/* Archive — active + inactive. */}
-                {status !== "archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("archive"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {/* Reactivate — inactive only. */}
-                {status === "inactive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("reactivate"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
-                    </button>
-                )}
-
-                {/* Recover — archived only. NO Delete here — user must Recover
-                    first, then Delete from the active state (matches every
-                    other module's convention). */}
-                {status === "archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("recover"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-
-                {/* Deactivate ↔ Delete — Active rows only. Inactive rows must
-                    be Reactivated first; archived rows must be Recovered first.
-                    Active + usage → Deactivate; Active + no usage → Delete. */}
-                {status === "active" && (
-                    hasUsage ? (
-                        <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                        </button>
-                    ) : (
-                        <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                        </button>
-                    )
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `<RowActions items={[...]}>` from
+// `@/components/patterns/RowActions`. Items array is built per-row at the
+// call site below based on status + hasUsage.
 
 // ─── Action modal (tone matrix mirrors customers / products) ─────────────────
 
@@ -258,42 +172,8 @@ const MODAL_CONFIG: Record<RowActionKind, {
     },
 };
 
-function ActionModal({ action, count, subject, onConfirm, onCancel }: {
-    action: RowActionKind;
-    count: number;
-    subject: React.ReactNode;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject, count)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — uses canonical `<ConfirmModal>` driven by
+// MODAL_CONFIG above.
 
 // ─── Status filter dropdown (single-select — same as gift cards) ─────────────
 
@@ -404,7 +284,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -449,48 +329,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     );
 }
 
-// ─── Pagination + Checkbox cell (lifted verbatim from products) ──────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     checked: boolean; onChange: (next: boolean) => void; indeterminate?: boolean; ariaLabel: string;
@@ -864,12 +703,7 @@ export default function TaxPage() {
                 <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                     {/* Toolbar */}
                     <div className="shrink-0 flex items-center gap-3 px-6 py-5">
-                        <div className="flex-1">
-                            <p className="text-[14px] text-[#667085]">Total</p>
-                            <p className="text-[14px] font-medium text-[#101828]">
-                                {filtered.length} tax rate{filtered.length === 1 ? "" : "s"}
-                            </p>
-                        </div>
+                        <ToolbarTotal count={filtered.length} entitySingular="tax rate" size="sm" />
                         <ExportDropdown disabled={filtered.length === 0} onExportCsv={handleExportCsv} />
                         <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
                         <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={handleAddNew}>
@@ -928,19 +762,26 @@ export default function TaxPage() {
                                                     </td>
                                                     <td className={TD}>
                                                         <div className="flex items-center gap-3">
-                                                            <PercentAvatar />
+                                                            <IconAvatar icon={Percent03} />
                                                             <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                                         </div>
                                                     </td>
                                                     <td className={cn(TD, "text-[#475467]")}>{formatPct(r.ratePercentage)}</td>
-                                                    <td className={TD}><StatusBadge status={r.status} /></td>
+                                                    <td className={TD}><StatusBadge type="tax-rate" status={r.status} /></td>
                                                     <td className={TD}>
-                                                        <RowActions
-                                                            status={r.status}
-                                                            hasUsage={hasUsage(r.id)}
-                                                            onEdit={() => handleEdit(r)}
-                                                            onAction={k => openRowConfirm(r, k)}
-                                                        />
+                                                        {(() => {
+                                                            const used = hasUsage(r.id);
+                                                            return (
+                                                                <RowActions items={[
+                                                                    { label: "Edit", icon: Edit02, onClick: () => handleEdit(r), hidden: r.status !== "active" },
+                                                                    { label: "Archive", icon: Archive, onClick: () => openRowConfirm(r, "archive"), hidden: r.status === "archived" },
+                                                                    { label: "Reactivate", icon: Check, onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
+                                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"), hidden: r.status !== "archived" },
+                                                                    { label: "Deactivate", icon: SlashCircle01, onClick: () => openRowConfirm(r, "deactivate"), danger: true, hidden: !(r.status === "active" && used) },
+                                                                    { label: "Delete", icon: Trash01, onClick: () => openRowConfirm(r, "delete"), danger: true, hidden: !(r.status === "active" && !used) },
+                                                                ]} />
+                                                            );
+                                                        })()}
                                                     </td>
                                                 </tr>
                                             );
@@ -978,13 +819,19 @@ export default function TaxPage() {
             {/* Action modal */}
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);
+                const cfg = MODAL_CONFIG[pendingConfirm.kind];
+                const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
+                const tone = DESTRUCTIVE_ACTIONS.has(pendingConfirm.kind) ? "danger" : "success";
                 return (
-                    <ActionModal
-                        action={pendingConfirm.kind}
-                        count={count}
-                        subject={subject}
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.IconComp}
+                        tone={tone}
+                        title={title}
+                        description={cfg.description(subject, count)}
+                        confirmLabel={cfg.confirmLabel}
                         onConfirm={() => performAction(pendingConfirm)}
-                        onCancel={() => setPendingConfirm(null)}
                     />
                 );
             })()}

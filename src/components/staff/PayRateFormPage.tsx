@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
+import { FieldLabel } from "@/components/patterns/FieldLabel";
 import {
     useAppStore, DEFAULT_BRANCH_ID,
     computePayRateDisplay,
@@ -249,9 +250,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
     );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] font-medium text-[#344054] leading-[20px]">{children}</p>;
-}
+// Local FieldLabel removed — uses canonical from `@/components/patterns/FieldLabel`.
 
 function TextInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
@@ -378,7 +377,7 @@ function Radio({ checked }: { checked: boolean }) {
 function TypePicker({ value, onChange }: { value: PayRateType; onChange: (next: PayRateType) => void }) {
     return (
         <div className="flex flex-col gap-[6px] w-full">
-            <FieldLabel>Pay rate type</FieldLabel>
+            <FieldLabel label="Pay rate type" />
             <div className="grid grid-cols-2 gap-3 w-full">
                 {TYPE_CARDS.map(card => {
                     const selected = card.value === value;
@@ -414,7 +413,7 @@ function TypePicker({ value, onChange }: { value: PayRateType; onChange: (next: 
 function FlatRateSection({ form, set }: { form: FormValue; set: (patch: Partial<FormValue>) => void }) {
     return (
         <div className="flex flex-col gap-[6px] w-full">
-            <FieldLabel>Flat rate</FieldLabel>
+            <FieldLabel label="Flat rate" />
             <AedInput value={form.flatAmount} onChange={v => set({ flatAmount: v })} />
             <HelperText>Instructor earns this flat amount per class taught, regardless of attendance.</HelperText>
         </div>
@@ -484,12 +483,12 @@ function RevenueRateSection({ form, set }: { form: FormValue; set: (patch: Parti
     return (
         <div className="flex flex-col gap-4 w-full">
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Split percentage</FieldLabel>
+                <FieldLabel label="Split percentage" />
                 <PercentInput value={form.splitPercent} onChange={v => set({ splitPercent: v })} />
                 <HelperText>Percentage of total class revenue paid to instructor.</HelperText>
             </div>
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Pay per customer</FieldLabel>
+                <FieldLabel label="Pay per customer" />
                 <AedInput value={form.payPerCustomer} onChange={v => set({ payPerCustomer: v })} />
             </div>
         </div>
@@ -502,7 +501,7 @@ function HybridRateSection({ form, set }: { form: FormValue; set: (patch: Partia
     return (
         <div className="flex flex-col gap-6 w-full">
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Base rate</FieldLabel>
+                <FieldLabel label="Base rate" />
                 <AedInput value={form.baseRate} onChange={v => set({ baseRate: v })} />
             </div>
 
@@ -560,7 +559,7 @@ function HybridRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                     </div>
                     {isRevenue && (
                         <div className="flex flex-col gap-2 w-full pt-1" onClick={e => e.stopPropagation()}>
-                            <FieldLabel>Split percentage</FieldLabel>
+                            <FieldLabel label="Split percentage" />
                             <PercentInput value={form.splitPercent} onChange={v => set({ splitPercent: v })} />
                             <HelperText>Percentage of total class revenue paid to instructor.</HelperText>
                         </div>
@@ -575,7 +574,7 @@ function MonthlyRateSection({ form, set }: { form: FormValue; set: (patch: Parti
     return (
         <div className="flex flex-col gap-6 w-full">
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Fixed salary</FieldLabel>
+                <FieldLabel label="Fixed salary" />
                 <AedInput value={form.fixedSalary} onChange={v => set({ fixedSalary: v })} />
                 <HelperText>per month</HelperText>
             </div>
@@ -584,11 +583,11 @@ function MonthlyRateSection({ form, set }: { form: FormValue; set: (patch: Parti
                 <SectionHeader title="Performance bonus" />
                 <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="flex flex-col gap-[6px]">
-                        <FieldLabel>Bonus of monthly salary</FieldLabel>
+                        <FieldLabel label="Bonus of monthly salary" />
                         <PercentInput value={form.bonusOfSalaryPercent} onChange={v => set({ bonusOfSalaryPercent: v })} />
                     </div>
                     <div className="flex flex-col gap-[6px]">
-                        <FieldLabel>Bonus cap (optional)</FieldLabel>
+                        <FieldLabel label="Bonus cap (optional)" />
                         <AedInput value={form.bonusCap} onChange={v => set({ bonusCap: v })} />
                     </div>
                 </div>
@@ -601,11 +600,11 @@ function MonthlyRateSection({ form, set }: { form: FormValue; set: (patch: Parti
                 />
                 <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="flex flex-col gap-[6px]">
-                        <FieldLabel>Packages</FieldLabel>
+                        <FieldLabel label="Packages" />
                         <PercentInput value={form.salesCommissionPackagesPercent} onChange={v => set({ salesCommissionPackagesPercent: v })} />
                     </div>
                     <div className="flex flex-col gap-[6px]">
-                        <FieldLabel>Memberships</FieldLabel>
+                        <FieldLabel label="Memberships" />
                         <PercentInput value={form.salesCommissionMembershipsPercent} onChange={v => set({ salesCommissionMembershipsPercent: v })} />
                     </div>
                 </div>
@@ -740,7 +739,7 @@ function BranchStep({ form, set, branches }: { form: FormValue; set: (patch: Par
         <div className="flex flex-col gap-4 w-full">
             <SectionHeader title="Applicable branch" />
             <div className="flex flex-col gap-[6px] w-full max-w-[580px]">
-                <FieldLabel>Branch location</FieldLabel>
+                <FieldLabel label="Branch location" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5 text-[#667085]" />}
                     placeholder="Select location"
@@ -896,7 +895,7 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                 <div className="flex flex-col gap-4 w-full">
                                     <SectionHeader title="Pay rate details" />
                                     <div className="flex flex-col gap-[6px] w-full">
-                                        <FieldLabel>Pay rate name</FieldLabel>
+                                        <FieldLabel label="Pay rate name" />
                                         <TextInput value={form.name} onChange={v => set({ name: v })} placeholder="e.g. Standard" />
                                     </div>
                                     <TypePicker value={form.type} onChange={t => set({ type: t })} />
@@ -921,7 +920,7 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                     <div className="flex flex-col gap-4 w-full">
                                         <SectionHeader title="Tax rates" />
                                         <div className="flex flex-col gap-[6px] w-full">
-                                            <FieldLabel>Tax rate (optional)</FieldLabel>
+                                            <FieldLabel label="Tax rate (optional)" />
                                             <SelectInput
                                                 value={form.taxRateId}
                                                 onChange={v => set({ taxRateId: v })}

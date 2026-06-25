@@ -31,7 +31,7 @@
 //   • deactivate / delete           → red tone (bg-[#fee4e2], destructive button)
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, Trash01, SlashCircle01, RefreshCcw01, Plus,
     Check, Building01, LayoutGrid01, Eye, Pencil01, DotsVertical,
@@ -39,14 +39,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore } from "@/lib/store";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
-
-// ─── Return route ─────────────────────────────────────────────────────────────
-
-const RETURN_ROUTE = "/admin/settings";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Day labels (Mon → Sun display order) ────────────────────────────────────
 
@@ -114,104 +114,9 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     },
 };
 
-function ConfirmModal({ kind, subject, onCancel, onConfirm }: {
-    kind: ConfirmKind;
-    subject: string;
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
-    const cfg = CONFIRM_CFG[kind];
-
-    useEffect(() => {
-        function onKey(e: KeyboardEvent) {
-            if (e.key === "Escape") onCancel();
-        }
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [onCancel]);
-
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    aria-label="Close"
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10"
-                >
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.Icon className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title(subject)}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description()}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button
-                        variant={cfg.destructive ? "destructive" : "primary"}
-                        size="lg"
-                        className="flex-1"
-                        onClick={onConfirm}
-                    >
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ─── Status badges ────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: "active" | "inactive" | "archive" }) {
-    if (status === "active") {
-        return (
-            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
-                Active
-            </span>
-        );
-    }
-    if (status === "archive") {
-        return (
-            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
-                Archived
-            </span>
-        );
-    }
-    return (
-        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
-            Inactive
-        </span>
-    );
-}
-
-function StatusBadgeSmall({ status }: { status: "active" | "inactive" | "archive" }) {
-    if (status === "active") {
-        return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
-                Active
-            </span>
-        );
-    }
-    if (status === "archive") {
-        return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
-                Archived
-            </span>
-        );
-    }
-    return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
-            Inactive
-        </span>
-    );
-}
+// Local ConfirmModal removed — call sites use the canonical
+// `<ConfirmModal>` from `@/components/modals/ConfirmModal`, driven by
+// the CONFIRM_CFG lookup above.
 
 // ─── Sidebar action button (mirrors StaffDetailPage ActionBtn) ───────────────
 
@@ -265,7 +170,7 @@ function Sidebar({
                             }
                         </div>
                         <div className="absolute top-0 right-0">
-                            <StatusBadge status={branch.status} />
+                            <StatusBadge type="branch" status={branch.status} />
                         </div>
                     </div>
 
@@ -359,24 +264,8 @@ function WorkingDays({ hours }: { hours: BusinessHours[] }) {
     );
 }
 
-// ─── Tab underline button (mirrors StaffDetailPage TabBtn) ────────────────────
-
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
-                active
-                    ? "border-b-2 border-[#101828] text-[#101828]"
-                    : "text-[#667085] hover:text-[#344054]",
-            )}
-        >
-            {label}
-        </button>
-    );
-}
+// Local TabBtn removed — uses canonical `<DetailPageTabs>` from
+// `@/components/patterns/DetailPageTabs`.
 
 // ─── Detail field (2-col grid cell — Figma 6655-193702) ──────────────────────
 
@@ -465,8 +354,9 @@ function DetailsTab({
                         return (
                             <div
                                 key={room.id}
+                                onClick={() => onRoomView(room)}
                                 className={cn(
-                                    "grid grid-cols-[1fr_140px_88px_64px] items-center bg-white",
+                                    "grid grid-cols-[1fr_140px_88px_64px] items-center bg-white hover:bg-[#f9fafb] transition-colors cursor-pointer",
                                     !isLast && "border-b border-[#e4e7ec]",
                                 )}
                             >
@@ -482,10 +372,10 @@ function DetailsTab({
                                 </div>
                                 {/* Col 2 — status */}
                                 <div className="px-6 py-4">
-                                    <StatusBadgeSmall status={room.status} />
+                                    <StatusBadge type="branch" status={room.status} size="sm" />
                                 </div>
                                 {/* Col 3 — enable toggle (only when not archived) */}
-                                <div className="px-6 py-4">
+                                <div onClick={e => e.stopPropagation()} className="px-6 py-4">
                                     {room.status !== "archive" ? (
                                         <Toggle
                                             on={room.status === "active"}
@@ -495,7 +385,7 @@ function DetailsTab({
                                     ) : null}
                                 </div>
                                 {/* Col 4 — actions */}
-                                <div className="relative px-0 py-4 flex justify-end">
+                                <div onClick={e => e.stopPropagation()} className="relative px-0 py-4 flex justify-end">
                                     <button
                                         type="button"
                                         onClick={() => onToggleRoomActions(room.id)}
@@ -562,10 +452,12 @@ function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: () => void
 
 export interface BranchDetailPageProps {
     branchId: string;
+    returnTo?: string;
 }
 
-export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
+export function BranchDetailPage({ branchId, returnTo = "/admin/settings" }: BranchDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const branches       = useAppStore(s => s.branches);
     const rooms          = useAppStore(s => s.rooms);
     const businessHours  = useAppStore(s => s.businessHours);
@@ -592,13 +484,13 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
     useEffect(() => {
         if (!branch && branches.length > 0) {
             showToast("Branch not found", "Returned to the settings list.", "error");
-            router.push(RETURN_ROUTE);
+            router.push(returnTo);
         }
     }, [branch, branches.length, router, showToast]);
 
-    function handleClose() { router.push(RETURN_ROUTE); }
-    function handleEdit()  { if (branch) router.push(`/settings/branches/${branch.id}/edit`); }
-    function handleAddRoom() { if (branch) router.push(`/settings/rooms/new?branchId=${branch.id}`); }
+    function handleClose() { router.push(returnTo); }
+    function handleEdit()  { if (branch) router.push(`/settings/branches/${branch.id}/edit?returnTo=${encodeURIComponent(pathname)}`); }
+    function handleAddRoom() { if (branch) router.push(`/settings/rooms/new?branchId=${branch.id}&returnTo=${encodeURIComponent(pathname)}`); }
 
     function performBranchConfirm(kind: ConfirmKind) {
         if (!branch) return;
@@ -619,7 +511,7 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
             deleteBranchFn(branch.id);
             showToast("Branch deleted", `${subject} permanently removed.`, "success", "trash");
             setPendingBranchConfirm(null);
-            router.push(RETURN_ROUTE);
+            router.push(returnTo);
             return;
         }
         setPendingBranchConfirm(null);
@@ -698,9 +590,9 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Branch details</h1>
             </div>
 
-            {/* Body — px-6 py-6, h-[832px] flex row (same as StaffDetailPage) */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
                     <Sidebar
                         branch={branch}
                         hours={hours}
@@ -709,12 +601,15 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
                         onEdit={handleEdit}
                         onAddRoom={handleAddRoom}
                     />
-
+                }
+                main={
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
-                            <div className="flex gap-1">
-                                <TabBtn label="Details" active={tab === "details"} onClick={() => setTab("details")} />
-                            </div>
+                            <DetailPageTabs
+                                tabs={[{ key: "details", label: "Details" }]}
+                                activeKey={tab}
+                                onChange={(k) => setTab(k as typeof tab)}
+                            />
                         </div>
                         <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
                             <DetailsTab
@@ -725,36 +620,52 @@ export function BranchDetailPage({ branchId }: BranchDetailPageProps) {
                                 onToggleRoomActions={(id) => setRoomActionsId(prev => prev === id ? null : id)}
                                 onCloseRoomActions={() => setRoomActionsId(null)}
                                 onRoomView={(r) => { setRoomActionsId(null); setRoomDetailId(r.id); }}
-                                onRoomEdit={(r) => { setRoomActionsId(null); router.push(`/settings/rooms/${r.id}/edit`); }}
+                                onRoomEdit={(r) => { setRoomActionsId(null); router.push(`/settings/rooms/${r.id}/edit?returnTo=${encodeURIComponent(pathname)}`); }}
                                 onRoomAction={(r, a) => { setRoomActionsId(null); setPendingRoomConfirm({ room: r, kind: a }); }}
                                 onRoomToggle={requestRoomToggle}
                             />
                         </div>
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {detailRoom && (
                 <RoomDetailModal room={detailRoom} onClose={() => setRoomDetailId(null)} />
             )}
 
-            {pendingBranchConfirm && (
-                <ConfirmModal
-                    kind={pendingBranchConfirm}
-                    subject={`"${branch.name}"`}
-                    onCancel={() => setPendingBranchConfirm(null)}
-                    onConfirm={() => performBranchConfirm(pendingBranchConfirm)}
-                />
-            )}
+            {pendingBranchConfirm && (() => {
+                const cfg = CONFIRM_CFG[pendingBranchConfirm];
+                const subject = `"${branch.name}"`;
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingBranchConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={cfg.description()}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => performBranchConfirm(pendingBranchConfirm)}
+                    />
+                );
+            })()}
 
-            {pendingRoomConfirm && (
-                <ConfirmModal
-                    kind={pendingRoomConfirm.kind}
-                    subject={`"${pendingRoomConfirm.room.name}"`}
-                    onCancel={() => setPendingRoomConfirm(null)}
-                    onConfirm={() => performRoomConfirm(pendingRoomConfirm.room, pendingRoomConfirm.kind)}
-                />
-            )}
+            {pendingRoomConfirm && (() => {
+                const cfg = CONFIRM_CFG[pendingRoomConfirm.kind];
+                const subject = `"${pendingRoomConfirm.room.name}"`;
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingRoomConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={cfg.description()}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => performRoomConfirm(pendingRoomConfirm.room, pendingRoomConfirm.kind)}
+                    />
+                );
+            })()}
 
             <Toast />
         </div>

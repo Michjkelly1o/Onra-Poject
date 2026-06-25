@@ -45,7 +45,7 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Categories", href: "/admin/categories" },
         ],
     },
-    { label: "POS", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
+    { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
     {
         label: "Services & products", icon: ShoppingBag01, permission: "manage_products",
         children: [

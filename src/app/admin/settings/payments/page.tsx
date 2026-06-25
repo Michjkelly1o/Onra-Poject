@@ -37,6 +37,7 @@ import {
     useAppStore,
     type PaymentProvider, type PaymentProviderSlug,
 } from "@/lib/store";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Per-provider config (logo + Connect modal + View fields) ───────────────
 
@@ -123,21 +124,6 @@ function LogoTile({ provider, size = "card" }: {
     );
 }
 
-// ─── Status badge ───────────────────────────────────────────────────────────
-
-function StatusBadge({ connected }: { connected: boolean }) {
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[8px] py-[2px] rounded-full text-[12px] font-medium whitespace-nowrap",
-            connected
-                ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-                : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        )}>
-            {connected ? "Connected" : "Not connected"}
-        </span>
-    );
-}
-
 /** Hoverable info icon shown next to the wallet name when Stripe isn't
  *  connected. Tooltip uses the same dark-pill pattern as the rest of the
  *  app (see `CsSpotCircle` in ScheduleFormPage) — CSS-only show/hide via
@@ -180,7 +166,7 @@ function ProviderCard({ provider, gatewayConnected, onConnect, onEnable, onView,
                     <p className="text-[14px] text-[#6e776f] leading-5">{provider.description}</p>
                 </div>
                 <div className="absolute top-0 right-0">
-                    <StatusBadge connected={connected} />
+                    <StatusBadge type="payment" status={connected ? "connected" : "disconnected"} size="sm" />
                 </div>
             </div>
 

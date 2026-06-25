@@ -45,6 +45,7 @@ import {
     type PhoneCountry,
 } from "@/components/customers/CustomerFormPage";
 import { isValidEmail } from "@/lib/validation";
+import { FieldLabel } from "@/components/patterns/FieldLabel";
 
 // ─── Shell primitives ───────────────────────────────────────────────────────
 
@@ -179,13 +180,7 @@ export function ModalFooter({
 const INPUT_CLS =
     "h-10 w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return (
-        <p className="text-[14px] font-medium text-[#344054] leading-5">
-            {children}
-        </p>
-    );
-}
+// Local FieldLabel removed — uses canonical from `@/components/patterns/FieldLabel`.
 
 export function LabeledInput({
     label,
@@ -204,7 +199,7 @@ export function LabeledInput({
 }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <FieldLabel>{label}</FieldLabel>
+            <FieldLabel label={label} />
             <input
                 type={type}
                 value={value}
@@ -232,7 +227,7 @@ function PasswordInput({
     const [show, setShow] = useState(false);
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <FieldLabel>{label}</FieldLabel>
+            <FieldLabel label={label} />
             <div className="relative">
                 <input
                     type={show ? "text" : "password"}
@@ -533,7 +528,7 @@ export function ChangeEmailOtpModal({
                 supporting="To change your email address, please enter the verification code we've sent to your current email."
             />
             <div className="flex flex-col gap-2 px-6 w-full">
-                <FieldLabel>Verification code</FieldLabel>
+                <FieldLabel label="Verification code" />
                 <input
                     type="text"
                     inputMode="numeric"
@@ -638,7 +633,7 @@ export function ChangePhoneNewModal({
                 supporting="Enter your phone number to receive an OTP for verification."
             />
             <div className="flex flex-col gap-2 px-6 py-5 w-full">
-                <FieldLabel>Phone number</FieldLabel>
+                <FieldLabel label="Phone number" />
                 {/* Combined dial-code + national-number input — exact same
                     chrome as the customer-create form. NB: do NOT add
                     `overflow-hidden` to the wrapper — it would clip the

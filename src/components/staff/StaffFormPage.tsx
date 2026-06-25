@@ -33,6 +33,7 @@ import {
     type Staff, type StaffStatus,
 } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
+import { FieldLabel } from "@/components/patterns/FieldLabel";
 
 // ─── Form value ────────────────────────────────────────────────────────────
 
@@ -301,9 +302,8 @@ function MultiCategoryDropdown({ options, selectedIds, onChange }: {
     );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] font-medium text-[#344054] leading-[20px]">{children}</p>;
-}
+// Local FieldLabel removed — uses canonical `<FieldLabel label="..." />`
+// from `@/components/patterns/FieldLabel`.
 
 function TextInput({ value, onChange, placeholder, type = "text" }: {
     value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
@@ -605,18 +605,18 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="flex flex-col gap-[6px]">
-                                    <FieldLabel>First name</FieldLabel>
+                                    <FieldLabel label="First name" />
                                     <TextInput value={form.firstName} onChange={v => set({ firstName: v })} placeholder="Enter first name" />
                                 </div>
                                 <div className="flex flex-col gap-[6px]">
-                                    <FieldLabel>Last name</FieldLabel>
+                                    <FieldLabel label="Last name" />
                                     <TextInput value={form.lastName} onChange={v => set({ lastName: v })} placeholder="Enter last name" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="flex flex-col gap-[6px]">
-                                    <FieldLabel>Email</FieldLabel>
+                                    <FieldLabel label="Email" />
                                     <TextInput value={form.email} onChange={v => set({ email: v })} placeholder="Enter email" type="email" />
                                     {form.email.trim().length > 0 && !isValidEmail(form.email) && (
                                         <p className="text-[14px] text-[#b42318] leading-5">
@@ -625,13 +625,13 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                     )}
                                 </div>
                                 <div className="flex flex-col gap-[6px]">
-                                    <FieldLabel>Temporary password</FieldLabel>
+                                    <FieldLabel label="Temporary password" />
                                     <TextInput value={form.tempPassword} onChange={v => set({ tempPassword: v })} placeholder="Enter temporary password" />
                                 </div>
                             </div>
 
                             <div className="flex flex-col gap-[6px]">
-                                <FieldLabel>Phone number</FieldLabel>
+                                <FieldLabel label="Phone number" />
                                 <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                     <PhoneCountryDropdown
                                         value={form.phoneCountry}
@@ -654,7 +654,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                             {mode === "create" && (
                                 <>
                                     <div className="flex flex-col gap-[6px]">
-                                        <FieldLabel>Select role</FieldLabel>
+                                        <FieldLabel label="Select role" />
                                         <SelectInput
                                             placeholder="Select role"
                                             options={roleOptions}
@@ -679,7 +679,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                             {isInstructor && (
                                 <>
                                     <div className="flex flex-col gap-[6px]">
-                                        <FieldLabel>Short introduction</FieldLabel>
+                                        <FieldLabel label="Short introduction" />
                                         <textarea
                                             value={form.shortIntro}
                                             onChange={e => set({ shortIntro: e.target.value })}
@@ -690,7 +690,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                     </div>
 
                                     <div className="flex flex-col gap-[6px]">
-                                        <FieldLabel>Working experience</FieldLabel>
+                                        <FieldLabel label="Working experience" />
                                         <input
                                             type="number"
                                             value={form.workingExperienceYears}
@@ -703,7 +703,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                     </div>
 
                                     <div className="flex flex-col gap-[6px]">
-                                        <FieldLabel>Assign shift (optional)</FieldLabel>
+                                        <FieldLabel label="Assign shift (optional)" />
                                         <SelectInput
                                             placeholder="Select shift"
                                             options={[
@@ -723,7 +723,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 field can be left empty); instructors get a
                                 validation gate at submit time. */}
                             <div className="flex flex-col gap-[6px]">
-                                <FieldLabel>Default pay rate</FieldLabel>
+                                <FieldLabel label="Default pay rate" />
                                 <SelectInput
                                     placeholder="Select default pay rate"
                                     options={payRateOptions}
@@ -739,7 +739,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 appts). 1 instructor → many categories. */}
                             {isInstructor && (
                                 <div className="flex flex-col gap-[6px]">
-                                    <FieldLabel>Categories</FieldLabel>
+                                    <FieldLabel label="Categories" />
                                     <MultiCategoryDropdown
                                         options={classCategories.filter(c => c.status === "active").map(c => ({ id: c.id, name: c.name }))}
                                         selectedIds={form.categoryIds}

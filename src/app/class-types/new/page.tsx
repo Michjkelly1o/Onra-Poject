@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
 import {
     XClose, UploadCloud02, Grid01,
@@ -527,8 +527,10 @@ function ApplicableMembershipsStep({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function NewClassTemplatePage() {
+function NewClassTemplatePageInner() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/class-types";
     const [step, setStep] = useState<1 | 2>(1);
 
     const [step1, setStep1] = useState<Step1Data>({
@@ -579,7 +581,7 @@ export default function NewClassTemplatePage() {
             "Class template created successfully",
             "You can now assign this class template when creating or editing classes.",
         );
-        router.push("/admin/class-types");
+        router.push(returnTo);
     }
 
     const previewData: PreviewData = {
@@ -599,7 +601,7 @@ export default function NewClassTemplatePage() {
                 <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                     <button
                         type="button"
-                        onClick={() => router.push("/admin/class-types")}
+                        onClick={() => router.push(returnTo)}
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                     >
                         <XClose className="w-5 h-5 text-[#667085]" />
@@ -651,5 +653,13 @@ export default function NewClassTemplatePage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function NewClassTemplatePage() {
+    return (
+        <Suspense fallback={null}>
+            <NewClassTemplatePageInner />
+        </Suspense>
     );
 }

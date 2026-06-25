@@ -8,11 +8,22 @@
 // sidebar + header chrome (same pattern as /class-types/[id]). Reads the
 // dynamic [id] and hands it to the shared ServiceDetailPage component.
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { ServiceDetailPage } from "@/components/services/ServiceDetailPage";
 
-export default function ServiceDetailRoute() {
+function ServiceDetailRouteInner() {
     const params = useParams();
     const id = String(params.id);
-    return <ServiceDetailPage serviceId={id} />;
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/services";
+    return <ServiceDetailPage serviceId={id} returnTo={returnTo} />;
+}
+
+export default function ServiceDetailRoute() {
+    return (
+        <Suspense fallback={null}>
+            <ServiceDetailRouteInner />
+        </Suspense>
+    );
 }

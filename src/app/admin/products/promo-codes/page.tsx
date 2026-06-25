@@ -28,6 +28,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, DEFAULT_BRANCH_ID, type PromoCode } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -87,24 +88,6 @@ function branchLabel(branchIds: string[] | undefined, totalBranches: number): st
     return `${n} ${n === 1 ? "branch" : "branches"}`;
 }
 
-// ─── Status badge ────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: EffectiveStatus }) {
-    // Active is the only "live" state → green. Inactive / Archive / Expired
-    // share the neutral gray treatment.
-    const styles = status === "active"
-        ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-        : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]";
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
-            styles,
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
-
 // ─── Promo card (Figma 6160:154472) ──────────────────────────────────────────
 
 function PromoAttribute({ icon, label }: { icon: React.ReactNode; label: string }) {
@@ -143,7 +126,7 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
                 {/* Dark vignette so the white text stays legible on any banner */}
                 <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
                 <div className="absolute top-3 right-3 z-10">
-                    <StatusBadge status={status} />
+                    <StatusBadge type="promo" status={status} size="lg" />
                 </div>
                 <div className="relative z-10 flex flex-col">
                     <p className="text-[20px] font-semibold text-white leading-[30px]">
@@ -408,7 +391,7 @@ export default function PromoListPage() {
                 </Button>
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/products/promo-codes/new")}>
+                    onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>
                     Add promo
                 </Button>
             </div>
@@ -427,7 +410,7 @@ export default function PromoListPage() {
                 <div className="grid grid-cols-3 gap-4">
                     {visible.map(p => (
                         <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/products/promo-codes/${p.id}`)} />
+                            onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
                     ))}
                 </div>
             )}

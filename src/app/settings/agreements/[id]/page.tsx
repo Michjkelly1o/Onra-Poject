@@ -3,10 +3,21 @@
 // Agreement detail route — thin wrapper around AgreementDetailPage.
 // Renders at /settings/agreements/[id] (top-level, no admin chrome).
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { AgreementDetailPage } from "@/components/settings/AgreementDetailPage";
 
-export default function AgreementDetailRoute() {
+function AgreementDetailInner() {
     const params = useParams<{ id: string }>();
-    return <AgreementDetailPage agreementId={params.id} />;
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/settings/agreements";
+    return <AgreementDetailPage agreementId={params.id} returnTo={returnTo} />;
+}
+
+export default function AgreementDetailRoute() {
+    return (
+        <Suspense fallback={null}>
+            <AgreementDetailInner />
+        </Suspense>
+    );
 }

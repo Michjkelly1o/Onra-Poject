@@ -22,12 +22,18 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -68,6 +74,12 @@ interface BookingRow {
     bookingStatus: "booked" | "waitlisted" | "cancelled";
     classStatus: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
     displayStatus: BookingDisplayStatus;
+    /** 1-based position in the waitlist queue for this class — only set
+     *  when `bookingStatus === "waitlisted"`. Computed live from the
+     *  classBookings slice so it stays accurate after promotions /
+     *  cancellations. Appointments never carry a waitlist position
+     *  (open sessions + private sessions don't queue beyond capacity). */
+    waitlistPosition?: number;
 }
 
 interface BookingFilter {
@@ -108,7 +120,7 @@ function classInitials(name: string): string {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function BookingStatusBadge({ status }: { status: BookingDisplayStatus }) {
+function BookingStatusBadge({ status, waitlistPosition }: { status: BookingDisplayStatus; waitlistPosition?: number }) {
     const styles: Record<BookingDisplayStatus, string> = {
         Upcoming: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
         Waitlisted: "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
@@ -118,25 +130,21 @@ function BookingStatusBadge({ status }: { status: BookingDisplayStatus }) {
         Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         "Cancelled (late)": "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
+    // Surface the 1-based queue position for waitlisted entries — e.g.
+    // "Waitlist #3". Mirrors the upcoming card so a customer's status
+    // reads the same wherever it appears.
+    const label = status === "Waitlisted" && waitlistPosition != null
+        ? `Waitlist #${waitlistPosition}`
+        : status;
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>
-            {status}
+            {label}
         </span>
     );
 }
 
 // ─── Filter pill ──────────────────────────────────────────────────────────────
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn("px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]")}>
-            {label}
-        </button>
-    );
-}
 
 // ─── Booking history filter panel (Figma 2481:113769) ────────────────────────
 
@@ -280,48 +288,7 @@ function RowActions({ onView }: { onView: () => void }) {
     );
 }
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
@@ -349,8 +316,6 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     );
 }
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Bookings tab ─────────────────────────────────────────────────────────────
 
@@ -379,6 +344,25 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
     //   • The new "Type" column in the history table.
     //   • Click-through routing in RowActions / upcoming card.
     const rows = useMemo<BookingRow[]>(() => {
+        // Per-class waitlist queues — sort each class's waitlisted bookings
+        // by `bookingTime` ASC so position #1 is the first to join. Cancelled
+        // entries don't occupy a queue slot. Computed live so promotions
+        // (waitlist → booked) recalculate every position on the same render.
+        const positionLookup = new Map<string, number>();
+        type WaitlistedBooking = typeof classBookings[number];
+        const queuesByClass = new Map<string, WaitlistedBooking[]>();
+        for (const b of classBookings) {
+            if (b.status !== "waitlisted") continue;
+            const existing = queuesByClass.get(b.classScheduleId) ?? [];
+            existing.push(b);
+            queuesByClass.set(b.classScheduleId, existing);
+        }
+        Array.from(queuesByClass.values()).forEach(queue => {
+            queue
+                .sort((a, c) => a.bookingTime.localeCompare(c.bookingTime))
+                .forEach((entry, idx) => positionLookup.set(entry.id, idx + 1));
+        });
+
         const classRows = classBookings
             .filter(b => b.customerId === customerId)
             .flatMap<BookingRow>(b => {
@@ -416,6 +400,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     bookingStatus: b.status,
                     classStatus,
                     displayStatus,
+                    ...(b.status === "waitlisted" && positionLookup.has(b.id)
+                        ? { waitlistPosition: positionLookup.get(b.id) }
+                        : {}),
                 }];
             });
 
@@ -603,8 +590,26 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                             <div className="flex flex-col gap-3">
                                 {upcoming.map(r => {
                                     const waitlisted = r.bookingStatus === "waitlisted";
+                                    // "Waitlisted #4" — surfaces the customer's
+                                    // 1-based position in the class waitlist so
+                                    // the admin / customer can see how close
+                                    // they are to being promoted. Falls back to
+                                    // plain "Waitlisted" if the position can't
+                                    // be resolved (defensive — should never
+                                    // happen since the row builder always
+                                    // populates it for waitlisted entries).
+                                    const waitlistLabel = waitlisted
+                                        ? r.waitlistPosition != null
+                                            ? `Waitlist #${r.waitlistPosition}`
+                                            : "Waitlisted"
+                                        : "Booked";
+                                    const targetHref = r.kind === "Group"
+                                        ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`
+                                        : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`;
                                     return (
-                                        <div key={r.bookingId} className="relative bg-[#e9fff3] rounded-[6px] overflow-hidden pl-5 pr-3 py-3">
+                                        <button key={r.bookingId} type="button"
+                                            onClick={() => router.push(targetHref)}
+                                            className="relative bg-[#e9fff3] rounded-[6px] overflow-hidden pl-5 pr-3 py-3 text-left hover:bg-[#defaef] transition-colors">
                                             {/* Left accent bar — spans the full card height so it never looks clipped */}
                                             <div className="absolute inset-y-0 left-0 w-[6px] bg-[#92baa4]" />
                                             {/* Status badge */}
@@ -614,7 +619,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                     ? "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]"
                                                     : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
                                             )}>
-                                                {waitlisted ? "Waitlisted" : "Booked"}
+                                                {waitlistLabel}
                                             </span>
                                             <div className="flex flex-col gap-1 pr-20">
                                                 <p className="text-[14px] font-medium text-[#101828]">{r.className}</p>
@@ -640,7 +645,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                     <span>{r.kind}</span>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -651,27 +656,22 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                 <>
                     {/* Toolbar */}
                     <div className="shrink-0 flex items-center gap-3 px-6 pb-4">
-                        <div className="flex-1">
-                            <p className="text-[14px] text-[#667085]">Total</p>
-                            <p className="text-[14px] font-medium text-[#101828]">
-                                {filteredHistory.length} booking history
-                            </p>
-                        </div>
-                        <div className="relative w-[200px]">
-                            <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                                placeholder="Search booking..."
-                                className="h-9 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                            />
-                        </div>
-                        <Button variant="secondary-gray" size="md"
-                            leftIcon={
-                                <div className="relative">
-                                    <FilterLines className="w-4 h-4" />
-                                    {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border border-white" />}
-                                </div>
-                            }
-                            onClick={() => setFilterOpen(true)}>Filter</Button>
+                        {/* Pre-existing chrome hardcodes "booking history"
+                            without pluralisation; preserve that with matching
+                            entitySingular + entityPlural. */}
+                        <ToolbarTotal
+                            count={filteredHistory.length}
+                            entitySingular="booking history"
+                            entityPlural="booking history"
+                            size="sm"
+                        />
+                        <ToolbarSearch
+                            value={search}
+                            onChange={setSearch}
+                            placeholder="Search booking..."
+                            size="sm"
+                        />
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                     </div>
 
                     {/* Table */}
@@ -708,7 +708,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                     </thead>
                                     <tbody>
                                         {pagedHistory.map(r => (
-                                            <tr key={r.bookingId} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={r.bookingId}
+                                                onClick={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <TableAvatar initials={classInitials(r.className)} imageUrl={r.coverImage} size={40} />
@@ -724,10 +726,10 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                         <span className="text-[14px] text-[#475467]">{r.instructorName}</span>
                                                     </div>
                                                 </td>
-                                                <td className={TD}><BookingStatusBadge status={r.displayStatus} /></td>
+                                                <td className={TD}><BookingStatusBadge status={r.displayStatus} waitlistPosition={r.waitlistPosition} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
-                                                <td className={TD}>
-                                                    <RowActions onView={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}` : `/appointments/${r.routeId}`)} />
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                                    <RowActions onView={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)} />
                                                 </td>
                                             </tr>
                                         ))}

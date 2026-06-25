@@ -266,13 +266,11 @@ export const DEFAULT_BRANCH_ID: string =
 // inside business hours.
 
 /** Hours window in 24h "HH:mm" strings. `null` when the branch is closed.
- *  `block` is the optional "blocked" sub-window (e.g. lunch break) — the
- *  schedule grid renders a striped strip over it and the schedule form's
- *  time picker excludes overlapping slots. */
+ *  The per-day "lunch break" block window was retired — branches now have
+ *  a single open/close pair per weekday. */
 export type HoursWindow = {
     open: string;
     close: string;
-    block?: { start: string; end: string };
 } | null;
 
 /** Return the open/close hours for `branchId` on the weekday of `dateISO`.
@@ -284,20 +282,12 @@ export function getBusinessHours(rows: BusinessHours[], branchId: string, dateIS
     const dow = d.getUTCDay();
     const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
     if (!row || row.is_closed) return null;
-    const block = row.block_start && row.block_end
-        ? { start: row.block_start, end: row.block_end }
-        : undefined;
-    return { open: row.open_time, close: row.close_time, ...(block ? { block } : {}) };
+    return { open: row.open_time, close: row.close_time };
 }
 
 /** Union of every branch's open hours for a weekday — used when a view shows
  *  more than one branch and the grid needs the widest envelope. Same
- *  contract as `getBusinessHours`: pass the live slice.
- *
- *  Block window is intentionally omitted in the union case — different
- *  branches may have different lunch breaks, and overlaying every branch's
- *  block would be misleading. The all-locations view shows no block strip;
- *  scope to a single branch to see them. */
+ *  contract as `getBusinessHours`: pass the live slice. */
 export function getUnionBusinessHours(rows: BusinessHours[], branchIds: string[], dateISO: string): HoursWindow {
     const d = new Date(dateISO + "T00:00:00Z");
     const dow = d.getUTCDay();
@@ -335,13 +325,7 @@ export function resolveTemplateCoverImage(
  *  When `durationMin` is supplied, the list is capped at `close - durationMin`
  *  so a class of that length always finishes before the branch closes — i.e.
  *  a 7am–10pm branch + 60min class lists 07:00…21:00 (not 22:00) because
- *  starting at 22:00 would push the end-time past close.
- *
- *  The block window (lunch / break) is NOT filtered out here — block-
- *  overlapping slots are returned alongside everything else so the schedule
- *  form's TimeDropdown can show them in their natural position, just greyed
- *  out + tagged "Unavailable". Use `getBlockedSlots(window, durationMin)`
- *  to get the list of starts to pass as `unavailable` to the picker. */
+ *  starting at 22:00 would push the end-time past close. */
 export function buildTimeSlots(window: HoursWindow, durationMin?: number): string[] {
     if (!window) return [];
     const [oh, om] = window.open.split(":").map(Number);
@@ -358,33 +342,6 @@ export function buildTimeSlots(window: HoursWindow, durationMin?: number): strin
     return out;
 }
 
-/** Return every 15-min slot whose `[start, start+durationMin)` interval
- *  overlaps the window's block (lunch / break). Pass this directly as the
- *  `unavailable` prop on TimeDropdown — the picker greys those rows out +
- *  shows the "Unavailable" tag instead of silently dropping them, which
- *  was confusing the admin ("the dropdown isn't showing 12:00?"). */
-export function getBlockedSlots(window: HoursWindow, durationMin?: number): string[] {
-    if (!window || !window.block) return [];
-    const [oh, om] = window.open.split(":").map(Number);
-    const [ch, cm] = window.close.split(":").map(Number);
-    const [bsH, bsM] = window.block.start.split(":").map(Number);
-    const [beH, beM] = window.block.end.split(":").map(Number);
-    const startMins     = oh * 60 + (om ?? 0);
-    const closeMins     = ch * 60 + (cm ?? 0);
-    const lastStartMins = durationMin != null ? closeMins - durationMin : closeMins;
-    const blockStartMins = bsH * 60 + (bsM ?? 0);
-    const blockEndMins   = beH * 60 + (beM ?? 0);
-    const out: string[] = [];
-    for (let mins = startMins; mins <= lastStartMins; mins += 15) {
-        const candidateEnd = mins + (durationMin ?? 0);
-        const overlaps = mins < blockEndMins && candidateEnd > blockStartMins;
-        if (!overlaps) continue;
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
-    return out;
-}
 
 // ─── promo_codes helpers ────────────────────────────────────────────────────
 
@@ -3020,11 +2977,20 @@ interface AppState {
 //
 // ── Schema versioning ──────────────────────────────────────────────
 //
-// `version: 1` — when the AppState shape changes in a breaking way,
-// bump this number. Zustand will discard the old payload and re-seed
-// from the mock files (acceptable for a demo — no migration logic
-// needed; testers get fresh seed data after a deploy with schema
-// changes).
+// `version: N` — bump this number when AppState changes shape in a
+// breaking way OR when a seed-level constant the persisted state
+// depends on changes (e.g. corrected permission templates). Zustand
+// discards the old payload on mismatch and re-seeds from the mock
+// files — acceptable for a demo (no migration logic needed; testers
+// get fresh seed data after a deploy with schema changes).
+//
+// History
+// • v1 — initial schema
+// • v2 — corrected role permission matrices to match Figma
+//        6618-158416..158420. Bumped so existing demo sessions pick
+//        up the fixed Owner / Branch Admin / Operator matrices the
+//        next time they load instead of carrying stale permissions
+//        persisted at seed time.
 //
 // ── Cross-tab sync ────────────────────────────────────────────────
 //
@@ -5946,7 +5912,7 @@ export const useAppStore = create<AppState>()(persist(
 }),
     {
         name: PERSIST_KEY,
-        version: 1,
+        version: 2,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

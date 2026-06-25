@@ -19,7 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, DotsVertical, ChevronLeft,
+    SearchMd, FilterLines, ChevronLeft,
     Eye, Edit02, Trash01, Trash02, Archive, Check, Download01, Upload01,
     MarkerPin01, AlignLeft, XClose, RefreshCcw01, SlashCircle01, HeartHand,
 } from "@untitledui/icons";
@@ -27,13 +27,21 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { useAppStore, DEFAULT_BRANCH_ID, type Customer } from "@/lib/store";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { Pagination } from "@/components/ui/Pagination";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -95,238 +103,52 @@ function planTypeOf(planKind: Customer["planKind"]): PlanType {
     return planKind === "membership" ? "membership" : planKind === "package" ? "package" : "none";
 }
 
-// ─── Status + plan badges ────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: CustomerStatus }) {
-    // Matches the /admin/products + /admin/class-types badge palette.
-    const styles: Record<CustomerStatus, string> = {
-        active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
-
-function PlanBadge({ type }: { type: PlanType }) {
-    if (type === "none") {
-        return (
-            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-white border border-dashed border-[#d0d5dd] text-[#667085]">
-                No plan
-            </span>
-        );
-    }
-    const styles: Record<"membership" | "package", string> = {
-        membership: "bg-[#eef4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
-        package: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[type],
-        )}>
-            {PLAN_LABEL[type]}
-        </span>
-    );
-}
-
-// ─── Filter pill (multi-select chip) ─────────────────────────────────────────
-
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-            )}>
-            {label}
-        </button>
-    );
-}
-
-// ─── Row actions (⋮) ─────────────────────────────────────────────────────────
-
-function RowActions({ status, hasHistory, onView, onEdit, onAddCredit, onAction }: {
-    status: CustomerStatus;
-    /** True when the customer has booking history — gates Delete (archive only). */
-    hasHistory: boolean;
-    onView: () => void;
-    onEdit: () => void;
-    onAddCredit: () => void;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                {/* View profile — opens the customer detail page (all statuses). */}
-                <button type="button" onClick={() => trigger(onView)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View profile
-                </button>
-
-                {/* Edit — Active customers only. Inactive must be Reactivated,
-                    Archived must be Recovered before they can be edited. */}
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(onEdit)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit
-                    </button>
-                )}
-
-                {/* Add complimentary credit — Active customers only. */}
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(onAddCredit)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <HeartHand className="w-4 h-4 text-[#667085]" />Add complimentary credit
-                    </button>
-                )}
-
-                {/* Archive — active + inactive (success-tone modal). */}
-                {status !== "archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("archive"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {/* Reactivate — inactive only. */}
-                {status === "inactive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("reactivate"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
-                    </button>
-                )}
-
-                {/* Recover — archived only. */}
-                {status === "archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("recover"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-
-                {/* Deactivate ↔ Delete — one destructive slot, Active rows only.
-                    No booking history → Delete; otherwise Deactivate.
-                    Inactive customers must be Reactivated and archived
-                    customers must be Recovered before they can be deleted. */}
-                {status === "active" && (
-                    hasHistory ? (
-                        <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                        </button>
-                    ) : (
-                        <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                        </button>
-                    )
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
-
-// ─── Action modal (tone matrix mirrors /admin/products) ──────────────────────
+// ─── Action modal config (tone matrix mirrors /admin/products) ───────────────
 
 const DESTRUCTIVE_ACTIONS = new Set<RowActionKind>(["deactivate", "delete"]);
 
 const MODAL_CONFIG: Record<RowActionKind, {
-    iconBg: string; IconComp: React.ElementType; iconColor: string;
+    IconComp: React.ComponentType<{ className?: string }>;
     titleSingle: string; titleBulk: (n: number) => string;
     description: (subject: React.ReactNode, n: number) => React.ReactNode;
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        IconComp: Archive,
         titleSingle: "Archive this customer?",
         titleBulk: n => `Archive ${n} customers?`,
         description: subject => <>{subject} will be hidden from the default customer list. All history is preserved — you can recover archived customers at any time.</>,
         confirmLabel: "Archive",
     },
     deactivate: {
-        iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
+        IconComp: SlashCircle01,
         titleSingle: "Deactivate this customer?",
         titleBulk: n => `Deactivate ${n} customers?`,
         description: (subject, n) => <>{subject} will be suspended — login is disabled and {n === 1 ? "they cannot" : "they cannot"} make new bookings. Existing bookings are not cancelled.</>,
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        IconComp: RefreshCcw01,
         titleSingle: "Recover this customer?",
         titleBulk: n => `Recover ${n} customers?`,
         description: subject => <>{subject} will be restored to Active status and shown in the customer list again.</>,
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        IconComp: Check,
         titleSingle: "Reactivate this customer?",
         titleBulk: n => `Reactivate ${n} customers?`,
         description: subject => <>{subject} will be reactivated — login is re-enabled and they can book classes again.</>,
         confirmLabel: "Reactivate",
     },
     delete: {
-        iconBg: "bg-[#fee4e2]", IconComp: Trash02, iconColor: "text-[#d92d20]",
+        IconComp: Trash02,
         titleSingle: "Delete this customer?",
         titleBulk: n => `Delete ${n} customers?`,
         description: subject => <>{subject} will be permanently removed. This action cannot be undone.</>,
         confirmLabel: "Delete",
     },
 };
-
-function ActionModal({ action, count, subject, onConfirm, onCancel }: {
-    action: RowActionKind;
-    count: number;
-    subject: React.ReactNode;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject, count)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
@@ -486,49 +308,8 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
     );
 }
 
-// ─── Pagination ──────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — now uses the canonical
+// `<Pagination>` from `@/components/ui/Pagination`.
 
 // ─── Checkbox cell ───────────────────────────────────────────────────────────
 
@@ -561,7 +342,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -643,11 +424,6 @@ function ExportDropdown({ disabled, onExportCsv }: { disabled: boolean; onExport
         </div>
     );
 }
-
-// ─── Table header/cell constants ─────────────────────────────────────────────
-
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Row shape ───────────────────────────────────────────────────────────────
 
@@ -951,12 +727,7 @@ export default function CustomersPage() {
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
-                        {filteredRows.length} {filteredRows.length === 1 ? "customer" : "customers"}
-                    </p>
-                </div>
+                <ToolbarTotal count={filteredRows.length} entitySingular="customer" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -965,13 +736,7 @@ export default function CustomersPage() {
                     onChange={setBranchId}
                     width="w-[220px]"
                 />
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search customer..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search customer..." />
                 <ExportDropdown
                     disabled={filteredRows.length === 0}
                     onExportCsv={() => {
@@ -979,16 +744,7 @@ export default function CustomersPage() {
                         showToast("Customer list exported", `${filteredRows.length} customer${filteredRows.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
                     }}
                 />
-                <Button variant="secondary-gray" size="md"
-                    leftIcon={
-                        <div className="relative">
-                            <FilterLines className="w-4 h-4" />
-                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                        </div>
-                    }
-                    onClick={() => setFilterOpen(true)}>
-                    Filter
-                </Button>
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                 {/* Import-only entry from the customers module — direct
                     create flow lives only on POS / class-schedule add-
                     customer paths (`/customers/new?returnTo=...`). */}
@@ -1046,8 +802,12 @@ export default function CustomersPage() {
                                         const isSelected = selectedIds.has(r.id);
                                         return (
                                             <tr key={r.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                                onClick={() => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`)}
+                                                className={cn(
+                                                    "transition-colors cursor-pointer",
+                                                    isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                                )}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(r.id)}
@@ -1069,19 +829,64 @@ export default function CustomersPage() {
                                                         <span className="text-[13px] text-[#667085]">{r.phone || "—"}</span>
                                                     </div>
                                                 </td>
-                                                <td className={TD}><PlanBadge type={r.planType} /></td>
-                                                <td className={TD}><StatusBadge status={r.status} /></td>
+                                                <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
+                                                <td className={TD}><StatusBadge type="customer" status={r.status} /></td>
                                                 <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                                     {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
                                                 </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
-                                                        status={r.status}
-                                                        hasHistory={r.hasHistory}
-                                                        onView={() => router.push(`/customers/${r.id}`)}
-                                                        onEdit={() => router.push(`/customers/${r.id}/edit?returnTo=/admin/customers`)}
-                                                        onAddCredit={() => router.push(`/customers/${r.id}/add-credit?returnTo=/admin/customers`)}
-                                                        onAction={k => openRowConfirm(r, k)}
+                                                        items={[
+                                                            {
+                                                                label: "View profile",
+                                                                icon: Eye,
+                                                                onClick: () => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`),
+                                                            },
+                                                            {
+                                                                label: "Edit",
+                                                                icon: Edit02,
+                                                                onClick: () => router.push(`/customers/${r.id}/edit?returnTo=/admin/customers`),
+                                                                hidden: r.status !== "active",
+                                                            },
+                                                            {
+                                                                label: "Add complimentary credit",
+                                                                icon: HeartHand,
+                                                                onClick: () => router.push(`/customers/${r.id}/add-credit?returnTo=/admin/customers`),
+                                                                hidden: r.status !== "active",
+                                                            },
+                                                            {
+                                                                label: "Archive",
+                                                                icon: Archive,
+                                                                onClick: () => openRowConfirm(r, "archive"),
+                                                                hidden: r.status === "archived",
+                                                            },
+                                                            {
+                                                                label: "Reactivate",
+                                                                icon: Check,
+                                                                onClick: () => openRowConfirm(r, "reactivate"),
+                                                                hidden: r.status !== "inactive",
+                                                            },
+                                                            {
+                                                                label: "Recover",
+                                                                icon: RefreshCcw01,
+                                                                onClick: () => openRowConfirm(r, "recover"),
+                                                                hidden: r.status !== "archived",
+                                                            },
+                                                            {
+                                                                label: "Deactivate",
+                                                                icon: SlashCircle01,
+                                                                onClick: () => openRowConfirm(r, "deactivate"),
+                                                                danger: true,
+                                                                hidden: !(r.status === "active" && r.hasHistory),
+                                                            },
+                                                            {
+                                                                label: "Delete",
+                                                                icon: Trash01,
+                                                                onClick: () => openRowConfirm(r, "delete"),
+                                                                danger: true,
+                                                                hidden: !(r.status === "active" && !r.hasHistory),
+                                                            },
+                                                        ]}
                                                     />
                                                 </td>
                                             </tr>
@@ -1119,13 +924,19 @@ export default function CustomersPage() {
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);
+                const cfg = MODAL_CONFIG[pendingConfirm.kind];
+                const title = count > 1 ? cfg.titleBulk(count) : cfg.titleSingle;
+                const tone = DESTRUCTIVE_ACTIONS.has(pendingConfirm.kind) ? "danger" : "success";
                 return (
-                    <ActionModal
-                        action={pendingConfirm.kind}
-                        count={count}
-                        subject={subject}
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.IconComp}
+                        tone={tone}
+                        title={title}
+                        description={cfg.description(subject, count)}
+                        confirmLabel={cfg.confirmLabel}
                         onConfirm={() => performAction(pendingConfirm)}
-                        onCancel={() => setPendingConfirm(null)}
                     />
                 );
             })()}

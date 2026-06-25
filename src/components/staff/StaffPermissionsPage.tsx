@@ -37,6 +37,12 @@ import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { RowActions } from "@/components/patterns/RowActions";
+import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
@@ -114,35 +120,15 @@ function ToggleSwitch({ on, disabled, onChange }: {
 
 interface AvatarShape { imageUrl?: string; initials: string; color: string; name: string }
 
+// Thin wrappers around the canonical `<NeutralAvatar>` — preserve the local
+// names so the dozens of call sites in this file don't need to change.
 function Avatar({ a, size = 40 }: { a: AvatarShape; size?: number }) {
-    if (a.imageUrl) {
-        return (
-            <img src={a.imageUrl} alt={a.name}
-                className="rounded-full object-cover shrink-0"
-                style={{ width: size, height: size }}
-                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-        );
-    }
-    // Single neutral chrome for every staff avatar — mirrors the role avatar
-    // (gray-100 bg, dark initials). Per-row palette tints retired so the list
-    // reads as one consistent surface.
-    return (
-        <div className="rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center text-[#475467] shrink-0 font-medium"
-            style={{ width: size, height: size, fontSize: size * 0.35 }}>
-            {a.initials}
-        </div>
-    );
+    return <NeutralAvatar initials={a.initials} imageUrl={a.imageUrl} size={size} />;
 }
 
 /** Generic role avatar (no individual photo) — used in the Roles tab. */
 function RoleAvatar({ size = 40 }: { size?: number }) {
-    return (
-        <div className="rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0"
-            style={{ width: size, height: size }}>
-            <User01 className="text-[#475467]" style={{ width: size * 0.5, height: size * 0.5 }} />
-        </div>
-    );
+    return <NeutralAvatar icon={User01} size={size} />;
 }
 
 // ─── Checkbox cell (shared sage style) ─────────────────────────────────────
@@ -286,35 +272,11 @@ function ExportDropdown({ disabled, onExportCsv }: { disabled: boolean; onExport
 // — Tailwind tokens (resolved via the global Tailwind config) so the staff
 // card matches products edge-for-edge.
 
-function TabPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
-                active
-                    ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                    : "text-[#667085] hover:text-[#344054]",
-            )}>
-            {children}
-        </button>
-    );
-}
+// Local TabPill removed — uses canonical `<SegmentedTabs>` from
+// `@/components/patterns/SegmentedTabs`.
 
 // ─── Status pill (filter side panel) ───────────────────────────────────────
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "px-4 py-2 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-            )}>
-            {label}
-        </button>
-    );
-}
 
 // ─── Filter side panel — handles both tabs ─────────────────────────────────
 
@@ -500,112 +462,33 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     },
 };
 
-function ConfirmModal({ kind, subject, description, onCancel, onConfirm }: {
-    kind: ConfirmKind;
-    subject: string;
-    /** Optional description override — used when the caller needs to surface
-     *  extra context (e.g. "12 staff are assigned and will lose permissions"). */
-    description?: string;
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
-    const cfg = CONFIRM_CFG[kind];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", cfg.iconBg)}>
-                        <cfg.Icon className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title(subject)}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{description ?? cfg.description(subject)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.destructive ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ConfirmModal removed — uses canonical from
+// `@/components/modals/ConfirmModal`, driven by CONFIRM_CFG above.
 
 // ─── Role row actions ──────────────────────────────────────────────────────
 
 type RoleRowActionKind = "view" | "add_staff" | "edit_details" | "edit_permissions" | "archive" | "recover" | "delete";
 
+// Thin wrapper around the canonical `<RowActions>` — keeps the role-specific
+// items-array logic colocated with the rest of this module, but the kebab
+// chrome lives in `@/components/patterns/RowActions`.
 function RoleRowActions({ role, staffCount, onAction }: {
     role: Role; staffCount: number; onAction: (kind: RoleRowActionKind) => void;
 }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
     const isActive = role.status === "active";
     const isArchived = role.status === "archive";
     // Per audit: delete only when zero assigned staff AND not locked AND not archived.
     const canDelete = !role.locked && !isArchived && staffCount === 0;
-
     return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
-                <button type="button" onClick={() => { setOpen(false); onAction("view"); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-                {/* Add staff — only when role is active and not locked-Owner edge case. */}
-                {isActive && !role.locked && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("add_staff"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <UserPlus01 className="w-4 h-4 text-[#667085]" />Add staff
-                    </button>
-                )}
-                {/* Edit — only when active AND not locked. */}
-                {isActive && !role.locked && (
-                    <>
-                        <button type="button" onClick={() => { setOpen(false); onAction("edit_details"); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Edit02 className="w-4 h-4 text-[#667085]" />Edit details
-                        </button>
-                        <button type="button" onClick={() => { setOpen(false); onAction("edit_permissions"); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <UserSquare className="w-4 h-4 text-[#667085]" />Edit permissions
-                        </button>
-                    </>
-                )}
-                {/* Archive — only on active/inactive non-locked. */}
-                {!isArchived && !role.locked && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("archive"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-                {/* Recover — only on archived non-locked. */}
-                {isArchived && !role.locked && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("recover"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-                {/* Delete — only when zero staff AND non-locked AND active. */}
-                {canDelete && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("delete"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                        <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
+        <RowActions items={[
+            { label: "View details", icon: Eye, onClick: () => onAction("view") },
+            { label: "Add staff", icon: UserPlus01, onClick: () => onAction("add_staff"), hidden: !(isActive && !role.locked) },
+            { label: "Edit details", icon: Edit02, onClick: () => onAction("edit_details"), hidden: !(isActive && !role.locked) },
+            { label: "Edit permissions", icon: UserSquare, onClick: () => onAction("edit_permissions"), hidden: !(isActive && !role.locked) },
+            { label: "Archive", icon: Archive, onClick: () => onAction("archive"), hidden: !(!isArchived && !role.locked) },
+            { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !(isArchived && !role.locked) },
+            { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !canDelete },
+        ]} />
     );
 }
 
@@ -627,141 +510,33 @@ function RoleRowActions({ role, staffCount, onAction }: {
 
 type StaffRowActionKind = "view" | "edit_details" | "change_role" | "resend_invite" | "archive" | "deactivate" | "reactivate" | "recover" | "delete";
 
+// Thin wrapper around the canonical `<RowActions>` — items array is
+// computed here based on staff status + hasHistory, then delegated.
 function StaffRowActions({ staff, hasHistory, onAction }: {
     staff: Staff;
     hasHistory: boolean;
     onAction: (kind: StaffRowActionKind) => void;
 }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
     const isPending  = staff.status === "pending";
     const isActive   = staff.status === "active";
     const isInactive = staff.status === "inactive";
     const isArchive  = staff.status === "archive";
-
     return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
-                <button type="button" onClick={() => { setOpen(false); onAction("view"); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-
-                {/* Pending: View + Resend invitation only — no destructive slot. */}
-                {isPending && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("resend_invite"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Send01 className="w-4 h-4 text-[#667085]" />Resend invitation
-                    </button>
-                )}
-
-                {/* Edit + Change role — Active only (Inactive/Archived must be
-                    Reactivated/Recovered first per the global audit rule). */}
-                {isActive && (
-                    <>
-                        <button type="button" onClick={() => { setOpen(false); onAction("edit_details"); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Edit02 className="w-4 h-4 text-[#667085]" />Edit details
-                        </button>
-                        <button type="button" onClick={() => { setOpen(false); onAction("change_role"); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <UserSquare className="w-4 h-4 text-[#667085]" />Change role
-                        </button>
-                    </>
-                )}
-
-                {/* Archive — Active / Inactive (separate from the destructive slot). */}
-                {(isActive || isInactive) && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("archive"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {/* Reactivate — Inactive only. */}
-                {isInactive && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("reactivate"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
-                    </button>
-                )}
-
-                {/* Recover — Archived only. */}
-                {isArchive && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("recover"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-
-                {/* Destructive slot — Active rows only, ONE option:
-                      • hasHistory → Deactivate
-                      • !hasHistory → Delete
-                    Mirrors the customer module's XOR rule. */}
-                {isActive && (
-                    hasHistory ? (
-                        <button type="button" onClick={() => { setOpen(false); onAction("deactivate"); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                        </button>
-                    ) : (
-                        <button type="button" onClick={() => { setOpen(false); onAction("delete"); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                        </button>
-                    )
-                )}
-            </FixedDropdown>
-        </div>
+        <RowActions items={[
+            { label: "View details", icon: Eye, onClick: () => onAction("view") },
+            { label: "Resend invitation", icon: Send01, onClick: () => onAction("resend_invite"), hidden: !isPending },
+            { label: "Edit details", icon: Edit02, onClick: () => onAction("edit_details"), hidden: !isActive },
+            { label: "Change role", icon: UserSquare, onClick: () => onAction("change_role"), hidden: !isActive },
+            { label: "Archive", icon: Archive, onClick: () => onAction("archive"), hidden: !(isActive || isInactive) },
+            { label: "Reactivate", icon: Check, onClick: () => onAction("reactivate"), hidden: !isInactive },
+            { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !isArchive },
+            { label: "Deactivate", icon: SlashCircle01, onClick: () => onAction("deactivate"), danger: true, hidden: !(isActive && hasHistory) },
+            { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !(isActive && !hasHistory) },
+        ]} />
     );
 }
 
-// ─── Pagination ────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronDown className="w-4 h-4 text-[#667085]" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── CSV export helper ─────────────────────────────────────────────────────
 
@@ -1214,7 +989,15 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             : staffFilter.branchId !== "" || staffFilter.statuses.length > 0 || staffFilter.roleId !== "";
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className={cn(
+            "flex flex-col gap-6",
+            // Staff & shift module — fill the remaining main-content viewport
+            // height so the outer page never scrolls, only the inner table
+            // body. Mirrors /admin/schedule's outer wrapper.
+            // Roles route keeps its content-height behaviour (it has no view
+            // card; the table flows in main's normal scroll).
+            forceTab !== "roles" && "flex-1 min-h-0",
+        )}>
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1268,13 +1051,15 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                   • Role & permissions route → NO bordered card, NO inner
                     padding (per the brief — Figma 7413:239946 shows the
                     table flush against the page chrome).
-                  • Staff & shift route + legacy combined → keep the
-                    760px-height bordered card so the sub-tabs / tab pills
-                    + filter button + table sit inside one surface. */}
+                  • Staff & shift route + legacy combined → bordered card
+                    that fills the remaining viewport height (was a fixed
+                    760px surface before — now `flex-1 min-h-0` so a tall
+                    screen uses every pixel and only the inner table body
+                    scrolls). Mirrors /admin/schedule's view card. */}
             <div className={cn(
                 forceTab === "roles"
                     ? "flex flex-col"
-                    : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1287,27 +1072,25 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                               • staff-only view       → Staff sub-tabs (Staff |
                                 Shift management | Blocked time) */}
                         {forceTab === undefined && (
-                            <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
-                                <TabPill active={tab === "roles"} onClick={() => setTab("roles")}>
-                                    Roles ({roles.length})
-                                </TabPill>
-                                <TabPill active={tab === "staff"} onClick={() => setTab("staff")}>
-                                    Staff ({staff.length})
-                                </TabPill>
-                            </div>
+                            <SegmentedTabs
+                                tabs={[
+                                    { key: "roles", label: `Roles (${roles.length})` },
+                                    { key: "staff", label: `Staff (${staff.length})` },
+                                ]}
+                                activeKey={tab}
+                                onChange={(k) => setTab(k as typeof tab)}
+                            />
                         )}
                         {forceTab === "staff" && (
-                            <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
-                                <TabPill active={staffSubTab === "staff"} onClick={() => setStaffSubTab("staff")}>
-                                    Staff
-                                </TabPill>
-                                <TabPill active={staffSubTab === "shift-management"} onClick={() => setStaffSubTab("shift-management")}>
-                                    Shift management
-                                </TabPill>
-                                <TabPill active={staffSubTab === "blocked-time"} onClick={() => setStaffSubTab("blocked-time")}>
-                                    Blocked time
-                                </TabPill>
-                            </div>
+                            <SegmentedTabs
+                                tabs={[
+                                    { key: "staff",            label: "Staff" },
+                                    { key: "shift-management", label: "Shift management" },
+                                    { key: "blocked-time",     label: "Blocked time" },
+                                ]}
+                                activeKey={staffSubTab}
+                                onChange={(k) => setStaffSubTab(k as typeof staffSubTab)}
+                            />
                         )}
                         <div className="flex-1" />
                         {/* Filter button — visible on every populated sub-tab.
@@ -1409,8 +1192,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         const staffCount = staffByRole.get(r.id) ?? 0;
                                         const isSelected = selectedRoleIds.has(r.id);
                                         return (
-                                            <tr key={r.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                            <tr key={r.id}
+                                                onClick={() => router.push(`/staff/roles/${r.id}?returnTo=${encodeURIComponent(returnTo)}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     {/* Owner (locked) cannot be bulk-selected. */}
                                                     <CheckboxCell
                                                         checked={isSelected}
@@ -1434,14 +1219,14 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     {ROLE_STATUS_LABEL[r.status]}
                                                 </span>
                                             </td>
-                                            <td className={TD}>
+                                            <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <ToggleSwitch
                                                     on={r.status === "active"}
                                                     disabled={r.locked || r.status === "archive"}
                                                     onChange={() => handleRoleToggle(r)}
                                                 />
                                             </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RoleRowActions role={r} staffCount={staffCount}
                                                         onAction={k => handleRoleAction(r, k)} />
                                                 </td>
@@ -1506,8 +1291,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         const hasHistory = !canDeleteStaff(s.id);
                                         const isSelected = selectedStaffIds.has(s.id);
                                         return (
-                                            <tr key={s.id} className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                            <tr key={s.id}
+                                                onClick={() => router.push(`/staff/members/${s.id}?returnTo=${encodeURIComponent(returnTo)}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleStaffSelection(s.id)}
@@ -1536,7 +1323,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                         {STAFF_STATUS_LABEL[s.status]}
                                                     </span>
                                                 </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <StaffRowActions staff={s} hasHistory={hasHistory}
                                                         onAction={k => handleStaffAction(s, k)} />
                                                 </td>
@@ -1549,18 +1336,18 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     </div>
                     )
                 )}
-                </div>
 
-                {/* Pagination — matches the 24px L/R padding of the tables
-                    above and the tab nav row at the top of the card.
-                    Hidden on the placeholder sub-tabs since they don't
-                    have any rows to paginate yet. */}
+                {/* Pagination — rendered INSIDE the scrollable wrapper so
+                    it travels with the table on scroll (mirrors Shift
+                    management + Blocked time sub-tabs). Hidden on the
+                    placeholder sub-tabs since they don't have any rows
+                    to paginate yet. */}
                 {(forceTab !== "staff" || staffSubTab === "staff") && (
                     // Pagination padding:
                     //   • Role & permissions route → no inner padding so it
                     //     aligns with the flush table above.
                     //   • Other routes → 24px L/R to match the card chrome.
-                    <div className={cn("shrink-0", forceTab !== "roles" && "px-6")}>
+                    <div className={cn(forceTab !== "roles" && "px-6")}>
                         <Pagination
                             page={clampedPage}
                             total={tab === "roles" ? filteredRoles.length : filteredStaff.length}
@@ -1570,6 +1357,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         />
                     </div>
                 )}
+                </div>
             </div>
 
             <FilterPanel
@@ -1584,41 +1372,57 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 branches={branches}
             />
 
-            {pendingConfirm && (
-                <ConfirmModal
-                    kind={pendingConfirm.kind}
-                    subject={pendingConfirm.entity === "role"
-                        ? `"${pendingConfirm.row.name}"`
-                        : `"${pendingConfirm.row.fullName}"`}
-                    description={pendingConfirm.entity === "role"
-                        ? roleConfirmDescription(pendingConfirm.row, pendingConfirm.kind)
-                        : undefined}
-                    onCancel={() => setPendingConfirm(null)}
-                    onConfirm={() => pendingConfirm.entity === "role"
-                        ? performRoleConfirm(pendingConfirm)
-                        : performStaffConfirm(pendingConfirm)}
-                />
-            )}
+            {pendingConfirm && (() => {
+                const cfg = CONFIRM_CFG[pendingConfirm.kind];
+                const subject = pendingConfirm.entity === "role"
+                    ? `"${pendingConfirm.row.name}"`
+                    : `"${pendingConfirm.row.fullName}"`;
+                const description = pendingConfirm.entity === "role"
+                    ? roleConfirmDescription(pendingConfirm.row, pendingConfirm.kind)
+                    : cfg.description(subject);
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={description}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => pendingConfirm.entity === "role"
+                            ? performRoleConfirm(pendingConfirm)
+                            : performStaffConfirm(pendingConfirm)}
+                    />
+                );
+            })()}
 
             {/* Bulk confirm modal */}
-            {pendingBulk && (
-                <ConfirmModal
-                    kind={pendingBulk.kind}
-                    subject={pendingBulk.entity === "role"
-                        ? `${selectedRoleRows.length} role${selectedRoleRows.length === 1 ? "" : "s"}`
-                        : `${selectedStaffRows.length} staff`}
-                    onCancel={() => setPendingBulk(null)}
-                    onConfirm={() => pendingBulk.entity === "role"
-                        ? performBulkRole(pendingBulk.kind)
-                        : performBulkStaff(pendingBulk.kind)}
-                />
-            )}
+            {pendingBulk && (() => {
+                const cfg = CONFIRM_CFG[pendingBulk.kind];
+                const subject = pendingBulk.entity === "role"
+                    ? `${selectedRoleRows.length} role${selectedRoleRows.length === 1 ? "" : "s"}`
+                    : `${selectedStaffRows.length} staff`;
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingBulk(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={cfg.description(subject)}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => pendingBulk.entity === "role"
+                            ? performBulkRole(pendingBulk.kind)
+                            : performBulkStaff(pendingBulk.kind)}
+                    />
+                );
+            })()}
 
             {/* Floating bulk-action bar — mirrors the gift-card chrome.
                 Visible only when the active tab has at least one selection. */}
             {tab === "roles" && selectedRoleRows.length > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                         <button type="button" onClick={() => setSelectedRoleIds(new Set())}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                             {selectedRoleRows.length} selected
@@ -1670,7 +1474,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
 
             {tab === "staff" && selectedStaffRows.length > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                         <button type="button" onClick={() => setSelectedStaffIds(new Set())}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                             {selectedStaffRows.length} selected

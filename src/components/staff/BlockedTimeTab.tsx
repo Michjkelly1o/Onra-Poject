@@ -28,6 +28,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, type BlockedTime, type Staff } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -188,8 +189,6 @@ function Pagination({ page, total, pageSize, onPage, onPageSize }: {
 
 // ─── Main component ──────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 export interface BlockedTimeTabProps {
     branchId: string;
@@ -391,7 +390,7 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                 {/* Bulk delete action bar */}
                 {selectedRows.length > 0 && (
                     <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                        <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+                        <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                             <button type="button" onClick={clearSelection}
                                 className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                                 {selectedRows.length} selected

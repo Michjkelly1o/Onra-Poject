@@ -32,8 +32,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, DotsVertical, Eye } from "@untitledui/icons";
-import { useAppStore, type ClassBooking, type ClassSchedule, type Customer } from "@/lib/store";
+import { useRouter } from "next/navigation";
+import { DotsVertical, Eye } from "@untitledui/icons";
+import { useAppStore, isAppointmentId, type ClassBooking, type ClassSchedule, type Customer } from "@/lib/store";
+import { Modal } from "@/components/modals/Modal";
 import { Badge } from "@/components/reports/badges";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +52,13 @@ type TabKey = "all" | "late" | "on_time";
 
 interface CancellationRow {
     bookingId: string;
+    /** FK back to the class the booking sat on — drives the "View
+     *  details" kebab action's navigation target. */
+    classScheduleId: string;
+    /** Class status at modal open time — drives the branching between
+     *  `/class/[id]` (Upcoming/Ongoing) and `/earnings/[id]`
+     *  (Completed/Cancelled) when the user clicks "View details". */
+    classStatus: ClassSchedule["status"];
     customerName: string;
     customerEmail: string;
     customerImageUrl?: string;
@@ -63,6 +72,7 @@ interface CancellationRow {
 }
 
 export function CancellationsModal({ open, onClose, cancelledBookings }: CancellationsModalProps) {
+    const router         = useRouter();
     const customers      = useAppStore(s => s.customers);
     const classSchedules = useAppStore(s => s.classSchedules);
 
@@ -92,6 +102,8 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                 const isLate = b.attendanceStatus === "late_cancel";
                 return {
                     bookingId: b.id,
+                    classScheduleId: klass.id,
+                    classStatus: klass.status,
                     customerName: `${customer.firstName} ${customer.lastName}`.trim(),
                     customerEmail: customer.email,
                     customerImageUrl: customer.imageUrl,
@@ -109,48 +121,46 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
     const onTimeRows  = useMemo(() => allRows.filter(r => !r.isLate), [allRows]);
     const visibleRows = tab === "late" ? lateRows : tab === "on_time" ? onTimeRows : allRows;
 
-    if (!open) return null;
+    /** Navigate to the class schedule detail for the row's underlying
+     *  class. Instructor-scope routing (per memory: instructor side stays
+     *  on instructor side) — appointments → `/appointments/[id]`,
+     *  Completed/Cancelled classes → `/earnings/[id]`, otherwise
+     *  `/class/[id]`. `returnTo` bounces the close button back to the
+     *  dashboard (where this modal was opened from). Modal is closed
+     *  before the navigation so reopening the dashboard doesn't
+     *  re-trigger the cancellations overlay. */
+    function handleViewDetails(row: CancellationRow) {
+        const base = isAppointmentId(row.classScheduleId)
+            ? `/appointments/${row.classScheduleId}`
+            : (row.classStatus === "Completed" || row.classStatus === "Cancelled")
+                ? `/earnings/${row.classScheduleId}`
+                : `/class/${row.classScheduleId}`;
+        const qs = new URLSearchParams({ returnTo: "/instructor/dashboard" }).toString();
+        setOpenMenu(null);
+        onClose();
+        router.push(`${base}?${qs}`);
+    }
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c111d]/70 p-4"
-            onClick={onClose}
+        <Modal
+            open={open}
+            onClose={onClose}
+            maxWidth={720}
+            height={560}
+            zIndex={50}
+            ariaLabelledBy="cancellations-modal-title"
+            className="rounded-[16px]"
         >
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="cancellations-modal-title"
-                onClick={e => e.stopPropagation()}
-                className="bg-white rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-full max-w-[720px] h-[560px] flex flex-col overflow-hidden"
-            >
-                {/* ── Header ─────────────────────────────────────────────── */}
-                <div className="shrink-0 flex items-start gap-4 pt-6 px-6 pb-5">
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <h2
-                            id="cancellations-modal-title"
-                            className="text-[18px] font-semibold text-[#101828] leading-7"
-                        >
-                            Cancellations
-                        </h2>
-                        <p className="text-sm font-normal text-[#475467] leading-5">
-                            Overview of late cancellations vs on time cancellations.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close"
-                        className="shrink-0 w-10 h-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#101828] hover:bg-[#f9fafb] transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+            <Modal.Header
+                id="cancellations-modal-title"
+                title="Cancellations"
+                subtitle="Overview of late cancellations vs on time cancellations."
+                onClose={onClose}
+            />
 
-                {/* ── Tabs — same segmented pill style the admin
-                    Memberships ↔ Credit-package tab uses on
-                    `/admin/products` (white-on-gray pill, inline
-                    parenthesized count). */}
-                <div className="shrink-0 px-6 pb-4">
+            {/* Tabs — same segmented pill style the admin Memberships ↔ Credit-package
+                tab uses on `/admin/products` (white-on-gray pill, inline count). */}
+            <div className="shrink-0 px-6 pb-4">
                     <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
                         <TabButton label="All"     count={allRows.length}    active={tab === "all"}     onClick={() => setTab("all")} />
                         <TabButton label="Late"    count={lateRows.length}   active={tab === "late"}    onClick={() => setTab("late")} />
@@ -189,18 +199,10 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                             />
                         ))
                     )}
-                </div>
             </div>
 
-            {/* ── Portaled kebab menu — escapes the modal's overflow so
-                "View details" is fully visible even on the last row.
-                IMPORTANT: every clickable element here MUST call
-                `e.stopPropagation()`. The menu is portaled to
-                `document.body`, but React event bubbling still walks the
-                JSX tree — meaning a click on the catcher (or any menu
-                button) bubbles back up to the modal overlay's
-                `onClick={onClose}` handler and would close the entire
-                modal. Stopping propagation keeps the modal alive. */}
+            {/* Portaled kebab menu — escapes the modal's overflow so
+                "View details" is fully visible even on the last row. */}
             {openMenu && createPortal(
                 <>
                     {/* Click-outside catcher — closes the menu only, not the modal. */}
@@ -221,7 +223,17 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                         <button
                             type="button"
                             role="menuitem"
-                            onClick={e => { e.stopPropagation(); setOpenMenu(null); }}
+                            onClick={e => {
+                                e.stopPropagation();
+                                // Look up the row that owns this open menu
+                                // (we keep the menu state keyed by bookingId
+                                // only, so we resolve the row out of the
+                                // visible list here) and navigate to its
+                                // class schedule detail.
+                                const row = visibleRows.find(r => r.bookingId === openMenu.id);
+                                if (row) handleViewDetails(row);
+                                else setOpenMenu(null);
+                            }}
                             className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
                         >
                             <Eye className="w-4 h-4 text-[#667085]" />
@@ -231,7 +243,7 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                 </>,
                 document.body,
             )}
-        </div>
+        </Modal>
     );
 }
 

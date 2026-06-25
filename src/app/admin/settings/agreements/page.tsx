@@ -47,6 +47,14 @@ import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Agreement, type AgreementStatus, type Branch } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
@@ -94,51 +102,16 @@ function formatDateISO(iso: string): string {
     return iso.slice(0, 10);
 }
 
-// ─── Status badge ────────────────────────────────────────────────────────────
+// Local StatusBadge removed — uses canonical `<StatusBadge type="agreement">`
+// from `@/components/patterns/StatusBadge`.
 
-function StatusBadge({ status }: { status: AgreementStatus }) {
-    const styles: Record<AgreementStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
-
-// ─── Avatar (Figma 4620:141465 — file-06 in 40px gray circle) ───────────────
-
-function AgreementAvatar() {
-    return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <File06 className="w-5 h-5 text-[#475467]" />
-            <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
-        </div>
-    );
-}
+// Local AgreementAvatar removed — uses canonical `<IconAvatar icon={File06} />`
+// from `@/components/patterns/IconAvatar`.
 
 // ─── FilterPill (matches the canonical selected style — customers / products
 //    / schedule). Tinted green BG + 2px green border + dark text on selected,
 //    white + light gray border on unselected. NOT solid-green/white-text. ───
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-            )}>
-            {label}
-        </button>
-    );
-}
 
 // ─── Row actions ────────────────────────────────────────────────────────────
 //
@@ -148,53 +121,9 @@ function FilterPill({ label, selected, onClick }: { label: string; selected: boo
 
 type RowActionKind = "archive" | "recover";
 
-function RowActions({ status, onView, onEdit, onAction }: {
-    status: AgreementStatus;
-    onView: () => void;
-    onEdit: () => void;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => trigger(onView)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View
-                </button>
-
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(onEdit)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit
-                    </button>
-                )}
-
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(() => onAction("archive"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {status === "archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("recover"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `<RowActions items={[...]}>` from
+// `@/components/patterns/RowActions`. Items array is built per-row at the
+// call site below based on agreement status.
 
 // ─── Action modal (tone matrix mirrors customers / tax — archive + recover) ─
 
@@ -220,42 +149,8 @@ const MODAL_CONFIG: Record<RowActionKind, {
     },
 };
 
-function ActionModal({ action, count, subject, onConfirm, onCancel }: {
-    action: RowActionKind;
-    count: number;
-    subject: React.ReactNode;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject, count)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant="primary" size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — uses canonical `<ConfirmModal>` driven by
+// MODAL_CONFIG above.
 
 // ─── Filter side-panel (Figma 4232-51994) ───────────────────────────────────
 
@@ -407,7 +302,7 @@ function BulkActionBar({ count, hasArchivable, hasRecoverable, onClear, onAction
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -430,48 +325,7 @@ function BulkActionBar({ count, hasArchivable, hasRecoverable, onClear, onAction
     );
 }
 
-// ─── Pagination + Checkbox cell (lifted verbatim from tax page) ──────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     checked: boolean; onChange: (next: boolean) => void; indeterminate?: boolean; ariaLabel: string;
@@ -681,13 +535,13 @@ export default function AgreementsPage() {
 
     // ─── Navigation handlers ────────────────────────────────────────────────
     function handleAddNew() {
-        router.push("/settings/agreements/new");
+        router.push(`/settings/agreements/new?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
     function handleEdit(row: Agreement) {
-        router.push(`/settings/agreements/${row.id}/edit`);
+        router.push(`/settings/agreements/${row.id}/edit?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
     function handleView(row: Agreement) {
-        router.push(`/settings/agreements/${row.id}`);
+        router.push(`/settings/agreements/${row.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
 
     function handleExportCsv() {
@@ -717,12 +571,7 @@ export default function AgreementsPage() {
             <div className="flex-1 min-h-0 flex flex-col">
                 {/* Toolbar — Figma 4232-52279 */}
                 <div className="shrink-0 flex items-center gap-3">
-                    <div className="flex-1">
-                        <p className="text-[14px] text-[#667085]">Total</p>
-                        <p className="text-[14px] font-medium text-[#101828]">
-                            {filtered.length} agreement{filtered.length === 1 ? "" : "s"}
-                        </p>
-                    </div>
+                    <ToolbarTotal count={filtered.length} entitySingular="agreement" size="sm" />
 
                     {/* Branch picker (220px) */}
                     <SelectInput
@@ -748,18 +597,10 @@ export default function AgreementsPage() {
 
                     <ExportDropdown disabled={filtered.length === 0} onExportCsv={handleExportCsv} />
 
-                    <Button variant="secondary-gray" size="md"
-                        leftIcon={
-                            <div className="relative">
-                                <FilterLines className="w-4 h-4" />
-                                {hasActiveFilter && (applied.statuses.length > 0 || applied.scopes.length > 0 || applied.effectiveStart !== "" || applied.effectiveEnd !== "") && (
-                                    <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
-                                )}
-                            </div>
-                        }
-                        onClick={() => setFilterOpen(true)}>
-                        Filter
-                    </Button>
+                    <ToolbarFilter
+                        onClick={() => setFilterOpen(true)}
+                        active={hasActiveFilter && (applied.statuses.length > 0 || applied.scopes.length > 0 || applied.effectiveStart !== "" || applied.effectiveEnd !== "")}
+                    />
 
                     <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={handleAddNew}>
                         Add new
@@ -812,8 +653,9 @@ export default function AgreementsPage() {
                                         const isSelected = selectedIds.has(r.id);
                                         return (
                                             <tr key={r.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                                onClick={() => router.push(`/settings/agreements/${r.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(r.id)}
@@ -822,7 +664,7 @@ export default function AgreementsPage() {
                                                 </td>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
-                                                        <AgreementAvatar />
+                                                        <IconAvatar icon={File06} />
                                                         <div className="flex flex-col">
                                                             <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                                             <span className="text-[14px] text-[#667085]">Version {r.currentVersion}</span>
@@ -831,14 +673,14 @@ export default function AgreementsPage() {
                                                 </td>
                                                 <td className={TD}>{SCOPE_LABEL[scopeFor(r)]}</td>
                                                 <td className={TD}>{formatDateISO(r.effectiveUntil)}</td>
-                                                <td className={TD}><StatusBadge status={r.status} /></td>
-                                                <td className={TD}>
-                                                    <RowActions
-                                                        status={r.status}
-                                                        onView={() => handleView(r)}
-                                                        onEdit={() => handleEdit(r)}
-                                                        onAction={k => openRowConfirm(r, k)}
-                                                    />
+                                                <td className={TD}><StatusBadge type="agreement" status={r.status} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                                    <RowActions items={[
+                                                        { label: "View", icon: Eye, onClick: () => handleView(r) },
+                                                        { label: "Edit", icon: Edit02, onClick: () => handleEdit(r), hidden: r.status !== "active" },
+                                                        { label: "Archive", icon: Archive, onClick: () => openRowConfirm(r, "archive"), hidden: r.status !== "active" },
+                                                        { label: "Recover", icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"), hidden: r.status !== "archived" },
+                                                    ]} />
                                                 </td>
                                             </tr>
                                         );
@@ -868,13 +710,18 @@ export default function AgreementsPage() {
             {/* Action modal */}
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);
+                const cfg = MODAL_CONFIG[pendingConfirm.kind];
+                const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
                 return (
-                    <ActionModal
-                        action={pendingConfirm.kind}
-                        count={count}
-                        subject={subject}
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.IconComp}
+                        tone="success"
+                        title={title}
+                        description={cfg.description(subject, count)}
+                        confirmLabel={cfg.confirmLabel}
                         onConfirm={() => performAction(pendingConfirm)}
-                        onCancel={() => setPendingConfirm(null)}
                     />
                 );
             })()}

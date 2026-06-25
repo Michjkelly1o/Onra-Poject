@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { Suspense, useState, useRef, useEffect } from "react";
+import { useRouter, useParams, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01,
-    RefreshCcw01, Trash01, Trash02, DotsVertical,
+    RefreshCcw01, Trash01, Trash02,
     SearchMd, FilterLines, ChevronDown, Eye, Check,
     CreditCard01, Package, AlignLeft,
 } from "@untitledui/icons";
@@ -13,11 +13,17 @@ import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { AttendanceBar } from "@/components/patterns/AttendanceBar";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { FilterPill } from "@/components/ui/FilterPill";
 import { TableAvatar } from "@/components/ui/avatar";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { RowActions } from "@/components/patterns/RowActions";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Sort helpers ─────────────────────────────────────────────────────────────
 
@@ -107,47 +113,8 @@ function EmptyTableIllustration() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function TemplateBadge({ status }: { status: TemplateStatus }) {
-    const styles: Record<TemplateStatus, string> = {
-        Active: "bg-[#ecfdf3] border border-[#abefc6] text-[#067647]",
-        Archived: "bg-[#f9fafb] border border-[#e4e7ec] text-[#344054]",
-        Inactive: "bg-[#f9fafb] border border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium", styles[status])}>
-            {status}
-        </span>
-    );
-}
-
-function SessionBadge({ status }: { status: SessionStatus }) {
-    const styles: Record<SessionStatus, string> = {
-        Upcoming: "bg-[#f9fafb] border border-[#e4e7ec] text-[#344054]",
-        Ongoing: "bg-[#eff8ff] border border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border border-[#abefc6] text-[#067647]",
-        Cancelled: "bg-[#fef3f2] border border-[#fecdca] text-[#b42318]",
-    };
-    return (
-        <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>
-            {status}
-        </span>
-    );
-}
-
-function AttendanceBar({ booked, capacity }: { booked: number; capacity: number }) {
-    const pct = capacity > 0 ? (booked / capacity) : 0;
-    const barColor = pct >= 0.8 ? "#658774" : pct > 0 ? "#658774" : "#e4e7ec";
-    return (
-        <div className="flex items-center gap-3">
-            <div className="h-[4px] w-[80px] bg-[#e4e7ec] rounded-full overflow-hidden shrink-0">
-                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${pct * 100}%` }} />
-            </div>
-            <span className="text-[14px] text-[#344054] whitespace-nowrap">
-                {booked}/{capacity}
-            </span>
-        </div>
-    );
-}
+// Local AttendanceBar removed — uses canonical from `@/components/patterns/AttendanceBar`.
+// (Dead `barColor` variable that was never used in the render has been dropped.)
 
 function FilledStar({ filled }: { filled: boolean }) {
     return (
@@ -172,55 +139,6 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
             <span className="text-[12px] text-[#667085]">
                 {count > 0 ? `${rating.toFixed(1)} (${count} ratings)` : "0 (0 ratings)"}
             </span>
-        </div>
-    );
-}
-
-function RowActions({ status, onView, onEdit, onCancel }: {
-    status: SessionStatus;
-    onView: () => void;
-    onEdit: () => void;
-    onCancel: () => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    // Match the schedule list-view rules: cancellable + editable only while still upcoming/ongoing.
-    const isEditable = status === "Upcoming" || status === "Ongoing";
-
-    function go(handler: () => void) {
-        setOpen(false);
-        handler();
-    }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                {isEditable ? (
-                    <>
-                        <button type="button" onClick={() => go(onView)}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Eye className="w-4 h-4 text-[#667085]" />View details
-                        </button>
-                        <button type="button" onClick={() => go(onEdit)}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Edit02 className="w-4 h-4 text-[#667085]" />Edit class
-                        </button>
-                        <button type="button" onClick={() => go(onCancel)}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />Cancel class
-                        </button>
-                    </>
-                ) : (
-                    <button type="button" onClick={() => go(onView)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Eye className="w-4 h-4 text-[#667085]" />View class details
-                    </button>
-                )}
-            </FixedDropdown>
         </div>
     );
 }
@@ -353,7 +271,7 @@ function LeftPanel({
                 )}
                 {/* Status badge */}
                 <div className="absolute top-3 right-3">
-                    <TemplateBadge status={status} />
+                    <StatusBadge type="template" status={status} size="lg" />
                 </div>
             </div>
 
@@ -397,9 +315,6 @@ function LeftPanel({
 }
 
 // ─── Sessions table ───────────────────────────────────────────────────────────
-
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEditSession, onCancelSession }: {
     sessions: Session[];
@@ -447,7 +362,9 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                 </thead>
                 <tbody>
                     {sessions.map(s => (
-                        <tr key={s.id} className="hover:bg-[#f9fafb] transition-colors">
+                        <tr key={s.id}
+                            onClick={() => onViewSession(s.id)}
+                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="text-[14px] font-medium text-[#101828]">{s.date}</div>
                                 <div className="text-[13px] text-[#667085] mt-0.5">{s.timeRange}</div>
@@ -473,15 +390,23 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                                 <StarRating rating={s.rating} count={s.ratingCount} />
                             </td>
                             <td className={TD}>
-                                <SessionBadge status={s.status} />
+                                <StatusBadge type="class" status={s.status} />
                             </td>
-                            <td className={TD}>
-                                <RowActions
-                                    status={s.status}
-                                    onView={() => onViewSession(s.id)}
-                                    onEdit={() => onEditSession(s.id)}
-                                    onCancel={() => onCancelSession(s.id)}
-                                />
+                            <td className={TD} onClick={e => e.stopPropagation()}>
+                                {(() => {
+                                    const isEditable = s.status === "Upcoming" || s.status === "Ongoing";
+                                    return (
+                                        <RowActions
+                                            items={[
+                                                { label: "View details", icon: Eye, onClick: () => onViewSession(s.id), hidden: !isEditable },
+                                                { label: "Edit class", icon: Edit02, onClick: () => onEditSession(s.id), hidden: !isEditable },
+                                                { label: "Cancel class", icon: Trash01, onClick: () => onCancelSession(s.id), danger: true, hidden: !isEditable },
+                                                { label: "View class details", icon: Eye, onClick: () => onViewSession(s.id), hidden: isEditable },
+                                            ]}
+                                            minWidth={180}
+                                        />
+                                    );
+                                })()}
                             </td>
                         </tr>
                     ))}
@@ -512,19 +437,6 @@ interface ClassFilter {
 
 const EMPTY_FILTER: ClassFilter = { statuses: [], startDate: "", endDate: "", days: [], times: [] };
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "px-4 py-2 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-            )}>
-            {label}
-        </button>
-    );
-}
 
 function ClassFilterPanel({ open, onClose, applied, onApply }: {
     open: boolean; onClose: () => void;
@@ -666,69 +578,9 @@ const MODAL_CONFIG: Record<ModalAction, {
     },
 };
 
-function ActionModal({ action, onConfirm, onCancel }: {
-    action: ModalAction; onConfirm: () => void; onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                {/* X close */}
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-
-                {/* Header */}
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description}</p>
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ─── Generic row action "View details" ────────────────────────────────────────
-//
-// `onView` lets the caller route to the appropriate detail page — used by the
-// Applicable memberships / packages tabs to deep-link into /products/[id].
-
-function ViewDetailsAction({ onView }: { onView?: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => { setOpen(false); onView?.(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local ActionModal removed — call site uses the canonical
+// `<ConfirmModal>` from `@/components/modals/ConfirmModal`, driven by
+// MODAL_CONFIG + DESTRUCTIVE_ACTIONS above.
 
 // ─── Pagination component ─────────────────────────────────────────────────────
 
@@ -803,6 +655,7 @@ const TABS: { id: RightTab; label: string }[] = [
 
 function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTemplate }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [tab, setTab] = useState<RightTab>("classes");
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -824,10 +677,10 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
     /** Row dropdown handlers — route to the schedule module so we share its full pages. */
     function handleViewSession(id: string) {
-        router.push(`/schedule/${id}`);
+        router.push(`/schedule/${id}?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleEditSession(id: string) {
-        router.push(`/schedule/${id}/edit`);
+        router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleConfirmCancel() {
         if (!cancelSessionId) return;
@@ -1034,7 +887,9 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                     </thead>
                                     <tbody>
                                         {paginatedMemberships.map(m => (
-                                            <tr key={m.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={m.id}
+                                                onClick={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1044,7 +899,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${m.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><RowActions items={[{ label: "View details", icon: Eye, onClick: () => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`) }]} minWidth={180} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1079,7 +934,9 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                     </thead>
                                     <tbody>
                                         {paginatedPackages.map(p => (
-                                            <tr key={p.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={p.id}
+                                                onClick={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1089,7 +946,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${p.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><RowActions items={[{ label: "View details", icon: Eye, onClick: () => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`) }]} minWidth={180} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1167,9 +1024,12 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ClassTemplateDetailPage() {
+function ClassTemplateDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const { id } = useParams<{ id: string }>();
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/class-types";
     const { classTemplates, classSchedules, updateClassTemplate, deleteClassTemplate, showToast } = useAppStore();
 
     const template = classTemplates.find(t => t.id === id);
@@ -1181,7 +1041,7 @@ export default function ClassTemplateDetailPage() {
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Template not found</p>
-                    <button type="button" onClick={() => router.push("/admin/class-types")}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Back to class templates
                     </button>
@@ -1197,7 +1057,7 @@ export default function ClassTemplateDetailPage() {
 
     function handleAction(action: "edit" | ModalAction) {
         if (action === "edit") {
-            router.push(`/class-types/${id}/edit`);
+            router.push(`/class-types/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(action);
@@ -1211,7 +1071,7 @@ export default function ClassTemplateDetailPage() {
             deleteClassTemplate(id);
             showToast("Class template deleted successfully", `"${name}" class template is no longer available for new classes.`, "error", "trash");
             setConfirmAction(null);
-            router.push("/admin/class-types");
+            router.push(returnTo);
         } else if (confirmAction === "archive") {
             updateClassTemplate(id, { status: "Archived" });
             showToast("Class template is now archived", "The class template has been archived and is no longer in use.", "success", "archive");
@@ -1237,7 +1097,7 @@ export default function ClassTemplateDetailPage() {
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button
                     type="button"
-                    onClick={() => router.push("/admin/class-types")}
+                    onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -1245,22 +1105,37 @@ export default function ClassTemplateDetailPage() {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class template details</h1>
             </div>
 
-            {/* Two-column content */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    <LeftPanel template={template} hasData={hasData} onAction={handleAction} />
-                    <RightPanel hasData={hasData} template={template} />
-                </div>
-            </div>
+            {/* Two-column content — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={<LeftPanel template={template} hasData={hasData} onAction={handleAction} />}
+                main={<RightPanel hasData={hasData} template={template} />}
+            />
 
-            {confirmAction && (
-                <ActionModal
-                    action={confirmAction}
-                    onConfirm={handleConfirm}
-                    onCancel={() => setConfirmAction(null)}
-                />
-            )}
+            {confirmAction && (() => {
+                const cfg = MODAL_CONFIG[confirmAction];
+                const tone = DESTRUCTIVE_ACTIONS.has(confirmAction) ? "danger" : "success";
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setConfirmAction(null)}
+                        icon={cfg.IconComp}
+                        tone={tone}
+                        title={cfg.title}
+                        description={cfg.description}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={handleConfirm}
+                    />
+                );
+            })()}
             <Toast />
         </div>
+    );
+}
+
+export default function ClassTemplateDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <ClassTemplateDetailPageInner />
+        </Suspense>
     );
 }

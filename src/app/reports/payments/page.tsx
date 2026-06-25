@@ -74,12 +74,12 @@ function StatusPill({ status }: { status: PaymentStatus }) {
 /** Snake-case origin tag → title-cased label. Same mapping pattern as
  *  the rest of the Reports module. */
 const SOURCE_LABEL: Record<string, string> = {
-    pos:             "POS",
+    pos:             "Point of Sale",
     customer_portal: "Customer portal",
     admin:           "Admin",
 };
 function sourceLabel(s: string | undefined): string {
-    return s ? (SOURCE_LABEL[s] ?? s) : "POS";
+    return s ? (SOURCE_LABEL[s] ?? s) : "Point of Sale";
 }
 
 /** Order numbers come from transaction id stem (e.g. `txn_ahmed_1` →

@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore } from "@/lib/store";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import type { ClassesSettings, CancellationPolicy } from "@/lib/store";
 
 export default function BookingRulesPage() {
@@ -66,10 +67,14 @@ export default function BookingRulesPage() {
             />
 
             {pendingDelete && (
-                <DeleteConfirmModal
-                    name={pendingDelete.name}
+                <ConfirmModal
+                    open
+                    onClose={() => setPendingDelete(null)}
+                    icon={Trash04}
+                    tone="danger"
+                    title={`Delete "${pendingDelete.name}"?`}
                     description="This policy will be removed from your booking rules. Existing bookings that referenced it keep their record. This can’t be undone."
-                    onCancel={() => setPendingDelete(null)}
+                    confirmLabel="Delete"
                     onConfirm={confirmDelete}
                 />
             )}
@@ -251,59 +256,5 @@ function PolicyRow({ policy, onEdit, onDelete }: {
     );
 }
 
-// ─── Delete confirm modal (canonical destructive pattern) ───────────────────
-
-/** Generic delete-confirm — `description` is the only thing that changes
- *  between callers (currently only the policy delete flow lives here;
- *  /admin/categories carries its own copy). */
-function DeleteConfirmModal({ name, description, onCancel, onConfirm }: {
-    name: string;
-    description: string;
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[400px] flex flex-col">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    aria-label="Close"
-                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
-                >
-                    <XClose className="w-6 h-6 text-[#98a2b3]" />
-                </button>
-                <div className="pt-6 px-6 flex flex-col items-center gap-4">
-                    <div className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                        "bg-[#fee4e2]",
-                    )}>
-                        <Trash04 className="w-6 h-6 text-[#d92d20]" />
-                    </div>
-                    <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">
-                            Delete &ldquo;{name}&rdquo;?
-                        </p>
-                        <p className="text-[14px] text-[#475467] leading-5 w-full">
-                            {description}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex gap-3 items-start p-6 pt-6 w-full">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="destructive"
-                        size="lg"
-                        className="flex-1"
-                        onClick={onConfirm}
-                    >
-                        Delete
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local DeleteConfirmModal removed — call site uses the canonical
+// `<ConfirmModal>` from `@/components/modals/ConfirmModal`.

@@ -50,6 +50,8 @@ import { instructor_profile } from "@/data/mock/instructor_profile";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { FilterPill } from "@/components/ui/FilterPill";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { TableAvatar } from "@/components/ui/avatar";
@@ -61,6 +63,8 @@ import {
 } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -89,27 +93,6 @@ const RATING_VALUES = [5, 4, 3, 2, 1];
  *  [/schedule/[classId]/page.tsx:65](src/app/schedule/[classId]/page.tsx).
  *  Same `px-[10px] py-[2px] text-[13px]` + `border-1` per status, exact
  *  color tokens admin uses on the class-detail sidebar. */
-const CLASS_STATUS_STYLES: Record<ClassStatus, string> = {
-    Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    Upcoming:  "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#344054]",
-    Ongoing:   "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-};
-function ClassStatusBadge({ status }: { status: ClassStatus }) {
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            CLASS_STATUS_STYLES[status],
-        )}>
-            {status}
-        </span>
-    );
-}
-
-// ─── Admin table chrome — VERBATIM admin's /schedule/[classId] line 1708-1709 ─
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
-
 /** "First timer" pill from Figma 6616:333463. Indigo tone. */
 function FirstTimerBadge() {
     return (
@@ -376,10 +359,10 @@ export default function InstructorClassDetailPage() {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
             </div>
 
-            {/* Two-column content area */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                <ClassSidebar cls={cls} avgRating={avgRating(ratings)} ratingCount={ratings.length} />
+            {/* Two-column content area — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={<ClassSidebar cls={cls} avgRating={avgRating(ratings)} ratingCount={ratings.length} />}
+                main={<>
 
                 {/* Right panel — same shell as admin's right panel:
                     border + rounded-[20px], no shadow, white bg via the
@@ -495,8 +478,8 @@ export default function InstructorClassDetailPage() {
                         />
                     </div>
                 </div>
-                </div>
-            </div>
+                </>}
+            />
 
             {/* ── Reviews filter side panel — admin's verbatim ─────── */}
             <ReviewFilterPanel
@@ -552,7 +535,7 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                     </div>
                 )}
                 <div className="absolute top-3 right-3">
-                    <ClassStatusBadge status={cls.status} />
+                    <StatusBadge type="class-detail" status={cls.status} />
                 </div>
             </div>
 
@@ -1016,24 +999,6 @@ function tabCount(
 
 /** Filter pill — VERBATIM from admin's
  *  [/schedule/[classId]/page.tsx:73](src/app/schedule/[classId]/page.tsx) */
-function FilterPill({ label, selected, onClick }: {
-    label: string; selected: boolean; onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors",
-                selected
-                    ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-[#d0d5dd] text-[#344054] hover:border-[#aad4bd]",
-            )}
-        >
-            {label}
-        </button>
-    );
-}
 
 /** VERBATIM admin Reviews & Rating filter panel
  *  ([/schedule/[classId]/page.tsx:193](src/app/schedule/[classId]/page.tsx)).

@@ -28,6 +28,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, DEFAULT_BRANCH_ID, type MarketingItem } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -89,22 +90,6 @@ function branchLabel(branchIds: string[] | undefined, totalBranches: number): st
 
 // ─── Badges ──────────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: EffectiveStatus }) {
-    // Active is the only "live" state → green. Inactive / Archive / Expired
-    // share the neutral gray treatment.
-    const styles = status === "active"
-        ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-        : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]";
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
-            styles,
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
-
 /** Marketing-type badge — translucent dark pill on the banner top-left. */
 function TypeBadge({ type }: { type: MarketingItem["type"] }) {
     return (
@@ -152,7 +137,7 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
                 <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
                 {/* Status badge — top right */}
                 <div className="absolute top-3 right-3 z-10">
-                    <StatusBadge status={status} />
+                    <StatusBadge type="marketing" status={status} size="lg" />
                 </div>
                 {/* Type badge — top left, in flow */}
                 <div className="relative z-10">
@@ -412,7 +397,7 @@ export default function MarketingListPage() {
                 </Button>
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/marketing/new")}>
+                    onClick={() => router.push(`/marketing/new?returnTo=${encodeURIComponent("/admin/marketing")}`)}>
                     Add marketing
                 </Button>
             </div>
@@ -431,7 +416,7 @@ export default function MarketingListPage() {
                 <div className="grid grid-cols-3 gap-4">
                     {visible.map(m => (
                         <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/marketing/${m.id}`)} />
+                            onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />
                     ))}
                 </div>
             )}

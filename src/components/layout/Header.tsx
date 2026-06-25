@@ -18,7 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/customers": "Customers",
     "/admin/members": "Customers",
     "/admin/bookings": "Bookings",
-    "/admin/pos": "POS",
+    "/admin/pos": "Point of Sale",
     "/admin/products": "Memberships & Packages",
     "/admin/products/gift-cards": "Gift Cards",
     "/admin/products/promo-codes": "Promo",
@@ -158,11 +158,12 @@ export default function Header() {
     const pathname = usePathname();
     const pageTitle = getPageTitle(pathname);
     const [searchOpen, setSearchOpen] = useState(false);
+    const isInstructor = pathname.startsWith("/instructor");
 
     // Persona-aware account route — instructor pages link to the dedicated
     // instructor account page; everywhere else (admin) goes to the
     // settings → account route.
-    const accountHref = pathname.startsWith("/instructor")
+    const accountHref = isInstructor
         ? "/instructor/account"
         : "/admin/settings/account";
 
@@ -173,22 +174,30 @@ export default function Header() {
                 {pageTitle}
             </h1>
 
-            {/* Right: Search + Bell + Profile dropdown */}
+            {/* Right: Search (admin only, icon-button — matches the bell
+                chrome) + Bell + Profile dropdown. The instructor experience
+                doesn't surface a global search — the surfaces an instructor
+                touches (schedule, dashboard) are scoped to their own data,
+                so a global text search across customers / staff / products
+                is irrelevant to them. */}
             <div className="flex items-center gap-[12px]">
-                <button
-                    type="button"
-                    onClick={() => setSearchOpen(true)}
-                    aria-label="Open global search"
-                    className="relative w-[280px] h-10 pl-[40px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-left text-[14px] text-[#667085] hover:border-[#7ba08c] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0_1px_2px_rgba(16,24,40,0.05)]"
-                >
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
-                    Search for anything…
-                </button>
+                {!isInstructor && (
+                    <button
+                        type="button"
+                        onClick={() => setSearchOpen(true)}
+                        aria-label="Open global search"
+                        className="relative w-9 h-9 flex items-center justify-center rounded-[8px] text-[#667085] hover:text-[#101828] hover:bg-[#f9fafb] transition-colors"
+                    >
+                        <SearchMd className="w-[21px] h-[21px]" />
+                    </button>
+                )}
                 <NotificationBell />
                 <ProfileDropdown accountHref={accountHref} />
             </div>
 
-            <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+            {!isInstructor && (
+                <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+            )}
         </header>
     );
 }

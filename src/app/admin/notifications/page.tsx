@@ -36,7 +36,9 @@ import {
     routeForNotification,
 } from "@/components/notifications/notification-utils";
 import { useTeamActivity, TeamActivityRow } from "@/components/dashboard/team-activity";
+import { NotificationRow } from "@/components/notifications/NotificationRow";
 import { cn } from "@/lib/utils";
+import { SectionHeader } from "@/components/patterns/SectionHeader";
 
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 
@@ -90,47 +92,10 @@ function TabButton({ label, count, active, onClick }: {
     );
 }
 
-function NotificationRow({ n, onClick }: { n: Notification; onClick: () => void }) {
-    const Icon = iconForNotification(n.icon);
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="w-full flex gap-3 items-center text-left py-1.5 -mx-2 px-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors"
-        >
-            {/* Featured icon tile (48px) */}
-            <div className="shrink-0 w-12 h-12 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
-                <Icon className="w-6 h-6 text-[#475467]" />
-            </div>
-            {/* Text block */}
-            <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
-                <div className="flex items-baseline gap-[6px] flex-wrap">
-                    <p className="text-[16px] font-semibold leading-[24px] text-[#344054]">
-                        {n.title}
-                    </p>
-                    <p className="text-[16px] font-normal leading-[24px] text-[#667085]">
-                        {relativeTime(n.createdAt)}
-                    </p>
-                </div>
-                <p className="text-[16px] font-normal leading-[24px] text-[#475467]">
-                    {n.body}
-                </p>
-            </div>
-            {/* Unread dot — 10px for the page, matches Figma */}
-            {!n.isRead && (
-                <span className="shrink-0 w-[10px] h-[10px] bg-[#658774] rounded-full" />
-            )}
-        </button>
-    );
-}
+// Local NotificationRow removed — uses canonical from
+// `@/components/notifications/NotificationRow`.
 
-function SectionHeader({ label }: { label: string }) {
-    return (
-        <p className="text-[18px] font-semibold leading-[28px] text-[#101828]">
-            {label}
-        </p>
-    );
-}
+// Local SectionHeader removed — uses canonical from `@/components/patterns/SectionHeader`.
 
 function Divider() {
     return <div className="h-px bg-[#e4e7ec] w-full" />;
@@ -149,7 +114,7 @@ function Section({ title, items, onRowClick, headerRight }: {
     return (
         <div className="flex flex-col gap-3 w-full">
             <div className="flex items-center justify-between gap-4">
-                <SectionHeader label={title} />
+                <SectionHeader title={title} />
                 {headerRight && <div className="shrink-0">{headerRight}</div>}
             </div>
             <div className="flex flex-col">
@@ -347,7 +312,7 @@ function NotificationsPage() {
                     ) : (
                         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pt-6 pb-8">
                             <div className="flex flex-col gap-3 w-full">
-                                <SectionHeader label="Recent activity" />
+                                <SectionHeader title="Recent activity" />
                                 <div className="flex flex-col">
                                     {teamActivity.map((item, idx) => (
                                         <div key={item.id}>

@@ -50,6 +50,11 @@ import {
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 //
@@ -73,24 +78,10 @@ const DEFAULT_PERIOD: DateFilter = { type: "month", label: "This month" };
 
 // ─── Avatar (image OR initials) ────────────────────────────────────────────
 
+// Thin wrapper around the canonical `<NeutralAvatar>` — kept so the
+// existing call sites that pass `instructor` keep working.
 function InstructorAvatar({ instructor, size = 40 }: { instructor: Instructor; size?: number }) {
-    if (instructor.imageUrl) {
-        return (
-            <img src={instructor.imageUrl} alt={instructor.name}
-                className="rounded-full object-cover shrink-0"
-                style={{ width: size, height: size }}
-                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-        );
-    }
-    return (
-        // Neutral chrome — matches Staff & Permissions / payroll list so every
-        // initials avatar across the staff stack reads as one surface.
-        <div className="rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center text-[#475467] shrink-0"
-            style={{ width: size, height: size, fontSize: size * 0.35 }}>
-            {instructor.initials}
-        </div>
-    );
+    return <NeutralAvatar initials={instructor.initials} imageUrl={instructor.imageUrl} size={size} />;
 }
 
 // ─── Sidebar action button (same chrome as pay-rate detail) ───────────────
@@ -323,48 +314,7 @@ function ChangePayRateModal({ instructor, allRates, onCancel, onConfirm }: {
     );
 }
 
-// ─── Pagination ────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Period helpers ────────────────────────────────────────────────────────
 
@@ -697,10 +647,10 @@ export default function PayrollInstructorDetailPage({
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Instructor details</h1>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    {/* LEFT — sidebar */}
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
+                    /* LEFT — sidebar */
                     <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                         <div className="px-6 pt-6 pb-4 flex flex-col gap-3">
                             <div className="flex items-start justify-between gap-3">
@@ -743,8 +693,9 @@ export default function PayrollInstructorDetailPage({
                             </div>
                         </div>
                     </aside>
-
-                    {/* RIGHT — earnings card */}
+                }
+                main={
+                    /* RIGHT — earnings card */
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
                         {/* Tabs — single "Earnings" tab (future tabs land here) */}
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
@@ -775,19 +726,13 @@ export default function PayrollInstructorDetailPage({
 
                             {/* Toolbar */}
                             <div className="px-6 pt-6 flex items-center gap-3">
-                                <div className="flex-1">
-                                    <p className="text-[16px] text-[#667085]">Total</p>
-                                    <p className="text-[16px] font-medium text-[#101828]">
-                                        {filteredRows.length} {filteredRows.length === 1 ? "booking" : "bookings"}
-                                    </p>
-                                </div>
-                                <div className="relative w-[260px]">
-                                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                                        placeholder="Search bookings..."
-                                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                    />
-                                </div>
+                                <ToolbarTotal count={filteredRows.length} entitySingular="booking" />
+                                <ToolbarSearch
+                                    value={search}
+                                    onChange={setSearch}
+                                    placeholder="Search bookings..."
+                                    widthClass="w-[260px]"
+                                />
                                 <DateRangeFilter value={period} onChange={setPeriod} />
                                 <ClassStatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
                             </div>
@@ -831,7 +776,9 @@ export default function PayrollInstructorDetailPage({
                                             </thead>
                                             <tbody>
                                                 {pageRows.map(r => (
-                                                    <tr key={r.schedule.id} className="transition-colors hover:bg-[#f9fafb]">
+                                                    <tr key={r.schedule.id}
+                                                        onClick={() => handleViewClass(r.schedule.id)}
+                                                        className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
                                                         <td className={TD}>
                                                             <div className="flex flex-col">
                                                                 <span className="text-[14px] font-medium text-[#101828]">{r.schedule.name}</span>
@@ -861,7 +808,7 @@ export default function PayrollInstructorDetailPage({
                                                         <td className={TD}><ClassStatusBadge status={r.schedule.status} /></td>
                                                         <td className={TD}>{r.payRateName}</td>
                                                         <td className={TD}>{r.earnings > 0 ? aed(r.earnings) : "—"}</td>
-                                                        <td className={TD}>
+                                                        <td onClick={e => e.stopPropagation()} className={TD}>
                                                             <RowActions onView={() => handleViewClass(r.schedule.id)} />
                                                         </td>
                                                     </tr>
@@ -880,8 +827,8 @@ export default function PayrollInstructorDetailPage({
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {changeRateOpen && (
                 <ChangePayRateModal

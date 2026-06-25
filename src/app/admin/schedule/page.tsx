@@ -10,17 +10,25 @@ import {
     ChevronDown,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { buildMonthGrid } from "@/lib/calendar-utils";
+import { AttendanceBar } from "@/components/patterns/AttendanceBar";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
-import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // Alias for compatibility with existing code in this file
@@ -120,18 +128,7 @@ function formatMonthYear(my: string): string {
     return `${MONTHS_LONG[m - 1]} ${y}`;
 }
 
-function buildMonthGrid(my: string): Array<{ iso: string; num: number; current: boolean } | null> {
-    const [y, m] = my.split("-").map(Number);
-    const firstDay = new Date(y, m - 1, 1);
-    const daysInMonth = new Date(y, m, 0).getDate();
-    // Monday-first offset
-    const offset = (firstDay.getDay() + 6) % 7;
-    return Array.from({ length: 42 }, (_, i) => {
-        const d = i - offset + 1;
-        if (d <= 0 || d > daysInMonth) return null;
-        return { iso: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, num: d, current: true };
-    });
-}
+// Local buildMonthGrid removed — uses canonical from `@/lib/calendar-utils`.
 
 // ─── Live business-hours lookups ───────────────────────────────────────────────
 //
@@ -146,14 +143,7 @@ function lookupBusinessHours(rows: BusinessHours[], branchId: string, dateISO: s
     const dow = d.getUTCDay();
     const row = rows.find(r => r.branch_id === branchId && r.day_of_week === dow);
     if (!row || row.is_closed) return null;
-    // Carry the optional `block` window so the schedule grid can render its
-    // diagonal-striped strip + the `buildTimeSlots` helper can filter it
-    // out of the form's time picker. Without this branch, the grid would
-    // never see the block even when the branch form persisted it.
-    const block = row.block_start && row.block_end
-        ? { start: row.block_start, end: row.block_end }
-        : undefined;
-    return { open: row.open_time, close: row.close_time, ...(block ? { block } : {}) };
+    return { open: row.open_time, close: row.close_time };
 }
 
 function lookupUnionBusinessHours(rows: BusinessHours[], branchIds: string[], dateISO: string): HoursWindow {
@@ -213,29 +203,12 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
 
 // ─── Shared: status badge ─────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: ClassStatus }) {
-    const styles: Record<ClassStatus, string> = {
-        Upcoming: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        Ongoing: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    };
-    return <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>{status}</span>;
-}
+// Local StatusBadge removed — uses canonical `<StatusBadge type="class">`
+// from `@/components/patterns/StatusBadge`.
 
 // ─── Shared: attendance bar ───────────────────────────────────────────────────
 
-function AttendanceBar({ booked, capacity }: { booked: number; capacity: number }) {
-    const pct = capacity > 0 ? (booked / capacity) : 0;
-    return (
-        <div className="flex items-center gap-3">
-            <div className="h-[4px] w-[80px] bg-[#e4e7ec] rounded-full overflow-hidden shrink-0">
-                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${pct * 100}%` }} />
-            </div>
-            <span className="text-[14px] text-[#344054] whitespace-nowrap">{booked}/{capacity}</span>
-        </div>
-    );
-}
+// Local AttendanceBar removed — uses canonical from `@/components/patterns/AttendanceBar`.
 
 // ─── Shared: instructor avatar ────────────────────────────────────────────────
 
@@ -270,8 +243,9 @@ function RowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
     function go(path: string) { setOpen(false); router.push(path); }
     function trigger(fn: () => void) { setOpen(false); fn(); }
 
-    const viewPath = isAppt ? `/appointments/${id}` : `/schedule/${id}`;
-    const editPath = isAppt ? `/appointments/${id}` : `/schedule/${id}/edit`;
+    const rt = encodeURIComponent("/admin/schedule");
+    const viewPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}?returnTo=${rt}`;
+    const editPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}/edit?returnTo=${rt}`;
 
     return (
         <div className="relative">
@@ -432,15 +406,6 @@ const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Cancelled", "Comple
 // schedule rows actually carry.
 type LocationGroup = { branch: string; rooms: string[] };
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn("px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
-                selected ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]" : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]")}>
-            {label}
-        </button>
-    );
-}
 
 /**
  * Room-only filter dropdown. The active branch is already chosen via the toolbar
@@ -683,8 +648,6 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
 // ─── Table header/cell constants ──────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── List view ────────────────────────────────────────────────────────────────
 
@@ -697,6 +660,7 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
     onDuplicate: (id: string) => void;
     onAddCustomer: (id: string) => void;
 }) {
+    const router = useRouter();
     if (classes.length === 0) {
         return <div className="relative flex-1" style={{ minHeight: 300 }}><EmptyState title="No classes found" subtitle="Try adjusting your search or filters." /></div>;
     }
@@ -729,7 +693,9 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                 </thead>
                 <tbody>
                     {classes.map(c => (
-                        <tr key={c.id} className="hover:bg-[#f9fafb] transition-colors">
+                        <tr key={c.id}
+                            onClick={() => router.push(isAppointmentId(c.id) ? `/appointments/${c.id}?returnTo=${encodeURIComponent("/admin/schedule")}` : `/schedule/${c.id}?returnTo=${encodeURIComponent("/admin/schedule")}`)}
+                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="font-medium text-[#101828]">{c.date}</div>
                                 <div className="text-[13px] text-[#667085] mt-0.5">{c.displayTime}</div>
@@ -764,8 +730,8 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                             <td className={TD}>{c.location}</td>
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}><StarRating rating={c.rating} count={c.ratingCount} /></td>
-                            <td className={TD}><StatusBadge status={c.status} /></td>
-                            <td className={TD}><RowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
+                            <td className={TD}><StatusBadge type="class" status={c.status} /></td>
+                            <td className={TD} onClick={e => e.stopPropagation()}><RowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
                         </tr>
                     ))}
                 </tbody>
@@ -907,15 +873,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                 const instrClasses = dayClasses.filter(c => c.instructorId === instructor.id);
                                 return (
                                     <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
-                                        {businessHours?.block && (
-                                            <BlockedStrip
-                                                blockStart={businessHours.block.start}
-                                                blockEnd={businessHours.block.end}
-                                                gridStartHour={gridStartHour}
-                                                hourHeight={HOUR_HEIGHT}
-                                                hideLabel
-                                            />
-                                        )}
                                         {instrClasses.map(cls => (
                                             <ClassBlock key={cls.id} cls={cls} gridStartHour={gridStartHour} onClick={(e) => onClassClick(cls, e)} />
                                         ))}
@@ -923,19 +880,6 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                 );
                             })}
                         </div>
-
-                        {/* Centered "Blocked HH:MM – HH:MM" badge overlay —
-                            floats over the full grid so it's visually
-                            centered regardless of column count. */}
-                        {businessHours?.block && (
-                            <BlockedStrip
-                                blockStart={businessHours.block.start}
-                                blockEnd={businessHours.block.end}
-                                gridStartHour={gridStartHour}
-                                hourHeight={HOUR_HEIGHT}
-                                labelOnly
-                            />
-                        )}
                     </div>
                 </div>
             </div>
@@ -992,38 +936,6 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 
-    // ─── Centered "Blocked HH:MM – HH:MM" overlay spans ───────────────────
-    //
-    // Group contiguous days that share the SAME block window into spans so
-    // the badge centers across exactly that run of cells. Examples:
-    //   • Tue–Fri all have 12:00–13:00 lunch → one badge centered over Tue–Fri.
-    //   • Mon and Thu block 12–13, Tue/Wed don't → two separate badges,
-    //     each centered over its own day cell.
-    //   • Mon has 12–13, Tue has 13–14 → two separate badges (different
-    //     windows can't share a span even if adjacent).
-    // The per-column shaded strips render independently of these spans —
-    // every blocked day shows its diagonal stripe regardless of grouping.
-    type BlockSpan = { startIdx: number; endIdx: number; block: { start: string; end: string } };
-    const blockSpans: BlockSpan[] = [];
-    if (branchId) {
-        const dayBlocks = cols.map(c => lookupBusinessHours(businessHoursRows, branchId, c.iso)?.block ?? null);
-        let current: BlockSpan | null = null;
-        for (let i = 0; i < dayBlocks.length; i++) {
-            const b = dayBlocks[i];
-            if (!b) {
-                if (current) { blockSpans.push(current); current = null; }
-                continue;
-            }
-            if (current && current.block.start === b.start && current.block.end === b.end) {
-                current.endIdx = i;
-            } else {
-                if (current) blockSpans.push(current);
-                current = { startIdx: i, endIdx: i, block: b };
-            }
-        }
-        if (current) blockSpans.push(current);
-    }
-
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes() - gridStartHour * 60;
     const currentTop = (currentMinutes * WEEK_HOUR_HEIGHT) / 60;
@@ -1078,26 +990,9 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                             {cols.map(col => {
                                 const dayClasses = classes.filter(c => c.dateISO === col.iso);
                                 const lanes = computeOverlapLanes(dayClasses);
-                                // Per-day block-time lookup. Single-branch view
-                                // only — when "All locations" is selected the
-                                // union envelope doesn't carry a block (different
-                                // branches may have different lunch breaks, and
-                                // overlaying them would be misleading).
-                                const dayHours = branchId
-                                    ? lookupBusinessHours(businessHoursRows, branchId, col.iso)
-                                    : null;
                                 return (
                                     <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
                                         style={{ minHeight: gridHeight }}>
-                                        {dayHours?.block && (
-                                            <BlockedStrip
-                                                blockStart={dayHours.block.start}
-                                                blockEnd={dayHours.block.end}
-                                                gridStartHour={gridStartHour}
-                                                hourHeight={WEEK_HOUR_HEIGHT}
-                                                hideLabel
-                                            />
-                                        )}
                                         {dayClasses.map(cls => {
                                             const lane = lanes.get(cls.id);
                                             if (lane && !lane.visible) return null;
@@ -1130,24 +1025,6 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                             })}
                         </div>
 
-                        {/* Centered "Blocked HH:MM – HH:MM" badge overlays —
-                            one per contiguous span of days sharing the same
-                            block window. Each badge floats centered above
-                            its own run of cells (Tue–Fri lunch → single
-                            wide badge; isolated Mon + isolated Thu → two
-                            badges, one per day). */}
-                        {blockSpans.map((span, i) => (
-                            <BlockedStrip
-                                key={`blockspan-${i}`}
-                                blockStart={span.block.start}
-                                blockEnd={span.block.end}
-                                gridStartHour={gridStartHour}
-                                hourHeight={WEEK_HOUR_HEIGHT}
-                                labelOnly
-                                leftPct={(span.startIdx / cols.length) * 100}
-                                widthPct={((span.endIdx - span.startIdx + 1) / cols.length) * 100}
-                            />
-                        ))}
                     </div>
                 </div>
             </div>
@@ -1314,7 +1191,7 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
                                 </span>
                             )}
                         </div>
-                        <StatusBadge status={cls.status} />
+                        <StatusBadge type="class" status={cls.status} />
                     </div>
                     <div>
                         <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{cls.name}</p>
@@ -1361,49 +1238,7 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
     );
 }
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Export dropdown (same pattern as dashboard report button) ────────────────
 
@@ -1551,7 +1386,7 @@ function SchedulePage() {
     }
 
     function handleDuplicateClass(id: string) {
-        router.push(`/schedule/new?duplicateFrom=${encodeURIComponent(id)}`);
+        router.push(`/schedule/new?duplicateFrom=${encodeURIComponent(id)}&returnTo=${encodeURIComponent("/admin/schedule")}`);
     }
 
     function prevDay() { setDayDateISO(d => isoAddDays(d, -1)); }
@@ -1667,16 +1502,20 @@ function SchedulePage() {
     }
 
     return (
-        // No flex-1 — the page root hugs its content (toolbar + 760px View card) so
-        // there's no trailing empty space below the table when the screen is taller
-        // than the content.
-        <div className="flex flex-col gap-6">
+        // Fill the AdminLayout main height — `flex-1 min-h-0` lets the View card
+        // below grow to absorb every remaining pixel between the toolbar and
+        // the viewport bottom. Only the inner view body scrolls; the outer
+        // page chrome (toolbar + tab nav + pagination) stays pinned.
+        <div className="flex flex-col gap-6 flex-1 min-h-0">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{filteredClasses.length} classes</p>
-                </div>
+                {/* Schedule's pre-existing chrome hardcodes "classes" plural;
+                    preserve that with identical entitySingular + entityPlural. */}
+                <ToolbarTotal
+                    count={filteredClasses.length}
+                    entitySingular="classes"
+                    entityPlural="classes"
+                />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -1685,13 +1524,14 @@ function SchedulePage() {
                     onChange={setLocation}
                     width="w-[220px]"
                 />
-                <div className="relative w-[200px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                        placeholder="Search class..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                {/* Custom width — schedule list uses w-[200px] not the
+                    canonical 240px to leave room for the Export + Add buttons. */}
+                <ToolbarSearch
+                    value={search}
+                    onChange={v => { setSearch(v); setPage(1); }}
+                    placeholder="Search class..."
+                    widthClass="w-[200px]"
+                />
                 <ExportDropdown
                     onExportCsv={() => {
                         exportScheduleCsv(filteredClasses);
@@ -1702,25 +1542,21 @@ function SchedulePage() {
                         );
                     }}
                 />
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/schedule/new")}>Add Class</Button>
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add Class</Button>
             </div>
 
-            {/* ── View card ── Fixed 760px tall so tabs/table/pagination layout is predictable. */}
-            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            {/* ── View card ── Fills the remaining viewport height (was a fixed 760px
+                surface before — now `flex-1 min-h-0` so a tall screen uses every
+                pixel and a short screen lets the inner view body scroll). */}
+            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}
-                    <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
-                        {TAB_ITEMS.map(t => (
-                            <button key={t.id} type="button" onClick={() => setActiveTab(t.id)}
-                                className={cn("px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
-                                    activeTab === t.id
-                                        ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                        : "text-[#667085] hover:text-[#344054]")}>
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+                    <SegmentedTabs
+                        tabs={TAB_ITEMS.map(t => ({ key: t.id, label: t.label }))}
+                        activeKey={activeTab}
+                        onChange={(k) => setActiveTab(k as ViewTab)}
+                    />
 
                     {/* Center: date navigator — same pill bg as tabs */}
                     {activeTab === "day" && (
@@ -1776,10 +1612,10 @@ function SchedulePage() {
                                             classes={paginatedClasses}
                                             sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort}
                                             onCancel={id => isAppointmentId(id)
-                                                ? router.push(`/appointments/${id}`)
+                                                ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
                                                 : setCancelTargetId(id)}
                                             onDuplicate={handleDuplicateClass}
-                                            onAddCustomer={id => router.push(`/schedule/${id}?openAddCustomer=1`)}
+                                            onAddCustomer={id => router.push(`/schedule/${id}?openAddCustomer=1&returnTo=${encodeURIComponent("/admin/schedule")}`)}
                                         />
                                     </div>
                                 )}
@@ -1826,19 +1662,19 @@ function SchedulePage() {
                     // are class-schedule-only actions (the brief is explicit:
                     // appointments come from the customer side, admins can't
                     // add a customer or duplicate an appointment).
-                    onViewDetails={(id) => router.push(isAppointmentId(id) ? `/appointments/${id}` : `/schedule/${id}`)}
-                    onAddCustomer={(id) => router.push(`/schedule/${id}?openAddCustomer=1`)}
+                    onViewDetails={(id) => router.push(isAppointmentId(id) ? `/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}` : `/schedule/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)}
+                    onAddCustomer={(id) => router.push(`/schedule/${id}?openAddCustomer=1&returnTo=${encodeURIComponent("/admin/schedule")}`)}
                     // Edit is class-schedule only; appointments don't expose
                     // an edit flow (customer-side bookings, admin can't edit).
                     onEdit={(id) => isAppointmentId(id)
-                        ? router.push(`/appointments/${id}`)
-                        : router.push(`/schedule/${id}/edit`)}
+                        ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
+                        : router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent("/admin/schedule")}`)}
                     onDuplicate={handleDuplicateClass}
                     // Appointments use a different cancel flow (reason
                     // required) — route to the appointment detail page so
                     // the admin can cancel there with the full modal.
                     onCancel={(id) => isAppointmentId(id)
-                        ? router.push(`/appointments/${id}`)
+                        ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
                         : setCancelTargetId(id)}
                 />
             )}

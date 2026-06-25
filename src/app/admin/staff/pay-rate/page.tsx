@@ -32,6 +32,10 @@ import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import {
     useAppStore, DEFAULT_BRANCH_ID,
     type PayRate, type PayRateStatus, type PayRateType,
@@ -162,37 +166,8 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     },
 };
 
-function ConfirmModal({ kind, subject, onCancel, onConfirm }: {
-    kind: ConfirmKind; subject: string; onCancel: () => void; onConfirm: () => void;
-}) {
-    const cfg = CONFIRM_CFG[kind];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", cfg.iconBg)}>
-                        <cfg.Icon className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title(subject)}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.destructive ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ConfirmModal removed — uses canonical from
+// `@/components/modals/ConfirmModal`, driven by CONFIRM_CFG above.
 
 // ─── Status filter dropdown (single-select — mirrors gift-cards) ─────────────
 
@@ -263,7 +238,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -294,48 +269,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     );
 }
 
-// ─── Pagination ──────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
@@ -527,7 +461,7 @@ export default function PayRatePage() {
 
     function handleRowAction(row: PayRate, kind: RowActionKind) {
         if (kind === "view") {
-            router.push(`/staff/pay-rate/${row.id}`);
+            router.push(`/staff/pay-rate/${row.id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`);
             return;
         }
         if (kind === "edit") {
@@ -565,12 +499,7 @@ export default function PayRatePage() {
         <div className="flex flex-col gap-6 animate-fade-in">
             {/* Toolbar */}
             <div className="flex items-center gap-3">
-                <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
-                        {totalForBranch} pay rate{totalForBranch === 1 ? "" : "s"}
-                    </p>
-                </div>
+                <ToolbarTotal count={totalForBranch} entitySingular="pay rate" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -579,13 +508,7 @@ export default function PayRatePage() {
                     onChange={setBranchId}
                     width="w-[220px]"
                 />
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search pay rate..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search pay rate..." />
                 <StatusFilterDropdown value={filter} onChange={setFilter} />
                 <Button variant="primary" size="md"
                     leftIcon={<Plus className="w-4 h-4" />}
@@ -640,8 +563,9 @@ export default function PayRatePage() {
                                         const isSelected = selectedIds.has(r.id);
                                         return (
                                             <tr key={r.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
+                                                onClick={() => router.push(`/staff/pay-rate/${r.id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`)}
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(r.id)}
@@ -675,7 +599,7 @@ export default function PayRatePage() {
                                                         {STATUS_LABEL[r.status]}
                                                     </span>
                                                 </td>
-                                                <td className={TD}>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions row={r} onAction={kind => handleRowAction(r, kind)} />
                                                 </td>
                                             </tr>
@@ -703,14 +627,22 @@ export default function PayRatePage() {
                 onAction={openBulkConfirm}
             />
 
-            {pendingConfirm && (
-                <ConfirmModal
-                    kind={pendingConfirm.kind}
-                    subject={modalSubject(pendingConfirm)}
-                    onCancel={() => setPendingConfirm(null)}
-                    onConfirm={() => performAction(pendingConfirm.kind, pendingConfirm.ids)}
-                />
-            )}
+            {pendingConfirm && (() => {
+                const cfg = CONFIRM_CFG[pendingConfirm.kind];
+                const subject = modalSubject(pendingConfirm);
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.destructive ? "danger" : "success"}
+                        title={cfg.title(subject)}
+                        description={cfg.description(subject)}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => performAction(pendingConfirm.kind, pendingConfirm.ids)}
+                    />
+                );
+            })()}
 
             <Toast />
         </div>

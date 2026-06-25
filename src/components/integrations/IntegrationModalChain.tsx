@@ -31,6 +31,7 @@ import { XClose, CheckCircle } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Integration, IntegrationSlug } from "@/lib/store";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Per-tool config (logo + Connect copy + View modal fields)
@@ -158,23 +159,6 @@ export function LogoTile({ integration, size }: {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Status badge
-// ────────────────────────────────────────────────────────────────────────────
-
-export function StatusBadge({ connected }: { connected: boolean }) {
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[8px] py-[2px] rounded-full text-[12px] font-medium whitespace-nowrap",
-            connected
-                ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-                : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        )}>
-            {connected ? "Connected" : "Not connected"}
-        </span>
-    );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
 // Card
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -195,7 +179,7 @@ export function IntegrationCard({ integration, onConnect, onView, onDisconnect }
                     <p className="text-[14px] text-[#6e776f] leading-5">{integration.description}</p>
                 </div>
                 <div className="absolute top-0 right-0">
-                    <StatusBadge connected={connected} />
+                    <StatusBadge type="integration" status={connected ? "connected" : "disconnected"} size="sm" />
                 </div>
             </div>
 

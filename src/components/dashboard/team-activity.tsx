@@ -74,7 +74,7 @@ const MAX_TEAM_ACTIVITY = 50;
 function bookingSourceSuffix(source: string | undefined): string {
     if (source === "front_desk") return " · via Front desk";
     if (source === "admin")      return " · via Admin team";
-    if (source === "pos")        return " · via POS";
+    if (source === "pos")        return " · via Point of Sale";
     return "";
 }
 function cancellationSourceSuffix(source: string | undefined): string {
@@ -84,7 +84,7 @@ function cancellationSourceSuffix(source: string | undefined): string {
     return "";
 }
 function paymentSourceSuffix(source: string | undefined): string {
-    if (source === "pos")   return " · via POS";
+    if (source === "pos")   return " · via Point of Sale";
     if (source === "admin") return " · via Admin team";
     return "";
 }

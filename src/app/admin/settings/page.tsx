@@ -41,7 +41,7 @@
 // the new sub-pages to proper store actions.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     Edit02, SearchLg, FilterLines, Plus, ChevronDown, ChevronRight,
     DotsVertical, Building01, LayoutGrid01, Image01, Eye, Archive,
@@ -54,6 +54,8 @@ import { timezoneLabel } from "@/lib/data/locales";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -73,6 +75,7 @@ const DOW_FOR_COL = [1, 2, 3, 4, 5, 6, 0] as const;
 
 export default function BusinessLocationsPage() {
     const router = useRouter();
+    const pathname = usePathname();
     // Phase 3 — reads from live store-state slices so archive / delete /
     // status-toggle actions propagate immediately. (BUSINESS_HOURS stays
     // static — hours editing isn't in scope until Phase 4.)
@@ -164,7 +167,7 @@ export default function BusinessLocationsPage() {
     }
     function viewBranch(b: Branch) {
         setActionMenuId(null);
-        router.push(`/settings/branches/${b.id}`);
+        router.push(`/settings/branches/${b.id}?returnTo=${encodeURIComponent(pathname)}`);
     }
     function editBranch(b: Branch) {
         setActionMenuId(null);
@@ -379,41 +382,56 @@ export default function BusinessLocationsPage() {
             })()}
 
             {/* ── Toggle-confirmation modal ───────────────────────────── */}
-            {pendingToggle && (
-                <ToggleConfirmModal
-                    label={pendingToggle.label}
-                    kind={pendingToggle.kind}
-                    action={pendingToggle.currentStatus === "active" ? "deactivate" : "reactivate"}
-                    onCancel={() => setPendingToggle(null)}
-                    onConfirm={applyPendingToggle}
-                />
-            )}
+            {pendingToggle && (() => {
+                const isDeactivate = pendingToggle.currentStatus === "active";
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingToggle(null)}
+                        icon={isDeactivate ? SlashCircle01 : Check}
+                        tone={isDeactivate ? "danger" : "success"}
+                        title={isDeactivate
+                            ? `Deactivate ${pendingToggle.label}?`
+                            : `Reactivate ${pendingToggle.label}?`}
+                        description={isDeactivate
+                            ? `Deactivating this ${pendingToggle.kind} prevents new scheduling and bookings. Existing data is preserved and you can reactivate any time.`
+                            : `Reactivating this ${pendingToggle.kind} re-enables scheduling, bookings and visibility across the app.`}
+                        confirmLabel={isDeactivate ? "Deactivate" : "Reactivate"}
+                        onConfirm={applyPendingToggle}
+                        maxWidth={400}
+                    />
+                );
+            })()}
 
             {/* ── Archive / Recover / Delete confirmation modal ───────── */}
-            {pendingConfirm && (
-                <GenericConfirmModal
-                    title={
-                        pendingConfirm.action === "archive" ? `Archive ${pendingConfirm.label}?`
-                        : pendingConfirm.action === "recover" ? `Recover ${pendingConfirm.label}?`
-                        : `Delete ${pendingConfirm.label}?`
-                    }
-                    supporting={
-                        pendingConfirm.action === "archive"
-                            ? `Archiving hides this ${pendingConfirm.kind} from active views. All data is preserved and you can recover it later.`
-                        : pendingConfirm.action === "recover"
-                            ? `Recovering brings this ${pendingConfirm.kind} back into the active list.`
-                            : `Deleting this ${pendingConfirm.kind} permanently removes it from the prototype. This can't be undone.`
-                    }
-                    confirmLabel={
-                        pendingConfirm.action === "archive" ? "Archive"
-                        : pendingConfirm.action === "recover" ? "Recover"
-                        : "Delete"
-                    }
-                    destructive={pendingConfirm.action === "delete"}
-                    onCancel={() => setPendingConfirm(null)}
-                    onConfirm={applyPendingConfirm}
-                />
-            )}
+            {pendingConfirm && (() => {
+                const action = pendingConfirm.action;
+                const title = action === "archive" ? `Archive ${pendingConfirm.label}?`
+                    : action === "recover" ? `Recover ${pendingConfirm.label}?`
+                    : `Delete ${pendingConfirm.label}?`;
+                const supporting = action === "archive"
+                    ? `Archiving hides this ${pendingConfirm.kind} from active views. All data is preserved and you can recover it later.`
+                    : action === "recover"
+                    ? `Recovering brings this ${pendingConfirm.kind} back into the active list.`
+                    : `Deleting this ${pendingConfirm.kind} permanently removes it from the prototype. This can't be undone.`;
+                const confirmLabel = action === "archive" ? "Archive"
+                    : action === "recover" ? "Recover"
+                    : "Delete";
+                const destructive = action === "delete";
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={destructive ? Trash04 : Archive}
+                        tone={destructive ? "danger" : "success"}
+                        title={title}
+                        description={supporting}
+                        confirmLabel={confirmLabel}
+                        onConfirm={applyPendingConfirm}
+                        maxWidth={400}
+                    />
+                );
+            })()}
         </div>
     );
 }
@@ -654,12 +672,14 @@ function BranchRow({
 }) {
     const ref = useClickOutside<HTMLDivElement>(onCloseActionMenu, actionMenuOpen);
     return (
-        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec]">
+        <div
+            onClick={onView}
+            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors cursor-pointer">
             {/* Col 1 — Location name (with expand chevron) */}
             <div className="flex items-center gap-2 pl-3 pr-6 h-full">
                 <button
                     type="button"
-                    onClick={onToggleExpand}
+                    onClick={e => { e.stopPropagation(); onToggleExpand(); }}
                     className="w-6 h-6 flex items-center justify-center text-[#475467] hover:bg-[#f9fafb] rounded-[6px] shrink-0"
                     aria-label={expanded ? "Collapse rooms" : "Expand rooms"}
                 >
@@ -701,10 +721,10 @@ function BranchRow({
             </div>
             {/* Col 5 — Status */}
             <div className="px-6">
-                <StatusBadge status={status} />
+                <StatusBadge type="branch" status={status} size="sm" />
             </div>
             {/* Col 6 — Enable toggle (only when active/inactive) */}
-            <div className="px-6">
+            <div onClick={e => e.stopPropagation()} className="px-6">
                 {status !== "archive" ? (
                     <Toggle
                         on={status === "active"}
@@ -714,7 +734,7 @@ function BranchRow({
                 ) : null}
             </div>
             {/* Col 7 — Actions */}
-            <div ref={ref} className="relative px-2 flex justify-end">
+            <div ref={ref} onClick={e => e.stopPropagation()} className="relative px-2 flex justify-end">
                 <button
                     type="button"
                     onClick={actionMenuOpen ? onCloseActionMenu : onOpenActionMenu}
@@ -758,7 +778,9 @@ function RoomRow({
 }) {
     const ref = useClickOutside<HTMLDivElement>(onCloseActionMenu, actionMenuOpen);
     return (
-        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec] bg-white">
+        <div
+            onClick={onView}
+            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors cursor-pointer">
             {/* Col 1 — Room name (indented under branch) */}
             <div className="flex items-center gap-3 pl-[60px] pr-6 h-full">
                 <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
@@ -779,10 +801,10 @@ function RoomRow({
             <div className="px-6" />
             {/* Col 5 — Status */}
             <div className="px-6">
-                <StatusBadge status={status} />
+                <StatusBadge type="branch" status={status} size="sm" />
             </div>
             {/* Col 6 — Enable toggle (only when active/inactive) */}
-            <div className="px-6">
+            <div onClick={e => e.stopPropagation()} className="px-6">
                 {status !== "archive" ? (
                     <Toggle
                         on={status === "active"}
@@ -792,7 +814,7 @@ function RoomRow({
                 ) : null}
             </div>
             {/* Col 7 — Actions */}
-            <div ref={ref} className="relative px-2 flex justify-end">
+            <div ref={ref} onClick={e => e.stopPropagation()} className="relative px-2 flex justify-end">
                 <button
                     type="button"
                     onClick={actionMenuOpen ? onCloseActionMenu : onOpenActionMenu}
@@ -884,92 +906,6 @@ function RoomActionMenu({
 
 // ─── Display primitives ────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: "active" | "inactive" | "archive" }) {
-    if (status === "active") {
-        return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
-                Active
-            </span>
-        );
-    }
-    if (status === "archive") {
-        return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
-                Archived
-            </span>
-        );
-    }
-    return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
-            Inactive
-        </span>
-    );
-}
-
-/** Generic confirmation modal for archive / recover / delete actions. */
-function GenericConfirmModal({
-    title, supporting, confirmLabel, destructive, onCancel, onConfirm,
-}: {
-    title: string;
-    supporting: string;
-    confirmLabel: string;
-    destructive: boolean;
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
-    useEffect(() => {
-        function onKey(e: KeyboardEvent) {
-            if (e.key === "Escape") onCancel();
-        }
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [onCancel]);
-
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[400px] flex flex-col">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    aria-label="Close"
-                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
-                >
-                    <XClose className="w-6 h-6 text-[#98a2b3]" />
-                </button>
-                <div className="pt-6 px-6 flex flex-col items-center gap-4">
-                    <div className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                        destructive ? "bg-[#fee4e2]" : "bg-[#e9fff3]",
-                    )}>
-                        {destructive
-                            ? <Trash04 className="w-6 h-6 text-[#d92d20]" />
-                            : <Archive className="w-6 h-6 text-[#658774]" />
-                        }
-                    </div>
-                    <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
-                        <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 items-start p-6 pt-6 w-full">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant={destructive ? "destructive" : "primary"}
-                        size="lg"
-                        className="flex-1"
-                        onClick={onConfirm}
-                    >
-                        {confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 /** Renders the "M T W T F S S" working-days strip. Closed days render red
  *  (#d92d20). Falls back to all-grey neutral letters if no business_hours
  *  exist for the branch yet. */
@@ -1050,83 +986,6 @@ function Toggle({ on, onChange, ariaLabel }: {
 }
 
 // ─── Hooks ─────────────────────────────────────────────────────────────────
-
-// ─── Toggle confirmation modal ──────────────────────────────────────────────
-
-/** Reactivate / Deactivate confirm — surfaced when the Enable toggle on
- *  any branch / room row is clicked. The two variants differ only in copy
- *  and primary CTA tone (destructive for deactivate, primary for
- *  reactivate), so this single component handles both. */
-function ToggleConfirmModal({ label, kind, action, onCancel, onConfirm }: {
-    label: string;
-    kind: "branch" | "room";
-    action: "deactivate" | "reactivate";
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
-    // Esc closes the modal — same convention as the rest of the app.
-    useEffect(() => {
-        function onKey(e: KeyboardEvent) {
-            if (e.key === "Escape") onCancel();
-        }
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [onCancel]);
-
-    const isDeactivate = action === "deactivate";
-    const title = isDeactivate
-        ? `Deactivate ${label}?`
-        : `Reactivate ${label}?`;
-    const supporting = isDeactivate
-        ? `Deactivating this ${kind} prevents new scheduling and bookings. Existing data is preserved and you can reactivate any time.`
-        : `Reactivating this ${kind} re-enables scheduling, bookings and visibility across the app.`;
-
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[400px] flex flex-col">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    aria-label="Close"
-                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
-                >
-                    <XClose className="w-6 h-6 text-[#98a2b3]" />
-                </button>
-                {/* Featured icon — red for deactivate (matches the destructive
-                    button below); green for reactivate. */}
-                <div className="pt-6 px-6 flex flex-col items-center gap-4">
-                    <div className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                        isDeactivate ? "bg-[#fee4e2]" : "bg-[#d7ffe9]",
-                    )}>
-                        {isDeactivate
-                            ? <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
-                            : <Check className="w-6 h-6 text-[#079455]" />
-                        }
-                    </div>
-                    <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
-                        <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 items-start p-6 pt-6 w-full">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant={isDeactivate ? "destructive" : "primary"}
-                        size="lg"
-                        className="flex-1"
-                        onClick={onConfirm}
-                    >
-                        {isDeactivate ? "Deactivate" : "Reactivate"}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 /** Closes the floating menu when the user clicks outside the referenced
  *  container. `enabled` short-circuits the listener while the menu is

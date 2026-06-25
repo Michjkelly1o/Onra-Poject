@@ -6,7 +6,8 @@
 // updateMembership / updatePackage on the store (see ProductFormPage's
 // handleSubmit), then routes back to /products/[id].
 
-import { useParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
 import {
     ProductFormPage,
@@ -82,10 +83,12 @@ function packageToInitial(p: Package): ProductFormInitial {
 
 // ─── Page ────────────────────────────────────────────────────────────────
 
-export default function EditProductRoute() {
+function EditProductRouteInner() {
     const router = useRouter();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products";
 
     const membership = useAppStore(s => s.memberships.find(m => m.id === id) ?? null);
     const pkg        = useAppStore(s => membership ? null : (s.packages.find(p => p.id === id) ?? null));
@@ -94,7 +97,7 @@ export default function EditProductRoute() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
-                <button type="button" onClick={() => router.push("/admin/products")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to memberships &amp; packages
                 </button>
@@ -105,6 +108,14 @@ export default function EditProductRoute() {
     const initial = membership ? membershipToInitial(membership) : packageToInitial(pkg!);
 
     return (
-        <ProductFormPage mode="edit" productId={id} initial={initial} />
+        <ProductFormPage mode="edit" productId={id} initial={initial} returnTo={returnTo} />
+    );
+}
+
+export default function EditProductRoute() {
+    return (
+        <Suspense fallback={null}>
+            <EditProductRouteInner />
+        </Suspense>
     );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
     UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
@@ -12,14 +12,19 @@ import type { PurchaseLineItem } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { useAppStore, type ClassInstance, type ClassBooking, type Customer, type Membership as MembershipType, type Package as PackageType, type GenderAccess } from "@/lib/store";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { FilterPill } from "@/components/ui/FilterPill";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, planKindFromName, cancellationBadgeKind } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
 import type { ClassRating } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { RowActions } from "@/components/patterns/RowActions";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,35 +58,8 @@ function diffMinutes(start: string, end: string): number {
     return (eh * 60 + em) - (sh * 60 + sm);
 }
 
-// ─── Class status badge (matches class-template TemplateBadge styles) ─────────
-
-function ClassStatusBadge({ status }: { status: ClassInstance["status"] }) {
-    const styles: Record<ClassInstance["status"], string> = {
-        Upcoming: "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#344054]",
-        Ongoing: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    };
-    return (
-        <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium", styles[status])}>
-            {status}
-        </span>
-    );
-}
-
 // ─── Filter pill (used in the right-slide panel) ──────────────────────────────
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn("h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors",
-                selected
-                    ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-[#d0d5dd] text-[#344054] hover:border-[#aad4bd]")}>
-            {label}
-        </button>
-    );
-}
 
 // ─── Booking filter (plan + booking date range) — right-slide panel ───────────
 
@@ -1024,7 +1002,7 @@ function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds
             <div className="relative bg-white rounded-[16px] w-full max-w-[1080px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6">
-                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">POS</p>
+                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Point of Sale</p>
                     <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
                         <XClose className="w-6 h-6 text-[#667085]" />
                     </button>
@@ -1410,54 +1388,6 @@ function EmptyTableIllustration() {
     );
 }
 
-// ─── Row action for booked tab ────────────────────────────────────────────────
-
-function BookedRowActions({ variant, onCancel, onRemove, onPresent, presentDisabled }: {
-    variant: "upcoming" | "ongoing";
-    onCancel?: () => void;
-    onRemove?: () => void;
-    onPresent?: () => void;
-    presentDisabled?: boolean;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                {variant === "upcoming" ? (
-                    <>
-                        <button type="button" onClick={() => { setOpen(false); onCancel?.(); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <SlashCircle01 className="w-4 h-4 text-[#667085]" />
-                            Cancel customer
-                        </button>
-                        <button type="button" onClick={() => { setOpen(false); onRemove?.(); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />
-                            Remove customer
-                        </button>
-                    </>
-                ) : (
-                    <button type="button" disabled={presentDisabled} onClick={() => { setOpen(false); onPresent?.(); }}
-                        className={cn(
-                            "flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium transition-colors",
-                            presentDisabled
-                                ? "text-[#98a2b3] cursor-not-allowed"
-                                : "text-[#344054] hover:bg-[#f9fafb]"
-                        )}>
-                        <CheckCircle className={cn("w-4 h-4", presentDisabled ? "text-[#d0d5dd]" : "text-[#067647]")} />
-                        <span className={presentDisabled ? "" : "text-[#067647]"}>{presentDisabled ? "Already present" : "Present"}</span>
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
-
 // ─── Checkbox cell ────────────────────────────────────────────────────────────
 
 function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
@@ -1645,28 +1575,6 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
     );
 }
 
-// ─── Review row dropdown (Reviews & Rating tab) ───────────────────────────────
-
-function ReviewRowActions({ onDelete }: { onDelete: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => { setOpen(false); onDelete(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                    <Trash01 className="w-4 h-4 text-[#b42318]" />
-                    Delete review
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
-
 // ─── Star rating row ──────────────────────────────────────────────────────────
 
 function StarRow({ score, size = 20 }: { score: number; size?: number }) {
@@ -1695,11 +1603,6 @@ function StoodOutTag({ label }: { label: string }) {
         </span>
     );
 }
-
-// ─── Table cell styles ────────────────────────────────────────────────────────
-
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Left panel — banner + info + actions (matches class-template LeftPanel) ──
 
@@ -1751,7 +1654,7 @@ function LeftPanel({ ci, isUpcoming, isOngoing, isCancelled, isCompleted, canCan
                     </div>
                 )}
                 <div className="absolute top-3 right-3">
-                    <ClassStatusBadge status={ci.status} />
+                    <StatusBadge type="class-detail" status={ci.status} />
                 </div>
             </div>
 
@@ -1867,6 +1770,7 @@ const COMPLETED_TABS: { id: DetailTab; label: string }[] = [
 
 export default function ClassDetailPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams();
     const classId = String(params.classId);
     const {
@@ -1969,6 +1873,11 @@ export default function ClassDetailPage() {
     // Re-open the Add Customer modal automatically when returning from /customers/new
     // (the new-customer page appends ?openAddCustomer=1 to the returnTo path).
     const searchParams = useSearchParams();
+    // Where the X-close button should bounce back to. Entry points that opened
+    // this page (dashboard widget, schedule list row, notification panel, etc.)
+    // pass `?returnTo=<their pathname>`. Falls back to the schedule list when
+    // unset (e.g. user reached this page via direct URL).
+    const returnTo = searchParams.get("returnTo") ?? "/admin/schedule";
     useEffect(() => {
         if (searchParams.get("openAddCustomer") === "1") {
             setAddCustomerOpen(true);
@@ -2051,7 +1960,7 @@ export default function ClassDetailPage() {
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Class not found</p>
-                    <button type="button" onClick={() => router.push("/admin/schedule")}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Back to schedule
                     </button>
@@ -2353,7 +2262,7 @@ export default function ClassDetailPage() {
         });
         setCheckoutItems(null);
         // Keep paymentCustomer set so the modal re-opens after the receipt flow returns.
-        router.push(`/schedule/${ci.id}/checkout`);
+        router.push(`/schedule/${ci.id}/checkout?returnTo=${encodeURIComponent(pathname)}`);
     }
 
     const bookedCount = bookedBookings.length;
@@ -2401,25 +2310,26 @@ export default function ClassDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/schedule")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
             </div>
 
-            {/* Two-column content */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            {/* Two-column content — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
                     <LeftPanel
                         ci={ci}
                         isUpcoming={isUpcoming} isOngoing={isOngoing} isCancelled={isCancelled} isCompleted={isCompleted} canCancelClass={canCancelClass}
                         onAddCustomer={() => setAddCustomerOpen(true)}
-                        onEdit={() => router.push(`/schedule/${ci.id}/edit`)}
+                        onEdit={() => router.push(`/schedule/${ci.id}/edit?returnTo=${encodeURIComponent(pathname)}`)}
                         onCancelClass={() => setCancelClassOpen(true)}
                     />
-
-                    {/* Right panel */}
+                }
+                main={
+                    /* Right panel */
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px] relative">
                         {/* Tabs */}
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
@@ -2579,7 +2489,9 @@ export default function ClassDetailPage() {
                                                         </td>
                                                         {reviewsSubTab === "ratings" && (
                                                             <td className={TD}>
-                                                                <ReviewRowActions onDelete={() => setDeleteReviewTarget(r)} />
+                                                                <RowActions items={[
+                                                                    { label: "Delete review", icon: Trash01, danger: true, onClick: () => setDeleteReviewTarget(r) },
+                                                                ]} minWidth={180} />
                                                             </td>
                                                         )}
                                                     </tr>
@@ -2739,13 +2651,14 @@ export default function ClassDetailPage() {
                                                                 {showActions && (
                                                                     <td className={TD}>
                                                                         {isUpcoming ? (
-                                                                            <BookedRowActions variant="upcoming"
-                                                                                onCancel={() => setCancelBookingTarget(b)}
-                                                                                onRemove={() => setRemoveBookingTarget(b)} />
+                                                                            <RowActions items={[
+                                                                                { label: "Cancel customer", icon: SlashCircle01, onClick: () => setCancelBookingTarget(b) },
+                                                                                { label: "Remove customer", icon: Trash01, danger: true, onClick: () => setRemoveBookingTarget(b) },
+                                                                            ]} />
                                                                         ) : (
-                                                                            <BookedRowActions variant="ongoing"
-                                                                                presentDisabled={b.attendanceStatus === "present"}
-                                                                                onPresent={() => handleMarkPresent(b)} />
+                                                                            <RowActions items={[
+                                                                                { label: b.attendanceStatus === "present" ? "Already present" : "Present", icon: CheckCircle, success: true, successText: true, disabled: b.attendanceStatus === "present", onClick: () => handleMarkPresent(b) },
+                                                                            ]} />
                                                                         )}
                                                                     </td>
                                                                 )}
@@ -2799,8 +2712,8 @@ export default function ClassDetailPage() {
                             />
                         )}
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* Right-slide filter panels — Booking for booked/waitlist/cancelled, Review for reviews tab */}
             <BookingFilterPanel

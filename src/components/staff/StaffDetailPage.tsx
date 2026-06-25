@@ -21,7 +21,7 @@
 // Pending status: sidebar actions footer ONLY shows "Resend invitation".
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Check, Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01,
     Trash01, Send01, ArrowUp, ArrowDown, ArrowUpRight,
@@ -32,6 +32,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import {
     PerformanceLineChart, AttendanceBarChart,
@@ -66,79 +69,41 @@ const ROLE_TYPE_BADGE: Record<RoleType, string> = {
 // ─── Confirm modal ─────────────────────────────────────────────────────────
 
 type ConfirmKind = "archive" | "recover" | "deactivate" | "reactivate" | "delete";
+type ConfirmTone = "danger" | "success" | "warning" | "info";
 
 const CONFIRM_CFG: Record<ConfirmKind, {
     title: (s: string) => string;
-    description: () => string;
+    description: string;
     confirmLabel: string;
-    destructive: boolean;
+    tone: ConfirmTone;
     Icon: React.ComponentType<{ className?: string }>;
-    iconBg: string;
-    iconColor: string;
 }> = {
     archive: {
         title: s => `Archive ${s}?`,
-        description: () => "Archived staff are hidden from the default lists but kept for audit. You can recover later.",
-        confirmLabel: "Archive", destructive: false,
-        Icon: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        description: "Archived staff are hidden from the default lists but kept for audit. You can recover later.",
+        confirmLabel: "Archive", tone: "success", Icon: Archive,
     },
     recover: {
         title: s => `Recover ${s}?`,
-        description: () => "The staff member returns to Active and login is re-enabled.",
-        confirmLabel: "Recover", destructive: false,
-        Icon: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        description: "The staff member returns to Active and login is re-enabled.",
+        confirmLabel: "Recover", tone: "success", Icon: RefreshCcw01,
     },
     deactivate: {
         title: s => `Deactivate ${s}?`,
-        description: () => "Login is disabled but all historical data is kept. You can reactivate later.",
-        confirmLabel: "Deactivate", destructive: true,
-        Icon: SlashCircle01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
+        description: "Login is disabled but all historical data is kept. You can reactivate later.",
+        confirmLabel: "Deactivate", tone: "danger", Icon: SlashCircle01,
     },
     reactivate: {
         title: s => `Reactivate ${s}?`,
-        description: () => "Login is re-enabled and the staff member returns to Active.",
-        confirmLabel: "Reactivate", destructive: false,
-        Icon: Check, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        description: "Login is re-enabled and the staff member returns to Active.",
+        confirmLabel: "Reactivate", tone: "success", Icon: Check,
     },
     delete: {
         title: s => `Delete ${s}?`,
-        description: () => "This permanently removes the staff record. Only allowed when no first login has happened.",
-        confirmLabel: "Delete", destructive: true,
-        Icon: Trash01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
+        description: "This permanently removes the staff record. Only allowed when no first login has happened.",
+        confirmLabel: "Delete", tone: "danger", Icon: Trash01,
     },
 };
-
-function ConfirmModal({ kind, subject, onCancel, onConfirm }: {
-    kind: ConfirmKind; subject: string; onCancel: () => void; onConfirm: () => void;
-}) {
-    const cfg = CONFIRM_CFG[kind];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", cfg.iconBg)}>
-                        <cfg.Icon className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title(subject)}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description()}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.destructive ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ─── Sidebar action button ────────────────────────────────────────────────
 
@@ -314,21 +279,8 @@ function LinkRow({ icon, label, onClick }: { icon: React.ReactNode; label: strin
     );
 }
 
-// ─── Tab underline button ────────────────────────────────────────────────
-
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-    return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
-                active
-                    ? "border-b-2 border-[#101828] text-[#101828]"
-                    : "text-[#667085] hover:text-[#344054]",
-            )}>
-            {label}
-        </button>
-    );
-}
+// Local TabBtn removed — uses canonical `<DetailPageTabs>` from
+// `@/components/patterns/DetailPageTabs`.
 
 // ─── Permissions tab (same shape as RoleDetailPage) ──────────────────────
 
@@ -713,6 +665,7 @@ type TabId = "overview" | "permissions";
 
 export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: StaffDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const allStaff           = useAppStore(s => s.staff);
     const allRoles           = useAppStore(s => s.roles);
     const payRates           = useAppStore(s => s.payRates);
@@ -802,7 +755,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
         setPendingConfirm(null);
     }
     function handleSidebarAction(kind: "edit_details" | "change_role" | "resend_invite" | ConfirmKind) {
-        if (kind === "edit_details")  return router.push(`/staff/members/${staff!.id}/edit?returnTo=/staff/members/${staff!.id}`);
+        if (kind === "edit_details")  return router.push(`/staff/members/${staff!.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
         if (kind === "change_role")   return setChangeRoleOpen(true);
         if (kind === "resend_invite") return handleResend();
         setPendingConfirm(kind);
@@ -819,8 +772,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            <DetailPageShell
+                sidebar={
                     <Sidebar
                         staff={staff}
                         role={role}
@@ -829,43 +782,57 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                         branches={branches}
                         hasHistory={!canDeleteStaff(staff.id)}
                     />
-
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
-                            <div className="flex gap-1">
-                                {isInstructor && (
-                                    <TabBtn label="Overview" active={tab === "overview"} onClick={() => setTab("overview")} />
+                }
+                main={
+                    <>
+                        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
+                            <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                                <DetailPageTabs
+                                    tabs={[
+                                        { key: "overview", label: "Overview", hidden: !isInstructor },
+                                        { key: "permissions", label: "Permissions" },
+                                    ]}
+                                    activeKey={tab}
+                                    onChange={(k) => setTab(k as typeof tab)}
+                                />
+                            </div>
+                            <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
+                                {!role ? (
+                                    <div className="px-6 pb-6 relative" style={{ minHeight: 320 }}>
+                                        <EmptyState title="Role missing" subtitle="The role assigned to this staff member is no longer available." />
+                                    </div>
+                                ) : tab === "overview" && isInstructor ? (
+                                    <InstructorOverviewTab staff={staff} />
+                                ) : (
+                                    <PermissionsTab role={role} />
                                 )}
-                                <TabBtn label="Permissions" active={tab === "permissions"} onClick={() => setTab("permissions")} />
                             </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
-                            {!role ? (
-                                <div className="px-6 pb-6 relative" style={{ minHeight: 320 }}>
-                                    <EmptyState title="Role missing" subtitle="The role assigned to this staff member is no longer available." />
-                                </div>
-                            ) : tab === "overview" && isInstructor ? (
-                                <InstructorOverviewTab staff={staff} />
-                            ) : (
-                                <PermissionsTab role={role} />
-                            )}
-                        </div>
-                    </div>
 
-                    {isInstructor && (
-                        <InternalLinkCard staff={staff} payRateId={staff.payRateId} />
-                    )}
-                </div>
-            </div>
+                        {/* Optional third flex child — renders alongside the
+                            main panel when the staff member is an instructor. */}
+                        {isInstructor && (
+                            <InternalLinkCard staff={staff} payRateId={staff.payRateId} />
+                        )}
+                    </>
+                }
+            />
 
-            {pendingConfirm && (
-                <ConfirmModal
-                    kind={pendingConfirm}
-                    subject={`"${staff.fullName}"`}
-                    onCancel={() => setPendingConfirm(null)}
-                    onConfirm={() => performConfirm(pendingConfirm)}
-                />
-            )}
+            {pendingConfirm && (() => {
+                const cfg = CONFIRM_CFG[pendingConfirm];
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.Icon}
+                        tone={cfg.tone}
+                        title={cfg.title(`"${staff.fullName}"`)}
+                        description={cfg.description}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={() => performConfirm(pendingConfirm)}
+                    />
+                );
+            })()}
 
             {changeRoleOpen && (
                 <ChangeRoleModal

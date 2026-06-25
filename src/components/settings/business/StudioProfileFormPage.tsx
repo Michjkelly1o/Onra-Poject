@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore } from "@/lib/store";
+import { SectionHeader } from "@/components/patterns/SectionHeader";
 import {
     PhoneCountryDropdown, splitPhone,
     type PhoneCountry,
@@ -333,16 +334,11 @@ function StepRow({ step, current, isLast }: {
     );
 }
 
-export function SectionHeader({ title, small = false }: { title: string; small?: boolean }) {
-    return (
-        <p className={cn(
-            "font-semibold text-[#101828]",
-            small ? "text-[16px] leading-6 pt-2" : "text-[18px] leading-7"
-        )}>
-            {title}
-        </p>
-    );
-}
+// Local SectionHeader replaced by re-export of canonical so the 5 existing
+// `import { SectionHeader } from "@/components/settings/business/StudioProfileFormPage"`
+// importers keep working without a code change.
+export { SectionHeader } from "@/components/patterns/SectionHeader";
+
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (

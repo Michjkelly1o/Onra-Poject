@@ -22,23 +22,28 @@
 //   module — nothing else to touch.
 //
 // ── Current state ──
-//   ENABLED:  every admin-side module — Dashboard, Class template, Class
-//   schedule, POS, Membership & Package, Gift Cards, Promo, Marketing,
-//   Customer, Services (incl. appointments), Insights, Pay rate, Payroll,
-//   Staff & Permissions (Roles + Staff + Shift management + Blocked time),
-//   Tax, Agreements, Payments, Integrations, Referral, Reports,
+//   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
+//   Membership & Package, Gift Cards, Promo, Marketing, Customer,
+//   Services (incl. appointments), Insights, Pay rate, Payroll,
+//   Staff & Permissions (Roles + Staff + Blocked time tabs — Shift
+//   management create/detail/edit is currently DISABLED below), Tax,
+//   Agreements, Payments, Integrations, Referral, Reports,
 //   Notifications, Customer notifications, Booking rules, Business &
 //   Locations, Account settings, Branding.
 //
-//   Most of the Instructor experience is ENABLED for the client demo —
-//   Dashboard, Schedule, and the upcoming/ongoing takeover detail page
-//   (`/class/[id]`) are reachable.
+//   DISABLED (admin): /staff/shifts — create / detail / edit for
+//   shifts. The "Shift management" sub-tab itself still appears in
+//   /admin/staff but its rows can't be opened.
 //
-//   DISABLED on the Instructor side: Earnings (list + `/earnings/[id]`
-//   takeover detail page), Notifications, and Account / Profile.
-//   Sidebar menu items stay visible per the file convention; clicking
-//   any of them 404s. Re-enable by removing the matching entry from
-//   the array.
+//   ENABLED (instructor): Dashboard, Schedule, and the upcoming/ongoing
+//   takeover detail page (`/class/[id]`).
+//
+//   DISABLED (instructor): Earnings list (`/instructor/earnings`),
+//   Earnings takeover detail (`/earnings/[id]`), Notifications
+//   (`/instructor/notifications`), Account / Profile
+//   (`/instructor/account`). Sidebar menu items stay visible per the
+//   file convention; clicking any of them 404s. Re-enable by removing
+//   the matching entry from the array.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -90,14 +95,14 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/reports",                // landing (5 category containers)
     //"/reports",                      // 20 detail pages (full-bleed, X-close chrome)
 
-    // ── Staff & Permissions module ── (ENABLED — pushing today)
+    // ── Staff & Permissions module ── (PARTIALLY ENABLED — Shift create/detail/edit hidden today)
     // Exact-match only on the list — otherwise this prefix would also catch
     // `/admin/staff/pay-rate`, which we want LIVE.
     //"=/admin/staff",                 // list view (Roles + Staff + Shift management + Blocked time tabs)
     //"/staff/roles",                  // role create / detail / edit / edit-permissions
     //"/staff/members",                // staff create / detail / edit
-    "/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab)
-    "/staff/blocked-time",           // blocked-time create / edit (Blocked time sub-tab)
+    "/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab) — DISABLED for today's demo
+    //"/staff/blocked-time",           // blocked-time create / edit (Blocked time sub-tab)
 
     // ── Notifications module ── (ENABLED — admin)
     //"/admin/notifications",          // full page (All / Bookings / Payments tabs)
@@ -159,7 +164,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // again. Left commented here for documentation:
     //"/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
     //"/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
-    "/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page
+    "/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page — DISABLED for today's demo
 
     // ── Instructor → Earnings module ── (DISABLED — not for client demo)
     // Closes off the main earnings list page at /instructor/earnings.

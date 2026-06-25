@@ -1622,9 +1622,11 @@ export interface ProductFormPageProps {
     /** Required when mode === "edit" — the id the save action writes to. */
     productId?: string;
     initial?: ProductFormInitial;
+    /** Where the close / list-bound nav should return to. */
+    returnTo?: string;
 }
 
-export function ProductFormPage({ mode, productId, initial }: ProductFormPageProps) {
+export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/products" }: ProductFormPageProps) {
     const router = useRouter();
 
     const isEdit = mode === "edit";
@@ -1665,7 +1667,7 @@ export function ProductFormPage({ mode, productId, initial }: ProductFormPagePro
     function handleClose() {
         // Edit mode returns to the detail page; create mode returns to list.
         if (isEdit && productId) router.push(`/products/${productId}`);
-        else                     router.push("/admin/products");
+        else                     router.push(returnTo);
     }
 
     /** Step 5 primary action.

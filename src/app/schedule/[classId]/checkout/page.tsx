@@ -85,14 +85,22 @@ function ScheduleCheckoutInner() {
         }
     }, [paymentMethod, enabledMethods]);
 
-    if (!pendingPurchase || !customer) return null;
-
     // Resolve branch from the originating schedule so branch-specific tax
     // rules apply (falls back to undefined → all_locations rule).
+    //
+    // IMPORTANT: this `useMemo` MUST stay above the `pendingPurchase`/`customer`
+    // null-guard early-return below — when the user closes checkout the store
+    // clears `pendingPurchase`, the component re-renders briefly before the
+    // router.replace navigates away, and if any hook here is skipped we hit
+    // "Rendered fewer hooks than expected" and the app falls into error.tsx.
     const branchId = useMemo(
-        () => classSchedules.find(s => s.id === pendingPurchase.classScheduleId)?.branchId,
-        [classSchedules, pendingPurchase.classScheduleId],
+        () => pendingPurchase
+            ? classSchedules.find(s => s.id === pendingPurchase.classScheduleId)?.branchId
+            : undefined,
+        [classSchedules, pendingPurchase],
     );
+
+    if (!pendingPurchase || !customer) return null;
     const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, total } = computeTotals(
         pendingPurchase.items,
         pendingPurchase.discountPercent,

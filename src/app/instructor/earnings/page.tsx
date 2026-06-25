@@ -42,6 +42,7 @@ import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
 import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Class-status badge — exact chrome admin uses in TABLE ROWS (compact
@@ -49,29 +50,6 @@ import { cn } from "@/lib/utils";
 // BookingStatusBadge). Smaller than the page-level class status badge
 // because it sits in a table row alongside 14px body text.
 // ────────────────────────────────────────────────────────────────────────────
-/** Class status badge — VERBATIM admin's
- *  [PayrollInstructorDetailPage.tsx:131](src/components/staff/PayrollInstructorDetailPage.tsx).
- *  Same `px-[10px] py-[2px] text-[13px]`, same `border-1 border-[color]`
- *  per status. This is the page-level "class status" treatment — distinct
- *  from the smaller per-row PresentBadge / NoShowBadge in admin tables. */
-const CLASS_STATUS_STYLES: Record<ClassStatus, string> = {
-    Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    Upcoming:  "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-    Ongoing:   "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-};
-
-function ClassStatusBadge({ status }: { status: ClassStatus }) {
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            CLASS_STATUS_STYLES[status],
-        )}>
-            {status}
-        </span>
-    );
-}
-
 // ─── Admin table chrome — VERBATIM PayrollInstructorDetailPage line 523-524 ─
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
@@ -269,7 +247,7 @@ export default function InstructorEarningsPage() {
         // layout) so it can render as a full-screen takeover — same pattern
         // admin uses for `/schedule/[classId]`. The detail page handles the
         // persona auto-flip itself.
-        router.push(`/earnings/${classId}`);
+        router.push(`/earnings/${classId}?returnTo=${encodeURIComponent("/instructor/earnings")}`);
     }
 
     return (
@@ -484,7 +462,8 @@ function EarningsRow({ schedule, payRate, onViewDetails }: EarningsRowProps) {
     const earnings = earningsForClass(schedule, payRate, 1);
 
     return (
-        <tr className="transition-colors hover:bg-[#f9fafb]">
+        <tr onClick={onViewDetails}
+            className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
             {/* Class name — name on top, date below; admin's exact fonts. */}
             <td className={TD}>
                 <div className="flex flex-col">
@@ -524,10 +503,10 @@ function EarningsRow({ schedule, payRate, onViewDetails }: EarningsRowProps) {
                 )}
             </td>
 
-            <td className={TD}><ClassStatusBadge status={schedule.status} /></td>
+            <td className={TD}><StatusBadge type="class-payroll" status={schedule.status} /></td>
             <td className={TD}>{payRate?.name ?? "—"}</td>
             <td className={TD}>{earnings > 0 ? aed(earnings) : "—"}</td>
-            <td className={TD}><RowKebab onView={onViewDetails} /></td>
+            <td className={TD} onClick={e => e.stopPropagation()}><RowKebab onView={onViewDetails} /></td>
         </tr>
     );
 }

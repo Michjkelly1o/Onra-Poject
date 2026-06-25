@@ -22,23 +22,24 @@
 //   • View-content modal             — 4209-156334
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
-    XClose, Plus, Edit02, Archive, DotsVertical, Eye, Send03, File06, File02,
+    XClose, Plus, Edit02, Archive, Eye, Send03, File06, File02,
     Calendar, ChevronUp, ChevronDown, ChevronLeft, Check, RefreshCcw01, SearchLg,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import {
     useAppStore,
     type Agreement, type AgreementStatus, type AgreementVersion,
 } from "@/lib/store";
 import { AgreementContentModal } from "./AgreementContentModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
-
-const RETURN_ROUTE = "/admin/settings/agreements";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions } from "@/components/patterns/RowActions";
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
@@ -59,30 +60,6 @@ function formatDateShort(iso: string): string {
 function scopeLabel(a: Agreement): string {
     if (a.allLocations || a.locationIds.length > 1) return "Multi-branch";
     return "Specific branch";
-}
-
-// ─── StatusBadge (canonical 14px — mirrors membership detail) ───────────────
-
-function StatusBadge({ status }: { status: AgreementStatus }) {
-    const styles: Record<AgreementStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {status === "active" ? "Active" : "Archived"}
-        </span>
-    );
-}
-
-// Status pill specifically for version rows (Active for current, Archived rest)
-function VersionStatusBadge({ active }: { active: boolean }) {
-    return active
-        ? <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">Active</span>
-        : <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">Archived</span>;
 }
 
 // ─── Disabled-state checkbox (matches membership "details" branch rows) ─────
@@ -192,7 +169,7 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
             <div className="relative shrink-0">
                 <PatternBanner />
                 <div className="absolute top-3 right-3">
-                    <StatusBadge status={agreement.status} />
+                    <StatusBadge type="agreement" status={agreement.status} size="lg" />
                 </div>
             </div>
 
@@ -421,7 +398,9 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                         ) : pagedRows.map(v => {
                             const isCurrent = v.versionNumber === agreement.currentVersion;
                             return (
-                                <tr key={v.id} className="transition-colors border-b border-[#f2f4f7] hover:bg-[#f9fafb]">
+                                <tr key={v.id}
+                                    onClick={() => onView(v)}
+                                    className="transition-colors border-b border-[#f2f4f7] hover:bg-[#f9fafb] cursor-pointer">
                                     <td className="py-4 pr-3">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-[#f2f4f7] flex items-center justify-center shrink-0 relative">
@@ -435,14 +414,15 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                                         </div>
                                     </td>
                                     <td className="py-4 pr-3 text-center">
-                                        <VersionStatusBadge active={isCurrent} />
+                                        <StatusBadge type="version" status={isCurrent ? "active" : "archived"} size="lg" />
                                     </td>
-                                    <td className="py-4 pr-3">
+                                    <td onClick={e => e.stopPropagation()} className="py-4 pr-3">
                                         <div className="flex justify-end">
-                                            <VersionRowActions
-                                                showRepublish={isCurrent}
-                                                onView={() => onView(v)}
-                                                onRepublish={() => onRepublish(v)}
+                                            <RowActions
+                                                items={[
+                                                    { label: "View", icon: Eye, onClick: () => onView(v) },
+                                                    { label: "Republish agreement", icon: Send03, onClick: () => onRepublish(v), hidden: !isCurrent },
+                                                ]}
                                             />
                                         </div>
                                     </td>
@@ -462,38 +442,6 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                     onPageSize={s => { setPageSize(s); setPage(1); }}
                 />
             </div>
-        </div>
-    );
-}
-
-function VersionRowActions({ showRepublish, onView, onRepublish }: {
-    showRepublish: boolean;
-    onView: () => void;
-    onRepublish: () => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => trigger(onView)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View
-                </button>
-                {/* Republish — Brief: "ONLY FOR THE NEW VERSION" — i.e. the
-                    current/Active version row. Archived versions hide it. */}
-                {showRepublish && (
-                    <button type="button" onClick={() => trigger(onRepublish)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Send03 className="w-4 h-4 text-[#667085]" />Republish agreement
-                    </button>
-                )}
-            </FixedDropdown>
         </div>
     );
 }
@@ -591,54 +539,14 @@ function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
 
 // ─── Archive / Recover confirmation modal ───────────────────────────────────
 
-function ConfirmModal({ kind, agreementName, onConfirm, onCancel }: {
-    kind: "archive" | "recover";
-    agreementName: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const isArchive = kind === "archive";
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className="w-12 h-12 rounded-full bg-[#e9fff3] flex items-center justify-center shrink-0">
-                        {isArchive
-                            ? <Archive className="w-6 h-6 text-[#658774]" />
-                            : <RefreshCcw01 className="w-6 h-6 text-[#658774]" />}
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
-                            {isArchive ? "Archive this agreement?" : "Recover this agreement?"}
-                        </h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{agreementName}</span>
-                            {isArchive
-                                ? " will be hidden from the default list. All signed records and version history are preserved — you can recover archived agreements at any time."
-                                : " will be restored to Active status and shown in the agreements list again."}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant="primary" size="lg" className="flex-1" onClick={onConfirm}>
-                        {isArchive ? "Archive" : "Recover"}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ConfirmModal removed — call sites use the canonical
+// `<ConfirmModal>` from `@/components/modals/ConfirmModal`.
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
+export function AgreementDetailPage({ agreementId, returnTo = "/admin/settings/agreements" }: { agreementId: string; returnTo?: string }) {
     const router = useRouter();
+    const pathname = usePathname();
 
     const agreement = useAppStore(s => s.agreements.find(a => a.id === agreementId));
     const allVersions = useAppStore(s => s.agreementVersions);
@@ -652,7 +560,7 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
     const [confirm, setConfirm] = useState<"archive" | "recover" | null>(null);
 
     useEffect(() => {
-        if (!agreement) router.replace(RETURN_ROUTE);
+        if (!agreement) router.replace(returnTo);
     }, [agreement, router]);
 
     const versions = useMemo(
@@ -689,13 +597,13 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
     if (!agreement) return null;
 
     function handleClose() {
-        router.push(RETURN_ROUTE);
+        router.push(returnTo);
     }
     function handleAddVersion() {
-        router.push(`/settings/agreements/${agreementId}/new-version`);
+        router.push(`/settings/agreements/${agreementId}/new-version?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleEdit() {
-        router.push(`/settings/agreements/${agreementId}/edit`);
+        router.push(`/settings/agreements/${agreementId}/edit?returnTo=${encodeURIComponent(pathname)}`);
     }
     function handleArchiveConfirmed() {
         if (!agreement) return;
@@ -746,9 +654,9 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
                 </h1>
             </div>
 
-            {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={
                     <LeftSidebar
                         agreement={agreement}
                         onAddVersion={handleAddVersion}
@@ -756,6 +664,8 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
                         onArchive={() => setConfirm("archive")}
                         onRecover={() => setConfirm("recover")}
                     />
+                }
+                main={
                     <RightPanel
                         agreement={agreement}
                         versions={versions}
@@ -763,8 +673,8 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
                         onView={setViewVersion}
                         onRepublish={handleRepublish}
                     />
-                </div>
-            </div>
+                }
+            />
 
             <AgreementContentModal
                 version={viewVersion}
@@ -773,14 +683,28 @@ export function AgreementDetailPage({ agreementId }: { agreementId: string }) {
                 onClose={() => setViewVersion(null)}
             />
 
-            {confirm && (
-                <ConfirmModal
-                    kind={confirm}
-                    agreementName={agreement.name}
-                    onConfirm={confirm === "archive" ? handleArchiveConfirmed : handleRecoverConfirmed}
-                    onCancel={() => setConfirm(null)}
-                />
-            )}
+            {confirm && (() => {
+                const isArchive = confirm === "archive";
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setConfirm(null)}
+                        icon={isArchive ? Archive : RefreshCcw01}
+                        tone="success"
+                        title={isArchive ? "Archive this agreement?" : "Recover this agreement?"}
+                        description={
+                            <>
+                                <span className="font-medium text-[#344054]">{agreement.name}</span>
+                                {isArchive
+                                    ? " will be hidden from the default list. All signed records and version history are preserved — you can recover archived agreements at any time."
+                                    : " will be restored to Active status and shown in the agreements list again."}
+                            </>
+                        }
+                        confirmLabel={isArchive ? "Archive" : "Recover"}
+                        onConfirm={isArchive ? handleArchiveConfirmed : handleRecoverConfirmed}
+                    />
+                );
+            })()}
 
             {/* The /settings/* route lives outside the admin layout, which
                 normally mounts the Toast. Mount it directly here so

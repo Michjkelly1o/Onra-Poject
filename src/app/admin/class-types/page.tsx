@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -25,21 +26,6 @@ const ALL_STATUSES: TemplateStatus[] = ["Active", "Archived", "Inactive"];
 // Booking Rules module reflects here on the same render.
 const LOCATION_TYPES: LocationType[] = ["Group", "Private"];
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: TemplateStatus }) {
-    const styles: Record<TemplateStatus, string> = {
-        Active:   "bg-[#ecfdf3] border border-[#abefc6] text-[#067647]",
-        Archived: "bg-[#f9fafb] border border-[#e4e7ec] text-[#344054]",
-        Inactive: "bg-[#f9fafb] border border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap", styles[status])}>
-            {status}
-        </span>
-    );
-}
-
 // ─── Class template card ──────────────────────────────────────────────────────
 
 function ClassTemplateCard({ template }: { template: ClassTemplate }) {
@@ -50,7 +36,7 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
     const effectiveCover  = resolveTemplateCoverImage(template, classCategories);
     return (
         <div
-            onClick={() => router.push(`/class-types/${template.id}`)}
+            onClick={() => router.push(`/class-types/${template.id}?returnTo=${encodeURIComponent("/admin/class-types")}`)}
             className={cn(
                 "bg-white border border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
                 "transition-all duration-150",
@@ -67,7 +53,7 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
                     />
                 )}
                 <div className="absolute top-3 right-3 z-10">
-                    <StatusBadge status={template.status} />
+                    <StatusBadge type="template" status={template.status} size="lg" />
                 </div>
             </div>
 
@@ -311,7 +297,7 @@ export default function ClassTypesPage() {
                 </Button>
 
                 {/* Add template */}
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push("/class-types/new")}>
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`)}>
                     Add template
                 </Button>
             </div>

@@ -15,7 +15,7 @@
 //     circle, matching the Figma 3726:21787 reference
 //
 // State source of truth: useAppStore(s => s.giftCardDesigns). Edits, status
-// flips and deletes propagate to the POS catalog instantly via the live
+// flips and deletes propagate to the Point of Sale catalog instantly via the live
 // store join.
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +30,14 @@ import { cn } from "@/lib/utils";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { Button } from "@/components/ui/button";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
@@ -89,34 +97,11 @@ function validUntilLabel(g: GiftCardDesign): string {
 
 // ─── Status badge ────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: GiftCardStatus }) {
-    // Same palette as memberships/packages — Active green, Inactive +
-    // Archived share the neutral gray treatment.
-    const styles: Record<GiftCardStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
+// Local StatusBadge removed — uses canonical `<StatusBadge type="gift-card">`
+// from `@/components/patterns/StatusBadge`.
 
-// ─── Gift avatar (Figma 3726:21787) ─────────────────────────────────────────
-
-function GiftAvatar() {
-    return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <Gift01 className="w-5 h-5 text-[#475467]" />
-            <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
-        </div>
-    );
-}
+// Local GiftAvatar removed — uses canonical `<IconAvatar icon={Gift01} />`
+// from `@/components/patterns/IconAvatar`.
 
 // ─── Status filter dropdown (single-select, simpler than side-panel) ────────
 
@@ -187,80 +172,9 @@ function StatusFilterDropdown({ value, onChange }: {
 
 type RowActionKind = "deactivate" | "reactivate" | "archive" | "recover" | "delete";
 
-function RowActions({ status, hasHolders, onView, onEdit, onAction }: {
-    status: GiftCardStatus;
-    hasHolders: boolean;
-    onView: () => void;
-    onEdit: () => void;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => trigger(onView)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-
-                {status === "active" && (
-                    <button type="button" onClick={() => trigger(onEdit)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit
-                    </button>
-                )}
-
-                {(status === "active" || status === "inactive") && (
-                    <button type="button" onClick={() => trigger(() => onAction("archive"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                )}
-
-                {status === "inactive" && (
-                    <button type="button" onClick={() => trigger(() => onAction("reactivate"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
-                    </button>
-                )}
-
-                {status === "archived" && (
-                    <button type="button" onClick={() => trigger(() => onAction("recover"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-
-                {/* Deactivate ↔ Delete — Active rows only. Inactive/archived
-                    rows must be Reactivated/Recovered before they can be
-                    deleted. */}
-                {(() => {
-                    if (status === "active") {
-                        return hasHolders ? (
-                            <button type="button" onClick={() => trigger(() => onAction("deactivate"))}
-                                className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Deactivate
-                            </button>
-                        ) : (
-                            <button type="button" onClick={() => trigger(() => onAction("delete"))}
-                                className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                                <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                            </button>
-                        );
-                    }
-                    return null;
-                })()}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `<RowActions items={[...]}>` from
+// `@/components/patterns/RowActions`. Items array is built per-row at the
+// call site below based on status + hasHolders.
 
 // ─── Confirmation modal (same tone matrix as memberships) ───────────────────
 
@@ -278,7 +192,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
         titleSingle: "Archive this gift card?",
         titleBulk:   n => `Archive ${n} gift cards?`,
-        description: subject => <>{subject} will be removed from the POS catalog. You can recover archived gift cards at any time.</>,
+        description: subject => <>{subject} will be removed from the Point of Sale catalog. You can recover archived gift cards at any time.</>,
         confirmLabel: "Archive",
         tone: "primary",
     },
@@ -286,7 +200,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
         titleSingle: "Deactivate this gift card?",
         titleBulk:   n => `Deactivate ${n} gift cards?`,
-        description: (subject, n) => <>{subject} will be hidden from new POS sales. Customers who already hold {n === 1 ? "it" : "them"} keep their balance.</>,
+        description: (subject, n) => <>{subject} will be hidden from new Point of Sale sales. Customers who already hold {n === 1 ? "it" : "them"} keep their balance.</>,
         confirmLabel: "Deactivate",
         tone: "destructive",
     },
@@ -302,7 +216,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
         titleSingle: "Reactivate this gift card?",
         titleBulk:   n => `Reactivate ${n} gift cards?`,
-        description: subject => <>{subject} will become available again in the POS catalog.</>,
+        description: subject => <>{subject} will become available again in the Point of Sale catalog.</>,
         confirmLabel: "Reactivate",
         tone: "primary",
     },
@@ -316,42 +230,8 @@ const MODAL_CONFIG: Record<ModalAction, {
     },
 };
 
-function ActionModal({ action, count, subject, onConfirm, onCancel }: {
-    action: ModalAction;
-    count: number;
-    subject: React.ReactNode;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(subject, count)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.tone === "destructive" ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — uses canonical `<ConfirmModal>` driven by
+// MODAL_CONFIG above.
 
 // ─── Export dropdown ────────────────────────────────────────────────────────
 
@@ -405,48 +285,7 @@ function exportGiftCardsCsv(rows: GiftCardRow[]) {
     downloadCsv(`gift-cards-${todayISO()}.csv`, buildCsv(header, body));
 }
 
-// ─── Pagination (same shape as /admin/products) ─────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Bulk action bar (floating pill, same pattern as memberships) ───────────
 
@@ -462,7 +301,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -509,8 +348,6 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 
 // ─── Table header/cell constants ───────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Checkbox cell (same sage style as schedule + memberships) ──────────────
 
@@ -639,11 +476,12 @@ function ListView({
                         const isSelected = selectedIds.has(r.id);
                         return (
                             <tr key={r.id}
+                                onClick={() => onView(r)}
                                 className={cn(
-                                    "transition-colors",
+                                    "transition-colors cursor-pointer",
                                     isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
                                 )}>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <CheckboxCell
                                         checked={isSelected}
                                         onChange={() => onToggleOne(r.id)}
@@ -652,22 +490,24 @@ function ListView({
                                 </td>
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
-                                        <GiftAvatar />
+                                        <IconAvatar icon={Gift01} />
                                         <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                     </div>
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.priceLabel}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.activeCustomers}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.validUntil}</td>
-                                <td className={TD}><StatusBadge status={r.status} /></td>
-                                <td className={TD}>
-                                    <RowActions
-                                        status={r.status}
-                                        hasHolders={r.hasHolders}
-                                        onView={() => onView(r)}
-                                        onEdit={() => onEdit(r)}
-                                        onAction={k => onRowAction(r, k)}
-                                    />
+                                <td className={TD}><StatusBadge type="gift-card" status={r.status} /></td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions items={[
+                                        { label: "View details", icon: Eye, onClick: () => onView(r) },
+                                        { label: "Edit", icon: Edit02, onClick: () => onEdit(r), hidden: r.status !== "active" },
+                                        { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status !== "active" && r.status !== "inactive" },
+                                        { label: "Reactivate", icon: Check, onClick: () => onRowAction(r, "reactivate"), hidden: r.status !== "inactive" },
+                                        { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status !== "archived" },
+                                        { label: "Deactivate", icon: SlashCircle01, onClick: () => onRowAction(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHolders) },
+                                        { label: "Delete", icon: Trash01, onClick: () => onRowAction(r, "delete"), danger: true, hidden: !(r.status === "active" && !r.hasHolders) },
+                                    ]} />
                                 </td>
                             </tr>
                         );
@@ -763,10 +603,10 @@ export default function GiftCardsPage() {
         setPendingConfirm({ mode: "row", row, kind });
     }
     function handleView(row: GiftCardRow) {
-        router.push(`/products/gift-cards/${row.id}`);
+        router.push(`/products/gift-cards/${row.id}?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`);
     }
     function handleEdit(row: GiftCardRow) {
-        router.push(`/products/gift-cards/${row.id}/edit`);
+        router.push(`/products/gift-cards/${row.id}/edit?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`);
     }
     function openBulkConfirm(kind: RowActionKind) {
         const rowsForKind = (() => {
@@ -860,19 +700,8 @@ export default function GiftCardsPage() {
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
-                        {filteredRows.length} {filteredRows.length === 1 ? "gift card" : "gift cards"}
-                    </p>
-                </div>
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search product..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarTotal count={filteredRows.length} entitySingular="gift card" />
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
                 <ExportDropdown
                     onExportCsv={() => {
                         exportGiftCardsCsv(filteredRows);
@@ -884,7 +713,7 @@ export default function GiftCardsPage() {
                     }}
                 />
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/products/gift-cards/new")}>
+                    onClick={() => router.push(`/products/gift-cards/new?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`)}>
                     Add new
                 </Button>
             </div>
@@ -932,13 +761,18 @@ export default function GiftCardsPage() {
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);
+                const cfg = MODAL_CONFIG[pendingConfirm.kind];
+                const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
                 return (
-                    <ActionModal
-                        action={pendingConfirm.kind}
-                        count={count}
-                        subject={subject}
+                    <ConfirmModal
+                        open
+                        onClose={() => setPendingConfirm(null)}
+                        icon={cfg.IconComp}
+                        tone={cfg.tone === "destructive" ? "danger" : "success"}
+                        title={title}
+                        description={cfg.description(subject, count)}
+                        confirmLabel={cfg.confirmLabel}
                         onConfirm={() => performAction(pendingConfirm)}
-                        onCancel={() => setPendingConfirm(null)}
                     />
                 );
             })()}

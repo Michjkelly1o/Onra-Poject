@@ -32,69 +32,23 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, DotsVertical,
+    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
     FilterLines,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
+import { PresentBadge, NoShowBadge } from "@/components/ui/badge";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { useAppStore, type Appointment, type AppointmentStatus, type AppointmentBooking, type AppointmentBookingStatus, type AppointmentRating } from "@/lib/store";
+import { useAppStore, type Appointment, type AppointmentStatus, type AppointmentBooking, type AppointmentRating } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
-
-// ─── Status badge ────────────────────────────────────────────────────────────
-
-// Status badge palette mirrors `ClassStatusBadge` 1:1 so appointments and
-// class schedules read the same at-a-glance in lists + detail headers:
-//   Upcoming  → gray
-//   Ongoing   → blue
-//   Completed → green
-//   Cancelled → red
-function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
-    const styles: Record<AppointmentStatus, string> = {
-        Upcoming:  "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#344054]",
-        Ongoing:   "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {status}
-        </span>
-    );
-}
-
-function BookingStatusBadge({ status }: { status: AppointmentBookingStatus }) {
-    const styles: Record<AppointmentBookingStatus, string> = {
-        Booked:    "bg-[#e9fff3] border-1 border-[#abefc6] text-[#067647]",
-        Attended:  "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        NoShow:    "bg-[#fef3f2] border-1 border-[#fda29b] text-[#b42318]",
-        // Cancelled bookings render with the same red palette as class
-        // schedule's BookingStatusBadge so cancellations pop visually.
-        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    };
-    const labels: Record<AppointmentBookingStatus, string> = {
-        Booked:    "Booked",
-        Attended:  "Present",
-        NoShow:    "No-show",
-        Cancelled: "Cancelled",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {labels[status]}
-        </span>
-    );
-}
+import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions } from "@/components/patterns/RowActions";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 
 // ─── Table constants ─────────────────────────────────────────────────────────
 
@@ -116,32 +70,6 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
         </button>
-    );
-}
-
-// ─── Empty illustration ──────────────────────────────────────────────────────
-
-function EmptyTablePane({ title, subtitle }: { title: string; subtitle: string }) {
-    return (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
-                    <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
-                    </div>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
-                </div>
-            </div>
-        </div>
     );
 }
 
@@ -389,68 +317,6 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
 
 type RowActionKind = "cancel" | "remove" | "present";
 
-function RowActions({ status, openSession, bookingStatus, onAction }: {
-    status: AppointmentStatus;
-    openSession: boolean;
-    bookingStatus: AppointmentBookingStatus;
-    onAction: (kind: RowActionKind) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
-    // Already-cancelled booking row has no actions regardless of appointment state.
-    if (bookingStatus === "Cancelled") return null;
-
-    // Action availability — per the brief, Ongoing exposes ONLY Present
-    // (no No-show counterpart, matching the class schedule's Ongoing
-    // dropdown). Upcoming Open session exposes Cancel + Remove customer.
-    const canCancelCustomer = openSession && status === "Upcoming";
-    const canRemoveCustomer = openSession && status === "Upcoming";
-    const canMarkPresent    = status === "Ongoing" && bookingStatus !== "Attended";
-    const presentDisabled   = status === "Ongoing" && bookingStatus === "Attended";
-    const anyAction = canCancelCustomer || canRemoveCustomer || canMarkPresent || presentDisabled;
-    if (!anyAction) return null;
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                {status === "Ongoing" && (
-                    <button type="button" disabled={presentDisabled}
-                        onClick={() => !presentDisabled && trigger(() => onAction("present"))}
-                        className={cn(
-                            "flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium transition-colors",
-                            presentDisabled ? "text-[#98a2b3] cursor-not-allowed" : "text-[#344054] hover:bg-[#f9fafb]",
-                        )}>
-                        <Check className={cn("w-4 h-4", presentDisabled ? "text-[#d0d5dd]" : "text-[#067647]")} />
-                        <span className={presentDisabled ? "" : "text-[#067647]"}>
-                            {presentDisabled ? "Already present" : "Present"}
-                        </span>
-                    </button>
-                )}
-                {canCancelCustomer && (
-                    <button type="button" onClick={() => trigger(() => onAction("cancel"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <SlashCircle01 className="w-4 h-4 text-[#667085]" />
-                        Cancel customer
-                    </button>
-                )}
-                {canRemoveCustomer && (
-                    <button type="button" onClick={() => trigger(() => onAction("remove"))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                        <Trash01 className="w-4 h-4 text-[#b42318]" />
-                        Remove customer
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
-
 // ─── Bulk action bar (Open session only) ────────────────────────────────────
 
 function BulkActionBar({ count, kind, onClear, onAction }: {
@@ -462,7 +328,7 @@ function BulkActionBar({ count, kind, onClear, onAction }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 inline-flex items-center gap-3">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected<XClose className="w-5 h-5 text-[#667085]" />
@@ -565,7 +431,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                     />
                 )}
                 <div className="absolute top-3 right-3">
-                    <AppointmentStatusBadge status={appointment.status} />
+                    <StatusBadge type="appointment" status={appointment.status} />
                 </div>
             </div>
 
@@ -633,28 +499,8 @@ function LeftPanel({ appointment, onCancelAppointment }: {
 
 // ─── Review row dropdown (Reviews & Rating tab) ─────────────────────────────
 //
-// Same shape as the class schedule's `ReviewRowActions` — three-dot trigger
-// opens a FixedDropdown with a single destructive "Delete review" item.
-
-function ReviewRowActions({ onDelete }: { onDelete: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => { setOpen(false); onDelete(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                    <Trash01 className="w-4 h-4 text-[#b42318]" />
-                    Delete review
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Same shape as the class schedule's review row kebab — single destructive
+// "Delete review" item rendered via the canonical RowActions.
 
 // ─── Star rating row (Reviews tab) ──────────────────────────────────────────
 
@@ -877,6 +723,14 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
     const bookedRoster    = bookings.filter(b => b.status !== "Cancelled");
     const cancelledRoster = bookings.filter(b => b.status === "Cancelled");
 
+    // Status-column visibility — mirrors /schedule/[classId]:
+    //   booked tab  → show only when Ongoing/Cancelled/Completed (Upcoming has
+    //                 no attendance state to surface yet, so the column hides)
+    //   cancelled tab → always show (each row is already in a terminal state)
+    const showStatusColumn =
+        (tab === "booked"   && (appointment.status === "Ongoing" || appointment.status === "Cancelled" || appointment.status === "Completed"))
+     || (tab === "cancelled");
+
     const visibleRoster = tab === "booked" ? bookedRoster : cancelledRoster;
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -1049,7 +903,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
             <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                 {tab === "reviews" ? (
                     reviewsCurrentList.length === 0 ? (
-                        <EmptyTablePane
+                        <EmptyState
                             title={reviewsSubTab === "ratings" ? "No ratings found" : "Nothing in the deletion log"}
                             subtitle={reviewsSubTab === "ratings"
                                 ? (visibleRatings.length === 0 ? "Customer ratings will appear here." : "Try adjusting your filters.")
@@ -1114,7 +968,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                 </td>
                                                 {reviewsSubTab === "ratings" && (
                                                     <td className={TD}>
-                                                        <ReviewRowActions onDelete={() => actions.onDeleteReviewOne(r.id)} />
+                                                        <RowActions items={[{ label: "Delete review", icon: Trash01, danger: true, onClick: () => actions.onDeleteReviewOne(r.id) }]} minWidth={180} />
                                                     </td>
                                                 )}
                                             </tr>
@@ -1125,7 +979,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                         </div>
                     )
                 ) : sorted.length === 0 ? (
-                    <EmptyTablePane
+                    <EmptyState
                         title={tab === "booked" ? "No bookings yet" : "No cancellations"}
                         subtitle={tab === "booked"
                             ? "Customer bookings for this appointment will appear here."
@@ -1133,6 +987,10 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                     />
                 ) : (
                     <div className="px-6">
+                        {/* Status-column visibility (see `showStatusColumn` above)
+                            mirrors /schedule/[classId] roster: booked tab hides
+                            Status for Upcoming, shows it for Ongoing/Completed/
+                            Cancelled; cancelled tab always shows it. */}
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
@@ -1152,9 +1010,11 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                     <th className={cn(TH, "w-[180px]")}>
                                         <SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Booked at</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[120px]")}>
-                                        <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                    </th>
+                                    {showStatusColumn && (
+                                        <th className={cn(TH, "w-[120px]")}>
+                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                        </th>
+                                    )}
                                     <th className={cn(TH, "w-[52px]")}></th>
                                 </tr>
                             </thead>
@@ -1181,18 +1041,58 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                             <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                                 {new Date(r.bookedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                                             </td>
-                                            <td className={TD}><BookingStatusBadge status={r.status} /></td>
+                                            {showStatusColumn && (
+                                                <td className={TD}>
+                                                    {/* Mirrors /schedule/[classId] booked-tab badge logic 1:1:
+                                                        - Ongoing / Completed → render Present / No-show badges
+                                                          (same components class schedule uses) only when
+                                                          attendance has been marked. Unmarked rows stay
+                                                          empty so the admin sees what's left to process.
+                                                        - Cancelled tab → keep the existing appointment-booking
+                                                          status badge (Booked / Cancelled / etc). */}
+                                                    {tab === "booked" && (appointment.status === "Ongoing" || appointment.status === "Completed")
+                                                        ? (r.status === "Attended"
+                                                            ? <PresentBadge />
+                                                            : r.status === "NoShow"
+                                                                ? <NoShowBadge />
+                                                                : null)
+                                                        : <StatusBadge type="appointment-booking" status={r.status} />}
+                                                </td>
+                                            )}
                                             <td className={TD}>
-                                                <RowActions
-                                                    status={appointment.status}
-                                                    openSession={appointment.openSession}
-                                                    bookingStatus={r.status}
-                                                    onAction={(kind) => {
-                                                        if (kind === "cancel")  actions.onCancelOne(r.id);
-                                                        if (kind === "remove")  actions.onRemoveOne(r.id);
-                                                        if (kind === "present") actions.onMarkOne(r.id);
-                                                    }}
-                                                />
+                                                {r.status !== "Cancelled" && (() => {
+                                                    const isOngoing       = appointment.status === "Ongoing";
+                                                    const isUpcoming      = appointment.status === "Upcoming";
+                                                    const presentDisabled = isOngoing && r.status === "Attended";
+                                                    return (
+                                                        <RowActions
+                                                            items={[
+                                                                {
+                                                                    label: presentDisabled ? "Already present" : "Present",
+                                                                    icon: Check,
+                                                                    success: true,
+                                                                    successText: true,
+                                                                    disabled: presentDisabled,
+                                                                    hidden: !isOngoing,
+                                                                    onClick: () => actions.onMarkOne(r.id),
+                                                                },
+                                                                {
+                                                                    label: "Cancel customer",
+                                                                    icon: SlashCircle01,
+                                                                    hidden: !(appointment.openSession && isUpcoming),
+                                                                    onClick: () => actions.onCancelOne(r.id),
+                                                                },
+                                                                {
+                                                                    label: "Remove customer",
+                                                                    icon: Trash01,
+                                                                    danger: true,
+                                                                    hidden: !(appointment.openSession && isUpcoming),
+                                                                    onClick: () => actions.onRemoveOne(r.id),
+                                                                },
+                                                            ]}
+                                                        />
+                                                    );
+                                                })()}
                                             </td>
                                         </tr>
                                     );
@@ -1230,9 +1130,10 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
 
 export interface AppointmentDetailPageProps {
     appointmentId: string;
+    returnTo?: string;
 }
 
-export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPageProps) {
+export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedule" }: AppointmentDetailPageProps) {
     const router = useRouter();
 
     const appointments         = useAppStore(s => s.appointments);
@@ -1279,7 +1180,7 @@ export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPagePr
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Appointment not found</p>
-                    <button type="button" onClick={() => router.back()}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Go back
                     </button>
@@ -1294,19 +1195,21 @@ export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPagePr
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.back()}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Appointment details</h1>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
+            <DetailPageShell
+                sidebar={
                     <LeftPanel
                         appointment={appointment}
                         onCancelAppointment={() => setModalTarget({ kind: "appointment" })}
                     />
+                }
+                main={
                     <RightPanel
                         appointment={appointment}
                         bookings={bookings}
@@ -1336,8 +1239,8 @@ export function AppointmentDetailPage({ appointmentId }: AppointmentDetailPagePr
                         onDeleteReviewOne={(id) => setModalTarget({ kind: "delete-review", ratingId: id })}
                         onDeleteReviewBulk={(ids) => setModalTarget({ kind: "bulk-delete-review", ids })}
                     />
-                </div>
-            </div>
+                }
+            />
 
             {/* ── Modals — refund-toggle pattern mirroring class schedule ── */}
             {modalTarget?.kind === "appointment" && (

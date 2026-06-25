@@ -21,8 +21,8 @@
 // (edit / archive / deactivate / reactivate / recover / delete) writes back
 // through the store so the list view + this page stay in lock-step.
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
@@ -30,41 +30,23 @@ import {
     BankNote01, CheckVerified02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { useAppStore, type PromoCode, type Branch } from "@/lib/store";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
 type StoredStatus = PromoCode["status"];           // active | inactive | archived
 type EffectiveStatus = StoredStatus | "expired";   // expired derived from valid_until
 
-const STATUS_LABEL: Record<EffectiveStatus, string> = {
-    active: "Active",
-    inactive: "Inactive",
-    archived: "Archive",
-    expired: "Expired",
-};
 
 /** A promo reads as "Expired" once `valid_until` passes — regardless of the
  *  stored admin status. Otherwise it shows its stored status. */
 function effectiveStatus(p: PromoCode): EffectiveStatus {
     if (p.valid_until && new Date(p.valid_until).getTime() < Date.now()) return "expired";
     return p.status;
-}
-
-function StatusBadge({ status }: { status: EffectiveStatus }) {
-    const styles = status === "active"
-        ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-        : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]";
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium whitespace-nowrap",
-            styles,
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
 }
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
@@ -180,37 +162,8 @@ const MODAL_CONFIG: Record<ModalAction, {
     },
 };
 
-function ActionModal({ action, onConfirm, onCancel }: {
-    action: ModalAction; onConfirm: () => void; onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={DESTRUCTIVE_ACTIONS.has(action) ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — call sites use the canonical
+// `<ConfirmModal>` from `@/components/modals/ConfirmModal`.
 
 // ─── Left sidebar ────────────────────────────────────────────────────────────
 
@@ -236,7 +189,7 @@ function PromoSidebarBanner({ vm }: { vm: PromoDetailVM }) {
             )}
             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
             <div className="absolute top-3 right-3 z-10">
-                <StatusBadge status={vm.effectiveStatus} />
+                <StatusBadge type="promo" status={vm.effectiveStatus} size="lg" label={vm.effectiveStatus === "archived" ? "Archive" : undefined} />
             </div>
             <div className="relative z-10 flex flex-col">
                 <p className="text-[20px] font-semibold text-white leading-[30px] break-words">{vm.name}</p>
@@ -557,10 +510,13 @@ interface PromoDetailVM {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function PromoDetailPage() {
+function PromoDetailPageInner() {
     const router = useRouter();
+    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
 
     const promoCodes      = useAppStore(s => s.promoCodes);
     const memberships     = useAppStore(s => s.memberships);
@@ -579,7 +535,7 @@ export default function PromoDetailPage() {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
                 <p className="text-[18px] font-semibold text-[#101828]">Promo not found</p>
-                <button type="button" onClick={() => router.push("/admin/products/promo-codes")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to promos
                 </button>
@@ -639,7 +595,7 @@ export default function PromoDetailPage() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/products/promo-codes/${id}/edit`);
+            router.push(`/products/promo-codes/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(a);
@@ -669,7 +625,7 @@ export default function PromoDetailPage() {
             if (ok) {
                 showToast("Promo deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
-                router.push("/admin/products/promo-codes");
+                router.push(returnTo);
             } else {
                 showToast(
                     "Cannot delete",
@@ -685,7 +641,7 @@ export default function PromoDetailPage() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header — same 72px chrome as /products/[id] */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push("/admin/products/promo-codes")}
+                <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -693,22 +649,37 @@ export default function PromoDetailPage() {
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Promo details</h1>
             </div>
 
-            {/* Body — px-6 py-6 outer + h-[832px] two-column frame */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    <LeftSidebar vm={vm} onAction={handleAction} branches={branches} />
-                    <RightPanel vm={vm} branches={branches} />
-                </div>
-            </div>
+            {/* Body — canonical DetailPageShell wraps the 832px frame. */}
+            <DetailPageShell
+                sidebar={<LeftSidebar vm={vm} onAction={handleAction} branches={branches} />}
+                main={<RightPanel vm={vm} branches={branches} />}
+            />
 
-            {confirmAction && (
-                <ActionModal
-                    action={confirmAction}
-                    onConfirm={handleConfirm}
-                    onCancel={() => setConfirmAction(null)}
-                />
-            )}
+            {confirmAction && (() => {
+                const cfg = MODAL_CONFIG[confirmAction];
+                const tone = DESTRUCTIVE_ACTIONS.has(confirmAction) ? "danger" : "success";
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setConfirmAction(null)}
+                        icon={cfg.IconComp}
+                        tone={tone}
+                        title={cfg.title}
+                        description={cfg.description}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={handleConfirm}
+                    />
+                );
+            })()}
             <Toast />
         </div>
+    );
+}
+
+export default function PromoDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <PromoDetailPageInner />
+        </Suspense>
     );
 }

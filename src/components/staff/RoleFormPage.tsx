@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
+import { FieldLabel } from "@/components/patterns/FieldLabel";
+import { SectionHeader } from "@/components/patterns/SectionHeader";
 import {
     useAppStore, DEFAULT_BRANCH_ID,
     DEFAULT_PERMISSIONS_BY_TYPE, DEFAULT_GRANT_LIMITS,
@@ -107,27 +109,33 @@ function StepRow({ index, label, active, done, isLast }: {
 
 // ─── Form atoms ────────────────────────────────────────────────────────────
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] font-medium text-[#344054] leading-[20px]">{children}</p>;
-}
+// Local FieldLabel removed — uses canonical from `@/components/patterns/FieldLabel`.
 
-function TextInput({ value, onChange, placeholder }: {
-    value: string; onChange: (v: string) => void; placeholder?: string;
+function TextInput({ value, onChange, placeholder, disabled }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean;
 }) {
     return (
         <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+            disabled={disabled}
+            className={cn(
+                "h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                disabled && "opacity-60 cursor-not-allowed bg-[#f9fafb]",
+            )}
         />
     );
 }
 
-function TextArea({ value, onChange, placeholder }: {
-    value: string; onChange: (v: string) => void; placeholder?: string;
+function TextArea({ value, onChange, placeholder, disabled }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean;
 }) {
     return (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
             rows={3}
-            className="w-full px-[14px] py-[10px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none"
+            disabled={disabled}
+            className={cn(
+                "w-full px-[14px] py-[10px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none",
+                disabled && "opacity-60 cursor-not-allowed bg-[#f9fafb]",
+            )}
         />
     );
 }
@@ -184,9 +192,7 @@ function Checkbox({ checked, onChange, disabled, ariaLabel }: {
     );
 }
 
-function SectionHeader({ title }: { title: string }) {
-    return <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</p>;
-}
+// Local SectionHeader removed — uses canonical from `@/components/patterns/SectionHeader`.
 
 // ─── Right-rail preview ────────────────────────────────────────────────────
 
@@ -228,7 +234,12 @@ function RolePreview({ form, branches }: { form: FormValue; branches: Branch[] }
 
 // ─── Step 1 — Role details ─────────────────────────────────────────────────
 
-function Step1Details({ form, set, branches }: { form: FormValue; set: (patch: Partial<FormValue>) => void; branches: Branch[] }) {
+function Step1Details({ form, set, branches, locked }: {
+    form: FormValue;
+    set: (patch: Partial<FormValue>) => void;
+    branches: Branch[];
+    locked: boolean;
+}) {
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
@@ -239,16 +250,24 @@ function Step1Details({ form, set, branches }: { form: FormValue; set: (patch: P
     return (
         <div className="flex flex-col gap-5 w-full">
             <SectionHeader title="Role details" />
+            {locked && (
+                <div className="flex gap-3 items-start bg-[#fff8e6] border-1 border-[#fde6a4] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <Lightbulb02 className="w-5 h-5 text-[#b54708] shrink-0 mt-[2px]" />
+                    <p className="text-[14px] text-[#b54708] leading-[20px]">
+                        The Owner role is system-managed and read-only. Name, description and branch scope can&apos;t be changed.
+                    </p>
+                </div>
+            )}
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Role name</FieldLabel>
-                <TextInput value={form.name} onChange={v => set({ name: v })} placeholder="Enter role name" />
+                <FieldLabel label="Role name" />
+                <TextInput value={form.name} onChange={v => set({ name: v })} placeholder="Enter role name" disabled={locked} />
             </div>
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Role description</FieldLabel>
-                <TextArea value={form.description} onChange={v => set({ description: v })} placeholder="Enter role description..." />
+                <FieldLabel label="Role description" />
+                <TextArea value={form.description} onChange={v => set({ description: v })} placeholder="Enter role description..." disabled={locked} />
             </div>
             <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel>Branch location</FieldLabel>
+                <FieldLabel label="Branch location" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
                     placeholder="Select location"
@@ -259,6 +278,7 @@ function Step1Details({ form, set, branches }: { form: FormValue; set: (patch: P
                     value={form.branchId === null ? "__all__" : form.branchId}
                     onChange={v => set({ branchId: v === "__all__" ? null : v })}
                     width="w-full"
+                    disabled={locked}
                 />
             </div>
         </div>
@@ -275,23 +295,28 @@ const ROLE_TYPE_OPTIONS: { value: RoleType; label: string }[] = [
     { value: "front_desk",   label: "Front desk" },
 ];
 
-function PermissionCellInput({ value, ariaLabel }: {
-    value: PermissionCell; ariaLabel: string;
+function PermissionCellInput({ value, onChange, disabled, ariaLabel }: {
+    value: PermissionCell;
+    onChange?: (next: boolean) => void;
+    disabled?: boolean;
+    ariaLabel: string;
 }) {
-    // "na" cells render as a dash — non-interactive, never checkable.
+    // "na" cells render as a dash — non-interactive, never checkable. The
+    // permission matrix bakes in N/A for module-action pairs that don't make
+    // sense (e.g. "View" on a write-only action surface).
     if (value === "na") {
         return <span className="text-[14px] text-[#98a2b3]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
     }
-    // The permission matrix is a READ-ONLY visualisation of the role type's
-    // predefined permissions. Admin picks a role type from the dropdown
-    // above and the matrix reflects that type's defaults. Individual cells
-    // are not editable — see PRD 00 §5.3 "MVP roles are hardcoded".
     return (
-        <Checkbox checked={value} disabled ariaLabel={ariaLabel} />
+        <Checkbox checked={value} onChange={onChange} disabled={disabled} ariaLabel={ariaLabel} />
     );
 }
 
-function PermissionMatrixTable({ form }: { form: FormValue }) {
+function PermissionMatrixTable({ form, locked, onCellChange }: {
+    form: FormValue;
+    locked: boolean;
+    onCellChange: (sectionKey: string, modKey: string, action: keyof PermissionRowShape, next: boolean) => void;
+}) {
     const sections = permissionSectionsFor(form.type);
 
     return (
@@ -324,6 +349,8 @@ function PermissionMatrixTable({ form }: { form: FormValue }) {
                                                 <div className="flex items-center justify-center">
                                                     <PermissionCellInput
                                                         value={cellRow[action]}
+                                                        onChange={(next) => onCellChange(section.key, mod.key, action, next)}
+                                                        disabled={locked}
                                                         ariaLabel={`${section.label} / ${mod.label} / ${action}`}
                                                     />
                                                 </div>
@@ -339,6 +366,11 @@ function PermissionMatrixTable({ form }: { form: FormValue }) {
         </div>
     );
 }
+
+// Type alias for the keyof check on PermissionRow — keeps the matrix table
+// signature self-contained without importing PermissionRow from the store
+// just for a type literal.
+type PermissionRowShape = { create: PermissionCell; edit: PermissionCell; delete: PermissionCell; view: PermissionCell };
 
 function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Partial<FormValue>) => void }) {
     const gl = form.grantLimits;
@@ -474,43 +506,109 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
     );
 }
 
-function Step2Permissions({ form, set }: { form: FormValue; set: (patch: Partial<FormValue>) => void }) {
+function Step2Permissions({ form, set, mode, locked }: {
+    form: FormValue;
+    set: (patch: Partial<FormValue>) => void;
+    mode: RoleFormMode;
+    /** Role is locked (Owner) — matrix renders read-only, type dropdown
+     *  disabled, Reset button hidden. */
+    locked: boolean;
+}) {
     function handleTypeChange(next: RoleType) {
-        // Switching type copies the type's default permission matrix —
-        // overwrites any per-cell edits the admin had in flight, mirroring
-        // the brief "predefined role" semantics.
+        // Switching the role type acts as a "load this template" — the
+        // permission matrix and grant limits both copy the type's defaults.
+        // Any per-cell edits in flight are overwritten on purpose: the admin
+        // explicitly chose a new starting point.
         set({
             type: next,
             permissions: DEFAULT_PERMISSIONS_BY_TYPE[next],
         });
     }
+    function handleCellChange(sectionKey: string, modKey: string, action: keyof PermissionRowShape, next: boolean) {
+        // Spread-immutable update so React + Zustand both see the change.
+        const sectionMap   = form.permissions[sectionKey] ?? {};
+        const modRow       = sectionMap[modKey] ?? { create: "na", edit: "na", delete: "na", view: "na" };
+        set({
+            permissions: {
+                ...form.permissions,
+                [sectionKey]: {
+                    ...sectionMap,
+                    [modKey]: { ...modRow, [action]: next },
+                },
+            },
+        });
+    }
+    function handleResetToDefaults() {
+        set({
+            permissions: DEFAULT_PERMISSIONS_BY_TYPE[form.type],
+            grantLimits: { ...DEFAULT_GRANT_LIMITS },
+        });
+    }
+
+    // The dropdown intent shifts between Create vs Edit modes — the wording
+    // matters because in Create we're explicitly picking a starting template,
+    // whereas in Edit we're changing the underlying role type (and accepting
+    // that the matrix resets to that type's defaults).
+    const typeFieldLabel  = mode === "create" ? "Start from template" : "Role type";
+    const typeFieldHelper = mode === "create"
+        ? "Pick a base role to pre-fill the permission matrix below. You can then customise individual cells."
+        : "Changing the role type resets the matrix and grant limits to that type's defaults.";
+
     return (
         <div className="flex flex-col gap-8 w-full">
             <div className="flex flex-col gap-4 w-full">
                 <SectionHeader title="Define role type" />
                 <div className="flex flex-col gap-[6px] w-full">
-                    <FieldLabel>Role type</FieldLabel>
+                    <FieldLabel label={typeFieldLabel} />
                     <SelectInput
                         placeholder="Select role type"
                         options={ROLE_TYPE_OPTIONS}
                         value={form.type}
                         onChange={v => handleTypeChange(v as RoleType)}
                         width="w-full"
+                        disabled={locked}
                     />
+                    <p className="text-[13px] text-[#667085] leading-[18px]">{typeFieldHelper}</p>
                 </div>
             </div>
 
             <GrantLimitsSection form={form} set={set} />
 
             <div className="flex flex-col gap-4 w-full">
-                <SectionHeader title="Permissions" />
-                <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                    <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
-                        Cells marked with a dash (&mdash;) don&apos;t apply to that module-action pair. Checked boxes grant the role that capability.
-                    </p>
+                <div className="flex items-center justify-between gap-3">
+                    <SectionHeader title="Permissions" />
+                    {!locked && (
+                        <Button variant="secondary-gray" size="sm" onClick={handleResetToDefaults}>
+                            Reset to default permissions
+                        </Button>
+                    )}
                 </div>
-                <PermissionMatrixTable form={form} />
+
+                {/* Locked notice — Owner only. Surfaces WHY the matrix is
+                    greyed out so the admin doesn't think the form is
+                    broken. */}
+                {locked && (
+                    <div className="flex gap-3 items-start bg-[#fff8e6] border-1 border-[#fde6a4] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <Lightbulb02 className="w-5 h-5 text-[#b54708] shrink-0 mt-[2px]" />
+                        <p className="text-[14px] text-[#b54708] leading-[20px]">
+                            The Owner role has full system access and cannot be edited. This guarantees an account with administrative recovery is always available.
+                        </p>
+                    </div>
+                )}
+                {!locked && (
+                    <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            Check or uncheck cells to customise this role. Cells marked with a dash (&mdash;) don&apos;t apply to that module-action pair.
+                        </p>
+                    </div>
+                )}
+
+                <PermissionMatrixTable
+                    form={form}
+                    locked={locked}
+                    onCellChange={handleCellChange}
+                />
             </div>
         </div>
     );
@@ -547,6 +645,12 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
     const [form, setForm] = useState<FormValue>(() => existing ? formFromRole(existing) : emptyForm());
     const [step, setStep] = useState<1 | 2>(mode === "edit_permissions" ? 2 : 1);
     const [hydrated, setHydrated] = useState(!!existing);
+    // Owner is the only seeded role with `locked: true`. When editing a
+    // locked role the form renders read-only: permissions can't be toggled,
+    // role type can't be changed, name/description/branch are read-only.
+    // This guarantees the Owner persona retains full system access at all
+    // times — the demo's recovery escape hatch.
+    const locked = existing?.locked === true;
 
     useEffect(() => {
         if (mode !== "create" && existing && !hydrated) {
@@ -660,8 +764,8 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                 <div className="flex-1 min-w-0 max-w-[760px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         {step === 1
-                            ? <Step1Details form={form} set={set} branches={branches} />
-                            : <Step2Permissions form={form} set={set} />
+                            ? <Step1Details form={form} set={set} branches={branches} locked={locked} />
+                            : <Step2Permissions form={form} set={set} mode={mode} locked={locked} />
                         }
                     </div>
 
@@ -673,7 +777,7 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                         {(step === 1 && showStep2 && showStep1) ? (
                             <Button variant="primary" size="md" disabled={!step1Valid} onClick={() => setStep(2)}>Continue</Button>
                         ) : (
-                            <Button variant="primary" size="md" disabled={!step1Valid || !step2Valid} onClick={handleSave}>
+                            <Button variant="primary" size="md" disabled={locked || !step1Valid || !step2Valid} onClick={handleSave}>
                                 {finalLabel}
                             </Button>
                         )}

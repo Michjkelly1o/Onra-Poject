@@ -1,10 +1,21 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { ScheduleFormPage } from "@/components/schedule/ScheduleFormPage";
 
-export default function EditClassPage() {
+function EditClassInner() {
     const params = useParams();
     const classId = String(params.classId);
-    return <ScheduleFormPage editingId={classId} />;
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo") ?? "/admin/schedule";
+    return <ScheduleFormPage editingId={classId} returnTo={returnTo} />;
+}
+
+export default function EditClassPage() {
+    return (
+        <Suspense fallback={null}>
+            <EditClassInner />
+        </Suspense>
+    );
 }

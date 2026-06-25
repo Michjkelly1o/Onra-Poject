@@ -37,7 +37,7 @@
 // `onra-demo-state` blob — cross-tab propagation works automatically.
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Trash02,
     DotsVertical, SearchMd, FilterLines, Eye, Check,
@@ -46,34 +46,21 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { AttendanceBar } from "@/components/patterns/AttendanceBar";
+import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { FilterPill } from "@/components/ui/FilterPill";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore, type Service, type ServiceStatus, type Appointment, type AppointmentStatus } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
-
-// ─── Status badge ────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: ServiceStatus }) {
-    const styles: Record<ServiceStatus, string> = {
-        Active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        Archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {status}
-        </span>
-    );
-}
-
-// ─── Generic table constants (verbatim from gift cards / class templates) ───
-
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 
 // ─── Empty-state illustration ───────────────────────────────────────────────
 
@@ -181,7 +168,7 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                     />
                 )}
                 <div className="absolute top-3 right-3">
-                    <StatusBadge status={status} />
+                    <StatusBadge type="service" status={status} />
                 </div>
             </div>
 
@@ -250,22 +237,6 @@ interface AppointmentFilter {
 }
 const EMPTY_FILTER: AppointmentFilter = { statuses: [], startDate: "", endDate: "", days: [], times: [] };
 
-function FilterPill({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
-                selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-            )}
-        >
-            {label}
-        </button>
-    );
-}
 
 function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
     open: boolean;
@@ -458,40 +429,9 @@ const MODAL_CONFIG: Record<ModalAction, {
     },
 };
 
-function ActionModal({ action, name, onConfirm, onCancel }: {
-    action: ModalAction;
-    name: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const cfg = MODAL_CONFIG[action];
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-                <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
-                        <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(name)}</p>
-                    </div>
-                </div>
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant={cfg.tone === "destructive" ? "destructive" : "primary"} size="lg" className="flex-1" onClick={onConfirm}>
-                        {cfg.confirmLabel}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
+// Local ActionModal removed — call site uses the canonical
+// `<ConfirmModal>` from `@/components/modals/ConfirmModal`, driven by
+// MODAL_CONFIG above.
 
 // ─── Pagination (gift-cards / templates twin) ───────────────────────────────
 
@@ -557,27 +497,6 @@ function ViewDetailsAction({ onView }: { onView: () => void }) {
     );
 }
 
-// ─── Appointment status badge ───────────────────────────────────────────────
-
-function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
-    // Matches `ClassStatusBadge` 1:1 — Upcoming gray, Ongoing blue,
-    // Completed green, Cancelled red.
-    const styles: Record<AppointmentStatus, string> = {
-        Upcoming:  "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#344054]",
-        Ongoing:   "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {status}
-        </span>
-    );
-}
-
 // ─── Attendance bar (used by appointment row) ───────────────────────────────
 
 // ─── Rating cell ────────────────────────────────────────────────────────────
@@ -609,55 +528,7 @@ function RatingCell({ rating, count }: { rating: number; count: number }) {
 // Solid sage fill regardless of percentage — matches the schedule list-view
 // `AttendanceBar` so class schedules + appointments read identically in
 // every list surface.
-function AttendanceBar({ booked, capacity }: { booked: number; capacity: number }) {
-    const pct = capacity > 0 ? (booked / capacity) : 0;
-    return (
-        <div className="flex items-center gap-3">
-            <div className="h-[4px] w-[80px] bg-[#e4e7ec] rounded-full overflow-hidden shrink-0">
-                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${pct * 100}%` }} />
-            </div>
-            <span className="text-[14px] text-[#344054] whitespace-nowrap">{booked}/{capacity}</span>
-        </div>
-    );
-}
-
-// ─── Appointment row actions (status-conditional) ───────────────────────────
-//
-// Per the brief:
-//   • Upcoming / Ongoing → View details · Cancel appointment
-//   • Completed / Cancelled → View details only
-
-function AppointmentRowActions({ status, onView, onCancel }: {
-    status: AppointmentStatus;
-    onView: () => void;
-    onCancel: () => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-    const canCancel = status === "Upcoming" || status === "Ongoing";
-
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
-                <button type="button" onClick={() => trigger(onView)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-                {canCancel && (
-                    <button type="button" onClick={() => trigger(onCancel)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                        <SlashCircle01 className="w-4 h-4 text-[#b42318]" />Cancel appointment
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local AttendanceBar removed — uses canonical from `@/components/patterns/AttendanceBar`.
 
 // ─── Appointment table (Figma 7423:120796) ──────────────────────────────────
 
@@ -697,7 +568,9 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                 </thead>
                 <tbody>
                     {rows.map(a => (
-                        <tr key={a.id} className="hover:bg-[#f9fafb] transition-colors">
+                        <tr key={a.id}
+                            onClick={() => onView(a)}
+                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="text-[14px] font-medium text-[#101828]">{a.date}</div>
                                 <div className="text-[13px] text-[#667085] mt-0.5">{a.displayTime}</div>
@@ -729,12 +602,23 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                             <td className={TD}>{a.branchName}</td>
                             <td className={TD}><AttendanceBar booked={a.booked} capacity={a.capacity} /></td>
                             <td className={TD}><RatingCell rating={a.rating} count={a.ratingCount} /></td>
-                            <td className={TD}><AppointmentStatusBadge status={a.status} /></td>
-                            <td className={TD}>
-                                <AppointmentRowActions
-                                    status={a.status}
-                                    onView={() => onView(a)}
-                                    onCancel={() => onCancel(a)}
+                            <td className={TD}><StatusBadge type="appointment" status={a.status} /></td>
+                            <td className={TD} onClick={e => e.stopPropagation()}>
+                                <RowActions
+                                    items={[
+                                        {
+                                            label: "View details",
+                                            icon: Eye,
+                                            onClick: () => onView(a),
+                                        },
+                                        {
+                                            label: "Cancel appointment",
+                                            icon: SlashCircle01,
+                                            danger: true,
+                                            hidden: !(a.status === "Upcoming" || a.status === "Ongoing"),
+                                            onClick: () => onCancel(a),
+                                        },
+                                    ]}
                                 />
                             </td>
                         </tr>
@@ -827,6 +711,7 @@ const TABS: { id: RightTab; label: string }[] = [
 
 function RightPanel({ service }: { service: Service }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [tab, setTab]                       = useState<RightTab>("appointments");
     const [search, setSearch]                 = useState("");
     const [page, setPage]                     = useState(1);
@@ -897,6 +782,12 @@ function RightPanel({ service }: { service: Service }) {
         const q = search.trim().toLowerCase();
         return appointments
             .filter(a => a.serviceId === service.id)
+            // Same render rule the schedule grid uses (admin + instructor):
+            // an appointment slot only surfaces once a customer has booked
+            // it. Cancelled appointments still surface so admins can see
+            // what was cancelled — mirrors the schedule view's
+            // `booked > 0 || status === "Cancelled"` filter.
+            .filter(a => a.booked > 0 || a.status === "Cancelled")
             .filter(a => {
                 if (applied.statuses.length && !applied.statuses.includes(a.status)) return false;
                 if (applied.startDate && a.dateISO < applied.startDate) return false;
@@ -976,32 +867,25 @@ function RightPanel({ service }: { service: Service }) {
 
                 {/* Toolbar */}
                 <div className="shrink-0 flex items-center gap-3 px-6 py-4">
-                    <div className="flex-1">
-                        <p className="text-[14px] text-[#667085]">Total</p>
-                        <p className="text-[14px] font-medium text-[#101828]">{total} {subjectLabel}</p>
-                    </div>
-                    <div className="relative w-[220px]">
-                        <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                        <input type="text"
-                            value={search}
-                            onChange={e => { setSearch(e.target.value); setPage(1); }}
-                            placeholder={tab === "appointments" ? "Search appointment..." : "Search..."}
-                            className="h-9 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                        />
-                    </div>
+                    {/* `subjectLabel` is already a per-tab label string
+                        (e.g. "appointments" / "memberships"); pass both
+                        singular + plural identical to preserve the original
+                        no-pluralisation display behavior. */}
+                    <ToolbarTotal
+                        count={total}
+                        entitySingular={subjectLabel}
+                        entityPlural={subjectLabel}
+                        size="sm"
+                    />
+                    <ToolbarSearch
+                        value={search}
+                        onChange={v => { setSearch(v); setPage(1); }}
+                        placeholder={tab === "appointments" ? "Search appointment..." : "Search..."}
+                        size="sm"
+                        widthClass="w-[220px]"
+                    />
                     {tab === "appointments" && (
-                        <Button variant="secondary-gray" size="md"
-                            leftIcon={
-                                <div className="relative">
-                                    <FilterLines className="w-4 h-4" />
-                                    {hasActiveAppointmentFilter && (
-                                        <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
-                                    )}
-                                </div>
-                            }
-                            onClick={() => setFilterOpen(true)}>
-                            Filter
-                        </Button>
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={!!hasActiveAppointmentFilter} />
                     )}
                 </div>
 
@@ -1015,14 +899,20 @@ function RightPanel({ service }: { service: Service }) {
                                     sortKey={aSortKey}
                                     sortDir={aSortDir}
                                     onSort={toggleASort}
-                                    onView={(a) => router.push(`/appointments/${a.id}`)}
+                                    onView={(a) => router.push(`/appointments/${a.id}?returnTo=${encodeURIComponent(pathname)}`)}
                                     onCancel={(a) => setCancelTarget(a)}
                                 />
                             </div>
                         ) : (
                             <EmptyTablePane
-                                title={appointments.some(a => a.serviceId === service.id) ? "No appointments found" : "No appointments yet"}
-                                subtitle={appointments.some(a => a.serviceId === service.id)
+                                // `hasAnyBooked` mirrors the post-filter
+                                // contract — only appointments that have
+                                // been booked (or were booked then
+                                // cancelled) ever surface in the table.
+                                title={appointments.some(a => a.serviceId === service.id && (a.booked > 0 || a.status === "Cancelled"))
+                                    ? "No appointments found"
+                                    : "No appointments yet"}
+                                subtitle={appointments.some(a => a.serviceId === service.id && (a.booked > 0 || a.status === "Cancelled"))
                                     ? "Try adjusting your search or filters."
                                     : "Appointments booked for this service will appear here."}
                             />
@@ -1047,7 +937,9 @@ function RightPanel({ service }: { service: Service }) {
                                     </thead>
                                     <tbody>
                                         {pagedMemberships.map(m => (
-                                            <tr key={m.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={m.id}
+                                                onClick={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border-1 border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1057,7 +949,7 @@ function RightPanel({ service }: { service: Service }) {
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${m.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1089,7 +981,9 @@ function RightPanel({ service }: { service: Service }) {
                                     </thead>
                                     <tbody>
                                         {pagedPackages.map(p => (
-                                            <tr key={p.id} className="hover:bg-[#f9fafb] transition-colors">
+                                            <tr key={p.id}
+                                                onClick={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)}
+                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-full border-1 border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
@@ -1099,7 +993,7 @@ function RightPanel({ service }: { service: Service }) {
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
-                                                <td className={TD}><ViewDetailsAction onView={() => router.push(`/products/${p.id}`)} /></td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1158,10 +1052,12 @@ function RightPanel({ service }: { service: Service }) {
 
 export interface ServiceDetailPageProps {
     serviceId: string;
+    returnTo?: string;
 }
 
-export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
+export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: ServiceDetailPageProps) {
     const router = useRouter();
+    const pathname = usePathname();
 
     const services         = useAppStore(s => s.services);
     const appointments     = useAppStore(s => s.appointments);
@@ -1178,7 +1074,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Service not found</p>
-                    <button type="button" onClick={() => router.push("/admin/services")}
+                    <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Back to services
                     </button>
@@ -1194,7 +1090,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
     function handleAction(action: "edit" | ModalAction) {
         if (!service) return;
         if (action === "edit") {
-            router.push(`/services/${service.id}/edit`);
+            router.push(`/services/${service.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(action);
@@ -1212,7 +1108,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
                 "success", "trash",
             );
             setConfirmAction(null);
-            router.push("/admin/services");
+            router.push(returnTo);
             return;
         }
 
@@ -1251,7 +1147,7 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button
                     type="button"
-                    onClick={() => router.push("/admin/services")}
+                    onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
@@ -1260,21 +1156,26 @@ export function ServiceDetailPage({ serviceId }: ServiceDetailPageProps) {
             </div>
 
             {/* Body — fills viewport, 2-column */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="flex gap-6 h-[832px]">
-                    <LeftPanel service={service} hasAppointments={hasAppointments} onAction={handleAction} />
-                    <RightPanel service={service} />
-                </div>
-            </div>
+            <DetailPageShell
+                sidebar={<LeftPanel service={service} hasAppointments={hasAppointments} onAction={handleAction} />}
+                main={<RightPanel service={service} />}
+            />
 
-            {confirmAction && (
-                <ActionModal
-                    action={confirmAction}
-                    name={service.name}
-                    onConfirm={handleConfirm}
-                    onCancel={() => setConfirmAction(null)}
-                />
-            )}
+            {confirmAction && (() => {
+                const cfg = MODAL_CONFIG[confirmAction];
+                return (
+                    <ConfirmModal
+                        open
+                        onClose={() => setConfirmAction(null)}
+                        icon={cfg.IconComp}
+                        tone={cfg.tone === "destructive" ? "danger" : "success"}
+                        title={cfg.title}
+                        description={cfg.description(service.name)}
+                        confirmLabel={cfg.confirmLabel}
+                        onConfirm={handleConfirm}
+                    />
+                );
+            })()}
             <Toast />
         </div>
     );
