@@ -149,18 +149,19 @@ function formFromPayRate(p: PayRate): FormValue {
  *  letting the store discard or honour the supplied id. */
 function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate {
     const resolvedId = id ?? `pr_preview_${form.type}`;
-    // Flat pay doesn't depend on attendance — force both attendance toggles
-    // off so a stale value can't leak through when an admin swaps an
-    // existing Tiered/Hybrid row to Flat. The form already hides the
-    // toggles for flat; this is the safety net at the save layer.
-    const isFlat = form.type === "flat";
+    // Flat pay and Monthly salary don't depend on attendance — force
+    // both attendance toggles off so a stale value can't leak through
+    // when an admin swaps an existing Tiered/Hybrid row to Flat or
+    // Monthly. The form already hides the toggles for these two types;
+    // this is the safety net at the save layer.
+    const hidesAttendanceToggles = form.type === "flat" || form.type === "monthly";
     const baseShared = {
         id: resolvedId,
         name: form.name.trim(),
         branchId: form.branchId,
         status: "active" as const,
-        onlyCheckedIn:        isFlat ? false : form.onlyCheckedIn,
-        includeLateCancelled: isFlat ? false : form.includeLateCancelled,
+        onlyCheckedIn:        hidesAttendanceToggles ? false : form.onlyCheckedIn,
+        includeLateCancelled: hidesAttendanceToggles ? false : form.includeLateCancelled,
         usageCount,
         // Empty-string sentinel → undefined so the persisted record reads
         // as "no override" instead of holding an empty FK string.
@@ -933,12 +934,13 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                 )}
 
                                 {/* Additional settings — hidden for "Flat rate"
-                                    since both toggles ("Only count checked-in"
-                                    + "Include late-cancelled") depend on
-                                    attendance to drive pay, and flat rate
-                                    pays the same amount regardless of who
-                                    showed up. */}
-                                {form.type !== "flat" && (
+                                    AND "Monthly salary" since both toggles
+                                    ("Only count checked-in" + "Include
+                                    late-cancelled") depend on attendance
+                                    to drive pay, and these two types pay
+                                    the same fixed amount regardless of
+                                    who showed up. */}
+                                {form.type !== "flat" && form.type !== "monthly" && (
                                     <div className="flex flex-col gap-4 w-full">
                                         <SectionHeader title="Additional settings" />
                                         <div className="flex flex-col gap-4 w-full">
