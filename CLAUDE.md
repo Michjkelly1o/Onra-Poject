@@ -119,11 +119,12 @@ All monetary values use **AED (UAE Dirham)**. Format: `AED [amount]` (e.g. `AED 
 - Instructor primarily uses their phone on the gym floor to mark attendance, view schedule, check earnings
 - All instructor pages must be fully functional and polished at 375px
 
-### Customer / Member views (`/member/*`)
+### Customer views (`/customer/*`)
 - **Mobile-only** — rendered at max-width 400px in-browser (simulates phone)
-- Wrap the member layout in a centred 400px container with a phone-like frame
-- All member pages must be designed and tested exclusively at 375–400px width
+- Wrap the customer layout in a centred 400px container with a phone-like frame
+- All customer pages must be designed and tested exclusively at 375–400px width
 - No desktop layout required for customer views
+- Code lives in dedicated folders: routes `src/app/customer/`, components `src/components/customer/`, logic/hooks `src/lib/customer/`. The demo persona value stays `"member"` (shared `UserRole`); only the customer-facing routes/components/hooks use **Customer** naming.
 
 ## Mock Data Convention — One File per Future Supabase Table
 
