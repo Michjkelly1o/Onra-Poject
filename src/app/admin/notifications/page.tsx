@@ -29,6 +29,7 @@ import { Bell01, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore, DEFAULT_BRANCH_ID, type Notification } from "@/lib/store";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
+import { Button } from "@/components/ui/button";
 import {
     iconForNotification,
     relativeTime,
@@ -101,14 +102,18 @@ function Divider() {
     return <div className="h-px bg-[#e4e7ec] w-full" />;
 }
 
-function Section({ title, items, onRowClick, headerRight }: {
+function Section({ title, items, onRowClick, headerRight, branchLabelFor }: {
     title: string;
     items: Notification[];
     onRowClick: (n: Notification) => void;
     /** Optional content rendered on the right side of the section header
-     *  row — used by the first visible section to host the location
-     *  filter inline with the "Today" / "Past" label. */
+     *  row — used by the first visible section to host the toolbar
+     *  (location picker + "Mark all as read") inline with the section label. */
     headerRight?: React.ReactNode;
+    /** Resolver returning the branch name pill text for a given row.
+     *  Pass `undefined` to skip the pill (default — admin renders it
+     *  only when "All locations" is selected). */
+    branchLabelFor?: (n: Notification) => string | undefined;
 }) {
     if (items.length === 0) return null;
     return (
@@ -120,7 +125,8 @@ function Section({ title, items, onRowClick, headerRight }: {
             <div className="flex flex-col">
                 {items.map((n, idx) => (
                     <div key={n.id}>
-                        <NotificationRow n={n} onClick={() => onRowClick(n)} />
+                        <NotificationRow n={n} onClick={() => onRowClick(n)}
+                            branchLabel={branchLabelFor?.(n)} />
                         {idx < items.length - 1 && (
                             <div className="my-1"><Divider /></div>
                         )}
@@ -200,6 +206,23 @@ function NotificationsPage() {
         [branches],
     );
 
+    // Branch-id → branch-name lookup, used by the per-row branch pill
+    // (only shown when the picker is set to "All locations" — otherwise
+    // the pill is redundant since every visible row is already from
+    // that one branch).
+    const branchNameById = useMemo(
+        () => new Map(branches.map(b => [b.id, b.name] as const)),
+        [branches],
+    );
+    /** Returns the branch pill text for a row, or undefined to skip it.
+     *  Shown only in "All locations" mode AND when the notification
+     *  actually carries a branchId (legacy rows without it pass through
+     *  with no pill). */
+    function branchLabelFor(n: Notification): string | undefined {
+        if (branchId) return undefined; // specific branch selected — pill would be redundant
+        return n.branchId ? branchNameById.get(n.branchId) : undefined;
+    }
+
     // Sort newest-first once — every downstream filter preserves this order.
     const sorted = useMemo(
         () => [...notifications].sort(
@@ -241,26 +264,58 @@ function NotificationsPage() {
         [branchScoped, activeTab],
     );
 
-    // Today / Past bucket split.
-    const { today, past } = useMemo(() => bucketByDay(filtered), [filtered]);
+    // Today / Yesterday / Earlier this week / Older bucket split.
+    const { today, yesterday, earlierThisWeek, older } = useMemo(() => bucketByDay(filtered), [filtered]);
+    // First non-empty bucket — its section header hosts the location
+    // picker + the "Mark all as read" button inline with the section
+    // title so the toolbar stays visually anchored to the feed.
+    const firstFilledBucket: "today" | "yesterday" | "earlierThisWeek" | "older" | null =
+        today.length        > 0 ? "today" :
+        yesterday.length    > 0 ? "yesterday" :
+        earlierThisWeek.length > 0 ? "earlierThisWeek" :
+        older.length        > 0 ? "older" : null;
 
     function handleRowClick(n: Notification) {
         markNotificationRead(n.id);
         router.push(routeForNotification(n));
     }
 
-    // Location filter — defined once and slotted into whichever section
-    // header renders first (Today when populated, otherwise Past), so the
-    // filter sits inline with the first visible section label.
-    const locationFilter = (
-        <SelectInput
-            triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-            placeholder="Select location"
-            options={[{ value: "", label: "All locations" }, ...branchOptions]}
-            value={branchId}
-            onChange={setBranchId}
-            width="w-[220px]"
-        />
+    // Whether any visible notification in the current filtered view is
+    // still unread. Drives the "Mark all as read" button's disabled state
+    // so a re-click on an already-clean feed is suppressed.
+    const hasUnreadInView = filtered.some(n => !n.isRead);
+
+    function handleMarkAllAsRead() {
+        // Mark only the rows currently in view (respects branch + tab
+        // scope). Avoids unintentionally clearing unread state on rows
+        // the admin can't see right now.
+        for (const n of filtered) {
+            if (!n.isRead) markNotificationRead(n.id);
+        }
+    }
+
+    // Toolbar — location picker + "Mark all as read" button. Slotted
+    // into whichever section header renders first (Today when populated,
+    // otherwise Yesterday / Earlier this week / Older) so the controls
+    // sit inline with the first visible section label.
+    const sectionToolbar = (
+        <div className="flex items-center gap-3">
+            <SelectInput
+                triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                placeholder="Select location"
+                options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                value={branchId}
+                onChange={setBranchId}
+                width="w-[220px]"
+            />
+            <Button
+                variant="secondary-gray" size="md"
+                disabled={!hasUnreadInView}
+                onClick={handleMarkAllAsRead}
+            >
+                Mark all as read
+            </Button>
+        </div>
     );
 
     return (
@@ -328,10 +383,12 @@ function NotificationsPage() {
                     )
                 ) : filtered.length === 0 ? (
                     <>
-                        {/* No notifications — still show the picker so the
-                            user can switch branches and reveal data. */}
+                        {/* No notifications — still show the toolbar so the
+                            user can switch branches and reveal data. The
+                            "Mark all as read" button auto-disables since
+                            there's nothing to mark. */}
                         <div className="shrink-0 flex items-center justify-end px-6 pt-6">
-                            {locationFilter}
+                            {sectionToolbar}
                         </div>
                         <div className="relative flex-1">
                             <EmptyState
@@ -345,9 +402,17 @@ function NotificationsPage() {
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pt-6 pb-8">
                         <div className="flex flex-col gap-6 w-full">
                             <Section title="Today" items={today} onRowClick={handleRowClick}
-                                headerRight={today.length > 0 ? locationFilter : undefined} />
-                            <Section title="Past" items={past} onRowClick={handleRowClick}
-                                headerRight={today.length === 0 ? locationFilter : undefined} />
+                                headerRight={firstFilledBucket === "today" ? sectionToolbar : undefined}
+                                branchLabelFor={branchLabelFor} />
+                            <Section title="Yesterday" items={yesterday} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "yesterday" ? sectionToolbar : undefined}
+                                branchLabelFor={branchLabelFor} />
+                            <Section title="Earlier this week" items={earlierThisWeek} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "earlierThisWeek" ? sectionToolbar : undefined}
+                                branchLabelFor={branchLabelFor} />
+                            <Section title="Older" items={older} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "older" ? sectionToolbar : undefined}
+                                branchLabelFor={branchLabelFor} />
                         </div>
                     </div>
                 )}

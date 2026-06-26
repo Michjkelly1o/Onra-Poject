@@ -33,6 +33,7 @@ import { Bell01 } from "@untitledui/icons";
 import { useAppStore, type Notification } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/button";
 import {
     iconForNotification,
     relativeTime,
@@ -91,15 +92,22 @@ function Divider() {
     return <div className="h-px bg-[#e4e7ec] w-full" />;
 }
 
-function Section({ title, items, onRowClick }: {
+function Section({ title, items, onRowClick, headerRight }: {
     title: string;
     items: Notification[];
     onRowClick: (n: Notification) => void;
+    /** Optional content rendered on the right side of the section header
+     *  row — used by the first visible section to host the
+     *  "Mark all as read" button inline with the section label. */
+    headerRight?: React.ReactNode;
 }) {
     if (items.length === 0) return null;
     return (
         <div className="flex flex-col gap-3 w-full">
-            <SectionHeader title={title} />
+            <div className="flex items-center justify-between gap-4">
+                <SectionHeader title={title} />
+                {headerRight && <div className="shrink-0">{headerRight}</div>}
+            </div>
             <div className="flex flex-col">
                 {items.map((n, idx) => (
                     <div key={n.id}>
@@ -177,13 +185,43 @@ export default function InstructorNotificationsPage() {
         [scoped, activeTab],
     );
 
-    // Today / Past bucket split.
-    const { today, past } = useMemo(() => bucketByDay(filtered), [filtered]);
+    // Today / Yesterday / Earlier this week / Older bucket split.
+    const { today, yesterday, earlierThisWeek, older } = useMemo(() => bucketByDay(filtered), [filtered]);
+    // First non-empty bucket — its section header hosts the "Mark all as
+    // read" button inline with the title.
+    const firstFilledBucket: "today" | "yesterday" | "earlierThisWeek" | "older" | null =
+        today.length        > 0 ? "today" :
+        yesterday.length    > 0 ? "yesterday" :
+        earlierThisWeek.length > 0 ? "earlierThisWeek" :
+        older.length        > 0 ? "older" : null;
 
     function handleRowClick(n: Notification) {
         markNotificationRead(n.id);
         router.push(routeForNotification(n));
     }
+
+    // Whether any visible notification in the current filtered view is
+    // still unread. Drives the "Mark all as read" button's disabled state.
+    const hasUnreadInView = filtered.some(n => !n.isRead);
+
+    function handleMarkAllAsRead() {
+        // Mark only the rows currently in view (respects the active tab
+        // scope). Avoids accidentally clearing unread state on rows the
+        // instructor can't see right now.
+        for (const n of filtered) {
+            if (!n.isRead) markNotificationRead(n.id);
+        }
+    }
+
+    const markAllButton = (
+        <Button
+            variant="secondary-gray" size="md"
+            disabled={!hasUnreadInView}
+            onClick={handleMarkAllAsRead}
+        >
+            Mark all as read
+        </Button>
+    );
 
     return (
         <div className="flex flex-col gap-6">
@@ -218,8 +256,14 @@ export default function InstructorNotificationsPage() {
                 ) : (
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pt-6 pb-8">
                         <div className="flex flex-col gap-6 w-full">
-                            <Section title="Today" items={today} onRowClick={handleRowClick} />
-                            <Section title="Past"  items={past}  onRowClick={handleRowClick} />
+                            <Section title="Today" items={today} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "today" ? markAllButton : undefined} />
+                            <Section title="Yesterday" items={yesterday} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "yesterday" ? markAllButton : undefined} />
+                            <Section title="Earlier this week" items={earlierThisWeek} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "earlierThisWeek" ? markAllButton : undefined} />
+                            <Section title="Older" items={older} onRowClick={handleRowClick}
+                                headerRight={firstFilledBucket === "older" ? markAllButton : undefined} />
                         </div>
                     </div>
                 )}

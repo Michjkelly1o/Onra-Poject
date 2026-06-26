@@ -26,9 +26,15 @@ import { iconForNotification, relativeTime } from "./notification-utils";
 export interface NotificationRowProps {
     n: Notification;
     onClick: () => void;
+    /** Branch name to show as a pill next to the timestamp. Pass undefined
+     *  (or omit) to hide the pill — used by the admin notifications page
+     *  when a SPECIFIC branch is selected (the pill is redundant in that
+     *  case) and by the instructor + bell-dropdown surfaces that don't
+     *  carry the cross-branch context. */
+    branchLabel?: string;
 }
 
-export function NotificationRow({ n, onClick }: NotificationRowProps) {
+export function NotificationRow({ n, onClick, branchLabel }: NotificationRowProps) {
     const Icon = iconForNotification(n.icon);
     return (
         <button
@@ -49,6 +55,14 @@ export function NotificationRow({ n, onClick }: NotificationRowProps) {
                     <p className="text-[16px] font-normal leading-[24px] text-[#667085]">
                         {relativeTime(n.createdAt)}
                     </p>
+                    {/* Branch pill — surfaces which location the event
+                        belongs to. Rendered only when the caller passes a
+                        `branchLabel` (admin "All locations" view). */}
+                    {branchLabel && (
+                        <span className="inline-flex items-center px-[8px] py-[2px] rounded-full border-1 border-[#e4e7ec] bg-[#f9fafb] text-[12px] font-medium text-[#475467] whitespace-nowrap">
+                            {branchLabel}
+                        </span>
+                    )}
                 </div>
                 <p className="text-[16px] font-normal leading-[24px] text-[#475467]">
                     {n.body}

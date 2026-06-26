@@ -32,7 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/compensation": "Payroll",
     "/admin/insights": "Insights",
     "/admin/reports": "Reports",
-    "/admin/notifications": "Notification",
+    "/admin/notifications": "Notifications",
     "/admin/settings": "Settings",
     "/admin/settings/business-locations": "Business & locations",
     "/admin/settings/branding": "Branding",

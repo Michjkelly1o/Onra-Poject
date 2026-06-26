@@ -78,6 +78,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { adminUser } from "./mock-data";
+import { capitalizeName } from "./format-name";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
 //
@@ -4012,7 +4013,7 @@ export const useAppStore = create<AppState>()(persist(
         // Confirmed bookings notify Front Desk / Branch Admin (booking tab) and
         // the class's instructor — mirrors the cancellation feed contract.
         if (status === "booked" && schedule && customer) {
-            const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
             const filled = get().classSchedules.find(x => x.id === classScheduleId)?.booked ?? schedule.booked;
             get().emitNotifications({
                 admin: {
@@ -4079,7 +4080,7 @@ export const useAppStore = create<AppState>()(persist(
         // `emitNotifications` so admin + instructor stay in lockstep.
         if (booking && customer && schedule) {
             const verb = refund ? "Class session has been returned." : "1 class session was forfeited.";
-            const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
             // Booked count was decremented in the set() above, so re-read it.
             const updatedBooked = get().classSchedules.find(s => s.id === schedule.id)?.booked ?? schedule.booked;
             get().emitNotifications({
@@ -4145,7 +4146,7 @@ export const useAppStore = create<AppState>()(persist(
             const customer = stateBefore.customers.find(c => c.id === t.customerId);
             const schedule = stateBefore.classSchedules.find(s => s.id === t.classScheduleId);
             if (customer && schedule) {
-                const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+                const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
                 const updatedBooked = get().classSchedules.find(s => s.id === schedule.id)?.booked ?? schedule.booked;
                 get().emitNotifications({
                     admin: {
@@ -4238,7 +4239,7 @@ export const useAppStore = create<AppState>()(persist(
             const customer = stateBefore.customers.find(c => c.id === booking.customerId);
             const schedule = stateBefore.classSchedules.find(s => s.id === booking.classScheduleId);
             if (customer && schedule) {
-                const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+                const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
                 get().emitNotifications({
                     admin: {
                         tab: "booking",
@@ -4401,7 +4402,7 @@ export const useAppStore = create<AppState>()(persist(
         }));
         if (target) {
             const customer = get().customers.find(c => c.id === target.customerId);
-            const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
+            const customerName = customer ? capitalizeName(`${customer.firstName} ${customer.lastName}`) : "a customer";
             get().recordAudit(`Froze ${customerName}'s plan`, "customer_plan", planId, target.name, { from: startISO, to: endISO });
         }
     },
@@ -4417,7 +4418,7 @@ export const useAppStore = create<AppState>()(persist(
         }));
         if (target) {
             const customer = get().customers.find(c => c.id === target.customerId);
-            const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
+            const customerName = customer ? capitalizeName(`${customer.firstName} ${customer.lastName}`) : "a customer";
             get().recordAudit(`Unfroze ${customerName}'s plan`, "customer_plan", planId, target.name);
         }
     },
@@ -4425,7 +4426,7 @@ export const useAppStore = create<AppState>()(persist(
     cancelCustomerPlan: (planId, mode, reason) => {
         const targetPlan = get().customerPlans.find(p => p.id === planId);
         const targetCustomer = targetPlan ? get().customers.find(c => c.id === targetPlan.customerId) : undefined;
-        const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
+        const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         set(state => {
             const target = state.customerPlans.find(p => p.id === planId);
             const customerPlans = state.customerPlans.map(p =>
@@ -4468,7 +4469,7 @@ export const useAppStore = create<AppState>()(persist(
     removeComplimentaryPlan: (planId, reason, removedBy, removedByRole) => {
         const targetPlan = get().customerPlans.find(p => p.id === planId);
         const targetCustomer = targetPlan ? get().customers.find(c => c.id === targetPlan.customerId) : undefined;
-        const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
+        const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         set(state => {
             const plan = state.customerPlans.find(p => p.id === planId);
             const customerPlans = state.customerPlans.map(p =>
@@ -4509,7 +4510,7 @@ export const useAppStore = create<AppState>()(persist(
         };
         set(state => ({ customerPlans: [plan, ...state.customerPlans] }));
         const targetCustomer = get().customers.find(c => c.id === input.customerId);
-        const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
+        const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });
         return id;
     },
@@ -4532,7 +4533,7 @@ export const useAppStore = create<AppState>()(persist(
         }));
         if (target) {
             const targetCustomer = get().customers.find(c => c.id === target.customerId);
-            const customerName = targetCustomer ? `${targetCustomer.firstName} ${targetCustomer.lastName}`.trim() : "a customer";
+            const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
             get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
         }
     },

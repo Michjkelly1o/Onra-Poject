@@ -60,7 +60,7 @@ export function relativeTime(iso: string): string {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ─── Section bucketing (Today / Past) ────────────────────────────────────────
+// ─── Section bucketing (Today / Yesterday / Earlier this week) ─────────────
 
 /** Returns true if `iso` falls inside the calendar day of `referenceMs`
  *  (local time). Used to split the feed into "Today" and "Past". */
@@ -72,16 +72,49 @@ export function isToday(iso: string, referenceMs: number = Date.now()): boolean 
         && d.getDate() === ref.getDate();
 }
 
-/** Split a list of notifications into Today vs Past buckets, preserving the
- *  caller's incoming sort order inside each bucket. */
-export function bucketByDay(list: Notification[]): { today: Notification[]; past: Notification[] } {
-    const today: Notification[] = [];
-    const past: Notification[] = [];
+/** Returns true if `iso` falls on the calendar day immediately before
+ *  `referenceMs` (local time). */
+export function isYesterday(iso: string, referenceMs: number = Date.now()): boolean {
+    const yesterday = new Date(referenceMs);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return isToday(iso, yesterday.getTime());
+}
+
+/** Inclusive-day diff (0 = today, 1 = yesterday, ...). Compares calendar
+ *  days in local time — DST changes can't make a row jump by ±1 day. */
+function calendarDayDiff(iso: string, referenceMs: number): number {
+    const d  = new Date(iso);
+    const r  = new Date(referenceMs);
+    const dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const rDay = new Date(r.getFullYear(), r.getMonth(), r.getDate()).getTime();
+    return Math.round((rDay - dDay) / 86_400_000);
+}
+
+/** Split a list of notifications into Today / Yesterday / Earlier-this-week
+ *  / Older buckets, preserving the caller's incoming sort order inside
+ *  each bucket. "Earlier this week" covers calendar-day diffs 2..6 — i.e.
+ *  the last 7 days excluding today + yesterday. Anything older lands in
+ *  `older` (rendered under an "Older" header by the admin + instructor
+ *  notifications pages). */
+export function bucketByDay(list: Notification[]): {
+    today: Notification[];
+    yesterday: Notification[];
+    earlierThisWeek: Notification[];
+    older: Notification[];
+} {
+    const today:           Notification[] = [];
+    const yesterday:       Notification[] = [];
+    const earlierThisWeek: Notification[] = [];
+    const older:           Notification[] = [];
     const nowMs = Date.now();
     for (const n of list) {
-        (isToday(n.createdAt, nowMs) ? today : past).push(n);
+        const diff = calendarDayDiff(n.createdAt, nowMs);
+        if (diff <= 0)      today.push(n);
+        else if (diff === 1) yesterday.push(n);
+        else if (diff < 7)   earlierThisWeek.push(n);
+        else                 older.push(n);
     }
-    return { today, past };
+    return { today, yesterday, earlierThisWeek, older };
 }
 
 // ─── Click-through route resolver ────────────────────────────────────────────

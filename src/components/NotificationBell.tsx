@@ -123,7 +123,7 @@ export default function NotificationBell() {
                     {/* Header */}
                     <div className="border-b border-[#e4e7ec] px-6 py-4">
                         <p className="text-[18px] font-medium leading-[28px] text-[#101828]">
-                            Notification
+                            Notifications
                         </p>
                     </div>
 

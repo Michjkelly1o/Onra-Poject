@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { XClose, Check, ChevronDown, SearchMd } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { capitalizeName } from "@/lib/format-name";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -365,8 +366,12 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
         if (!canSave) return;
         const phoneValue = phone ? `${phoneCountry.dial} ${phone}` : undefined;
         const fields = {
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
+            // Title-case the input so a name entered as "sophia lee"
+            // persists as "Sophia Lee" — every downstream consumer
+            // (notification bodies, customer list, dashboard activity
+            // feed, etc.) then reads the properly-capitalised form.
+            firstName: capitalizeName(firstName),
+            lastName: capitalizeName(lastName),
             email: email.trim(),
             phone: phoneValue,
             branchId,
