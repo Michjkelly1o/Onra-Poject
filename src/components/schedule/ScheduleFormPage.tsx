@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
-import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByInstructor as gateSlotsByInstructorHelper } from "@/lib/instructor-availability";
+import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
@@ -1268,16 +1268,33 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         return blocked;
     }
 
-    // Single-date path — slots barred on the picked date. Combines:
-    //   1. Conflict scan — instructor / room already booked for that slot
-    //   2. Branch block window (lunch / break) — any candidate whose
-    //      [start, start+duration) interval overlaps the block
-    // Only same-instructor / same-location double-bookings make a slot
-    // unavailable now that the branch break-time concept has been retired.
+    // Single-date path — slots BARRED on the picked date. Combines:
+    //   1. Conflict scan — instructor / room already booked at that slot
+    //      (returns slots from a sweep over the existing class_schedule
+    //      rows for the date).
+    //   2. Instructor blocked-time overlap — slots whose
+    //      [start, start+duration) window intersects ANY blocked-time
+    //      entry for the picked instructor on that date.
+    //
+    // Both surfaces feed the TimeDropdown's `unavailable` prop so blocked
+    // slots show greyed-out with an "Unavailable" badge rather than being
+    // removed from the dropdown. The buildTimeSlots → gateSlotsByShift
+    // chain that produces `singleDateSlots` purposefully NO LONGER
+    // removes blocked-time slots — they need to be visible-but-disabled
+    // so the admin sees the blocked window in context.
     const unavailableTimes = useMemo(
-        () => blockedSlotsForDates(selectedDate ? [selectedDate] : []),
+        () => {
+            const bookingConflicts = blockedSlotsForDates(selectedDate ? [selectedDate] : []);
+            const blockedByInstructor = selectedDate
+                ? instructorBlockedSlots(
+                    buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration),
+                    selectedDate,
+                )
+                : [];
+            return Array.from(new Set([...bookingConflicts, ...blockedByInstructor]));
+        },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [instructorId, locationId, selectedDate, classSchedules, editingId, duration],
+        [instructorId, locationId, selectedDate, classSchedules, editingId, duration, blockedTimesSlice, liveBusinessHours, selectedBranchId],
     );
 
     // Recurring path — slots barred per selected weekday, checked against
@@ -1314,14 +1331,26 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                 if (d.getTime() < base.getTime()) continue;
                 dates.push(d.toISOString().slice(0, 10));
             }
-            result[day] = blockedSlotsForDates(dates);
+            // Compose double-booking conflicts + instructor blocked-time
+            // overlaps. Both ultimately feed the TimeDropdown's
+            // `unavailable` prop so blocked slots show greyed-out
+            // instead of being silently removed from the dropdown.
+            const conflicts = blockedSlotsForDates(dates);
+            const repBlocked: string[] = [];
+            for (const iso of dates) {
+                const baseSlots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, iso), duration);
+                for (const s of instructorBlockedSlots(baseSlots, iso)) {
+                    if (!repBlocked.includes(s)) repBlocked.push(s);
+                }
+            }
+            result[day] = Array.from(new Set([...conflicts, ...repBlocked]));
         }
         return result;
     }, [
         // eslint-disable-next-line react-hooks/exhaustive-deps
         repeat, selectedDate, selectedDays, repeatEnd, endDate, endAfter, repeatEvery,
         classSchedules, instructorId, locationId, duration, editingId,
-        liveBusinessHours, selectedBranchId, selectedBranchGroup,
+        liveBusinessHours, selectedBranchId, selectedBranchGroup, blockedTimesSlice,
     ]);
 
     // When template is selected — populate fields. Two paths:
@@ -1418,13 +1447,25 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
      *  instructor's shift + blocked-time entries on the given ISO date.
      *  Thin wrapper around the shared helper so the per-render call site
      *  reads exactly the same as the previous inline implementation. */
-    function gateSlotsByInstructor(slots: string[], iso: string): string[] {
+    function gateSlotsByShift(slots: string[], iso: string): string[] {
         if (!instructorId) return slots;
-        return gateSlotsByInstructorHelper(slots, iso, {
+        return gateSlotsByShiftHelper(slots, iso, {
             instructorId,
             durationMins: duration,
             staffById,
             shifts: shiftsSlice,
+        });
+    }
+
+    /** Subset of slots that overlap a blocked-time entry for the picked
+     *  instructor on the given ISO date. Merged into the TimeDropdown's
+     *  `unavailable` list so the admin can see WHICH slots are blocked
+     *  rather than discovering them as silent gaps. */
+    function instructorBlockedSlots(slots: string[], iso: string): string[] {
+        if (!instructorId) return [];
+        return instructorBlockedSlotsHelper(slots, iso, {
+            instructorId,
+            durationMins: duration,
             blockedTimes: blockedTimesSlice,
         });
     }
@@ -1447,10 +1488,12 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                 return (h * 60 + m) >= nowMinutes;
             });
         }
-        // Instructor shift + blocked-time gate (no-op when no instructor
-        // is picked yet).
-        return gateSlotsByInstructor(slots, selectedDate);
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, blockedTimesSlice]);
+        // Instructor shift gate only — blocked-time overlap is reported
+        // separately via `singleDateBlockedSlots` below + the
+        // TimeDropdown's `unavailable` prop so the admin sees blocked
+        // slots greyed out rather than as silent gaps.
+        return gateSlotsByShift(slots, selectedDate);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
@@ -1468,13 +1511,12 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
             d.setUTCDate(anchor.getUTCDate() + delta);
             const iso = d.toISOString().slice(0, 10);
             const baseSlots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, iso), duration);
-            // Same instructor gate as singleDateSlots — applies per weekday
-            // because each label's representative date can resolve to a
-            // distinct blocked-time entry.
-            map[label] = gateSlotsByInstructor(baseSlots, iso);
+            // Same shift gate as singleDateSlots — blocked-time overlap
+            // is reported via `repeatBlockedSlotsByDay` below.
+            map[label] = gateSlotsByShift(baseSlots, iso);
         }
         return map;
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, blockedTimesSlice]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice]);
 
     // True when a recurring slot's FIRST occurrence lands on today AND its
     // start time has already passed the current live time. Drives the

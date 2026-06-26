@@ -122,6 +122,66 @@ export function gateSlotsByInstructor(
     });
 }
 
+/** Filter slots by SHIFT coverage only (no blocked-time removal). Use this
+ *  when the UI needs to show all branch-hours slots to the user, with the
+ *  blocked-overlap slots greyed out / labelled "Unavailable" via a
+ *  separate `unavailable` list (preserves visibility so the admin can see
+ *  what times are blocked rather than discovering them as gaps). */
+export function gateSlotsByShift(
+    slots: string[],
+    iso: string,
+    options: {
+        instructorId: string;
+        durationMins: number;
+        staffById: Map<string, Staff>;
+        shifts: Shift[];
+    },
+): string[] {
+    const { instructorId, durationMins, staffById, shifts } = options;
+    if (!instructorId || !iso) return slots;
+    const s = staffById.get(instructorId);
+    if (!s) return slots;
+    const dow = new Date(iso + "T00:00:00Z").getUTCDay();
+    const shift = s.shiftId ? shifts.find(x => x.id === s.shiftId) : undefined;
+    if (shift && !shift.working_days[dow]) return [];
+    if (!shift) return slots;
+    return slots.filter(start => {
+        const end = addMinutesToTime(start, durationMins);
+        if (start < shift.start_time) return false;
+        if (end   > shift.end_time)   return false;
+        return true;
+    });
+}
+
+/** Return the subset of `slots` that overlap a blocked-time entry for the
+ *  picked instructor on `iso`. Pair with `gateSlotsByShift` above + the
+ *  TimeDropdown's `unavailable` prop to show blocked slots greyed out
+ *  instead of removed — preserves visibility so the admin sees the
+ *  blocked window in context. */
+export function instructorBlockedSlots(
+    slots: string[],
+    iso: string,
+    options: {
+        instructorId: string;
+        durationMins: number;
+        blockedTimes: BlockedTime[];
+    },
+): string[] {
+    const { instructorId, durationMins, blockedTimes } = options;
+    if (!instructorId || !iso) return [];
+    const blocks = blockedTimes.filter(b =>
+        b.date === iso && b.staff_ids.includes(instructorId),
+    );
+    if (blocks.length === 0) return [];
+    return slots.filter(start => {
+        const end = addMinutesToTime(start, durationMins);
+        for (const blk of blocks) {
+            if (start < blk.end_time && end > blk.start_time) return true;
+        }
+        return false;
+    });
+}
+
 // ─── Cross-instructor query (customer booking flow) ───────────────────────
 
 /** "Which instructors are eligible for THIS service at THIS exact slot?"

@@ -28,14 +28,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Download01, DotsVertical, ChevronLeft, MarkerPin01,
+    XClose, Download01, ChevronLeft, MarkerPin01,
     SearchMd, FilterLines, CoinsHand, CoinsStacked01, CheckCircle, Users01,
     Check,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
@@ -49,6 +48,7 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
+import { RowActions } from "@/components/patterns/RowActions";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 
@@ -207,37 +207,10 @@ function MetricCard({ label, value, period, Icon }: {
     );
 }
 
-// ─── Row actions (⋮) — Pending rows get "Mark as paid" ─────────────────────
-
-function RowActions({ canMarkPaid, onMarkPaid }: {
-    canMarkPaid: boolean; onMarkPaid: () => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    // Paid rows have no actionable items; render the button disabled-style so
-    // the visual rhythm of the table stays consistent.
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button"
-                disabled={!canMarkPaid}
-                onClick={() => setOpen(p => !p)}
-                className={cn(
-                    "w-9 h-9 flex items-center justify-center rounded-[8px] transition-colors",
-                    canMarkPaid ? "hover:bg-[#f2f4f7]" : "opacity-30 cursor-not-allowed",
-                )}>
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            {canMarkPaid && (
-                <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                    <button type="button" onClick={() => { setOpen(false); onMarkPaid(); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Check className="w-4 h-4 text-[#067647]" />Mark as paid
-                    </button>
-                </FixedDropdown>
-            )}
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
+// Paid rows pass `triggerDisabled` to keep the visual rhythm with the
+// disabled-style kebab (opacity-30 + cursor-not-allowed) the canonical
+// already supports.
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
@@ -706,8 +679,14 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                                 <td className={TD}><StatusBadge type="payroll" status={r.status} /></td>
                                                 <td className={TD}>
                                                     <RowActions
-                                                        canMarkPaid={r.status === "pending" && !!r.actualEntryId}
-                                                        onMarkPaid={() => handleMarkPaid(r)}
+                                                        minWidth={180}
+                                                        triggerDisabled={!(r.status === "pending" && !!r.actualEntryId)}
+                                                        items={[{
+                                                            label: "Mark as paid",
+                                                            icon: Check,
+                                                            success: true,
+                                                            onClick: () => handleMarkPaid(r),
+                                                        }]}
                                                     />
                                                 </td>
                                             </tr>

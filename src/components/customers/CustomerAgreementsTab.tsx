@@ -16,9 +16,9 @@
 // Phase 4 Agreements module's `agreements` + `agreementVersions` so the View
 // action opens the actual agreement content rather than firing a stub toast.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    SearchMd, FilterLines, DotsVertical, ChevronLeft, XClose, AlignLeft, Eye, File06,
+    SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft, Eye, File06,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
     useAppStore,
     type CustomerAgreement, type AgreementVersion, type Branch,
@@ -36,6 +35,7 @@ import { AgreementContentModal } from "@/components/settings/AgreementContentMod
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
+import { RowActions } from "@/components/patterns/RowActions";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -173,26 +173,7 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
     );
 }
 
-// ─── Row action (⋮) ───────────────────────────────────────────────────────────
-
-function RowActions({ onView }: { onView: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
-                <button type="button" onClick={() => { setOpen(false); onView(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View agreement
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
@@ -418,7 +399,13 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
                                         <td className={TD}><AgreementStatusBadge status={a.status} /></td>
                                         <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(a.signedAtISO)}</td>
                                         <td onClick={e => e.stopPropagation()} className={TD}>
-                                            <RowActions onView={() => handleView(a)} />
+                                            <RowActions
+                                                items={[{
+                                                    label: "View agreement",
+                                                    icon: Eye,
+                                                    onClick: () => handleView(a),
+                                                }]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}

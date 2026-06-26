@@ -21,10 +21,10 @@
 // store's `refundTransaction` so the table + metrics re-render together and
 // a success toast confirms it.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-    SearchMd, FilterLines, DotsVertical, ChevronLeft, XClose, AlignLeft,
+    SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -33,10 +33,10 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
+import { RowActions } from "@/components/patterns/RowActions";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import {
@@ -389,26 +389,7 @@ function RefundModal({ txn, onClose, onConfirm }: {
     );
 }
 
-// ─── Row action (⋮) ───────────────────────────────────────────────────────────
-
-function RowActions({ onRefund }: { onRefund: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
-                <button type="button" onClick={() => { setOpen(false); onRefund(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <CoinsSwap02 className="w-4 h-4 text-[#667085]" />Refund payment
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
@@ -699,7 +680,13 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                 <td className={TD}>
                                                     {/* Only completed payments can be refunded. */}
                                                     {t.status === "complete" && (
-                                                        <RowActions onRefund={() => setRefundTxn(t)} />
+                                                        <RowActions
+                                                            items={[{
+                                                                label: "Refund payment",
+                                                                icon: CoinsSwap02,
+                                                                onClick: () => setRefundTxn(t),
+                                                            }]}
+                                                        />
                                                     )}
                                                 </td>
                                             </tr>

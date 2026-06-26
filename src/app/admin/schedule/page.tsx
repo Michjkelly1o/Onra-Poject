@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-    SearchMd, FilterLines, Plus, DotsVertical,
+    SearchMd, FilterLines, Plus,
     ChevronLeft, ChevronRight, Eye, Edit02, Trash01,
     Download01, MarkerPin01, Clock, Users01, AlignLeft, XClose,
     Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
@@ -23,9 +23,10 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { RowActions } from "@/components/patterns/RowActions";
+import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { Toast } from "@/components/ui/Toast";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
-import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
@@ -179,6 +180,18 @@ function heightFromTime(startTime: string, endTime: string, hourHeight: number =
     return Math.max(30, (mins * hourHeight) / 60);
 }
 
+/** Clamp a card's (top, height) so it never spills past the grid bottom.
+ *  Defensive: a class scheduled in a window that the branch later shrunk
+ *  (close-time edited earlier) would otherwise render past the bottom of
+ *  the time grid — this caps it so the card stays inside the visual
+ *  boundary, height truncating at the grid's last hour line. Cards that
+ *  start past the grid bottom collapse to height 0 (hidden) — they were
+ *  scheduled outside business hours and shouldn't render at all. */
+function clampToGrid(top: number, height: number, gridHeight: number): { top: number; height: number } {
+    if (top >= gridHeight) return { top: gridHeight, height: 0 };
+    return { top, height: Math.max(0, Math.min(height, gridHeight - top)) };
+}
+
 // ─── Shared: star rating ──────────────────────────────────────────────────────
 
 function FilledStar({ filled }: { filled: boolean }) {
@@ -221,7 +234,11 @@ function InstructorAvatar({ initials, color, size = 28 }: { initials: string; co
     );
 }
 
-function RowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
+// Schedule-specific RowActions — thin wrapper that builds the items array
+// and delegates to the canonical RowActions. Computes appointment-vs-class
+// routing + per-status conditional visibility in one place so the call site
+// stays a single `<ScheduleRowActions ... />`.
+function ScheduleRowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
     id: string;
     status: ClassStatus;
     onCancel: (id: string) => void;
@@ -232,73 +249,26 @@ function RowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
     onAddCustomer: (id: string) => void;
 }) {
     const router = useRouter();
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
     const isEditable = status === "Upcoming" || status === "Ongoing";
     // Appointments route to /appointments/[id] and don't expose Add
     // customer or Duplicate (per the brief: bookings come from the
     // customer side; duplicating an appointment doesn't make sense).
     const isAppt = isAppointmentId(id);
-
-    function go(path: string) { setOpen(false); router.push(path); }
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-
     const rt = encodeURIComponent("/admin/schedule");
     const viewPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}?returnTo=${rt}`;
     const editPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}/edit?returnTo=${rt}`;
 
     return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => go(viewPath)} className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-
-                {/* Add customer — Upcoming / Ongoing CLASS only. Appointments
-                    can't add a customer from admin (bookings flow from the
-                    customer side). */}
-                {isEditable && !isAppt && (
-                    <button type="button" onClick={() => trigger(() => onAddCustomer(id))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <UserPlus01 className="w-4 h-4 text-[#667085]" />Add customer
-                    </button>
-                )}
-
-                {/* Edit — class schedule only. Appointments are created
-                    by the customer (self-booking) and admins can't edit
-                    them, only cancel. */}
-                {isEditable && !isAppt && (
-                    <button type="button" onClick={() => go(editPath)}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit class
-                    </button>
-                )}
-
-                {/* Duplicate — class rows only. Appointments don't expose
-                    a duplicate action since the customer-side booking
-                    creates them. */}
-                {!isAppt && (
-                    <button type="button" onClick={() => trigger(() => onDuplicate(id))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Copy01 className="w-4 h-4 text-[#667085]" />Duplicate
-                    </button>
-                )}
-
-                {/* Cancel — destructive, Upcoming / Ongoing only. Routes
-                    via `onCancel` which the parent branches on id prefix
-                    (class → modal, appointment → /appointments/[id]). */}
-                {isEditable && (
-                    <button type="button" onClick={() => trigger(() => onCancel(id))}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                        <Trash01 className="w-4 h-4 text-[#b42318]" />{isAppt ? "Cancel appointment" : "Cancel class"}
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
+        <RowActions
+            minWidth={180}
+            items={[
+                { label: "View details", icon: Eye, onClick: () => router.push(viewPath) },
+                { label: "Add customer", icon: UserPlus01, onClick: () => onAddCustomer(id), hidden: !(isEditable && !isAppt) },
+                { label: "Edit class", icon: Edit02, onClick: () => router.push(editPath), hidden: !(isEditable && !isAppt) },
+                { label: "Duplicate", icon: Copy01, onClick: () => onDuplicate(id), hidden: isAppt },
+                { label: isAppt ? "Cancel appointment" : "Cancel class", icon: Trash01, onClick: () => onCancel(id), hidden: !isEditable, danger: true },
+            ]}
+        />
     );
 }
 
@@ -731,7 +701,7 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}><StarRating rating={c.rating} count={c.ratingCount} /></td>
                             <td className={TD}><StatusBadge type="class" status={c.status} /></td>
-                            <td className={TD} onClick={e => e.stopPropagation()}><RowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
+                            <td className={TD} onClick={e => e.stopPropagation()}><ScheduleRowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
                         </tr>
                     ))}
                 </tbody>
@@ -742,14 +712,21 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
 
 // ─── Day view ─────────────────────────────────────────────────────────────────
 
-function ClassBlock({ cls, onClick, gridStartHour }: {
+function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
     cls: ClassInstance;
     onClick?: (e: React.MouseEvent) => void;
     gridStartHour: number;
+    /** Total pixel height of the timeline (hours × HOUR_HEIGHT). Used to
+     *  clamp the card so it never spills past the grid bottom. */
+    gridHeight: number;
 }) {
     const colors = getCategoryColor(cls.category);
-    const top = topFromTime(cls.startTime, gridStartHour);
-    const height = heightFromTime(cls.startTime, cls.endTime);
+    const rawTop = topFromTime(cls.startTime, gridStartHour);
+    const rawHeight = heightFromTime(cls.startTime, cls.endTime);
+    const { top, height } = clampToGrid(rawTop, rawHeight, gridHeight);
+    // Card was scheduled past the branch's close hour — hide rather than
+    // render a zero-height ghost.
+    if (height <= 0) return null;
 
     return (
         <ScheduleClassCard
@@ -774,7 +751,7 @@ function ClassBlock({ cls, onClick, gridStartHour }: {
     );
 }
 
-function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, onClassClick }: {
+function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, blockedTimes, onClassClick }: {
     /** ISO date the view is anchored to ("2026-05-15"). Filter is dateISO-based
      *  so newly-created schedules surface regardless of display-string format. */
     dateISO: string;
@@ -787,6 +764,12 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
     /** Active branch ids — used to build the union hours window when
      *  branchId is empty ("All locations"). */
     activeBranchIds: string[];
+    /** All blocked-time entries — admin is god-mode and sees every staff
+     *  member's blocks. Each instructor column renders only the blocks
+     *  that include that instructor's id; a single full-width label
+     *  overlay floats above the columns per (start, end) tuple so the
+     *  admin can read the block at a glance. */
+    blockedTimes: BlockedTime[];
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
     const dayClasses = classes.filter(c => c.dateISO === dateISO);
@@ -862,19 +845,35 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                             </div>
                         )}
 
-                        {/* Instructor columns — each carries the SHADED block
-                            strip (no label) so the stripes track the right
-                            time band per column. The CENTERED label badge
-                            floats above all columns as a single overlay
-                            (rendered right after this block) so it never
-                            looks anchored to the left-most column. */}
+                        {/* Instructor columns — each carries its own shaded
+                            BlockedStrip(s) with the centered "Blocked HH:MM
+                            – HH:MM" label baked in. The label is scoped to
+                            the column the block applies to so unblocked
+                            instructor columns next to a blocked one render
+                            clean (no misleading badge floating over their
+                            time band). */}
                         <div className="absolute inset-0 flex">
                             {columns.map(instructor => {
                                 const instrClasses = dayClasses.filter(c => c.instructorId === instructor.id);
+                                const instrBlocks = blockedTimes.filter(b =>
+                                    b.date === dateISO && b.staff_ids.includes(instructor.id),
+                                );
                                 return (
                                     <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
+                                        {/* Per-instructor blocked strips —
+                                            label is centered within the
+                                            column the block belongs to. */}
+                                        {instrBlocks.map(b => (
+                                            <BlockedStrip
+                                                key={b.id}
+                                                blockStart={b.start_time}
+                                                blockEnd={b.end_time}
+                                                gridStartHour={gridStartHour}
+                                                hourHeight={HOUR_HEIGHT}
+                                            />
+                                        ))}
                                         {instrClasses.map(cls => (
-                                            <ClassBlock key={cls.id} cls={cls} gridStartHour={gridStartHour} onClick={(e) => onClassClick(cls, e)} />
+                                            <ClassBlock key={cls.id} cls={cls} gridStartHour={gridStartHour} gridHeight={gridHeight} onClick={(e) => onClassClick(cls, e)} />
                                         ))}
                                     </div>
                                 );
@@ -913,6 +912,11 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
     activeBranchIds: string[];
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
+    // Blocked-time rendering is intentionally OMITTED in Week + Month
+    // views. Those views don't surface per-instructor identity in the
+    // grid (Week columns = days; Month tiles = days), so a blocked
+    // strip there couldn't tell the admin WHO is blocked. Blocks render
+    // only in Day view where each column is an instructor.
     const cols = buildWeekCols(weekStart);
 
     // Grid range = widest envelope of the branch's open hours across the 7
@@ -996,8 +1000,11 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                                         {dayClasses.map(cls => {
                                             const lane = lanes.get(cls.id);
                                             if (lane && !lane.visible) return null;
-                                            const top = weekTopFromTime(cls.startTime, gridStartHour);
-                                            const height = weekHeightFromTime(cls.startTime, cls.endTime);
+                                            const rawTop = weekTopFromTime(cls.startTime, gridStartHour);
+                                            const rawHeight = weekHeightFromTime(cls.startTime, cls.endTime);
+                                            const { top, height } = clampToGrid(rawTop, rawHeight, gridHeight);
+                                            // Class scheduled past branch close — hide rather than render a sliver.
+                                            if (height <= 0) return null;
                                             const colors = getCategoryColor(cls.category);
                                             const widthPct = lane && lane.totalLanes > 1 ? 100 / lane.totalLanes : undefined;
                                             const leftPct  = lane && lane.totalLanes > 1 ? lane.lane * (100 / lane.totalLanes) : undefined;
@@ -1039,6 +1046,11 @@ function MonthView({ classes, monthYear, onClassClick }: {
     monthYear: string;
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
+    // Blocked-time markers are intentionally OMITTED in Month view.
+    // Month tiles are per-day not per-instructor, so a "Blocked" badge
+    // here couldn't tell the admin WHO is blocked — and the screenshot
+    // is dense enough already. Blocks render only in Day view where
+    // each column is an instructor.
     const grid = buildMonthGrid(monthYear);
 
     const DAY_CLASSES: Record<string, ClassInstance[]> = {};
@@ -1343,6 +1355,7 @@ function SchedulePage() {
     const branches = useAppStore(s => s.branches);
     const rooms = useAppStore(s => s.rooms);
     const businessHours = useAppStore(s => s.businessHours);
+    const blockedTimes = useAppStore(s => s.blockedTimes);
     const [activeTab, setActiveTab] = useState<ViewTab>("list");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
@@ -1631,7 +1644,7 @@ function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={filteredClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "week" && (

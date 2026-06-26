@@ -949,6 +949,8 @@ export interface ClassBooking {
     planName: string;
     /** Which plan kind paid the booking. */
     planKindUsed?: "membership" | "package";
+    /** Selected spot id (e.g. "A3") — set when the class has spot selection on. */
+    spot?: string;
     bookingTime: string;
     status: "booked" | "waitlisted" | "cancelled";
     attendanceStatus: "pending" | "present" | "no_show" | "late_cancel";
@@ -1654,7 +1656,13 @@ function appointmentBookingFromSeed(b: SeedAppointmentBooking): AppointmentBooki
 
 function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): ClassSchedule {
     const tpl = templates.find(t => t.id === s.template_id);
-    const inst = SEED_STAFF_PROFILES.find(p => p.id === s.instructor_id);
+    // Resolve the instructor's denormalized name/initials/colour. staff_profiles
+    // only carries the 4 canonical staff rows, but demo schedules bind to all 10
+    // instructors — fall back to the full instructors seed so none render blank
+    // (otherwise the unmatched 6 got "" + the #e0e0e0 default → empty grey chip).
+    const inst =
+        SEED_STAFF_PROFILES.find(p => p.id === s.instructor_id) ??
+        SEED_INSTRUCTORS.find(p => p.id === s.instructor_id);
     const branch = SEED_BRANCHES.find(b => b.id === s.branch_id);
     const room = SEED_ROOMS.find(r => r.id === s.room_id);
     return {
@@ -2621,8 +2629,27 @@ interface AppState {
     removeClassBookings: (ids: string[]) => void;
     cancelClassBookings: (ids: string[], reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
     updateAttendance: (bookingId: string, status: ClassBooking["attendanceStatus"]) => void;
+    /** Member-portal booking. Adds a booked/waitlisted ClassBooking, bumps the
+     *  schedule's booked count + spends one class credit (booked only, package
+     *  plans), and fires booking-confirmed / new-booking notifications. The new
+     *  row propagates to the admin roster, the customer profile, the member's
+     *  Bookings list, and the class detail state in the same render cycle.
+     *  Returns the new booking id. */
+    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string }) => string;
+    /** Member-portal: mark this customer's outstanding (unsigned) booking-waiver
+     *  agreements as signed — the first-time waiver gate. */
+    signWaiver: (customerId: string) => void;
 
     deleteClassRating: (id: string, deletedBy: string) => void;
+    /** Append a member's class rating + recompute the schedule's rating aggregate. */
+    submitClassRating: (input: {
+        classScheduleId: string;
+        customerId: string;
+        instructorId: string;
+        score: number;
+        comment: string;
+        tags?: string[];
+    }) => void;
 
     addCustomer: (customer: Omit<Customer, "id" | "createdAt" | "initials" | "branchId" | "status"> & { initials?: string; branchId?: string; status?: Customer["status"] }) => string;
     /** Mutate any field on a customer — used by the Edit Customer flow. */
@@ -3931,6 +3958,100 @@ export const useAppStore = create<AppState>()(persist(
             }
         },
 
+    addClassBooking: ({ classScheduleId, customerId, status, spot }) => {
+        const s0 = get();
+        const schedule = s0.classSchedules.find(x => x.id === classScheduleId);
+        const customer = s0.customers.find(c => c.id === customerId);
+        const id = `bk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+        const planKindUsed = customer?.planKind ?? undefined;
+        const planId =
+            customer?.planKind === "membership"
+                ? customer.membershipId ?? ""
+                : customer?.packageIds?.[0] ?? "";
+        const waitlistPosition =
+            status === "waitlisted"
+                ? s0.classBookings.filter(b => b.classScheduleId === classScheduleId && b.status === "waitlisted").length + 1
+                : undefined;
+
+        const booking: ClassBooking = {
+            id,
+            classScheduleId,
+            customerId,
+            branchId: schedule?.branchId ?? customer?.branchId ?? "",
+            planId,
+            planName: customer?.planName ?? "",
+            planKindUsed,
+            spot,
+            bookingTime: new Date().toISOString(),
+            status,
+            attendanceStatus: "pending",
+            bookingSource: "customer_portal",
+            waitlistPosition,
+        };
+
+        set((state) => ({
+            classBookings: [...state.classBookings, booking],
+            // Booked seats bump the schedule count; waitlist entries don't.
+            classSchedules:
+                status === "booked"
+                    ? state.classSchedules.map(x => (x.id === classScheduleId ? { ...x, booked: x.booked + 1 } : x))
+                    : state.classSchedules,
+            // Spend one class credit on a confirmed booking (package plans only —
+            // unlimited memberships carry no creditsRemaining).
+            customers:
+                status === "booked"
+                    ? state.customers.map(c =>
+                          c.id === customerId && typeof c.creditsRemaining === "number"
+                              ? { ...c, creditsRemaining: Math.max(0, c.creditsRemaining - 1) }
+                              : c,
+                      )
+                    : state.customers,
+        }));
+
+        // Confirmed bookings notify Front Desk / Branch Admin (booking tab) and
+        // the class's instructor — mirrors the cancellation feed contract.
+        if (status === "booked" && schedule && customer) {
+            const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+            const filled = get().classSchedules.find(x => x.id === classScheduleId)?.booked ?? schedule.booked;
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "booking_confirmation",
+                    title: "Booking confirmed",
+                    body: `${customerName} booked ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
+                    icon: "calendar-check",
+                    sourceModule: "booking",
+                    sourceId: id,
+                    classScheduleId,
+                    customerId,
+                    branchId: schedule.branchId,
+                },
+                instructor: {
+                    tab: "booking",
+                    event: "new_booking",
+                    title: "New booking",
+                    body: `${customerName} booked in. ${filled}/${schedule.capacity} spots filled.`,
+                    icon: "calendar-check",
+                    sourceModule: "booking",
+                    sourceId: id,
+                    classScheduleId,
+                    customerId,
+                    branchId: schedule.branchId,
+                    targetInstructorId: schedule.instructorId,
+                },
+            });
+        }
+
+        return id;
+    },
+    signWaiver: (customerId) => set((state) => ({
+        customerAgreements: state.customerAgreements.map((ca) =>
+            ca.customerId === customerId && ca.status === "unsigned"
+                ? { ...ca, status: "signed" as const, signedAtISO: new Date().toISOString() }
+                : ca,
+        ),
+    })),
     cancelClassBooking: (id, reason, refund, source) => {
         const stateBefore = get();
         const booking = stateBefore.classBookings.find(b => b.id === id);
@@ -4161,6 +4282,32 @@ export const useAppStore = create<AppState>()(persist(
             get().recordAudit("Deleted class rating", "rating", id, schedule?.name ?? "Class rating");
         }
     },
+
+    submitClassRating: (input) =>
+        set((state) => {
+            const rating: ClassRating = {
+                id: `rat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                classScheduleId: input.classScheduleId,
+                customerId: input.customerId,
+                instructorId: input.instructorId,
+                score: input.score,
+                comment: input.comment,
+                tags: input.tags,
+                submittedAt: new Date().toISOString(),
+            };
+            const classRatings = [...state.classRatings, rating];
+            // Recompute the schedule's aggregate from its non-deleted ratings so
+            // the class/instructor rating reflects the new review same render cycle.
+            const classSchedules = state.classSchedules.map((s) => {
+                if (s.id !== input.classScheduleId) return s;
+                const rows = classRatings.filter((r) => r.classScheduleId === s.id && !r.deletedAt);
+                const avg = rows.length
+                    ? Math.round((rows.reduce((sum, r) => sum + r.score, 0) / rows.length) * 10) / 10
+                    : 0;
+                return { ...s, rating: avg, ratingCount: rows.length };
+            });
+            return { classRatings, classSchedules };
+        }),
 
     addCustomer: (input) => {
         const id = `cu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -5912,7 +6059,21 @@ export const useAppStore = create<AppState>()(persist(
 }),
     {
         name: PERSIST_KEY,
-        version: 2,
+        // Bumped to flush persisted demo state and re-seed clean from the mock
+        // files on the next load (v2: cleared member test bookings; v3: picks up
+        // the new spot-selection demo class; v4/v5/v6: Ava started at 0 credits to
+        // demo the Purchase → checkout flow; v7: Ava holds an active Advanced
+        // membership with 12 credits for the booking / cancellation / refund test
+        // flows; v8/v9: Barre category points at its own /class-categories/barre.png
+        // cover; v10: re-seed so the real-now-anchored class schedule re-anchors to
+        // the current device date — flushes a stale payload seeded on a previous
+        // day so admin + customer show identical, current dates; v11: adds the
+        // Custom Gift Card design for the Products gift-card flow; v12: Ava back to
+        // 0 credits for the Purchase Product flow; v13: customer-experience branch
+        // merged in — new customer slices + admin/instructor updates need a clean
+        // re-seed to drop any stale persisted state from either branch). No
+        // migrate needed — the demo discards the old payload on version mismatch.
+        version: 13,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

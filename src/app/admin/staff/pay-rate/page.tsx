@@ -23,19 +23,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, Plus, DotsVertical, ChevronLeft,
+    SearchMd, FilterLines, Plus, ChevronLeft,
     Eye, Edit02, Trash01, Trash02, Archive, RefreshCcw01, MarkerPin01, XClose, AlignLeft, Check,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { RowActions } from "@/components/patterns/RowActions";
 import {
     useAppStore, DEFAULT_BRANCH_ID,
     type PayRate, type PayRateStatus, type PayRateType,
@@ -84,51 +84,9 @@ type StatusFilter = PayRateStatus | null;
 
 type RowActionKind = "view" | "edit" | "archive" | "recover" | "delete";
 
-function RowActions({ row, onAction }: { row: PayRate; onAction: (kind: RowActionKind) => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
-                <button type="button" onClick={() => { setOpen(false); onAction("view"); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-                {/* Edit is gated to Active rows — archived rates must be
-                    Recovered before they can be edited. */}
-                {row.status === "active" && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("edit"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit
-                    </button>
-                )}
-                {row.status === "active" ? (
-                    <button type="button" onClick={() => { setOpen(false); onAction("archive"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Archive className="w-4 h-4 text-[#667085]" />Archive
-                    </button>
-                ) : (
-                    <button type="button" onClick={() => { setOpen(false); onAction("recover"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
-                    </button>
-                )}
-                {/* Delete is only offered on Active rows with zero usage.
-                    Archived rows must be Recovered before they can be deleted. */}
-                {row.status === "active" && row.usageCount === 0 && (
-                    <button type="button" onClick={() => { setOpen(false); onAction("delete"); }}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                        <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                    </button>
-                )}
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
+// Conditional items are pre-built in the call site via `hidden` flags so the
+// menu only renders the items applicable to the row's status/usage.
 
 // ─── Confirmation modal ──────────────────────────────────────────────────────
 
@@ -600,7 +558,15 @@ export default function PayRatePage() {
                                                     </span>
                                                 </td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <RowActions row={r} onAction={kind => handleRowAction(r, kind)} />
+                                                    <RowActions
+                                                        items={[
+                                                            { label: "View details", icon: Eye, onClick: () => handleRowAction(r, "view") },
+                                                            { label: "Edit", icon: Edit02, onClick: () => handleRowAction(r, "edit"), hidden: r.status !== "active" },
+                                                            { label: "Archive", icon: Archive, onClick: () => handleRowAction(r, "archive"), hidden: r.status !== "active" },
+                                                            { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(r, "recover"), hidden: r.status === "active" },
+                                                            { label: "Delete", icon: Trash01, onClick: () => handleRowAction(r, "delete"), hidden: !(r.status === "active" && r.usageCount === 0), danger: true },
+                                                        ]}
+                                                    />
                                                 </td>
                                             </tr>
                                         );

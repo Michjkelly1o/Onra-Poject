@@ -27,17 +27,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, Download01, DotsVertical, Eye, ChevronLeft,
+    SearchMd, Download01, Eye,
     MarkerPin01, CoinsHand, CoinsStacked01, CheckCircle, Users01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
+import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -121,26 +121,7 @@ function MetricCard({ label, value, period, Icon }: {
 // Local InstructorAvatar removed — uses canonical `<NeutralAvatar>` from
 // `@/components/patterns/NeutralAvatar`.
 
-// ─── Row actions (⋮) ──────────────────────────────────────────────────────
-
-function RowActions({ onView }: { onView: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => { setOpen(false); onView(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
@@ -463,7 +444,14 @@ export default function CompensationPage() {
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{aed(r.earnings)}</td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <RowActions onView={() => handleViewDetails(r)} />
+                                                    <RowActions
+                                                        minWidth={180}
+                                                        items={[{
+                                                            label: "View details",
+                                                            icon: Eye,
+                                                            onClick: () => handleViewDetails(r),
+                                                        }]}
+                                                    />
                                                 </td>
                                             </tr>
                                         );

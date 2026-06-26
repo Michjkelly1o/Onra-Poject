@@ -28,7 +28,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -474,41 +474,8 @@ type StaffRowAction = "view" | "edit_details" | "change_role" | "resend_invite" 
 // Local StaffRowMenu removed — uses canonical `<RowActions>` from
 // `@/components/patterns/RowActions`.
 
-// Pagination footer — mirrors the /admin/staff pattern.
-function PaginationFooter({ page, totalPages, pageSize, onPageChange, onPageSizeChange }: {
-    page: number; totalPages: number; pageSize: number;
-    onPageChange: (next: number) => void; onPageSizeChange: (next: number) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="flex items-center justify-between gap-3 pt-4">
-            <div className="flex items-center gap-2">
-                <button ref={ref} type="button" onClick={() => setOpen(p => !p)}
-                    className="h-9 px-3 flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    {pageSize}
-                    <ChevronDown className="w-4 h-4 text-[#667085]" />
-                </button>
-                <FixedDropdown triggerRef={ref} open={open} onClose={() => setOpen(false)} minWidth={80}>
-                    {[10, 20, 50].map(n => (
-                        <button key={n} type="button"
-                            onClick={() => { onPageSizeChange(n); setOpen(false); }}
-                            className="flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <span>{n}</span>
-                            {n === pageSize && <Check className="w-4 h-4 text-[#658774]" />}
-                        </button>
-                    ))}
-                </FixedDropdown>
-                <span className="text-[14px] text-[#667085]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] text-[#667085]">Page {page} of {totalPages}</span>
-                <Button variant="secondary-gray" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
-                <Button variant="secondary-gray" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Next</Button>
-            </div>
-        </div>
-    );
-}
+// Local PaginationFooter removed — uses canonical `@/components/ui/Pagination`
+// with `variant="compact"` + `pageSizeOptions={[10, 20, 50]}`.
 
 type BulkKind = "archive" | "deactivate" | "reactivate" | "recover" | "delete";
 
@@ -779,12 +746,14 @@ function StaffListTab({ role, onChangeRoleFor }: {
                             </tbody>
                         </table>
                     </div>
-                    <PaginationFooter
+                    <Pagination
+                        variant="compact"
+                        pageSizeOptions={[10, 20, 50]}
                         page={clamped}
-                        totalPages={totalPages}
+                        total={filtered.length}
                         pageSize={pageSize}
-                        onPageChange={setPage}
-                        onPageSizeChange={n => { setPageSize(n); setPage(1); }}
+                        onPage={setPage}
+                        onPageSize={n => { setPageSize(n); setPage(1); }}
                     />
                 </>
             )}

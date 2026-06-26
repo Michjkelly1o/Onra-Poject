@@ -32,13 +32,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Edit02, Download01, DotsVertical, Eye, ChevronLeft,
+    XClose, Edit02, Download01, Eye,
     SearchMd, FilterLines, Calendar, CheckCircle, Users01, Star01, Lightbulb02, Check,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, type DateRange } from "@/lib/period-filter";
@@ -55,6 +54,7 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { RowActions } from "@/components/patterns/RowActions";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 //
@@ -425,26 +425,7 @@ function SidebarRow({ label, value }: { label: string; value: string }) {
     );
 }
 
-// ─── Row actions (⋮) ──────────────────────────────────────────────────────
-
-function RowActions({ onView }: { onView: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => { setOpen(false); onView(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
@@ -809,7 +790,14 @@ export default function PayrollInstructorDetailPage({
                                                         <td className={TD}>{r.payRateName}</td>
                                                         <td className={TD}>{r.earnings > 0 ? aed(r.earnings) : "—"}</td>
                                                         <td onClick={e => e.stopPropagation()} className={TD}>
-                                                            <RowActions onView={() => handleViewClass(r.schedule.id)} />
+                                                            <RowActions
+                                                                minWidth={180}
+                                                                items={[{
+                                                                    label: "View details",
+                                                                    icon: Eye,
+                                                                    onClick: () => handleViewClass(r.schedule.id),
+                                                                }]}
+                                                            />
                                                         </td>
                                                     </tr>
                                                 ))}

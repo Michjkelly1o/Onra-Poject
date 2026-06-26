@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
-    XClose, ChevronLeft, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
+    XClose, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
     UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
     Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package, SwitchHorizontal01, AlertCircle,
 } from "@untitledui/icons";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { Pagination } from "@/components/ui/Pagination";
 import { useAppStore, type ClassInstance, type ClassBooking, type Customer, type Membership as MembershipType, type Package as PackageType, type GenderAccess } from "@/lib/store";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -1329,46 +1330,7 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
     );
 }
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-function Pagination({ page, totalPages, pageSize, onPageChange, onPageSizeChange }: {
-    page: number; totalPages: number; pageSize: number;
-    onPageChange: (p: number) => void; onPageSizeChange: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            <div className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
-                </button>
-                {sizeOpen && (
-                    <>
-                        <div className="fixed inset-0 z-30" onClick={() => setSizeOpen(false)} />
-                        <div className="absolute bottom-[calc(100%+4px)] left-0 z-40 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                            {[10, 20, 30].map(s => (
-                                <button key={s} type="button" onClick={() => { onPageSizeChange(s); setSizeOpen(false); }}
-                                    className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
-                                        s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
-                            ))}
-                        </div>
-                    </>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
-                <button type="button" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Empty table illustration (matches class-template page) ───────────────────
 
@@ -2677,10 +2639,10 @@ export default function ClassDetailPage() {
                             <div className="px-6 shrink-0">
                                 <Pagination
                                     page={tab === "reviews" ? reviewsClampedPage : clampedPage}
-                                    totalPages={tab === "reviews" ? reviewsTotalPages : totalPages}
+                                    total={tab === "reviews" ? reviewsList.length : activeRows.length}
                                     pageSize={pageSize}
-                                    onPageChange={setPage}
-                                    onPageSizeChange={s => { setPageSize(s); setPage(1); }}
+                                    onPage={setPage}
+                                    onPageSize={s => { setPageSize(s); setPage(1); }}
                                 />
                             </div>
                         )}

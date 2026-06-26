@@ -22,28 +22,36 @@
 //   module — nothing else to touch.
 //
 // ── Current state ──
-//   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
-//   Membership & Package, Gift Cards, Promo, Marketing, Customer,
-//   Services (incl. appointments), Insights, Pay rate, Payroll,
-//   Staff & Permissions (Roles + Staff + Blocked time tabs — Shift
-//   management create/detail/edit is currently DISABLED below), Tax,
-//   Agreements, Payments, Integrations, Referral, Reports,
-//   Notifications, Customer notifications, Booking rules, Business &
-//   Locations, Account settings, Branding.
+//   ENABLED (admin): every admin-side module — Dashboard, Class template,
+//   Class schedule, POS, Membership & Package, Gift Cards, Promo,
+//   Marketing, Customer, Services (incl. appointments), Insights, Pay
+//   rate, Payroll, Staff & Permissions (full — Roles + Staff + Shift
+//   management create/detail/edit + Blocked time), Tax, Agreements,
+//   Payments, Integrations, Referral, Reports, Notifications, Customer
+//   notifications, Booking rules, Business & Locations, Account
+//   settings, Branding.
 //
-//   DISABLED (admin): /staff/shifts — create / detail / edit for
-//   shifts. The "Shift management" sub-tab itself still appears in
-//   /admin/staff but its rows can't be opened.
+//   DISABLED (admin): none currently.
 //
-//   ENABLED (instructor): Dashboard, Schedule, and the upcoming/ongoing
-//   takeover detail page (`/class/[id]`).
+//   ENABLED (instructor): Dashboard, Schedule, the upcoming/ongoing
+//   class takeover detail page (`/class/[id]`), the completed/cancelled
+//   class takeover detail page (`/earnings/[id]`), and the Earnings list
+//   (`/instructor/earnings`).
 //
-//   DISABLED (instructor): Earnings list (`/instructor/earnings`),
-//   Earnings takeover detail (`/earnings/[id]`), Notifications
-//   (`/instructor/notifications`), Account / Profile
-//   (`/instructor/account`). Sidebar menu items stay visible per the
-//   file convention; clicking any of them 404s. Re-enable by removing
-//   the matching entry from the array.
+//   DISABLED (instructor): Notifications (`/instructor/notifications`)
+//   and Account / Profile (`/instructor/account`). Sidebar menu items
+//   stay visible per the file convention; clicking either of them 404s.
+//   Re-enable by removing the matching entry from the array.
+//
+//   ENABLED (customer): Home, Select branch, Browse, Search, Class
+//   detail + booking flow, Appointments + booking flow, Instructor
+//   profile, My bookings, Packages, Products catalog + checkout, and
+//   Profile. All 11 customer modules are reachable by default. Each
+//   module has a commented-out entry in the customer section below —
+//   uncomment to disable that module while keeping its BottomNav item
+//   visible per the file convention.
+//
+//   DISABLED (customer): none currently.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -101,7 +109,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"=/admin/staff",                 // list view (Roles + Staff + Shift management + Blocked time tabs)
     //"/staff/roles",                  // role create / detail / edit / edit-permissions
     //"/staff/members",                // staff create / detail / edit
-    "/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab) — DISABLED for today's demo
+    //"/staff/shifts",                 // shift create / detail / edit (Shift management sub-tab) — DISABLED for today's demo
     //"/staff/blocked-time",           // blocked-time create / edit (Blocked time sub-tab)
 
     // ── Notifications module ── (ENABLED — admin)
@@ -164,14 +172,14 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // again. Left commented here for documentation:
     //"/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
     //"/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
-    "/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page — DISABLED for today's demo
+    //"/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page — DISABLED for today's demo
 
     // ── Instructor → Earnings module ── (DISABLED — not for client demo)
     // Closes off the main earnings list page at /instructor/earnings.
     // Pairs with the `/earnings` entry above which closes off the
     // takeover detail page at /earnings/[classId] (different folder ⇒
     // different URL prefix ⇒ both need their own entry to fully hide).
-    "/instructor/earnings",          // instructor earnings list + filters
+    //"/instructor/earnings",          // instructor earnings list + filters
 
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)
     // The sidebar menu item stays visible per the file convention; the
@@ -181,6 +189,51 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
     "/instructor/account",           // instructor account / profile page
+
+    // ──────────────────────────────────────────────────────────────────
+    // Customer experience — mobile-only surface (max-width 400px) with
+    // its own layout chrome + BottomNav. All modules below are ENABLED
+    // by default. Uncomment any entry to 404 that module while leaving
+    // the BottomNav item visible (per the same file convention used by
+    // the instructor section above). Re-enable by re-commenting.
+    //
+    // NB: nested routes (e.g. /customer/classes/[id]/book/checkout/...)
+    // are automatically covered by their parent prefix. You don't need
+    // separate entries for each step of a checkout flow.
+    // ──────────────────────────────────────────────────────────────────
+
+    // ── Customer → Home / landing ──
+    //"=/customer",                    // home landing page (exact match — keeps sub-routes reachable)
+
+    // ── Customer → Select branch (onboarding gate) ──
+    //"/customer/select-branch",       // pick-your-branch screen
+
+    // ── Customer → Browse classes ──
+    //"/customer/browse",              // browse all classes
+
+    // ── Customer → Search ──
+    //"/customer/search",              // search page + instructor sub-tab + timezone picker
+
+    // ── Customer → Class detail + booking flow ──
+    //"/customer/classes",             // class detail + book/checkout/plans/waiver/guest/processing/success
+
+    // ── Customer → Appointment booking flow ──
+    "/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
+
+    // ── Customer → Instructor profile ──
+    //"/customer/instructors",         // public instructor profile detail
+
+    // ── Customer → My bookings ──
+    //"/customer/bookings",            // bookings list + per-booking detail + cancel/rate/reviews
+
+    // ── Customer → Packages ──
+    "/customer/packages",            // my packages + credit balance
+
+    // ── Customer → Products (memberships, packages, gift cards catalog) ──
+    "/customer/products",            // catalog + checkout/promo/processing/success + gift-card design picker
+
+    // ── Customer → Profile / account ──
+    "/customer/profile",             // account profile + edit
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning

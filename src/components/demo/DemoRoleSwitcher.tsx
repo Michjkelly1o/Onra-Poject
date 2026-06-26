@@ -9,7 +9,7 @@ import type { UserRole } from "@/types";
 const roles: { role: UserRole; label: string; icon: typeof Shield; path: string }[] = [
     { role: "admin", label: "Admin", icon: Shield, path: "/admin/dashboard" },
     { role: "instructor", label: "Instructor", icon: GraduationCap, path: "/instructor/schedule" },
-    { role: "member", label: "Member", icon: User, path: "/member/browse" },
+    { role: "member", label: "Customer", icon: User, path: "/customer/browse" },
 ];
 
 export default function DemoRoleSwitcher() {

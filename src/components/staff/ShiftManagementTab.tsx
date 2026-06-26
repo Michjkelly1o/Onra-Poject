@@ -34,6 +34,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, type Shift } from "@/lib/store";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -48,21 +49,8 @@ const STATUS_LABEL: Record<Shift["status"], string> = {
     archive:  "Archived",
 };
 
-function StatusBadge({ status }: { status: Shift["status"] }) {
-    const styles: Record<Shift["status"], string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    };
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            styles[status],
-        )}>
-            {STATUS_LABEL[status]}
-        </span>
-    );
-}
+// Local StatusBadge removed — uses canonical `@/components/patterns/StatusBadge`
+// with `type="shift"` (palette + labels live in the canonical mapping).
 
 // ─── Enabled toggle (drives active ↔ inactive flip) ────────────────────────
 
@@ -623,7 +611,7 @@ export function ShiftManagementTab({
                                                 {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
                                             </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{assignedCount}</td>
-                                            <td className={TD}><StatusBadge status={s.status} /></td>
+                                            <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
                                             <td className={TD}>
                                                 <EnabledToggle
                                                     on={s.status === "active"}

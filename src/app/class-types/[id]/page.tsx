@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams, usePathname } from "next/navigat
 import {
     XClose, Edit02, Archive, SlashCircle01,
     RefreshCcw01, Trash01, Trash02,
-    SearchMd, FilterLines, ChevronDown, Eye, Check,
+    SearchMd, FilterLines, Eye, Check,
     CreditCard01, Package, AlignLeft,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { Pagination } from "@/components/ui/Pagination";
 import { AttendanceBar } from "@/components/patterns/AttendanceBar";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -582,66 +583,7 @@ const MODAL_CONFIG: Record<ModalAction, {
 // `<ConfirmModal>` from `@/components/modals/ConfirmModal`, driven by
 // MODAL_CONFIG + DESTRUCTIVE_ACTIONS above.
 
-// ─── Pagination component ─────────────────────────────────────────────────────
-
-function Pagination({ page, totalPages, pageSize, onPageChange, onPageSizeChange }: {
-    page: number;
-    totalPages: number;
-    pageSize: number;
-    onPageChange: (p: number) => void;
-    onPageSizeChange: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (sizeRef.current && !sizeRef.current.contains(e.target as Node)) setSizeOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-
-    return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
-            {/* Left: per-page dropdown */}
-            <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}
-                    <ChevronDown className="w-4 h-4 text-[#667085]" />
-                </button>
-                {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
-                        {[10, 20, 30].map(s => (
-                            <button key={s} type="button"
-                                onClick={() => { onPageSizeChange(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
-                                    s === pageSize ? "text-[#101828] font-semibold bg-[#f9fafb]" : "text-[#344054]")}>
-                                {s}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
-            </div>
-
-            {/* Right: Page info + Previous + Next */}
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">
-                    Page {page} of {totalPages}
-                </span>
-                <button type="button" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}
-                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>
-                    Previous
-                </button>
-                <button type="button" disabled={page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                    className={cn("px-3 py-[7px] border rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>
-                    Next
-                </button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Right panel ──────────────────────────────────────────────────────────────
 
@@ -969,10 +911,10 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                 <div className="px-6 shrink-0">
                     <Pagination
                         page={clampedPage}
-                        totalPages={totalPages}
+                        total={total}
                         pageSize={pageSize}
-                        onPageChange={setPage}
-                        onPageSizeChange={s => { setPageSize(s); setPage(1); }}
+                        onPage={setPage}
+                        onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>
             </div>

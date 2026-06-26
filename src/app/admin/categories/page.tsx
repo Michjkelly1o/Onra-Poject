@@ -24,19 +24,20 @@
 // filter, staff form) reads via `useAppStore(s => s.classCategories)` so
 // they see this page's edits in the same render cycle.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    Plus, Trash04, XClose, Image01, SearchMd, DotsVertical,
+    Plus, Trash04, XClose, Image01, SearchMd,
     Edit02, Trash01, Check, ChevronDown, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { useAppStore } from "@/lib/store";
 import type { ClassCategory } from "@/lib/store";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
+import { Pagination } from "@/components/ui/Pagination";
+import { RowActions } from "@/components/patterns/RowActions";
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
@@ -312,8 +313,11 @@ export default function CategoriesPage() {
                                                 </td>
                                                 <td className={TD}>
                                                     <RowActions
-                                                        onEdit={() => handleEditCategory(c)}
-                                                        onDelete={() => requestDeleteCategory(c)}
+                                                        minWidth={180}
+                                                        items={[
+                                                            { label: "Edit", icon: Edit02, onClick: () => handleEditCategory(c) },
+                                                            { label: "Delete", icon: Trash01, onClick: () => requestDeleteCategory(c), danger: true },
+                                                        ]}
                                                     />
                                                 </td>
                                             </tr>
@@ -379,32 +383,7 @@ export default function CategoriesPage() {
 
 // ─── Row action menu ──────────────────────────────────────────────────────
 
-function RowActions({ onEdit, onDelete }: {
-    onEdit: () => void;
-    onDelete: () => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    function trigger(fn: () => void) { setOpen(false); fn(); }
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
-                <button type="button" onClick={() => trigger(onEdit)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Edit02 className="w-4 h-4 text-[#667085]" />Edit
-                </button>
-                <button type="button" onClick={() => trigger(onDelete)}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                    <Trash01 className="w-4 h-4 text-[#b42318]" />Delete
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // ─── Checkbox cell — matches every other admin table ───────────────────────
 
@@ -426,42 +405,7 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     );
 }
 
-// ─── Pagination ────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (s: number) => void;
-}) {
-    const [sizeOpen, setSizeOpen] = useState(false);
-    const sizeRef = useRef<HTMLButtonElement>(null);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="flex items-center justify-between gap-3 py-4 border-t border-[#e4e7ec]">
-            <div className="flex items-center gap-2">
-                <button ref={sizeRef} type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="h-9 px-3 flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    {pageSize}
-                    <ChevronDown className="w-4 h-4 text-[#667085]" />
-                </button>
-                <FixedDropdown triggerRef={sizeRef} open={sizeOpen} onClose={() => setSizeOpen(false)} minWidth={80}>
-                    {[10, 20, 50].map(n => (
-                        <button key={n} type="button"
-                            onClick={() => { onPageSize(n); setSizeOpen(false); }}
-                            className="flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <span>{n}</span>
-                            {n === pageSize && <Check className="w-4 h-4 text-[#658774]" />}
-                        </button>
-                    ))}
-                </FixedDropdown>
-                <span className="text-[14px] text-[#667085]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] text-[#667085]">Page {page} of {totalPages}</span>
-                <Button variant="secondary-gray" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</Button>
-                <Button variant="secondary-gray" size="sm" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>Next</Button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Category row avatar ──────────────────────────────────────────────────
 

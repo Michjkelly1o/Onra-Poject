@@ -14,10 +14,10 @@
 //
 // All data is derived live from useAppStore(s => s.classBookings / classSchedules).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, DotsVertical, ChevronLeft, Eye, XClose,
+    SearchMd, FilterLines, Eye, XClose,
     MarkerPin01, Users01, AlignLeft,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -28,11 +28,11 @@ import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
+import { RowActions } from "@/components/patterns/RowActions";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
@@ -267,26 +267,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
     );
 }
 
-// ─── Row action (⋮) ───────────────────────────────────────────────────────────
-
-function RowActions({ onView }: { onView: () => void }) {
-    const [open, setOpen] = useState(false);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    return (
-        <div className="relative">
-            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={190}>
-                <button type="button" onClick={() => { setOpen(false); onView(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View class details
-                </button>
-            </FixedDropdown>
-        </div>
-    );
-}
+// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
@@ -729,7 +710,14 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                 <td className={TD}><BookingStatusBadge status={r.displayStatus} waitlistPosition={r.waitlistPosition} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <RowActions onView={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)} />
+                                                    <RowActions
+                                                        minWidth={190}
+                                                        items={[{
+                                                            label: "View class details",
+                                                            icon: Eye,
+                                                            onClick: () => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`),
+                                                        }]}
+                                                    />
                                                 </td>
                                             </tr>
                                         ))}

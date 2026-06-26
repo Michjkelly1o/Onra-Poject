@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, type BlockedTime, type Staff } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { Pagination } from "@/components/ui/Pagination";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -152,40 +153,7 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     );
 }
 
-// ─── Pagination ───────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onPage, onPageSize }: {
-    page: number; total: number; pageSize: number; onPage: (p: number) => void; onPageSize: (n: number) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLButtonElement>(null);
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    return (
-        <div className="flex items-center justify-between gap-3 py-4 border-t border-[#e4e7ec]">
-            <div className="flex items-center gap-2">
-                <button ref={ref} type="button" onClick={() => setOpen(p => !p)}
-                    className="h-9 px-3 flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    {pageSize}<ChevronDown className="w-4 h-4 text-[#667085]" />
-                </button>
-                <FixedDropdown triggerRef={ref} open={open} onClose={() => setOpen(false)} minWidth={80}>
-                    {[10, 20, 50].map(n => (
-                        <button key={n} type="button" onClick={() => { onPageSize(n); setOpen(false); }}
-                            className="flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <span>{n}</span>
-                            {n === pageSize && <Check className="w-4 h-4 text-[#658774]" />}
-                        </button>
-                    ))}
-                </FixedDropdown>
-                <span className="text-[14px] text-[#667085]">per page</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[14px] text-[#667085]">Page {page} of {totalPages}</span>
-                <Button variant="secondary-gray" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</Button>
-                <Button variant="secondary-gray" size="sm" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>Next</Button>
-            </div>
-        </div>
-    );
-}
+// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
 // ─── Main component ──────────────────────────────────────────────────────
 

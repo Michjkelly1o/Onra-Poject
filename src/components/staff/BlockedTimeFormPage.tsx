@@ -24,11 +24,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Calendar, Clock, ChevronDown, Check, SearchMd,
+    XClose, Clock, ChevronDown, Check, SearchMd,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore, type BlockedTime, type Staff } from "@/lib/store";
 
@@ -423,21 +424,19 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                     />
                                 </div>
 
-                                {/* Date */}
+                                {/* Date — uses the canonical DatePicker so the
+                                    blocked-time form has the same calendar
+                                    chrome as every other date input across
+                                    the app (native browser pickers vary by
+                                    OS/locale and don't match the design). */}
                                 <div className="flex flex-col gap-[6px]">
                                     <label className="text-[14px] font-medium text-[#344054]">Date</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                                        <input
-                                            type="date" value={form.date} min={todayDate}
-                                            onChange={e => set({ date: e.target.value })}
-                                            placeholder="Select date"
-                                            className={cn(
-                                                "h-10 w-full pl-[40px] pr-[14px] border-1 rounded-[8px] text-[14px] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
-                                                isPastDate ? "border-[#fda29b] text-[#b42318]" : "border-[#d0d5dd] text-[#101828]",
-                                            )}
-                                        />
-                                    </div>
+                                    <DatePicker
+                                        value={form.date}
+                                        onChange={iso => set({ date: iso })}
+                                        placeholder="Select date"
+                                        minDate={todayDate}
+                                    />
                                     {isPastDate && (
                                         <p className="text-[13px] text-[#b42318]">Date can't be in the past.</p>
                                     )}
