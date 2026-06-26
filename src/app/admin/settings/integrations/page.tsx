@@ -70,8 +70,11 @@ function IntegrationsPageInner() {
             {/* Tab counts mirror the Figma exactly — "Payments 2" reflects
                 connected providers, "Apps 8" reflects total tools. Inlined
                 in the label string since SegmentedTabs renders the label
-                verbatim. */}
+                verbatim. `fitWidth` makes the two tabs span the full page
+                width with equal share — matches the Figma layout where
+                the segmented pill sits edge-to-edge across the surface. */}
             <SegmentedTabs
+                fitWidth
                 tabs={[
                     { key: "payments", label: `Payments ${connectedPaymentCount}` },
                     { key: "apps",     label: `Apps ${appsCount}`                 },

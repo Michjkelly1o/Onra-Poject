@@ -156,15 +156,31 @@ export function AppsTab() {
             </div>
 
             {/* ── Empty state ─────────────────────────────────────────── */}
+            {/* When the filter / search yields zero results, render a small
+                empty-state row AND keep the Request card visible so the
+                admin can still submit a request from a dry feed. */}
             {visibleGroups.length === 0 && (
-                <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[12px] py-10 flex flex-col items-center gap-1">
-                    <p className="text-[14px] font-medium text-[#344054]">No apps found</p>
-                    <p className="text-[13px] text-[#667085]">Try a different search or clear the filter.</p>
-                </div>
+                <>
+                    <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[12px] py-10 flex flex-col items-center gap-1">
+                        <p className="text-[14px] font-medium text-[#344054]">No apps found</p>
+                        <p className="text-[13px] text-[#667085]">Try a different search or pick another filter.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <RequestIntegrationsCard onClick={() => setFlow({ kind: "request" })} />
+                    </div>
+                </>
             )}
 
             {/* ── Grouped grids ───────────────────────────────────────── */}
-            {visibleGroups.map(group => {
+            {/* The "Request integrations" card sits inside the LAST visible
+                group's grid (per Figma 7632:17561 — the Analytics & accounting
+                row ends with Google Analytics, Xero, Request). When the
+                filter narrows the feed to fewer groups, the Request card
+                follows the last surviving group's grid so it always appears
+                inline with real integration cards instead of breaking onto
+                its own row beneath everything. */}
+            {visibleGroups.map((group, idx) => {
+                const isLast = idx === visibleGroups.length - 1;
                 const groupItems = groupedByCategory.get(group.key) ?? [];
                 return (
                     <div key={group.key} className="flex flex-col gap-3">
@@ -179,17 +195,13 @@ export function AppsTab() {
                                     onDisconnect={int => setFlow({ kind: "disconnect", integration: int })}
                                 />
                             ))}
+                            {isLast && (
+                                <RequestIntegrationsCard onClick={() => setFlow({ kind: "request" })} />
+                            )}
                         </div>
                     </div>
                 );
             })}
-
-            {/* ── Request integrations card — always last, regardless of
-                 the filter (so the admin can always submit a request
-                 even when the grid is empty). ──────────────────────── */}
-            <div>
-                <RequestIntegrationsCard onClick={() => setFlow({ kind: "request" })} />
-            </div>
 
             {/* ── Modal chain ─────────────────────────────────────────── */}
 
@@ -269,7 +281,12 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
                 Filter
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] right-0 z-50 min-w-[200px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
+                // min-w-[240px] fits "Marketing & communication" on a
+                // single line — the previous 200px wrapped the label.
+                // Clear-filter row dropped per the brief: admins toggle off
+                // by clicking the selected category again (same pattern as
+                // every other filter dropdown across the app).
+                <div className="absolute top-[calc(100%+4px)] right-0 z-50 min-w-[240px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
                     {INTEGRATION_CATEGORIES.map(cat => {
                         const selected = value === cat.key;
                         return (
@@ -278,27 +295,15 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
                                 type="button"
                                 onClick={() => { onChange(selected ? null : cat.key); onOpenChange(false); }}
                                 className={cn(
-                                    "flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
+                                    "flex items-center justify-between gap-3 w-full px-4 py-[10px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors whitespace-nowrap",
                                     selected ? "text-[#101828] font-semibold" : "text-[#344054]",
                                 )}
                             >
                                 <span>{cat.label}</span>
-                                {selected && <Check className="w-4 h-4 text-[#658774]" />}
+                                {selected && <Check className="w-4 h-4 text-[#658774] shrink-0" />}
                             </button>
                         );
                     })}
-                    {value && (
-                        <>
-                            <div className="h-px bg-[#e4e7ec] my-1" />
-                            <button
-                                type="button"
-                                onClick={() => { onChange(null); onOpenChange(false); }}
-                                className="flex items-center w-full px-4 py-[10px] text-[14px] font-medium text-[#475467] hover:bg-[#f9fafb] transition-colors"
-                            >
-                                Clear filter
-                            </button>
-                        </>
-                    )}
                 </div>
             )}
         </div>
@@ -312,8 +317,12 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
 // surface the request modal regardless of which category is active.
 
 function RequestIntegrationsCard({ onClick }: { onClick: () => void }) {
+    // w-full lets the card stretch to the parent grid cell so it matches
+    // the neighbouring IntegrationCard width exactly. Dropped the previous
+    // max-w cap that made it look narrower than the real-integration
+    // cards when sitting inline at the end of a group's grid.
     return (
-        <div className="bg-[#f9fafb] border-1 border-dashed border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 w-full max-w-[320px]">
+        <div className="bg-[#f9fafb] border-1 border-dashed border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 w-full">
             <div className="w-10 h-10 rounded-[8px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <Link04 className="w-5 h-5 text-[#475467]" />
             </div>

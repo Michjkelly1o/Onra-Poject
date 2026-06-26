@@ -35,12 +35,20 @@ export interface SegmentedTabsProps {
     onChange: (key: string) => void;
     /** Extra classes on the outer pill container. */
     className?: string;
+    /** When true, the container stretches to its parent's full width and
+     *  each tab button takes an equal share via `flex-1` + centered label.
+     *  Used by the unified Integrations module where the SegmentedTabs sit
+     *  on a wide page surface and the Figma shows them spanning end-to-end.
+     *  Defaults to false (content-width — the existing list/calendar tab
+     *  pattern across admin pages). */
+    fitWidth?: boolean;
 }
 
-export function SegmentedTabs({ tabs, activeKey, onChange, className }: SegmentedTabsProps) {
+export function SegmentedTabs({ tabs, activeKey, onChange, className, fitWidth = false }: SegmentedTabsProps) {
     return (
         <div className={cn(
             "flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
+            fitWidth && "w-full",
             className,
         )}>
             {tabs.map(t => {
@@ -54,6 +62,7 @@ export function SegmentedTabs({ tabs, activeKey, onChange, className }: Segmente
                         onClick={() => !t.disabled && onChange(t.key)}
                         className={cn(
                             "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
+                            fitWidth && "flex-1 flex items-center justify-center",
                             active
                                 ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
                                 : "text-[#667085] hover:text-[#344054]",
