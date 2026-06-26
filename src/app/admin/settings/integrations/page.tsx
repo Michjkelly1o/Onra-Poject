@@ -67,17 +67,14 @@ function IntegrationsPageInner() {
 
     return (
         <div className="flex flex-col gap-6">
-            {/* Tab counts mirror the Figma exactly — "Payments 2" reflects
-                connected providers, "Apps 8" reflects total tools. Inlined
-                in the label string since SegmentedTabs renders the label
-                verbatim. `fitWidth` makes the two tabs span the full page
-                width with equal share — matches the Figma layout where
-                the segmented pill sits edge-to-edge across the surface. */}
+            {/* Tabs hug their content — each label sits beside a circular
+                count badge rendered by SegmentedTabs (per Figma 7564:188282).
+                "Payments 2" reflects connected providers; "Apps 8" reflects
+                total tools. */}
             <SegmentedTabs
-                fitWidth
                 tabs={[
-                    { key: "payments", label: `Payments ${connectedPaymentCount}` },
-                    { key: "apps",     label: `Apps ${appsCount}`                 },
+                    { key: "payments", label: "Payments", count: connectedPaymentCount },
+                    { key: "apps",     label: "Apps",     count: appsCount             },
                 ]}
                 activeKey={activeTab}
                 onChange={k => setActiveTab(k as TabKey)}

@@ -27,6 +27,11 @@ export interface SegmentedTabDef {
     label: string;
     hidden?: boolean;
     disabled?: boolean;
+    /** When set, renders a small pill badge with the number after the
+     *  label (e.g. "Payments (2)" → "Payments " + circular grey "2").
+     *  Used by the unified Integrations tabs per Figma 7564:188282 where
+     *  each tab carries its connected/total count as a separate badge. */
+    count?: number;
 }
 
 export interface SegmentedTabsProps {
@@ -35,20 +40,12 @@ export interface SegmentedTabsProps {
     onChange: (key: string) => void;
     /** Extra classes on the outer pill container. */
     className?: string;
-    /** When true, the container stretches to its parent's full width and
-     *  each tab button takes an equal share via `flex-1` + centered label.
-     *  Used by the unified Integrations module where the SegmentedTabs sit
-     *  on a wide page surface and the Figma shows them spanning end-to-end.
-     *  Defaults to false (content-width — the existing list/calendar tab
-     *  pattern across admin pages). */
-    fitWidth?: boolean;
 }
 
-export function SegmentedTabs({ tabs, activeKey, onChange, className, fitWidth = false }: SegmentedTabsProps) {
+export function SegmentedTabs({ tabs, activeKey, onChange, className }: SegmentedTabsProps) {
     return (
         <div className={cn(
-            "flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
-            fitWidth && "w-full",
+            "inline-flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
             className,
         )}>
             {tabs.map(t => {
@@ -61,8 +58,7 @@ export function SegmentedTabs({ tabs, activeKey, onChange, className, fitWidth =
                         disabled={t.disabled}
                         onClick={() => !t.disabled && onChange(t.key)}
                         className={cn(
-                            "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
-                            fitWidth && "flex-1 flex items-center justify-center",
+                            "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all inline-flex items-center gap-2",
                             active
                                 ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
                                 : "text-[#667085] hover:text-[#344054]",
@@ -70,6 +66,11 @@ export function SegmentedTabs({ tabs, activeKey, onChange, className, fitWidth =
                         )}
                     >
                         {t.label}
+                        {t.count !== undefined && (
+                            <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#f9fafb] border-1 border-[#e4e7ec] text-[12px] font-medium text-[#475467]">
+                                {t.count}
+                            </span>
+                        )}
                     </button>
                 );
             })}

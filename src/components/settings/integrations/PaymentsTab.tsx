@@ -485,8 +485,10 @@ function EnableWalletModal({ provider, onConfirm, onClose }: {
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[400px] max-w-[90vw] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                {/* Header — centered logo + centered title + subtitle */}
-                <div className="pt-6 px-6 pb-5 border-b border-[#e4e7ec] relative flex flex-col items-center gap-4">
+                {/* Header — centered logo + centered title + subtitle.
+                    Border between header and footer dropped per client
+                    feedback so the modal reads as a single visual unit. */}
+                <div className="pt-6 px-6 pb-5 relative flex flex-col items-center gap-4">
                     <LogoTile provider={provider} size="modal" />
                     <div className="flex flex-col items-center gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
@@ -501,8 +503,8 @@ function EnableWalletModal({ provider, onConfirm, onClose }: {
                         <XClose className="w-6 h-6 text-[#667085]" />
                     </button>
                 </div>
-                {/* Footer */}
-                <div className="px-6 pt-6 pb-6 flex gap-3">
+                {/* Footer — no border-top, header carries no border-bottom */}
+                <div className="px-6 pb-6 flex gap-3">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="lg" className="flex-1" onClick={onConfirm}>Enable</Button>
                 </div>
