@@ -50,9 +50,38 @@ export const payment_providers: PaymentProviderSeed[] = [
         id: "ppr_google_pay",
         slug: "google_pay",
         name: "Google Pay",
-        description: "Enable Google Pay to accept payments.",
+        description: "Enable Goole Pay to accept payments.",
         kind: "wallet",
         requires_provider_slug: "stripe",
+        status: "not_connected",
+    },
+    // ── Additions per Figma 7564:188282 ────────────────────────────────────
+    // Cards is a Stripe-gated wallet (same gate as Apple Pay / Google Pay).
+    // Cash + Bank transfer are 'manual' methods — no gateway, standalone
+    // toggles in the "Other methods" group.
+    {
+        id: "ppr_cards",
+        slug: "cards",
+        name: "Cards",
+        description: "Enable Visa, Mastercards, Amex to accept payments.",
+        kind: "wallet",
+        requires_provider_slug: "stripe",
+        status: "not_connected",
+    },
+    {
+        id: "ppr_cash",
+        slug: "cash",
+        name: "Cash / Pay at studio",
+        description: "Enable record in-person payments at the front desk.",
+        kind: "manual",
+        status: "not_connected",
+    },
+    {
+        id: "ppr_bank_transfer",
+        slug: "bank_transfer",
+        name: "Bank transfer",
+        description: "Enable manual reconciliation.",
+        kind: "manual",
         status: "not_connected",
     },
 ];

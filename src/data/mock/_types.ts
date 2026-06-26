@@ -1840,12 +1840,23 @@ export interface AgreementVersionSeed {
 // ─── Integrations module (PRD 11 §8 / Brief-for-integrations-module.md) ────
 
 /** Stable identifier per integration. Used by the page to route to the
- *  correct per-tool Connect / View modal in Phase 2. */
+ *  correct per-tool Connect / View modal in Phase 2.
+ *
+ *  Category is derived from the slug (see `integrationCategoryFor` in the
+ *  Integrations module) — keeps the data shape stable and avoids a
+ *  separate column that could drift out of sync. */
 export type IntegrationSlugSeed =
+    // Calendar
     | "google_calendar"
-    | "whatsapp_business"
     | "apple_calendar"
-    | "google_analytics";
+    | "outlook_microsoft365"
+    // Marketing & communication
+    | "whatsapp_business"
+    | "mailchimp"
+    | "instagram_meta"
+    // Analytics & accounting
+    | "google_analytics"
+    | "xero";
 
 /** Lifecycle status. Brief only models two states for now: not_connected
  *  (default — Connect button) and connected (View + Disconnect buttons).
@@ -1881,15 +1892,21 @@ export interface IntegrationSeed {
 /** Stable identifier per payment provider. */
 export type PaymentProviderSlugSeed =
     | "stripe"
+    | "cards"
     | "apple_pay"
-    | "google_pay";
+    | "google_pay"
+    | "cash"
+    | "bank_transfer";
 
 /** "gateway"  — top-level payment processor (Stripe). Connects directly.
- *  "wallet"   — Apple Pay / Google Pay. Always nested under a gateway —
- *               requires the gateway to be connected before it can be
- *               enabled. Disconnecting the gateway cascades and disables
- *               every wallet that depended on it. */
-export type PaymentProviderKindSeed = "gateway" | "wallet";
+ *  "wallet"   — Apple Pay / Google Pay / Cards. Always nested under a
+ *               gateway — requires the gateway to be connected before it
+ *               can be enabled. Disconnecting the gateway cascades and
+ *               disables every wallet that depended on it.
+ *  "manual"   — Cash / Bank transfer. Standalone toggle, no gateway
+ *               dependency. Per Figma 7564:188282, these live in a
+ *               separate "Other methods" group below the gateway block. */
+export type PaymentProviderKindSeed = "gateway" | "wallet" | "manual";
 
 /** Lifecycle status — same shape as integrations. `not_connected` means
  *  the Connect (gateway) / Enable (wallet) button is shown; `connected`

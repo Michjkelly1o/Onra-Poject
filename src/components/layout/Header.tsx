@@ -37,8 +37,13 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings/business-locations": "Business & locations",
     "/admin/settings/branding": "Branding",
     "/admin/settings/booking-rules": "Booking Rules",
-    "/admin/settings/payments": "Payments",
-    "/admin/settings/integrations": "Integrations",
+    // Payments + Integrations merged into a single Integrations module
+    // (Figma 7564:188282 + 7632:17561 — two tabs). The legacy /payments
+    // path redirects to /integrations?tab=payments, but we still seed the
+    // header title here in case a navigation step lands on it before the
+    // redirect fires.
+    "/admin/settings/payments":      "Integrations",
+    "/admin/settings/integrations":  "Integrations",
     "/admin/settings/notifications": "Customer notifications",
     "/admin/settings/tax": "Tax",
     "/admin/settings/agreements": "Agreements",

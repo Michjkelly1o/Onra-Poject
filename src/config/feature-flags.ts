@@ -126,14 +126,21 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/settings/agreements",    // list view
     //"/settings/agreements",          // create / detail / edit / new-version
 
-    // ── Integrations module ── (ENABLED — pushing today)
-    //"/admin/settings/integrations",  // card grid (list view)
+    // ── Integrations module ── (ENABLED — merged surface)
+    // Now hosts BOTH the old Apps grid and the merged-in Payments providers
+    // as separate tabs at /admin/settings/integrations?tab={payments|apps}.
+    // Default tab = payments (matches Figma 7564:188282).
+    //"/admin/settings/integrations",  // unified page (Payments + Apps tabs)
 
     // ── Tax module ── (ENABLED — pushing today)
     //"/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
 
-    // ── Payments module ── (ENABLED — pushing today)
-    //"/admin/settings/payments",      // provider card grid (Stripe + Apple Pay + Google Pay)
+    // ── Payments module ── (MERGED into Integrations)
+    // Legacy /admin/settings/payments now redirects to
+    // /admin/settings/integrations?tab=payments — keeping the URL alive
+    // so back-links and saved screenshots don't 404, but disabling it
+    // would only break the redirect (no separate UI lives here any more).
+    //"/admin/settings/payments",      // legacy redirect to ?tab=payments
 
     // ── Booking rules module ── (ENABLED — admin)
     //"/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
@@ -190,11 +197,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)
     // The sidebar menu item stays visible per the file convention; the
     // route 404s when clicked. Re-enable by commenting the line below.
-    "/instructor/notifications",     // instructor notification feed
+    //"/instructor/notifications",     // instructor notification feed
 
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
-    "/instructor/account",           // instructor account / profile page
+    //"/instructor/account",           // instructor account / profile page
 
     // ──────────────────────────────────────────────────────────────────
     // Customer experience — mobile-only surface (max-width 400px) with

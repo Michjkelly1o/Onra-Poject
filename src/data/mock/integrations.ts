@@ -50,4 +50,37 @@ export const integrations: IntegrationSeed[] = [
         description: "Send automated booking confirmations and reminders.",
         status: "not_connected",
     },
+    // ── 4 placeholder additions per Figma 7632:17561 (Apps tab — 8 total) ──
+    // All four ship in `not_connected` state, matching the visual treatment
+    // of the previous 4. Category is derived from slug at render time, not
+    // stored — see `integrationCategoryFor` in the unified Integrations
+    // module.
+    {
+        id: "int_outlook_microsoft365",
+        slug: "outlook_microsoft365",
+        name: "Outlook / Microsoft 365",
+        description: "Sync schedules for staff and corporate clients on Outlook.",
+        status: "not_connected",
+    },
+    {
+        id: "int_mailchimp",
+        slug: "mailchimp",
+        name: "Mailchimp",
+        description: "Sync members and run campaigns & newsletters.",
+        status: "not_connected",
+    },
+    {
+        id: "int_instagram_meta",
+        slug: "instagram_meta",
+        name: "Instagram / Meta",
+        description: "Capture leads from Instagram & Facebook lead ads.",
+        status: "not_connected",
+    },
+    {
+        id: "int_xero",
+        slug: "xero",
+        name: "Xero",
+        description: "Push invoices VAT to your accounting books automatically.",
+        status: "not_connected",
+    },
 ];

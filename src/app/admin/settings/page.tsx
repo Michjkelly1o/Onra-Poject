@@ -78,10 +78,14 @@ const CARDS: SettingsCard[] = [
         description: "Manage integrations and platform-level settings that extend your studio capabilities.",
         Icon: Link04,
         items: [
+            // "Integrations" landing now hosts BOTH the old Apps grid AND
+            // the merged-in Payments providers — the unified module ships
+            // with two tabs (Payments default, Apps secondary) per Figma
+            // 7564:188282 + 7632:17561. The legacy "/admin/settings/payments"
+            // route redirects to /admin/settings/integrations?tab=payments
+            // so back-links keep working without surfacing the duplicate
+            // menu entry here.
             { label: "Integrations", href: "/admin/settings/integrations" },
-            // Per the client: items not in the Figma's original categories
-            // live here under Platform until categorisation is revisited.
-            { label: "Payments",     href: "/admin/settings/payments"     },
             { label: "Referral",     href: "/admin/settings/referral"     },
         ],
     },

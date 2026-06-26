@@ -124,6 +124,83 @@ export const INTEGRATION_CONFIG: Record<IntegrationSlug, IntegrationConfig> = {
         ],
         consentUrl: "https://business.whatsapp.com/",
     },
+    // ── 4 placeholder additions per Figma 7632:17561 ───────────────────────
+    // Same shape as the 4 above so the existing card + modal chain renders
+    // them without any branching. Logos use iconify brand SVGs that match
+    // the Figma references closely; copy stays high-level (no real API
+    // connection, demo-only behaviour).
+    outlook_microsoft365: {
+        logo: "https://api.iconify.design/logos:microsoft-icon.svg",
+        providerName: "Microsoft",
+        connectSubtitle: "Sync schedules for staff and corporate clients on Outlook",
+        listHeader: "What will be synced:",
+        listItems: [
+            "All class schedules",
+            "Class times and instructors",
+            "Staff calendar updates",
+            "Corporate client bookings",
+            "Schedule changes in real-time",
+        ],
+        accountFields: [
+            { label: "Account",  value: "studio@outlook.com" },
+            { label: "Calendar", value: "SyncFit - Downtown Fitness" },
+        ],
+        consentUrl: "https://outlook.live.com/calendar",
+    },
+    mailchimp: {
+        logo: "https://api.iconify.design/logos:mailchimp-freddie.svg",
+        providerName: "Mailchimp",
+        connectSubtitle: "Sync members and run campaigns & newsletters",
+        listHeader: "What will be synced:",
+        listItems: [
+            "Member contact details",
+            "Membership status",
+            "Booking history",
+            "Campaign engagement metrics",
+            "Newsletter subscription preferences",
+        ],
+        accountFields: [
+            { label: "Account",   value: "studio@example.com" },
+            { label: "Audience",  value: "SyncFit - Newsletter" },
+        ],
+        consentUrl: "https://mailchimp.com/",
+    },
+    instagram_meta: {
+        logo: "https://api.iconify.design/skill-icons:instagram.svg",
+        providerName: "Meta",
+        connectSubtitle: "Capture leads from Instagram & Facebook lead ads",
+        listHeader: "What will be captured:",
+        listItems: [
+            "Lead ad submissions",
+            "Direct message inquiries",
+            "Story replies and reactions",
+            "Profile click-throughs",
+            "Audience demographics",
+        ],
+        accountFields: [
+            { label: "Account",  value: "@syncfit.studio" },
+            { label: "Page",     value: "SyncFit Studio" },
+        ],
+        consentUrl: "https://business.facebook.com/",
+    },
+    xero: {
+        logo: "https://api.iconify.design/simple-icons:xero.svg",
+        providerName: "Xero",
+        connectSubtitle: "Push invoices VAT to your accounting books automatically",
+        listHeader: "What will be pushed:",
+        listItems: [
+            "Customer invoices",
+            "Sales tax / VAT entries",
+            "Payment receipts",
+            "Refunds and adjustments",
+            "Daily settlement summaries",
+        ],
+        accountFields: [
+            { label: "Account",      value: "studio@example.com" },
+            { label: "Organisation", value: "SyncFit Studio Ltd" },
+        ],
+        consentUrl: "https://www.xero.com/",
+    },
 };
 
 export function configFor(i: { slug: IntegrationSlug }): IntegrationConfig {

@@ -6072,9 +6072,13 @@ export const useAppStore = create<AppState>()(persist(
         // Custom Gift Card design for the Products gift-card flow; v12: Ava back to
         // 0 credits for the Purchase Product flow; v13: customer-experience branch
         // merged in — new customer slices + admin/instructor updates need a clean
-        // re-seed to drop any stale persisted state from either branch). No
-        // migrate needed — the demo discards the old payload on version mismatch.
-        version: 13,
+        // re-seed to drop any stale persisted state from either branch; v14:
+        // Integrations module merge — 4 new app integrations (Outlook,
+        // Mailchimp, Instagram, Xero) + 3 new payment providers (Cards,
+        // Cash, Bank transfer) added to seeds so persisted v13 payloads
+        // would render an incomplete grid until flushed). No migrate
+        // needed — the demo discards the old payload on version mismatch.
+        version: 14,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
