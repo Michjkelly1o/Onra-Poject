@@ -44,8 +44,14 @@ export interface SegmentedTabsProps {
 
 export function SegmentedTabs({ tabs, activeKey, onChange, className }: SegmentedTabsProps) {
     return (
+        // `w-fit` sets width: fit-content so the wrapper truly hugs its
+        // tab buttons. `inline-flex` alone isn't enough — when this sits
+        // inside a `flex flex-col` parent (e.g. the Integrations page
+        // wrapper), the parent's default `align-items: stretch` still
+        // pulls the wrapper to full cross-axis width. `w-fit` overrides
+        // that explicitly.
         <div className={cn(
-            "inline-flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
+            "inline-flex w-fit items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
             className,
         )}>
             {tabs.map(t => {
