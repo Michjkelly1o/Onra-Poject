@@ -8,7 +8,7 @@ function BranchDetailInner() {
     const params = useParams();
     const id = String(params.id);
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/settings";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/settings/business-locations";
     return <BranchDetailPage branchId={id} returnTo={returnTo} />;
 }
 

@@ -34,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/reports": "Reports",
     "/admin/notifications": "Notification",
     "/admin/settings": "Settings",
+    "/admin/settings/business-locations": "Business & locations",
     "/admin/settings/branding": "Branding",
     "/admin/settings/booking-rules": "Booking Rules",
     "/admin/settings/payments": "Payments",
@@ -41,6 +42,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings/notifications": "Customer notifications",
     "/admin/settings/tax": "Tax",
     "/admin/settings/agreements": "Agreements",
+    "/admin/settings/referral": "Referral",
     "/admin/settings/account": "Account settings",
     // Instructor experience — sidebar config in `instructor-navigation.ts`
     "/instructor/dashboard": "Dashboard",

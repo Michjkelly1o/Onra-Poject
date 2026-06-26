@@ -139,13 +139,19 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
     //"/settings/booking-rules",       // customize classes / policy new+edit
 
+    // ── Settings landing ── (ENABLED — admin)
+    // NB: `/admin/settings` is now the SETTINGS LANDING PAGE (4-card layout
+    // per Figma 7553:340153). Every sub-module (Tax / Agreement / Payment /
+    // Integrations / Referral / Branding / Booking rules / Customer
+    // notifications / Account / Business & Locations) lives at its own
+    // /admin/settings/[name] sub-route — they're independent flags above.
+    //"=/admin/settings",              // landing only (4-card menu page)
+
     // ── Business & Locations module ── (ENABLED — admin)
-    // NB: `/admin/settings` is the Business & Locations LANDING page, but
-    // it's also the parent of every other settings sub-module above. We use
-    // `=/admin/settings` (exact match) to 404 ONLY the B&L landing and
-    // leave Tax / Agreement / Payment / Integrations / Referral reachable
-    // at their /admin/settings/[name] sub-routes.
-    //"=/admin/settings",              // landing (Business & Locations table)
+    // Branch + room + studio profile management. Lives at
+    // /admin/settings/business-locations now (was at /admin/settings
+    // before the Settings landing was introduced).
+    //"/admin/settings/business-locations", // list (branches + rooms table)
     //"/settings/business",            // studio profile edit
     //"/settings/branches",            // branch new / detail / edit
     //"/settings/rooms",               // room new / edit

@@ -29,7 +29,7 @@ import {
 } from "@/components/settings/business/StudioProfileFormPage";
 import { COUNTRIES, CITIES_BY_COUNTRY } from "@/lib/data/locales";
 
-const RETURN_ROUTE = "/admin/settings";
+const RETURN_ROUTE = "/admin/settings/business-locations";
 
 const DAYS = [
     { dow: 1 as const, key: "mon", label: "Monday" },

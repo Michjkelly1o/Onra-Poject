@@ -72,23 +72,13 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Payroll",             href: "/admin/compensation"   },
         ],
     },
-    {
-        label: "Settings", icon: Building01,
-        children: [
-            { label: "Business & locations", href: "/admin/settings" },
-            { label: "Branding", href: "/admin/settings/branding" },
-            // "User roles" removed — fully owned by the Staff & Permissions
-            // module (sidebar entry above). Keeping it here would split the
-            // mental model in two for the same data.
-            { label: "Booking rules", href: "/admin/settings/booking-rules" },
-            { label: "Payments", href: "/admin/settings/payments" },
-            { label: "Integrations", href: "/admin/settings/integrations" },
-            { label: "Agreements", href: "/admin/settings/agreements" },
-            { label: "Tax", href: "/admin/settings/tax" },
-            { label: "Referral", href: "/admin/settings/referral" },
-            { label: "Customer notifications", href: "/admin/settings/notifications" },
-        ],
-    },
+    // Settings — single leaf item landing on /admin/settings (per Figma
+    // 7553:340153). Sub-modules used to be nested children here; they're
+    // now surfaced on the Settings landing page itself as a 4-card layout
+    // (Studio / Operations / Customer / Platform). Each card item still
+    // navigates to the same underlying sub-route (Branding, Booking rules,
+    // Tax, etc.) so nothing else in the app changed.
+    { label: "Settings", href: "/admin/settings", icon: Building01 },
 ];
 
 // Among a parent's children, pick the SINGLE child whose href is the longest

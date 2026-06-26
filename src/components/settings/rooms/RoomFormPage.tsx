@@ -21,7 +21,7 @@ import {
 } from "@/components/settings/business/StudioProfileFormPage";
 import { SeatingChartView } from "@/components/settings/rooms/SeatingChartView";
 
-const DEFAULT_RETURN_ROUTE = "/admin/settings";
+const DEFAULT_RETURN_ROUTE = "/admin/settings/business-locations";
 
 export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
     mode: "create" | "edit";

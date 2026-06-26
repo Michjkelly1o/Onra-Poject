@@ -37,7 +37,7 @@ import {
     COUNTRIES, CURRENCIES, TIMEZONES, countryByName, timezoneLabel,
 } from "@/lib/data/locales";
 
-const RETURN_ROUTE = "/admin/settings";
+const RETURN_ROUTE = "/admin/settings/business-locations";
 
 export function StudioProfileFormPage() {
     const router = useRouter();

@@ -98,9 +98,10 @@ const PAGES: PageEntry[] = [
     { title: "Payroll",                href: "/admin/compensation",               icon: CreditCard02 },
     // Notifications top-level
     { title: "Notifications",          href: "/admin/notifications",              icon: Bell01 },
-    // Settings group — Sidebar parent is Building01; sub-pages use their
-    // own domain glyphs so the search row reads at a glance.
-    { title: "Business & Locations",   href: "/admin/settings",                   icon: Building01 },
+    // Settings landing + sub-pages — Settings parent is Building01; each
+    // sub-page uses its own domain glyph so the search row reads at a glance.
+    { title: "Settings",               href: "/admin/settings",                   icon: Building01 },
+    { title: "Business & Locations",   href: "/admin/settings/business-locations", icon: Building01 },
     { title: "Account settings",       href: "/admin/settings/account",           icon: User01 },
     { title: "Branding",               href: "/admin/settings/branding",          icon: Brush02 },
     { title: "Booking Rules",          href: "/admin/settings/booking-rules",     icon: Settings01 },

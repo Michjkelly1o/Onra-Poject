@@ -455,7 +455,7 @@ export interface BranchDetailPageProps {
     returnTo?: string;
 }
 
-export function BranchDetailPage({ branchId, returnTo = "/admin/settings" }: BranchDetailPageProps) {
+export function BranchDetailPage({ branchId, returnTo = "/admin/settings/business-locations" }: BranchDetailPageProps) {
     const router = useRouter();
     const pathname = usePathname();
     const branches       = useAppStore(s => s.branches);
