@@ -791,15 +791,15 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                 fontFamily,
             }}
         >
-            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[110px] px-4 pt-5">
+            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[130px] px-4 pt-5">
                 {/* All Branches picker */}
                 <div
-                    className="flex items-center gap-2 px-3.5 h-11 rounded-[12px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
+                    className="flex items-center gap-2.5 px-4 h-[52px] rounded-[12px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
                     style={{ borderColor: `${brand.textColor}1a`, backgroundColor: brand.backgroundColor }}
                 >
-                    <MarkerPin01 className="w-4 h-4 opacity-70" />
+                    <MarkerPin01 className="w-[18px] h-[18px] opacity-70" />
                     <span className="flex-1 text-[14px] font-medium">All Branches</span>
-                    <svg viewBox="0 0 12 12" className="w-3 h-3 opacity-60"><path d="M3 4 L6 7 L9 4" stroke="currentColor" fill="none" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 opacity-60"><path d="M3 4 L6 7 L9 4" stroke="currentColor" fill="none" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
 
                 {/* What's on */}
@@ -880,9 +880,11 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                 </div>
             </div>
 
-            {/* Sticky Book class CTA */}
-            <div className="absolute bottom-[52px] left-4 right-4">
-                <div className="w-full rounded-full px-4 py-3 text-center text-[15px] font-semibold shadow-[0px_4px_10px_-2px_rgba(16,24,40,0.12)]"
+            {/* Floating Book class CTA — clears the bottom nav by 16px so
+                it reads as a sticky action button hovering above the tab
+                bar, not glued to it. */}
+            <div className="absolute bottom-[68px] left-4 right-4">
+                <div className="w-full rounded-full px-4 py-3 text-center text-[15px] font-semibold shadow-[0px_8px_20px_-4px_rgba(16,24,40,0.18)]"
                     style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
                     Book class
                 </div>
