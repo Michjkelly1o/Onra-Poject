@@ -41,7 +41,7 @@ function nowHHMM(): string {
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
 const STEPS = [
-    { n: 1, label: "Marketing configuration" },
+    { n: 1, label: "Campaign configuration" },
     { n: 2, label: "Visibility settings" },
 ];
 
@@ -676,7 +676,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
 
         if (isEdit && marketingId) {
             updateMarketingItem(marketingId, fields);
-            showToast("Marketing was updated", `${fields.title} has been saved.`, "success", "check");
+            showToast("Campaign was updated", `${fields.title} has been saved.`, "success", "check");
             router.push(`/marketing/${marketingId}`);
         } else {
             const newId = addMarketingItem({
@@ -686,7 +686,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                 click_count: 0,
                 conversion_count: 0,
             });
-            showToast("New marketing was created", "Your marketing item is ready to publish.", "success", "check");
+            showToast("New campaign was created", "Your campaign is ready to publish.", "success", "check");
             router.push(`/marketing/${newId}`);
         }
     }
@@ -700,7 +700,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                    {isEdit ? "Edit marketing" : "Create new marketing"}
+                    {isEdit ? "Edit campaign" : "Create new campaign"}
                 </h1>
             </div>
 
@@ -721,7 +721,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                             </div>
                         }>
                             {/* ── Marketing details ── */}
-                            <Section title="Marketing details">
+                            <Section title="Campaign details">
                                 <FormField label="Image banner">
                                     <BannerUpload preview={form.bannerPreview} onChange={v => patch({ bannerPreview: v })} />
                                 </FormField>
@@ -733,14 +733,14 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                         </FormField>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <FormField label="Marketing type">
+                                        <FormField label="Campaign type">
                                             <TypeSelect value={form.type} onChange={handleTypeChange} />
                                         </FormField>
                                     </div>
                                 </div>
                                 <FormField label="Short description">
                                     <Textarea value={form.description} onChange={v => patch({ description: v })}
-                                        placeholder="Describe this marketing item..." />
+                                        placeholder="Describe this campaign..." />
                                 </FormField>
 
                                 {/* Link or action — surfaces only once a type is picked. */}
@@ -872,7 +872,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                             <div className="flex items-center justify-between w-full">
                                 <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>Back</Button>
                                 <Button variant="primary" size="md" disabled={!canCreate} onClick={handleSubmit}>
-                                    {isEdit ? "Save changes" : "Create marketing"}
+                                    {isEdit ? "Save changes" : "Create campaign"}
                                 </Button>
                             </div>
                         }>
@@ -1031,7 +1031,7 @@ function MarketingPreviewPanel({ form, branches }: { form: MarketingFormData; br
                             </div>
                         )}
                         <p className="relative z-10 text-[20px] font-semibold text-white leading-[30px] uppercase line-clamp-2">
-                            {name || "Marketing title"}
+                            {name || "Campaign title"}
                         </p>
                         <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
                     </div>
@@ -1039,10 +1039,10 @@ function MarketingPreviewPanel({ form, branches }: { form: MarketingFormData; br
                     <div className="flex flex-col gap-4 px-4 py-5">
                         <div className="flex flex-col gap-1">
                             <p className={cn("text-[18px] font-medium leading-7 truncate", name ? "text-[#101828]" : "text-[#98a2b3]")}>
-                                {name || "Marketing title"}
+                                {name || "Campaign title"}
                             </p>
                             <p className={cn("text-[14px] leading-5 line-clamp-2", description ? "text-[#667085]" : "text-[#98a2b3]")}>
-                                {description || "Your marketing description will appear here."}
+                                {description || "Your campaign description will appear here."}
                             </p>
                         </div>
                         {/* Attribute row — action · branches */}

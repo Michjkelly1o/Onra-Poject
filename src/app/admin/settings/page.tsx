@@ -78,15 +78,19 @@ const CARDS: SettingsCard[] = [
         description: "Manage integrations and platform-level settings that extend your studio capabilities.",
         Icon: Link04,
         items: [
-            // "Integrations" landing now hosts BOTH the old Apps grid AND
-            // the merged-in Payments providers — the unified module ships
-            // with two tabs (Payments default, Apps secondary) per Figma
-            // 7564:188282 + 7632:17561. The legacy "/admin/settings/payments"
-            // route redirects to /admin/settings/integrations?tab=payments
-            // so back-links keep working without surfacing the duplicate
-            // menu entry here.
-            { label: "Integrations",     href: "/admin/settings/integrations" },
-            { label: "Referral program", href: "/admin/settings/referral"     },
+            // "Integrations" landing hosts BOTH the old Apps grid AND the
+            // merged-in Payments providers — unified module ships with two
+            // tabs (Payments default, Apps secondary) per Figma 7564:188282
+            // + 7632:17561. The legacy "/admin/settings/payments" route
+            // redirects to /admin/settings/integrations?tab=payments so
+            // back-links keep working.
+            //
+            // Referral program was previously listed here, but it now lives
+            // in the sidebar's Marketing group (Campaigns / Promo codes /
+            // Referral program). Removed from this landing to avoid two
+            // entry points for the same page. The route itself
+            // (/admin/settings/referral) is unchanged.
+            { label: "Integrations", href: "/admin/settings/integrations" },
         ],
     },
 ];

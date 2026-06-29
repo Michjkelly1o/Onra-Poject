@@ -362,7 +362,7 @@ export default function MarketingListPage() {
                 <div className="flex-1">
                     <p className="text-[16px] text-[#667085]">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
-                        {visible.length} {visible.length === 1 ? "marketing" : "marketings"}
+                        {visible.length} {visible.length === 1 ? "campaign" : "campaigns"}
                     </p>
                 </div>
 
@@ -378,7 +378,7 @@ export default function MarketingListPage() {
                 <div className="relative w-[240px]">
                     <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search marketing..."
+                        placeholder="Search campaigns..."
                         className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
@@ -398,7 +398,7 @@ export default function MarketingListPage() {
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/marketing/new?returnTo=${encodeURIComponent("/admin/marketing")}`)}>
-                    Add marketing
+                    Add campaign
                 </Button>
             </div>
 
@@ -406,7 +406,7 @@ export default function MarketingListPage() {
             {visible.length === 0 ? (
                 <div className="relative flex-1" style={{ minHeight: 400 }}>
                     <EmptyState
-                        title={marketingItems.length === 0 ? "No marketing content yet" : "No marketing found"}
+                        title={marketingItems.length === 0 ? "No campaigns yet" : "No campaigns found"}
                         subtitle={marketingItems.length === 0
                             ? "Create your first campaign to engage your members."
                             : "Try adjusting your search or filters."}

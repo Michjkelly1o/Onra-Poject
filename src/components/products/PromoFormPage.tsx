@@ -634,11 +634,11 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
 
         if (isEdit && promoId) {
             updatePromoCode(promoId, fields);
-            showToast("Promo was updated", `${fields.name} has been saved.`, "success", "check");
+            showToast("Promo code was updated", `${fields.name} has been saved.`, "success", "check");
             router.push(`/products/promo-codes/${promoId}`);
         } else {
             const newId = addPromoCode({ ...fields, usage_count: 0, status: "active" });
-            showToast("New promo was created", "Your promotion is ready to publish.", "success", "check");
+            showToast("New promo code was created", "Your promotion is ready to publish.", "success", "check");
             router.push(`/products/promo-codes/${newId}`);
         }
     }
@@ -652,7 +652,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                    {isEdit ? "Edit promo" : "Create new promo"}
+                    {isEdit ? "Edit promo code" : "Create new promo code"}
                 </h1>
             </div>
 
@@ -850,7 +850,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                             <div className="flex items-center justify-between w-full">
                                 <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>Back</Button>
                                 <Button variant="primary" size="md" disabled={!canCreate} onClick={handleSubmit}>
-                                    {isEdit ? "Save changes" : "Create promo"}
+                                    {isEdit ? "Save changes" : "Create promo code"}
                                 </Button>
                             </div>
                         }>

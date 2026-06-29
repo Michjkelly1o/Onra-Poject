@@ -102,12 +102,11 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Payroll",            href: "/admin/compensation"   },
         ],
     },
-    // Settings — single leaf item landing on /admin/settings (per Figma
-    // 7553:340153). Sub-modules surface on the Settings landing page
-    // itself as a 4-card layout (Studio / Operations / Customer /
-    // Platform). Each card item navigates to its underlying sub-route.
-    // Profile chip renders below Settings — see the bottom of <Sidebar/>.
-    { label: "Settings", href: "/admin/settings", icon: Building01 },
+    // Settings + Profile no longer live in the scrollable nav — they're
+    // pinned to the bottom of the sidebar in a single footer group per
+    // Figma 7616:16658. Settings is rendered as a footer link by the
+    // SidebarFooter component below the nav; Profile is the chip beneath
+    // it. Both stay visible even when the nav scrolls.
 ];
 
 // Among a parent's children, pick the SINGLE child whose href is the longest
@@ -187,9 +186,13 @@ interface SidebarProps {
     /** Override the bottom user-menu "Account settings" link. Defaults
      *  to the admin account route. */
     accountHref?: string;
+    /** Footer "Settings" link target — when undefined, the Settings row
+     *  is hidden (instructor sidebar has no admin Settings module, so it
+     *  omits this prop and only renders the Profile chip in the footer). */
+    settingsHref?: string;
 }
 
-export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
+export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/settings" }: SidebarProps = {}) {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
@@ -224,11 +227,16 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
     // Prefer the uploaded avatar from Account settings if the user picked
     // one; otherwise fall back to a generated initial-tile so the chip never
     // renders empty. Same precedence as the Account settings page.
+    //
+    // Fallback name = "Jonathan Miles" (the seeded Owner) — NOT "Admin",
+    // since the prototype's persona vocabulary is Owner / Branch Admin /
+    // Operator / Front Desk / Instructor / Member. "Admin" alone isn't a
+    // valid persona.
     const avatarUrl = currentUser.avatar_url
         ? currentUser.avatar_url
         : `https://ui-avatars.com/api/?name=${currentUser.first_name
             ? `${currentUser.first_name}+${currentUser.last_name ?? ""}`
-            : "Admin"
+            : "Jonathan+Miles"
             }&background=c4edd6&color=0c2d34&bold=true`;
 
     const visibleItems = effectiveNavItems.filter((item) => {
@@ -318,7 +326,7 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
             </div>
 
             {/* ── Navigation ─────────────────────────────────────── */}
-            <nav className="flex-1 overflow-y-auto pt-3 pb-6 px-4 flex flex-col gap-1">
+            <nav className="flex-1 overflow-y-auto pt-3 pb-3 px-4 flex flex-col gap-1 min-h-0">
                 {visibleItems.map((item) => {
                     const hasChildren = !!item.children?.length;
                     // Bottom user-menu routes never highlight a main-nav item.
@@ -439,22 +447,75 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
                 })}
             </nav>
 
-            {/* ── Profile chip + dropdown ─────────────────────────────────
-                Per Figma 7616:16658 the profile lives at the bottom of the
-                sidebar (above Settings would be redundant — Settings is the
-                last item in the nav above this chip). Clicking the chip
-                opens the same dropdown that used to live in the header:
-                Account settings + Sign out. Hidden role-switcher per spec. */}
-            <SidebarProfileChip
-                slim={slim}
-                avatarUrl={avatarUrl}
-                displayName={currentUser.first_name
-                    ? `${currentUser.first_name} ${currentUser.last_name ?? ""}`.trim()
-                    : "User"}
-                roleLabel={roleLabelFor(currentUser.role)}
-                accountHref={effectiveAccountHref}
-            />
+            {/* ── Bottom footer group (Settings + Profile) ─────────────────
+                Per Figma 7616:16658 the Settings link and Profile chip live
+                together at the bottom of the sidebar. They sit outside the
+                scrollable nav so they're always reachable, and they share
+                one container so a divider visually separates them as a
+                single footer group from the rest of the nav. */}
+            <div className="shrink-0 border-t border-[#e4e7ec] mt-1 px-3 pt-3 pb-3 flex flex-col gap-1">
+                {settingsHref && (
+                    <SidebarFooterLink
+                        href={settingsHref}
+                        label="Settings"
+                        icon={Building01}
+                        pathname={pathname}
+                        slim={slim}
+                    />
+                )}
+                <SidebarProfileChip
+                    slim={slim}
+                    avatarUrl={avatarUrl}
+                    displayName={currentUser.first_name
+                        ? `${currentUser.first_name} ${currentUser.last_name ?? ""}`.trim()
+                        : "Jonathan Miles"}
+                    roleLabel={roleLabelFor(currentUser.role)}
+                    accountHref={effectiveAccountHref}
+                />
+            </div>
         </aside>
+    );
+}
+
+// ─── Footer link (Settings, etc.) ─────────────────────────────────────────
+// Matches the chrome of the main nav rows but rendered separately so
+// Settings can sit in the bottom footer group next to the Profile chip
+// (per Figma 7616:16658). Active highlight + slim-mode tooltip behave
+// identically to the in-nav rows.
+function SidebarFooterLink({ href, label, icon: Icon, pathname, slim }: {
+    href: string;
+    label: string;
+    icon: React.FC<{ className?: string }>;
+    pathname: string;
+    slim: boolean;
+}) {
+    // Active when the current path is the link itself or any nested page —
+    // EXCEPT user-menu routes (which live in their own group and shouldn't
+    // light up Settings). Mirrors the in-nav matcher.
+    const active = !isUserMenuRoute(pathname)
+        && (pathname === href || pathname.startsWith(href + "/"));
+
+    return (
+        <SlimNavItem label={label} enabled={slim}>
+            <Link
+                href={href}
+                className={cn(
+                    "flex w-full items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
+                    active
+                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
+                    slim && "justify-center",
+                )}
+            >
+                {active && (
+                    <span className="absolute left-0 top-[7px] w-1 h-6 bg-[#c4edd6] rounded-r" />
+                )}
+                <Icon className={cn("w-5 h-5 shrink-0", active ? "text-[#101828]" : "text-[#667085]")} />
+                {!slim && (
+                    <span className="flex-1 text-sm font-medium truncate">{label}</span>
+                )}
+            </Link>
+        </SlimNavItem>
     );
 }
 
@@ -492,7 +553,7 @@ function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHr
     }
 
     return (
-        <div ref={wrapperRef} className="shrink-0 px-3 pb-4 pt-2 relative">
+        <div ref={wrapperRef} className="relative">
             <button
                 type="button"
                 onClick={() => setOpen(p => !p)}
@@ -519,8 +580,8 @@ function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHr
 
             {open && (
                 <div className={cn(
-                    "absolute bottom-[calc(100%-4px)] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
-                    slim ? "left-[68px] w-[240px]" : "left-3 right-3",
+                    "absolute bottom-[calc(100%+6px)] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
+                    slim ? "left-[58px] w-[240px]" : "left-0 right-0",
                 )}>
                     <Link
                         href={accountHref}
@@ -544,16 +605,17 @@ function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHr
     );
 }
 
-// Render-friendly persona label — mirrors the Header's `roleLabel(...)` so
-// the chip shows "Owner" / "Branch Admin" / etc. instead of the raw slug.
-function roleLabelFor(role: string): string {
+// Render-friendly persona label — mirrors the Header's `roleLabel(...)`.
+// The runtime UserRole union only has 3 buckets ("admin" | "instructor" |
+// "member"); "admin" represents the studio Owner in the prototype demo
+// (Branch Admin / Operator / Front Desk all share the same persona).
+// Default falls back to "Owner" so a freshly-loaded demo never shows a
+// raw slug in the chip.
+function roleLabelFor(role: string | undefined): string {
     switch (role) {
-        case "owner":        return "Owner";
-        case "branch_admin": return "Branch Admin";
-        case "operator":     return "Operator";
-        case "front_desk":   return "Front Desk";
-        case "instructor":   return "Instructor";
-        case "member":       return "Member";
-        default:             return role;
+        case "admin":      return "Owner";
+        case "instructor": return "Instructor";
+        case "member":     return "Member";
+        default:           return "Owner";
     }
 }

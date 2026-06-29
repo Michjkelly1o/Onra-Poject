@@ -132,32 +132,32 @@ const MODAL_CONFIG: Record<ModalAction, {
 }> = {
     archive: {
         iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
-        title: "Archive this promo?",
-        description: "This promo will be hidden from the promo list and stop being redeemable. You can recover archived promos at any time.",
+        title: "Archive this promo code?",
+        description: "This promo code will be hidden from the promo codes list and stop being redeemable. You can recover archived promo codes at any time.",
         confirmLabel: "Archive",
     },
     deactivate: {
         iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
-        title: "Deactivate this promo?",
-        description: "This promo will stop being redeemable at checkout. You can reactivate it again later.",
+        title: "Deactivate this promo code?",
+        description: "This promo code will stop being redeemable at checkout. You can reactivate it again later.",
         confirmLabel: "Deactivate",
     },
     recover: {
         iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
-        title: "Recover this promo?",
-        description: "This promo will be restored to Active status and become redeemable again.",
+        title: "Recover this promo code?",
+        description: "This promo code will be restored to Active status and become redeemable again.",
         confirmLabel: "Recover",
     },
     reactivate: {
         iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
-        title: "Reactivate this promo?",
-        description: "This promo will become redeemable at checkout again.",
+        title: "Reactivate this promo code?",
+        description: "This promo code will become redeemable at checkout again.",
         confirmLabel: "Reactivate",
     },
     delete: {
         iconBg: "bg-[#fee4e2]", IconComp: Trash01, iconColor: "text-[#d92d20]",
-        title: "Delete this promo?",
-        description: "This promo will be permanently removed. This action cannot be undone.",
+        title: "Delete this promo code?",
+        description: "This promo code will be permanently removed. This action cannot be undone.",
         confirmLabel: "Delete",
     },
 };
@@ -211,26 +211,26 @@ function LeftSidebar({ vm, onAction, branches }: {
         // deleted; Inactive promos must be Reactivated first.
         if (vm.status === "archived") {
             return (
-                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover promo" onClick={() => onAction("recover")} />
+                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover promo code" onClick={() => onAction("recover")} />
             );
         }
         if (vm.status === "inactive") {
             return (
                 <>
-                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate promo" onClick={() => onAction("reactivate")} />
-                    <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promo" onClick={() => onAction("archive")} />
+                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate promo code" onClick={() => onAction("reactivate")} />
+                    <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promo code" onClick={() => onAction("archive")} />
                 </>
             );
         }
         // active (incl. expired — stored status is still "active")
         return (
             <>
-                <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit promo" onClick={() => onAction("edit")} />
-                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promo" onClick={() => onAction("archive")} />
+                <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit promo code" onClick={() => onAction("edit")} />
+                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promo code" onClick={() => onAction("archive")} />
                 {canDelete ? (
-                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete promo" danger onClick={() => onAction("delete")} />
+                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete promo code" danger onClick={() => onAction("delete")} />
                 ) : (
-                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate promo" danger onClick={() => onAction("deactivate")} />
+                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate promo code" danger onClick={() => onAction("deactivate")} />
                 )}
             </>
         );
@@ -261,7 +261,7 @@ function LeftSidebar({ vm, onAction, branches }: {
 
                 <div className="px-6 pb-6 shrink-0">
                     <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Promo actions</p>
+                    <p className="text-[14px] text-[#667085] mb-4">Promo code actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
                 </div>
             </div>
@@ -534,7 +534,7 @@ function PromoDetailPageInner() {
     if (!promo) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Promo not found</p>
+                <p className="text-[18px] font-semibold text-[#101828]">Promo code not found</p>
                 <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to promos
@@ -606,24 +606,24 @@ function PromoDetailPageInner() {
         const name = vm.name;
         if (confirmAction === "archive") {
             updatePromoCode(id, { status: "archived" });
-            showToast("Promo archived", `${name} has been archived.`, "success", "archive");
+            showToast("Promo code archived", `${name} has been archived.`, "success", "archive");
             setConfirmAction(null);
         } else if (confirmAction === "deactivate") {
             updatePromoCode(id, { status: "inactive" });
-            showToast("Promo deactivated", `${name} is no longer redeemable.`, "error", "slash");
+            showToast("Promo code deactivated", `${name} is no longer redeemable.`, "error", "slash");
             setConfirmAction(null);
         } else if (confirmAction === "recover") {
             updatePromoCode(id, { status: "active" });
-            showToast("Promo recovered", `${name} has been recovered and is now active.`, "success", "refresh");
+            showToast("Promo code recovered", `${name} has been recovered and is now active.`, "success", "refresh");
             setConfirmAction(null);
         } else if (confirmAction === "reactivate") {
             updatePromoCode(id, { status: "active" });
-            showToast("Promo reactivated", `${name} is now active again.`, "success", "check");
+            showToast("Promo code reactivated", `${name} is now active again.`, "success", "check");
             setConfirmAction(null);
         } else if (confirmAction === "delete") {
             const ok = deletePromoCode(id);
             if (ok) {
-                showToast("Promo deleted", `${name} has been deleted.`, "success", "trash");
+                showToast("Promo code deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
                 router.push(returnTo);
             } else {
@@ -646,7 +646,7 @@ function PromoDetailPageInner() {
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Promo details</h1>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Promo code details</h1>
             </div>
 
             {/* Body — canonical DetailPageShell wraps the 832px frame. */}

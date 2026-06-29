@@ -12,7 +12,7 @@
 //
 // State source of truth: useAppStore(s => s.promoCodes). The toolbar carries a
 // branch picker, search, a side-panel filter (Status + Promo date range), and
-// the "Add promo" button (creation flow ships in the next step).
+// the "Add promo code" button (creation flow ships in the next step).
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -356,7 +356,7 @@ export default function PromoListPage() {
                 <div className="flex-1">
                     <p className="text-[16px] text-[#667085]">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
-                        {visible.length} {visible.length === 1 ? "promo" : "promos"}
+                        {visible.length} {visible.length === 1 ? "promo code" : "promo codes"}
                     </p>
                 </div>
 
@@ -372,7 +372,7 @@ export default function PromoListPage() {
                 <div className="relative w-[240px]">
                     <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search promo..."
+                        placeholder="Search promo codes..."
                         className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
@@ -392,7 +392,7 @@ export default function PromoListPage() {
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>
-                    Add promo
+                    Add promo code
                 </Button>
             </div>
 
@@ -400,7 +400,7 @@ export default function PromoListPage() {
             {visible.length === 0 ? (
                 <div className="relative flex-1" style={{ minHeight: 400 }}>
                     <EmptyState
-                        title={promoCodes.length === 0 ? "No promo codes yet" : "No promos found"}
+                        title={promoCodes.length === 0 ? "No promo codes yet" : "No promo codes found"}
                         subtitle={promoCodes.length === 0
                             ? "Create your first promotion to get started."
                             : "Try adjusting your search or filters."}

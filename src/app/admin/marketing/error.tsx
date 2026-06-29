@@ -18,7 +18,7 @@ export default function Error({
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
             <h2 className="text-xl font-bold">Something went wrong!</h2>
             <p className="text-gray-500 max-w-md text-center">
-                {error.message || "Failed to load marketing data."}
+                {error.message || "Failed to load campaign data."}
             </p>
             <Button onClick={() => reset()}>Try again</Button>
         </div>

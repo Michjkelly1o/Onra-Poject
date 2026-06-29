@@ -125,32 +125,32 @@ const MODAL_CONFIG: Record<ModalAction, {
 }> = {
     archive: {
         IconComp: Archive,
-        title: "Archive this marketing item?",
-        description: "It will be hidden from the marketing list and removed from the customer feed. You can recover archived items at any time.",
+        title: "Archive this campaign?",
+        description: "It will be hidden from the campaigns list and removed from the customer feed. You can recover archived campaigns at any time.",
         confirmLabel: "Archive",
     },
     deactivate: {
         IconComp: SlashCircle01,
-        title: "Deactivate this marketing item?",
+        title: "Deactivate this campaign?",
         description: "It will stop showing on the customer feed. You can reactivate it again later.",
         confirmLabel: "Deactivate",
     },
     recover: {
         IconComp: RefreshCcw01,
-        title: "Recover this marketing item?",
+        title: "Recover this campaign?",
         description: "It will be restored to Active status and shown on the customer feed again.",
         confirmLabel: "Recover",
     },
     reactivate: {
         IconComp: Check,
-        title: "Reactivate this marketing item?",
+        title: "Reactivate this campaign?",
         description: "It will be shown on the customer feed again.",
         confirmLabel: "Reactivate",
     },
     delete: {
         IconComp: Trash01,
-        title: "Delete this marketing item?",
-        description: "This marketing item will be permanently removed. This action cannot be undone.",
+        title: "Delete this campaign?",
+        description: "This campaign will be permanently removed. This action cannot be undone.",
         confirmLabel: "Delete",
     },
 };
@@ -207,26 +207,26 @@ function LeftSidebar({ vm, onAction, branches }: {
         // deleted; Inactive items must be Reactivated first.
         if (vm.status === "archived") {
             return (
-                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover marketing" onClick={() => onAction("recover")} />
+                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover campaign" onClick={() => onAction("recover")} />
             );
         }
         if (vm.status === "inactive") {
             return (
                 <>
-                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate marketing" onClick={() => onAction("reactivate")} />
-                    <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive marketing" onClick={() => onAction("archive")} />
+                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate campaign" onClick={() => onAction("reactivate")} />
+                    <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive campaign" onClick={() => onAction("archive")} />
                 </>
             );
         }
         // active (incl. expired — stored status is still "active")
         return (
             <>
-                <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit marketing" onClick={() => onAction("edit")} />
-                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive marketing" onClick={() => onAction("archive")} />
+                <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit campaign" onClick={() => onAction("edit")} />
+                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive campaign" onClick={() => onAction("archive")} />
                 {canDelete ? (
-                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete marketing" danger onClick={() => onAction("delete")} />
+                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete campaign" danger onClick={() => onAction("delete")} />
                 ) : (
-                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate marketing" danger onClick={() => onAction("deactivate")} />
+                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate campaign" danger onClick={() => onAction("deactivate")} />
                 )}
             </>
         );
@@ -246,8 +246,8 @@ function LeftSidebar({ vm, onAction, branches }: {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        <SidebarField label="Marketing type" value={TYPE_LABEL[vm.type]} />
-                        <SidebarField label="Marketing action" value={ACTION_LABEL[vm.actionType]} />
+                        <SidebarField label="Campaign type" value={TYPE_LABEL[vm.type]} />
+                        <SidebarField label="Campaign action" value={ACTION_LABEL[vm.actionType]} />
                         <SidebarField label="Start date & time" value={formatDateTime(vm.publishDate)} />
                         <SidebarField label="End date & time" value={formatDateTime(vm.expiryDate)} />
                         <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
@@ -380,7 +380,7 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                 {/* ── Marketing configuration ── */}
                 <SectionHeading>Marketing configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                    <InlineStat icon={<Grid01 className="w-4 h-4" />} label="Marketing type" value={TYPE_LABEL[vm.type]} />
+                    <InlineStat icon={<Grid01 className="w-4 h-4" />} label="Campaign type" value={TYPE_LABEL[vm.type]} />
                     <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Link or action" value={ACTION_LABEL[vm.actionType]} />
                     <InlineStat icon={<Calendar className="w-4 h-4" />} label="Start date & time" value={formatDateTime(vm.publishDate)} />
                     <InlineStat icon={<Calendar className="w-4 h-4" />} label="End date & time" value={formatDateTime(vm.expiryDate)} />
@@ -395,7 +395,7 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                         icon={<CheckVerified02 className="w-4 h-4" />}
                         label="Multi-location access"
                         value={vm.multiLocation ? "Yes" : "No"}
-                        tooltip="Marketing can be use on multiple branches"
+                        tooltip="Campaigns can be used on multiple branches"
                     />
                 </div>
 
@@ -406,8 +406,8 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                 <VisibilityCard
                     title="Branches"
                     subtitle={vm.multiLocation
-                        ? "The marketing can be use on multiple branches"
-                        : "The marketing can be use on a single branch"}
+                        ? "The campaign can be used on multiple branches"
+                        : "The campaign can be used on a single branch"}
                     badge={vm.branchIds.length === 0 ? "All branches" : `${vm.branchIds.length} selected`}
                 >
                     {vm.branchIds.length === 0 ? (
@@ -420,7 +420,7 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                 {/* Packages — grouped Membership / Class package */}
                 <VisibilityCard
                     title="Packages"
-                    subtitle="The marketing can be use on multiple packages"
+                    subtitle="The campaign can be used on multiple packages"
                     badge={`${vm.products.length} selected`}
                 >
                     {vm.products.length === 0 ? (
@@ -442,7 +442,7 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                 {/* Classes — class name + category */}
                 <VisibilityCard
                     title="Classes"
-                    subtitle="The marketing can be use on multiple classes"
+                    subtitle="The campaign can be used on multiple classes"
                     badge={`${vm.classes.length} selected`}
                 >
                     {vm.classes.length === 0 ? (
@@ -455,7 +455,7 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                 {/* Customer targeting */}
                 <VisibilityCard
                     title="Customer"
-                    subtitle="The marketing can be configured to target specific eligible users."
+                    subtitle="The campaign can be configured to target specific eligible users."
                     badge={vm.customerTargeting === "new_users" ? "New user only"
                         : vm.customerTargeting === "all" ? "Everyone" : "—"}
                 >
@@ -587,24 +587,24 @@ function MarketingDetailPageInner() {
         const name = vm.title;
         if (confirmAction === "archive") {
             updateMarketingItem(id, { status: "archived" });
-            showToast("Marketing archived", `${name} has been archived.`, "success", "archive");
+            showToast("Campaign archived", `${name} has been archived.`, "success", "archive");
             setConfirmAction(null);
         } else if (confirmAction === "deactivate") {
             updateMarketingItem(id, { status: "inactive" });
-            showToast("Marketing deactivated", `${name} is no longer shown to members.`, "error", "slash");
+            showToast("Campaign deactivated", `${name} is no longer shown to members.`, "error", "slash");
             setConfirmAction(null);
         } else if (confirmAction === "recover") {
             updateMarketingItem(id, { status: "active" });
-            showToast("Marketing recovered", `${name} has been recovered and is now active.`, "success", "refresh");
+            showToast("Campaign recovered", `${name} has been recovered and is now active.`, "success", "refresh");
             setConfirmAction(null);
         } else if (confirmAction === "reactivate") {
             updateMarketingItem(id, { status: "active" });
-            showToast("Marketing reactivated", `${name} is now active again.`, "success", "check");
+            showToast("Campaign reactivated", `${name} is now active again.`, "success", "check");
             setConfirmAction(null);
         } else if (confirmAction === "delete") {
             const ok = deleteMarketingItem(id);
             if (ok) {
-                showToast("Marketing deleted", `${name} has been deleted.`, "success", "trash");
+                showToast("Campaign deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
                 router.push(returnTo);
             } else {
