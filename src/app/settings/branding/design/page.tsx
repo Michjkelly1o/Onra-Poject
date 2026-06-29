@@ -687,14 +687,14 @@ function PreviewTabs({ current, onChange }: { current: PreviewTab; onChange: (t:
 
 /** iPhone-style outer frame — fixed 300×620 device so the inner layout
  *  stays consistent regardless of how tall the outer preview card grows.
- *  Inner children render inside the rounded device viewport; Home +
- *  Class tabs scroll inside it. */
+ *  Inner children render inside the rounded viewport; Home + Class tabs
+ *  scroll inside it. Now bezel-less: the dark frame was reading as
+ *  visual noise, so the device is just the inner white viewport with
+ *  a soft drop shadow + rounded corners. */
 function PhoneMock({ children }: { children: React.ReactNode }) {
     return (
-        <div className="w-[300px] h-[620px] shrink-0 bg-[#101828] rounded-[36px] p-[3px] shadow-[0px_12px_24px_-8px_rgba(16,24,40,0.18)]">
-            <div className="w-full h-full rounded-[33px] overflow-hidden bg-white relative">
-                {children}
-            </div>
+        <div className="w-[300px] h-[620px] shrink-0 rounded-[28px] overflow-hidden bg-white relative shadow-[0px_12px_28px_-10px_rgba(16,24,40,0.18)] border-1 border-[#e4e7ec]">
+            {children}
         </div>
     );
 }
@@ -724,18 +724,18 @@ function LoginPreview({ brand }: { brand: PreviewBrand }) {
                 backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor} 0%, ${brand.backgroundColor} 40%, ${brand.primaryColor}cc 100%)`,
             }}
         >
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6">
-                <div className="w-14 h-14 flex items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
+                <div className="w-20 h-20 flex items-center justify-center">
                     {brand.logoUrl
                         ? <img src={brand.logoUrl} alt="" className="w-full h-full object-contain" />
                         : <FormaGlyph color={brand.textColor} />}
                 </div>
-                <p className="text-[24px] font-semibold leading-[32px] tracking-[-0.01em]">
+                <p className="text-[32px] font-semibold leading-[40px] tracking-[-0.01em]">
                     {brand.displayName || "Forma"}
                 </p>
             </div>
-            <div className="shrink-0 flex items-center justify-center pb-6 pt-2">
-                <p className="text-[11px] font-medium opacity-50 flex items-center gap-1" style={{ color: brand.textColor }}>
+            <div className="shrink-0 flex items-center justify-center pb-7 pt-2">
+                <p className="text-[13px] font-medium opacity-50 flex items-center gap-1.5" style={{ color: brand.textColor }}>
                     <span>powered by</span>
                     <OnraGlyph color={brand.textColor} />
                     <span>Onra</span>
@@ -764,7 +764,7 @@ function FormaGlyph({ color }: { color: string }) {
 /** Tiny "✦ Onra" logomark next to the powered-by footer text. */
 function OnraGlyph({ color }: { color: string }) {
     return (
-        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" aria-hidden="true">
+        <svg viewBox="0 0 12 12" className="w-3 h-3" aria-hidden="true">
             <path
                 d="M6 0 L7 5 L12 6 L7 7 L6 12 L5 7 L0 6 L5 5 Z"
                 fill={color}
@@ -791,22 +791,22 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                 fontFamily,
             }}
         >
-            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[88px] px-4 pt-5">
+            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[110px] px-4 pt-5">
                 {/* All Branches picker */}
                 <div
-                    className="flex items-center gap-2 px-3 h-9 rounded-[10px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
+                    className="flex items-center gap-2 px-3.5 h-11 rounded-[12px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
                     style={{ borderColor: `${brand.textColor}1a`, backgroundColor: brand.backgroundColor }}
                 >
-                    <MarkerPin01 className="w-3.5 h-3.5 opacity-70" />
-                    <span className="flex-1 text-[11px] font-medium">All Branches</span>
-                    <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 opacity-60"><path d="M3 4 L6 7 L9 4" stroke="currentColor" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <MarkerPin01 className="w-4 h-4 opacity-70" />
+                    <span className="flex-1 text-[14px] font-medium">All Branches</span>
+                    <svg viewBox="0 0 12 12" className="w-3 h-3 opacity-60"><path d="M3 4 L6 7 L9 4" stroke="currentColor" fill="none" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
 
                 {/* What's on */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[13px] font-semibold">What&apos;s on</p>
+                    <p className="text-[16px] font-semibold">What&apos;s on</p>
                     <div
-                        className="rounded-[14px] overflow-hidden h-[120px] relative"
+                        className="rounded-[14px] overflow-hidden h-[130px] relative"
                         style={{
                             backgroundImage: "url(/images/class-template/hot-yoga.webp)",
                             backgroundSize: "cover",
@@ -817,27 +817,27 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                         <div className="absolute inset-0" style={{
                             backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%)",
                         }} />
-                        <div className="absolute top-2 left-2 rounded-[6px] px-2 py-0.5 text-[9px] font-medium tracking-[0.02em] backdrop-blur-sm"
+                        <div className="absolute top-2.5 left-2.5 rounded-[6px] px-2 py-0.5 text-[11px] font-medium tracking-[0.02em] backdrop-blur-sm"
                             style={{ backgroundColor: "rgba(0,0,0,0.4)", color: "#ffffff" }}>
                             13h : 33m : 50s
                         </div>
-                        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex flex-col gap-0.5 text-white">
-                            <span className="text-[9px] font-medium tracking-[0.12em] opacity-90">WEEKEND</span>
-                            <span className="text-[18px] font-semibold leading-tight tracking-[-0.01em]">Workout Pass</span>
-                            <span className="text-[8px] opacity-70">*T&amp;Cs Apply</span>
+                        <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-0.5 text-white">
+                            <span className="text-[11px] font-medium tracking-[0.12em] opacity-90">WEEKEND</span>
+                            <span className="text-[20px] font-semibold leading-tight tracking-[-0.01em]">Workout Pass</span>
+                            <span className="text-[10px] opacity-70">*T&amp;Cs Apply</span>
                         </div>
                     </div>
                     {/* Page dots */}
                     <div className="flex items-center justify-center gap-1 pt-0.5">
-                        <span className="w-4 h-1 rounded-full" style={{ backgroundColor: brand.primaryColor }} />
-                        <span className="w-1 h-1 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
-                        <span className="w-1 h-1 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
+                        <span className="w-5 h-1.5 rounded-full" style={{ backgroundColor: brand.primaryColor }} />
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
                     </div>
                 </div>
 
                 {/* Instructor */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[13px] font-semibold">Instructor</p>
+                    <p className="text-[16px] font-semibold">Instructor</p>
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
                         {[
                             { name: "Liam Chen", count: "3 active classes", img: "/images/instructors/liam-chen.webp" },
@@ -845,13 +845,13 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                             { name: "Maya Johnson", count: "2 active classes", img: "/images/instructors/maya-johnson.webp" },
                         ].map((i, idx) => (
                             <div key={idx}
-                                className="rounded-[10px] shrink-0 w-[140px] h-[60px] flex items-center justify-between overflow-hidden"
+                                className="rounded-[10px] shrink-0 w-[170px] h-[72px] flex items-center justify-between overflow-hidden"
                                 style={{ backgroundColor: brand.tertiaryColor }}>
-                                <div className="flex flex-col gap-0.5 pl-2.5 pr-1.5 py-2 min-w-0">
-                                    <span className="text-[10px] font-semibold leading-tight truncate">{i.name}</span>
-                                    <span className="text-[8px] opacity-60">{i.count}</span>
+                                <div className="flex flex-col gap-0.5 pl-3 pr-2 py-2 min-w-0">
+                                    <span className="text-[12px] font-semibold leading-tight truncate">{i.name}</span>
+                                    <span className="text-[10px] opacity-60">{i.count}</span>
                                 </div>
-                                <img src={i.img} alt="" className="w-[60px] h-full object-cover shrink-0"
+                                <img src={i.img} alt="" className="w-[70px] h-full object-cover shrink-0"
                                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             </div>
                         ))}
@@ -860,7 +860,7 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
 
                 {/* Categories */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[13px] font-semibold">Categories</p>
+                    <p className="text-[16px] font-semibold">Categories</p>
                     <div className="grid grid-cols-2 gap-2">
                         {[
                             { label: "Yoga",    img: "/images/class-categories/yoga.png" },
@@ -869,10 +869,10 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                             { label: "Cycling", img: "/images/class-categories/cycling.png" },
                         ].map(c => (
                             <div key={c.label}
-                                className="rounded-[10px] p-2.5 h-[72px] flex justify-between items-end relative overflow-hidden"
+                                className="rounded-[10px] p-3 h-[80px] flex justify-between items-end relative overflow-hidden"
                                 style={{ backgroundColor: brand.tertiaryColor }}>
-                                <span className="text-[11px] font-medium relative z-10 self-start">{c.label}</span>
-                                <img src={c.img} alt="" className="w-9 h-9 object-contain self-end opacity-90"
+                                <span className="text-[13px] font-medium relative z-10 self-start">{c.label}</span>
+                                <img src={c.img} alt="" className="w-10 h-10 object-contain self-end opacity-90"
                                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             </div>
                         ))}
@@ -881,15 +881,15 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
             </div>
 
             {/* Sticky Book class CTA */}
-            <div className="absolute bottom-[44px] left-4 right-4">
-                <div className="w-full rounded-full px-4 py-2.5 text-center text-[13px] font-semibold shadow-[0px_4px_10px_-2px_rgba(16,24,40,0.12)]"
+            <div className="absolute bottom-[52px] left-4 right-4">
+                <div className="w-full rounded-full px-4 py-3 text-center text-[15px] font-semibold shadow-[0px_4px_10px_-2px_rgba(16,24,40,0.12)]"
                     style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
                     Book class
                 </div>
             </div>
 
             {/* Bottom nav */}
-            <div className="absolute bottom-0 left-0 right-0 h-[44px] pb-1 flex items-center justify-around"
+            <div className="absolute bottom-0 left-0 right-0 h-[52px] pb-1.5 flex items-center justify-around"
                 style={{
                     backgroundColor: brand.backgroundColor,
                     borderTop: `1px solid ${brand.textColor}11`,
@@ -900,13 +900,13 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                     { Icon: ShoppingBag03, label: "Products" },
                     { Icon: User01, label: "Profile" },
                 ].map((n, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-0.5 relative">
+                    <div key={idx} className="flex flex-col items-center gap-1 relative">
                         {n.active && (
-                            <span className="absolute -top-1 w-5 h-[2px] rounded-full"
+                            <span className="absolute -top-1.5 w-6 h-[2px] rounded-full"
                                 style={{ backgroundColor: brand.primaryColor }} />
                         )}
-                        <n.Icon className="w-4 h-4" style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }} />
-                        <span className="text-[8px] font-medium"
+                        <n.Icon className="w-5 h-5" style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }} />
+                        <span className="text-[10px] font-medium"
                             style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }}>{n.label}</span>
                     </div>
                 ))}
@@ -934,10 +934,10 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
                 fontFamily,
             }}
         >
-            <div className="flex-1 overflow-y-auto scrollbar-hide pb-[60px]">
+            <div className="flex-1 overflow-y-auto scrollbar-hide pb-[72px]">
                 {/* Cover */}
                 <div
-                    className="mx-4 mt-5 rounded-[14px] overflow-hidden h-[150px] relative"
+                    className="mx-4 mt-5 rounded-[14px] overflow-hidden h-[170px] relative"
                     style={{
                         backgroundImage: "url(/images/class-template/reformer-pilates.webp)",
                         backgroundSize: "cover",
@@ -949,30 +949,30 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
                     <div className="absolute inset-0" style={{
                         backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.55) 100%)",
                     }} />
-                    <button className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
-                        <ChevronLeft className="w-3.5 h-3.5 text-white" />
+                    <button className="absolute top-3 left-3 w-8 h-8 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
+                        <ChevronLeft className="w-4 h-4 text-white" />
                     </button>
-                    <button className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
-                        <Share02 className="w-3.5 h-3.5 text-white" />
+                    <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
+                        <Share02 className="w-4 h-4 text-white" />
                     </button>
-                    <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between gap-2">
+                    <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-2">
                         <div className="flex flex-col gap-0.5 text-white min-w-0">
-                            <span className="text-[15px] font-semibold leading-tight tracking-[-0.01em]">Mat Pilates</span>
-                            <span className="text-[9px] opacity-90">Sun, 20 Feb 2025 at 10:00 AM</span>
+                            <span className="text-[18px] font-semibold leading-tight tracking-[-0.01em]">Mat Pilates</span>
+                            <span className="text-[11px] opacity-90">Sun, 20 Feb 2025 at 10:00 AM</span>
                         </div>
-                        <span className="rounded-full px-2 py-1 text-[9px] font-medium flex items-center gap-1 shrink-0"
+                        <span className="rounded-full px-2.5 py-1 text-[11px] font-medium flex items-center gap-1 shrink-0"
                             style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
-                            <CheckCircle className="w-2.5 h-2.5" />
+                            <CheckCircle className="w-3 h-3" />
                             8 spots left
                         </span>
                     </div>
                 </div>
 
                 {/* Body */}
-                <div className="px-4 pt-4 flex flex-col gap-4">
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[13px] font-semibold">Class details</p>
-                        <p className="text-[10px] leading-[14px] opacity-70">
+                <div className="px-4 pt-5 flex flex-col gap-5">
+                    <div className="flex flex-col gap-2.5">
+                        <p className="text-[16px] font-semibold">Class details</p>
+                        <p className="text-[12px] leading-[17px] opacity-70">
                             This classic mat-based Pilates class focuses on strengthening the core through controlled and precise movements. <span className="font-semibold underline" style={{ color: brand.textColor }}>See more</span>
                         </p>
                         <div className="grid grid-cols-2 gap-2 pt-1">
@@ -983,18 +983,18 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
                                 { Icon: Grid01,           label: "Class type", value: "Group" },
                             ].map((m, idx) => (
                                 <div key={idx}
-                                    className="rounded-[10px] p-2.5 flex items-start gap-2"
+                                    className="rounded-[10px] p-3 flex items-start gap-2.5"
                                     style={{ backgroundColor: brand.tertiaryColor }}>
-                                    <m.Icon className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-70" />
+                                    <m.Icon className="w-4 h-4 mt-0.5 shrink-0 opacity-70" />
                                     <div className="flex flex-col gap-0.5 min-w-0">
-                                        <span className="text-[9px] opacity-60 leading-tight">{m.label}</span>
-                                        <div className="flex items-center gap-1 min-w-0">
+                                        <span className="text-[11px] opacity-60 leading-tight">{m.label}</span>
+                                        <div className="flex items-center gap-1.5 min-w-0">
                                             {m.instructor && (
                                                 <img src="/images/instructors/liam-chen.webp" alt=""
-                                                    className="w-3 h-3 rounded-full object-cover shrink-0"
+                                                    className="w-4 h-4 rounded-full object-cover shrink-0"
                                                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                                             )}
-                                            <span className="text-[10px] font-semibold leading-tight truncate">{m.value}</span>
+                                            <span className="text-[12px] font-semibold leading-tight truncate">{m.value}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1002,22 +1002,22 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                        <p className="text-[13px] font-semibold">Equipment</p>
-                        <div className="flex flex-col gap-1 text-[10px] opacity-80">
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[16px] font-semibold">Equipment</p>
+                        <div className="flex flex-col gap-1 text-[12px] opacity-80">
                             {["Mat", "Resistance band"].map(item => (
-                                <div key={item} className="flex items-center gap-1.5">
-                                    <span className="w-1 h-1 rounded-full" style={{ backgroundColor: `${brand.textColor}77` }} />
+                                <div key={item} className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${brand.textColor}77` }} />
                                     <span>{item}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 pt-3 border-t" style={{ borderColor: `${brand.textColor}14` }}>
-                        <p className="text-[13px] font-semibold">Check-in or arrival guidance</p>
-                        <div className="flex items-center gap-1.5 text-[10px]">
-                            <CheckCircle className="w-3.5 h-3.5" style={{ color: brand.primaryColor }} />
+                    <div className="flex flex-col gap-2 pt-3 border-t" style={{ borderColor: `${brand.textColor}14` }}>
+                        <p className="text-[16px] font-semibold">Check-in or arrival guidance</p>
+                        <div className="flex items-center gap-2 text-[12px]">
+                            <CheckCircle className="w-4 h-4" style={{ color: brand.primaryColor }} />
                             <span>Arrive 10 minutes early</span>
                         </div>
                     </div>
@@ -1025,10 +1025,10 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
             </div>
 
             {/* Sticky CTA — credits left text + book pill */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 pt-2.5 pb-3 flex items-center justify-between gap-3"
+            <div className="absolute bottom-0 left-0 right-0 px-4 pt-3 pb-4 flex items-center justify-between gap-3"
                 style={{ backgroundColor: brand.backgroundColor, borderTop: `1px solid ${brand.textColor}11` }}>
-                <span className="text-[10px] font-medium opacity-70">20 credits left</span>
-                <div className="rounded-full px-4 py-1.5 text-[12px] font-semibold"
+                <span className="text-[12px] font-medium opacity-70">20 credits left</span>
+                <div className="rounded-full px-5 py-2 text-[14px] font-semibold"
                     style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
                     Book class
                 </div>
