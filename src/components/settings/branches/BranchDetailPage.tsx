@@ -180,13 +180,15 @@ function Sidebar({
                         <p className="text-[14px] text-[#667085] truncate">{branch.email ?? emailFromName(branch.name)}</p>
                     </div>
 
-                    {/* Metadata stack — mirrors Figma 4098-210481 */}
+                    {/* Metadata stack — mirrors Figma 4098-210481 +
+                        6655:193700 (Location scope row addition). */}
                     <div className="flex flex-col gap-4">
-                        <Metadata label="Email"        value={branch.email ?? emailFromName(branch.name)} />
-                        <Metadata label="Phone number" value={branch.phone ?? "—"} />
-                        <Metadata label="Working days" value={<WorkingDays hours={hours} />} />
-                        <Metadata label="Working hours" value={primaryHoursDisplay(hours)} />
-                        <Metadata label="Address" value={branch.address ?? "—"} />
+                        <Metadata label="Location scope" value={branch.kind === "spa" ? "Spa" : "Club"} />
+                        <Metadata label="Email"          value={branch.email ?? emailFromName(branch.name)} />
+                        <Metadata label="Phone number"   value={branch.phone ?? "—"} />
+                        <Metadata label="Working days"   value={<WorkingDays hours={hours} />} />
+                        <Metadata label="Working hours"  value={primaryHoursDisplay(hours)} />
+                        <Metadata label="Address"        value={branch.address ?? "—"} />
                     </div>
                 </div>
 
@@ -198,7 +200,13 @@ function Sidebar({
                         {isActive && (
                             <>
                                 <ActionBtn icon={<Edit02 className="w-5 h-5" />}        label="Edit branch"       onClick={onEdit} />
-                                <ActionBtn icon={<Plus className="w-5 h-5" />}          label="Add room"           onClick={onAddRoom} />
+                                {/* Spa branches are room-less by design — recovery
+                                    sessions aren't room-scoped. Hide the affordance
+                                    so admins don't try to create rooms that the
+                                    rest of the app expects to be absent. */}
+                                {branch.kind !== "spa" && (
+                                    <ActionBtn icon={<Plus className="w-5 h-5" />}      label="Add room"           onClick={onAddRoom} />
+                                )}
                                 <ActionBtn icon={<Archive className="w-5 h-5" />}       label="Archive branch"     onClick={() => onAction("archive")} />
                                 <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate branch" danger onClick={() => onAction("deactivate")} />
                                 {canDelete && (
@@ -301,7 +309,8 @@ function DetailsTab({
             <section className="flex flex-col gap-3">
                 <p className="text-[16px] font-medium text-[#667085] leading-6">Branch details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                    <DetailField label="Branch name"  value={branch.name} />
+                    <DetailField label="Branch name"    value={branch.name} />
+                    <DetailField label="Location scope" value={branch.kind === "spa" ? "Spa" : "Club"} />
                     <DetailField label="Email"        value={branch.email ?? emailFromName(branch.name)} />
                     <DetailField label="Phone number" value={branch.phone ?? "—"} />
                     <DetailField label="Working days" value={<WorkingDays hours={hours} />} />
@@ -333,9 +342,14 @@ function DetailsTab({
                 </div>
             </section>
 
-            {/* Rooms table — Figma 6655-193745. Per the Figma it’s a flush
+            {/* Rooms table — Figma 6655-193745. Per the Figma it's a flush
                 list (no outer border, no header fill) — the only chrome is
-                the `divide-y` between rows. */}
+                the `divide-y` between rows.
+                Hidden entirely for Spa-kind branches: Spa locations are
+                room-less by design (recovery services aren't room-scoped)
+                so the section + "Add room" affordance both disappear from
+                the detail page. */}
+            {branch.kind !== "spa" && (
             <section className="flex flex-col gap-3">
                 <p className="text-[16px] font-medium text-[#667085] leading-6">Rooms</p>
                 <div className="w-full">
@@ -411,6 +425,7 @@ function DetailsTab({
                     })}
                 </div>
             </section>
+            )}
         </div>
     );
 }

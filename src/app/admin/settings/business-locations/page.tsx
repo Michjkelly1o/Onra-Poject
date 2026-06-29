@@ -273,6 +273,8 @@ export default function BusinessLocationsPage() {
             <StudioCard
                 name={businessProfile.name || "Forma Studio"}
                 logoUrl={businessProfile.logoUrl}
+                legalBusinessName={businessProfile.legalBusinessName}
+                tradeLicenseNumber={businessProfile.tradeLicenseNumber}
                 country={businessProfile.country}
                 currency={businessProfile.currency}
                 timezone={businessProfile.timezone}
@@ -438,9 +440,11 @@ export default function BusinessLocationsPage() {
 
 // ─── Subcomponents ──────────────────────────────────────────────────────────
 
-function StudioCard({ name, logoUrl, country, currency, timezone, onEdit }: {
+function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, country, currency, timezone, onEdit }: {
     name: string;
     logoUrl?: string;
+    legalBusinessName: string;
+    tradeLicenseNumber: string;
     country: string;
     currency: string;
     timezone: string;
@@ -449,7 +453,7 @@ function StudioCard({ name, logoUrl, country, currency, timezone, onEdit }: {
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex items-center gap-6 w-full">
             <StudioAvatar logoUrl={logoUrl} />
-            <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <div className="flex-1 min-w-0 flex flex-col gap-3">
                 <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
                     {name}
                 </p>
@@ -457,6 +461,14 @@ function StudioCard({ name, logoUrl, country, currency, timezone, onEdit }: {
                     <InfoTile label="Country"   value={country || "—"} />
                     <InfoTile label="Currency"  value={currency || "—"} />
                     <InfoTile label="Time zone" value={timezoneLabel(timezone) || timezone || "—"} />
+                </div>
+                {/* Legal identity row — reads from `businessProfile.legal*`,
+                    edited via the Studio Profile form. Always renders even
+                    when blank so the card height stays consistent across
+                    studios that haven't filled these out yet. */}
+                <div className="grid grid-cols-2 gap-3 w-full">
+                    <InfoTile label="Legal business name"  value={legalBusinessName || "—"} />
+                    <InfoTile label="Trade license number" value={tradeLicenseNumber || "—"} />
                 </div>
             </div>
             <Button
@@ -747,6 +759,7 @@ function BranchRow({
                     <BranchActionMenu
                         status={status}
                         canDelete={roomCount === 0}
+                        branchKind={branch.kind}
                         onView={onView}
                         onEdit={onEdit}
                         onAddRoom={onAddRoom}
@@ -841,11 +854,14 @@ function RoomRow({
 // ─── Row action menus ──────────────────────────────────────────────────────
 
 function BranchActionMenu({
-    status, canDelete, onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
+    status, canDelete, branchKind, onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
 }: {
     status: "active" | "inactive" | "archive";
     /** True when the branch has zero rooms — delete is only offered then. */
     canDelete: boolean;
+    /** Drives the "Add room" item visibility — Spa branches are room-less
+     *  by design (recovery sessions aren't room-scoped). */
+    branchKind: "club" | "spa";
     onView: () => void;
     onEdit: () => void;
     onAddRoom: () => void;
@@ -860,7 +876,9 @@ function BranchActionMenu({
             {!archived && (
                 <>
                     <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit branch" onClick={onEdit} />
-                    <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
+                    {branchKind !== "spa" && (
+                        <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
+                    )}
                     <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"     onClick={onArchive} />
                 </>
             )}

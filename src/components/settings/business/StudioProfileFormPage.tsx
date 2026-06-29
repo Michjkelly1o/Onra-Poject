@@ -50,6 +50,11 @@ export function StudioProfileFormPage() {
     const [logoDataUrl,  setLogoDataUrl]  = useState<string>(profile.logoUrl);
     const [studioName,   setStudioName]   = useState<string>(profile.name);
     const [website,      setWebsite]      = useState<string>(profile.website);
+    // Per Figma 7619:39071 — Legal business name + Trade license number
+    // are the new optional fields. Submit is still gated only on
+    // Studio name (per the answered question — optional, blank-safe).
+    const [legalName,    setLegalName]    = useState<string>(profile.legalBusinessName);
+    const [tradeLicense, setTradeLicense] = useState<string>(profile.tradeLicenseNumber);
     const [country,      setCountry]      = useState<string>(profile.country);
     const [currency,     setCurrency]     = useState<string>(profile.currency);
     const [timezone,     setTimezone]     = useState<string>(profile.timezone);
@@ -97,6 +102,8 @@ export function StudioProfileFormPage() {
             name: studioName.trim(),
             logoUrl: logoDataUrl,
             website: website.trim(),
+            legalBusinessName: legalName.trim(),
+            tradeLicenseNumber: tradeLicense.trim(),
             country,
             currency,
             timezone,
@@ -146,24 +153,37 @@ export function StudioProfileFormPage() {
                                     </Button>
                                 </div>
 
-                                <Field label="Studio name">
-                                    <TextInput value={studioName} onChange={setStudioName} placeholder="Enter studio name" />
-                                </Field>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Field label="Studio name">
+                                        <TextInput value={studioName} onChange={setStudioName} placeholder="Enter studio name" />
+                                    </Field>
+                                    <Field label="Website">
+                                        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
+                                            <span className="h-10 flex items-center px-3 text-[16px] text-[#475467] bg-[#f9fafb] border-r border-[#d0d5dd]">
+                                                http://
+                                            </span>
+                                            <input
+                                                type="text"
+                                                value={website}
+                                                onChange={e => setWebsite(e.target.value)}
+                                                placeholder="your-studio.com"
+                                                className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0"
+                                            />
+                                        </div>
+                                    </Field>
+                                </div>
 
-                                <Field label="Website">
-                                    <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
-                                        <span className="h-10 flex items-center px-3 text-[16px] text-[#475467] bg-[#f9fafb] border-r border-[#d0d5dd]">
-                                            http://
-                                        </span>
-                                        <input
-                                            type="text"
-                                            value={website}
-                                            onChange={e => setWebsite(e.target.value)}
-                                            placeholder="your-studio.com"
-                                            className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0"
-                                        />
-                                    </div>
-                                </Field>
+                                {/* Legal business name + Trade license number — both optional
+                                    per the user direction; submit stays gated on Studio name only.
+                                    Layout matches Figma 7619:39071 (paired 2-col row). */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Field label="Legal business name">
+                                        <TextInput value={legalName} onChange={setLegalName} placeholder="Enter legal business name" />
+                                    </Field>
+                                    <Field label="Trade license number">
+                                        <TextInput value={tradeLicense} onChange={setTradeLicense} placeholder="Enter license number" />
+                                    </Field>
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <Field label="Country">

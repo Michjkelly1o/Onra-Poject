@@ -1226,6 +1226,13 @@ export interface BusinessProfile {
     name: string;
     logoUrl: string;
     website: string;
+    /** Registered legal entity name — surfaced on tax invoices + agreement
+     *  PDFs. Optional in the form (admin can leave blank) but seeded with
+     *  a realistic value so the demo never renders an empty row. */
+    legalBusinessName: string;
+    /** Government-issued trade-license id. Same nullability semantics as
+     *  `legalBusinessName`. */
+    tradeLicenseNumber: string;
     /** Country full name (matches `Country.name` in `lib/data/locales.ts`). */
     country: string;
     /** Currency ISO code (e.g. "AED"). */
@@ -3059,6 +3066,13 @@ export const useAppStore = create<AppState>()(persist(
         name: "Forma Studio",
         logoUrl: "",
         website: "forma.studio.com",
+        // Seeded with realistic UAE values per the Figma 7619:39071
+        // example. Both are optional in the form, so the admin can clear
+        // them — but the centralized seed always has SOMETHING so the
+        // Studio Profile detail view never shows a blank row on first
+        // load.
+        legalBusinessName: "Forma Wellness Studio Pte. Ltd.",
+        tradeLicenseNumber: "TL-2026-014582",
         country: "United Arab Emirates",
         currency: "AED",
         timezone: "Asia/Dubai",
@@ -6117,10 +6131,14 @@ export const useAppStore = create<AppState>()(persist(
         // but appointments.ts had a stale hardcoded branch mapping);
         // v18: Renamed Forma East's only room "Studio A" → "Hot Yoga
         // Studio" (every seeded East class is Hot Yoga — the generic
-        // name read as confusing in customer-facing booking views).
-        // Persisted v17 rooms still carry the old name. No migrate
-        // needed — the demo discards the old payload on version mismatch.
-        version: 18,
+        // name read as confusing in customer-facing booking views);
+        // v19: BusinessProfile gains `legalBusinessName` +
+        // `tradeLicenseNumber` (Studio Profile form additions per
+        // Figma 7619:39071). Without the bump persisted v18 payloads
+        // are missing the new keys and the Studio Profile detail view
+        // would surface `undefined`. No migrate needed — the demo
+        // discards the old payload on version mismatch.
+        version: 19,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

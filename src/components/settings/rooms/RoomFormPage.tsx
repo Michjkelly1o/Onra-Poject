@@ -139,8 +139,14 @@ export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
                                         value={branchId}
                                         onChange={setBranchId}
                                         placeholder="Select location"
+                                        // Spa branches are room-less by design
+                                        // (recovery sessions aren't room-scoped),
+                                        // so the room-create dropdown only offers
+                                        // Club branches. Matches the same filter
+                                        // applied in BranchActionMenu + branch
+                                        // detail page.
                                         options={branches
-                                            .filter(b => b.status === "active")
+                                            .filter(b => b.status === "active" && b.kind !== "spa")
                                             .map(b => ({ value: b.id, label: b.name }))
                                         }
                                         width="w-full"
