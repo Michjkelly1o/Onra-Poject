@@ -209,13 +209,16 @@ interface SidebarProps {
     /** Override the bottom user-menu "Account settings" link. Defaults
      *  to the admin account route. */
     accountHref?: string;
-    /** Footer "Settings" link target — when undefined, the Settings row
-     *  is hidden (instructor sidebar has no admin Settings module, so it
-     *  omits this prop and only renders the Profile chip in the footer). */
+    /** Footer "Settings" link target — admin layout passes
+     *  "/admin/settings" explicitly. Instructor layout MUST omit this so
+     *  the Settings row is hidden; instructors don't have admin settings
+     *  access, and clicking through would punch a hole between the two
+     *  personas. No default on purpose — leaving it out shouldn't silently
+     *  link to /admin/settings. */
     settingsHref?: string;
 }
 
-export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/settings" }: SidebarProps = {}) {
+export default function Sidebar({ navItems, accountHref, settingsHref }: SidebarProps = {}) {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
