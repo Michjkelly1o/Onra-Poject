@@ -123,23 +123,46 @@ function isUserMenuRoute(pathname: string): boolean {
     return USER_MENU_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
 }
 
-// prefix-match of `pathname`. Prevents the active highlight from doubling up
-// when one child's href is a prefix of another's (e.g. `/admin/products` and
-// `/admin/products/gift-cards` — without this both rows would light up when
-// the user is on the gift-cards page).
-function activeChildHrefFor(children: { href: string }[] | undefined, pathname: string): string | null {
-    if (!children) return null;
+// SIDEBAR-WIDE winner: collect EVERY href in the nav (top-level leaves +
+// every group's children) and pick the single longest prefix that matches
+// `pathname`. Prevents two rows from lighting up when one item's href is a
+// prefix of another's — even across different parent groups.
+//
+// Example: a user on `/admin/products/promo-codes` (Marketing → Promo codes)
+// must NOT also highlight Services & pricing → Memberships & packages
+// (`/admin/products`), because the latter is a prefix of the former. Per-
+// parent resolution can't catch this since each parent's resolver runs in
+// isolation. A single global pass with "longest match wins" does.
+//
+// Returns the winning href (or null if nothing matches / we're on a route
+// owned by another surface like the user menu). Callers compare their own
+// href against the winner string for an exact-equality active check.
+function activeHrefFor(items: NavItemDef[], pathname: string): string | null {
     if (isUserMenuRoute(pathname)) return null;
     let bestHref: string | null = null;
     let bestLen = -1;
-    for (const c of children) {
-        const matches = pathname === c.href || pathname.startsWith(c.href + "/");
-        if (matches && c.href.length > bestLen) {
-            bestHref = c.href;
-            bestLen = c.href.length;
+    const consider = (href: string | undefined) => {
+        if (!href) return;
+        const matches = pathname === href || pathname.startsWith(href + "/");
+        if (matches && href.length > bestLen) {
+            bestHref = href;
+            bestLen = href.length;
         }
+    };
+    for (const item of items) {
+        consider(item.href);
+        if (item.children) for (const c of item.children) consider(c.href);
     }
     return bestHref;
+}
+
+// Per-parent helper kept for the child-rendering loop: returns the active
+// child's href ONLY IF the global winner belongs to this parent's children.
+// Combined with `activeHrefFor`, this guarantees a single highlight across
+// the whole sidebar.
+function activeChildHrefFor(children: { href: string }[] | undefined, globalWinner: string | null): string | null {
+    if (!children || !globalWinner) return null;
+    return children.some(c => c.href === globalWinner) ? globalWinner : null;
 }
 
 // When the sidebar is collapsed, nav rows are icon-only — this wraps a row and
@@ -204,15 +227,18 @@ export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/
     const brandingSettings = useAppStore(s => s.brandingSettings);
     const { studio } = useDataStore();
 
-    // All open groups tracked here — no sub-component state
+    // All open groups tracked here — no sub-component state.
+    // Initial open state uses the same global-winner resolver as the active
+    // highlight, so only ONE parent group auto-expands when a deeply-nested
+    // route also prefix-matches a different parent's leaf (e.g. on
+    // /admin/products/promo-codes only Marketing opens, not Services &
+    // pricing). Without this, raw startsWith() would open both groups.
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
         const init: Record<string, boolean> = {};
+        const winner = activeHrefFor(effectiveNavItems, pathname);
         effectiveNavItems.forEach((item) => {
             if (item.children) {
-                const anyChildActive = item.children.some(
-                    (c) => pathname === c.href || pathname.startsWith(c.href + "/")
-                );
-                init[item.label] = anyChildActive;
+                init[item.label] = !!winner && item.children.some(c => c.href === winner);
             }
         });
         return init;
@@ -244,6 +270,11 @@ export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/
         if (currentUser.permissions?.includes("all")) return true;
         return currentUser.permissions?.includes(item.permission ?? "");
     });
+
+    // Single winner across the entire sidebar — resolved on the full nav
+    // (visible OR permission-filtered), so permission edits never change
+    // the active state semantics. Used by every row's active check below.
+    const navWinner = activeHrefFor(effectiveNavItems, pathname);
 
     return (
         <aside className="h-full bg-[#f1f2ed] flex flex-col">
@@ -325,20 +356,20 @@ export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/
                 )}
             </div>
 
-            {/* ── Navigation ─────────────────────────────────────── */}
+            {/* Resolve the single nav href that "owns" the current pathname
+                BEFORE rendering — every row then checks itself against this
+                winner. Fixes the dual-highlight bug where two rows from
+                different parent groups both lit up when one's href was a
+                prefix of the other's (e.g. /admin/products vs
+                /admin/products/promo-codes). Longest match wins; ties
+                impossible since hrefs are unique across the nav. */}
             <nav className="flex-1 overflow-y-auto pt-3 pb-3 px-4 flex flex-col gap-1 min-h-0">
                 {visibleItems.map((item) => {
                     const hasChildren = !!item.children?.length;
-                    // Bottom user-menu routes never highlight a main-nav item.
-                    const skipNavHighlight = isUserMenuRoute(pathname);
-                    const isSelfActive = item.href && !skipNavHighlight
-                        ? pathname === item.href || pathname.startsWith(item.href + "/")
-                        : false;
-                    const isChildActive = hasChildren && !skipNavHighlight
-                        ? item.children!.some(
-                            (c) => pathname === c.href || pathname.startsWith(c.href + "/")
-                        )
-                        : false;
+                    const isSelfActive = !!item.href && navWinner === item.href;
+                    const isChildActive = hasChildren
+                        && !!navWinner
+                        && item.children!.some(c => c.href === navWinner);
                     const open = openGroups[item.label] ?? false;
                     // Parent with children: highlight only when self-active (no children path) or in slim mode
                     // When a child is active (expanded mode), parent stays neutral — child handles its own highlight
@@ -412,11 +443,13 @@ export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/
 
                             {/* Children — full width, text indented to align after parent icon */}
                             {hasChildren && !slim && open && (() => {
-                                // Resolve once per parent so siblings with
-                                // overlapping prefixes (e.g. `/admin/products`
-                                // vs `/admin/products/gift-cards`) don't BOTH
-                                // light up — only the longest-match wins.
-                                const activeHref = activeChildHrefFor(item.children, pathname);
+                                // Filtered to this parent: returns the global
+                                // winner only if it belongs to one of this
+                                // parent's children. Cross-parent overlaps
+                                // (e.g. /admin/products under Services &
+                                // pricing vs /admin/products/promo-codes
+                                // under Marketing) can't double-light.
+                                const activeHref = activeChildHrefFor(item.children, navWinner);
                                 return (
                                 <div className="mt-1 flex flex-col gap-0.5">
                                     {item.children!.map((child) => {
@@ -459,7 +492,11 @@ export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/
                         href={settingsHref}
                         label="Settings"
                         icon={Building01}
-                        pathname={pathname}
+                        // Active iff the global winner is this exact link.
+                        // Prevents Settings from lighting up while the user
+                        // is on a sub-route owned by another nav item
+                        // (none today, but the guarantee is wired now).
+                        active={navWinner === settingsHref}
                         slim={slim}
                     />
                 )}
@@ -482,19 +519,16 @@ export default function Sidebar({ navItems, accountHref, settingsHref = "/admin/
 // Settings can sit in the bottom footer group next to the Profile chip
 // (per Figma 7616:16658). Active highlight + slim-mode tooltip behave
 // identically to the in-nav rows.
-function SidebarFooterLink({ href, label, icon: Icon, pathname, slim }: {
+function SidebarFooterLink({ href, label, icon: Icon, active, slim }: {
     href: string;
     label: string;
     icon: React.FC<{ className?: string }>;
-    pathname: string;
+    /** Pre-resolved by the parent against the sidebar-wide winner so the
+     *  footer link participates in the same single-highlight invariant as
+     *  the in-nav rows (no isolated prefix-match here). */
+    active: boolean;
     slim: boolean;
 }) {
-    // Active when the current path is the link itself or any nested page —
-    // EXCEPT user-menu routes (which live in their own group and shouldn't
-    // light up Settings). Mirrors the in-nav matcher.
-    const active = !isUserMenuRoute(pathname)
-        && (pathname === href || pathname.startsWith(href + "/"));
-
     return (
         <SlimNavItem label={label} enabled={slim}>
             <Link
