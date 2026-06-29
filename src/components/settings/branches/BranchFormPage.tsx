@@ -13,7 +13,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, MarkerPin01, Clock, UploadCloud02, Building01, Shield01, Heart } from "@untitledui/icons";
+import { Phone, MarkerPin01, Clock, UploadCloud02, Building01, ShieldZap, Feather } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
@@ -234,13 +234,13 @@ export function BranchFormPage({ mode, branchId }: {
                                                 value: "club" as const,
                                                 title: "Club",
                                                 subtitle: "Locations for classes and appointment private sessions.",
-                                                Icon: Shield01,
+                                                Icon: ShieldZap,
                                             },
                                             {
                                                 value: "spa" as const,
                                                 title: "Spa",
                                                 subtitle: "Locations for recovery appointment services.",
-                                                Icon: Heart,
+                                                Icon: Feather,
                                             },
                                         ]).map(opt => {
                                             const selected = kind === opt.value;

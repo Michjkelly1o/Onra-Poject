@@ -6134,11 +6134,15 @@ export const useAppStore = create<AppState>()(persist(
         // name read as confusing in customer-facing booking views);
         // v19: BusinessProfile gains `legalBusinessName` +
         // `tradeLicenseNumber` (Studio Profile form additions per
-        // Figma 7619:39071). Without the bump persisted v18 payloads
-        // are missing the new keys and the Studio Profile detail view
-        // would surface `undefined`. No migrate needed — the demo
-        // discards the old payload on version mismatch.
-        version: 19,
+        // Figma 7619:39071);
+        // v20: Forma Spa branch gains business_hours rows (open all week
+        // 09–21 weekdays, 10–20 weekends). Without these rows the Spa
+        // branch detail page rendered every day as "(Closed)" even
+        // though we seed live Spa appointments — a contradiction
+        // that broke the demo. Persisted v19 payloads still carry the
+        // empty hours array for the Spa branch. No migrate needed —
+        // the demo discards the old payload on version mismatch.
+        version: 20,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

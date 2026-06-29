@@ -11,6 +11,11 @@
 //   • East:           6:00–21:00 Mon–Fri, 7:00–19:00 Sat, CLOSED Sun
 //   • West (inactive branch): closed every day — exercises the "no slots
 //                             available" empty state in the form.
+//   • Spa:            9:00–21:00 Mon–Fri, 10:00–20:00 weekends — recovery
+//                     branch keeps shorter, later hours than the Club
+//                     branches but is open every day so customers can
+//                     book Sauna / Breathwork / Massage / IV therapy
+//                     appointments any day of the week.
 //
 // `day_of_week` uses JS Date.getUTCDay() conventions: 0=Sun..6=Sat.
 //
@@ -67,4 +72,15 @@ export const business_hours: BusinessHours[] = [
 
     // Forma West — inactive branch, closed every day
     ...makeWeek("branch_forma_west", null, null, null),
+
+    // Forma Spa — recovery branch, open all week with shorter spa hours.
+    // Without this entry the Spa branch detail page would render every
+    // day as "(Closed)" even though we seed live Spa appointments —
+    // a contradiction that broke the demo.
+    ...makeWeek(
+        "branch_forma_spa",
+        { open: "09:00", close: "21:00" },   // Mon–Fri
+        { open: "10:00", close: "20:00" },   // Sat
+        { open: "10:00", close: "20:00" },   // Sun
+    ),
 ];

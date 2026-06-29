@@ -457,18 +457,18 @@ function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, coun
                 <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
                     {name}
                 </p>
-                <div className="grid grid-cols-3 gap-3 w-full">
+                {/* Single 3-col grid so Legal business name lines up
+                    directly under Country and Trade license number under
+                    Currency. The third cell on row 2 is intentionally
+                    empty (Time zone has no paired field). Matches the
+                    user's reference image. */}
+                <div className="grid grid-cols-3 gap-x-3 gap-y-3 w-full">
                     <InfoTile label="Country"   value={country || "—"} />
                     <InfoTile label="Currency"  value={currency || "—"} />
                     <InfoTile label="Time zone" value={timezoneLabel(timezone) || timezone || "—"} />
-                </div>
-                {/* Legal identity row — reads from `businessProfile.legal*`,
-                    edited via the Studio Profile form. Always renders even
-                    when blank so the card height stays consistent across
-                    studios that haven't filled these out yet. */}
-                <div className="grid grid-cols-2 gap-3 w-full">
                     <InfoTile label="Legal business name"  value={legalBusinessName || "—"} />
                     <InfoTile label="Trade license number" value={tradeLicenseNumber || "—"} />
+                    <div />
                 </div>
             </div>
             <Button
