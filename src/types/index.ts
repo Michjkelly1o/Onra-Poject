@@ -78,6 +78,14 @@ export interface User {
     is_active: boolean;
     churn_risk_score?: number; // Added for AI
     permissions?: string[]; // Added for RBAC
+    /** Optional single-branch scope for non-Owner personas (Branch Admin,
+     *  Operator, Front Desk, Instructor). Undefined = Owner (multi-branch
+     *  scope, full access). Used by feature gating that needs to know
+     *  WHICH branch the user belongs to — e.g. the Service form's
+     *  Booking-conditions section is hidden for Club-branch admins and
+     *  forces "recovery=ON" for Spa-branch admins by joining this id
+     *  against `branches.kind`. */
+    branch_id?: string;
     /** Demo-only plaintext password — surfaced by the Account settings page's
      *  Password row so the admin can reveal the current credential via the
      *  eye-toggle. Seeded to `Demo1234!` per CLAUDE.md and updated when the

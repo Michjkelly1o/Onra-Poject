@@ -12,8 +12,10 @@
 //
 // Differences from Gift Cards:
 //   • Branch dropdown sits in the toolbar (Figma 7414:328584)
-//   • "Type" column reports Open session vs Private (no capacity inline —
-//     intentionally NOT "Open session · 6")
+//   • "Recovery" column reports Yes / No off `isRecovery` — drives Spa-vs-
+//     Club branch placement and the Booking conditions form gating
+//   • "Price" column shows fixed AED price (services are currency-priced,
+//     not membership-gated, per the Module 13 update)
 //   • Filter is the side-panel multi-select (Figma 7424:139522) — Status +
 //     Categories pills — because services bring two filter dimensions, not
 //     the single status that gift cards have
@@ -266,7 +268,8 @@ type ServiceRow = {
     durationMin: number;
     branchName: string;
     branchId: string;
-    openSession: boolean;
+    isRecovery: boolean;
+    price: number;
     status: ServiceStatus;
     coverImage?: string;
     coverColor: string;
@@ -281,7 +284,8 @@ function rowsFromServices(items: Service[], hasHistory: (id: string) => boolean)
         durationMin: s.durationMin,
         branchName: s.branchName,
         branchId: s.branchId,
-        openSession: s.openSession,
+        isRecovery: s.isRecovery,
+        price: s.price,
         status: s.status,
         coverImage: s.coverImage,
         coverColor: s.coverColor,
@@ -429,8 +433,11 @@ function ListView({
                         <th className={cn(TH, "w-[200px]")}>
                             <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch location</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[140px]")}>
-                            <SortableHeader sortKey="type" currentSort={sortKey} dir={sortDir} onSort={onSort}>Type</SortableHeader>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="recovery" currentSort={sortKey} dir={sortDir} onSort={onSort}>Recovery</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[120px]")}>
                             <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
@@ -465,7 +472,8 @@ function ListView({
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationMin} minutes</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.branchName || "—"}</td>
-                                <td className={cn(TD, "whitespace-nowrap")}>{r.openSession ? "Open session" : "Private"}</td>
+                                <td className={cn(TD, "whitespace-nowrap")}>{r.isRecovery ? "Yes" : "No"}</td>
+                                <td className={cn(TD, "whitespace-nowrap")}>AED {r.price.toLocaleString()}</td>
                                 <td className={TD}><StatusBadge type="service" status={r.status} /></td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions items={[
@@ -555,9 +563,10 @@ export default function ServicesPage() {
         name:     (a, b) => a.name.localeCompare(b.name),
         duration: (a, b) => a.durationMin - b.durationMin,
         branch:   (a, b) => a.branchName.localeCompare(b.branchName),
-        // Private first when ascending, Open session first when descending —
-        // matches the typical "Private services pop to the top" admin flow.
-        type:     (a, b) => Number(a.openSession) - Number(b.openSession),
+        // No-recovery first when ascending, Recovery first when descending —
+        // matches the typical "Club services pop to the top" admin flow.
+        recovery: (a, b) => Number(a.isRecovery) - Number(b.isRecovery),
+        price:    (a, b) => a.price - b.price,
         status:   (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
     };
     const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, comparators);

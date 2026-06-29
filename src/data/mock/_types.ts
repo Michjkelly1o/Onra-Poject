@@ -51,6 +51,15 @@ export interface Branch {
     status: "active" | "inactive" | "archive";
     /** Display flag — the "main" branch shows first in selectors. */
     is_main: boolean;
+    /** Branch type, gates which services + appointments live here:
+     *    • "club" — classes + non-recovery private services (Reformer, Mat
+     *      Pilates, etc.). Default for the original 3 Forma locations.
+     *    • "spa"  — recovery-only branch. Hosts services with
+     *      `is_recovery=true` (Massage, Sauna, Breathwork, IV therapy,
+     *      etc.). The service create flow filters the location dropdown
+     *      on this field and the role-based form gating is wired off it
+     *      (Spa-branch admins can only author recovery services). */
+    kind: "club" | "spa";
     address?: string;
     // +later: phone, timezone, opening_hours, logo_url
     /** Optional branch-level contact info — populated by the Branch form. */
@@ -843,23 +852,23 @@ export interface ClassTemplate {
 
 /**
  * Service template — the reusable "blueprint" for scheduled appointments.
- * Conceptually mirrors `class_templates`: a service is to an appointment
- * what a class template is to a class schedule. Two distinct shapes:
+ * Two distinct shapes:
  *
- *   • Open session  (open_session = true)  — multi-customer, has capacity.
- *                                            Behaves like a small class.
- *   • Private       (open_session = false) — 1 customer + 1 instructor.
- *                                            No capacity field.
+ *   • Recovery + Open session — `is_recovery=true` + `open_session=true`.
+ *     Multi-customer, has capacity. No instructor required. Lives at Spa
+ *     branches (`branch.kind="spa"`). Massage, Sauna, Breathwork, etc.
+ *   • Recovery + Private      — `is_recovery=true` + `open_session=false`.
+ *     1 customer at a time, no instructor. Spa branches.
+ *   • Non-recovery (Private)  — `is_recovery=false`. 1 customer + 1
+ *     instructor. Lives at Club branches (`branch.kind="club"`).
+ *     Private Reformer, Mat Pilates. `open_session` is forced false.
  *
- * Both flavours carry `duration_min` + `category_id`. Category drives the
- * cross-module gating dimension (which instructor can teach this, which
- * customers see it on their portal — phase later).
+ * Pricing model: services are now currency-priced (`price` AED), NOT
+ * membership/package-gated. The legacy `applicable_membership_ids` and
+ * `applicable_package_ids` fields were dropped — customers pay the fixed
+ * price at checkout via the appointment booking flow.
  *
- * `applicable_membership_ids` / `applicable_package_ids` mirror the class
- * template pattern so a single FK shape powers the "Applicable" tabs on
- * the service detail page (phase 3) and the customer-side booking gate.
- *
- * +later: price_aed, instructor_ids (Private services only — pre-pickable
+ * +later: instructor_ids (Private services only — pre-pickable
  * instructors for the appointment create flow), appointment-spawn rules.
  */
 export interface Service {
@@ -868,13 +877,28 @@ export interface Service {
     category_id: string;          // → class_categories.id
     name: string;                 // "Private Reformer"
     description: string;
-    /** True = Open session (multi-customer w/ capacity). False = Private. */
+    /** True = Recovery service (lives at Spa branches, may be open
+     *  session). False = Non-recovery (lives at Club branches, always
+     *  private session with an instructor). Drives:
+     *    • Step 1 form: "Booking conditions" toggle + role-conditional
+     *      gating (Club admins hide section; Spa admins force ON+disabled)
+     *    • Step 3 form: location dropdown filters by matching `branch.kind`
+     *    • List page Recovery column (Yes/No)
+     *    • Detail + appointment side panel rows */
+    is_recovery: boolean;
+    /** True = Open session (multi-customer w/ capacity). False = Private.
+     *  Only meaningful when `is_recovery=true` — non-recovery services
+     *  always force this to false. */
     open_session: boolean;
     duration_min: number;
     /** Only meaningful when `open_session = true`. Persisted as 0 for
      *  Private services to keep the column shape stable in the future
      *  Postgres schema. */
     capacity: number;
+    /** Fixed price in AED. Customer pays this on the appointment booking
+     *  checkout (Phase: customer-side checkout still uses subtotal=0 per
+     *  current product direction). */
+    price: number;
     /** Branch where this service is offered. Single-branch in Phase 1 to
      *  match the Figma step 3 "select location" single-select; Phase 2+
      *  may widen to a multi-branch array depending on customer-portal
@@ -882,10 +906,6 @@ export interface Service {
     branch_id: string;            // → branches.id
     cover_image_url?: string;
     status: "Active" | "Inactive" | "Archived";
-    /** Memberships that grant access to this service. */
-    applicable_membership_ids: string[]; // → memberships.id[]
-    /** Packages that grant access to this service. */
-    applicable_package_ids: string[];    // → packages.id[]
 }
 
 // ─── Appointments (Module 13 — Phase 4) ────────────────────────────────────

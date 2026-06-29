@@ -9,22 +9,28 @@
 // live preview. Reused so the two modules look identical to the eye.
 //
 // STEPS
-//   1. Service detail (Figma 7460:16866 / 7460:16960)
+//   1. Service detail (Figma 7421:105899 / 7423:101931 / 7619:78933)
 //      – Image banner upload
 //      – Service name
 //      – Class category (live `classCategories` slice — adds in Booking
 //        Rules surface here on the same render)
 //      – Duration (in minutes)
-//      – "Booking conditions" sub-section:
-//        • Service is open sessions toggle. When ON the card shows a green
-//          border + Service capacity field. When OFF the card is neutral
-//          and no capacity is collected (Private services have no cap).
-//   2. Applicable memberships (Figma 7421:107593)
-//      – Same accordion + filter + select-all + grouped list as the class-
-//        template form.
+//      – "Booking conditions" section — role-conditional:
+//        • Owner:    fully interactive (both toggles + capacity)
+//        • Spa role: "Service is recovery" forced ON + disabled, open
+//                    sessions toggle still interactive
+//        • Club role: ENTIRE section hidden, isRecovery=false implicit
+//        Toggles:
+//          1. Service is recovery — when ON reveals card 2
+//          2. Service is open sessions — when ON reveals Service capacity
+//   2. Pricing (Figma 7421:107562)
+//      – Single fixed-price AED input. Replaces the legacy
+//        applicable-memberships accordion (services are currency-priced).
 //   3. Location (Figma 7422:95427)
-//      – Single-select branch dropdown (live `branches` slice, active
-//        branches only).
+//      – Single-select branch dropdown filtered by branch.kind ↔ isRecovery
+//        (recovery=ON → Spa branches only; recovery=OFF → Club branches
+//        only). Owner sees the matching subset for whatever the toggle
+//        says; Spa/Club admins see only their branch's kind.
 //
 // MODE
 //   • create — empty defaults, route returns to /admin/services on success
@@ -44,20 +50,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, UploadCloud02, Check, ChevronDown, ChevronUp,
-    Lightbulb02, FilterLines, Grid01, ClockFastForward, Users01, MarkerPin01, User01,
+    XClose, UploadCloud02, Check,
+    Lightbulb02, Grid01, ClockFastForward, Users01, MarkerPin01, User01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
-import { useAppStore, type Membership, type Package, type Service } from "@/lib/store";
+import { useAppStore, type Service } from "@/lib/store";
 
 // ─── Stepper ─────────────────────────────────────────────────────────────────
 
 const STEPS = [
     { n: 1, label: "Service detail" },
-    { n: 2, label: "Applicable memberships" },
+    { n: 2, label: "Pricing" },
     { n: 3, label: "Location" },
 ] as const;
 
@@ -163,17 +169,26 @@ function ImageUploadArea({ preview, onChange }: {
 
 // ─── Toggle (DS-standard sage on/off) ────────────────────────────────────────
 
-function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: () => void; ariaLabel: string }) {
+function Toggle({ on, onChange, ariaLabel, disabled }: {
+    on: boolean;
+    onChange: () => void;
+    ariaLabel: string;
+    /** When true the toggle ignores clicks and paints muted — used for
+     *  the Spa-persona-locked "Service is recovery" toggle. */
+    disabled?: boolean;
+}) {
     return (
         <button
             type="button"
             role="switch"
             aria-checked={on}
             aria-label={ariaLabel}
-            onClick={onChange}
+            disabled={disabled}
+            onClick={disabled ? undefined : onChange}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
                 on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                disabled && "opacity-50 cursor-not-allowed",
             )}
         >
             <div className={cn(
@@ -261,28 +276,65 @@ interface Step1Data {
     name: string;
     category: string;
     durationMin: string;
+    isRecovery: boolean;
     openSession: boolean;
     capacity: string;
     coverPreview: string | null;
     coverFile: File | null;
 }
 
+/** Persona derived from currentUser.branch_id × branch.kind:
+ *    • "owner" — no branch assignment (full multi-branch access)
+ *    • "club"  — assigned to a `branch.kind="club"` branch, can only
+ *                author non-recovery services. Booking conditions hidden.
+ *    • "spa"   — assigned to a `branch.kind="spa"` branch, can only
+ *                author recovery services. Recovery toggle forced ON +
+ *                disabled. */
+export type ServiceFormPersona = "owner" | "club" | "spa";
+
 function ServiceDetailStep({
-    data, onChange, onContinue, categoryOptions,
+    data, onChange, onContinue, categoryOptions, persona,
 }: {
     data: Step1Data;
     onChange: (d: Partial<Step1Data>) => void;
     onContinue: () => void;
     categoryOptions: string[];
+    persona: ServiceFormPersona;
 }) {
-    // Required fields differ by openSession:
-    //   • open  → name + category + duration + capacity
-    //   • close → name + category + duration
+    // Booking conditions visibility — Club admins skip the section entirely
+    // (their services are always non-recovery). Owner + Spa see it.
+    const showBookingConditions = persona !== "club";
+    // Spa admins can't turn recovery OFF — the toggle reflects state but
+    // is locked. Owner can flip freely.
+    const recoveryToggleDisabled = persona === "spa";
+
+    // Required fields:
+    //   • Always:           name + category + duration
+    //   • If openSession:   + capacity
+    //   • Recovery toggle:  no impact on required fields (just routes to
+    //                       Spa branches downstream)
     const canContinue =
         data.name.trim() &&
         data.category &&
         data.durationMin &&
         (!data.openSession || data.capacity);
+
+    function handleRecoveryToggle() {
+        if (recoveryToggleDisabled) return;
+        const next = !data.isRecovery;
+        // Turning recovery OFF forces openSession OFF and wipes capacity —
+        // non-recovery services are always Private with an instructor.
+        onChange(next
+            ? { isRecovery: true }
+            : { isRecovery: false, openSession: false, capacity: "" });
+    }
+
+    function handleOpenSessionToggle() {
+        const next = !data.openSession;
+        onChange(next
+            ? { openSession: true }
+            : { openSession: false, capacity: "" });
+    }
 
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
@@ -321,38 +373,66 @@ function ServiceDetailStep({
                     </FormField>
                 </div>
 
-                {/* Booking conditions */}
-                <div className="flex flex-col gap-3">
-                    <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Booking conditions</h3>
+                {/* Booking conditions — hidden entirely for Club-branch admins
+                    so they can't accidentally route a service to the Spa
+                    branch (their persona ALWAYS creates non-recovery
+                    services). Owner + Spa-branch admins see it. */}
+                {showBookingConditions && (
+                    <div className="flex flex-col gap-3">
+                        <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Booking conditions</h3>
 
-                    <div className={cn(
-                        "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
-                        data.openSession
-                            ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                            : "border-1 border-[#e4e7ec] bg-white",
-                    )}>
-                        <div className="flex items-start gap-4">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
-                                <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
+                        {/* Card 1 — Service is recovery */}
+                        <div className={cn(
+                            "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
+                            data.isRecovery
+                                ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                : "border-1 border-[#e4e7ec] bg-white",
+                            recoveryToggleDisabled && "opacity-90",
+                        )}>
+                            <div className="flex items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[14px] font-medium text-[#101828]">Service is recovery</p>
+                                    <p className="text-[14px] text-[#667085]">Available at Spa locations only.</p>
+                                </div>
+                                <Toggle
+                                    on={data.isRecovery}
+                                    onChange={handleRecoveryToggle}
+                                    disabled={recoveryToggleDisabled}
+                                    ariaLabel="Toggle service is recovery"
+                                />
                             </div>
-                            <Toggle
-                                on={data.openSession}
-                                onChange={() => {
-                                    // Toggling off wipes capacity so the persisted
-                                    // row never carries a stale leftover.
-                                    onChange({ openSession: !data.openSession, ...(data.openSession ? { capacity: "" } : {}) });
-                                }}
-                                ariaLabel="Toggle open sessions"
-                            />
                         </div>
-                        {data.openSession && (
-                            <FormField label="Service capacity">
-                                <NumericStringInput value={data.capacity} onChange={v => onChange({ capacity: v })} min={0} />
-                            </FormField>
+
+                        {/* Card 2 — Service is open sessions (only meaningful
+                            when recovery=ON; non-recovery services are
+                            always Private). */}
+                        {data.isRecovery && (
+                            <div className={cn(
+                                "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
+                                data.openSession
+                                    ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                    : "border-1 border-[#e4e7ec] bg-white",
+                            )}>
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
+                                        <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
+                                    </div>
+                                    <Toggle
+                                        on={data.openSession}
+                                        onChange={handleOpenSessionToggle}
+                                        ariaLabel="Toggle open sessions"
+                                    />
+                                </div>
+                                {data.openSession && (
+                                    <FormField label="Service capacity">
+                                        <NumericStringInput value={data.capacity} onChange={v => onChange({ capacity: v })} min={0} />
+                                    </FormField>
+                                )}
+                            </div>
                         )}
                     </div>
-                </div>
+                )}
             </div>
 
             <div className="shrink-0 px-6 pb-6 flex justify-end">
@@ -364,184 +444,54 @@ function ServiceDetailStep({
     );
 }
 
-// ─── Step 2 — Applicable memberships ────────────────────────────────────────
+// ─── Step 2 — Pricing (single fixed AED price) ──────────────────────────────
+// Replaces the legacy "Applicable memberships" step — services are now
+// currency-priced and the customer pays the fixed amount on the appointment
+// checkout. AED-prefix layout mirrors Figma 7421:107562.
 
-type MembershipItem = { id: string; label: string; group: "Membership" | "Class package" };
-const GROUPS = ["Membership", "Class package"] as const;
-
-function buildMembershipItems(memberships: Membership[], packages: Package[]): MembershipItem[] {
-    return [
-        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const })),
-        ...packages   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
-    ];
-}
-
-type MembershipFilterValue = "enabled" | "disabled" | null;
-
-function MembershipFilterDropdown({ active, onChange }: {
-    active: MembershipFilterValue;
-    onChange: (f: MembershipFilterValue) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    const OPTIONS: { value: MembershipFilterValue; label: string }[] = [
-        { value: null,       label: "All" },
-        { value: "enabled",  label: "Only enabled" },
-        { value: "disabled", label: "Only disabled" },
-    ];
-    return (
-        <div ref={ref} className="relative">
-            <button type="button"
-                onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <div className="relative">
-                    <FilterLines className="w-4 h-4" />
-                    {active !== null && (
-                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#47b881] border-1 border-white" />
-                    )}
-                </div>
-                Filter
-            </button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
-                    {OPTIONS.map(opt => (
-                        <button key={String(opt.value)} type="button"
-                            onClick={() => { onChange(opt.value); setOpen(false); }}
-                            className={cn(
-                                "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                active === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
-                            )}>
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-    return (
-        <button type="button" onClick={onChange}
-            className={cn(
-                "w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border-1",
-                checked
-                    ? "bg-[#658774] border-[#658774]"
-                    : "bg-white border-[#d0d5dd] hover:border-[#658774]",
-            )}>
-            {checked && <Check className="w-[10px] h-[10px] text-white" />}
-        </button>
-    );
-}
-
-function ApplicableMembershipsStep({
-    items, selected, onChange, onBack, onContinue,
+function PricingStep({
+    price, onChange, onBack, onContinue,
 }: {
-    items: MembershipItem[];
-    selected: string[];
-    onChange: (next: string[]) => void;
+    price: string;
+    onChange: (v: string) => void;
     onBack: () => void;
     onContinue: () => void;
 }) {
-    const [expanded, setExpanded] = useState(true);
-    const [filter, setFilter] = useState<MembershipFilterValue>(null);
-
-    const visibleItems = items.filter(m => {
-        if (filter === null) return true;
-        if (filter === "enabled") return selected.includes(m.id);
-        return !selected.includes(m.id);
-    });
-    const visibleIds = visibleItems.map(m => m.id);
-    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selected.includes(id));
-
-    function toggleOne(id: string) {
-        onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
-    }
-    function toggleAll() {
-        if (allSelected) {
-            onChange(selected.filter(id => !visibleIds.includes(id)));
-        } else {
-            const merged = selected.slice();
-            for (const id of visibleIds) if (!merged.includes(id)) merged.push(id);
-            onChange(merged);
-        }
-    }
-
+    const canContinue = price.trim() !== "" && Number(price) > 0;
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
-            <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-4">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Applicable memberships</h2>
+            <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Pricing</h2>
 
-                <div className="border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
-                    <div className="flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-medium text-[#101828]">Packages</p>
-                            <p className="text-[14px] text-[#667085]">The service can be used with multiple memberships or packages</p>
+                <FormField label="Fixed price">
+                    <div className="flex items-stretch w-full rounded-[8px] border-1 border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
+                        <div className="px-3 flex items-center text-[14px] text-[#475467] border-r-1 border-[#d0d5dd] bg-[#fbfdfc] rounded-l-[8px]">
+                            AED
                         </div>
-                        <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
-                            {selected.length} selected
-                        </span>
-                        <button type="button" onClick={() => setExpanded(p => !p)}
-                            className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
-                            {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                        </button>
+                        <input
+                            type="number"
+                            min={0}
+                            value={price}
+                            onChange={e => onChange(e.target.value.replace(/^0+(?=\d)/, ""))}
+                            placeholder="Enter amount"
+                            className="flex-1 px-3 py-2 text-[14px] text-[#101828] placeholder:text-[#667085] bg-transparent rounded-r-[8px] focus:outline-none"
+                        />
                     </div>
-
-                    {expanded && (
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2">
-                                <Checkbox checked={allSelected} onChange={toggleAll} />
-                                <span className="flex-1 text-[14px] font-medium text-[#101828]">Select all</span>
-                                <MembershipFilterDropdown active={filter} onChange={setFilter} />
-                            </div>
-                            <div className="h-px bg-[#e4e7ec]" />
-                            {GROUPS.map(group => {
-                                const groupItems = visibleItems.filter(m => m.group === group);
-                                if (groupItems.length === 0) return null;
-                                return (
-                                    <div key={group} className="flex flex-col gap-3">
-                                        <p className="text-[12px] text-[#667085]">{group}</p>
-                                        {groupItems.map(item => (
-                                            <div key={item.id} className="flex items-center gap-2">
-                                                <Checkbox
-                                                    checked={selected.includes(item.id)}
-                                                    onChange={() => toggleOne(item.id)}
-                                                />
-                                                <span className="text-[14px] font-medium text-[#101828] flex-1">{item.label}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex items-start gap-4 px-4 py-4 bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
-                    <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
-                        Each appointment booked against this service will deduct 1 credit from the member's active package.
-                    </p>
-                </div>
+                </FormField>
             </div>
 
             <div className="shrink-0 px-6 pb-6 flex items-center justify-between">
                 <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
-                <Button variant="primary" size="md" onClick={onContinue}>Continue</Button>
+                <Button variant="primary" size="md" disabled={!canContinue} onClick={onContinue}>Continue</Button>
             </div>
         </div>
     );
 }
 
-// ─── Step 3 — Location (single-select branch) ───────────────────────────────
+// ─── Step 3 — Location (single-select branch, filtered by branch.kind) ──────
 
 function LocationStep({
-    branchId, onChange, branchOptions, onBack, onSubmit, mode,
+    branchId, onChange, branchOptions, onBack, onSubmit, mode, isRecovery,
 }: {
     branchId: string;
     onChange: (v: string) => void;
@@ -549,8 +499,14 @@ function LocationStep({
     onBack: () => void;
     onSubmit: () => void;
     mode: "create" | "edit";
+    /** Drives the contextual hint banner — recovery services list only
+     *  Spa branches, non-recovery list only Club branches. */
+    isRecovery: boolean;
 }) {
     const canSubmit = !!branchId;
+    const hint = isRecovery
+        ? "Recovery services are offered at Spa locations only — the dropdown lists Spa branches."
+        : "Non-recovery services are offered at Club locations only — the dropdown lists Club branches.";
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
@@ -559,7 +515,9 @@ function LocationStep({
                 <FormField label="Branch location">
                     <SelectInput
                         triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                        placeholder="Select location"
+                        placeholder={branchOptions.length === 0
+                            ? (isRecovery ? "No active Spa branches" : "No active Club branches")
+                            : "Select location"}
                         value={branchId}
                         onChange={onChange}
                         options={branchOptions}
@@ -569,9 +527,7 @@ function LocationStep({
 
                 <div className="flex items-start gap-4 px-4 py-4 bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
-                        This service will be offered at the selected branch only. You can re-assign it later by editing the service.
-                    </p>
+                    <p className="text-[14px] text-[#475467] leading-[20px]">{hint}</p>
                 </div>
             </div>
 
@@ -598,12 +554,11 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
     const router = useRouter();
 
     // Live store reads — every dropdown updates when the underlying module
-    // (Booking Rules / Business & Locations / Products) mutates.
+    // (Booking Rules / Business & Locations) mutates.
     const services         = useAppStore(s => s.services);
     const branches         = useAppStore(s => s.branches);
     const classCategories  = useAppStore(s => s.classCategories);
-    const allMemberships   = useAppStore(s => s.memberships);
-    const allPackages      = useAppStore(s => s.packages);
+    const currentUser      = useAppStore(s => s.currentUser);
     const addService       = useAppStore(s => s.addService);
     const updateService    = useAppStore(s => s.updateService);
     const showToast        = useAppStore(s => s.showToast);
@@ -612,6 +567,16 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         ? services.find(s => s.id === serviceId)
         : undefined;
 
+    // Persona derivation — drives Step 1 Booking-conditions visibility and
+    // Step 3 location dropdown filter. Owner = no branch assignment, sees
+    // everything. Club/Spa admins are scoped to their branch's kind.
+    const persona: ServiceFormPersona = useMemo(() => {
+        const branchIdOnUser = currentUser.branch_id;
+        if (!branchIdOnUser) return "owner";
+        const b = branches.find(x => x.id === branchIdOnUser);
+        return b?.kind === "spa" ? "spa" : "club";
+    }, [currentUser.branch_id, branches]);
+
     // ─── Step state ────────────────────────────────────────────────────────
     const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -619,14 +584,17 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         name:         existing?.name ?? "",
         category:     existing?.category ?? "",
         durationMin:  existing ? String(existing.durationMin) : "",
+        // Spa-persona always creates recovery services; club-persona never
+        // does. Owner defaults OFF (most services are non-recovery).
+        isRecovery:   existing?.isRecovery ?? (persona === "spa"),
         openSession:  existing?.openSession ?? false,
         capacity:     existing && existing.capacity > 0 ? String(existing.capacity) : "",
         coverPreview: existing?.coverImage ?? null,
         coverFile:    null,
     }));
 
-    const [selectedMemberships, setSelectedMemberships] = useState<string[]>(
-        () => existing ? [...existing.applicableMembershipIds, ...existing.applicablePackageIds] : [],
+    const [price, setPrice] = useState<string>(
+        () => existing && existing.price > 0 ? String(existing.price) : "",
     );
     const [branchId, setBranchId] = useState<string>(existing?.branchId ?? "");
 
@@ -638,48 +606,61 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
             name:         existing.name,
             category:     existing.category,
             durationMin:  String(existing.durationMin),
+            isRecovery:   existing.isRecovery,
             openSession:  existing.openSession,
             capacity:     existing.capacity > 0 ? String(existing.capacity) : "",
             coverPreview: existing.coverImage ?? null,
             coverFile:    null,
         });
-        setSelectedMemberships([...existing.applicableMembershipIds, ...existing.applicablePackageIds]);
+        setPrice(existing.price > 0 ? String(existing.price) : "");
         setBranchId(existing.branchId);
     }, [mode, existing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Derived dropdown sources ──────────────────────────────────────────
     const categoryOptions = useMemo(() => classCategories.map(c => c.name), [classCategories]);
-    const branchOptions   = useMemo(
-        () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
-        [branches],
-    );
-    const membershipItems = useMemo(
-        () => buildMembershipItems(allMemberships, allPackages),
-        [allMemberships, allPackages],
-    );
+    // Location dropdown filtered by `branch.kind` matching the form's
+    // current isRecovery flag — recovery services live at Spa branches,
+    // non-recovery at Club branches. Spa/Club personas only see their kind
+    // (their isRecovery is locked, so the filter naturally restricts).
+    const branchOptions = useMemo(() => {
+        const targetKind: "club" | "spa" = step1.isRecovery ? "spa" : "club";
+        return branches
+            .filter(b => b.status === "active" && b.kind === targetKind)
+            .map(b => ({ value: b.id, label: b.name }));
+    }, [branches, step1.isRecovery]);
+
+    // If isRecovery flips, clear branchId when it no longer matches the
+    // new filtered set so the user can't submit a stale Club branch on a
+    // Recovery service or vice versa.
+    useEffect(() => {
+        if (!branchId) return;
+        const stillValid = branchOptions.some(o => o.value === branchId);
+        if (!stillValid) setBranchId("");
+    }, [branchOptions, branchId]);
 
     // ─── Submit ────────────────────────────────────────────────────────────
     function handleSubmit() {
-        const cat = classCategories.find(c => c.name === step1.category);
-        const memberOnlyIds  = selectedMemberships.filter(id => allMemberships.some(m => m.id === id));
-        const packageOnlyIds = selectedMemberships.filter(id => allPackages.some(p => p.id === id));
-        const branch         = branches.find(b => b.id === branchId);
+        const cat    = classCategories.find(c => c.name === step1.category);
+        const branch = branches.find(b => b.id === branchId);
 
         const payload = {
             name:        step1.name.trim(),
             description: existing?.description ?? "",
             categoryId:  cat?.id ?? "",
             category:    step1.category,
-            openSession: step1.openSession,
+            isRecovery:  step1.isRecovery,
+            // Non-recovery services are always Private with an instructor —
+            // force open_session=false even if the local toggle drifted.
+            openSession: step1.isRecovery ? step1.openSession : false,
             durationMin: Number(step1.durationMin),
-            capacity:    step1.openSession ? Number(step1.capacity) : 0,
+            capacity:    step1.isRecovery && step1.openSession ? Number(step1.capacity) : 0,
+            price:       Number(price),
             branchId:    branchId,
             branchName:  branch?.name ?? "",
+            branchKind:  (branch?.kind ?? "club") as "club" | "spa",
             status:      (existing?.status ?? "Active") as Service["status"],
             coverImage:  step1.coverPreview ?? undefined,
             coverColor:  cat?.color_hex ?? "#e9fff3",
-            applicableMembershipIds: memberOnlyIds,
-            applicablePackageIds:    packageOnlyIds,
         };
 
         if (mode === "edit" && existing) {
@@ -754,13 +735,13 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
                                 onChange={d => setStep1(prev => ({ ...prev, ...d }))}
                                 onContinue={() => setStep(2)}
                                 categoryOptions={categoryOptions}
+                                persona={persona}
                             />
                         )}
                         {step === 2 && (
-                            <ApplicableMembershipsStep
-                                items={membershipItems}
-                                selected={selectedMemberships}
-                                onChange={setSelectedMemberships}
+                            <PricingStep
+                                price={price}
+                                onChange={setPrice}
                                 onBack={() => setStep(1)}
                                 onContinue={() => setStep(3)}
                             />
@@ -773,6 +754,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
                                 onBack={() => setStep(2)}
                                 onSubmit={handleSubmit}
                                 mode={mode}
+                                isRecovery={step1.isRecovery}
                             />
                         )}
 

@@ -27,12 +27,18 @@
 
 import type { Branch } from "./_types";
 
+// All 3 Forma Studio locations are Club branches — they host classes
+// and non-recovery private services (Reformer, Mat Pilates). Forma
+// Recovery is the new Spa branch hosting recovery services (Massage,
+// Sauna, Breathwork, IV therapy). See `services.ts` for the service
+// → branch assignment driven by the new `is_recovery` flag.
 export const branches: Branch[] = [
     {
         id: "branch_forma_south",
         name: "Forma Studio (South)",
         status: "active",
         is_main: true,
+        kind: "club",
         address: "12 Marina Walk, Dubai Marina, Dubai",
         email: "forma.south@formastudio.ae",
         phone: "+971 55 200 2001",
@@ -44,6 +50,7 @@ export const branches: Branch[] = [
         name: "Forma Studio (East)",
         status: "active",
         is_main: false,
+        kind: "club",
         address: "8 Festival Boulevard, Dubai Festival City, Dubai",
         email: "forma.east@formastudio.ae",
         phone: "+971 55 200 2002",
@@ -55,9 +62,27 @@ export const branches: Branch[] = [
         name: "Forma Studio (West)",
         status: "inactive",
         is_main: false,
+        kind: "club",
         address: "32 The Greens Avenue, Emirates Living, Dubai",
         email: "forma.west@formastudio.ae",
         phone: "+971 55 200 2003",
+        city: "Dubai",
+        country: "United Arab Emirates",
+    },
+    // Forma Recovery — sole seeded Spa branch. Hosts every service with
+    // `is_recovery=true`. Spa-branch admins/operators/front-desk staff
+    // creating a new service via this branch will see Booking conditions
+    // with "Service is recovery" pre-toggled ON + disabled (per the
+    // form's role-conditional logic).
+    {
+        id: "branch_forma_recovery",
+        name: "Forma Recovery (Marina)",
+        status: "active",
+        is_main: false,
+        kind: "spa",
+        address: "6 Marina Promenade, Dubai Marina, Dubai",
+        email: "recovery.marina@formastudio.ae",
+        phone: "+971 55 200 2010",
         city: "Dubai",
         country: "United Arab Emirates",
     },

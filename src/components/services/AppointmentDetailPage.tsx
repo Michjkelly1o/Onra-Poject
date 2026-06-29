@@ -419,6 +419,16 @@ function LeftPanel({ appointment, onCancelAppointment }: {
     // Rating summary replaces the action footer once the appointment is
     // past — same swap as the class schedule detail page.
     const showRatingSummary = isCompleted || isCancelled;
+    // Parent service lookup — appointments don't denormalize price /
+    // duration / isRecovery (Phase 1 kept the appointment shape lean).
+    // Reading the live service slice gives the side panel current values
+    // even if the admin edits the service in another tab while the
+    // appointment is open. Falls back gracefully if the service was
+    // deleted (rare — the cascade should prevent it).
+    const service = useAppStore(s => s.services).find(s => s.id === appointment.serviceId);
+    const durationMin = service?.durationMin ?? 0;
+    const isRecovery  = service?.isRecovery ?? false;
+    const price       = service?.price ?? 0;
 
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
@@ -442,6 +452,12 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         <p className="text-[14px] text-[#667085] leading-[20px] mt-1">{appointment.openSession ? "Open session" : "Private session"}</p>
                     </div>
 
+                    {/* Field order per Figma 7617:132516 (open session) +
+                        7456:100178 (private session):
+                          Date & time → Service category → Duration →
+                          Location → Recovery condition → Open sessions
+                          (recovery only) → Fixed price → Instructor
+                          (private only) → Attendance (existing, kept). */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Date &amp; time</p>
@@ -453,9 +469,27 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                             <p className="text-[16px] font-medium text-[#101828]">{appointment.serviceCategory || "—"}</p>
                         </div>
                         <div className="flex flex-col gap-1">
+                            <p className="text-[14px] text-[#667085]">Duration</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{durationMin} minutes</p>
+                        </div>
+                        <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Location</p>
                             <p className="text-[16px] font-medium text-[#101828]">{appointment.branchName || "—"}</p>
                             {appointment.roomName && <p className="text-[14px] text-[#475467]">{appointment.roomName}</p>}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[14px] text-[#667085]">Recovery condition</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{isRecovery ? "Yes" : "No"}</p>
+                        </div>
+                        {isRecovery && (
+                            <div className="flex flex-col gap-1">
+                                <p className="text-[14px] text-[#667085]">Open sessions</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{appointment.openSession ? "Yes" : "No"}</p>
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[14px] text-[#667085]">Fixed price</p>
+                            <p className="text-[16px] font-medium text-[#101828]">AED {price.toLocaleString()}</p>
                         </div>
                         {!appointment.openSession && appointment.instructorName && (
                             <div className="flex flex-col gap-1">

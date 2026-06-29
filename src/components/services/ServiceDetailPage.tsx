@@ -183,7 +183,11 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                         )}
                     </div>
 
-                    {/* Info fields */}
+                    {/* Info fields — order mirrors Figma 7617:117936:
+                        category → duration → location → recovery condition
+                        → open sessions → fixed price. Open sessions row
+                        only renders for recovery services since non-
+                        recovery services are always Private (no group cap). */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Service category</p>
@@ -198,10 +202,20 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                             <p className="text-[16px] font-medium text-[#101828]">{service.branchName || "—"}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Open sessions</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
-                                {openSession ? `Yes${capacity > 0 ? ` · ${capacity} capacity` : ""}` : "No"}
-                            </p>
+                            <p className="text-[14px] text-[#667085]">Recovery condition</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{service.isRecovery ? "Yes" : "No"}</p>
+                        </div>
+                        {service.isRecovery && (
+                            <div className="flex flex-col gap-1">
+                                <p className="text-[14px] text-[#667085]">Open sessions</p>
+                                <p className="text-[16px] font-medium text-[#101828]">
+                                    {openSession ? `Yes${capacity > 0 ? ` · ${capacity} capacity` : ""}` : "No"}
+                                </p>
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[14px] text-[#667085]">Fixed price</p>
+                            <p className="text-[16px] font-medium text-[#101828]">AED {service.price.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -662,11 +676,13 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
 
 // ─── Right panel — tabs ─────────────────────────────────────────────────────
 
-type RightTab = "appointments" | "memberships" | "packages";
+// Right panel now has a single tab — "Applicable memberships" and
+// "Applicable packages" were dropped when services moved to a fixed-price
+// model (services are no longer membership-gated). Tab type kept as a
+// union of one so future tabs (e.g. Roster, Ratings) extend cleanly.
+type RightTab = "appointments";
 const TABS: { id: RightTab; label: string }[] = [
     { id: "appointments", label: "Appointments" },
-    { id: "memberships",  label: "Applicable memberships" },
-    { id: "packages",     label: "Applicable packages" },
 ];
 
 function RightPanel({ service }: { service: Service }) {
@@ -680,61 +696,11 @@ function RightPanel({ service }: { service: Service }) {
     const [applied, setApplied]               = useState<AppointmentFilter>(EMPTY_FILTER);
     const [cancelTarget, setCancelTarget]     = useState<Appointment | null>(null);
 
-    // Live store reads — when an admin deactivates / archives a product
-    // from /admin/products, the row disappears from this tab on the same
-    // render cycle. Same for appointments — cancel here / book on customer
-    // side / mark attendance, the table updates instantly.
-    const customers         = useAppStore(s => s.customers);
-    const allMemberships    = useAppStore(s => s.memberships);
-    const allPackages       = useAppStore(s => s.packages);
+    // Live store reads — appointments update in-place when admin cancels
+    // here / customer books on portal / staff marks attendance.
     const appointments      = useAppStore(s => s.appointments);
     const cancelAppointment = useAppStore(s => s.cancelAppointment);
     const showToast         = useAppStore(s => s.showToast);
-
-    const activeByPlanName = useMemo(() => {
-        const m = new Map<string, number>();
-        for (const c of customers) {
-            if (!c.planName) continue;
-            m.set(c.planName, (m.get(c.planName) ?? 0) + 1);
-        }
-        return m;
-    }, [customers]);
-
-    const filteredMemberships = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return allMemberships
-            .filter(m => m.status === "active")
-            .filter(m => service.applicableMembershipIds.includes(m.id))
-            .filter(m => !q || m.name.toLowerCase().includes(q))
-            .map(m => ({
-                id: m.id,
-                name: m.name,
-                active: activeByPlanName.get(m.name) ?? 0,
-            }));
-    }, [allMemberships, service.applicableMembershipIds, search, activeByPlanName]);
-
-    const filteredPackages = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return allPackages
-            .filter(p => p.status === "active")
-            .filter(p => service.applicablePackageIds.includes(p.id))
-            .filter(p => !q || p.name.toLowerCase().includes(q))
-            .map(p => ({
-                id: p.id,
-                name: p.name,
-                active: activeByPlanName.get(p.name) ?? 0,
-            }));
-    }, [allPackages, service.applicablePackageIds, search, activeByPlanName]);
-
-    type ListRow = { id: string; name: string; active: number };
-    const listComparators: Record<string, (a: ListRow, b: ListRow) => number> = {
-        name:   (a, b) => a.name.localeCompare(b.name),
-        active: (a, b) => a.active - b.active,
-    };
-    const { sorted: sortedMemberships, sortKey: mSortKey, sortDir: mSortDir, toggle: toggleMSort } =
-        useSort(filteredMemberships, listComparators);
-    const { sorted: sortedPackages, sortKey: pSortKey, sortDir: pSortDir, toggle: togglePSort } =
-        useSort(filteredPackages, listComparators);
 
     // ─── Appointments — live from store ────────────────────────────────────
     const DAY_OF_WEEK: DayKey[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -784,26 +750,18 @@ function RightPanel({ service }: { service: Service }) {
         applied.statuses.length > 0 || applied.startDate || applied.endDate ||
         applied.days.length > 0 || applied.times.length > 0;
 
-    const total =
-        tab === "appointments" ? sortedAppointments.length :
-        tab === "memberships"  ? sortedMemberships.length :
-                                 sortedPackages.length;
+    const total = sortedAppointments.length;
     const totalPages  = Math.max(1, Math.ceil(total / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const sliceStart  = (clampedPage - 1) * pageSize;
     const sliceEnd    = sliceStart + pageSize;
-    const pagedMemberships  = sortedMemberships.slice(sliceStart, sliceEnd);
-    const pagedPackages     = sortedPackages.slice(sliceStart, sliceEnd);
     const pagedAppointments = sortedAppointments.slice(sliceStart, sliceEnd);
 
     function handleTab(t: RightTab) {
         setTab(t); setSearch(""); setPage(1); setApplied(EMPTY_FILTER);
     }
 
-    const subjectLabel =
-        tab === "appointments" ? (total === 1 ? "appointment" : "appointments") :
-        tab === "memberships"  ? (total === 1 ? "membership"  : "memberships")  :
-                                 (total === 1 ? "package"     : "packages");
+    const subjectLabel = total === 1 ? "appointment" : "appointments";
 
     return (
         <>
@@ -879,93 +837,9 @@ function RightPanel({ service }: { service: Service }) {
                         )
                     )}
 
-                    {/* Applicable memberships */}
-                    {tab === "memberships" && (
-                        pagedMemberships.length > 0 ? (
-                            <div className="px-6">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className={TH}>
-                                                <SortableHeader sortKey="name" currentSort={mSortKey} dir={mSortDir} onSort={toggleMSort}>Name</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "text-right")}>
-                                                <SortableHeader sortKey="active" currentSort={mSortKey} dir={mSortDir} onSort={toggleMSort} align="right">Active members</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[52px]")}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pagedMemberships.map(m => (
-                                            <tr key={m.id}
-                                                onClick={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)}
-                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full border-1 border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
-                                                            <CreditCard01 className="w-4 h-4 text-[#667085]" />
-                                                        </div>
-                                                        <span className="font-medium text-[#101828]">{m.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={cn(TD, "text-right")}>{m.active}</td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <EmptyTablePane
-                                title="No memberships applicable"
-                                subtitle="No memberships are linked to this service yet."
-                            />
-                        )
-                    )}
-
-                    {/* Applicable packages */}
-                    {tab === "packages" && (
-                        pagedPackages.length > 0 ? (
-                            <div className="px-6">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className={TH}>
-                                                <SortableHeader sortKey="name" currentSort={pSortKey} dir={pSortDir} onSort={togglePSort}>Name</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "text-right")}>
-                                                <SortableHeader sortKey="active" currentSort={pSortKey} dir={pSortDir} onSort={togglePSort} align="right">Active packages</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[52px]")}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pagedPackages.map(p => (
-                                            <tr key={p.id}
-                                                onClick={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)}
-                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full border-1 border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
-                                                            <Package className="w-4 h-4 text-[#667085]" />
-                                                        </div>
-                                                        <span className="font-medium text-[#101828]">{p.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}><ViewDetailsAction onView={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)} /></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <EmptyTablePane
-                                title="No packages applicable"
-                                subtitle="No packages are linked to this service yet."
-                            />
-                        )
-                    )}
+                    {/* Membership + Package tabs were removed — services no
+                        longer carry applicableMembershipIds /
+                        applicablePackageIds in the fixed-price model. */}
                 </div>
 
                 {/* Pagination — shown on every tab now that appointments has

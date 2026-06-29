@@ -516,16 +516,20 @@ export interface ClassTemplate {
 export type ServiceStatus = "Active" | "Archived" | "Inactive";
 
 /**
- * Service — camelCase shape consumed by the Services list, future detail
- * page, and (Phase 4) the appointment / schedule-grid surfaces. Mirrors
- * `ClassTemplate` in spirit; the differentiators are `openSession` +
- * `branchId` (single-branch vs multi-branch in the legacy template).
+ * Service — camelCase shape consumed by the Services list, detail page,
+ * and the appointment / schedule-grid surfaces.
  *
- * `category` + `coverColor` are denormalized from class_categories at
- * adapter-time so the table row never needs a join to render.
+ * Pricing model is currency-based (`price`, AED). The legacy
+ * `applicableMembershipIds` / `applicablePackageIds` fields were dropped
+ * — services no longer have access gates, customers just pay the fixed
+ * price at appointment checkout.
+ *
+ * `category` + `coverColor` + `branchName` are denormalized from
+ * class_categories / branches at adapter-time so list rows never need
+ * a join to render.
  *
  * +later: instructorIds (Private services with pre-pickable trainers),
- * priceAed, applicableMembershipIds wired into POS-side checkout gating.
+ *         multi-branch.
  */
 export interface Service {
     id: string;
@@ -534,21 +538,31 @@ export interface Service {
     categoryId: string;
     /** Category display name — denormalized from class_categories. */
     category: string;
-    /** True = Open session (multi-customer, capacity meaningful). */
+    /** True = Recovery service (lives at Spa branches, may be open
+     *  session). False = Non-recovery (lives at Club branches, always
+     *  Private with an instructor). Drives the booking-conditions form
+     *  section + location dropdown filter + list-page Recovery column. */
+    isRecovery: boolean;
+    /** True = Open session (multi-customer, capacity meaningful). Only
+     *  meaningful when isRecovery=true — non-recovery services force this
+     *  false at the form layer. */
     openSession: boolean;
     durationMin: number;
     /** 0 for Private services. UI hides it when openSession=false. */
     capacity: number;
+    /** Fixed price (AED). Customer pays this on appointment checkout. */
+    price: number;
     /** FK → branches.id. Single-branch in Phase 1. */
     branchId: string;
     /** Branch display name — denormalized from branches for fast list render. */
     branchName: string;
+    /** Branch kind — denormalized for list-page filters and the location
+     *  picker. Mirrors `branches.kind`. */
+    branchKind: "club" | "spa";
     status: ServiceStatus;
     coverImage?: string;
     /** Tile background hex — resolved from class_categories.color_hex. */
     coverColor: string;
-    applicableMembershipIds: string[];
-    applicablePackageIds: string[];
 }
 
 // ─── Appointments (Module 13 — Phase 4) ─────────────────────────────────────
@@ -1558,16 +1572,17 @@ function serviceFromSeed(s: SeedService): Service {
         description: s.description,
         categoryId: s.category_id,
         category: cat?.name ?? "",
+        isRecovery: s.is_recovery,
         openSession: s.open_session,
         durationMin: s.duration_min,
         capacity: s.capacity,
+        price: s.price,
         branchId: s.branch_id,
         branchName: branch?.name ?? "",
+        branchKind: branch?.kind ?? "club",
         status: s.status,
         coverImage: s.cover_image_url,
         coverColor: cat?.color_hex ?? "#f1f2ed",
-        applicableMembershipIds: s.applicable_membership_ids,
-        applicablePackageIds: s.applicable_package_ids,
     };
 }
 
@@ -6079,9 +6094,16 @@ export const useAppStore = create<AppState>()(persist(
         // would render an incomplete grid until flushed; v15: Cards + Cash +
         // Bank transfer flipped to `connected` by default so POS / customer
         // checkout has working payment options out of the box — persisted
-        // v14 payloads would still show them as not_connected). No migrate
-        // needed — the demo discards the old payload on version mismatch.
-        version: 15,
+        // v14 payloads would still show them as not_connected);
+        // v16: Service module schema reshuffle — Branch gains `kind` (club |
+        // spa), Service gains `price` (AED) + `isRecovery` + `branchKind`,
+        // drops `applicableMembershipIds` / `applicablePackageIds`. Seed
+        // adds a Spa branch and reassigns Massage / Sauna / Breathwork / IV
+        // therapy to it. Without the bump persisted v15 services would
+        // crash the form which now reads `service.price` and
+        // `service.isRecovery`. No migrate needed — the demo discards the
+        // old payload on version mismatch.
+        version: 16,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

@@ -145,6 +145,13 @@ export function BranchFormPage({ mode, branchId }: {
                 id: newBranchId,
                 status: "active",
                 is_main: false,
+                // Admin-created branches default to "club" (the original
+                // location type). Spa branches are created via the seed
+                // only for now — a future iteration may add a kind toggle
+                // to this form if studios want to provision Spa branches
+                // through the UI. Required field on `Branch` per Module
+                // 13 Service module updates.
+                kind: "club",
                 ...patch,
             });
         } else if (existing) {
