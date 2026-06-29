@@ -35,10 +35,14 @@ export const rooms: Room[] = [
     },
 
     // ── Forma Studio East (active) — 1 room ──────────────────────────────────
+    // Named after the class type it hosts — every seeded East class is Hot
+    // Yoga (instructor Lucy Hale), so "Hot Yoga Studio" reads cleanly in
+    // customer-facing booking confirmations and the schedule grid. Was
+    // previously the generic "Studio A".
     {
         id: "room_east_studio_a",
         branch_id: "branch_forma_east",
-        name: "Studio A",
+        name: "Hot Yoga Studio",
         capacity: 20,
         status: "active",
     },

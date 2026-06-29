@@ -6114,11 +6114,13 @@ export const useAppStore = create<AppState>()(persist(
         // appointments from SOUTH/EAST to the Spa branch so the schedule
         // grid + appointment detail Location resolves to "Forma Spa" (the
         // service detail page was already correct via the services seed
-        // but appointments.ts had a stale hardcoded branch mapping). Old
-        // v16 payloads still carry the old branch id and would render
-        // wrong locations until flushed. No migrate needed — the demo
-        // discards the old payload on version mismatch.
-        version: 17,
+        // but appointments.ts had a stale hardcoded branch mapping);
+        // v18: Renamed Forma East's only room "Studio A" → "Hot Yoga
+        // Studio" (every seeded East class is Hot Yoga — the generic
+        // name read as confusing in customer-facing booking views).
+        // Persisted v17 rooms still carry the old name. No migrate
+        // needed — the demo discards the old payload on version mismatch.
+        version: 18,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
