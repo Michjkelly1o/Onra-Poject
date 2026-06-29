@@ -51,7 +51,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, UploadCloud02, Check,
-    Lightbulb02, Grid01, ClockFastForward, Users01, MarkerPin01, User01,
+    Lightbulb02, Grid01, ClockFastForward, MarkerPin01,
+    BankNote01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -209,13 +210,23 @@ interface PreviewData {
     name: string;
     category: string;
     durationMin: string;
-    capacity: string;
-    openSession: boolean;
+    /** Fixed AED price string (from Step 2). Empty → "Fixed price" placeholder. */
+    price: string;
+    /** Selected branch display name (from Step 3 dropdown). Empty → "Location"
+     *  placeholder. Pulled fresh on every render so flipping the Step 1
+     *  recovery toggle (which re-filters Step 3 options) reflects here too. */
+    branchName: string;
     coverPreview: string | null;
 }
 
 function ServicePreviewCard({ data }: { data: PreviewData }) {
     const hasName = !!data.name.trim();
+    // Format the fixed price as "AED 95" once a numeric value is entered;
+    // fall back to the placeholder label until then. Mirrors the Service
+    // detail side panel's "Fixed price" row.
+    const priceLabel = data.price && Number(data.price) > 0
+        ? `AED ${Number(data.price).toLocaleString()}`
+        : "Fixed price";
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden w-full">
             <div className="relative h-[156px] w-full overflow-hidden shrink-0 bg-gradient-to-br from-[#dbdbdb] to-[#dbdbdb]/20">
@@ -229,14 +240,15 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
                 </div>
             </div>
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
-                <div className="flex flex-col gap-1">
-                    <h3 className={cn("font-medium text-[18px] leading-[28px]", hasName ? "text-[#101828]" : "text-[#667085]")}>
-                        {hasName ? data.name : "Service name"}
-                    </h3>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">
-                        {data.openSession ? "Open session — no instructor required." : "Private — 1-on-1 with an instructor."}
-                    </p>
-                </div>
+                <h3 className={cn("font-medium text-[18px] leading-[28px]", hasName ? "text-[#101828]" : "text-[#667085]")}>
+                    {hasName ? data.name : "Service name"}
+                </h3>
+                {/* 2×2 stat grid per Figma 7423:108412 (Service preview card):
+                    Category | Duration / Fixed price | Location. Each cell
+                    falls back to its placeholder label while the user is
+                    still filling the form, then swaps to the live value
+                    once entered — Step 2 wires `price`, Step 3 wires
+                    `branchName`. */}
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -244,25 +256,21 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
                             <span className="text-[14px] text-[#667085] truncate">{data.category || "Category"}</span>
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <User01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{data.openSession ? "Open session" : "Private"}</span>
+                            <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
+                            <span className="text-[14px] text-[#667085] truncate">
+                                {data.durationMin ? `${data.durationMin} min` : "Duration"}
+                            </span>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085]">
-                                {data.durationMin ? `${data.durationMin} min` : "Duration"}
-                            </span>
+                            <BankNote01 className="w-4 h-4 text-[#667085] shrink-0" />
+                            <span className="text-[14px] text-[#667085] truncate">{priceLabel}</span>
                         </div>
-                        {data.openSession && (
-                            <div className="flex items-center gap-1 flex-1 min-w-0">
-                                <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                <span className="text-[14px] text-[#667085]">
-                                    {data.capacity ? `${data.capacity} max` : "Capacity"}
-                                </span>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                            <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                            <span className="text-[14px] text-[#667085] truncate">{data.branchName || "Location"}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -694,12 +702,20 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         );
     }
 
+    // Resolve the selected branch's display name from the current options
+    // list. Using `branchOptions` (already filtered by `isRecovery` ↔
+    // `branch.kind`) means the preview stays in sync if Step 1 flips
+    // recovery — branchId is cleared by the useEffect above when the new
+    // options set no longer contains it, and Location falls back to the
+    // placeholder until the admin picks again.
+    const previewBranchName = branchOptions.find(o => o.value === branchId)?.label ?? "";
+
     const previewData: PreviewData = {
         name:         step1.name,
         category:     step1.category,
         durationMin:  step1.durationMin,
-        capacity:     step1.capacity,
-        openSession:  step1.openSession,
+        price:        price,
+        branchName:   previewBranchName,
         coverPreview: step1.coverPreview,
     };
 
