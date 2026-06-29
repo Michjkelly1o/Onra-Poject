@@ -44,13 +44,18 @@ export interface AppointmentVM extends AppointmentService {
 
 const SOUTH = "branch_forma_south";
 const EAST = "branch_forma_east";
+// Spa branch — recovery services live here per the Module 13 update.
+// IV therapy + Breathwork are recovery services, so they belong on Spa,
+// not SOUTH. Club-only mock services (Spin / HIIT / Private Barre) stay
+// on SOUTH since they're non-recovery.
+const SPA = "branch_forma_spa";
 
 // MOCK — placeholder until the admin appointment service catalog ships.
 const MOCK_APPOINTMENTS: AppointmentService[] = [
     { id: "appt_private_reformer", name: "Private Reformer", type: "private", durationMins: 30, price: 147, category: "Pilates", branchId: SOUTH, coverImage: "/images/class-template/reformer-pilates.webp", coverColor: "#fee4e2" },
     { id: "appt_private_mat", name: "Private Mat Pilates", type: "private", durationMins: 30, price: 147, category: "Pilates", branchId: SOUTH, coverImage: "/images/class-template/private-reformer.webp", coverColor: "#fee4e2" },
-    { id: "appt_iv_therapy", name: "IV Therapy", type: "private", durationMins: 30, price: 147, category: "Strength", branchId: SOUTH, coverImage: "/images/class-template/roller-release.webp", coverColor: "#eef1f6" },
-    { id: "appt_breathwork", name: "Breathwork", type: "private", durationMins: 30, price: 147, category: "Yoga", branchId: SOUTH, coverImage: "/images/class-template/hot-yoga.webp", coverColor: "#fff8e9" },
+    { id: "appt_iv_therapy", name: "IV Therapy", type: "private", durationMins: 30, price: 147, category: "Strength", branchId: SPA, coverImage: "/images/class-template/roller-release.webp", coverColor: "#eef1f6" },
+    { id: "appt_breathwork", name: "Breathwork", type: "private", durationMins: 30, price: 147, category: "Yoga", branchId: SPA, coverImage: "/images/class-template/hot-yoga.webp", coverColor: "#fff8e9" },
     { id: "appt_private_barre", name: "Private Barre", type: "private", durationMins: 45, price: 147, category: "Barre", branchId: SOUTH, coverImage: "/images/class-template/berre.webp", coverColor: "#e9fbff" },
     { id: "appt_spin_session", name: "Open Spin Session", type: "open", durationMins: 45, price: 147, category: "Cycling", branchId: SOUTH, coverImage: "/images/class-categories/cycling.png", coverColor: "#eefcf3", capacity: 8 },
     { id: "appt_hiit_bootcamp", name: "HIIT Bootcamp", type: "open", durationMins: 45, price: 147, category: "HIIT", branchId: SOUTH, coverImage: "/images/class-categories/hiit.png", coverColor: "#fff0ef", capacity: 12 },
