@@ -43,10 +43,30 @@ import type { BrandingSettings } from "@/lib/store";
 
 export const branding_settings: BrandingSettings = {
     displayName:     "Forma Studio",
-    primaryColor:    "#B7FF01",
+    // ── Identity assets — empty by default. The landing card surfaces
+    //    "Not uploaded" until the admin uploads each via the Customize
+    //    design settings form Step 1 (Identity).
+    logoUrl:    "",
+    appIconUrl: "",
+    favIconUrl: "",
+    // ── Brand palette — defaults per Figma 4468:21332 (the new branding
+    //    landing reference). Primary is the existing soft mint;
+    //    tertiary (#F1F2ED) is the new warm-grey tile chrome.
+    primaryColor:    "#C4EDD6",
     backgroundColor: "#FAFAFA",
+    tertiaryColor:   "#F1F2ED",
     textColor:       "#101828",
     textColorLabel:  "Black",
+    // ── Typeface — DM Sans is the default and pre-selected on Step 2.
+    typeface:        "dm_sans",
+    // ── Notification channels — all three on by default so the demo
+    //    surfaces "Email · WhatsApp · SMS" in the landing card. Admin
+    //    can toggle individual channels off in Step 3.
+    notificationBranding: {
+        email:    true,
+        whatsapp: true,
+        sms:      true,
+    },
     portalUrl:       "formastudio.book.com",
     menuBarVisible:  true,
     menuItems: [

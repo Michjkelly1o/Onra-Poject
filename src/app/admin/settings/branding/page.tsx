@@ -37,9 +37,10 @@
 // already. We render just the inner card stack here.
 
 import { useRouter } from "next/navigation";
-import { Edit02, Share04 } from "@untitledui/icons";
+import { Edit02, Share04, Image01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type BrandingNotificationChannels } from "@/lib/store";
+import { brandTypefaceLabel } from "@/app/branding-fonts";
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
@@ -76,10 +77,27 @@ export default function BrandingPage() {
                 subtitle="Customize how your brand appears in the customer portal."
                 onCustomize={customizeDesign}
             >
+                {/* Design settings rows — laid out as a 2-col grid (5 paired
+                    rows) per Figma 4468:21332. Order matches the Figma:
+                    Display name / Primary logo / App icon / Fav icon /
+                    Primary color / Background color / Tertiary color /
+                    Text color / Typeface / Notification channels. */}
                 <div className="grid grid-cols-2 gap-x-3 gap-y-3 w-full">
                     <PreviewRow
                         label="Display name"
-                        value={<span className="text-[16px] font-medium text-[#101828] leading-6">{b.displayName}</span>}
+                        value={<TextValue text={b.displayName || "Not set"} muted={!b.displayName} />}
+                    />
+                    <PreviewRow
+                        label="Primary logo"
+                        value={<AssetValue url={b.logoUrl} />}
+                    />
+                    <PreviewRow
+                        label="App icon"
+                        value={<AssetValue url={b.appIconUrl} />}
+                    />
+                    <PreviewRow
+                        label="Fav icon"
+                        value={<AssetValue url={b.favIconUrl} />}
                     />
                     <PreviewRow
                         label="Primary color"
@@ -90,8 +108,20 @@ export default function BrandingPage() {
                         value={<SwatchValue color={b.backgroundColor} label={b.backgroundColor} />}
                     />
                     <PreviewRow
+                        label="Tertiary color"
+                        value={<SwatchValue color={b.tertiaryColor} label={b.tertiaryColor} />}
+                    />
+                    <PreviewRow
                         label="Text color"
                         value={<SwatchValue color={b.textColor} label={b.textColorLabel} />}
+                    />
+                    <PreviewRow
+                        label="Typeface"
+                        value={<TextValue text={brandTypefaceLabel(b.typeface)} />}
+                    />
+                    <PreviewRow
+                        label="Notification channels"
+                        value={<NotificationChannelsSummary channels={b.notificationBranding} />}
                     />
                 </div>
             </SectionCard>
@@ -245,4 +275,56 @@ function MenuItemChip({ label, enabled }: { label: string; enabled: boolean }) {
             {label}
         </div>
     );
+}
+
+/** Plain text value — used for Display name + Typeface rows. The `muted`
+ *  variant renders "Not set" greyed out so empty-state copy reads softly. */
+function TextValue({ text, muted = false }: { text: string; muted?: boolean }) {
+    return (
+        <p className={
+            muted
+                ? "text-[16px] font-medium text-[#98a2b3] leading-6"
+                : "text-[16px] font-medium text-[#101828] leading-6"
+        }>
+            {text}
+        </p>
+    );
+}
+
+/** Asset preview cell — shows a 20px thumb of the uploaded image (logo /
+ *  app icon / fav icon) inline with its label. Falls back to a generic
+ *  "Image" placeholder + "Not uploaded" copy when the URL is empty. */
+function AssetValue({ url }: { url: string }) {
+    if (!url) {
+        return (
+            <div className="flex items-center gap-1">
+                <div className="w-5 h-5 rounded-[4px] bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
+                    <Image01 className="w-3 h-3 text-[#98a2b3]" />
+                </div>
+                <p className="text-[16px] font-medium text-[#101828] leading-6">Not uploaded</p>
+            </div>
+        );
+    }
+    return (
+        <div className="flex items-center gap-1">
+            <div className="w-5 h-5 rounded-[4px] bg-white border-1 border-[#e4e7ec] overflow-hidden shrink-0">
+                <img src={url} alt="" className="w-full h-full object-contain" />
+            </div>
+            <p className="text-[16px] font-medium text-[#101828] leading-6">Uploaded</p>
+        </div>
+    );
+}
+
+/** Notification channels summary — renders the active channel names
+ *  separated by the same middle-dot the rest of the app uses for inline
+ *  lists. Empty state surfaces a "—" so the row stays the same height. */
+function NotificationChannelsSummary({ channels }: { channels: BrandingNotificationChannels }) {
+    const active: string[] = [];
+    if (channels.email)    active.push("Email");
+    if (channels.whatsapp) active.push("WhatsApp");
+    if (channels.sms)      active.push("SMS");
+    if (active.length === 0) {
+        return <p className="text-[16px] font-medium text-[#98a2b3] leading-6">—</p>;
+    }
+    return <p className="text-[16px] font-medium text-[#101828] leading-6">{active.join(" · ")}</p>;
 }

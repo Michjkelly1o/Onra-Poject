@@ -1259,18 +1259,58 @@ export interface PortalMenuItem {
     url: string;
 }
 
+/** Brand typeface key — drives both the live template preview and the
+ *  customer portal font stack. Avenir is the user-visible label only:
+ *  we render it with Nunito Sans (free Google font, closest geometric
+ *  humanist match) since Avenir itself is Adobe-licensed. */
+export type BrandTypeface =
+    | "dm_sans"
+    | "inter"
+    | "avenir"
+    | "playfair_display"
+    | "cormorant_garamond"
+    | "lora";
+
+/** Per-channel "this channel carries my brand identity" toggle. Separate
+ *  from `notificationSettings` (per-event email/whatsapp/push booleans) —
+ *  this just controls whether the customer-facing notification surfaces
+ *  use the studio's display name + logo + colours on each channel. */
+export interface BrandingNotificationChannels {
+    email:    boolean;
+    whatsapp: boolean;
+    sms:      boolean;
+}
+
 /** Single source of truth for the studio's brand identity + customer-portal
  *  preferences. Phase 2 holds it in store memory; Phase 3 will repoint the
  *  initial state at `src/data/mock/branding_settings.ts`. Field shape
  *  mirrors PRD 11 §13.2 plus the brief's Portal-preferences additions. */
 export interface BrandingSettings {
     displayName:     string;
+    /** Full-colour primary logo URL (data URL when uploaded via the form,
+     *  external URL otherwise). Empty string when not uploaded — the
+     *  landing card surfaces "Not uploaded" until set. */
+    logoUrl:         string;
+    /** App icon (used in the customer portal's PWA install + lock-screen
+     *  badges). Square asset, PNG / JPEG up to 2 MB. */
+    appIconUrl:      string;
+    /** Favicon — small square asset used in browser tabs / bookmark bars. */
+    favIconUrl:      string;
     primaryColor:    string;
     backgroundColor: string;
+    /** Tertiary colour — used for inner card / tile backgrounds in the
+     *  customer portal (Class detail metric tiles, Home category tiles,
+     *  What's on subcard chrome) to break the canvas into 3 visual
+     *  layers (background ↔ tertiary ↔ surface). */
+    tertiaryColor:   string;
     textColor:       string;
     /** Human label for the text colour (e.g. "Black") — displayed in the
      *  landing preview where the hex would read poorly. */
     textColorLabel:  string;
+    /** Brand typeface — drives the customer portal font + template preview. */
+    typeface:        BrandTypeface;
+    /** Per-channel branding toggles — see BrandingNotificationChannels. */
+    notificationBranding: BrandingNotificationChannels;
     portalUrl:       string;
     /** Master switch — when off, the portal renders without a menu bar even
      *  if individual items are enabled. */
@@ -6136,13 +6176,16 @@ export const useAppStore = create<AppState>()(persist(
         // `tradeLicenseNumber` (Studio Profile form additions per
         // Figma 7619:39071);
         // v20: Forma Spa branch gains business_hours rows (open all week
-        // 09–21 weekdays, 10–20 weekends). Without these rows the Spa
-        // branch detail page rendered every day as "(Closed)" even
-        // though we seed live Spa appointments — a contradiction
-        // that broke the demo. Persisted v19 payloads still carry the
-        // empty hours array for the Spa branch. No migrate needed —
-        // the demo discards the old payload on version mismatch.
-        version: 20,
+        // 09–21 weekdays, 10–20 weekends);
+        // v21: Branding module rebuild — BrandingSettings gains `logoUrl`
+        // + `appIconUrl` + `favIconUrl` + `tertiaryColor` + `typeface`
+        // + `notificationBranding` (per-channel email/whatsapp/sms
+        // toggles). New 3-step Customize design form needs these for
+        // every step to read/write cleanly; without the bump persisted
+        // v20 payloads are missing the new keys and the landing card +
+        // form would surface `undefined`. No migrate needed — the demo
+        // discards the old payload on version mismatch.
+        version: 21,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
