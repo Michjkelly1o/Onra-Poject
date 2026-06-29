@@ -42,4 +42,11 @@ export const rooms: Room[] = [
         capacity: 20,
         status: "active",
     },
+
+    // ── Forma Spa (active, Spa kind) — NO rooms seeded ───────────────────────
+    // Spa branches are deliberately room-less in the prototype — recovery
+    // sessions aren't room-scoped. Appointments at this branch carry
+    // room_id="" (Appointment.room_id is optional; the detail panel only
+    // renders the Room subline when roomName is present, so empty values
+    // degrade cleanly).
 ];

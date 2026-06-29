@@ -69,19 +69,19 @@ export const branches: Branch[] = [
         city: "Dubai",
         country: "United Arab Emirates",
     },
-    // Forma Recovery — sole seeded Spa branch. Hosts every service with
+    // Forma Spa — sole seeded Spa branch. Hosts every service with
     // `is_recovery=true`. Spa-branch admins/operators/front-desk staff
     // creating a new service via this branch will see Booking conditions
     // with "Service is recovery" pre-toggled ON + disabled (per the
     // form's role-conditional logic).
     {
-        id: "branch_forma_recovery",
-        name: "Forma Recovery (Marina)",
+        id: "branch_forma_spa",
+        name: "Forma Spa",
         status: "active",
         is_main: false,
         kind: "spa",
         address: "6 Marina Promenade, Dubai Marina, Dubai",
-        email: "recovery.marina@formastudio.ae",
+        email: "spa@formastudio.ae",
         phone: "+971 55 200 2010",
         city: "Dubai",
         country: "United Arab Emirates",

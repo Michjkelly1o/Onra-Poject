@@ -591,6 +591,9 @@ export interface Appointment {
     coverImage?: string;
     branchId: string;
     branchName: string;
+    /** Optional — Spa branch appointments aren't room-scoped (Spa branch
+     *  has no rooms seeded). Empty string when absent; Appointment detail
+     *  side panel only renders the Room subline when `roomName` is set. */
     roomId: string;
     roomName: string;
     /** Set for Private services, omitted for Open session. */
@@ -1600,7 +1603,10 @@ function appointmentFromSeed(a: SeedAppointment, services: Service[]): Appointme
         coverImage: service?.coverImage,
         branchId: a.branch_id,
         branchName: branch?.name ?? "",
-        roomId: a.room_id,
+        // Spa-branch appointments seed with no `room_id` (optional in
+        // SeedAppointment) — coerce to "" so the camelCase shape stays
+        // string-typed without forcing every renderer to handle null.
+        roomId: a.room_id ?? "",
         roomName: room?.name ?? "",
         ...(inst ? {
             instructorId: a.instructor_id,
@@ -6101,9 +6107,18 @@ export const useAppStore = create<AppState>()(persist(
         // adds a Spa branch and reassigns Massage / Sauna / Breathwork / IV
         // therapy to it. Without the bump persisted v15 services would
         // crash the form which now reads `service.price` and
-        // `service.isRecovery`. No migrate needed — the demo discards the
-        // old payload on version mismatch.
-        version: 16,
+        // `service.isRecovery`;
+        // v17: Renamed Spa branch id "branch_forma_recovery" →
+        // "branch_forma_spa" + display name "Forma Recovery (Marina)" →
+        // "Forma Spa", and re-pointed Massage/Sauna/Breathwork/IV
+        // appointments from SOUTH/EAST to the Spa branch so the schedule
+        // grid + appointment detail Location resolves to "Forma Spa" (the
+        // service detail page was already correct via the services seed
+        // but appointments.ts had a stale hardcoded branch mapping). Old
+        // v16 payloads still carry the old branch id and would render
+        // wrong locations until flushed. No migrate needed — the demo
+        // discards the old payload on version mismatch.
+        version: 17,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

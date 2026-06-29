@@ -102,25 +102,47 @@ interface ServiceSpec {
     open: boolean;
     branch: string;
     instructorPool: readonly string[];  // ignored for Open session services
+    /** Empty for Spa-branch services (recovery sessions aren't room-scoped).
+     *  `roomFor` returns "" in that case and Appointment.room_id is optional
+     *  in the type — the detail panel's Room subline gates on `roomName` so
+     *  empty rooms never render. */
     roomPool: readonly string[];
 }
 
 const SOUTH = "branch_forma_south";
 const EAST  = "branch_forma_east";
+// Spa branch hosts every is_recovery=true service per the Module 13
+// update — keeps the appointment-side branch FK in sync with services.ts
+// so the schedule grid + appointment detail location both resolve to
+// "Forma Spa" for Massage / Sauna / Breathwork / IV therapy.
+const SPA   = "branch_forma_spa";
 
 const SOUTH_INSTRUCTORS = ["staff_maya_johnson", "staff_phoenix_baker", "staff_sara_al_rashid"] as const;
 const EAST_INSTRUCTORS  = ["staff_demi_wilkinson", "staff_lana_steiner"] as const;
 
 const SOUTH_ROOMS = ["room_south_reformer", "room_south_mat", "room_south_barre"] as const;
 const EAST_ROOMS  = ["room_east_studio_a"] as const;
+// Spa branch ships with NO rooms — recovery services aren't room-scoped.
+// Pool stays empty; `roomFor` returns "" and Appointment.room_id is
+// optional in the type, so the renderers cope gracefully.
+const SPA_ROOMS: readonly string[] = [];
+// Recovery services aren't instructor-led either (no Spa staff seeded).
+// Private recovery (Massage / IV) still get a placeholder pool — recall
+// `instructor_id` is only written when `open=false`, but recovery
+// open=true overrides that and skips it entirely.
+const SPA_INSTRUCTORS: readonly string[] = [];
 
+// Services routed to the Spa branch — kept in sync with services.ts so
+// the schedule grid + detail-page Location both resolve to "Forma Spa".
+// Massage / IV therapy are private recovery (no instructor either in this
+// prototype — Spa has no instructor pool). Sauna / Breathwork are open.
 const SERVICES: ServiceSpec[] = [
     { id: "svc_private_reformer",    durationMin: 60, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
     { id: "svc_private_mat_pilates", durationMin: 45, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
-    { id: "svc_massage",             durationMin: 60, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
-    { id: "svc_sauna",               durationMin: 30, capacity: 6,  open: true,  branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
-    { id: "svc_breathwork",          durationMin: 45, capacity: 10, open: true,  branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
-    { id: "svc_iv_therapy",          durationMin: 30, capacity: 1,  open: false, branch: EAST,  instructorPool: EAST_INSTRUCTORS,  roomPool: EAST_ROOMS  },
+    { id: "svc_massage",             durationMin: 60, capacity: 1,  open: false, branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
+    { id: "svc_sauna",               durationMin: 30, capacity: 6,  open: true,  branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
+    { id: "svc_breathwork",          durationMin: 45, capacity: 10, open: true,  branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
+    { id: "svc_iv_therapy",          durationMin: 30, capacity: 1,  open: false, branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
 ];
 
 // ─── Customer pool (matches src/data/mock/customers.ts) ──────────────────────
@@ -192,11 +214,16 @@ function customerForPrivate(service: ServiceSpec, statusSpec: StatusSpec): strin
 
 function instructorFor(service: ServiceSpec, statusSpec: StatusSpec): string {
     const pool = service.instructorPool;
+    // Empty pool (Spa branch services have no instructor pool seeded) —
+    // return empty string and let the caller decide whether to include the
+    // field on the row (instructor_id is optional on Appointment).
+    if (pool.length === 0) return "";
     const seed = Array.from(statusSpec).reduce((a, c) => a + c.charCodeAt(0), 0) % pool.length;
     return pool[seed];
 }
 function roomFor(service: ServiceSpec, statusSpec: StatusSpec): string {
     const pool = service.roomPool;
+    if (pool.length === 0) return "";
     const seed = Array.from(statusSpec).reduce((a, c) => a + c.charCodeAt(0), 0) % pool.length;
     return pool[seed];
 }
@@ -279,11 +306,12 @@ for (const service of SERVICES) {
             ratingsForRow.forEach((score, idx) => {
                 const customerId = attendedCustomers[idx];
                 const submittedAt = isoStamp(daysAgo(3));
+                const ratingInstructor = service.open ? "" : instructorFor(service, statusSpec);
                 ratingRows.push({
                     id: `appt_rating_${apptId}_${customerId}`,
                     appointment_id: apptId,
                     customer_id: customerId,
-                    ...(service.open ? {} : { instructor_id: instructorFor(service, statusSpec) }),
+                    ...(ratingInstructor ? { instructor_id: ratingInstructor } : {}),
                     score,
                     comment: SAMPLE_COMMENTS[idx % SAMPLE_COMMENTS.length],
                     tags: SAMPLE_TAGS[idx % SAMPLE_TAGS.length],
@@ -296,12 +324,18 @@ for (const service of SERVICES) {
                 : 0;
         }
 
+        // Resolve room + instructor first so we can drop the keys entirely
+        // when their respective pools are empty (Spa branch — no rooms, no
+        // instructor staff). The Appointment type makes both fields
+        // optional so omitting them keeps the seed shape lean.
+        const resolvedRoom = roomFor(service, statusSpec);
+        const resolvedInstructor = service.open ? "" : instructorFor(service, statusSpec);
         appointmentRows.push({
             id: apptId,
             service_id: service.id,
             branch_id: service.branch,
-            room_id: roomFor(service, statusSpec),
-            ...(service.open ? {} : { instructor_id: instructorFor(service, statusSpec) }),
+            ...(resolvedRoom ? { room_id: resolvedRoom } : {}),
+            ...(resolvedInstructor ? { instructor_id: resolvedInstructor } : {}),
             date_iso: dateISO,
             start_time: startTime,
             end_time: endTime,

@@ -933,7 +933,12 @@ export interface Appointment {
     id: string;
     service_id: string;            // → services.id
     branch_id: string;             // → branches.id (denormalized for fast filter)
-    room_id: string;               // → rooms.id
+    /** Optional — Club appointments resolve to a real room id; Spa branch
+     *  appointments omit this (recovery sessions aren't room-scoped, the
+     *  spa branch deliberately has no rooms seeded). The Appointment
+     *  detail side panel already gates the Room subline on roomName so
+     *  empty values render cleanly. */
+    room_id?: string;              // → rooms.id
     /** Required for Private services, omitted for Open session. */
     instructor_id?: string;        // → staff_profiles.id
     /** "2026-05-15" — used for sorting and date-range filtering. */
