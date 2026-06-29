@@ -203,16 +203,20 @@ export default function CustomizeDesignSettingsPage() {
                         )}
                     </div>
 
-                    {/* Right: template preview */}
-                    <div className="w-[340px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden flex flex-col self-start">
-                        <div className="px-6 pt-6 pb-4 shrink-0">
+                    {/* Right: template preview. Fills the full body height so
+                        the phone gets as much vertical room as possible; the
+                        inner phone content scrolls inside the device frame
+                        for the Home + Class tabs where the figma shows more
+                        content than fits in one viewport. */}
+                    <div className="w-[360px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden flex flex-col h-full">
+                        <div className="px-6 pt-6 pb-3 shrink-0 border-b border-[#e4e7ec]">
                             <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
                             <p className="text-[14px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
                         </div>
-                        <div className="px-6 shrink-0">
+                        <div className="px-6 pt-4 pb-3 shrink-0">
                             <PreviewTabs current={previewTab} onChange={setPreviewTab} />
                         </div>
-                        <div className="bg-[#f6f6f3] px-4 py-6 flex justify-center">
+                        <div className="flex-1 min-h-0 bg-[#f6f6f3] px-3 pt-3 pb-4 flex justify-center items-stretch">
                             <PhoneMock>
                                 {previewTab === "login" && <LoginPreview brand={previewBrand} />}
                                 {previewTab === "home"  && <HomePreview  brand={previewBrand} />}
@@ -681,12 +685,14 @@ function PreviewTabs({ current, onChange }: { current: PreviewTab; onChange: (t:
     );
 }
 
-/** iPhone-style outer frame — 296x640px to match the existing class preview
- *  size. Children render inside the rounded inner area. */
+/** iPhone-style outer frame — fills the parent's available height so the
+ *  phone scales with the preview card's vertical room. Width is fixed at
+ *  300px (matches the figma proportions). Inner children render inside
+ *  the rounded device viewport; Home + Class tabs scroll inside it. */
 function PhoneMock({ children }: { children: React.ReactNode }) {
     return (
-        <div className="w-[280px] h-[600px] bg-[#101828] rounded-[32px] p-[3px] shadow-[0px_12px_24px_-8px_rgba(16,24,40,0.18)]">
-            <div className="w-full h-full rounded-[29px] overflow-hidden bg-white relative">
+        <div className="w-[300px] h-full max-h-[680px] bg-[#101828] rounded-[36px] p-[3px] shadow-[0px_12px_24px_-8px_rgba(16,24,40,0.18)]">
+            <div className="w-full h-full rounded-[33px] overflow-hidden bg-white relative">
                 {children}
             </div>
         </div>
@@ -718,6 +724,10 @@ function HomeIndicator({ color }: { color: string }) {
 }
 
 // ─── Login preview ──────────────────────────────────────────────────────────
+// Figma 7627:316999 — phone screen with logo + display name centered on a
+// soft background → primary gradient that rises through the lower 60%, with
+// "powered by Onra" at the foot. The Forma-logo glyph is the placeholder
+// when the admin hasn't uploaded a custom logo yet.
 
 function LoginPreview({ brand }: { brand: PreviewBrand }) {
     const fontFamily = brandTypefaceFontFamily(brand.typeface);
@@ -728,36 +738,65 @@ function LoginPreview({ brand }: { brand: PreviewBrand }) {
                 backgroundColor: brand.backgroundColor,
                 color: brand.textColor,
                 fontFamily,
+                backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor} 0%, ${brand.backgroundColor} 40%, ${brand.primaryColor}cc 100%)`,
             }}
         >
             <StatusBar textColor={brand.textColor} />
-            {/* Logo + display name centered, with the brand-primary gradient
-                rising from the bottom 60% of the screen — matches the
-                Figma 7667:16737 login template exactly. */}
-            <div
-                className="flex-1 flex flex-col items-center justify-center gap-3 px-6 relative"
-                style={{
-                    backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor} 0%, ${brand.backgroundColor} 35%, ${brand.primaryColor}66 100%)`,
-                }}
-            >
-                <div className="w-16 h-16 rounded-[16px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center overflow-hidden">
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6">
+                <div className="w-14 h-14 flex items-center justify-center">
                     {brand.logoUrl
                         ? <img src={brand.logoUrl} alt="" className="w-full h-full object-contain" />
-                        : <Image01 className="w-7 h-7 text-[#98a2b3]" />}
+                        : <FormaGlyph color={brand.textColor} />}
                 </div>
-                <p className="text-[24px] font-semibold leading-[32px]">
-                    {brand.displayName || "Name"}
+                <p className="text-[24px] font-semibold leading-[32px] tracking-[-0.01em]">
+                    {brand.displayName || "Forma"}
                 </p>
             </div>
-            <div className="shrink-0 flex items-center justify-center pb-3 pt-2">
-                <p className="text-[11px] opacity-60" style={{ color: brand.textColor }}>powered by ✦ Onra</p>
+            <div className="shrink-0 flex items-center justify-center pb-6 pt-2">
+                <p className="text-[11px] font-medium opacity-50 flex items-center gap-1" style={{ color: brand.textColor }}>
+                    <span>powered by</span>
+                    <OnraGlyph color={brand.textColor} />
+                    <span>Onra</span>
+                </p>
             </div>
             <HomeIndicator color={brand.textColor} />
         </div>
     );
 }
 
+/** Default "Forma" 4-quadrant logo glyph rendered when the admin hasn't
+ *  uploaded their own logo. Recolors with brand.textColor so it reads
+ *  on any background. */
+function FormaGlyph({ color }: { color: string }) {
+    return (
+        <svg viewBox="0 0 56 56" className="w-full h-full" aria-hidden="true">
+            <g fill={color}>
+                <path d="M28 4 C20 4, 16 8, 16 16 C16 20, 18 22, 22 22 C26 22, 28 24, 28 28 C28 24, 30 22, 34 22 C38 22, 40 20, 40 16 C40 8, 36 4, 28 4 Z" />
+                <path d="M28 28 C28 24, 30 22, 34 22 C38 22, 40 24, 40 28 C40 36, 36 40, 28 40 C20 40, 16 36, 16 28 C16 24, 18 22, 22 22 C26 22, 28 24, 28 28 Z" opacity="0.55" />
+                <path d="M28 52 C20 52, 16 48, 16 40 C16 36, 18 34, 22 34 C26 34, 28 32, 28 28 C28 32, 30 34, 34 34 C38 34, 40 36, 40 40 C40 48, 36 52, 28 52 Z" opacity="0.35" />
+            </g>
+        </svg>
+    );
+}
+
+/** Tiny "✦ Onra" logomark next to the powered-by footer text. */
+function OnraGlyph({ color }: { color: string }) {
+    return (
+        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" aria-hidden="true">
+            <path
+                d="M6 0 L7 5 L12 6 L7 7 L6 12 L5 7 L0 6 L5 5 Z"
+                fill={color}
+                opacity="0.6"
+            />
+        </svg>
+    );
+}
+
 // ─── Home preview ───────────────────────────────────────────────────────────
+// Figma 7627:317355 — All Branches picker → What's on card with countdown +
+// stock image → Instructor cards with photos → Categories tiles with
+// activity images → sticky Book class CTA → 4-icon bottom nav. Scrolls
+// vertically inside the device frame.
 
 function HomePreview({ brand }: { brand: PreviewBrand }) {
     const fontFamily = brandTypefaceFontFamily(brand.typeface);
@@ -771,68 +810,89 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
             }}
         >
             <StatusBar textColor={brand.textColor} />
-            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-3 pb-16 px-3 pt-1">
+            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[88px] px-4 pt-2">
                 {/* All Branches picker */}
                 <div
-                    className="flex items-center gap-2 px-3 py-2 rounded-[10px] border-1"
-                    style={{ borderColor: `${brand.textColor}22`, backgroundColor: brand.tertiaryColor }}
+                    className="flex items-center gap-2 px-3 h-9 rounded-[10px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
+                    style={{ borderColor: `${brand.textColor}1a`, backgroundColor: brand.backgroundColor }}
                 >
-                    <MarkerPin01 className="w-3 h-3" />
-                    <span className="flex-1 text-[10px] font-medium">All Branches</span>
+                    <MarkerPin01 className="w-3.5 h-3.5 opacity-70" />
+                    <span className="flex-1 text-[11px] font-medium">All Branches</span>
+                    <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 opacity-60"><path d="M3 4 L6 7 L9 4" stroke="currentColor" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
 
                 {/* What's on */}
-                <div className="flex flex-col gap-1.5">
-                    <p className="text-[11px] font-semibold">What&apos;s on</p>
-                    <div className="rounded-[12px] overflow-hidden h-[90px] relative"
-                        style={{ backgroundColor: brand.textColor }}>
-                        <div className="absolute top-1.5 left-1.5 rounded-[6px] px-1.5 py-0.5 text-[8px] font-medium"
-                            style={{ backgroundColor: `${brand.backgroundColor}cc`, color: brand.textColor }}>
+                <div className="flex flex-col gap-2">
+                    <p className="text-[13px] font-semibold">What&apos;s on</p>
+                    <div
+                        className="rounded-[14px] overflow-hidden h-[120px] relative"
+                        style={{
+                            backgroundImage: "url(/images/class-template/hot-yoga.webp)",
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                        }}
+                    >
+                        {/* Dark gradient overlay so the text reads on any image */}
+                        <div className="absolute inset-0" style={{
+                            backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%)",
+                        }} />
+                        <div className="absolute top-2 left-2 rounded-[6px] px-2 py-0.5 text-[9px] font-medium tracking-[0.02em] backdrop-blur-sm"
+                            style={{ backgroundColor: "rgba(0,0,0,0.4)", color: "#ffffff" }}>
                             13h : 33m : 50s
                         </div>
-                        <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-0.5"
-                            style={{ color: brand.backgroundColor }}>
-                            <span className="text-[8px] opacity-80">WEEKEND</span>
-                            <span className="text-[13px] font-semibold leading-tight">Workout Pass</span>
-                            <span className="text-[7px] opacity-60">*T&amp;Cs Apply</span>
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex flex-col gap-0.5 text-white">
+                            <span className="text-[9px] font-medium tracking-[0.12em] opacity-90">WEEKEND</span>
+                            <span className="text-[18px] font-semibold leading-tight tracking-[-0.01em]">Workout Pass</span>
+                            <span className="text-[8px] opacity-70">*T&amp;Cs Apply</span>
                         </div>
                     </div>
+                    {/* Page dots */}
                     <div className="flex items-center justify-center gap-1 pt-0.5">
-                        <span className="w-3 h-1 rounded-full" style={{ backgroundColor: brand.primaryColor }} />
+                        <span className="w-4 h-1 rounded-full" style={{ backgroundColor: brand.primaryColor }} />
                         <span className="w-1 h-1 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
                         <span className="w-1 h-1 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
                     </div>
                 </div>
 
                 {/* Instructor */}
-                <div className="flex flex-col gap-1.5">
-                    <p className="text-[11px] font-semibold">Instructor</p>
-                    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+                <div className="flex flex-col gap-2">
+                    <p className="text-[13px] font-semibold">Instructor</p>
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
                         {[
-                            { name: "Liam Chen", count: "3 active classes" },
-                            { name: "Sara-Al Rashid", count: "4 active classes" },
+                            { name: "Liam Chen", count: "3 active classes", img: "/images/instructors/liam-chen.webp" },
+                            { name: "Sara-Al Rashid", count: "4 active classes", img: "/images/instructors/sarah%20al%20rashid.webp" },
+                            { name: "Maya Johnson", count: "2 active classes", img: "/images/instructors/maya-johnson.webp" },
                         ].map((i, idx) => (
-                            <div key={idx} className="rounded-[10px] p-2 shrink-0 w-[110px] flex items-center justify-between"
+                            <div key={idx}
+                                className="rounded-[10px] shrink-0 w-[140px] h-[60px] flex items-center justify-between overflow-hidden"
                                 style={{ backgroundColor: brand.tertiaryColor }}>
-                                <div className="flex flex-col gap-0.5">
-                                    <span className="text-[8px] font-semibold">{i.name}</span>
-                                    <span className="text-[7px] opacity-60">{i.count}</span>
+                                <div className="flex flex-col gap-0.5 pl-2.5 pr-1.5 py-2 min-w-0">
+                                    <span className="text-[10px] font-semibold leading-tight truncate">{i.name}</span>
+                                    <span className="text-[8px] opacity-60">{i.count}</span>
                                 </div>
-                                <div className="w-5 h-5 rounded-full bg-[#dbdbdb]" />
+                                <img src={i.img} alt="" className="w-[60px] h-full object-cover shrink-0"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* Categories */}
-                <div className="flex flex-col gap-1.5">
-                    <p className="text-[11px] font-semibold">Categories</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                        {["Yoga", "Pilates"].map(c => (
-                            <div key={c} className="rounded-[10px] p-2 h-[60px] flex flex-col justify-between"
+                <div className="flex flex-col gap-2">
+                    <p className="text-[13px] font-semibold">Categories</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        {[
+                            { label: "Yoga",    img: "/images/class-categories/yoga.png" },
+                            { label: "Pilates", img: "/images/class-categories/pilates.png" },
+                            { label: "Barre",   img: "/images/class-categories/barre.png" },
+                            { label: "Cycling", img: "/images/class-categories/cycling.png" },
+                        ].map(c => (
+                            <div key={c.label}
+                                className="rounded-[10px] p-2.5 h-[72px] flex justify-between items-end relative overflow-hidden"
                                 style={{ backgroundColor: brand.tertiaryColor }}>
-                                <span className="text-[10px] font-medium">{c}</span>
-                                <div className="self-end w-6 h-6 rounded-full bg-[#dbdbdb]" />
+                                <span className="text-[11px] font-medium relative z-10 self-start">{c.label}</span>
+                                <img src={c.img} alt="" className="w-9 h-9 object-contain self-end opacity-90"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             </div>
                         ))}
                     </div>
@@ -840,25 +900,33 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
             </div>
 
             {/* Sticky Book class CTA */}
-            <div className="absolute bottom-9 left-3 right-3">
-                <div className="w-full rounded-full px-4 py-2 text-center text-[11px] font-semibold"
+            <div className="absolute bottom-[44px] left-4 right-4">
+                <div className="w-full rounded-full px-4 py-2.5 text-center text-[13px] font-semibold shadow-[0px_4px_10px_-2px_rgba(16,24,40,0.12)]"
                     style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
                     Book class
                 </div>
             </div>
 
             {/* Bottom nav */}
-            <div className="absolute bottom-0 left-0 right-0 h-9 flex items-center justify-around"
-                style={{ backgroundColor: brand.backgroundColor, borderTop: `1px solid ${brand.textColor}11` }}>
+            <div className="absolute bottom-0 left-0 right-0 h-[44px] pb-1 flex items-center justify-around"
+                style={{
+                    backgroundColor: brand.backgroundColor,
+                    borderTop: `1px solid ${brand.textColor}11`,
+                }}>
                 {[
                     { Icon: HomeLine, label: "Home", active: true },
                     { Icon: SearchSm, label: "Search" },
                     { Icon: ShoppingBag03, label: "Products" },
                     { Icon: User01, label: "Profile" },
                 ].map((n, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-0.5">
-                        <n.Icon className="w-3 h-3" style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }} />
-                        <span className="text-[7px]" style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }}>{n.label}</span>
+                    <div key={idx} className="flex flex-col items-center gap-0.5 relative">
+                        {n.active && (
+                            <span className="absolute -top-1 w-5 h-[2px] rounded-full"
+                                style={{ backgroundColor: brand.primaryColor }} />
+                        )}
+                        <n.Icon className="w-4 h-4" style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }} />
+                        <span className="text-[8px] font-medium"
+                            style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }}>{n.label}</span>
                     </div>
                 ))}
             </div>
@@ -868,6 +936,11 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
 }
 
 // ─── Class preview ──────────────────────────────────────────────────────────
+// Figma 7628:324590 — cover image at the top with back + share overlay,
+// class title + date overlaid on the bottom, "8 spots left" pill on the
+// right. Below: Class details copy + 4 metric tiles (2×2 grid) on the
+// tertiary surface + Equipment list + Check-in guidance + sticky footer
+// with "20 credits left" and Book class CTA.
 
 function ClassPreview({ brand }: { brand: PreviewBrand }) {
     const fontFamily = brandTypefaceFontFamily(brand.typeface);
@@ -881,77 +954,101 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
             }}
         >
             <StatusBar textColor={brand.textColor} />
-            <div className="flex-1 overflow-y-auto scrollbar-hide pb-14">
+            <div className="flex-1 overflow-y-auto scrollbar-hide pb-[60px]">
                 {/* Cover */}
-                <div className="mx-3 mt-1 rounded-[12px] overflow-hidden h-[120px] relative"
-                    style={{ backgroundColor: brand.textColor }}>
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[rgba(0,0,0,0.4)] to-[rgba(0,0,0,0.6)]" />
-                    <button className="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-[rgba(0,0,0,0.4)] flex items-center justify-center">
-                        <ChevronLeft className="w-3 h-3 text-white" />
+                <div
+                    className="mx-4 mt-2 rounded-[14px] overflow-hidden h-[150px] relative"
+                    style={{
+                        backgroundImage: "url(/images/class-template/reformer-pilates.webp)",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        backgroundColor: brand.textColor,
+                    }}
+                >
+                    {/* Vignette so overlay text reads on bright photos */}
+                    <div className="absolute inset-0" style={{
+                        backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.55) 100%)",
+                    }} />
+                    <button className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
+                        <ChevronLeft className="w-3.5 h-3.5 text-white" />
                     </button>
-                    <button className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[rgba(0,0,0,0.4)] flex items-center justify-center">
-                        <Share02 className="w-3 h-3 text-white" />
+                    <button className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
+                        <Share02 className="w-3.5 h-3.5 text-white" />
                     </button>
-                    <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between gap-2">
-                        <div className="flex flex-col gap-0.5 text-white">
-                            <span className="text-[13px] font-semibold leading-tight">Mat Pilates</span>
-                            <span className="text-[8px] opacity-90">Sun, 20 Feb 2025 at 10:00 AM</span>
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between gap-2">
+                        <div className="flex flex-col gap-0.5 text-white min-w-0">
+                            <span className="text-[15px] font-semibold leading-tight tracking-[-0.01em]">Mat Pilates</span>
+                            <span className="text-[9px] opacity-90">Sun, 20 Feb 2025 at 10:00 AM</span>
                         </div>
-                        <span className="rounded-full px-2 py-0.5 text-[8px] font-medium"
+                        <span className="rounded-full px-2 py-1 text-[9px] font-medium flex items-center gap-1 shrink-0"
                             style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
+                            <CheckCircle className="w-2.5 h-2.5" />
                             8 spots left
                         </span>
                     </div>
                 </div>
 
                 {/* Body */}
-                <div className="px-3 pt-3 flex flex-col gap-3">
-                    <div className="flex flex-col gap-1.5">
-                        <p className="text-[11px] font-semibold">Class details</p>
-                        <p className="text-[9px] opacity-70 leading-tight">
-                            This classic mat-based Pilates class focuses on strengthening the core through controlled and precise movements. <span className="font-medium" style={{ color: brand.primaryColor }}>See more</span>
+                <div className="px-4 pt-4 flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[13px] font-semibold">Class details</p>
+                        <p className="text-[10px] leading-[14px] opacity-70">
+                            This classic mat-based Pilates class focuses on strengthening the core through controlled and precise movements. <span className="font-semibold underline" style={{ color: brand.textColor }}>See more</span>
                         </p>
-                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                        <div className="grid grid-cols-2 gap-2 pt-1">
                             {[
-                                { Icon: ClockFastForward, label: "Duration", value: "60 minutes" },
-                                { Icon: Users01,          label: "Capacity", value: "8 participants" },
-                                { Icon: UserCheck01,      label: "Instructor", value: "Liam Chen" },
+                                { Icon: ClockFastForward, label: "Duration",   value: "60 minutes" },
+                                { Icon: Users01,          label: "Capacity",   value: "8 participants" },
+                                { Icon: UserCheck01,      label: "Instructor", value: "Liam Chen", instructor: true },
                                 { Icon: Grid01,           label: "Class type", value: "Group" },
                             ].map((m, idx) => (
-                                <div key={idx} className="rounded-[8px] p-2 flex items-start gap-1.5"
+                                <div key={idx}
+                                    className="rounded-[10px] p-2.5 flex items-start gap-2"
                                     style={{ backgroundColor: brand.tertiaryColor }}>
-                                    <m.Icon className="w-3 h-3 mt-0.5 shrink-0" />
+                                    <m.Icon className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-70" />
                                     <div className="flex flex-col gap-0.5 min-w-0">
-                                        <span className="text-[7px] opacity-70 leading-tight">{m.label}</span>
-                                        <span className="text-[8px] font-medium leading-tight truncate">{m.value}</span>
+                                        <span className="text-[9px] opacity-60 leading-tight">{m.label}</span>
+                                        <div className="flex items-center gap-1 min-w-0">
+                                            {m.instructor && (
+                                                <img src="/images/instructors/liam-chen.webp" alt=""
+                                                    className="w-3 h-3 rounded-full object-cover shrink-0"
+                                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                            )}
+                                            <span className="text-[10px] font-semibold leading-tight truncate">{m.value}</span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1">
-                        <p className="text-[11px] font-semibold">Equipment</p>
-                        <div className="flex flex-col gap-0.5 text-[9px] opacity-80">
-                            <span>· Mat</span>
-                            <span>· Resistance band</span>
+                    <div className="flex flex-col gap-1.5">
+                        <p className="text-[13px] font-semibold">Equipment</p>
+                        <div className="flex flex-col gap-1 text-[10px] opacity-80">
+                            {["Mat", "Resistance band"].map(item => (
+                                <div key={item} className="flex items-center gap-1.5">
+                                    <span className="w-1 h-1 rounded-full" style={{ backgroundColor: `${brand.textColor}77` }} />
+                                    <span>{item}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1 pt-1 border-t border-[rgba(0,0,0,0.08)]">
-                        <p className="text-[11px] font-semibold">Check-in or arrival guidance</p>
-                        <div className="flex items-center gap-1 text-[9px]">
-                            <CheckCircle className="w-3 h-3" style={{ color: brand.primaryColor }} />
+                    <div className="flex flex-col gap-1.5 pt-3 border-t" style={{ borderColor: `${brand.textColor}14` }}>
+                        <p className="text-[13px] font-semibold">Check-in or arrival guidance</p>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                            <CheckCircle className="w-3.5 h-3.5" style={{ color: brand.primaryColor }} />
                             <span>Arrive 10 minutes early</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Sticky CTA */}
-            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
-                <span className="text-[9px] opacity-70">20 credits left</span>
-                <div className="rounded-full px-4 py-1.5 text-[11px] font-semibold"
+            {/* Sticky CTA — credits left text + book pill */}
+            <div className="absolute bottom-0 left-0 right-0 px-4 pt-2.5 pb-3 flex items-center justify-between gap-3"
+                style={{ backgroundColor: brand.backgroundColor, borderTop: `1px solid ${brand.textColor}11` }}>
+                <span className="text-[10px] font-medium opacity-70">20 credits left</span>
+                <div className="rounded-full px-4 py-1.5 text-[12px] font-semibold"
                     style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
                     Book class
                 </div>
