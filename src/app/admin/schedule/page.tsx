@@ -776,7 +776,23 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
     const instructorIds = Array.from(new Set(dayClasses.map(c => c.instructorId)));
     const allInstructors = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
     const missingInstructors = INSTRUCTORS.filter(i => !instructorIds.includes(i.id)).slice(0, Math.max(0, 4 - allInstructors.length));
-    const columns = [...allInstructors, ...missingInstructors];
+    // Recovery / open-session appointments have no instructor assigned
+    // (Spa branch services like Sauna / Breathwork are self-serve). They
+    // were silently dropped from the Day view before this synthetic
+    // column existed, because every other column filters on an exact
+    // instructor id match. Surfaces a single "Recovery" lane at the
+    // right of the instructor columns whenever the day has any
+    // unassigned cards.
+    const hasRecovery = dayClasses.some(c => !c.instructorId);
+    const recoveryColumn: Instructor = {
+        id: "__recovery__",
+        name: "Recovery",
+        initials: "RS",
+        color: "#c4edd6",
+    };
+    const columns: Instructor[] = hasRecovery
+        ? [...allInstructors, ...missingInstructors, recoveryColumn]
+        : [...allInstructors, ...missingInstructors];
 
     // Grid hour range = the branch's open hours for this weekday (or the
     // union envelope across every active branch when "All locations" is
@@ -801,7 +817,12 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
             <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
                 <div className="w-16 shrink-0" />
                 {columns.map(instructor => {
-                    const count = dayClasses.filter(c => c.instructorId === instructor.id).length;
+                    const isRecoveryCol = instructor.id === "__recovery__";
+                    // Mirror the body's filter rule for the count badge so
+                    // header + cards stay in sync.
+                    const count = isRecoveryCol
+                        ? dayClasses.filter(c => !c.instructorId).length
+                        : dayClasses.filter(c => c.instructorId === instructor.id).length;
                     return (
                         <div key={instructor.id} className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[#f2f4f7]">
                             <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
@@ -809,7 +830,11 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                 <p className="text-[14px] font-semibold text-[#101828] truncate">{instructor.name}</p>
                                 <div className="flex items-center gap-1">
                                     <Calendar className="w-[12px] h-[12px] text-[#667085]" />
-                                    <span className="text-[12px] text-[#667085]">{count} {count === 1 ? "class" : "classes"}</span>
+                                    <span className="text-[12px] text-[#667085]">
+                                        {count} {isRecoveryCol
+                                            ? (count === 1 ? "appointment" : "appointments")
+                                            : (count === 1 ? "class" : "classes")}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -854,10 +879,22 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                             time band). */}
                         <div className="absolute inset-0 flex">
                             {columns.map(instructor => {
-                                const instrClasses = dayClasses.filter(c => c.instructorId === instructor.id);
-                                const instrBlocks = blockedTimes.filter(b =>
-                                    b.date === dateISO && b.staff_ids.includes(instructor.id),
-                                );
+                                const isRecoveryCol = instructor.id === "__recovery__";
+                                // Recovery column catches every card whose
+                                // instructorId is empty (Spa-branch recovery
+                                // services have no instructor). All other
+                                // columns match on exact id.
+                                const instrClasses = isRecoveryCol
+                                    ? dayClasses.filter(c => !c.instructorId)
+                                    : dayClasses.filter(c => c.instructorId === instructor.id);
+                                // Blocked-time strips don't apply to the
+                                // synthetic Recovery column — there's no
+                                // real staff member to block.
+                                const instrBlocks = isRecoveryCol
+                                    ? []
+                                    : blockedTimes.filter(b =>
+                                        b.date === dateISO && b.staff_ids.includes(instructor.id),
+                                    );
                                 return (
                                     <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
                                         {/* Per-instructor blocked strips —
