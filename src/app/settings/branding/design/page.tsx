@@ -699,13 +699,6 @@ function PhoneMock({ children }: { children: React.ReactNode }) {
     );
 }
 
-/** Bottom home indicator bar (the iPhone "swipe up" line). */
-function HomeIndicator({ color }: { color: string }) {
-    return (
-        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-[100px] h-[3px] rounded-full" style={{ backgroundColor: color }} />
-    );
-}
-
 // ─── Login preview ──────────────────────────────────────────────────────────
 // Figma 7627:316999 — phone screen with logo + display name centered on a
 // soft background → primary gradient that rises through the lower 60%, with
@@ -741,7 +734,6 @@ function LoginPreview({ brand }: { brand: PreviewBrand }) {
                     <span>Onra</span>
                 </p>
             </div>
-            <HomeIndicator color={brand.textColor} />
         </div>
     );
 }
@@ -791,7 +783,7 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                 fontFamily,
             }}
         >
-            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[130px] px-4 pt-5">
+            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[160px] px-4 pt-5">
                 {/* All Branches picker */}
                 <div
                     className="flex items-center gap-2.5 px-4 h-[52px] rounded-[12px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
@@ -913,7 +905,6 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                     </div>
                 ))}
             </div>
-            <HomeIndicator color={brand.textColor} />
         </div>
     );
 }
@@ -1035,7 +1026,6 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
                     Book class
                 </div>
             </div>
-            <HomeIndicator color={brand.textColor} />
         </div>
     );
 }
