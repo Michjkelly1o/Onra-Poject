@@ -216,7 +216,7 @@ export default function CustomizeDesignSettingsPage() {
                         <div className="px-6 pt-4 pb-3 shrink-0">
                             <PreviewTabs current={previewTab} onChange={setPreviewTab} />
                         </div>
-                        <div className="flex-1 min-h-0 bg-[#f6f6f3] px-3 pt-3 pb-4 flex justify-center items-stretch">
+                        <div className="flex-1 min-h-0 bg-[#f6f6f3] overflow-y-auto scrollbar-hide flex justify-center items-start py-4 px-3">
                             <PhoneMock>
                                 {previewTab === "login" && <LoginPreview brand={previewBrand} />}
                                 {previewTab === "home"  && <HomePreview  brand={previewBrand} />}
@@ -685,32 +685,15 @@ function PreviewTabs({ current, onChange }: { current: PreviewTab; onChange: (t:
     );
 }
 
-/** iPhone-style outer frame — fills the parent's available height so the
- *  phone scales with the preview card's vertical room. Width is fixed at
- *  300px (matches the figma proportions). Inner children render inside
- *  the rounded device viewport; Home + Class tabs scroll inside it. */
+/** iPhone-style outer frame — fixed 300×620 device so the inner layout
+ *  stays consistent regardless of how tall the outer preview card grows.
+ *  Inner children render inside the rounded device viewport; Home +
+ *  Class tabs scroll inside it. */
 function PhoneMock({ children }: { children: React.ReactNode }) {
     return (
-        <div className="w-[300px] h-full max-h-[680px] bg-[#101828] rounded-[36px] p-[3px] shadow-[0px_12px_24px_-8px_rgba(16,24,40,0.18)]">
+        <div className="w-[300px] h-[620px] shrink-0 bg-[#101828] rounded-[36px] p-[3px] shadow-[0px_12px_24px_-8px_rgba(16,24,40,0.18)]">
             <div className="w-full h-full rounded-[33px] overflow-hidden bg-white relative">
                 {children}
-            </div>
-        </div>
-    );
-}
-
-/** Tiny status bar (9:41 + signal/wifi/battery). Used by every preview. */
-function StatusBar({ textColor }: { textColor: string }) {
-    return (
-        <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0" style={{ color: textColor }}>
-            <span className="text-[12px] font-semibold">9:41</span>
-            <div className="flex items-center gap-1">
-                {/* Signal */}
-                <svg viewBox="0 0 20 14" className="w-4 h-3"><rect x="0" y="9" width="3" height="4" rx="0.5" fill="currentColor"/><rect x="4" y="6" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="3" width="3" height="10" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="13" rx="0.5" fill="currentColor"/></svg>
-                {/* Wifi */}
-                <svg viewBox="0 0 16 12" className="w-4 h-3 fill-current"><path d="M8 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-3.2-3.5a4.5 4.5 0 0 1 6.4 0l-.95.95a3.2 3.2 0 0 0-4.5 0l-.95-.95zM2 5.7A7.7 7.7 0 0 1 14 5.7l-1 .95a6.4 6.4 0 0 0-10 0l-1-.95z"/></svg>
-                {/* Battery */}
-                <svg viewBox="0 0 22 12" className="w-5 h-3"><rect x="0.5" y="0.5" width="19" height="11" rx="2.5" stroke="currentColor" fill="none"/><rect x="2" y="2" width="16" height="8" rx="1" fill="currentColor"/><rect x="20" y="4" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
             </div>
         </div>
     );
@@ -741,7 +724,6 @@ function LoginPreview({ brand }: { brand: PreviewBrand }) {
                 backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor} 0%, ${brand.backgroundColor} 40%, ${brand.primaryColor}cc 100%)`,
             }}
         >
-            <StatusBar textColor={brand.textColor} />
             <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6">
                 <div className="w-14 h-14 flex items-center justify-center">
                     {brand.logoUrl
@@ -809,8 +791,7 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                 fontFamily,
             }}
         >
-            <StatusBar textColor={brand.textColor} />
-            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[88px] px-4 pt-2">
+            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[88px] px-4 pt-5">
                 {/* All Branches picker */}
                 <div
                     className="flex items-center gap-2 px-3 h-9 rounded-[10px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
@@ -953,11 +934,10 @@ function ClassPreview({ brand }: { brand: PreviewBrand }) {
                 fontFamily,
             }}
         >
-            <StatusBar textColor={brand.textColor} />
             <div className="flex-1 overflow-y-auto scrollbar-hide pb-[60px]">
                 {/* Cover */}
                 <div
-                    className="mx-4 mt-2 rounded-[14px] overflow-hidden h-[150px] relative"
+                    className="mx-4 mt-5 rounded-[14px] overflow-hidden h-[150px] relative"
                     style={{
                         backgroundImage: "url(/images/class-template/reformer-pilates.webp)",
                         backgroundSize: "cover",
