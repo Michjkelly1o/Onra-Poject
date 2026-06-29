@@ -10,15 +10,16 @@
 // Mapping (label shown on the picker card → loader → CSS variable):
 //   • DM Sans              → DM_Sans              → --font-brand-dm-sans
 //   • Inter                → Inter                → --font-brand-inter
-//   • Avenir               → Nunito_Sans          → --font-brand-avenir
+//   • Nunito Sans          → Nunito_Sans          → --font-brand-avenir
 //   • Playfair Display     → Playfair_Display     → --font-brand-playfair
 //   • Cormorant Garamond   → Cormorant_Garamond   → --font-brand-cormorant
 //   • Lora                 → Lora                 → --font-brand-lora
 //
-// "Avenir" is intentionally substituted with Nunito Sans — Avenir itself
-// is Adobe-licensed, so we render the closest free geometric humanist
-// equivalent behind the same label. The picker card still reads "Avenir"
-// so the user-facing experience matches the design spec.
+// The internal `BrandTypeface` key is still "avenir" for backward-compat
+// with persisted v21 BrandingSettings payloads — only the user-facing
+// label was swapped (Figma originally specced Avenir but it's Adobe-
+// licensed; we ship Nunito Sans as the closest free Google Fonts
+// equivalent and surface that name on the picker card).
 //
 // The CSS variables are attached to <body> in app/layout.tsx; the branding
 // preview reads them via `brandTypefaceVarFor(typeface)` to apply the
@@ -112,7 +113,7 @@ export function brandTypefaceLabel(typeface: BrandTypeface): string {
     switch (typeface) {
         case "dm_sans":            return "DM Sans";
         case "inter":              return "Inter";
-        case "avenir":             return "Avenir";
+        case "avenir":             return "Nunito Sans";
         case "playfair_display":   return "Playfair Display";
         case "cormorant_garamond": return "Cormorant Garamond";
         case "lora":               return "Lora";

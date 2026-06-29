@@ -22,16 +22,23 @@
 //   module — nothing else to touch.
 //
 // ── Current state ──
-//   ENABLED (admin): every admin-side module — Dashboard, Class template,
-//   Class schedule, POS, Membership & Package, Gift Cards, Promo,
-//   Marketing, Customer, Services (incl. appointments), Insights, Pay
-//   rate, Payroll, Staff & Permissions (full — Roles + Staff + Shift
-//   management create/detail/edit + Blocked time), Tax, Agreements,
-//   Payments, Integrations, Referral, Reports, Notifications, Customer
-//   notifications, Booking rules, Business & Locations, Account
-//   settings, Branding.
+//   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
+//   Membership & Package, Gift Cards, Promo codes, Campaigns, Customer,
+//   Services (incl. appointments), Insights, Pay rate, Payroll, Staff
+//   & Permissions (full), Tax, Agreements, Referral, Reports,
+//   Notifications, Customer notifications, Booking rules, Account
+//   settings.
 //
-//   DISABLED (admin): none currently.
+//   DISABLED (admin) — pending client review for the demo push:
+//     • Branding              (/admin/settings/branding + /settings/branding/*)
+//     • Business & Locations  (/admin/settings/business-locations +
+//                              /settings/business + /settings/branches +
+//                              /settings/rooms)
+//     • Integrations          (/admin/settings/integrations +
+//                              /admin/settings/payments legacy redirect)
+//   Sidebar menu items for these stay visible per the file convention;
+//   clicking through 404s. Re-enable by deleting the matching prefixes
+//   from the array below.
 //
 //   ENABLED (instructor): Dashboard, Schedule, the upcoming/ongoing
 //   class takeover detail page (`/class/[id]`), the completed/cancelled
@@ -126,21 +133,20 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/settings/agreements",    // list view
     //"/settings/agreements",          // create / detail / edit / new-version
 
-    // ── Integrations module ── (ENABLED — merged surface)
-    // Now hosts BOTH the old Apps grid and the merged-in Payments providers
-    // as separate tabs at /admin/settings/integrations?tab={payments|apps}.
-    // Default tab = payments (matches Figma 7564:188282).
-    //"/admin/settings/integrations",  // unified page (Payments + Apps tabs)
+    // ── Integrations module ── (DISABLED — under review for client demo)
+    // Unified Payments + Apps page. Still under client review so the
+    // entire surface 404s. Legacy /admin/settings/payments redirect is
+    // covered by the redirect target also being disabled — re-enable
+    // both flags together (this one + the payments redirect below).
+    "/admin/settings/integrations",  // unified page (Payments + Apps tabs)
+    "/admin/settings/payments",      // legacy redirect to ?tab=payments
 
     // ── Tax module ── (ENABLED — pushing today)
     //"/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
 
-    // ── Payments module ── (MERGED into Integrations)
-    // Legacy /admin/settings/payments now redirects to
-    // /admin/settings/integrations?tab=payments — keeping the URL alive
-    // so back-links and saved screenshots don't 404, but disabling it
-    // would only break the redirect (no separate UI lives here any more).
-    //"/admin/settings/payments",      // legacy redirect to ?tab=payments
+    // ── Payments module ── (DISABLED with Integrations)
+    // Already listed above in the Integrations block — both routes are
+    // 404'd together for the under-review client demo.
 
     // ── Booking rules module ── (ENABLED — admin)
     //"/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
@@ -154,21 +160,24 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // /admin/settings/[name] sub-route — they're independent flags above.
     //"=/admin/settings",              // landing only (4-card menu page)
 
-    // ── Business & Locations module ── (ENABLED — admin)
+    // ── Business & Locations module ── (DISABLED — under review for client demo)
     // Branch + room + studio profile management. Lives at
-    // /admin/settings/business-locations now (was at /admin/settings
-    // before the Settings landing was introduced).
-    //"/admin/settings/business-locations", // list (branches + rooms table)
-    //"/settings/business",            // studio profile edit
-    //"/settings/branches",            // branch new / detail / edit
-    //"/settings/rooms",               // room new / edit
+    // /admin/settings/business-locations. Studio profile edit lives at
+    // /settings/business; branch + room CRUD live at their own routes.
+    // All 4 routes 404 together until the module ships.
+    "/admin/settings/business-locations", // list (branches + rooms table)
+    "/settings/business",            // studio profile edit
+    "/settings/branches",            // branch new / detail / edit
+    "/settings/rooms",               // room new / edit
 
     // ── Account settings module ── (ENABLED — admin)
     //"/admin/settings/account",       // change email / phone / password / avatar
 
-    // ── Branding module ── (ENABLED — admin)
-    //"/admin/settings/branding",      // brand identity + customer portal config
-    //"/settings/branding",            // edit sub-pages (portal / design)
+    // ── Branding module ── (DISABLED — under review for client demo)
+    // Brand identity (landing) + 3-step Customize design form + portal
+    // preferences sub-page. All routes 404 together until ready.
+    "/admin/settings/branding",      // brand identity + customer portal config
+    "/settings/branding",            // edit sub-pages (portal / design)
 
     // ── Instructor experience ── (ENABLED with two exceptions)
     // Standalone role-scoped surface (separate sidebar, separate header
