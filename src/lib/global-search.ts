@@ -76,7 +76,7 @@ const PAGES: PageEntry[] = [
     // Top-level sidebar items — icon mirrors `src/components/layout/Sidebar.tsx`
     { title: "Dashboard",              href: "/admin/dashboard",                  icon: BarChartSquare02 },
     { title: "Point of Sale",          href: "/admin/pos",                        icon: ShoppingBag03 },
-    { title: "Marketing",              href: "/admin/marketing",                  icon: Announcement01 },
+    { title: "Campaigns",              href: "/admin/marketing",                  icon: Announcement01 },
     { title: "Customers",              href: "/admin/customers",                  icon: User01 },
     // Classes group — Sidebar parent is CalendarCheck01; reuse for both children
     { title: "Schedule",               href: "/admin/schedule",                   icon: CalendarCheck01 },
@@ -86,7 +86,7 @@ const PAGES: PageEntry[] = [
     // + Promo keep their own glyphs since those are universally recognised.
     { title: "Memberships & Packages", href: "/admin/products",                   icon: ShoppingBag01 },
     { title: "Gift Cards",             href: "/admin/products/gift-cards",        icon: Tag01 },
-    { title: "Promo Codes",            href: "/admin/products/promo-codes",       icon: Percent01 },
+    { title: "Promo codes",            href: "/admin/products/promo-codes",       icon: Percent01 },
     // Analytics group — Sidebar parent is BarChartSquare01
     { title: "Insights",               href: "/admin/insights",                   icon: BarChartSquare01 },
     // Staff group — Sidebar parent is Users01; Pay rate + Payroll keep
@@ -106,7 +106,7 @@ const PAGES: PageEntry[] = [
     { title: "Branding",               href: "/admin/settings/branding",          icon: Brush02 },
     { title: "Booking Rules",          href: "/admin/settings/booking-rules",     icon: Settings01 },
     { title: "Customer notifications", href: "/admin/settings/notifications",     icon: Bell01 },
-    { title: "Referral",               href: "/admin/settings/referral",          icon: Share07 },
+    { title: "Referral program",       href: "/admin/settings/referral",          icon: Share07 },
     { title: "Agreements",             href: "/admin/settings/agreements",        icon: File05 },
     { title: "Integrations",           href: "/admin/settings/integrations",      icon: Zap },
     { title: "Tax",                    href: "/admin/settings/tax",               icon: Receipt },

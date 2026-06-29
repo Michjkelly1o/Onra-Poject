@@ -6076,9 +6076,12 @@ export const useAppStore = create<AppState>()(persist(
         // Integrations module merge — 4 new app integrations (Outlook,
         // Mailchimp, Instagram, Xero) + 3 new payment providers (Cards,
         // Cash, Bank transfer) added to seeds so persisted v13 payloads
-        // would render an incomplete grid until flushed). No migrate
+        // would render an incomplete grid until flushed; v15: Cards + Cash +
+        // Bank transfer flipped to `connected` by default so POS / customer
+        // checkout has working payment options out of the box — persisted
+        // v14 payloads would still show them as not_connected). No migrate
         // needed — the demo discards the old payload on version mismatch.
-        version: 14,
+        version: 15,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

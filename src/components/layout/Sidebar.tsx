@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,7 +17,9 @@ import {
     BarChartSquare01,
     Users01,
     Building01,
+    Gift01,
     ChevronDown,
+    ChevronUp,
     ChevronLeftDouble,
     ChevronRightDouble,
     ChevronRight,
@@ -32,52 +34,79 @@ export type NavItemDef = {
     icon: React.FC<{ className?: string }>;
     permission?: string;
     children?: NavChild[];
+    /** When set, the sidebar renders a small grey caption above this item
+     *  (used for the "Studio" divider between the top-of-funnel modules
+     *  and the studio-scoped ones per Figma 7616:16658). Caption hides
+     *  when the sidebar is collapsed to slim mode. */
+    sectionLabel?: string;
 };
 
+// Sidebar structure per Figma 7616:16658. The 'Studio' divider splits
+// top-of-funnel modules (operations + comms) from studio-scoped
+// inventory + people management. Each child route is unchanged — this
+// is purely a reorganisation + 3 menu renames + 1 new parent group.
 const NAV_ITEMS: NavItemDef[] = [
     { label: "Dashboard", href: "/admin/dashboard", icon: BarChartSquare02 },
     {
         label: "Classes", icon: CalendarCheck01, permission: "manage_schedule",
         children: [
             { label: "Class templates", href: "/admin/class-types" },
-            { label: "Schedule", href: "/admin/schedule" },
-            { label: "Services", href: "/admin/services" },
-            { label: "Categories", href: "/admin/categories" },
+            { label: "Schedule",        href: "/admin/schedule"    },
+            { label: "Categories",      href: "/admin/categories"  },
+            // Services moved OUT to the new "Services & pricing" group
+            // below — per Figma it sits with Memberships & packages
+            // under the Studio section divider.
         ],
     },
-    { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
-    {
-        label: "Services & products", icon: ShoppingBag01, permission: "manage_products",
-        children: [
-            { label: "Memberships & packages", href: "/admin/products" },
-            { label: "Gift cards", href: "/admin/products/gift-cards" },
-            { label: "Promo", href: "/admin/products/promo-codes" },
-        ],
-    },
-    { label: "Marketing", href: "/admin/marketing", icon: Announcement01, permission: "manage_marketing" },
     { label: "Customers", href: "/admin/customers", icon: User01, permission: "manage_members" },
     {
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
         children: [
             { label: "Insights", href: "/admin/insights" },
-            { label: "Reports", href: "/admin/reports" },
+            { label: "Reports",  href: "/admin/reports"  },
+        ],
+    },
+    { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
+    {
+        // NEW PARENT GROUP — collapses the old standalone Marketing leaf,
+        // Promo (renamed Promo codes), and Referral (renamed Referral
+        // program) into one Marketing module. Routes are unchanged.
+        label: "Marketing", icon: Announcement01, permission: "manage_marketing",
+        children: [
+            { label: "Campaigns",        href: "/admin/marketing"            },
+            { label: "Promo codes",      href: "/admin/products/promo-codes" },
+            { label: "Referral program", href: "/admin/settings/referral"    },
         ],
     },
     {
+        // 'Studio' section caption renders above this item — splits the
+        // sidebar into top-of-funnel vs studio-scoped sections per the
+        // Figma. Repurposes the old 'Services & products' group: Promo
+        // moved up under Marketing, Gift cards moved out to its own leaf,
+        // and Services arrived from the old Classes group. Now reads as
+        // 'studio inventory + pricing'.
+        label: "Services & pricing", icon: ShoppingBag01, permission: "manage_products",
+        sectionLabel: "Studio",
+        children: [
+            { label: "Memberships & packages", href: "/admin/products" },
+            { label: "Services",                href: "/admin/services" },
+        ],
+    },
+    { label: "Gift cards", href: "/admin/products/gift-cards", icon: Gift01, permission: "manage_products" },
+    {
         label: "Staff", icon: Users01, permission: "manage_instructors",
         children: [
-            { label: "Role & permissions", href: "/admin/staff/roles" },
-            { label: "Staff & shift",      href: "/admin/staff"       },
-            { label: "Pay rate",            href: "/admin/staff/pay-rate" },
-            { label: "Payroll",             href: "/admin/compensation"   },
+            { label: "Role & permissions", href: "/admin/staff/roles"    },
+            { label: "Staff & shift",      href: "/admin/staff"          },
+            { label: "Pay rate",           href: "/admin/staff/pay-rate" },
+            { label: "Payroll",            href: "/admin/compensation"   },
         ],
     },
     // Settings — single leaf item landing on /admin/settings (per Figma
-    // 7553:340153). Sub-modules used to be nested children here; they're
-    // now surfaced on the Settings landing page itself as a 4-card layout
-    // (Studio / Operations / Customer / Platform). Each card item still
-    // navigates to the same underlying sub-route (Branding, Booking rules,
-    // Tax, etc.) so nothing else in the app changed.
+    // 7553:340153). Sub-modules surface on the Settings landing page
+    // itself as a 4-card layout (Studio / Operations / Customer /
+    // Platform). Each card item navigates to its underlying sub-route.
+    // Profile chip renders below Settings — see the bottom of <Sidebar/>.
     { label: "Settings", href: "/admin/settings", icon: Building01 },
 ];
 
@@ -324,6 +353,13 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
 
                     return (
                         <div key={item.label}>
+                            {/* Optional section caption (e.g. "Studio") — hidden
+                                in slim mode so the collapsed rail stays icon-only. */}
+                            {item.sectionLabel && !slim && (
+                                <div className="px-3 pt-3 pb-1 text-[12px] font-medium text-[#667085] uppercase tracking-[0.04em] leading-[18px]">
+                                    {item.sectionLabel}
+                                </div>
+                            )}
                             {/* Parent row — wrapped so a collapsed icon shows
                                 the menu name in a tooltip on hover. */}
                             <SlimNavItem label={item.label} enabled={slim}>
@@ -403,9 +439,121 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
                 })}
             </nav>
 
-            {/* Account section moved to the header (global profile
-                dropdown). Sidebar now ends at the nav so the design stays
-                consistent across admin + instructor surfaces. */}
+            {/* ── Profile chip + dropdown ─────────────────────────────────
+                Per Figma 7616:16658 the profile lives at the bottom of the
+                sidebar (above Settings would be redundant — Settings is the
+                last item in the nav above this chip). Clicking the chip
+                opens the same dropdown that used to live in the header:
+                Account settings + Sign out. Hidden role-switcher per spec. */}
+            <SidebarProfileChip
+                slim={slim}
+                avatarUrl={avatarUrl}
+                displayName={currentUser.first_name
+                    ? `${currentUser.first_name} ${currentUser.last_name ?? ""}`.trim()
+                    : "User"}
+                roleLabel={roleLabelFor(currentUser.role)}
+                accountHref={effectiveAccountHref}
+            />
         </aside>
     );
+}
+
+// ─── Profile chip (sidebar footer) ─────────────────────────────────────────
+// Replicates the Header's user-menu dropdown trigger — relocated into the
+// sidebar per the new Figma. Click toggles a small popover anchored to the
+// chip with Account settings + Sign out. Closes on outside click.
+function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHref }: {
+    slim: boolean;
+    avatarUrl: string;
+    displayName: string;
+    roleLabel: string;
+    accountHref: string;
+}) {
+    const showToast = useAppStore(s => s.showToast);
+    const [open, setOpen] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    // Close on outside click — mirrors the Header dropdown behaviour.
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
+    function handleSignOut() {
+        // Demo-only behaviour — parity with the original Header dropdown.
+        // The prototype doesn't tear down Supabase sessions yet, so we
+        // surface a toast instead of routing to /login.
+        setOpen(false);
+        showToast("Signed out", "You've been signed out of the demo.", "success", "check");
+    }
+
+    return (
+        <div ref={wrapperRef} className="shrink-0 px-3 pb-4 pt-2 relative">
+            <button
+                type="button"
+                onClick={() => setOpen(p => !p)}
+                aria-label="Open profile menu"
+                className={cn(
+                    "w-full flex items-center gap-3 rounded-[10px] px-2 py-2 transition-colors",
+                    slim ? "justify-center" : "",
+                    open ? "bg-[#fbfffd] border-1 border-[#e4e7ec]" : "border-1 border-transparent hover:bg-[#fbfffd]",
+                )}
+            >
+                <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full shrink-0 object-cover" />
+                {!slim && (
+                    <>
+                        <div className="flex-1 min-w-0 text-left">
+                            <p className="text-[14px] font-semibold text-[#101828] truncate leading-5">{displayName}</p>
+                            <p className="text-[12px] text-[#667085] truncate leading-[18px] mt-0.5">{roleLabel}</p>
+                        </div>
+                        {open
+                            ? <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                            : <ChevronUp   className="w-4 h-4 text-[#667085] shrink-0" />}
+                    </>
+                )}
+            </button>
+
+            {open && (
+                <div className={cn(
+                    "absolute bottom-[calc(100%-4px)] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
+                    slim ? "left-[68px] w-[240px]" : "left-3 right-3",
+                )}>
+                    <Link
+                        href={accountHref}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] border-b border-[#f2f4f7] transition-colors"
+                    >
+                        <UserCircle className="w-4 h-4 text-[#667085]" />
+                        Account settings
+                    </Link>
+                    <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                    >
+                        <LogOut01 className="w-4 h-4 text-[#667085]" />
+                        Sign out
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Render-friendly persona label — mirrors the Header's `roleLabel(...)` so
+// the chip shows "Owner" / "Branch Admin" / etc. instead of the raw slug.
+function roleLabelFor(role: string): string {
+    switch (role) {
+        case "owner":        return "Owner";
+        case "branch_admin": return "Branch Admin";
+        case "operator":     return "Operator";
+        case "front_desk":   return "Front Desk";
+        case "instructor":   return "Instructor";
+        case "member":       return "Member";
+        default:             return role;
+    }
 }

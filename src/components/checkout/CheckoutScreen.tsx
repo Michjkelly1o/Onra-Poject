@@ -24,26 +24,27 @@
 import { useMemo } from "react";
 import {
     XClose, Check, CreditCard02, CreditCard01, BankNote01, Package,
-    Lightbulb02, CheckCircle, Gift01,
+    Lightbulb02, CheckCircle, Gift01, CreditCardCheck,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
 
-export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay";
+export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktransfer";
 
 /** Every method the POS UI knows how to render. Both checkout entry points
  *  pass an `enabledMethods` subset of this list to `PaymentConfirmationStep`
- *  — derived from the `payment_providers` store so Settings → Payments is
- *  the single source of truth for which cards appear:
- *    • cash       — always on (no gateway needed)
- *    • card       — Stripe must be connected
- *    • applepay   — Apple Pay must be enabled (which requires Stripe)
- *    • googlepay  — Google Pay must be enabled (which requires Stripe)
- *  Disconnecting Stripe cascades — Apple/Google flip back to not_connected
- *  in the same render cycle, the POS hides their cards, and the entry
- *  point's reset effect snaps the selection back to `null`. */
-export const ALL_PAYMENT_METHODS: PaymentMethod[] = ["cash", "card", "applepay", "googlepay"];
+ *  — derived from the `payment_providers` store so Settings → Integrations →
+ *  Payments tab is the single source of truth for which cards appear:
+ *    • cash         — Cash provider must be enabled (manual, no gateway)
+ *    • card         — Cards provider must be enabled (requires Stripe)
+ *    • applepay     — Apple Pay must be enabled (which requires Stripe)
+ *    • googlepay    — Google Pay must be enabled (which requires Stripe)
+ *    • banktransfer — Bank transfer provider must be enabled (manual)
+ *  Disconnecting Stripe cascades — Cards/Apple/Google flip back to
+ *  not_connected in the same render cycle, the POS hides their cards, and
+ *  the entry point's reset effect snaps the selection back to `null`. */
+export const ALL_PAYMENT_METHODS: PaymentMethod[] = ["cash", "card", "applepay", "googlepay", "banktransfer"];
 
 // Sourced from the centralized `payment_methods` seed.
 const SAVED_CARDS = PAYMENT_METHODS.map(pm => ({
@@ -188,6 +189,14 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                                 icon={<GoogleLogo />}
                             />
                         )}
+                        {show("banktransfer") && (
+                            <PaymentMethodCard
+                                selected={p.paymentMethod === "banktransfer"}
+                                onSelect={() => p.setPaymentMethod("banktransfer")}
+                                title="Bank transfer" subtitle="Payment via bank transfer"
+                                icon={<CreditCardCheck className="w-4 h-4 text-[#475467]" />}
+                            />
+                        )}
                     </div>
                 </div>
 
@@ -205,6 +214,9 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                         )}
                         {p.paymentMethod === "googlepay" && (
                             <GooglePayConfirmation total={p.total} />
+                        )}
+                        {p.paymentMethod === "banktransfer" && (
+                            <BankTransferConfirmation total={p.total} />
                         )}
                     </div>
                 )}
@@ -467,6 +479,20 @@ function GooglePayConfirmation({ total }: { total: number }) {
     );
 }
 
+function BankTransferConfirmation({ total }: { total: number }) {
+    return (
+        <div className="flex flex-col gap-3 items-center bg-white border-1 border-[#e4e7ec] rounded-[12px] p-6">
+            <div className="w-12 h-12 rounded-[12px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center">
+                <CreditCardCheck className="w-5 h-5 text-[#475467]" />
+            </div>
+            <p className="text-[16px] font-semibold text-[#101828]">Confirm with Bank transfer</p>
+            <p className="text-[14px] text-[#475467] text-center">
+                Mark <span className="font-medium text-[#101828]">AED {total.toLocaleString()}</span> as received via bank transfer. Reconcile against your bank statement.
+            </p>
+        </div>
+    );
+}
+
 // ─── Loading state — Figma 6891:75669 ─────────────────────────────────────────
 export function ProcessingPaymentCard({ method, chargedTo }: { method: PaymentMethod; chargedTo: string }) {
     return (
@@ -498,6 +524,7 @@ function PaymentMethodLogo({ method }: { method: PaymentMethod }) {
     if (method === "cash") return <BankNote01 className="w-6 h-6 text-[#658774]" />;
     if (method === "applepay") return <div className="w-6 h-6 rounded-md bg-[#101828] flex items-center justify-center"><AppleLogo /></div>;
     if (method === "googlepay") return <div className="w-6 h-6 rounded-md bg-white border-1 border-[#e4e7ec] flex items-center justify-center"><GoogleLogo /></div>;
+    if (method === "banktransfer") return <CreditCardCheck className="w-6 h-6 text-[#475467]" />;
     return <MasterCardLogo />;
 }
 
@@ -670,16 +697,22 @@ function ReceiptHeaderDecoration() {
 // ─── Shared helpers exported for both entry points ──────────────────────────
 
 /** Translate the live `payment_providers` slice into the list of methods the
- *  POS picker should render. Cash is always available; the three card-style
- *  methods only appear when their corresponding provider is connected in
- *  Settings → Payments. Order matches the Figma row order. */
+ *  POS picker should render. EVERY method is gated by its provider toggle in
+ *  Settings → Integrations → Payments — disabling Cash there hides Cash from
+ *  checkout in the same render cycle. Order matches the Figma row order.
+ *
+ *  Card-style methods (Cards, Apple Pay, Google Pay) further require Stripe
+ *  to be connected (the store cascades — disconnecting Stripe auto-flips
+ *  them back to not_connected — so the `isOn` check below is enough). */
 export function enabledMethodsFromProviders(providers: PaymentProvider[]): PaymentMethod[] {
     const isOn = (slug: PaymentProvider["slug"]) =>
         providers.some(p => p.slug === slug && p.status === "connected");
-    const methods: PaymentMethod[] = ["cash"];
-    if (isOn("stripe"))     methods.push("card");
-    if (isOn("apple_pay"))  methods.push("applepay");
-    if (isOn("google_pay")) methods.push("googlepay");
+    const methods: PaymentMethod[] = [];
+    if (isOn("cash"))          methods.push("cash");
+    if (isOn("cards"))         methods.push("card");
+    if (isOn("apple_pay"))     methods.push("applepay");
+    if (isOn("google_pay"))    methods.push("googlepay");
+    if (isOn("bank_transfer")) methods.push("banktransfer");
     return methods;
 }
 
@@ -691,7 +724,8 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
             : paymentMethod === "card" ? "Card on file"
                 : paymentMethod === "applepay" ? "Apple Pay"
                     : paymentMethod === "googlepay" ? "Google Pay"
-                        : "—";
+                        : paymentMethod === "banktransfer" ? "Bank transfer"
+                            : "—";
     const chargedTo =
         paymentMethod === "card" && selectedCardId
             ? (() => {
@@ -701,7 +735,8 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
             : paymentMethod === "cash" ? `Cash (AED ${cashReceivedNum})`
                 : paymentMethod === "applepay" ? "Apple Pay"
                     : paymentMethod === "googlepay" ? "Google Pay"
-                        : "—";
+                        : paymentMethod === "banktransfer" ? "Bank transfer"
+                            : "—";
     return { label, chargedTo };
 }
 

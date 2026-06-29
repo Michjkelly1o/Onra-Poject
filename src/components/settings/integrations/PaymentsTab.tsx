@@ -91,15 +91,16 @@ const PROVIDER_CONFIG: Record<PaymentProviderSlug, ProviderConfig> = {
         // Cash + Bank transfer render with a simple icon tile inside the
         // body (BankNote01 / CreditCardCheck) instead of the iconify SVG
         // logos used by branded providers. The `logo` URL here is unused
-        // for these manual methods (LogoTile renders a coloured tile from
-        // the simpleIcon below). Set to empty string to keep the type
-        // happy.
+        // for these manual methods (the modal swaps to the ManualMethodIcon
+        // tile based on provider.kind === "manual"). Set to empty string
+        // to keep the type happy.
         logo: "",
         defaultAccountLabel: "Front-desk cash drawer",
         viewFields: [
             { label: "Provider", value: "Manual" },
             { label: "Type",     value: "Cash / Pay at studio" },
         ],
+        enableSubtitle: "This will let customers pay in cash at the front desk.",
     },
     bank_transfer: {
         logo: "",
@@ -108,6 +109,7 @@ const PROVIDER_CONFIG: Record<PaymentProviderSlug, ProviderConfig> = {
             { label: "Provider", value: "Manual" },
             { label: "Type",     value: "Bank transfer" },
         ],
+        enableSubtitle: "This will let customers pay by bank transfer, reconciled manually.",
     },
 };
 
@@ -489,7 +491,16 @@ function EnableWalletModal({ provider, onConfirm, onClose }: {
                     Border between header and footer dropped per client
                     feedback so the modal reads as a single visual unit. */}
                 <div className="pt-6 px-6 pb-5 relative flex flex-col items-center gap-4">
-                    <LogoTile provider={provider} size="modal" />
+                    {/* Manual methods (Cash / Bank transfer) have no brand
+                        SVG logo — swap to the same icon tile the row uses
+                        so the modal logo matches what the admin tapped. */}
+                    {provider.kind === "manual"
+                        ? <div className="w-[58px] h-10 rounded-[6px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0">
+                            {provider.slug === "cash"
+                                ? <BankNote01 className="w-5 h-5 text-[#475467]" />
+                                : <CreditCardCheck className="w-5 h-5 text-[#475467]" />}
+                          </div>
+                        : <LogoTile provider={provider} size="modal" />}
                     <div className="flex flex-col items-center gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
                             Enable {provider.name}?
@@ -662,27 +673,16 @@ export function PaymentsTab() {
     const manualMethods = paymentProviders.filter(p => p.kind === "manual");
     const stripeConnected = stripe?.status === "connected";
 
-    function handleManualToggle(p: PaymentProvider) {
-        // Manual methods (Cash / Bank transfer) toggle directly — no
-        // gateway dependency, no Enable modal. Connect = enable; disconnect
-        // = disable.
+    /** Single toggle handler shared by wallet rows (Cards / Apple Pay /
+     *  Google Pay) and manual rows (Cash / Bank transfer). EVERY toggle —
+     *  enable or disable — surfaces a confirmation modal first so the
+     *  admin can't accidentally flip a payment method on the customer
+     *  checkout. Per client direction: no silent toggles.
+     *    • Enable  → EnableWalletModal (centered logo + "Enable X?" + Cancel/Enable)
+     *    • Disable → DisconnectConfirm (cascade warning if applicable + Disconnect) */
+    function handlePaymentToggle(p: PaymentProvider) {
         if (p.status === "connected") {
-            disconnectPaymentProvider(p.id);
-            showToast(`${p.name} disabled`, `${p.name} is no longer offered at checkout.`, "success", "check");
-        } else {
-            const cfg = configFor(p);
-            connectPaymentProvider(p.id, cfg.defaultAccountLabel);
-            showToast(`${p.name} enabled`, `${p.name} is now offered at checkout.`, "success", "check");
-        }
-    }
-
-    function handleWalletToggle(p: PaymentProvider) {
-        // Stripe-gated wallets toggle directly when the gateway is
-        // connected (admin has already opted in via the Connect Stripe
-        // flow). Disconnecting flips them back to not_connected.
-        if (p.status === "connected") {
-            disconnectPaymentProvider(p.id);
-            showToast(`${p.name} disabled`, `${p.name} is no longer offered at checkout.`, "success", "check");
+            setFlow({ kind: "disconnect", provider: p });
         } else {
             setFlow({ kind: "enable_wallet", provider: p });
         }
@@ -727,7 +727,7 @@ export function PaymentsTab() {
                                     <p className="text-[14px] text-[#6e776f] leading-5">{w.description}</p>
                                 </div>
                                 {stripeConnected ? (
-                                    <Toggle on={w.status === "connected"} onClick={() => handleWalletToggle(w)} />
+                                    <Toggle on={w.status === "connected"} onClick={() => handlePaymentToggle(w)} />
                                 ) : (
                                     <span className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[#dc6803] shrink-0">
                                         <InfoCircle className="w-4 h-4" />
@@ -756,7 +756,7 @@ export function PaymentsTab() {
                                     <p className="text-[16px] font-semibold text-[#101828] leading-6">{m.name}</p>
                                     <p className="text-[14px] text-[#6e776f] leading-5">{m.description}</p>
                                 </div>
-                                <Toggle on={m.status === "connected"} onClick={() => handleManualToggle(m)} />
+                                <Toggle on={m.status === "connected"} onClick={() => handlePaymentToggle(m)} />
                             </div>
                         </div>
                     ))}

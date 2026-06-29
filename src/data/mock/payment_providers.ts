@@ -59,6 +59,13 @@ export const payment_providers: PaymentProviderSeed[] = [
     // Cards is a Stripe-gated wallet (same gate as Apple Pay / Google Pay).
     // Cash + Bank transfer are 'manual' methods — no gateway, standalone
     // toggles in the "Other methods" group.
+    //
+    // Per client direction: Cards, Cash, and Bank transfer ship CONNECTED
+    // by default so the POS / customer checkout has working payment
+    // options out of the box (Stripe is also pre-connected up top, so
+    // Cards's gateway requirement is satisfied). Apple Pay + Google Pay
+    // stay not_connected — admin opts those in explicitly via the
+    // Settings → Integrations → Payments tab.
     {
         id: "ppr_cards",
         slug: "cards",
@@ -66,7 +73,9 @@ export const payment_providers: PaymentProviderSeed[] = [
         description: "Enable Visa, Mastercards, Amex to accept payments.",
         kind: "wallet",
         requires_provider_slug: "stripe",
-        status: "not_connected",
+        status: "connected",
+        connected_at: "2026-05-12T09:00:00.000Z",
+        account_label: "Cards via Stripe",
     },
     {
         id: "ppr_cash",
@@ -74,7 +83,9 @@ export const payment_providers: PaymentProviderSeed[] = [
         name: "Cash / Pay at studio",
         description: "Enable record in-person payments at the front desk.",
         kind: "manual",
-        status: "not_connected",
+        status: "connected",
+        connected_at: "2026-05-12T09:00:00.000Z",
+        account_label: "Front-desk cash drawer",
     },
     {
         id: "ppr_bank_transfer",
@@ -82,6 +93,8 @@ export const payment_providers: PaymentProviderSeed[] = [
         name: "Bank transfer",
         description: "Enable manual reconciliation.",
         kind: "manual",
-        status: "not_connected",
+        status: "connected",
+        connected_at: "2026-05-12T09:00:00.000Z",
+        account_label: "Manual bank reconciliation",
     },
 ];

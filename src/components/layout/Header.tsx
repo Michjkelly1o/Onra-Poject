@@ -21,8 +21,8 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/pos": "Point of Sale",
     "/admin/products": "Memberships & Packages",
     "/admin/products/gift-cards": "Gift Cards",
-    "/admin/products/promo-codes": "Promo",
-    "/admin/marketing": "Marketing",
+    "/admin/products/promo-codes": "Promo codes",
+    "/admin/marketing": "Campaigns",
     // /admin/instructors redirects to /admin/staff — kept for header fallback
     // during the redirect frame.
     "/admin/instructors": "Staff & Permissions",
@@ -47,7 +47,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings/notifications": "Customer notifications",
     "/admin/settings/tax": "Tax",
     "/admin/settings/agreements": "Agreements",
-    "/admin/settings/referral": "Referral",
+    "/admin/settings/referral": "Referral program",
     "/admin/settings/account": "Account settings",
     // Instructor experience — sidebar config in `instructor-navigation.ts`
     "/instructor/dashboard": "Dashboard",
@@ -199,7 +199,11 @@ export default function Header() {
                     </button>
                 )}
                 <NotificationBell />
-                <ProfileDropdown accountHref={accountHref} />
+                {/* ProfileDropdown removed per Figma 7616:16658 — the profile
+                    chip + dropdown now live at the bottom of the sidebar
+                    (see SidebarProfileChip in src/components/layout/Sidebar.tsx).
+                    Keeping ProfileDropdown defined locally is harmless; if
+                    we ever need a header avatar again it's still here. */}
             </div>
 
             {!isInstructor && (

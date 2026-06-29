@@ -85,8 +85,8 @@ const CARDS: SettingsCard[] = [
             // route redirects to /admin/settings/integrations?tab=payments
             // so back-links keep working without surfacing the duplicate
             // menu entry here.
-            { label: "Integrations", href: "/admin/settings/integrations" },
-            { label: "Referral",     href: "/admin/settings/referral"     },
+            { label: "Integrations",     href: "/admin/settings/integrations" },
+            { label: "Referral program", href: "/admin/settings/referral"     },
         ],
     },
 ];
