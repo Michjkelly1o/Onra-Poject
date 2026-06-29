@@ -872,18 +872,24 @@ function HomePreview({ brand }: { brand: PreviewBrand }) {
                 </div>
             </div>
 
-            {/* Floating Book class CTA — clears the bottom nav by 16px so
-                it reads as a sticky action button hovering above the tab
-                bar, not glued to it. */}
-            <div className="absolute bottom-[68px] left-4 right-4">
-                <div className="w-full rounded-full px-4 py-3 text-center text-[15px] font-semibold shadow-[0px_8px_20px_-4px_rgba(16,24,40,0.18)]"
+            {/* Floating Book class CTA dock — full-width backdrop with a
+                soft gradient fade so scrolled content underneath doesn't
+                peek around the pill. The pill itself sits 16px above the
+                bottom nav so it reads as a sticky action hovering above
+                the tab bar. z-10 keeps the dock above scrolled content. */}
+            <div className="absolute bottom-[52px] left-0 right-0 px-4 pt-6 pb-4 z-10 pointer-events-none"
+                style={{
+                    backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor}00 0%, ${brand.backgroundColor}ee 40%, ${brand.backgroundColor} 100%)`,
+                }}>
+                <div className="w-full rounded-full px-4 py-3 text-center text-[15px] font-semibold shadow-[0px_8px_20px_-4px_rgba(16,24,40,0.18)] pointer-events-auto"
                     style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
                     Book class
                 </div>
             </div>
 
-            {/* Bottom nav */}
-            <div className="absolute bottom-0 left-0 right-0 h-[52px] pb-1.5 flex items-center justify-around"
+            {/* Bottom nav — z-20 so it stacks above the CTA dock + any
+                scrolled content. */}
+            <div className="absolute bottom-0 left-0 right-0 h-[52px] pb-1.5 flex items-center justify-around z-20"
                 style={{
                     backgroundColor: brand.backgroundColor,
                     borderTop: `1px solid ${brand.textColor}11`,
