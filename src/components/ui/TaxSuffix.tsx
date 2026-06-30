@@ -42,6 +42,12 @@ export function TaxSuffix({ category, branchId, className }: TaxSuffixProps) {
     const match = findActiveTaxRuleFor({ taxRules, taxRates }, category, branchId);
     if (!match) return null;
 
+    // Exempt rates suppress the suffix entirely — exempt items don't show
+    // a tax line on the receipt, and surfacing "Inc. 0% tax" would mislead.
+    // Zero-rated still renders ("Inc. 0% tax") because zero-rated items
+    // ARE taxable on record — the receipt should reflect that.
+    if (match.rate.type === "exempt") return null;
+
     return (
         <span className={cn("text-[12px] text-[#667085] whitespace-nowrap", className)}>
             {pricesIncludeTax

@@ -52,7 +52,7 @@ import {
     validatePromoCode, canApplyCustomDiscount, maxCustomDiscountPct,
     type Customer, type PurchaseLineItem,
 } from "@/lib/store";
-import { findActiveTaxRuleFor, computeLineTax, categoryForProductType } from "@/lib/tax-calc";
+import { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effectiveRatePercentage } from "@/lib/tax-calc";
 
 // ─── Catalog adapter ─────────────────────────────────────────────────────────
 //
@@ -221,6 +221,8 @@ function POSInner() {
     const taxRules = useAppStore(s => s.taxRules);
     const taxRates = useAppStore(s => s.taxRates);
     const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
+    // New (Tax module v22): per-line vs per-invoice rounding.
+    const roundingMode = useAppStore(s => s.taxSettings.roundingMode);
 
     // UI state
     const [activeTab, setActiveTab] = useState<TabId>("all");
@@ -501,7 +503,7 @@ function POSInner() {
         if (cart.length === 0 || subtotal <= 0) {
             return { taxAmount: 0, taxRate: 0, taxIncluded: pricesIncludeTax };
         }
-        let totalTax = 0;
+        let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
             const category = categoryForProductType(line.kind);
@@ -512,18 +514,24 @@ function POSInner() {
                 branchId || undefined,
             );
             if (!match) continue;
-            // Allocate this line's share of `afterDiscounts` proportionally
-            // to its pre-discount line total. Promo + custom discounts
-            // applied at the cart level distribute across lines this way.
+            // Honour the new TaxRate.type — Exempt + Zero-rated both resolve
+            // to 0% effective rate. Exempt also suppresses the "first rate"
+            // label (Zero-rated still appears on the receipt as "0% tax").
+            const effectiveRate = effectiveRatePercentage(match.rate);
             const lineRaw = line.unitPrice * line.quantity;
             const lineShare = subtotal > 0 ? lineRaw / subtotal : 0;
             const lineAfter = afterDiscounts * lineShare;
-            const breakdown = computeLineTax(lineAfter, match.rate.ratePercentage, pricesIncludeTax);
-            totalTax += breakdown.taxAed;
-            if (firstRate === 0) firstRate = match.rate.ratePercentage;
+            const breakdown = computeLineTax(lineAfter, effectiveRate, pricesIncludeTax, roundingMode);
+            runningTax += breakdown.taxAed;
+            if (firstRate === 0 && match.rate.type !== "exempt") {
+                firstRate = effectiveRate;
+            }
         }
+        // Per-invoice mode rounds the aggregated tax exactly once; per-line
+        // mode already summed pre-rounded values inside the loop.
+        const totalTax = roundingMode === "per_invoice" ? Math.round(runningTax) : runningTax;
         return { taxAmount: totalTax, taxRate: firstRate, taxIncluded: pricesIncludeTax };
-    }, [cart, subtotal, afterDiscounts, taxRules, taxRates, pricesIncludeTax, branchId]);
+    }, [cart, subtotal, afterDiscounts, taxRules, taxRates, pricesIncludeTax, roundingMode, branchId]);
 
     // In exclusive mode the customer pays subtotal − discount + tax. In
     // inclusive mode the tax was already inside the displayed line prices

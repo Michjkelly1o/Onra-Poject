@@ -192,6 +192,9 @@ import {
     type TaxRateSeed,
     type TaxRateStatusSeed,
     type TaxCalculationModeSeed,
+    type TaxRateKindSeed,
+    type TaxRateTypeSeed,
+    type TaxRoundingModeSeed,
     type TaxSettingsSeed,
     type TaxRuleSeed,
     type TaxRuleCategorySeed,
@@ -1096,6 +1099,9 @@ export interface NotificationSetting {
 
 export type TaxRateStatus = TaxRateStatusSeed;
 export type TaxCalculationMode = TaxCalculationModeSeed;
+export type TaxRateKind = TaxRateKindSeed;
+export type TaxRateType = TaxRateTypeSeed;
+export type TaxRoundingMode = TaxRoundingModeSeed;
 
 /** Camel-cased mirror of `TaxRateSeed`. Drives /admin/settings/tax → Tax
  *  rates list. Phase 4 cross-module wiring: every membership / package /
@@ -1104,15 +1110,21 @@ export interface TaxRate {
     id: string;
     name: string;
     ratePercentage: number;
+    /** VAT vs Income tax bucket. */
+    kind: TaxRateKind;
+    /** Standard / Zero-rated / Exempt — see TaxRateTypeSeed. */
+    type: TaxRateType;
     description?: string;
     calculationMode: TaxCalculationMode;
     status: TaxRateStatus;
     createdAt: string;
 }
 
-/** Studio-wide tax display settings. */
+/** Studio-wide tax display + calculation settings. */
 export interface TaxSettings {
     pricesIncludeTax: boolean;
+    /** Per-line vs per-invoice rounding strategy. */
+    roundingMode: TaxRoundingMode;
 }
 
 export type TaxRuleCategory = TaxRuleCategorySeed;
@@ -2198,6 +2210,8 @@ function taxRateFromSeed(t: TaxRateSeed): TaxRate {
         id: t.id,
         name: t.name,
         ratePercentage: t.rate_percentage,
+        kind: t.kind,
+        type: t.type,
         description: t.description,
         calculationMode: t.calculation_mode,
         status: t.status,
@@ -2206,7 +2220,10 @@ function taxRateFromSeed(t: TaxRateSeed): TaxRate {
 }
 
 function taxSettingsFromSeed(t: TaxSettingsSeed): TaxSettings {
-    return { pricesIncludeTax: t.prices_include_tax };
+    return {
+        pricesIncludeTax: t.prices_include_tax,
+        roundingMode: t.rounding_mode,
+    };
 }
 
 function taxRuleFromSeed(t: TaxRuleSeed): TaxRule {
@@ -2899,6 +2916,9 @@ interface AppState {
     taxSettings: TaxSettings;
     /** Flip the global "Prices include tax" toggle. */
     setPricesIncludeTax: (value: boolean) => void;
+    /** Flip the per-line vs per-invoice rounding mode. Drives the POS +
+     *  customer-checkout `computeTotals` calculation downstream. */
+    setRoundingMode: (mode: TaxRoundingMode) => void;
     /** Append a new tax rate. Auto-generates id + createdAt when not
      *  supplied. Returns the resolved id. (Phase 2 wires the modal to this.) */
     addTaxRate: (input: Omit<TaxRate, "id" | "createdAt"> & { id?: string; createdAt?: string }) => string;
@@ -5137,6 +5157,10 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             taxSettings: { ...state.taxSettings, pricesIncludeTax: value },
         })),
+    setRoundingMode: (mode) =>
+        set(state => ({
+            taxSettings: { ...state.taxSettings, roundingMode: mode },
+        })),
     addTaxRate: (input) => {
         const id = input.id ?? `tax_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         const record: TaxRate = {
@@ -6179,13 +6203,19 @@ export const useAppStore = create<AppState>()(persist(
         // 09–21 weekdays, 10–20 weekends);
         // v21: Branding module rebuild — BrandingSettings gains `logoUrl`
         // + `appIconUrl` + `favIconUrl` + `tertiaryColor` + `typeface`
-        // + `notificationBranding` (per-channel email/whatsapp/sms
-        // toggles). New 3-step Customize design form needs these for
-        // every step to read/write cleanly; without the bump persisted
-        // v20 payloads are missing the new keys and the landing card +
-        // form would surface `undefined`. No migrate needed — the demo
-        // discards the old payload on version mismatch.
-        version: 21,
+        // + `notificationBranding`;
+        // v22: Tax module redesign per Figma 5006:73920 series — TaxRate
+        // gains `kind` (vat | income) + `type` (default | zero_rated |
+        // exempt), TaxSettings gains `roundingMode` (per_line |
+        // per_invoice), TaxRuleCategory gains `appointment` for the new
+        // Services parent group. Seed re-shuffled to 4 rows matching the
+        // Figma examples (Services VAT, Exported services, Financial
+        // services, Pay rate tax). Without the bump persisted v21
+        // payloads miss the new keys and the list filter / Apply tax
+        // rates UI / POS tax calc would surface undefined. No migrate
+        // needed — the demo discards the old payload on version
+        // mismatch.
+        version: 22,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

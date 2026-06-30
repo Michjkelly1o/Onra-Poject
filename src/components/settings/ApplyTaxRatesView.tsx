@@ -24,29 +24,43 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ChevronUp, ChevronDown, Trash02, Plus, Check, XClose,
-    CreditCard02, Package, Gift01, CoinsHand,
-    SlashCircle01,
+    CreditCard02, Package, Gift01, CoinsHand, CalendarCheck01,
+    SlashCircle01, InfoCircle, Lightbulb02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
     useAppStore,
-    type TaxRule, type TaxRuleCategory, type TaxRate,
+    type TaxRule, type TaxRuleCategory, type TaxRate, type TaxRateKind,
 } from "@/lib/store";
 
-// ─── Category metadata (matches Figma 5041-99787) ────────────────────────────
+// ─── Category metadata (matches Figma 5006:73920 / 5041:99307 / 5041:98666) ──
 
 const CATEGORY_META: Record<TaxRuleCategory, {
     title: string;
     Icon: React.FC<{ className?: string }>;
 }> = {
-    membership:     { title: "Membership",              Icon: CreditCard02 },
-    credit_package: { title: "Credit package",          Icon: Package      },
-    gift_card:      { title: "Gift card (redeemed tax)",Icon: Gift01       },
-    pay_rate:       { title: "Pay rate",                Icon: CoinsHand    },
+    membership:     { title: "Membership",               Icon: CreditCard02   },
+    credit_package: { title: "Credit package",           Icon: Package        },
+    appointment:    { title: "Appointment",              Icon: CalendarCheck01 },
+    gift_card:      { title: "Gift card (redeemed tax)", Icon: Gift01         },
+    pay_rate:       { title: "Pay rate",                 Icon: CoinsHand      },
 };
 
-const CATEGORY_ORDER: TaxRuleCategory[] = ["membership", "credit_package", "gift_card", "pay_rate"];
+const CATEGORY_ORDER: TaxRuleCategory[] = [
+    "membership", "credit_package", "appointment", "gift_card", "pay_rate",
+];
+
+/** Which categories live under which top-level tab. The Apply view scopes
+ *  its rendered accordions to one of these arrays based on `props.kind`.
+ *  Membership / Credit package / Appointment also share the "Services"
+ *  parent wrapper card on the VAT tab. */
+const CATEGORIES_BY_KIND: Record<TaxRateKind, TaxRuleCategory[]> = {
+    vat:    ["membership", "credit_package", "appointment", "gift_card"],
+    income: ["pay_rate"],
+};
+
+const SERVICES_SUBCATEGORIES: TaxRuleCategory[] = ["membership", "credit_package", "appointment"];
 
 // ─── Small toggle (sm size, mirrors Figma 5041-99787) ────────────────────────
 
@@ -433,6 +447,7 @@ function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, 
 function CategoryAccordion({
     category, rules, rates, branchOptions, open, onToggleOpen,
     onAddRule, onUpdateRule, onToggleRule, onDeleteRule, onCreateRate,
+    nested = false,
 }: {
     category: TaxRuleCategory;
     rules: TaxRule[];
@@ -445,24 +460,45 @@ function CategoryAccordion({
     onToggleRule: (id: string, next: boolean) => void;
     onDeleteRule: (rule: TaxRule) => void;
     onCreateRate: () => void;
+    /** When true, render WITHOUT the outer border + reduced padding —
+     *  used inside the Services parent card where the outer chrome is
+     *  owned by the parent. Header is also rendered slimmer (smaller
+     *  avatar / no border around the icon). */
+    nested?: boolean;
 }) {
     const meta = CATEGORY_META[category];
     const Icon = meta.Icon;
     return (
-        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-4 flex flex-col gap-4">
+        <div className={cn(
+            "flex flex-col gap-3",
+            nested
+                ? "pt-1"
+                : "border-1 border-[#e4e7ec] rounded-[16px] p-4 gap-4",
+        )}>
             {/* Header — clickable to expand/collapse */}
             <button type="button" onClick={onToggleOpen}
                 className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
-                    <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-[#475467]" />
-                        <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
-                    </div>
+                <div className="flex items-center gap-2.5">
+                    {nested ? (
+                        <Icon className="w-4 h-4 text-[#475467] shrink-0" />
+                    ) : (
+                        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
+                            <Icon className="w-5 h-5 text-[#475467]" />
+                            <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
+                        </div>
+                    )}
                     <div className="flex flex-col items-start text-left">
-                        <span className="text-[14px] font-medium text-[#101828] leading-[20px]">{meta.title}</span>
-                        <span className="text-[14px] text-[#667085] leading-[20px]">
-                            {rules.length} tax rule{rules.length === 1 ? "" : "s"}
+                        <span className={cn(
+                            "font-medium text-[#101828]",
+                            nested ? "text-[14px] leading-[20px]" : "text-[14px] leading-[20px]",
+                        )}>
+                            {meta.title}
                         </span>
+                        {!nested && (
+                            <span className="text-[14px] text-[#667085] leading-[20px]">
+                                {rules.length} tax rule{rules.length === 1 ? "" : "s"}
+                            </span>
+                        )}
                     </div>
                 </div>
                 {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
@@ -505,12 +541,17 @@ function CategoryAccordion({
 // ─── Top-level view ──────────────────────────────────────────────────────────
 
 export interface ApplyTaxRatesViewProps {
+    /** Top-level tab kind — drives which categories render. */
+    kind: TaxRateKind;
+    /** When set, render ONLY this single category (used by the Income tax
+     *  inline Pay rate editor at the top of the page). */
+    showOnly?: TaxRuleCategory;
     /** Called when the user clicks "+ Add new tax rate" inside the rate
      *  dropdown. Wired to the page's create-rate modal. */
     onCreateRate: () => void;
 }
 
-export function ApplyTaxRatesView({ onCreateRate }: ApplyTaxRatesViewProps) {
+export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRatesViewProps) {
     const taxRates       = useAppStore(s => s.taxRates);
     const taxRules       = useAppStore(s => s.taxRules);
     const branches       = useAppStore(s => s.branches);
@@ -520,10 +561,14 @@ export function ApplyTaxRatesView({ onCreateRate }: ApplyTaxRatesViewProps) {
     const deleteTaxRule  = useAppStore(s => s.deleteTaxRule);
     const showToast      = useAppStore(s => s.showToast);
 
-    // All four categories start expanded — matches the Figma demo state.
+    // Every category starts expanded — matches the Figma demo state.
     const [openCats, setOpenCats] = useState<Record<TaxRuleCategory, boolean>>({
-        membership: true, credit_package: true, gift_card: true, pay_rate: true,
+        membership: true, credit_package: true, appointment: true, gift_card: true, pay_rate: true,
     });
+    /** Services parent card open state — independent of its sub-cards
+     *  so the admin can collapse the whole Services group while leaving
+     *  individual sub-categories' open state intact. */
+    const [servicesOpen, setServicesOpen] = useState(true);
     const [pendingDelete, setPendingDelete] = useState<TaxRule | null>(null);
     /** Toggle-flip confirmation — captures the rule + the target action so the
      *  modal can show the right copy and the confirm handler can apply it. */
@@ -540,10 +585,18 @@ export function ApplyTaxRatesView({ onCreateRate }: ApplyTaxRatesViewProps) {
         [branches],
     );
 
+    // Rates filtered by kind — VAT rules can only pick VAT rates and vice
+    // versa. Keeps the cross-pollination guard tight without needing extra
+    // validation in the store.
+    const ratesForKind = useMemo(
+        () => taxRates.filter(r => r.kind === kind),
+        [taxRates, kind],
+    );
+
     // Group rules by category, preserving createdAt order.
     const rulesByCategory = useMemo(() => {
         const byCat: Record<TaxRuleCategory, TaxRule[]> = {
-            membership: [], credit_package: [], gift_card: [], pay_rate: [],
+            membership: [], credit_package: [], appointment: [], gift_card: [], pay_rate: [],
         };
         for (const r of taxRules) {
             byCat[r.category].push(r);
@@ -602,6 +655,48 @@ export function ApplyTaxRatesView({ onCreateRate }: ApplyTaxRatesViewProps) {
         setPendingDelete(null);
     }
 
+    // ── Render switch ──────────────────────────────────────────────────────
+    // showOnly mode renders a single category accordion (no outer wrapper)
+    // — used by the Income tax tab's inline Pay rate editor at the top of
+    // the page. Otherwise we render the full Apply tax rates card with the
+    // Services parent + Gift card (VAT) or Pay rate (Income).
+
+    const showSingleCategory = showOnly && rulesByCategory[showOnly] !== undefined;
+
+    if (showSingleCategory) {
+        const cat = showOnly!;
+        return (
+            <>
+                <CategoryAccordion
+                    category={cat}
+                    rules={rulesByCategory[cat]}
+                    rates={ratesForKind}
+                    branchOptions={branchOptions}
+                    open={openCats[cat]}
+                    onToggleOpen={() => setOpenCats(p => ({ ...p, [cat]: !p[cat] }))}
+                    onAddRule={() => handleAddRule(cat)}
+                    onUpdateRule={updateTaxRule}
+                    onToggleRule={handleToggleRule}
+                    onDeleteRule={rule => setPendingDelete(rule)}
+                    onCreateRate={onCreateRate}
+                />
+                {pendingDelete && (
+                    <DeleteTaxRuleModal
+                        onConfirm={handleDeleteConfirmed}
+                        onCancel={() => setPendingDelete(null)}
+                    />
+                )}
+                {pendingStatus && (
+                    <RuleStatusModal
+                        action={pendingStatus.action}
+                        onConfirm={handleStatusConfirmed}
+                        onCancel={() => setPendingStatus(null)}
+                    />
+                )}
+            </>
+        );
+    }
+
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 min-h-[760px]">
             {/* Header */}
@@ -612,22 +707,68 @@ export function ApplyTaxRatesView({ onCreateRate }: ApplyTaxRatesViewProps) {
 
             {/* Category stack */}
             <div className="flex flex-col gap-4">
-                {CATEGORY_ORDER.map(cat => (
+                {kind === "vat" && (
+                    <>
+                        {/* Services parent card containing 3 sub-categories
+                            (Membership / Credit package / Appointment).
+                            The parent owns the outer border + the "All
+                            service categories inherit VAT…" info banner;
+                            each sub-row provides its own header + rules
+                            list + Add another rule link without an inner
+                            border. */}
+                        <ServicesParentCard
+                            open={servicesOpen}
+                            onToggleOpen={() => setServicesOpen(p => !p)}
+                            servicesRuleCount={
+                                SERVICES_SUBCATEGORIES.reduce(
+                                    (n, c) => n + rulesByCategory[c].length, 0,
+                                )
+                            }
+                            inheritedRate={ratesForKind.find(r =>
+                                r.type === "default" && r.status === "active"
+                            )?.ratePercentage}
+                        >
+                            {SERVICES_SUBCATEGORIES.map(cat => (
+                                <CategoryAccordion
+                                    key={cat}
+                                    category={cat}
+                                    rules={rulesByCategory[cat]}
+                                    rates={ratesForKind}
+                                    branchOptions={branchOptions}
+                                    open={openCats[cat]}
+                                    onToggleOpen={() => setOpenCats(p => ({ ...p, [cat]: !p[cat] }))}
+                                    onAddRule={() => handleAddRule(cat)}
+                                    onUpdateRule={updateTaxRule}
+                                    onToggleRule={handleToggleRule}
+                                    onDeleteRule={rule => setPendingDelete(rule)}
+                                    onCreateRate={onCreateRate}
+                                    nested
+                                />
+                            ))}
+                        </ServicesParentCard>
+
+                        {/* Gift card (redeemed tax) — informational card. No
+                            editable rate; gift cards are stored-value
+                            transfers and tax applies at REDEMPTION instead. */}
+                        <GiftCardRedeemedCard />
+                    </>
+                )}
+
+                {kind === "income" && (
                     <CategoryAccordion
-                        key={cat}
-                        category={cat}
-                        rules={rulesByCategory[cat]}
-                        rates={taxRates}
+                        category="pay_rate"
+                        rules={rulesByCategory.pay_rate}
+                        rates={ratesForKind}
                         branchOptions={branchOptions}
-                        open={openCats[cat]}
-                        onToggleOpen={() => setOpenCats(p => ({ ...p, [cat]: !p[cat] }))}
-                        onAddRule={() => handleAddRule(cat)}
+                        open={openCats.pay_rate}
+                        onToggleOpen={() => setOpenCats(p => ({ ...p, pay_rate: !p.pay_rate }))}
+                        onAddRule={() => handleAddRule("pay_rate")}
                         onUpdateRule={updateTaxRule}
                         onToggleRule={handleToggleRule}
                         onDeleteRule={rule => setPendingDelete(rule)}
                         onCreateRate={onCreateRate}
                     />
-                ))}
+                )}
             </div>
 
             {pendingDelete && (
@@ -643,6 +784,91 @@ export function ApplyTaxRatesView({ onCreateRate }: ApplyTaxRatesViewProps) {
                     onCancel={() => setPendingStatus(null)}
                 />
             )}
+        </div>
+    );
+}
+
+// ─── Services parent card ────────────────────────────────────────────────────
+// Wraps the 3 sub-category accordions (Membership / Credit package /
+// Appointment) per Figma 5041:99307. Provides the outer card chrome + the
+// "All service categories inherit VAT X% unless overridden below." info
+// banner at the bottom. Children are rendered in `nested` mode (no inner
+// border on their own accordions).
+function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRate, children }: {
+    open: boolean;
+    onToggleOpen: () => void;
+    servicesRuleCount: number;
+    inheritedRate: number | undefined;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-4 flex flex-col gap-4">
+            {/* Header — clickable to expand/collapse */}
+            <button type="button" onClick={onToggleOpen}
+                className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                    <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
+                        <Package className="w-5 h-5 text-[#475467]" />
+                        <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
+                    </div>
+                    <div className="flex flex-col items-start text-left">
+                        <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Services</span>
+                        <span className="text-[12px] text-[#667085] leading-[18px]">
+                            Memberships · Credit packages · Appointments
+                        </span>
+                    </div>
+                </div>
+                {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+            </button>
+
+            {open && (
+                <div className="flex flex-col gap-4">
+                    {children}
+                    {/* Info banner — inheritance hint. Hidden when there are
+                        no rules yet (the rate inheritance only makes sense
+                        once at least one rule is configured). */}
+                    {servicesRuleCount > 0 && inheritedRate !== undefined && (
+                        <div className="flex items-center gap-3 px-4 py-3 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px]">
+                            <Lightbulb02 className="w-4 h-4 text-[#475467] shrink-0" />
+                            <p className="text-[13px] text-[#475467] leading-[18px]">
+                                All service categories inherit VAT {inheritedRate}% unless overridden below.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Gift card (redeemed tax) info card ──────────────────────────────────────
+// Per Figma 5041:99307 — gift cards are stored-value transfers; tax
+// applies at REDEMPTION (when the card is spent on a taxable category
+// above), not at purchase. This card surfaces the explanation as a
+// non-editable info row with a "Tax at redemption" badge in the corner.
+function GiftCardRedeemedCard() {
+    return (
+        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
+                    <Gift01 className="w-5 h-5 text-[#475467]" />
+                    <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                            Gift card (redeemed tax)
+                        </span>
+                        <InfoCircle className="w-4 h-4 text-[#98a2b3]" aria-label="info" />
+                    </div>
+                    <span className="text-[12px] text-[#667085] leading-[18px]">
+                        Taxed when redeemed, not at purchase
+                    </span>
+                </div>
+            </div>
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] shrink-0 mt-0.5">
+                Tax at redemption
+            </span>
         </div>
     );
 }

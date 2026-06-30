@@ -38,6 +38,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     FilterLines, Plus, DotsVertical, ChevronLeft, Edit02, Trash01, Trash02,
     Archive, Download01, XClose, RefreshCcw01, SlashCircle01, Check, Percent03,
+    Receipt,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { TaxRateModal } from "@/components/settings/TaxRateModal";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
-import { useAppStore, type TaxRate, type TaxRateStatus } from "@/lib/store";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { useAppStore, type TaxRate, type TaxRateStatus, type TaxRateKind, type TaxRoundingMode } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -66,6 +68,21 @@ const STATUS_LABEL: Record<TaxRateStatus, string> = {
 
 const STATUS_ORDER: Record<TaxRateStatus, number> = {
     active: 0, inactive: 1, archived: 2,
+};
+
+/** Display copy for the new Type column. Matches Figma 5006:73920 — note
+ *  "Standard" (not "Default") for the user-facing label even though the
+ *  underlying key is "default". The create modal uses "Default" on the
+ *  card per the modal Figma; the list column reads "Standard" because
+ *  that's the standard accounting term. */
+const TYPE_LABEL: Record<"default" | "zero_rated" | "exempt", string> = {
+    default:    "Standard",
+    zero_rated: "Zero-rated",
+    exempt:     "Exempt",
+};
+
+const TYPE_ORDER: Record<"default" | "zero_rated" | "exempt", number> = {
+    default: 0, zero_rated: 1, exempt: 2,
 };
 
 type StatusFilter = TaxRateStatus | null;
@@ -355,13 +372,15 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
 function exportTaxRatesCsv(rows: TaxRate[]) {
-    const headers = ["Tax name", "Tax rate (%)", "Calculation mode", "Status", "Description", "Created"];
+    const headers = ["Tax name", "Kind", "Type", "Tax rate (%)", "Calculation mode", "Status", "Description", "Created"];
     const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
     const lines = [headers.join(",")];
     for (const r of rows) {
         lines.push([
             r.name,
-            String(r.ratePercentage),
+            r.kind,
+            r.type,
+            r.type === "exempt" ? "" : String(r.ratePercentage),
             r.calculationMode,
             r.status,
             r.description ?? "",
@@ -391,11 +410,18 @@ export default function TaxPage() {
     const taxRules           = useAppStore(s => s.taxRules);
     const taxSettings        = useAppStore(s => s.taxSettings);
     const setPricesIncludeTax = useAppStore(s => s.setPricesIncludeTax);
+    const setRoundingMode     = useAppStore(s => s.setRoundingMode);
     const setTaxRatesStatus  = useAppStore(s => s.setTaxRatesStatus);
     const deleteTaxRates     = useAppStore(s => s.deleteTaxRates);
     const showToast          = useAppStore(s => s.showToast);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
+    // Top-level tab kind — VAT vs Income tax. Drives filtering of taxRates
+    // by `rate.kind` for the list view, the categories ApplyTaxRatesView
+    // renders, and the create modal's default kind. Income tax also swaps
+    // the "Prices include tax" + "Rounding" containers for an
+    // "Income / payroll tax" Pay rate editor.
+    const [topKind, setTopKind] = useState<TaxRateKind>("vat");
     const [tab, setTab] = useState<TabId>("list");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -413,7 +439,7 @@ export default function TaxPage() {
         | null
     >(null);
 
-    useEffect(() => { setPage(1); }, [statusFilter, tab]);
+    useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [statusFilter, tab, topKind]);
 
     // ─── Apply filter + sort ────────────────────────────────────────────────
     //
@@ -432,17 +458,22 @@ export default function TaxPage() {
 
     const filtered = useMemo(() => {
         return taxRates
+            // Filter by the active top-level tab (VAT vs Income tax)
+            // before status — rates from the OTHER tab should never
+            // appear in this surface even if they're active.
+            .filter(r => r.kind === topKind)
             .filter(r => statusFilter === null ? true : r.status === statusFilter)
             .sort((a, b) => {
                 const s = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
                 if (s !== 0) return s;
                 return a.name.localeCompare(b.name);
             });
-    }, [taxRates, statusFilter]);
+    }, [taxRates, statusFilter, topKind]);
 
-    // ── Tax rate sort — Name / Rate (numeric) / Status. ──
+    // ── Tax rate sort — Name / Type / Rate (numeric) / Status. ──
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<TaxRate>(filtered, {
         name:   (a, b) => a.name.localeCompare(b.name),
+        type:   (a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type],
         rate:   (a, b) => a.ratePercentage - b.ratePercentage,
         status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
     });
@@ -620,7 +651,18 @@ export default function TaxPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            {/* ── "Prices include tax" container (Figma 5006-73920) ─────────── */}
+            {/* ── Top-level VAT vs Income tax tabs (Figma 5006:73920 / 5041:98666) */}
+            <SegmentedTabs
+                tabs={[
+                    { key: "vat",    label: "VAT"        },
+                    { key: "income", label: "Income tax" },
+                ]}
+                activeKey={topKind}
+                onChange={k => setTopKind(k as TaxRateKind)}
+            />
+
+            {/* ── VAT-only container: "Prices include tax" + rounding mode ─── */}
+            {topKind === "vat" && (
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-6 p-6">
                 {/* Toggle row */}
                 <div className="flex items-center gap-4">
@@ -671,7 +713,79 @@ export default function TaxPage() {
                         </table>
                     </div>
                 </div>
+
+                {/* Tax calculation & rounding — Per line item vs Per invoice
+                    total. Drives `taxSettings.roundingMode` which the POS
+                    checkout + customer appointment checkout consume via
+                    `computeTotals(..., { roundingMode })`. */}
+                <div className="flex flex-col gap-2">
+                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Tax calculation &amp; rounding</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        {([
+                            { key: "per_line"    as const, title: "Per line item",     subtitle: "Round tax on each line, then total." },
+                            { key: "per_invoice" as const, title: "Per invoice total", subtitle: "Total lines, then calculate tax once." },
+                        ]).map(opt => {
+                            const selected = taxSettings.roundingMode === opt.key;
+                            return (
+                                <button key={opt.key} type="button"
+                                    onClick={() => setRoundingMode(opt.key)}
+                                    className={cn(
+                                        "flex items-start gap-3 p-4 rounded-[12px] text-left transition-colors w-full",
+                                        selected
+                                            ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                            : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
+                                        selected ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]" : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                    )}>
+                                        <Receipt className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
+                                        <p className="text-[14px] text-[#475467] leading-[20px] mt-0.5">{opt.subtitle}</p>
+                                    </div>
+                                    <div className={cn(
+                                        "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
+                                        selected ? "bg-[#658774]" : "border-1 border-[#d0d5dd]",
+                                    )}>
+                                        {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
+            )}
+
+            {/* ── Income-tax-only container: Pay rate editor + Apply summary ──
+                Per Figma 5041:98666 — when "Income tax" is the active top-
+                level tab, the page leads with an inline Pay rate tax rule
+                editor (the only category that maps to income tax in this
+                prototype) followed by the same Tax rates list / Apply tax
+                rates sub-tabs filtered to kind=income. */}
+            {topKind === "income" && (
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-4 p-6">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">Income / payroll tax</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            Apply withholding rates to staff pay where required.
+                        </p>
+                    </div>
+                    {/* The Pay rate editor is a thin wrapper around the same
+                        ApplyTaxRatesView component used by the sub-tab — it
+                        renders just the pay_rate accordion in expanded
+                        state. This keeps a single source of truth for the
+                        rule-row mutators. */}
+                    <ApplyTaxRatesView
+                        kind="income"
+                        showOnly="pay_rate"
+                        onCreateRate={() => setTaxModal({ mode: "create" })}
+                    />
+                </div>
+            )}
 
             {/* ── Tab strip ─────────────────────────────────────────────────── */}
             <div className="border-b border-[#e4e7ec]">
@@ -738,7 +852,10 @@ export default function TaxPage() {
                                             <th className={TH}>
                                                 <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax name</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[160px]")}>
+                                            <th className={cn(TH, "w-[140px]")}>
+                                                <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[140px]")}>
                                                 <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax rate</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[140px]")}>
@@ -766,7 +883,13 @@ export default function TaxPage() {
                                                             <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                                         </div>
                                                     </td>
-                                                    <td className={cn(TD, "text-[#475467]")}>{formatPct(r.ratePercentage)}</td>
+                                                    <td className={cn(TD, "text-[#475467]")}>{TYPE_LABEL[r.type]}</td>
+                                                    {/* Exempt rates carry no charge — render an em-dash
+                                                        instead of "0%" so the receipt-side semantic
+                                                        (no tax line at all) reads at a glance. */}
+                                                    <td className={cn(TD, "text-[#475467]")}>
+                                                        {r.type === "exempt" ? "—" : formatPct(r.ratePercentage)}
+                                                    </td>
                                                     <td className={TD}><StatusBadge type="tax-rate" status={r.status} /></td>
                                                     <td className={TD}>
                                                         {(() => {
@@ -810,10 +933,16 @@ export default function TaxPage() {
                     </div>
                 </div>
             ) : (
-                // Apply tax rates — full Phase 3 view. Clicking "+ Add new
-                // tax rate" inside any rate dropdown opens the same create
-                // modal as the "Add new" button on the Tax rates list tab.
-                <ApplyTaxRatesView onCreateRate={() => setTaxModal({ mode: "create" })} />
+                // Apply tax rates — scoped to the active top-level kind so
+                // the VAT tab shows the Services parent (membership / credit
+                // package / appointment) + Gift card, while the Income tax
+                // tab shows Pay rate only. Clicking "+ Add new tax rate"
+                // inside any rate dropdown opens the same create modal as
+                // the "Add new" button on the Tax rates list tab.
+                <ApplyTaxRatesView
+                    kind={topKind}
+                    onCreateRate={() => setTaxModal({ mode: "create" })}
+                />
             )}
 
             {/* Action modal */}
@@ -836,11 +965,15 @@ export default function TaxPage() {
                 );
             })()}
 
-            {/* Add / Edit tax rate modal — shared form, Figma 5006-106235 */}
+            {/* Add / Edit tax rate modal — shared form, Figma 5006-106235.
+                `defaultKind` is the current top-level tab so creates land
+                in the right bucket; edits read the kind from the existing
+                row and the modal locks it. */}
             {taxModal && (
                 <TaxRateModal
                     mode={taxModal.mode}
                     existing={taxModal.mode === "edit" ? taxModal.existing : undefined}
+                    defaultKind={topKind}
                     onClose={() => setTaxModal(null)}
                     onSubmitted={saved => handleTaxModalSubmitted(saved, taxModal.mode)}
                 />

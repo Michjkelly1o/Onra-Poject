@@ -2,48 +2,71 @@
 // Onra Studio — `tax_rates` seed (PRD 11 §10)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Mirrors Figma `5006-73991` exactly — the same three demo rows the design
-// shows in the Tax rates list table.
+// 4 demo rows mirroring Figma 5006:73920 (the new VAT-tab Tax rates list):
 //
-// Each row pairs with the global `tax_settings.prices_include_tax` toggle
-// (modelled separately so the toggle can flip independently of any single
-// rate's `calculation_mode` override).
+//   • Services VAT          — Standard (Default), VAT 5%, kind=vat
+//   • Exported services     — Zero-rated 0%, kind=vat
+//   • Financial services    — Exempt (no rate), kind=vat
+//   • Pay rate tax          — Standard (Default), 5%, kind=income
 //
-// `usage_count` is NOT stored here — it's derived live in the page from a
-// future `tax_rules` join (Phase 3+). Until then every rate is treated as
-// holder-free, so the row-action ⋮ menu offers Delete (not Deactivate)
-// for active rows.
+// The `kind` field drives the VAT vs Income tax top-level tabs on
+// /admin/settings/tax. The `type` field drives the new "Type" column on
+// the list (Standard / Zero-rated / Exempt) and the conditional Tax rate
+// input on the create modal.
 //
-// FK: none yet. Phase 4 adds `memberships.tax_rate_id`,
-//     `packages.tax_rate_id`, `gift_card_designs.tax_rate_id`,
-//     `pay_rates.tax_rate_id` → `tax_rates.id`.
+// `usage_count` is NOT stored here — it's derived live in the page from
+// the `tax_rules` join. The row-action ⋮ menu offers Delete (not
+// Deactivate) only when the rule join is empty.
+//
+// FK chain:
+//   memberships.tax_rate_id        → tax_rates.id  (Services VAT)
+//   packages.tax_rate_id           → tax_rates.id  (Services VAT)
+//   gift_card_designs.tax_rate_id  → tax_rates.id  (tax at redemption — see notes)
+//   pay_rates.tax_rate_id          → tax_rates.id  (Pay rate tax — income kind)
 
 import type { TaxRateSeed } from "./_types";
 
 export const tax_rates: TaxRateSeed[] = [
     {
-        id: "tax_credit_package",
-        name: "Credit package tax",
-        rate_percentage: 10,
-        description: "Applied to credit package sales.",
+        id: "tax_services_vat",
+        name: "Services VAT",
+        rate_percentage: 5,
+        kind: "vat",
+        type: "default",
+        description: "Standard VAT applied to membership, credit package, and appointment sales.",
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-10T09:00:00Z",
     },
     {
-        id: "tax_pay_rate",
-        name: "Pay rate tax",
-        rate_percentage: 5,
-        description: "Withheld on instructor pay rate calculations.",
+        id: "tax_exported_services",
+        name: "Exported services",
+        rate_percentage: 0,
+        kind: "vat",
+        type: "zero_rated",
+        description: "Services delivered to overseas customers — taxable on record but 0% charge.",
+        calculation_mode: "exclusive",
+        status: "active",
+        created_at: "2026-01-11T09:00:00Z",
+    },
+    {
+        id: "tax_financial_services",
+        name: "Financial services",
+        rate_percentage: 0,
+        kind: "vat",
+        type: "exempt",
+        description: "Financial services are exempt from VAT — no tax line on the receipt.",
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-12T09:00:00Z",
     },
     {
-        id: "tax_membership",
-        name: "Membership tax",
-        rate_percentage: 10,
-        description: "Applied to membership sales.",
+        id: "tax_pay_rate",
+        name: "Pay rate tax",
+        rate_percentage: 5,
+        kind: "income",
+        type: "default",
+        description: "Income/withholding tax applied to instructor pay rate calculations.",
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-15T09:00:00Z",

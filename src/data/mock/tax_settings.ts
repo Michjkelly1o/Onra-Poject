@@ -21,4 +21,11 @@ export const tax_settings: TaxSettingsSeed = {
     // is anchored to inclusive, so we ship inclusive for the demo and let
     // the user flip via the toggle.
     prices_include_tax: true,
+    // Figma 5006:73920 shows "Per line item" selected by default. This is
+    // the safer choice for multi-line carts — every receipt line reads
+    // cleanly, and the rounding drift on the invoice total stays within
+    // 1-2 fil. Admins can flip to "Per invoice total" via the radio for
+    // workflows that prefer un-rounded line entries + a single rounded
+    // invoice total.
+    rounding_mode: "per_line",
 };

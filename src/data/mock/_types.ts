@@ -1703,24 +1703,63 @@ export type TaxRateStatusSeed = "active" | "inactive" | "archived";
  *  toggle when set. PRD 11 §10.3 ("Inclusive / Exclusive per rate override"). */
 export type TaxCalculationModeSeed = "exclusive" | "inclusive";
 
+/** Top-level tax tab the rate belongs to:
+ *    • "vat"    — sales tax / VAT charged on products + services. Default.
+ *    • "income" — withholding / payroll tax applied to staff pay rates.
+ *  Drives the VAT vs Income tax top-level tabs on /admin/settings/tax. */
+export type TaxRateKindSeed = "vat" | "income";
+
+/** Tax-rate behaviour per Figma 5006:106235 (Add new tax rate modal):
+ *    • "default"     — Standard rate, applies a configurable % to the line.
+ *    • "zero_rated"  — 0% applied but the transaction is still taxable
+ *                       (the customer sees "0% tax" on the receipt). Useful
+ *                       for exported services that must remain on the
+ *                       tax record but carry no charge.
+ *    • "exempt"      — NOT subject to tax. No rate, no line on the receipt.
+ *  Drives the Tax rate column on the list (Standard %, 0%, "—") and the
+ *  conditional Tax rate input on the create modal. */
+export type TaxRateTypeSeed = "default" | "zero_rated" | "exempt";
+
 /** One row per configured tax rate. Lives in /admin/settings/tax → Tax rates
  *  list. Each row gets applied to one or more product categories via
  *  `tax_rules` in Phase 3 — the `usage_count` shown in the row-action
  *  Delete↔Deactivate swap is derived live from that join.
  *
- *  FK: none yet. Phase 4 wires `memberships.tax_rate_id` /
- *      `packages.tax_rate_id` / `gift_card_designs.tax_rate_id` /
- *      `pay_rates.tax_rate_id` → `tax_rates.id`. */
+ *  FK: `memberships.tax_rate_id` / `packages.tax_rate_id` /
+ *      `gift_card_designs.tax_rate_id` / `pay_rates.tax_rate_id` →
+ *      `tax_rates.id`. */
 export interface TaxRateSeed {
     id: string;
     name: string;
+    /** Required for `type="default"` (admin enters a %). 0 for
+     *  `type="zero_rated"`. Omitted/0 for `type="exempt"` — the rate
+     *  has no charge so callers must use the `type` flag, not the
+     *  numeric value, when deciding whether to apply tax. */
     rate_percentage: number;
+    /** VAT vs Income tax bucket. Drives the top-level tabs on the Tax
+     *  settings page + filters Apply tax rate eligibility (income-tax
+     *  rates can only attach to `pay_rate` rules, VAT rates to
+     *  membership/credit_package/appointment/gift_card rules). */
+    kind: TaxRateKindSeed;
+    /** Standard / Zero-rated / Exempt — see TaxRateTypeSeed. */
+    type: TaxRateTypeSeed;
     description?: string;
     /** Per-rate override of the global `prices_include_tax` toggle. */
     calculation_mode: TaxCalculationModeSeed;
     status: TaxRateStatusSeed;
     created_at: string;
 }
+
+/** Per-invoice rounding strategy for the tax line on a multi-line cart:
+ *    • "per_line"    — round each line's tax independently then sum (default;
+ *                       larger carts may show 1-2 fil rounding drift but
+ *                       every line on the receipt reads cleanly).
+ *    • "per_invoice" — sum the subtotal first, then compute + round tax
+ *                       once. Per-line receipt entries show un-rounded
+ *                       intermediate values; the invoice total is the
+ *                       only rounded number.
+ *  Drives the Tax calculation & rounding radio on Figma 5006:73920. */
+export type TaxRoundingModeSeed = "per_line" | "per_invoice";
 
 /** Studio-wide tax settings. Currently a single row — modelled as an
  *  interface so future fields (`apply_to_all_products_by_default`, etc.) can
@@ -1729,15 +1768,35 @@ export interface TaxSettingsSeed {
     /** Global default — when true, all prices already include tax (PRD §10.1
      *  "Tax inclusive"). When false, tax is added at checkout. */
     prices_include_tax: boolean;
+    /** Per-line vs per-invoice rounding — see TaxRoundingModeSeed. */
+    rounding_mode: TaxRoundingModeSeed;
 }
 
 // ─── Tax rules (Apply tax rates tab — PRD 11 §10.4 / Phase 3) ────────────────
 
 /** Which product category a tax rule applies to. The Apply tax rates tab
- *  groups all rules under these four predefined categories (Figma 5041-99787). */
+ *  groups these under TWO parent buckets in the UI:
+ *
+ *    Services (VAT tab):
+ *      • "membership"     — Membership product sales
+ *      • "credit_package" — Credit/class package sales
+ *      • "appointment"    — Appointment service bookings (post-Module-13
+ *                            currency-priced services). New for Figma
+ *                            5006:73920 / 5041:99307.
+ *    Gift card (VAT tab):
+ *      • "gift_card"      — Renders as "Tax at redemption" — gift card
+ *                            sales are stored-value transfers (no tax at
+ *                            purchase); tax applies when the card is
+ *                            redeemed on a taxable category above.
+ *    Pay rate (Income tax tab):
+ *      • "pay_rate"       — Withholding on staff pay. Moves to the
+ *                            Income tax tab in the new design — VAT and
+ *                            Income tax are kept separate so admins can
+ *                            mix the two without cross-pollination. */
 export type TaxRuleCategorySeed =
     | "membership"
     | "credit_package"
+    | "appointment"
     | "gift_card"
     | "pay_rate";
 

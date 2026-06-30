@@ -49,6 +49,10 @@ function ScheduleCheckoutInner() {
     const taxRules = useAppStore(s => s.taxRules);
     const taxRates = useAppStore(s => s.taxRates);
     const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
+    // New (Tax module v22): per-line vs per-invoice rounding. Drives whether
+    // each line's tax is rounded before summing (per_line) or summed raw
+    // then rounded once (per_invoice). Configured in /admin/settings/tax.
+    const roundingMode = useAppStore(s => s.taxSettings.roundingMode);
     const classSchedules = useAppStore(s => s.classSchedules);
     // Phase 3 — same subscription as /admin/pos/checkout. Hides the Card /
     // Apple Pay / Google Pay tiles when their provider isn't connected,
@@ -105,7 +109,7 @@ function ScheduleCheckoutInner() {
         pendingPurchase.items,
         pendingPurchase.discountPercent,
         pendingPurchase.promoDiscountAed,
-        { taxRules, taxRates, pricesIncludeTax, branchId },
+        { taxRules, taxRates, pricesIncludeTax, roundingMode, branchId },
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);

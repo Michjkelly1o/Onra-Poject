@@ -758,6 +758,9 @@ export function computeTotals(
         taxRules: import("@/lib/store").TaxRule[];
         taxRates: import("@/lib/store").TaxRate[];
         pricesIncludeTax: boolean;
+        /** New (Tax module v22): per-line vs per-invoice rounding strategy.
+         *  Optional for back-compat — defaults to "per_line" if omitted. */
+        roundingMode?: import("@/lib/store").TaxRoundingMode;
         branchId?: string;
     },
 ) {
@@ -776,25 +779,41 @@ export function computeTotals(
 
     // Per-line tax (matches the POS page's algorithm). Imports kept lazy so
     // this helper stays usable from anywhere without an /admin store import.
-    const { findActiveTaxRuleFor, computeLineTax, categoryForProductType } = require("@/lib/tax-calc") as typeof import("@/lib/tax-calc");
-    let totalTax = 0;
+    const { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effectiveRatePercentage } =
+        require("@/lib/tax-calc") as typeof import("@/lib/tax-calc");
+
+    const roundingMode = taxContext.roundingMode ?? "per_line";
+    const lineTaxes: number[] = [];
     let firstRate = 0;
     for (const item of items) {
         const category = categoryForProductType(item.productType);
-        if (!category) continue;
+        if (!category) { lineTaxes.push(0); continue; }
         const match = findActiveTaxRuleFor(
             { taxRules: taxContext.taxRules, taxRates: taxContext.taxRates },
             category,
             taxContext.branchId,
         );
-        if (!match) continue;
+        if (!match) { lineTaxes.push(0); continue; }
+        // Honour the new TaxRate.type — Exempt + Zero-rated both resolve to
+        // 0%, but only Exempt SUPPRESSES the receipt line. Zero-rated still
+        // counts as taxable (the customer's receipt should show 0% tax).
+        const effectiveRate = effectiveRatePercentage(match.rate);
         const lineRaw = item.unitPrice * item.quantity;
         const lineShare = subtotal > 0 ? lineRaw / subtotal : 0;
         const lineAfter = afterDiscounts * lineShare;
-        const breakdown = computeLineTax(lineAfter, match.rate.ratePercentage, taxContext.pricesIncludeTax);
-        totalTax += breakdown.taxAed;
-        if (firstRate === 0) firstRate = match.rate.ratePercentage;
+        const breakdown = computeLineTax(lineAfter, effectiveRate, taxContext.pricesIncludeTax, roundingMode);
+        lineTaxes.push(breakdown.taxAed);
+        // First non-Exempt rate drives the displayed rate label (Exempt
+        // rates carry 0% and shouldn't surface "0% tax" on the receipt).
+        if (firstRate === 0 && match.rate.type !== "exempt") {
+            firstRate = effectiveRate;
+        }
     }
+
+    // Aggregate. Per-invoice mode rounds the sum exactly once; per-line
+    // mode summed already-rounded values inside the loop above.
+    const rawTotalTax = lineTaxes.reduce((a, b) => a + b, 0);
+    const totalTax = roundingMode === "per_invoice" ? Math.round(rawTotalTax) : rawTotalTax;
 
     // Inclusive: tax was already baked into prices, total stays at afterDiscounts.
     // Exclusive: tax is added on top.
