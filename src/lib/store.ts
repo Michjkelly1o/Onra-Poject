@@ -5246,9 +5246,32 @@ export const useAppStore = create<AppState>()(persist(
         return id;
     },
     updateTaxRule: (id, patch) =>
-        set(state => ({
-            taxRules: state.taxRules.map(r => r.id === id ? { ...r, ...patch } : r),
-        })),
+        set(state => {
+            // Runtime kind-matching guard — the UI's dropdown filter
+            // restricts rate options per category, but a programmatic
+            // callsite could otherwise attach a VAT rate to a pay_rate
+            // rule (or vice versa). Silently drop the bad taxRateId so
+            // POS / customer checkout / payroll never resolve a
+            // mismatched rate.
+            //
+            // Mirrors `kindForCategory` in ApplyTaxRatesView:
+            //   pay_rate → income
+            //   everything else → vat
+            return {
+                taxRules: state.taxRules.map(r => {
+                    if (r.id !== id) return r;
+                    const next = { ...r, ...patch };
+                    if (next.taxRateId) {
+                        const expectedKind: "vat" | "income" = next.category === "pay_rate" ? "income" : "vat";
+                        const referenced = state.taxRates.find(t => t.id === next.taxRateId);
+                        if (referenced && referenced.kind !== expectedKind) {
+                            next.taxRateId = undefined;
+                        }
+                    }
+                    return next;
+                }),
+            };
+        }),
     setTaxRuleStatus: (id, status) =>
         set(state => ({
             taxRules: state.taxRules.map(r => r.id === id ? { ...r, status } : r),
