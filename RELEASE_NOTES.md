@@ -18,15 +18,92 @@ re-enabled.
 | Module | Routes hidden |
 |---|---|
 | **Branding** | `/admin/settings/branding`, `/settings/branding/*` |
-| **Business & Locations** | `/admin/settings/business-locations`, `/settings/business`, `/settings/branches`, `/settings/rooms` |
-| **Integrations** | `/admin/settings/integrations`, `/admin/settings/payments` (legacy redirect) |
+| **Tax** | `/admin/settings/tax` |
+| **Referral** | `/admin/settings/referral`, `/settings/referral/*` |
+
+**Re-enabled this push:** Business & Locations + Integrations (Payments
++ Apps) — both surfaces are now reachable from the Settings landing.
 
 Re-enable any of these by deleting their matching prefix(es) from
 `DISABLED_ROUTE_PREFIXES` in `src/config/feature-flags.ts`.
 
 ---
 
+## ✦ Known follow-ups (noted, not yet shipped)
+
+- **Appointment tax on customer side** — the tax module already wires the
+  `appointment` category through `categoryForProductType` and the
+  `tax_services_vat` seed has a rule applying to it. The admin Apply tax
+  rates surface shows the Appointment sub-row. **Customer-side**: when
+  customers book an appointment through `/customer/appointments`, the
+  booking checkout should surface the same tax line ("Inc. VAT 5%" /
+  "+ VAT 5%"). The plumbing is in place — the customer checkout just
+  needs to call `findActiveTaxRuleFor(..., "appointment", branchId)` and
+  thread the result into its receipt rendering. Tracked for follow-up.
+
+- **POS appointment selling** — POS catalog doesn't sell appointment line
+  items yet (`PosProductKind` only carries membership/package/gift_card).
+  When this ships, the existing tax mapping resolves automatically.
+
+- **Banner inheritance semantic (Tax module)** — the "All service
+  categories inherit VAT X%" banner currently reads X from the first
+  found all_locations rule. Pending choice: switch to Option B (X = the
+  named "Services VAT" rate's percentage, independent of per-rule
+  reassignments) for clearer semantics.
+
+- **Customer-portal referral card wiring** — the new Referral module
+  redesign (admin side) ships `referralSettings.infoTitle`,
+  `infoDescription` (with `{{referrer}}` / `{{friend}}` / `{{trigger}}` /
+  `{{cap}}` substitutions) and the Eligibility & fraud control booleans
+  as the single source of truth. The customer-portal referral card at
+  `/customer/profile` still reads hardcoded copy ("Share your code and
+  both of you earn 2 bonus credits!") and a hardcoded code
+  (`OLIVIA-FIT-2025`) — wiring it through would cross the legacy
+  `useDataStore` → `useAppStore` boundary documented in
+  `DATA_STORE_UNIFICATION_PLAN.md`. Tracked there.
+
+---
+
 ## ✦ Admin updates
+
+### Referral module redesign (Figma 4620:151863 series)
+- Settings → Referral landing rebuilt to **3 stacked cards**:
+  1. **Referral settings** — master "Referral program is active" toggle.
+  2. **Tabbed Reward rules & limits | Eligibility & fraud controls** —
+     summary grids; "Edit" button on each tab opens a side-panel modal.
+  3. **Customize referral information** — Title + Description preview
+     (description shows with variables resolved).
+- **Reward rules & limits side-panel modal** — slide-in panel (same
+  chrome as the POS "Add new customer" panel). Sections: Who earns
+  what (Referrer / Friend reward type dropdown + amount), Rewards
+  unlock when (3 radio cards: signup / first purchase (recommended) /
+  first class), Caps & limits (max referrals / earned expiry days /
+  monthly program budget AED).
+- **Eligibility & fraud controls side-panel modal** — 4 toggle cards:
+  Prevent self referral / New customers only / Require minimum first
+  spend (with AED amount input) / Credits redeemable across all
+  branches.
+- **Customize referral information** page (`/settings/referral/edit-information`)
+  rebuilt with 3-column layout: left single-step stepper, center Title
+  field + Variables chip strip ({{referrer}} / {{friend}} / {{trigger}}
+  / {{cap}} — click to insert into the description) + RichText editor,
+  right live referral-card preview that re-renders with substituted
+  variables as the admin types.
+- **Customer detail Referrals tab** (`/admin/customers/[id]`) — KPI
+  card "Total referrals" now shows `N / maxReferralsPerMember`
+  (denominator sourced from the global setting; if cap = 0, only N
+  shows). New **Expiry date** column added to the referrals table
+  (sortable; legacy rows without an expiry render "—").
+- **Mock data** — `customer_referrals` rows gain `expires_at`
+  (= referred_at + 90 days, matching the seeded `earned_reward_expiry_days`).
+- **Schema (persist v23)** — `ReferralSettings` wiped + reshaped:
+  dropped legacy newCustomer/existingCustomer fields, added
+  referrerEarnType/Amount + friendEarnType/Amount + rewardUnlockTrigger
+  + maxReferralsPerMember + earnedRewardExpiryDays +
+  monthlyProgramBudgetAed + preventSelfReferral + newCustomersOnly +
+  minFirstSpendAed + creditsRedeemableAllBranches + infoTitle.
+  `CustomerReferral` gains `expiresAtISO?`. Old `/settings/referral/edit-rewards`
+  page deleted (replaced by the side-panel modal).
 
 ### Module 13 — Services (currency-priced, Recovery / Spa branch model)
 - Services switched from **membership/package gating → currency pricing**.

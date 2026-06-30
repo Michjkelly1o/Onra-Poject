@@ -1181,6 +1181,12 @@ export const DEMO_NOW_REFERRALS: CustomerReferral[] = REF_SPECS.map((r, idx) => 
     referred_email: r.referredEmail,
     benefit_credits: r.benefitCredits,
     referred_at: isoStamp(daysAgo(r.daysAgo)),
+    // Expiry = referred_at + 90 days (the seeded
+    // referral_settings.earned_reward_expiry_days). Demo rows aren't
+    // expired by default — picks an offset that lands a few weeks in
+    // the future so the Customer Referrals tab Expiry column shows
+    // realistic upcoming dates instead of a wash of "expired".
+    expires_at:  isoStamp(daysAhead(90 - r.daysAgo)),
 }));
 
 // ─── Gift cards (current-month purchases) ──────────────────────────────────

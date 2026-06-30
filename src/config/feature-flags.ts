@@ -25,17 +25,14 @@
 //   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
 //   Membership & Package, Gift Cards, Promo codes, Campaigns, Customer,
 //   Services (incl. appointments), Insights, Pay rate, Payroll, Staff
-//   & Permissions (full), Tax, Agreements, Referral, Reports,
-//   Notifications, Customer notifications, Booking rules, Account
-//   settings.
+//   & Permissions (full), Agreements, Reports, Notifications, Customer
+//   notifications, Booking rules, Account settings, Business &
+//   Locations, Integrations (Payments + Apps).
 //
 //   DISABLED (admin) — pending client review for the demo push:
-//     • Branding              (/admin/settings/branding + /settings/branding/*)
-//     • Business & Locations  (/admin/settings/business-locations +
-//                              /settings/business + /settings/branches +
-//                              /settings/rooms)
-//     • Integrations          (/admin/settings/integrations +
-//                              /admin/settings/payments legacy redirect)
+//     • Branding   (/admin/settings/branding + /settings/branding/*)
+//     • Tax        (/admin/settings/tax)
+//     • Referral   (/admin/settings/referral + /settings/referral/*)
 //   Sidebar menu items for these stay visible per the file convention;
 //   clicking through 404s. Re-enable by deleting the matching prefixes
 //   from the array below.
@@ -58,7 +55,10 @@
 //   uncomment to disable that module while keeping its BottomNav item
 //   visible per the file convention.
 //
-//   DISABLED (customer): none currently.
+//   DISABLED (customer): Appointments (`/customer/appointments`),
+//   Packages (`/customer/packages`), Profile (`/customer/profile`).
+//   BottomNav items stay visible per the file convention; clicking
+//   each one 404s until the module ships.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -125,24 +125,26 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Customer notifications module ── (ENABLED — admin)
     //"/admin/settings/notifications", // per-event channel + template config
 
-    // ── Referral module ── (ENABLED — pushing today)
-    //"/admin/settings/referral",      // list view
-    //"/settings/referral",            // edit-rewards / edit-information
+    // ── Referral module ── (DISABLED — under review for client demo)
+    // Sidebar menu items (Marketing → Referral program) stay visible per
+    // the file convention; clicking 404s until the module is signed off.
+    "/admin/settings/referral",      // landing (3 cards: master toggle + rules/eligibility tabs + customize info)
+    "/settings/referral",            // edit-information full-page editor
 
     // ── Agreements module ── (ENABLED — pushing today)
     //"/admin/settings/agreements",    // list view
     //"/settings/agreements",          // create / detail / edit / new-version
 
-    // ── Integrations module ── (DISABLED — under review for client demo)
-    // Unified Payments + Apps page. Still under client review so the
-    // entire surface 404s. Legacy /admin/settings/payments redirect is
-    // covered by the redirect target also being disabled — re-enable
-    // both flags together (this one + the payments redirect below).
-    "/admin/settings/integrations",  // unified page (Payments + Apps tabs)
-    "/admin/settings/payments",      // legacy redirect to ?tab=payments
+    // ── Integrations module ── (ENABLED — pushing today)
+    // Unified Payments + Apps page. Legacy /admin/settings/payments
+    // redirect resolves to ?tab=payments under the same route.
+    //"/admin/settings/integrations",  // unified page (Payments + Apps tabs)
+    //"/admin/settings/payments",      // legacy redirect to ?tab=payments
 
-    // ── Tax module ── (ENABLED — pushing today)
-    //"/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
+    // ── Tax module ── (DISABLED — under review for client demo)
+    // Sidebar / settings landing link stays visible; clicking 404s
+    // until the module is signed off.
+    "/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
 
     // ── Payments module ── (DISABLED with Integrations)
     // Already listed above in the Integrations block — both routes are
@@ -160,15 +162,14 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // /admin/settings/[name] sub-route — they're independent flags above.
     //"=/admin/settings",              // landing only (4-card menu page)
 
-    // ── Business & Locations module ── (DISABLED — under review for client demo)
+    // ── Business & Locations module ── (ENABLED — pushing today)
     // Branch + room + studio profile management. Lives at
     // /admin/settings/business-locations. Studio profile edit lives at
     // /settings/business; branch + room CRUD live at their own routes.
-    // All 4 routes 404 together until the module ships.
-    "/admin/settings/business-locations", // list (branches + rooms table)
-    "/settings/business",            // studio profile edit
-    "/settings/branches",            // branch new / detail / edit
-    "/settings/rooms",               // room new / edit
+    //"/admin/settings/business-locations", // list (branches + rooms table)
+    //"/settings/business",            // studio profile edit
+    //"/settings/branches",            // branch new / detail / edit
+    //"/settings/rooms",               // room new / edit
 
     // ── Account settings module ── (ENABLED — admin)
     //"/admin/settings/account",       // change email / phone / password / avatar
@@ -251,8 +252,8 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Customer → Packages ──
     "/customer/packages",            // my packages + credit balance
 
-    // ── Customer → Products (memberships, packages, gift cards catalog) ──
-    "/customer/products",            // catalog + checkout/promo/processing/success + gift-card design picker
+    // ── Customer → Products (memberships, packages, gift cards catalog) ── (ENABLED — pushing today)
+    //"/customer/products",            // catalog + checkout/promo/processing/success + gift-card design picker
 
     // ── Customer → Profile / account ──
     "/customer/profile",             // account profile + edit

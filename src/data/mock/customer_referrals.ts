@@ -20,6 +20,11 @@ import { DEMO_NOW_REFERRALS } from "./prototype_demo_data";
 export const customer_referrals: CustomerReferral[] = [
     ...DEMO_NOW_REFERRALS,
     // ── Ahmed Zayn — 2 referrals ─────────────────────────────────────────────
+    // `expires_at` is referred_at + 90 days (the seeded
+    // earned_reward_expiry_days). When the create flow ships, the store
+    // action will compute this from the current setting; the rows below
+    // hard-code it so the customer-detail Referrals tab demo always has
+    // realistic expiry values out of the box.
     {
         id: "ref_ahmed_1",
         referrer_customer_id: "cust_ahmed_zayn",
@@ -27,6 +32,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "olivia.rhye@email.com",
         benefit_credits: 2,
         referred_at: "2025-03-28T22:00:00Z",
+        expires_at:  "2025-06-26T22:00:00Z",
     },
     {
         id: "ref_ahmed_2",
@@ -35,6 +41,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "phoenix.baker@email.com",
         benefit_credits: 2,
         referred_at: "2025-02-28T22:00:00Z",
+        expires_at:  "2025-05-29T22:00:00Z",
     },
 
     // ── Ava Wright — 3 referrals ─────────────────────────────────────────────
@@ -45,6 +52,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "lana.steiner@email.com",
         benefit_credits: 2,
         referred_at: "2026-01-15T14:00:00Z",
+        expires_at:  "2026-04-15T14:00:00Z",
     },
     {
         id: "ref_ava_2",
@@ -53,6 +61,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "demi.wilkinson@email.com",
         benefit_credits: 1,
         referred_at: "2025-12-02T11:30:00Z",
+        expires_at:  "2026-03-02T11:30:00Z",
     },
     {
         id: "ref_ava_3",
@@ -61,6 +70,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "candice.wu@email.com",
         benefit_credits: 2,
         referred_at: "2025-10-20T16:45:00Z",
+        expires_at:  "2026-01-18T16:45:00Z",
     },
 
     // ── Rosale Martin — 1 referral ───────────────────────────────────────────
@@ -71,6 +81,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "natali.craig@email.com",
         benefit_credits: 2,
         referred_at: "2026-02-10T10:15:00Z",
+        expires_at:  "2026-05-11T10:15:00Z",
     },
 
     // ── Sophia Lee — 2 referrals ─────────────────────────────────────────────
@@ -81,6 +92,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "drew.cano@email.com",
         benefit_credits: 2,
         referred_at: "2026-01-22T13:00:00Z",
+        expires_at:  "2026-04-22T13:00:00Z",
     },
     {
         id: "ref_sophia_2",
@@ -89,6 +101,7 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "orlando.diggs@email.com",
         benefit_credits: 1,
         referred_at: "2025-11-18T09:40:00Z",
+        expires_at:  "2026-02-16T09:40:00Z",
     },
 
     // ── Fatima Al-Sayed — 1 referral ─────────────────────────────────────────
@@ -99,5 +112,6 @@ export const customer_referrals: CustomerReferral[] = [
         referred_email: "kate.morrison@email.com",
         benefit_credits: 2,
         referred_at: "2026-02-25T15:20:00Z",
+        expires_at:  "2026-05-26T15:20:00Z",
     },
 ];

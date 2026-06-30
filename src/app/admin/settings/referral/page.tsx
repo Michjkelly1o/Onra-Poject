@@ -1,20 +1,24 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Settings → Referral (Figma 4620-151863)
+// Onra Studio — Settings → Referral (Figma 4620:151863 / 7661:42307)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Two outer cards stacked vertically. Each outer card has a header (title +
-// subtitle + Edit button on the right) and an inner BORDERED sub-card that
-// previews the actual config:
+// 3 stacked cards:
 //
-//   • Card 1: outer subtitle "Set settings for referral rules" — inner card
-//     shows "Referral program is active" with its own subtitle
-//     "Edit rewards-based customer referral marketing program" and the
-//     master toggle on the right.
-//   • Card 2: outer subtitle "Use the text information to describe your
-//     referral offer to the customers." — inner card shows the saved
-//     Description preview.
+//   • Card 1 — Referral settings
+//     Master "Referral program is active" toggle (confirm before flip).
+//
+//   • Card 2 — Tabbed Reward rules & limits | Eligibility & fraud controls
+//     Pill-tab strip at the top. Each tab body shows the saved config as a
+//     read-only summary; the "Edit" button on the tab header opens the
+//     matching side-panel modal (mirrors POS "Add new customer" panel
+//     chrome — slide-in from the right, 480 px wide).
+//
+//   • Card 3 — Customize referral information
+//     Title + Description preview. "Edit" routes to the full-page editor
+//     at /settings/referral/edit-information (variables + RichText +
+//     live preview rail per Figma 4627:153001).
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,7 +26,18 @@ import { Edit02, XClose, SlashCircle01, Check } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ReferralRewardsPanel } from "@/components/settings/ReferralRewardsPanel";
+import { ReferralEligibilityPanel } from "@/components/settings/ReferralEligibilityPanel";
+import {
+    rewardSummary,
+    friendEarnsBadge,
+    triggerLabel,
+    substituteReferralVariables,
+} from "@/lib/referral-helpers";
 import { useAppStore } from "@/lib/store";
+
+// ─── Toggle (master switch) ─────────────────────────────────────────────────
 
 function Toggle({ on, onChange, ariaLabel }: {
     on: boolean; onChange: (next: boolean) => void; ariaLabel: string;
@@ -42,20 +57,25 @@ function Toggle({ on, onChange, ariaLabel }: {
     );
 }
 
+// ─── Page ───────────────────────────────────────────────────────────────────
+
+type RulesTab = "rewards" | "eligibility";
+
 export default function ReferralSettingsPage() {
     const router = useRouter();
     const settings              = useAppStore(s => s.referralSettings);
     const setProgramActive      = useAppStore(s => s.setReferralProgramActive);
     const showToast             = useAppStore(s => s.showToast);
 
-    // Confirm-before-flip — matches the Branches / Rooms / Staff toggle
-    // convention. The toggle click stages the requested next value; the
-    // modal's primary action commits it.
+    // Confirm-before-flip master toggle.
     const [pendingToggle, setPendingToggle] = useState<{ next: boolean } | null>(null);
 
-    function handleToggle(next: boolean) {
-        setPendingToggle({ next });
-    }
+    // Active sub-tab on the rules card.
+    const [rulesTab, setRulesTab] = useState<RulesTab>("rewards");
+
+    // Side-panel modal open state.
+    const [rewardsOpen, setRewardsOpen] = useState(false);
+    const [eligibilityOpen, setEligibilityOpen] = useState(false);
 
     function handleConfirmToggle() {
         if (!pendingToggle) return;
@@ -74,37 +94,112 @@ export default function ReferralSettingsPage() {
 
     return (
         <div className="flex flex-col gap-4 max-w-[1100px]">
-            {/* ── Referral settings card ─────────────────────────────────── */}
+            {/* ── Card 1: Referral settings (master toggle) ────────────── */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                {/* Header */}
-                <div className="flex items-start gap-4">
-                    <div className="flex-1 flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828]">Referral settings</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">Set settings for referral rules</p>
-                    </div>
-                    <Button variant="secondary-gray" size="md"
-                        leftIcon={<Edit02 className="w-4 h-4" />}
-                        onClick={() => router.push("/settings/referral/edit-rewards")}>
-                        Edit
-                    </Button>
+                <div className="flex flex-col gap-1">
+                    <p className="text-[16px] font-semibold text-[#101828]">Referral settings</p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">Turn on the rewards based referral program on or off.</p>
                 </div>
 
-                {/* Inner sub-card — sage border when the program is active. */}
                 <div className={cn(
                     "rounded-[12px] px-5 py-4 flex items-center gap-4 border-1 transition-colors",
                     settings.programActive ? "border-[#7ba08c]" : "border-[#e4e7ec]",
                 )}>
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[14px] font-semibold text-[#101828]">Referral program is active</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">Edit rewards-based customer referral marketing program</p>
+                        <p className="text-[14px] text-[#667085] leading-[20px]">Members can share a link and earn rewards when join.</p>
                     </div>
-                    <Toggle on={settings.programActive} onChange={handleToggle} ariaLabel="Referral program master switch" />
+                    <Toggle on={settings.programActive} onChange={next => setPendingToggle({ next })} ariaLabel="Referral program master switch" />
                 </div>
             </div>
 
-            {/* ── Customize referral information card ───────────────────── */}
+            {/* ── Card 2: Tabbed Rules + Fraud Controls ────────────────── */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                {/* Header */}
+                <SegmentedTabs
+                    tabs={[
+                        { key: "rewards",      label: "Reward rules & limits"     },
+                        { key: "eligibility",  label: "Eligibility & fraud controls" },
+                    ]}
+                    activeKey={rulesTab}
+                    onChange={k => setRulesTab(k as RulesTab)}
+                />
+
+                {rulesTab === "rewards" && (
+                    <>
+                        <div className="flex items-start gap-4">
+                            <div className="flex-1 flex flex-col gap-1">
+                                <p className="text-[16px] font-semibold text-[#101828]">Reward rules &amp; limits</p>
+                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                    Decide who qualifies &amp; block the common ways referral programs get gamed.
+                                </p>
+                            </div>
+                            <Button variant="secondary-gray" size="md"
+                                leftIcon={<Edit02 className="w-4 h-4" />}
+                                onClick={() => setRewardsOpen(true)}>
+                                Edit
+                            </Button>
+                        </div>
+
+                        {/* 3-column grid of summary fields per Figma 4620:151863 */}
+                        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+                            <SummaryField label="Referrer earns" value={friendEarnsBadge(settings.referrerEarnAmount)} />
+                            <SummaryField label="Friend earns"   value={rewardSummary(settings.friendEarnType, settings.friendEarnAmount)} />
+                            <SummaryField label="Reward unlock when" value={triggerLabel(settings.rewardUnlockTrigger)} />
+                            <SummaryField label="Max referrals"  value={`${settings.maxReferralsPerMember} friends`} />
+                            <SummaryField label="Earned expiry"  value={`${settings.earnedRewardExpiryDays} days`} />
+                            <SummaryField label="Monthly program budget" value={`AED ${settings.monthlyProgramBudgetAed.toLocaleString()}`} />
+                        </div>
+                    </>
+                )}
+
+                {rulesTab === "eligibility" && (
+                    <>
+                        <div className="flex items-start gap-4">
+                            <div className="flex-1 flex flex-col gap-1">
+                                <p className="text-[16px] font-semibold text-[#101828]">Eligibility &amp; fraud controls</p>
+                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                    Decide who qualifies &amp; block the common ways referral programs get gamed.
+                                </p>
+                            </div>
+                            <Button variant="secondary-gray" size="md"
+                                leftIcon={<Edit02 className="w-4 h-4" />}
+                                onClick={() => setEligibilityOpen(true)}>
+                                Edit
+                            </Button>
+                        </div>
+
+                        {/* Stacked rows per Figma 7661:42307 — title + subtitle
+                            on the left, value on the right. Each row's value
+                            is the toggle's on/off state or the AED amount. */}
+                        <div className="flex flex-col">
+                            <EligibilityRow
+                                title="Prevent self referral"
+                                description="Block matching email / phone /payment method between referrer and friend."
+                                value={settings.preventSelfReferral ? "Active" : "Inactive"}
+                            />
+                            <EligibilityRow
+                                title="New customers only"
+                                description="Referred friend must have no prior account or booking."
+                                value={settings.newCustomersOnly ? "Active" : "Inactive"}
+                            />
+                            <EligibilityRow
+                                title="Require minimum first spend"
+                                description="Friend must spend at least this before the reward releases."
+                                value={settings.minFirstSpendAed > 0 ? `AED ${settings.minFirstSpendAed}` : "Disabled"}
+                            />
+                            <EligibilityRow
+                                title="Credits redeemable across all branches"
+                                description="Off + rewards can only be used at the location they were earned."
+                                value={settings.creditsRedeemableAllBranches ? "Active" : "Inactive"}
+                                last
+                            />
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* ── Card 3: Customize referral information ──────────────── */}
+            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex items-start gap-4">
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[16px] font-semibold text-[#101828]">Customize referral information</p>
@@ -117,27 +212,18 @@ export default function ReferralSettingsPage() {
                     </Button>
                 </div>
 
-                {/* Inner sub-card — Description preview. The saved value is
-                    rich-text HTML produced by the editor, so we render with
-                    `dangerouslySetInnerHTML` and re-declare the heading /
-                    list / link styles so formatting survives the round-trip
-                    from editor → state → preview. */}
-                <div className="rounded-[12px] border-1 border-[#e4e7ec] px-5 py-4 flex flex-col gap-1">
-                    <p className="text-[14px] text-[#667085]">Description</p>
-                    <div
-                        className={cn(
-                            "text-[14px] text-[#101828] leading-[20px]",
-                            "[&_h1]:text-[28px] [&_h1]:font-bold     [&_h1]:leading-[36px] [&_h1]:my-2",
-                            "[&_h2]:text-[24px] [&_h2]:font-bold     [&_h2]:leading-[32px] [&_h2]:my-2",
-                            "[&_h3]:text-[20px] [&_h3]:font-semibold [&_h3]:leading-[28px] [&_h3]:my-2",
-                            "[&_h4]:text-[16px] [&_h4]:font-semibold [&_h4]:leading-[24px] [&_h4]:my-2",
-                            "[&_ul]:list-disc    [&_ul]:pl-6",
-                            "[&_ol]:list-decimal [&_ol]:pl-6",
-                            "[&_a]:text-[#3538cd] [&_a]:underline",
-                            "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-[6px] [&_img]:my-2",
-                        )}
-                        dangerouslySetInnerHTML={{ __html: settings.infoDescription }}
-                    />
+                <div className="flex flex-col gap-3">
+                    <SummaryField label="Title" value={settings.infoTitle} />
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[14px] text-[#667085]">Description</p>
+                        <p className="text-[14px] text-[#101828] leading-[20px]">
+                            {/* Description preview renders the RAW description with
+                                variable tokens replaced for readability. Stored
+                                value keeps the {{tokens}} so the editor can
+                                round-trip cleanly. */}
+                            {substituteReferralVariables(settings.infoDescription, settings)}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -149,17 +235,55 @@ export default function ReferralSettingsPage() {
                 />
             )}
 
+            <ReferralRewardsPanel
+                open={rewardsOpen}
+                onClose={() => setRewardsOpen(false)}
+            />
+            <ReferralEligibilityPanel
+                open={eligibilityOpen}
+                onClose={() => setEligibilityOpen(false)}
+            />
+
             <Toast />
         </div>
     );
 }
 
+// ─── Summary field ──────────────────────────────────────────────────────────
+
+function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <p className="text-[14px] text-[#667085]">{label}</p>
+            <p className="text-[16px] font-semibold text-[#101828]">{value}</p>
+        </div>
+    );
+}
+
+// ─── Eligibility row ─────────────────────────────────────────────────────────
+
+function EligibilityRow({ title, description, value, last }: {
+    title: string;
+    description: string;
+    value: string;
+    last?: boolean;
+}) {
+    return (
+        <div className={cn(
+            "flex items-start gap-4 py-4",
+            !last && "border-b border-[#e4e7ec]",
+        )}>
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{description}</p>
+            </div>
+            <span className="text-[14px] text-[#475467] shrink-0">{value}</span>
+        </div>
+    );
+}
+
 // ─── Toggle confirmation modal ──────────────────────────────────────────────
-//
-// Mirrors the shape of ToggleConfirmModal in /admin/settings/page.tsx (the
-// Branches / Rooms reference). The two states differ only in copy and CTA
-// tone — destructive for deactivate, primary for activate — so a single
-// component covers both.
+
 function ReferralToggleConfirmModal({ next, onCancel, onConfirm }: {
     next: boolean;
     onCancel: () => void;

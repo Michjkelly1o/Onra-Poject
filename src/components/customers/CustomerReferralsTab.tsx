@@ -147,6 +147,11 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
     // disappears here and a banner surfaces so anyone reviewing the tab can
     // see the program is paused.
     const referralProgramActive = useAppStore(s => s.referralSettings.programActive);
+    /** Drives the new "Total referrals N / X" KPI denominator
+     *  (Figma 7691:59021). Single source of truth — flipping the cap in
+     *  the Reward rules & limits side panel re-renders this tab on the
+     *  same cycle. When set to 0 (unlimited), only the numerator shows. */
+    const maxReferralsPerMember = useAppStore(s => s.referralSettings.maxReferralsPerMember);
     const showToast = useAppStore(s => s.showToast);
 
     const [search, setSearch] = useState("");
@@ -184,11 +189,15 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
         });
     }, [rows, search, applied]);
 
-    // ── Referrals sort — Referred customer / Benefit / Date referred. ──
+    // ── Referrals sort — Referred customer / Benefit / Date referred /
+    //    Expiry date. Rows without an explicit `expiresAtISO` sort to the
+    //    end so legacy referrals (pre-v23 expiry column) stay
+    //    discoverable but don't outrank dated ones.
     const { sorted: sortedReferrals, sortKey: referralSortKey, sortDir: referralSortDir, toggle: toggleReferralSort } = useSort<CustomerReferral>(filtered, {
         referred: (a, b) => a.referredName.localeCompare(b.referredName),
         benefit:  (a, b) => a.benefitCredits - b.benefitCredits,
         date:     (a, b) => a.referredAtISO.localeCompare(b.referredAtISO),
+        expiry:   (a, b) => (a.expiresAtISO ?? "9999").localeCompare(b.expiresAtISO ?? "9999"),
     });
 
     const totalPages = Math.max(1, Math.ceil(sortedReferrals.length / pageSize));
@@ -239,7 +248,13 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                 </div>
                 <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
                     <p className="text-[14px] text-[#667085]">Total referrals</p>
-                    <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{totalReferrals}</p>
+                    <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">
+                        {/* "N / cap" when a per-member cap is set, just "N"
+                            when the cap is 0 (treat as unlimited). */}
+                        {maxReferralsPerMember > 0
+                            ? `${totalReferrals}/${maxReferralsPerMember}`
+                            : totalReferrals}
+                    </p>
                 </div>
                 <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
                     <p className="text-[14px] text-[#667085]">Total bonus credits</p>
@@ -281,8 +296,11 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                     <th className={TH}>
                                         <SortableHeader sortKey="benefit"  currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Benefit</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[240px]")}>
+                                    <th className={cn(TH, "w-[200px]")}>
                                         <SortableHeader sortKey="date"     currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Date referred</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[200px]")}>
+                                        <SortableHeader sortKey="expiry"   currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Expiry date</SortableHeader>
                                     </th>
                                 </tr>
                             </thead>
@@ -302,6 +320,9 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                             {r.benefitCredits} free {r.benefitCredits === 1 ? "credit" : "credits"}
                                         </td>
                                         <td className={cn(TD, "text-[#667085] whitespace-nowrap")}>{fmtDateTime(r.referredAtISO)}</td>
+                                        <td className={cn(TD, "text-[#667085] whitespace-nowrap")}>
+                                            {r.expiresAtISO ? fmtDateTime(r.expiresAtISO) : "—"}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

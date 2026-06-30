@@ -213,6 +213,8 @@ import {
     type PaymentProviderStatusSeed,
     type ReferralSettingsSeed,
     type ReferralTriggerSeed,
+    type ReferralUnlockTriggerSeed,
+    type ReferralRewardTypeSeed,
     type PermissionsMapSeed,
     type PermissionCellSeed,
     type PermissionRowSeed,
@@ -1074,6 +1076,12 @@ export interface CustomerReferral {
     referredEmail: string;
     benefitCredits: number;
     referredAtISO: string;
+    /** When the earned reward expires. Computed at referral-creation time
+     *  as `referredAtISO + referralSettings.earnedRewardExpiryDays`.
+     *  Surfaces on the customer-detail Referrals tab's new "Expiry date"
+     *  column. Optional on the type so legacy seeds without an expiry
+     *  still load; the UI renders "—" when missing. */
+    expiresAtISO?: string;
 }
 
 // ─── Customer notification settings (PRD 11 §12) ───────────────────────────
@@ -1398,21 +1406,90 @@ export interface Notification {
     createdAt: string;
 }
 
-// ─── Referral settings (PRD 11 §11) ────────────────────────────────────────
+// ─── Referral settings (PRD 11 §11 — redesigned per Figma 4620:151863) ─────
 
+/** When the earned reward releases to the referrer. Drives the
+ *  "Rewards unlock when" trigger group in the Reward rules & limits side
+ *  panel (Figma 7661:54592).
+ *
+ *    • "friend_signup"          — Fastest, but pays out before any spend.
+ *                                  Higher abuse risk.
+ *    • "friend_first_purchase"  — Recommended, reward only releases on
+ *                                  real revenue.
+ *    • "friend_first_class"     — Strongest quality signal; slowest to
+ *                                  reward (the friend has to actually
+ *                                  attend a class). */
+export type ReferralUnlockTrigger =
+    | "friend_signup"
+    | "friend_first_purchase"
+    | "friend_first_class";
+
+/** What both the referrer and the friend earn. Today the only seeded
+ *  option is "free_credits"; the dropdown is shipped union-typed so
+ *  future iterations can add wallet credit / discount / cash without
+ *  reshaping the store. */
+export type ReferralRewardType = "free_credits" | "wallet_credit" | "discount";
+
+/** Legacy alias kept to avoid breaking imports while the redesign rolls
+ *  out — old call sites that referenced `ReferralTrigger` continue to
+ *  compile (and silently degrade to the new trigger enum). New code
+ *  should use `ReferralUnlockTrigger`. */
 export type ReferralTrigger = ReferralTriggerSeed;
 
-/** Camel-cased mirror of `ReferralSettingsSeed`. Drives Settings → Referral
- *  AND the customer-detail Referrals tab (which gates its CTA on
- *  `programActive` and quotes the configured benefit numbers). */
+/** Camel-cased mirror of `ReferralSettingsSeed`. Drives:
+ *    • /admin/settings/referral landing (3 cards)
+ *    • Reward rules & limits side-panel modal (Figma 7661:54592)
+ *    • Eligibility & fraud controls side-panel modal (Figma 7661:85303)
+ *    • Customize referral information page (Figma 4627:153001)
+ *    • Customer-detail Referrals tab KPIs (Total referrals N/maxReferrals)
+ *    • Variable substitution in `infoDescription` ({{referrer}}, {{friend}},
+ *      {{trigger}}, {{cap}}) */
 export interface ReferralSettings {
+    /** Master switch — when off, the customer portal hides the referral
+     *  CTA and the admin Customer tab's "Refer a friend" action disables. */
     programActive: boolean;
-    newCustomerCredits: number;
-    newCustomerMessage: string;
-    existingCustomerTrigger: ReferralTrigger;
-    existingCustomerMinReferred: number;
-    existingCustomerCredits: number;
-    existingCustomerMessage: string;
+
+    // ── Reward rules & limits (Figma 7661:54592) ─────────────────────────
+    /** What the referrer earns (the existing customer who shared the link). */
+    referrerEarnType:   ReferralRewardType;
+    referrerEarnAmount: number;
+    /** What the friend earns (the new customer arriving via the link). */
+    friendEarnType:     ReferralRewardType;
+    friendEarnAmount:   number;
+    /** When the reward releases — see `ReferralUnlockTrigger`. */
+    rewardUnlockTrigger: ReferralUnlockTrigger;
+    /** Per-member cap on how many referrals can earn a reward. Drives the
+     *  "Total referrals N/X" KPI on the customer detail tab; admins can
+     *  still see ALL referrals in the table, but the cap gates payout. */
+    maxReferralsPerMember: number;
+    /** How long an earned reward stays redeemable, in days. Drives the
+     *  new `customerReferrals.expiresAtISO` field at create-time. */
+    earnedRewardExpiryDays: number;
+    /** Monthly cap on total program AED spend. Soft cap — visible only
+     *  in the admin landing card; not yet enforced in the redemption
+     *  flow. */
+    monthlyProgramBudgetAed: number;
+
+    // ── Eligibility & fraud controls (Figma 7661:85303) ──────────────────
+    /** When on, the redemption flow blocks attempts where the friend
+     *  shares an email / phone / payment method with the referrer. */
+    preventSelfReferral: boolean;
+    /** When on, the friend must have no prior account or booking. */
+    newCustomersOnly: boolean;
+    /** AED amount the friend must spend before the reward releases. 0
+     *  means "no minimum spend gate". */
+    minFirstSpendAed: number;
+    /** When ON, earned credits can be used at ANY branch. When OFF,
+     *  credits redeem only at the location they were earned. */
+    creditsRedeemableAllBranches: boolean;
+
+    // ── Customize information (Figma 4627:153001) ────────────────────────
+    /** Headline shown to customers on the portal referral card. */
+    infoTitle: string;
+    /** Rich-HTML body. Supports `{{referrer}}` / `{{friend}}` /
+     *  `{{trigger}}` / `{{cap}}` substitutions resolved at render time
+     *  against the current settings. Customers see the resolved string;
+     *  the editor stores the raw token form. */
     infoDescription: string;
 }
 
@@ -1868,6 +1945,7 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
         referredEmail: r.referred_email,
         benefitCredits: r.benefit_credits,
         referredAtISO: r.referred_at,
+        expiresAtISO: r.expires_at,
     };
 }
 
@@ -2321,14 +2399,21 @@ function notificationFromSeed(n: NotificationSeed): Notification {
 }
 function referralSettingsFromSeed(r: ReferralSettingsSeed): ReferralSettings {
     return {
-        programActive: r.program_active,
-        newCustomerCredits: r.new_customer_credits,
-        newCustomerMessage: r.new_customer_message,
-        existingCustomerTrigger: r.existing_customer_trigger,
-        existingCustomerMinReferred: r.existing_customer_min_referred,
-        existingCustomerCredits: r.existing_customer_credits,
-        existingCustomerMessage: r.existing_customer_message,
-        infoDescription: r.info_description,
+        programActive:               r.program_active,
+        referrerEarnType:            r.referrer_earn_type,
+        referrerEarnAmount:          r.referrer_earn_amount,
+        friendEarnType:              r.friend_earn_type,
+        friendEarnAmount:            r.friend_earn_amount,
+        rewardUnlockTrigger:         r.reward_unlock_trigger,
+        maxReferralsPerMember:       r.max_referrals_per_member,
+        earnedRewardExpiryDays:      r.earned_reward_expiry_days,
+        monthlyProgramBudgetAed:     r.monthly_program_budget_aed,
+        preventSelfReferral:         r.prevent_self_referral,
+        newCustomersOnly:            r.new_customers_only,
+        minFirstSpendAed:            r.min_first_spend_aed,
+        creditsRedeemableAllBranches: r.credits_redeemable_all_branches,
+        infoTitle:                   r.info_title,
+        infoDescription:             r.info_description,
     };
 }
 
@@ -2896,16 +2981,27 @@ interface AppState {
      *  reads this — when off, the customer detail Referrals tab hides the
      *  share CTA and surfaces a "program inactive" notice. */
     setReferralProgramActive: (active: boolean) => void;
-    /** Save the "Edit referral settings" wizard — covers BOTH the new-customer
-     *  benefit (step 1) and the existing-customer benefit (step 2). */
+    /** Save the "Reward rules & limits" side-panel modal. Covers the
+     *  Who-earns-what + Rewards-unlock + Caps&Limits sections. */
     updateReferralRewards: (patch: Partial<Pick<ReferralSettings,
-        | "newCustomerCredits" | "newCustomerMessage"
-        | "existingCustomerTrigger" | "existingCustomerMinReferred"
-        | "existingCustomerCredits" | "existingCustomerMessage"
+        | "referrerEarnType"   | "referrerEarnAmount"
+        | "friendEarnType"     | "friendEarnAmount"
+        | "rewardUnlockTrigger"
+        | "maxReferralsPerMember"
+        | "earnedRewardExpiryDays"
+        | "monthlyProgramBudgetAed"
     >>) => void;
-    /** Save the "Customize referral information" form — customer-facing copy. */
+    /** Save the "Eligibility & fraud controls" side-panel modal. */
+    updateReferralEligibility: (patch: Partial<Pick<ReferralSettings,
+        | "preventSelfReferral"
+        | "newCustomersOnly"
+        | "minFirstSpendAed"
+        | "creditsRedeemableAllBranches"
+    >>) => void;
+    /** Save the "Customize referral information" form — customer-facing
+     *  Title + Description (rich HTML with variable tokens). */
     updateReferralInformation: (patch: Partial<Pick<ReferralSettings,
-        "infoDescription"
+        "infoTitle" | "infoDescription"
     >>) => void;
 
     // ── Tax module (PRD 11 §10) ────────────────────────────────────────────
@@ -5143,7 +5239,13 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             referralSettings: { ...state.referralSettings, ...patch },
         }));
-        get().recordAudit("Updated referral rewards", "settings", "referral_rewards", "Referral rewards");
+        get().recordAudit("Updated referral rewards", "settings", "referral_rewards", "Reward rules & limits");
+    },
+    updateReferralEligibility: (patch) => {
+        set(state => ({
+            referralSettings: { ...state.referralSettings, ...patch },
+        }));
+        get().recordAudit("Updated referral eligibility", "settings", "referral_eligibility", "Eligibility & fraud controls");
     },
     updateReferralInformation: (patch) => {
         set(state => ({
@@ -6229,16 +6331,22 @@ export const useAppStore = create<AppState>()(persist(
         // + `notificationBranding`;
         // v22: Tax module redesign per Figma 5006:73920 series — TaxRate
         // gains `kind` (vat | income) + `type` (default | zero_rated |
-        // exempt), TaxSettings gains `roundingMode` (per_line |
-        // per_invoice), TaxRuleCategory gains `appointment` for the new
-        // Services parent group. Seed re-shuffled to 4 rows matching the
-        // Figma examples (Services VAT, Exported services, Financial
-        // services, Pay rate tax). Without the bump persisted v21
-        // payloads miss the new keys and the list filter / Apply tax
-        // rates UI / POS tax calc would surface undefined. No migrate
-        // needed — the demo discards the old payload on version
-        // mismatch.
-        version: 22,
+        // exempt), TaxSettings gains `roundingMode`;
+        // v23: Referral module redesign per Figma 4620:151863 series —
+        // ReferralSettings wiped + reshaped: dropped legacy
+        // newCustomerCredits/newCustomerMessage/existingCustomer* fields,
+        // added referrerEarnType/Amount + friendEarnType/Amount +
+        // rewardUnlockTrigger ("friend_signup" / "friend_first_purchase" /
+        // "friend_first_class") + maxReferralsPerMember +
+        // earnedRewardExpiryDays + monthlyProgramBudgetAed +
+        // preventSelfReferral + newCustomersOnly + minFirstSpendAed +
+        // creditsRedeemableAllBranches + infoTitle. CustomerReferral
+        // gains optional `expiresAtISO`. Without the bump persisted v22
+        // payloads carry incompatible field shapes — the Reward rules /
+        // Eligibility modals + customer-detail KPIs would crash on
+        // undefined reads. No migrate needed — the demo discards the
+        // old payload on version mismatch.
+        version: 23,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

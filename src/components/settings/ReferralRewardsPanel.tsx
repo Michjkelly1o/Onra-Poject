@@ -1,0 +1,412 @@
+"use client";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Onra Studio — "Reward rules & limits" side-panel modal (Figma 7661:54592)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Slide-in panel opened from the Referral landing card's "Edit" button on
+// the Reward rules & limits tab. Chrome (overlay + 480 px slide-in from
+// right + 64 px header + scrollable body + footer with Cancel +
+// Save changes) MATCHES the POS "Add new customer" panel
+// (`PosNewCustomerModal`) so the prototype's side-panel pattern stays
+// consistent across modules.
+//
+// Sections (per Figma):
+//   1. Who earns what — Referrer earns + Friend earns (type dropdown +
+//      amount).
+//   2. Rewards unlock when — 3 radio cards (sign up / first purchase
+//      (Recommended) / attends first class).
+//   3. Caps & limits — Max referrals per member / Earned reward expiry
+//      (with day-unit suffix) / Monthly program budget (AED prefix).
+//
+// Validation: amounts ≥ 0; on save commits to the store via
+// `updateReferralRewards` and fires a success toast. ESC + backdrop +
+// X close without saving.
+
+import { useEffect, useState } from "react";
+import { XClose } from "@untitledui/icons";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { SelectInput } from "@/components/ui/select-input";
+import {
+    useAppStore,
+    type ReferralRewardType,
+    type ReferralUnlockTrigger,
+} from "@/lib/store";
+
+const inputCls = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const labelCls = "text-[14px] font-medium text-[#344054]";
+
+const REWARD_TYPE_OPTIONS = [
+    { value: "free_credits",  label: "Free credits"   },
+    { value: "wallet_credit", label: "Wallet credit"  },
+    { value: "discount",      label: "Discount"       },
+];
+
+const EXPIRY_UNIT_OPTIONS = [
+    { value: "days",   label: "days"   },
+    { value: "weeks",  label: "weeks"  },
+    { value: "months", label: "months" },
+];
+
+/** Numeric input that mirrors the project-wide convention:
+ *  placeholder "0", empty when state === 0, strips leading zeros. */
+function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
+    value: number;
+    onChange: (next: number) => void;
+    ariaLabel: string;
+    suffixSlot?: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-stretch gap-0 h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+            <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                aria-label={ariaLabel}
+                value={value === 0 ? "" : value}
+                placeholder="0"
+                onChange={e => {
+                    const raw = e.target.value;
+                    if (raw === "") { onChange(0); return; }
+                    const stripped = raw.replace(/^0+(?=\d)/, "");
+                    const parsed = parseInt(stripped, 10);
+                    if (!Number.isNaN(parsed)) onChange(parsed);
+                }}
+                className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+            />
+            {suffixSlot}
+        </div>
+    );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-4">
+            <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
+            {children}
+        </div>
+    );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <label className={labelCls}>{label}</label>
+            {children}
+        </div>
+    );
+}
+
+const TRIGGER_OPTIONS: Array<{
+    value: ReferralUnlockTrigger;
+    title: string;
+    subtitle: string;
+}> = [
+    {
+        value: "friend_signup",
+        title: "Friend signs up",
+        subtitle: "Fastest, but pays out before any spend, higher abuse risk.",
+    },
+    {
+        value: "friend_first_purchase",
+        title: "Friend first purchase",
+        subtitle: "Recommended, reward only releases on real revenue.",
+    },
+    {
+        value: "friend_first_class",
+        title: "Friend attends first class",
+        subtitle: "Strongest quality signal; slowest to reward.",
+    },
+];
+
+export function ReferralRewardsPanel({ open, onClose }: {
+    open: boolean;
+    onClose: () => void;
+}) {
+    const settings              = useAppStore(s => s.referralSettings);
+    const updateReferralRewards = useAppStore(s => s.updateReferralRewards);
+    const showToast             = useAppStore(s => s.showToast);
+
+    // Slide animation state — drives the same `right: -480 / 0` trick the
+    // POS panel uses to avoid breaking `position: fixed` on inner
+    // SelectInput dropdowns.
+    const [shown, setShown] = useState(false);
+
+    // Local form state — committed only on Save.
+    const [referrerType,   setReferrerType]   = useState<ReferralRewardType>(settings.referrerEarnType);
+    const [referrerAmount, setReferrerAmount] = useState<number>(settings.referrerEarnAmount);
+    const [friendType,     setFriendType]     = useState<ReferralRewardType>(settings.friendEarnType);
+    const [friendAmount,   setFriendAmount]   = useState<number>(settings.friendEarnAmount);
+    const [trigger,        setTrigger]        = useState<ReferralUnlockTrigger>(settings.rewardUnlockTrigger);
+    const [maxReferrals,   setMaxReferrals]   = useState<number>(settings.maxReferralsPerMember);
+    const [expiryDays,     setExpiryDays]     = useState<number>(settings.earnedRewardExpiryDays);
+    const [budget,         setBudget]         = useState<number>(settings.monthlyProgramBudgetAed);
+
+    // Reset every time the panel opens so the form mirrors the
+    // currently-saved values (not stale local edits from a prior open).
+    useEffect(() => {
+        if (open) {
+            setReferrerType(settings.referrerEarnType);
+            setReferrerAmount(settings.referrerEarnAmount);
+            setFriendType(settings.friendEarnType);
+            setFriendAmount(settings.friendEarnAmount);
+            setTrigger(settings.rewardUnlockTrigger);
+            setMaxReferrals(settings.maxReferralsPerMember);
+            setExpiryDays(settings.earnedRewardExpiryDays);
+            setBudget(settings.monthlyProgramBudgetAed);
+            setShown(false);
+            const r = requestAnimationFrame(() => setShown(true));
+            return () => cancelAnimationFrame(r);
+        }
+        setShown(false);
+    }, [open, settings]);
+
+    // ESC closes the panel.
+    useEffect(() => {
+        if (!open) return;
+        function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [open, onClose]);
+
+    const formValid =
+        referrerAmount >= 0
+        && friendAmount >= 0
+        && maxReferrals >= 1
+        && expiryDays >= 1
+        && budget >= 0;
+
+    function handleSave() {
+        if (!formValid) return;
+        updateReferralRewards({
+            referrerEarnType:        referrerType,
+            referrerEarnAmount:      referrerAmount,
+            friendEarnType:          friendType,
+            friendEarnAmount:        friendAmount,
+            rewardUnlockTrigger:     trigger,
+            maxReferralsPerMember:   maxReferrals,
+            earnedRewardExpiryDays:  expiryDays,
+            monthlyProgramBudgetAed: budget,
+        });
+        showToast(
+            "Reward rules & limits updated",
+            "The new referral reward configuration is now live.",
+            "success", "check",
+        );
+        onClose();
+    }
+
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-[200]">
+            {/* Backdrop fades in/out alongside the panel slide. */}
+            <div
+                onClick={onClose}
+                className={cn(
+                    "absolute inset-0 bg-[#0c111d]/40 transition-opacity duration-300 ease-out",
+                    shown ? "opacity-100" : "opacity-0",
+                )}
+            />
+            {/* Panel slides via `right` (not `transform`) — see PosNewCustomerModal
+                for the full explanation. SelectInput's dropdown menu relies on
+                `position: fixed` anchored to the viewport, which `transform`
+                breaks. */}
+            <div
+                style={{ right: shown ? 0 : -480 }}
+                className={cn(
+                    "fixed top-0 w-[480px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "transition-[right] duration-300 ease-out",
+                )}
+            >
+                {/* Header — title + subtitle + X. The subtitle stack uses
+                    items-start so the X stays aligned to the title row. */}
+                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4">
+                    <div className="flex-1 flex flex-col gap-1">
+                        <p className="font-semibold text-[18px] text-[#101828]">Reward rules &amp; limits</p>
+                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                            Decide who qualifies &amp; block the common ways referral programs get gamed.
+                        </p>
+                    </div>
+                    <button type="button" onClick={onClose}
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+
+                {/* Body — scrollable form */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-8">
+                    {/* ── Who earns what ──────────────────────────────── */}
+                    <Section title="Who earns what">
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                            <Field label="Referrer earns">
+                                <SelectInput
+                                    value={referrerType}
+                                    onChange={v => setReferrerType(v as ReferralRewardType)}
+                                    options={REWARD_TYPE_OPTIONS}
+                                />
+                            </Field>
+                            <span className="pb-3 text-[16px] text-[#667085]">→</span>
+                            <Field label="Amount">
+                                <NumberField
+                                    value={referrerAmount}
+                                    onChange={setReferrerAmount}
+                                    ariaLabel="Referrer reward amount"
+                                    suffixSlot={
+                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            {amountUnitLabel(referrerType)}
+                                        </span>
+                                    }
+                                />
+                            </Field>
+                        </div>
+
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                            <Field label="Friend earns">
+                                <SelectInput
+                                    value={friendType}
+                                    onChange={v => setFriendType(v as ReferralRewardType)}
+                                    options={REWARD_TYPE_OPTIONS}
+                                />
+                            </Field>
+                            <span className="pb-3 text-[16px] text-[#667085]">→</span>
+                            <Field label="Amount">
+                                <NumberField
+                                    value={friendAmount}
+                                    onChange={setFriendAmount}
+                                    ariaLabel="Friend reward amount"
+                                    suffixSlot={
+                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            {amountUnitLabel(friendType)}
+                                        </span>
+                                    }
+                                />
+                            </Field>
+                        </div>
+                    </Section>
+
+                    {/* ── Rewards unlock when ─────────────────────────── */}
+                    <Section title="Rewards unlock when">
+                        <div className="flex flex-col gap-1">
+                            <p className={labelCls}>Trigger</p>
+                            <div className="grid grid-cols-2 gap-3 mt-1">
+                                {TRIGGER_OPTIONS.map(opt => {
+                                    const selected = trigger === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setTrigger(opt.value)}
+                                            className={cn(
+                                                "text-left rounded-[12px] border-1 p-4 flex items-start gap-3 transition-colors",
+                                                selected
+                                                    ? "border-[#7ba08c] bg-white"
+                                                    : "border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                            )}
+                                        >
+                                            <div className="flex-1 flex flex-col gap-1 min-w-0">
+                                                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{opt.title}</p>
+                                                <p className="text-[14px] text-[#667085] leading-[20px]">{opt.subtitle}</p>
+                                            </div>
+                                            {/* Radio dot — outer ring + inner sage circle when selected. */}
+                                            <div className={cn(
+                                                "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0 mt-0.5",
+                                                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+                                            )}>
+                                                {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </Section>
+
+                    {/* ── Caps & limits ──────────────────────────────── */}
+                    <Section title="Caps & limits">
+                        <div className="grid grid-cols-2 gap-4">
+                            <Field label="Max referrals per member">
+                                <NumberField
+                                    value={maxReferrals}
+                                    onChange={setMaxReferrals}
+                                    ariaLabel="Max referrals per member"
+                                    suffixSlot={
+                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            friends
+                                        </span>
+                                    }
+                                />
+                            </Field>
+                            <Field label="Earned reward expiry">
+                                <div className="flex gap-0 items-stretch">
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        aria-label="Earned reward expiry days"
+                                        value={expiryDays === 0 ? "" : expiryDays}
+                                        placeholder="0"
+                                        onChange={e => {
+                                            const raw = e.target.value;
+                                            if (raw === "") { setExpiryDays(0); return; }
+                                            const stripped = raw.replace(/^0+(?=\d)/, "");
+                                            const parsed = parseInt(stripped, 10);
+                                            if (!Number.isNaN(parsed)) setExpiryDays(parsed);
+                                        }}
+                                        className={cn(inputCls, "rounded-r-none")}
+                                    />
+                                    <div className="w-[100px] shrink-0">
+                                        <SelectInput
+                                            value="days"
+                                            onChange={() => {}}
+                                            options={EXPIRY_UNIT_OPTIONS}
+                                        />
+                                    </div>
+                                </div>
+                            </Field>
+                        </div>
+
+                        <Field label="Monthly program budget">
+                            <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+                                <span className="px-3 flex items-center text-[14px] text-[#667085] border-r border-[#d0d5dd] bg-[#f9fafb]">
+                                    AED
+                                </span>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    aria-label="Monthly program budget"
+                                    value={budget === 0 ? "" : budget}
+                                    placeholder="0"
+                                    onChange={e => {
+                                        const raw = e.target.value;
+                                        if (raw === "") { setBudget(0); return; }
+                                        const stripped = raw.replace(/^0+(?=\d)/, "");
+                                        const parsed = parseInt(stripped, 10);
+                                        if (!Number.isNaN(parsed)) setBudget(parsed);
+                                    }}
+                                    className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                                />
+                            </div>
+                        </Field>
+                    </Section>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0">
+                    <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
+                    <Button variant="primary" size="md" onClick={handleSave} disabled={!formValid}>
+                        Save changes
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function amountUnitLabel(type: ReferralRewardType): string {
+    switch (type) {
+        case "free_credits":  return "credit";
+        case "wallet_credit": return "AED";
+        case "discount":      return "%";
+    }
+}

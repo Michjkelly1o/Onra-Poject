@@ -309,6 +309,10 @@ export interface CustomerReferral {
     benefit_credits: number;
     /** ISO 8601 — when the referred person signed up via the link. */
     referred_at: string;
+    /** ISO 8601 — when the earned reward expires. Computed at create
+     *  time as `referred_at + referral_settings.earned_reward_expiry_days`.
+     *  Optional so legacy seeds without an explicit expiry still load. */
+    expires_at?: string;
 }
 
 /**
@@ -1481,22 +1485,43 @@ export type NotificationCategorySeed =
     | "marketing"
     | "referral";
 
-// ─── Referral settings (PRD 11 §11) ───────────────────────────────────────
+// ─── Referral settings (PRD 11 §11 — redesigned per Figma 4620:151863) ─────
 
-/** "Trigger for successful referral" dropdown — when the rewards unlock. */
+/** Legacy trigger enum kept for backward-compat imports — superseded by
+ *  `ReferralUnlockTriggerSeed` below. New code should reference the new
+ *  enum directly. */
 export type ReferralTriggerSeed = "sign_up" | "purchase";
+
+/** Rewards unlock trigger per Figma 7661:54592 — see the camelCase mirror
+ *  `ReferralUnlockTrigger` in store.ts for prose-level descriptions. */
+export type ReferralUnlockTriggerSeed =
+    | "friend_signup"
+    | "friend_first_purchase"
+    | "friend_first_class";
+
+/** What the referrer / friend earn — Figma's dropdown defaults to
+ *  Free credits but ships union-typed so future rewards (wallet credit
+ *  / discount / etc.) plug in without reshape. */
+export type ReferralRewardTypeSeed = "free_credits" | "wallet_credit" | "discount";
 
 export interface ReferralSettingsSeed {
     program_active: boolean;
-    // ── New customer benefit (referred) ──
-    new_customer_credits: number;
-    new_customer_message: string;
-    // ── Existing customer benefit (referrer) ──
-    existing_customer_trigger: ReferralTriggerSeed;
-    existing_customer_min_referred: number;
-    existing_customer_credits: number;
-    existing_customer_message: string;
-    // ── Customer-facing copy ──
+    // ── Reward rules & limits ──
+    referrer_earn_type:        ReferralRewardTypeSeed;
+    referrer_earn_amount:      number;
+    friend_earn_type:          ReferralRewardTypeSeed;
+    friend_earn_amount:        number;
+    reward_unlock_trigger:     ReferralUnlockTriggerSeed;
+    max_referrals_per_member:  number;
+    earned_reward_expiry_days: number;
+    monthly_program_budget_aed: number;
+    // ── Eligibility & fraud controls ──
+    prevent_self_referral:           boolean;
+    new_customers_only:              boolean;
+    min_first_spend_aed:             number;
+    credits_redeemable_all_branches: boolean;
+    // ── Customize information ──
+    info_title:       string;
     info_description: string;
 }
 
