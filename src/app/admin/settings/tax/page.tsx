@@ -38,7 +38,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     FilterLines, Plus, DotsVertical, ChevronLeft, Edit02, Trash01, Trash02,
     Archive, Download01, XClose, RefreshCcw01, SlashCircle01, Check, Percent03,
-    Receipt,
+    ShoppingBag01, FileCheck02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -457,18 +457,19 @@ export default function TaxPage() {
     const hasUsage = (id: string) => usageByRate.has(id);
 
     const filtered = useMemo(() => {
+        // Unified list — shows ALL tax rates regardless of the active
+        // top-level tab. Per the client direction the Tax rates list
+        // doesn't split by VAT/Income; the `kind` field still gates
+        // which categories a rate can attach to in Apply tax rates +
+        // seeds the modal's kind when creating a new rate from a tab.
         return taxRates
-            // Filter by the active top-level tab (VAT vs Income tax)
-            // before status — rates from the OTHER tab should never
-            // appear in this surface even if they're active.
-            .filter(r => r.kind === topKind)
             .filter(r => statusFilter === null ? true : r.status === statusFilter)
             .sort((a, b) => {
                 const s = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
                 if (s !== 0) return s;
                 return a.name.localeCompare(b.name);
             });
-    }, [taxRates, statusFilter, topKind]);
+    }, [taxRates, statusFilter]);
 
     // ── Tax rate sort — Name / Type / Rate (numeric) / Status. ──
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<TaxRate>(filtered, {
@@ -722,8 +723,8 @@ export default function TaxPage() {
                     <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Tax calculation &amp; rounding</p>
                     <div className="grid grid-cols-2 gap-3">
                         {([
-                            { key: "per_line"    as const, title: "Per line item",     subtitle: "Round tax on each line, then total." },
-                            { key: "per_invoice" as const, title: "Per invoice total", subtitle: "Total lines, then calculate tax once." },
+                            { key: "per_line"    as const, title: "Per line item",     subtitle: "Round tax on each line, then total.",     Icon: ShoppingBag01 },
+                            { key: "per_invoice" as const, title: "Per invoice total", subtitle: "Total lines, then calculate tax once.",    Icon: FileCheck02   },
                         ]).map(opt => {
                             const selected = taxSettings.roundingMode === opt.key;
                             return (
@@ -740,7 +741,7 @@ export default function TaxPage() {
                                         "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
                                         selected ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]" : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
                                     )}>
-                                        <Receipt className="w-4 h-4" />
+                                        <opt.Icon className="w-4 h-4" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>

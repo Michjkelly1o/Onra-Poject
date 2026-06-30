@@ -403,7 +403,7 @@ function DeleteTaxRuleModal({ onConfirm, onCancel }: {
 
 // ─── Tax rule row (rate dropdown + location dropdown + toggle + trash) ──────
 
-function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, onCreateRate }: {
+function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, onCreateRate, canDelete = true }: {
     rule: TaxRule;
     rates: TaxRate[];
     branchOptions: { id: string; name: string }[];
@@ -411,6 +411,10 @@ function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, 
     onToggle: (id: string, next: boolean) => void;
     onDelete: (rule: TaxRule) => void;
     onCreateRate: () => void;
+    /** Disable the trash button when this is the only rule in the
+     *  category — every category must keep at least one rule for the
+     *  inheritance / fallback to resolve. */
+    canDelete?: boolean;
 }) {
     return (
         <div className="flex gap-6 items-center w-full">
@@ -433,10 +437,17 @@ function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, 
                 ariaLabel="Tax rule active toggle"
             />
             <button type="button"
-                onClick={() => onDelete(rule)}
+                onClick={() => canDelete && onDelete(rule)}
+                disabled={!canDelete}
+                title={canDelete ? "Delete tax rule" : "At least one rule must remain — add another rule first."}
                 aria-label="Delete tax rule"
-                className="w-11 h-11 flex items-center justify-center border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#fef3f2] transition-colors shrink-0">
-                <Trash02 className="w-5 h-5 text-[#d92d20]" />
+                className={cn(
+                    "w-11 h-11 flex items-center justify-center border-1 rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors shrink-0",
+                    canDelete
+                        ? "border-[#d0d5dd] hover:bg-[#fef3f2]"
+                        : "border-[#e4e7ec] cursor-not-allowed opacity-50",
+                )}>
+                <Trash02 className={cn("w-5 h-5", canDelete ? "text-[#d92d20]" : "text-[#98a2b3]")} />
             </button>
         </div>
     );
@@ -448,6 +459,8 @@ function CategoryAccordion({
     category, rules, rates, branchOptions, open, onToggleOpen,
     onAddRule, onUpdateRule, onToggleRule, onDeleteRule, onCreateRate,
     nested = false,
+    headerPill,
+    headerTooltip,
 }: {
     category: TaxRuleCategory;
     rules: TaxRule[];
@@ -465,6 +478,13 @@ function CategoryAccordion({
      *  owned by the parent. Header is also rendered slimmer (smaller
      *  avatar / no border around the icon). */
     nested?: boolean;
+    /** Optional pill label rendered to the right of the header — used by
+     *  the Gift card category to surface "Tax at redemption". */
+    headerPill?: string;
+    /** Optional tooltip text shown on hover of the info icon next to the
+     *  header title. Used by the Gift card category to explain the
+     *  redeemed-tax semantic. */
+    headerTooltip?: string;
 }) {
     const meta = CATEGORY_META[category];
     const Icon = meta.Icon;
@@ -477,8 +497,8 @@ function CategoryAccordion({
         )}>
             {/* Header — clickable to expand/collapse */}
             <button type="button" onClick={onToggleOpen}
-                className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2.5">
+                className="flex items-center justify-between w-full gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
                     {nested ? (
                         <Icon className="w-4 h-4 text-[#475467] shrink-0" />
                     ) : (
@@ -487,12 +507,17 @@ function CategoryAccordion({
                             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                         </div>
                     )}
-                    <div className="flex flex-col items-start text-left">
+                    <div className="flex flex-col items-start text-left min-w-0">
                         <span className={cn(
-                            "font-medium text-[#101828]",
+                            "font-medium text-[#101828] flex items-center gap-1.5",
                             nested ? "text-[14px] leading-[20px]" : "text-[14px] leading-[20px]",
                         )}>
                             {meta.title}
+                            {headerTooltip && (
+                                <span title={headerTooltip} className="inline-flex">
+                                    <InfoCircle className="w-4 h-4 text-[#98a2b3]" aria-label="info" />
+                                </span>
+                            )}
                         </span>
                         {!nested && (
                             <span className="text-[14px] text-[#667085] leading-[20px]">
@@ -501,7 +526,14 @@ function CategoryAccordion({
                         )}
                     </div>
                 </div>
-                {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                <div className="flex items-center gap-3 shrink-0">
+                    {headerPill && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
+                            {headerPill}
+                        </span>
+                    )}
+                    {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                </div>
             </button>
 
             {/* Body */}
@@ -522,6 +554,14 @@ function CategoryAccordion({
                                 onToggle={onToggleRule}
                                 onDelete={onDeleteRule}
                                 onCreateRate={onCreateRate}
+                                // Every category must have at least one rule
+                                // (the inheritance / catalog defaults rely
+                                // on it). When there's only ONE rule the
+                                // trash button is disabled so the admin
+                                // can't accidentally wipe a category;
+                                // adding a 2nd rule unlocks delete on
+                                // both rows.
+                                canDelete={rules.length > 1}
                             />
                         ))
                     )}
@@ -715,7 +755,15 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                             service categories inherit VAT…" info banner;
                             each sub-row provides its own header + rules
                             list + Add another rule link without an inner
-                            border. */}
+                            border.
+
+                            `inheritedRate` is computed from the ACTIVE
+                            all-locations rules under the Services sub-
+                            categories — those rules ARE the inheritance,
+                            so their rate is what the banner should
+                            display. Falls back to undefined when no
+                            inheritance rule exists yet (the banner hides
+                            in that case). */}
                         <ServicesParentCard
                             open={servicesOpen}
                             onToggleOpen={() => setServicesOpen(p => !p)}
@@ -724,9 +772,24 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                                     (n, c) => n + rulesByCategory[c].length, 0,
                                 )
                             }
-                            inheritedRate={ratesForKind.find(r =>
-                                r.type === "default" && r.status === "active"
-                            )?.ratePercentage}
+                            inheritedRate={(() => {
+                                for (const cat of SERVICES_SUBCATEGORIES) {
+                                    const inheritRule = rulesByCategory[cat].find(
+                                        r => r.allLocations
+                                            && r.status === "active"
+                                            && r.taxRateId,
+                                    );
+                                    if (!inheritRule) continue;
+                                    const rate = taxRates.find(
+                                        t => t.id === inheritRule.taxRateId
+                                            && t.status === "active",
+                                    );
+                                    if (rate && rate.type !== "exempt") {
+                                        return rate.ratePercentage;
+                                    }
+                                }
+                                return undefined;
+                            })()}
                         >
                             {SERVICES_SUBCATEGORIES.map(cat => (
                                 <CategoryAccordion
@@ -747,10 +810,29 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                             ))}
                         </ServicesParentCard>
 
-                        {/* Gift card (redeemed tax) — informational card. No
-                            editable rate; gift cards are stored-value
-                            transfers and tax applies at REDEMPTION instead. */}
-                        <GiftCardRedeemedCard />
+                        {/* Gift card (redeemed tax) — same editable accordion
+                            shape as the Services sub-categories. The "Tax
+                            at redemption" pill + tooltip on the header
+                            explain the underlying semantic (gift cards
+                            are stored value; tax applies when redeemed
+                            on a taxable service/product, not at
+                            purchase) so admins still understand WHY
+                            they're configuring a redeemed-tax rule. */}
+                        <CategoryAccordion
+                            category="gift_card"
+                            rules={rulesByCategory.gift_card}
+                            rates={ratesForKind}
+                            branchOptions={branchOptions}
+                            open={openCats.gift_card}
+                            onToggleOpen={() => setOpenCats(p => ({ ...p, gift_card: !p.gift_card }))}
+                            onAddRule={() => handleAddRule("gift_card")}
+                            onUpdateRule={updateTaxRule}
+                            onToggleRule={handleToggleRule}
+                            onDeleteRule={rule => setPendingDelete(rule)}
+                            onCreateRate={onCreateRate}
+                            headerPill="Tax at redemption"
+                            headerTooltip="Gift cards are stored value, not a sale. No VAT is charged when the card is purchased, tax applies when the card is redeemed on a service or product. This avoids double taxation."
+                        />
                     </>
                 )}
 
@@ -841,34 +923,3 @@ function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRa
     );
 }
 
-// ─── Gift card (redeemed tax) info card ──────────────────────────────────────
-// Per Figma 5041:99307 — gift cards are stored-value transfers; tax
-// applies at REDEMPTION (when the card is spent on a taxable category
-// above), not at purchase. This card surfaces the explanation as a
-// non-editable info row with a "Tax at redemption" badge in the corner.
-function GiftCardRedeemedCard() {
-    return (
-        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-4 flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-                <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-                    <Gift01 className="w-5 h-5 text-[#475467]" />
-                    <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">
-                            Gift card (redeemed tax)
-                        </span>
-                        <InfoCircle className="w-4 h-4 text-[#98a2b3]" aria-label="info" />
-                    </div>
-                    <span className="text-[12px] text-[#667085] leading-[18px]">
-                        Taxed when redeemed, not at purchase
-                    </span>
-                </div>
-            </div>
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] shrink-0 mt-0.5">
-                Tax at redemption
-            </span>
-        </div>
-    );
-}
