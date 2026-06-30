@@ -434,7 +434,7 @@ export default function TaxPage() {
     /** Modal state — `null` closed, `{ mode: "create" }` for Add new,
      *  `{ mode: "edit", existing }` for the Edit row action. */
     const [taxModal, setTaxModal] = useState<
-        | { mode: "create" }
+        | { mode: "create"; kindHint?: TaxRateKind }
         | { mode: "edit"; existing: TaxRate }
         | null
     >(null);
@@ -783,7 +783,7 @@ export default function TaxPage() {
                     <ApplyTaxRatesView
                         kind="income"
                         showOnly="pay_rate"
-                        onCreateRate={() => setTaxModal({ mode: "create" })}
+                        onCreateRate={kindHint => setTaxModal({ mode: "create", kindHint })}
                     />
                 </div>
             )}
@@ -942,7 +942,7 @@ export default function TaxPage() {
                 // the "Add new" button on the Tax rates list tab.
                 <ApplyTaxRatesView
                     kind={topKind}
-                    onCreateRate={() => setTaxModal({ mode: "create" })}
+                    onCreateRate={kindHint => setTaxModal({ mode: "create", kindHint })}
                 />
             )}
 
@@ -974,7 +974,17 @@ export default function TaxPage() {
                 <TaxRateModal
                     mode={taxModal.mode}
                     existing={taxModal.mode === "edit" ? taxModal.existing : undefined}
-                    defaultKind={topKind}
+                    defaultKind={
+                        // Category-context create wins (clicking "+ Add new
+                        // tax rate" from a Services dropdown seeds VAT
+                        // even on the Income tab, and pay_rate's seeds
+                        // income). The Tax rates list "+ Add new" button
+                        // has no category context — fall back to the
+                        // current top-level tab.
+                        taxModal.mode === "create" && taxModal.kindHint
+                            ? taxModal.kindHint
+                            : topKind
+                    }
                     onClose={() => setTaxModal(null)}
                     onSubmitted={saved => handleTaxModalSubmitted(saved, taxModal.mode)}
                 />

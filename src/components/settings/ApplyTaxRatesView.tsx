@@ -62,6 +62,15 @@ const CATEGORIES_BY_KIND: Record<TaxRateKind, TaxRuleCategory[]> = {
 
 const SERVICES_SUBCATEGORIES: TaxRuleCategory[] = ["membership", "credit_package", "appointment"];
 
+/** Intrinsic kind for a category — drives both the rate-dropdown filter
+ *  (a Services rule's dropdown only sees VAT rates; pay_rate's only sees
+ *  Income rates) AND the create-modal kind hint (clicking "+ Add new
+ *  tax rate" from a Services dropdown creates a VAT rate regardless of
+ *  which top-level tab the admin is currently viewing). */
+function kindForCategory(category: TaxRuleCategory): TaxRateKind {
+    return category === "pay_rate" ? "income" : "vat";
+}
+
 // ─── Small toggle (sm size, mirrors Figma 5041-99787) ────────────────────────
 
 function SmallToggle({ on, onChange, ariaLabel }: {
@@ -629,8 +638,12 @@ export interface ApplyTaxRatesViewProps {
      *  inline Pay rate editor at the top of the page). */
     showOnly?: TaxRuleCategory;
     /** Called when the user clicks "+ Add new tax rate" inside the rate
-     *  dropdown. Wired to the page's create-rate modal. */
-    onCreateRate: () => void;
+     *  dropdown. The `kindHint` tells the page which kind to seed the
+     *  modal with (derived from the category that owns the dropdown:
+     *  pay_rate → income, everything else → vat). Lets a Services-rate
+     *  dropdown create a VAT rate even when the admin is on the Income
+     *  tax tab, and vice versa for the pay_rate inline editor. */
+    onCreateRate: (kindHint: TaxRateKind) => void;
 }
 
 export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRatesViewProps) {
@@ -643,14 +656,25 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     const deleteTaxRule  = useAppStore(s => s.deleteTaxRule);
     const showToast      = useAppStore(s => s.showToast);
 
-    // Every category starts expanded — matches the Figma demo state.
+    // Every category starts expanded on VAT, collapsed on Income (the
+    // figma's summary view for Income tax tab). Sub-rows inside the
+    // Services parent ignore their own open state since their parent
+    // owns expand/collapse (post-fix #2).
     const [openCats, setOpenCats] = useState<Record<TaxRuleCategory, boolean>>({
-        membership: true, credit_package: true, appointment: true, gift_card: true, pay_rate: true,
+        membership:     true,
+        credit_package: true,
+        appointment:    true,
+        gift_card:      kind !== "income",
+        pay_rate:       true,
     });
     /** Services parent card open state — independent of its sub-cards
      *  so the admin can collapse the whole Services group while leaving
      *  individual sub-categories' open state intact. */
-    const [servicesOpen, setServicesOpen] = useState(true);
+    // Services parent + Gift card start COLLAPSED on the Income tax tab
+    // (the figma's read-only summary view). VAT tab starts expanded so
+    // admins can edit rules immediately. State is per-card so the admin
+    // can collapse on VAT or expand on Income freely.
+    const [servicesOpen, setServicesOpen] = useState(kind !== "income");
     const [pendingDelete, setPendingDelete] = useState<TaxRule | null>(null);
     /** Toggle-flip confirmation — captures the rule + the target action so the
      *  modal can show the right copy and the confirm handler can apply it. */
@@ -667,13 +691,19 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
         [branches],
     );
 
-    // Rates filtered by kind — VAT rules can only pick VAT rates and vice
-    // versa. Keeps the cross-pollination guard tight without needing extra
-    // validation in the store.
-    const ratesForKind = useMemo(
-        () => taxRates.filter(r => r.kind === kind),
-        [taxRates, kind],
-    );
+    // Rates are filtered per CATEGORY's intrinsic kind — not by the
+    // active top-level tab. So when the Income tax tab renders the
+    // VAT-category summary cards (Services + Gift card), their rate
+    // dropdowns still show VAT rates; and Pay rate (whether rendered
+    // inline at the top or hypothetically anywhere else) only sees
+    // Income rates. Mapping mirrors `CATEGORIES_BY_KIND`. */
+    const ratesForCategory = useMemo(() => {
+        const ratesVat    = taxRates.filter(r => r.kind === "vat");
+        const ratesIncome = taxRates.filter(r => r.kind === "income");
+        return (category: TaxRuleCategory): TaxRate[] => {
+            return category === "pay_rate" ? ratesIncome : ratesVat;
+        };
+    }, [taxRates]);
 
     // Group rules by category, preserving createdAt order.
     const rulesByCategory = useMemo(() => {
@@ -752,7 +782,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                 <CategoryAccordion
                     category={cat}
                     rules={rulesByCategory[cat]}
-                    rates={ratesForKind}
+                    rates={ratesForCategory(cat)}
                     branchOptions={branchOptions}
                     open={openCats[cat]}
                     onToggleOpen={() => setOpenCats(p => ({ ...p, [cat]: !p[cat] }))}
@@ -760,7 +790,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                     onUpdateRule={updateTaxRule}
                     onToggleRule={handleToggleRule}
                     onDeleteRule={rule => setPendingDelete(rule)}
-                    onCreateRate={onCreateRate}
+                    onCreateRate={() => onCreateRate(kindForCategory(cat))}
                 />
                 {pendingDelete && (
                     <DeleteTaxRuleModal
@@ -789,23 +819,34 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
 
             {/* Category stack */}
             <div className="flex flex-col gap-4">
-                {kind === "vat" && (
+                {/* Services + Gift card render on BOTH tabs — the same
+                    underlying rules drive every surface. The difference:
+                    on the Income tax tab they start COLLAPSED with summary
+                    pills on their headers (matches Figma 5041:98666 read-
+                    only summary view), so admins can see the VAT setup at
+                    a glance while configuring Pay rate. Click to expand
+                    still works; rules remain editable. */}
+                {(kind === "vat" || kind === "income") && (() => {
+                    const inheritedRate = (() => {
+                        for (const cat of SERVICES_SUBCATEGORIES) {
+                            const inheritRule = rulesByCategory[cat].find(
+                                r => r.allLocations
+                                    && r.status === "active"
+                                    && r.taxRateId,
+                            );
+                            if (!inheritRule) continue;
+                            const rate = taxRates.find(
+                                t => t.id === inheritRule.taxRateId
+                                    && t.status === "active",
+                            );
+                            if (rate && rate.type !== "exempt") {
+                                return rate.ratePercentage;
+                            }
+                        }
+                        return undefined;
+                    })();
+                    return (
                     <>
-                        {/* Services parent card containing 3 sub-categories
-                            (Membership / Credit package / Appointment).
-                            The parent owns the outer border + the "All
-                            service categories inherit VAT…" info banner;
-                            each sub-row provides its own header + rules
-                            list + Add another rule link without an inner
-                            border.
-
-                            `inheritedRate` is computed from the ACTIVE
-                            all-locations rules under the Services sub-
-                            categories — those rules ARE the inheritance,
-                            so their rate is what the banner should
-                            display. Falls back to undefined when no
-                            inheritance rule exists yet (the banner hides
-                            in that case). */}
                         <ServicesParentCard
                             open={servicesOpen}
                             onToggleOpen={() => setServicesOpen(p => !p)}
@@ -814,31 +855,17 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                                     (n, c) => n + rulesByCategory[c].length, 0,
                                 )
                             }
-                            inheritedRate={(() => {
-                                for (const cat of SERVICES_SUBCATEGORIES) {
-                                    const inheritRule = rulesByCategory[cat].find(
-                                        r => r.allLocations
-                                            && r.status === "active"
-                                            && r.taxRateId,
-                                    );
-                                    if (!inheritRule) continue;
-                                    const rate = taxRates.find(
-                                        t => t.id === inheritRule.taxRateId
-                                            && t.status === "active",
-                                    );
-                                    if (rate && rate.type !== "exempt") {
-                                        return rate.ratePercentage;
-                                    }
-                                }
-                                return undefined;
-                            })()}
+                            inheritedRate={inheritedRate}
+                            summaryPill={kind === "income" && inheritedRate !== undefined
+                                ? `Default · VAT ${inheritedRate}%`
+                                : undefined}
                         >
                             {SERVICES_SUBCATEGORIES.map(cat => (
                                 <CategoryAccordion
                                     key={cat}
                                     category={cat}
                                     rules={rulesByCategory[cat]}
-                                    rates={ratesForKind}
+                                    rates={ratesForCategory(cat)}
                                     branchOptions={branchOptions}
                                     open={openCats[cat]}
                                     onToggleOpen={() => setOpenCats(p => ({ ...p, [cat]: !p[cat] }))}
@@ -846,7 +873,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                                     onUpdateRule={updateTaxRule}
                                     onToggleRule={handleToggleRule}
                                     onDeleteRule={rule => setPendingDelete(rule)}
-                                    onCreateRate={onCreateRate}
+                                    onCreateRate={() => onCreateRate(kindForCategory(cat))}
                                     nested
                                 />
                             ))}
@@ -863,7 +890,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                         <CategoryAccordion
                             category="gift_card"
                             rules={rulesByCategory.gift_card}
-                            rates={ratesForKind}
+                            rates={ratesForCategory("gift_card")}
                             branchOptions={branchOptions}
                             open={openCats.gift_card}
                             onToggleOpen={() => setOpenCats(p => ({ ...p, gift_card: !p.gift_card }))}
@@ -871,28 +898,24 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                             onUpdateRule={updateTaxRule}
                             onToggleRule={handleToggleRule}
                             onDeleteRule={rule => setPendingDelete(rule)}
-                            onCreateRate={onCreateRate}
+                            onCreateRate={() => onCreateRate(kindForCategory("gift_card"))}
                             headerPill="Tax at redemption"
                             headerTooltip="Gift cards are stored value, not a sale. No VAT is charged when the card is purchased, tax applies when the card is redeemed on a service or product. This avoids double taxation."
                         />
                     </>
-                )}
+                    );
+                })()}
 
-                {kind === "income" && (
-                    <CategoryAccordion
-                        category="pay_rate"
-                        rules={rulesByCategory.pay_rate}
-                        rates={ratesForKind}
-                        branchOptions={branchOptions}
-                        open={openCats.pay_rate}
-                        onToggleOpen={() => setOpenCats(p => ({ ...p, pay_rate: !p.pay_rate }))}
-                        onAddRule={() => handleAddRule("pay_rate")}
-                        onUpdateRule={updateTaxRule}
-                        onToggleRule={handleToggleRule}
-                        onDeleteRule={rule => setPendingDelete(rule)}
-                        onCreateRate={onCreateRate}
-                    />
-                )}
+                {/* NB: Pay rate is intentionally NOT rendered in this
+                    Apply tax rates sub-tab. It lives in the top "Income
+                    / payroll tax" container of the Income tax tab
+                    (rendered via the page's inline ApplyTaxRatesView with
+                    showOnly="pay_rate"). Rendering it here too would
+                    duplicate the editor and confuse the admin. The
+                    Services + Gift card cards above DO render on both
+                    tabs so admins on the Income tax tab can see the VAT
+                    setup at a glance — just collapsed with summary
+                    pills (matches Figma 5041:98666). */}
             </div>
 
             {pendingDelete && (
@@ -918,31 +941,42 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
 // "All service categories inherit VAT X% unless overridden below." info
 // banner at the bottom. Children are rendered in `nested` mode (no inner
 // border on their own accordions).
-function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRate, children }: {
+function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRate, summaryPill, children }: {
     open: boolean;
     onToggleOpen: () => void;
     servicesRuleCount: number;
     inheritedRate: number | undefined;
+    /** Optional summary pill shown on the right of the header (e.g.
+     *  "Default · VAT 5%" for the Income tax tab's read-only summary
+     *  view per Figma 5041:98666). */
+    summaryPill?: string;
     children: React.ReactNode;
 }) {
     return (
         <div className="border-1 border-[#e4e7ec] rounded-[16px] p-4 flex flex-col gap-4">
             {/* Header — clickable to expand/collapse */}
             <button type="button" onClick={onToggleOpen}
-                className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
+                className="flex items-center justify-between w-full gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
                         <Package className="w-5 h-5 text-[#475467]" />
                         <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                     </div>
-                    <div className="flex flex-col items-start text-left">
+                    <div className="flex flex-col items-start text-left min-w-0">
                         <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Services</span>
                         <span className="text-[12px] text-[#667085] leading-[18px]">
                             Memberships · Credit packages · Appointments
                         </span>
                     </div>
                 </div>
-                {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                <div className="flex items-center gap-3 shrink-0">
+                    {summaryPill && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#475467]">
+                            {summaryPill}
+                        </span>
+                    )}
+                    {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                </div>
             </button>
 
             {open && (
