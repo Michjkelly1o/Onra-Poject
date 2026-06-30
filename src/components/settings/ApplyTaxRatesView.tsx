@@ -453,6 +453,39 @@ function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, 
     );
 }
 
+// ─── Hover tooltip (lightweight, no portal) ──────────────────────────────────
+// Renders a dark text bubble above the trigger child on mouseenter +
+// focus, with a small arrow pointing down. Used by the Gift card category
+// header to surface the redeemed-tax explanation. The native HTML `title`
+// attribute is unreliable across browsers + doesn't trigger on focus, so
+// this is a real DOM-based replacement.
+function HoverTooltip({ text, children }: { text: string; children: React.ReactNode }) {
+    const [shown, setShown] = useState(false);
+    return (
+        <span
+            className="relative inline-flex"
+            onMouseEnter={() => setShown(true)}
+            onMouseLeave={() => setShown(false)}
+            onFocus={() => setShown(true)}
+            onBlur={() => setShown(false)}
+            tabIndex={0}
+        >
+            {children}
+            {shown && (
+                <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-50">
+                    <span className="block w-[260px] rounded-[8px] bg-[#0c111d] text-white text-[12px] leading-[18px] font-medium px-3 py-2 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+                        {text}
+                    </span>
+                    {/* Down-pointing arrow */}
+                    <span className="block absolute left-1/2 -translate-x-1/2 top-full">
+                        <svg viewBox="0 0 12 6" className="w-3 h-1.5"><path d="M6 6 L0 0 L12 0 Z" fill="#0c111d"/></svg>
+                    </span>
+                </span>
+            )}
+        </span>
+    );
+}
+
 // ─── Category accordion (collapsible card per category) ──────────────────────
 
 function CategoryAccordion({
@@ -488,6 +521,12 @@ function CategoryAccordion({
 }) {
     const meta = CATEGORY_META[category];
     const Icon = meta.Icon;
+    // Nested sub-rows (Membership / Credit package / Appointment) sit
+    // INSIDE the Services parent accordion which already owns the
+    // collapse behaviour — so their own header is non-clickable and the
+    // body is always visible. Only stand-alone cards (Gift card, Pay
+    // rate) keep the chevron + expand/collapse interaction.
+    const bodyVisible = nested ? true : open;
     return (
         <div className={cn(
             "flex flex-col gap-3",
@@ -495,49 +534,52 @@ function CategoryAccordion({
                 ? "pt-1"
                 : "border-1 border-[#e4e7ec] rounded-[16px] p-4 gap-4",
         )}>
-            {/* Header — clickable to expand/collapse */}
-            <button type="button" onClick={onToggleOpen}
-                className="flex items-center justify-between w-full gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                    {nested ? (
+            {/* Header — clickable only when NOT nested (the parent
+                accordion owns expand/collapse for nested sub-rows). */}
+            {nested ? (
+                <div className="flex items-center justify-between w-full gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
                         <Icon className="w-4 h-4 text-[#475467] shrink-0" />
-                    ) : (
+                        <span className="text-[14px] font-medium text-[#101828] leading-[20px]">
+                            {meta.title}
+                        </span>
+                    </div>
+                </div>
+            ) : (
+                <button type="button" onClick={onToggleOpen}
+                    className="flex items-center justify-between w-full gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
                         <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
                             <Icon className="w-5 h-5 text-[#475467]" />
                             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                         </div>
-                    )}
-                    <div className="flex flex-col items-start text-left min-w-0">
-                        <span className={cn(
-                            "font-medium text-[#101828] flex items-center gap-1.5",
-                            nested ? "text-[14px] leading-[20px]" : "text-[14px] leading-[20px]",
-                        )}>
-                            {meta.title}
-                            {headerTooltip && (
-                                <span title={headerTooltip} className="inline-flex">
-                                    <InfoCircle className="w-4 h-4 text-[#98a2b3]" aria-label="info" />
-                                </span>
-                            )}
-                        </span>
-                        {!nested && (
+                        <div className="flex flex-col items-start text-left min-w-0">
+                            <span className="text-[14px] font-medium text-[#101828] leading-[20px] flex items-center gap-1.5">
+                                {meta.title}
+                                {headerTooltip && (
+                                    <HoverTooltip text={headerTooltip}>
+                                        <InfoCircle className="w-4 h-4 text-[#98a2b3]" aria-label="info" />
+                                    </HoverTooltip>
+                                )}
+                            </span>
                             <span className="text-[14px] text-[#667085] leading-[20px]">
                                 {rules.length} tax rule{rules.length === 1 ? "" : "s"}
                             </span>
-                        )}
+                        </div>
                     </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                    {headerPill && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
-                            {headerPill}
-                        </span>
-                    )}
-                    {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
-                </div>
-            </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                        {headerPill && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
+                                {headerPill}
+                            </span>
+                        )}
+                        {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                    </div>
+                </button>
+            )}
 
             {/* Body */}
-            {open && (
+            {bodyVisible && (
                 <div className="flex flex-col gap-4 py-2 w-full">
                     {rules.length === 0 ? (
                         <p className="text-[14px] text-[#667085] leading-[20px]">
