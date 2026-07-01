@@ -18,6 +18,7 @@
 // Saved values mirror to `referralSettings` via `updateReferralEligibility`.
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -137,9 +138,13 @@ export function ReferralEligibilityPanel({ open, onClose }: {
     }
 
     if (!open) return null;
+    if (typeof document === "undefined") return null;
 
-    return (
-        <div className="fixed inset-0 z-[200]">
+    // PORTAL to document.body — same reasoning as ReferralRewardsPanel:
+    // anchors `position: fixed` to the viewport regardless of what the
+    // parent layout chrome does with transforms / overflow.
+    return createPortal(
+        <div className="fixed inset-0 z-[200] select-none">
             <div
                 onClick={onClose}
                 className={cn(
@@ -148,14 +153,14 @@ export function ReferralEligibilityPanel({ open, onClose }: {
                 )}
             />
             <div
-                style={{ right: shown ? 0 : -480 }}
+                style={{ right: shown ? 0 : -600 }}
                 className={cn(
-                    "fixed top-0 w-[480px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
                 {/* Header */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4">
+                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="font-semibold text-[18px] text-[#101828]">Eligibility &amp; fraud controls</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
@@ -225,13 +230,14 @@ export function ReferralEligibilityPanel({ open, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0">
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0 select-none">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave}>
                         Save changes
                     </Button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

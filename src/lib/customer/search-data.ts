@@ -309,7 +309,10 @@ export function useNeedsWaiver(): boolean {
     const { member } = useCurrentCustomerContext();
     const customerAgreements = useAppStore((s) => s.customerAgreements);
     return useMemo(
-        () => !!member && customerAgreements.some((ca) => ca.customerId === member.id && ca.status === "unsigned"),
+        // v24: "not signed" means either terminal not-signed state
+        // (never_signed OR re_accept_due) — the customer needs to
+        // sign before booking either way.
+        () => !!member && customerAgreements.some((ca) => ca.customerId === member.id && ca.status !== "signed"),
         [member, customerAgreements],
     );
 }

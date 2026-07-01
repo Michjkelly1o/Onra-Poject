@@ -66,6 +66,93 @@ Re-enable any of these by deleting their matching prefix(es) from
 
 ## ✦ Admin updates
 
+### Booking Rules module redesign (Figma 4580:29847 series)
+- Landing page rebuilt as **3 stacked cards** matching Figma:
+  - **Booking window** — 3 summary fields (Bookings open / Last minutes
+    booking / Bookings close). Customize opens a side panel.
+  - **Waitlist** — inline master toggle on the header. When OFF the
+    card collapses to header-only and the Customize button disables.
+    When ON it shows 6 summary fields.
+  - **Cancellation policy** — SegmentedTabs with **Cancellation rule**
+    (credit-window + membership-fees summary) and **Applied to**
+    (2 accordions listing selected Packages + Classes).
+- **3 new side-panel modals** (POS chrome, portal to body, 600px):
+  - **Booking window** — Bookings open picker + a "Booking cutoff"
+    toggle card that hides the Bookings-close picker when ON
+    ("Allow bookings until the class starts").
+  - **Waitlist** — Max spots + Notify-via chip picker + When-a-spot-
+    opens radios + "Match the free cancellation window" toggle
+    (reads live from `cancellationPolicy.credit_before_window_value`)
+    + Stop-auto-promoting picker (read-only when matching) + After-
+    cutoff radios + info tip banner.
+  - **Cancellation policy** — 2 credit-window rows (before/within +
+    outcome) + late-cancel/no-show fee toggles + Applies-to
+    accordions (Packages grouped Membership/Class package, Classes
+    with instructor caption + Select all + Filter search).
+- **Schema (persist v25 → v26)** — `ClassesSettings` sheds legacy
+  Step 2 (SMS cutoff), Step 3 (overbooking + auto-cancel), and
+  auto-submit-attendance fields. Gains `booking_cutoff_enabled`,
+  `notify_via[]`, `when_spot_opens_mode`,
+  `match_free_cancellation_window`, `stop_auto_promoting_*`,
+  `after_cutoff_mode`. `CancellationPolicy` collapses from a **list
+  of policies** (Add/Edit/Delete) to a **single studio-wide record**
+  with credit/package window rules, membership fee toggles, and
+  `applied_to_package_ids[]` + `applied_to_class_template_ids[]`
+  scoping.
+- **Removed** — legacy `/settings/booking-rules/customize` full-page
+  3-step form + `/settings/booking-rules/policies/*` routes +
+  `CustomizeClassesSettingsPage.tsx` + `PolicyFormPage.tsx`.
+
+### Agreements module redesign (Figma 4232:52279 series)
+- **List view rebuilt** — replaces the Type column with a live
+  **Branch location** column (comma-separated names or "All locations")
+  and a new **Coverage** column that renders a progress bar + %
+  signed-current-version + an amber "N to re-accept" subtitle. The
+  Effective-until column now renders a blue **Ongoing** pill for
+  agreements with no expiry.
+- **Wizard Step 2 (Rules)** picks up three new sections:
+  - **Effective dates** — 2 radio cards: Ongoing (no expiry) /
+    Set an expiry date. Ongoing is pre-selected on create; Set an
+    expiry date reveals Issue Date + Expiry Date pickers, both
+    required to Continue.
+  - **Re-acceptance** — toggle card "Require existing customers to
+    re-accept". When on and a new version publishes, existing
+    signed customers flip to `re_accept_due`.
+  - **Minors & guardian consent** — toggle card "Require guardian
+    signature for minors".
+- **Detail page** — sidebar left rail refreshed to show Current
+  version, Multi-location access, Effective until (Ongoing pill OR
+  date), Re-acceptance newer version, Minors & guardian consent.
+  Agreement details tab body now renders a **2×2 rule pill grid**
+  with icon + info tooltip per pill:
+  - Multi-location access — "Membership can be use on multiple branches"
+  - Effective until (Ongoing / date)
+  - Re-acceptance newer version — "Customers must accept the latest
+    version before their next booking"
+  - Minors & guardian consent — "Guardian consent is required for
+    customers under 18"
+- **NEW Acceptance status tab** on the detail page — 3 KPI cards
+  (Signed current version / On older version / Pending or never
+  signed) + 3 sub-tabs (**All signed** / **Needs re-acceptance** /
+  **Pending / never**) with search + pagination + row action **View**
+  that deep-links to the customer detail module.
+- **Customer detail Agreements tab** status split — was 2 values
+  (`signed` / `unsigned`); now 3 distinct pills: **Signed** (green) /
+  **Re-accept due** (amber) / **Never signed** (red). Legacy
+  "Unsigned" copy renamed to "Never signed" everywhere.
+- **Schema (persist v24)** — `Agreement` gains `effectiveDatesMode`
+  ("ongoing" | "expiry"), `requireReAcceptance`, `requireGuardianConsent`;
+  `effectiveFrom` / `effectiveUntil` become semantic "empty when
+  ongoing". `CustomerAgreement.status` expands to
+  `signed | re_accept_due | never_signed`. `republishAgreementVersion`
+  now flips signed rows to `re_accept_due` instead of the old
+  `unsigned`. `addAgreementVersion` picks `re_accept_due` /
+  `never_signed` per prior-signed history so the Acceptance status
+  buckets self-populate correctly.
+- **Seed mix** — 1 signed-current-version customer + 7
+  needs-re-acceptance customers + 1 never-signed customer so all 3
+  Acceptance sub-tabs have realistic demo data out of the box.
+
 ### Referral module redesign (Figma 4620:151863 series)
 - Settings → Referral landing rebuilt to **3 stacked cards**:
   1. **Referral settings** — master "Referral program is active" toggle.

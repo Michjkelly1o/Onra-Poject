@@ -1,260 +1,385 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Booking Rules landing (/admin/settings/booking-rules)
+// Onra Studio — Booking Rules landing (v26 — Figma 4580:29847)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma 4580:29847 (empty) + 4580:34127 (populated policies container) —
-// two stacked white cards:
-//   1. Classes  — read-only summary (Bookings open / Bookings close /
-//      Auto-submit attendance / Waitlist enabled / Max waiting spots).
-//      Top-right "Customize" navigates to /settings/booking-rules/customize.
-//   2. Cancellation & no-show policies — Add new button + list of saved
-//      policies with edit + delete row actions. Empty state when none.
+// 3 stacked cards:
 //
-// ── Phase 4 module reshuffle ────────────────────────────────────────────
-// "Service categories" used to live here as the third card. It moved to
-// its own page at /admin/categories under the Classes sidebar group so
-// admins manage class taxonomy alongside Class templates / Schedule /
-// Services instead of buried inside Settings. The data layer is
-// unchanged — the new page reads the same `classCategories` slice and
-// calls the same mutators.
+//   1. Booking window — 3 summary fields (Bookings open / Last minutes
+//      booking / Bookings close). Customize opens the Booking window
+//      side panel (Figma 7631:393661 / 7644:81487).
 //
-// The delete confirm modal stays here for the policy delete flow.
+//   2. Waitlist — inline master toggle on the header row. When ON the
+//      card body shows 6 summary fields; when OFF the body collapses to
+//      just the description line (Figma 7631:404386).
+//
+//   3. Cancellation policy — SegmentedTabs: "Cancellation rule" (default)
+//      shows credit-window + membership-fees summary; "Applied to"
+//      (Figma 7631:455367) shows 2 accordion multi-selects (Packages +
+//      Classes). Customize opens the Cancellation policy side panel
+//      (Figma 7631:404757 / 7714:17240).
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-    Edit02, Plus, ShieldTick, Pencil01, Trash04, XClose,
-} from "@untitledui/icons";
+import { useMemo, useState } from "react";
+import { Edit02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { Toast } from "@/components/ui/Toast";
+import { MultiSelectCard, type MultiSelectOption } from "@/components/patterns/MultiSelectCard";
 import { useAppStore } from "@/lib/store";
-import { ConfirmModal } from "@/components/modals/ConfirmModal";
-import type { ClassesSettings, CancellationPolicy } from "@/lib/store";
+import type {
+    ClassesSettings, CancellationPolicy, CancellationOutcome,
+} from "@/lib/store";
+import { BookingWindowPanel } from "./BookingWindowPanel";
+import { WaitlistPanel }      from "./WaitlistPanel";
+import { CancellationPolicyPanel } from "./CancellationPolicyPanel";
+
+// ─── Display helpers ────────────────────────────────────────────────────────
+
+/** "days" / "hours" / "minutes" → user-facing label (singular/plural).
+ *  Used across all 3 landing summary blocks. */
+function unitLabel(unit: "days" | "hours" | "minutes", n: number): string {
+    if (unit === "days")    return n === 1 ? "day" : "days";
+    if (unit === "hours")   return n === 1 ? "hour" : "hours";
+    return n === 1 ? "minute" : "minutes";
+}
+
+const NOTIFY_LABEL: Record<"whatsapp" | "email" | "sms" | "push", string> = {
+    whatsapp: "WhatsApp",
+    email:    "Email",
+    sms:      "SMS",
+    push:     "Push",
+};
+
+const SPOT_OPENS_LABEL: Record<ClassesSettings["when_spot_opens_mode"], string> = {
+    auto_add_next:    "Auto add next person",
+    notify_to_accept: "Notify to accept",
+};
+
+const AFTER_CUTOFF_LABEL: Record<ClassesSettings["after_cutoff_mode"], string> = {
+    reopens_first_come:  "Reopens first come",
+    keep_auto_promoting: "Keep auto promoting",
+    stays_empty:         "Stays empty",
+};
+
+const OUTCOME_LABEL: Record<CancellationOutcome, string> = {
+    credit_returned:  "Credit returned",
+    credit_forfeited: "Credit forfeited",
+};
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
+type CancellationTab = "rule" | "applied";
 
 export default function BookingRulesPage() {
-    const router          = useRouter();
-    const classesSettings = useAppStore(s => s.classesSettings);
-    const policies        = useAppStore(s => s.cancellationPolicies);
-    const deletePolicy    = useAppStore(s => s.deleteCancellationPolicy);
-    const showToast       = useAppStore(s => s.showToast);
+    const classesSettings   = useAppStore(s => s.classesSettings);
+    const cancellationPolicy = useAppStore(s => s.cancellationPolicy);
+    const updateClassesSettings = useAppStore(s => s.updateClassesSettings);
+    const showToast         = useAppStore(s => s.showToast);
 
-    const [pendingDelete, setPendingDelete] = useState<CancellationPolicy | null>(null);
+    const [bwOpen, setBwOpen] = useState(false);
+    const [wlOpen, setWlOpen] = useState(false);
+    const [cpOpen, setCpOpen] = useState(false);
+    const [cpTab, setCpTab]   = useState<CancellationTab>("rule");
 
-    function handleCustomize()             { router.push("/settings/booking-rules/customize"); }
-    function handleAddPolicy()             { router.push("/settings/booking-rules/policies/new"); }
-    function handleEditPolicy(id: string)  { router.push(`/settings/booking-rules/policies/${id}/edit`); }
+    // Landing's "Last minutes booking" reads the INVERSE of the cutoff
+    // toggle. Cutoff ON = members can book to the last minute = "Yes".
+    const lastMinutesBookingYes = classesSettings.booking_cutoff_enabled;
 
-    function confirmDelete() {
-        if (!pendingDelete) return;
-        const name = pendingDelete.name;
-        deletePolicy(pendingDelete.id);
-        showToast("Policy deleted", `"${name}" has been removed.`, "success", "trash");
-        setPendingDelete(null);
+    function handleToggleWaitlist(next: boolean) {
+        updateClassesSettings({ waitlist_enabled: next });
+        showToast(
+            next ? "Waitlist enabled" : "Waitlist disabled",
+            next
+                ? "Members can now join the waitlist when a class is full."
+                : "The waitlist offer is paused for every class.",
+            next ? "success" : "error",
+            next ? "check"   : "slash",
+        );
     }
 
     return (
-        <div className="flex flex-col gap-5 w-full">
-            <ClassesCard settings={classesSettings} onCustomize={handleCustomize} />
-
-            <PoliciesCard
-                policies={policies}
-                onAdd={handleAddPolicy}
-                onEdit={handleEditPolicy}
-                onDelete={p => setPendingDelete(p)}
-            />
-
-            {pendingDelete && (
-                <ConfirmModal
-                    open
-                    onClose={() => setPendingDelete(null)}
-                    icon={Trash04}
-                    tone="danger"
-                    title={`Delete "${pendingDelete.name}"?`}
-                    description="This policy will be removed from your booking rules. Existing bookings that referenced it keep their record. This can’t be undone."
-                    confirmLabel="Delete"
-                    onConfirm={confirmDelete}
+        <div className="flex flex-col gap-4 max-w-[1100px]">
+            {/* ── Card 1: Booking window ────────────────────────────── */}
+            <SettingsCard>
+                <CardHeader
+                    title="Booking window"
+                    subtitle="Define when bookings open and the cutoff time before the scheduled start."
+                    editLabel="Customize"
+                    onEdit={() => setBwOpen(true)}
                 />
-            )}
-        </div>
-    );
-}
-
-// ─── Card 1 — Classes summary ───────────────────────────────────────────────
-
-function ClassesCard({ settings, onCustomize }: {
-    settings: ClassesSettings;
-    onCustomize: () => void;
-}) {
-    return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 w-full">
-            <div className="flex items-center gap-6 w-full">
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-6">
-                        Classes
-                    </p>
-                    <p className="text-[14px] text-[#475467] leading-5">
-                        Booking windows, waitlist, auto-attendance, and guest settings.
-                    </p>
-                </div>
-                <Button
-                    variant="secondary-gray"
-                    size="md"
-                    leftIcon={<Edit02 className="w-5 h-5" />}
-                    onClick={onCustomize}
-                >
-                    Customize
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 w-full">
-                <SummaryTile
-                    label="Bookings open"
-                    value={`${settings.booking_open_value} ${settings.booking_open_unit} (before the class starts)`}
-                />
-                <SummaryTile
-                    label="Bookings close"
-                    value={`${settings.booking_close_value} ${settings.booking_close_unit} (before the class starts)`}
-                />
-                <SummaryTile
-                    label="Auto-submit attendance"
-                    value={`${settings.auto_submit_attendance_value} ${settings.auto_submit_attendance_unit}`}
-                />
-                <SummaryTileWithBadge
-                    label="Waitlist"
-                    enabled={settings.waitlist_enabled}
-                />
-                <SummaryTile
-                    label="Max waiting spots"
-                    value={`${settings.max_waiting_spots} spots`}
-                />
-                <div />
-            </div>
-        </div>
-    );
-}
-
-function SummaryTile({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-[14px] text-[#667085] leading-5 truncate">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">
-                {value}
-            </p>
-        </div>
-    );
-}
-
-function SummaryTileWithBadge({ label, enabled }: { label: string; enabled: boolean }) {
-    return (
-        <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-[14px] text-[#667085] leading-5 truncate">{label}</p>
-            <div className="flex items-start">
-                <span
-                    className={
-                        enabled
-                            ? "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-                            : "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]"
-                    }
-                >
-                    {enabled ? "Enabled" : "Disabled"}
-                </span>
-            </div>
-        </div>
-    );
-}
-
-// ─── Card 2 — Cancellation & no-show policies (Phase 2 wired) ──────────────
-
-function PoliciesCard({ policies, onAdd, onEdit, onDelete }: {
-    policies: CancellationPolicy[];
-    onAdd: () => void;
-    onEdit: (id: string) => void;
-    onDelete: (policy: CancellationPolicy) => void;
-}) {
-    const isEmpty = policies.length === 0;
-
-    return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 w-full">
-            <div className="flex items-center gap-6 w-full">
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-6">
-                        Cancellation &amp; no-show policies
-                    </p>
-                    <p className="text-[14px] text-[#475467] leading-5">
-                        Manage the rules for cancellations and no-shows.
-                    </p>
-                </div>
-                <Button
-                    variant="primary"
-                    size="md"
-                    leftIcon={<Plus className="w-5 h-5" />}
-                    onClick={onAdd}
-                >
-                    Add new
-                </Button>
-            </div>
-
-            {isEmpty ? (
-                <div className="relative flex-1" style={{ minHeight: 160 }}>
-                    <EmptyState
-                        title="No policy found"
-                        subtitle="You haven’t created any policies yet."
-                        icon={ShieldTick}
+                <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+                    <SummaryField label="Bookings open" value={
+                        `${classesSettings.booking_open_value} ${unitLabel(classesSettings.booking_open_unit, classesSettings.booking_open_value)} (before the class starts)`
+                    } />
+                    <SummaryField label="Last minutes booking" value={lastMinutesBookingYes ? "Yes" : "No"} />
+                    <SummaryField
+                        label="Bookings close"
+                        value={
+                            classesSettings.booking_cutoff_enabled
+                                ? "—"
+                                : `${classesSettings.booking_close_value} ${unitLabel(classesSettings.booking_close_unit, classesSettings.booking_close_value)} (before the class starts)`
+                        }
                     />
                 </div>
-            ) : (
-                <div className="flex flex-col gap-4 w-full">
-                    {policies.map(p => (
-                        <PolicyRow
-                            key={p.id}
-                            policy={p}
-                            onEdit={() => onEdit(p.id)}
-                            onDelete={() => onDelete(p)}
+            </SettingsCard>
+
+            {/* ── Card 2: Waitlist ─────────────────────────────────── */}
+            <SettingsCard>
+                <div className="flex items-start gap-4">
+                    <div className="flex-1 flex flex-col gap-1">
+                        <p className="text-[16px] font-semibold text-[#101828]">Waitlist</p>
+                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                            When a booked member cancels, the spot is offered to the waitlist in order (oldest first).
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <Toggle
+                            on={classesSettings.waitlist_enabled}
+                            onChange={handleToggleWaitlist}
+                            ariaLabel="Enable waitlist"
                         />
-                    ))}
+                        <Button
+                            variant="secondary-gray" size="md"
+                            leftIcon={<Edit02 className="w-4 h-4" />}
+                            onClick={() => setWlOpen(true)}
+                            disabled={!classesSettings.waitlist_enabled}
+                        >
+                            Customize
+                        </Button>
+                    </div>
                 </div>
-            )}
+
+                {classesSettings.waitlist_enabled && (
+                    <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+                        <SummaryField label="Enable waitlist"       value="Yes" />
+                        <SummaryField label="Maximum waiting spot"  value={String(classesSettings.max_waiting_spots)} />
+                        <SummaryField label="Notify via"            value={classesSettings.notify_via.map(k => NOTIFY_LABEL[k]).join(", ") || "—"} />
+                        <SummaryField label="When a spot open"      value={SPOT_OPENS_LABEL[classesSettings.when_spot_opens_mode]} />
+                        <SummaryField label="Match free cancellation window" value={classesSettings.match_free_cancellation_window ? "Yes" : "No"} />
+                        <SummaryField label="After cut off"         value={AFTER_CUTOFF_LABEL[classesSettings.after_cutoff_mode]} />
+                    </div>
+                )}
+            </SettingsCard>
+
+            {/* ── Card 3: Cancellation policy ──────────────────────── */}
+            <SettingsCard>
+                <CardHeader
+                    title="Cancellation policy"
+                    subtitle="Manage the rules for cancellations and no-shows."
+                    editLabel="Customize"
+                    onEdit={() => setCpOpen(true)}
+                />
+                {/* Underline tabs per Figma 7631:455654 — same 48 px
+                    pattern as the Agreements detail page tabs. */}
+                <UnderlineTabs
+                    tabs={[
+                        { key: "rule",    label: "Cancellation rule" },
+                        { key: "applied", label: "Applied to"        },
+                    ]}
+                    activeKey={cpTab}
+                    onChange={k => setCpTab(k as CancellationTab)}
+                />
+
+                {cpTab === "rule" && <CancellationRuleSummary policy={cancellationPolicy} />}
+                {cpTab === "applied" && <AppliedToSummary policy={cancellationPolicy} />}
+            </SettingsCard>
+
+            {/* Side panels */}
+            <BookingWindowPanel       open={bwOpen} onClose={() => setBwOpen(false)} />
+            <WaitlistPanel            open={wlOpen} onClose={() => setWlOpen(false)} />
+            <CancellationPolicyPanel  open={cpOpen} onClose={() => setCpOpen(false)} />
+
+            <Toast />
         </div>
     );
 }
 
-function PolicyRow({ policy, onEdit, onDelete }: {
-    policy: CancellationPolicy;
-    onEdit: () => void;
-    onDelete: () => void;
+// ─── Small reusable helpers ─────────────────────────────────────────────────
+
+/** Underline tab strip (Figma 7631:455654). Same 48 px pattern as the
+ *  Agreements detail page tabs — active tab gets a 2 px black underline
+ *  + dark label; inactive tabs get muted labels. */
+function UnderlineTabs<K extends string>({ tabs, activeKey, onChange }: {
+    tabs: Array<{ key: K; label: string }>;
+    activeKey: K;
+    onChange: (k: K) => void;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex items-center gap-3 w-full">
-            <div className="w-8 h-8 rounded-[6px] bg-white border-1 border-[#e4e7ec] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center shrink-0">
-                <ShieldTick className="w-4 h-4 text-[#475467]" />
+        <div className="border-b border-[#e4e7ec]">
+            <div className="flex gap-1">
+                {tabs.map(t => (
+                    <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => onChange(t.key)}
+                        className={cn(
+                            "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
+                            activeKey === t.key
+                                ? "border-b-2 border-[#101828] text-[#101828]"
+                                : "text-[#667085] hover:text-[#344054]",
+                        )}
+                    >
+                        {t.label}
+                    </button>
+                ))}
             </div>
-            <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[#344054] leading-5 truncate">
-                    {policy.name}
-                </p>
-            </div>
-            <button
-                type="button"
-                onClick={onEdit}
-                aria-label={`Edit ${policy.name}`}
-                className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors text-[#667085]"
-            >
-                <Pencil01 className="w-5 h-5" />
-            </button>
-            <button
-                type="button"
-                onClick={onDelete}
-                aria-label={`Delete ${policy.name}`}
-                className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#fef3f2] transition-colors text-[#d92d20]"
-            >
-                <Trash04 className="w-5 h-5" />
-            </button>
         </div>
     );
 }
 
-// Local DeleteConfirmModal removed — call site uses the canonical
-// `<ConfirmModal>` from `@/components/modals/ConfirmModal`.
+function SettingsCard({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            {children}
+        </div>
+    );
+}
+
+function CardHeader({ title, subtitle, editLabel, onEdit }: {
+    title: string; subtitle: string; editLabel: string; onEdit: () => void;
+}) {
+    return (
+        <div className="flex items-start gap-4">
+            <div className="flex-1 flex flex-col gap-1">
+                <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+            </div>
+            <Button
+                variant="secondary-gray" size="md"
+                leftIcon={<Edit02 className="w-4 h-4" />}
+                onClick={onEdit}
+            >
+                {editLabel}
+            </Button>
+        </div>
+    );
+}
+
+function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <p className="text-[14px] text-[#667085]">{label}</p>
+            <p className="text-[16px] font-semibold text-[#101828]">{value}</p>
+        </div>
+    );
+}
+
+function Toggle({ on, onChange, ariaLabel }: {
+    on: boolean; onChange: (next: boolean) => void; ariaLabel: string;
+}) {
+    return (
+        <button type="button" role="switch" aria-checked={on} aria-label={ariaLabel}
+            onClick={() => onChange(!on)}
+            className={cn(
+                "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
+                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+            )}>
+            <div className={cn(
+                "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
+                on ? "translate-x-5" : "translate-x-0",
+            )} />
+        </button>
+    );
+}
+
+// ─── Cancellation policy — tab bodies ───────────────────────────────────────
+
+function CancellationRuleSummary({ policy }: { policy: CancellationPolicy }) {
+    return (
+        <div className="flex flex-col gap-4">
+            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Credit &amp; package members</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                <SummaryField
+                    label="Cancel window – before class start"
+                    value={
+                        <span className="flex items-center gap-2">
+                            <span>{policy.credit_before_window_value} {unitLabel(policy.credit_before_window_unit, policy.credit_before_window_value)}</span>
+                            <span className="text-[#98a2b3]">→</span>
+                            <span>{OUTCOME_LABEL[policy.credit_before_outcome]}</span>
+                        </span>
+                    }
+                />
+                <SummaryField
+                    label="Cancel window – within or no show"
+                    value={
+                        <span className="flex items-center gap-2">
+                            <span>{policy.credit_within_window_value} {unitLabel(policy.credit_within_window_unit, policy.credit_within_window_value)}</span>
+                            <span className="text-[#98a2b3]">→</span>
+                            <span>{OUTCOME_LABEL[policy.credit_within_outcome]}</span>
+                        </span>
+                    }
+                />
+            </div>
+
+            <div className="h-px w-full bg-[#e4e7ec]" />
+
+            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Membership members (no credit to forfeit)</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                <SummaryField
+                    label="Charge a late cancel fee"
+                    value={policy.membership_late_cancel_fee_enabled
+                        ? `Yes · AED ${policy.membership_late_cancel_fee_aed}`
+                        : "No"}
+                />
+                <SummaryField
+                    label="Charge a no show fee"
+                    value={policy.membership_no_show_fee_enabled
+                        ? `Yes · AED ${policy.membership_no_show_fee_aed}`
+                        : "No"}
+                />
+            </div>
+        </div>
+    );
+}
+
+function AppliedToSummary({ policy }: { policy: CancellationPolicy }) {
+    // Live join against memberships + packages + class_templates so the
+    // accordion bodies list actual product names. Uses the shared
+    // `MultiSelectCard` (in read-only mode) so the landing summary and
+    // the panel's editable accordions look and behave identically.
+    const memberships    = useAppStore(s => s.memberships);
+    const packages       = useAppStore(s => s.packages);
+    const classTemplates = useAppStore(s => s.classTemplates);
+    const staff          = useAppStore(s => s.staff);
+
+    const packageOptions: MultiSelectOption[] = useMemo(() => [
+        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    })),
+        ...packages.map(p    => ({ id: p.id, label: p.name, group: "Class package" })),
+    ], [memberships, packages]);
+
+    const classOptions: MultiSelectOption[] = useMemo(
+        () => classTemplates.map(t => {
+            const instructorId = (t as { defaultInstructorId?: string; instructor_id?: string }).defaultInstructorId
+                              ?? (t as { defaultInstructorId?: string; instructor_id?: string }).instructor_id;
+            const instructor = staff.find(s => s.id === instructorId);
+            return {
+                id: t.id,
+                label: t.name,
+                sublabel: instructor ? `${instructor.firstName} ${instructor.lastName}` : undefined,
+            };
+        }),
+        [classTemplates, staff],
+    );
+
+    return (
+        <div className="flex flex-col gap-3">
+            <MultiSelectCard
+                title="Packages"
+                subtitle="The promo can be use on multiple packages"
+                options={packageOptions}
+                selected={policy.applied_to_package_ids}
+                onChange={() => {}}
+                readOnly
+            />
+            <MultiSelectCard
+                title="Classes"
+                subtitle="The promo can be use on multiple classes"
+                options={classOptions}
+                selected={policy.applied_to_class_template_ids}
+                onChange={() => {}}
+                readOnly
+            />
+        </div>
+    );
+}

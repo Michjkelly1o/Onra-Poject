@@ -31,7 +31,6 @@ import { ReferralRewardsPanel } from "@/components/settings/ReferralRewardsPanel
 import { ReferralEligibilityPanel } from "@/components/settings/ReferralEligibilityPanel";
 import {
     rewardSummary,
-    friendEarnsBadge,
     triggerLabel,
     substituteReferralVariables,
 } from "@/lib/referral-helpers";
@@ -140,9 +139,15 @@ export default function ReferralSettingsPage() {
                             </Button>
                         </div>
 
-                        {/* 3-column grid of summary fields per Figma 4620:151863 */}
+                        {/* 3-column grid of summary fields per Figma
+                            4620:151863. Referrer + Friend earns both
+                            show the actual reward summary (e.g. "2
+                            credits") so the admin can see at a glance
+                            what each side gets without opening the
+                            modal — symmetric layout, no Yes/No
+                            asymmetry. */}
                         <div className="grid grid-cols-3 gap-x-6 gap-y-5">
-                            <SummaryField label="Referrer earns" value={friendEarnsBadge(settings.referrerEarnAmount)} />
+                            <SummaryField label="Referrer earns" value={rewardSummary(settings.referrerEarnType, settings.referrerEarnAmount)} />
                             <SummaryField label="Friend earns"   value={rewardSummary(settings.friendEarnType, settings.friendEarnAmount)} />
                             <SummaryField label="Reward unlock when" value={triggerLabel(settings.rewardUnlockTrigger)} />
                             <SummaryField label="Max referrals"  value={`${settings.maxReferralsPerMember} friends`} />

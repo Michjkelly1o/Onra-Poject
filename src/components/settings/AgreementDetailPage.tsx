@@ -26,6 +26,7 @@ import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Plus, Edit02, Archive, Eye, Send03, File06, File02,
     Calendar, ChevronUp, ChevronDown, ChevronLeft, Check, RefreshCcw01, SearchLg,
+    ShieldTick, HelpCircle, FileCheck02, FileX02, DotsVertical,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -177,10 +178,35 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{agreement.name}</h2>
 
+                    {/* v24 — sidebar fields match Figma 7684:192127
+                        left-rail: Current version / Multi-location access
+                        (Multiple branch when > 1 branch) / Effective
+                        until (Ongoing pill OR formatted date) /
+                        Re-acceptance newer version / Minors & guardian
+                        consent. */}
                     <div className="flex flex-col gap-3">
                         <SidebarField label="Current version" value={`Version ${agreement.currentVersion}`} />
-                        <SidebarField label="Type" value={scopeLabel(agreement)} />
-                        <SidebarField label="Effective until" value={formatDateLong(agreement.effectiveUntil)} />
+                        <SidebarField
+                            label="Multi-location access"
+                            value={
+                                agreement.allLocations || agreement.locationIds.length > 1
+                                    ? "Multiple branch"
+                                    : "Single branch"
+                            }
+                        />
+                        <SidebarFieldPill label="Effective until">
+                            {agreement.effectiveDatesMode === "ongoing"
+                                ? <SidebarOngoingPill />
+                                : <span className="text-[16px] font-medium text-[#101828]">{formatDateLong(agreement.effectiveUntil)}</span>}
+                        </SidebarFieldPill>
+                        <SidebarField
+                            label="Re-acceptance newer version"
+                            value={agreement.requireReAcceptance ? "On" : "Off"}
+                        />
+                        <SidebarField
+                            label="Minors & guardian consent"
+                            value={agreement.requireGuardianConsent ? "On" : "Off"}
+                        />
                     </div>
                 </div>
 
@@ -200,6 +226,26 @@ function SidebarField({ label, value }: { label: string; value: string }) {
             <p className="text-[14px] text-[#667085]">{label}</p>
             <p className="text-[16px] font-medium text-[#101828]">{value}</p>
         </div>
+    );
+}
+
+/** Sidebar field variant that renders arbitrary content (used for the
+ *  Effective-until row so it can show either a pill or a date string). */
+function SidebarFieldPill({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <p className="text-[14px] text-[#667085]">{label}</p>
+            <div>{children}</div>
+        </div>
+    );
+}
+
+/** Blue "Ongoing" pill used on the sidebar + inside the Rule 2×2 grid. */
+function SidebarOngoingPill() {
+    return (
+        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]">
+            Ongoing
+        </span>
     );
 }
 
@@ -293,27 +339,158 @@ function DetailsTab({ agreement, serviceList }: {
     serviceList: { branchName: string; services: { id: string; name: string }[] }[];
 }) {
     const totalSelected = serviceList.reduce((sum, g) => sum + g.services.length, 0);
+    // Read branches for the applicable-branches accordion below.
+    const branches = useAppStore(s => s.branches);
+    const applicableBranches = agreement.allLocations
+        ? branches.filter(b => b.status === "active")
+        : branches.filter(b => agreement.locationIds.includes(b.id));
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
             <SectionHeading>Basic information</SectionHeading>
             <DescriptionCard label="Description" body={agreement.description || "—"} />
 
+            {/* v24 — Rule 2×2 grid per Figma 7684:192127. Each cell is
+                a pill with an icon + label + info-tooltip + value. */}
             <SectionHeading>Rule</SectionHeading>
-            <InlineStatRow>
-                <InlineStat
-                    icon={<File02 className="w-4 h-4" />}
-                    label="Agreement type"
-                    value={scopeLabel(agreement)}
+            <div className="grid grid-cols-2 gap-3">
+                <RulePill
+                    icon={<ShieldTick className="w-5 h-5 text-[#475467]" />}
+                    label="Multi-location access"
+                    tooltip="Membership can be use on multiple branches"
+                    value={
+                        <span className="text-[16px] font-semibold text-[#101828]">
+                            {agreement.allLocations || agreement.locationIds.length > 1 ? "On" : "Off"}
+                        </span>
+                    }
                 />
-                <InlineStat
-                    icon={<Calendar className="w-4 h-4" />}
+                <RulePill
+                    icon={<Calendar className="w-5 h-5 text-[#475467]" />}
                     label="Effective until"
-                    value={formatDateLong(agreement.effectiveUntil)}
+                    value={
+                        agreement.effectiveDatesMode === "ongoing"
+                            ? <SidebarOngoingPill />
+                            : <span className="text-[16px] font-semibold text-[#101828]">{formatDateShort(agreement.effectiveUntil)}</span>
+                    }
                 />
-            </InlineStatRow>
+                <RulePill
+                    icon={<File02 className="w-5 h-5 text-[#475467]" />}
+                    label="Re-acceptance newer version"
+                    tooltip="Customers must accept the latest version before their next booking"
+                    value={
+                        <span className="text-[16px] font-semibold text-[#101828]">
+                            {agreement.requireReAcceptance ? "On" : "Off"}
+                        </span>
+                    }
+                />
+                <RulePill
+                    icon={<Edit02 className="w-5 h-5 text-[#475467]" />}
+                    label="Minors & guardian consent"
+                    tooltip="Guardian consent is required for customers under 18"
+                    value={
+                        <span className="text-[16px] font-semibold text-[#101828]">
+                            {agreement.requireGuardianConsent ? "On" : "Off"}
+                        </span>
+                    }
+                />
+            </div>
+
+            {/* Applicable branches accordion (Figma 7684:192127). */}
+            <ApplicableBranchesCard branches={applicableBranches} />
 
             <ServicesCard serviceList={serviceList} totalSelected={totalSelected} />
+        </div>
+    );
+}
+
+/** Single rule item (Figma 7688:230667). Inline layout — no card
+ *  border / shadow / sage tint on the icon. Just a small
+ *  gray-outlined icon square, a label with optional `?` tooltip on
+ *  the right, and the value stacked below the label. */
+function RulePill({ icon, label, tooltip, value }: {
+    icon: React.ReactNode;
+    label: string;
+    tooltip?: string;
+    value: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-start gap-3">
+            <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center">
+                {icon}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                    <p className="text-[14px] text-[#667085] leading-[20px]">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
+                <div>{value}</div>
+            </div>
+        </div>
+    );
+}
+
+/** Hover-anchored tooltip. Follows the pattern the Tax module uses for
+ *  the gift-card row (mouse-enter + focus, portal-free, positioned above
+ *  the trigger). */
+function InfoTooltip({ content }: { content: string }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <span
+            className="relative inline-flex"
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setOpen(false)}
+        >
+            <button type="button" tabIndex={0}
+                aria-label="More info"
+                className="w-4 h-4 rounded-full text-[#98a2b3] hover:text-[#667085] transition-colors">
+                <HelpCircle className="w-4 h-4" />
+            </button>
+            {open && (
+                <span
+                    role="tooltip"
+                    className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-50 whitespace-normal min-w-[220px] max-w-[280px] px-3 py-2 rounded-[8px] bg-[#0c111d] text-white text-[12px] leading-[16px] shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)]"
+                >
+                    {content}
+                </span>
+            )}
+        </span>
+    );
+}
+
+/** Applicable branches accordion — mirrors the ServicesCard chrome but
+ *  lists branches instead of services grouped by branch. */
+function ApplicableBranchesCard({ branches }: { branches: { id: string; name: string }[] }) {
+    const [open, setOpen] = useState(true);
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5">Applicable branches</p>
+                    <p className="text-[14px] text-[#667085] leading-5">The membership can be use on multiple branches</p>
+                </div>
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                    {branches.length} selected
+                </span>
+                <button type="button" onClick={() => setOpen(p => !p)}
+                    aria-label={open ? "Collapse" : "Expand"}
+                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+            </div>
+            {open && (
+                <div className="flex flex-col gap-3">
+                    {branches.length === 0 ? (
+                        <p className="text-[14px] text-[#667085]">No branches selected.</p>
+                    ) : branches.map(b => (
+                        <div key={b.id} className="flex items-center gap-2">
+                            <DisabledCheckbox checked />
+                            <span className="text-[14px] font-medium text-[#101828]">{b.name}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -487,9 +664,307 @@ function VersionPagination({ page, total, pageSize, onPage, onPageSize }: {
     );
 }
 
+// ─── AcceptanceStatusTab (v24 — Figma 7684:192230 / 7687:225053 / 7687:225509) ─
+
+type AcceptanceSubTab = "all_signed" | "needs_re_accept" | "pending_never";
+
+function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
+    const router = useRouter();
+    const customers          = useAppStore(s => s.customers);
+    const customerAgreements = useAppStore(s => s.customerAgreements);
+
+    // ── Bucket customers by their status on the CURRENT version ─────────
+    // A single customer is counted once per bucket even when they have
+    // multiple historical rows for older versions. `signed` / `re_accept_due`
+    // / `never_signed` all key off the current-version row; customers with
+    // NO row at all for this agreement are ignored (they haven't been
+    // enrolled yet).
+    const buckets = useMemo(() => {
+        const rows = customerAgreements.filter(ca => ca.agreementId === agreement.id);
+        const currentRows = rows.filter(ca => ca.version === agreement.currentVersion);
+        const signed:       AcceptanceRow[] = [];
+        const reAccept:     AcceptanceRow[] = [];
+        const never:        AcceptanceRow[] = [];
+        for (const ca of currentRows) {
+            const customer = customers.find(c => c.id === ca.customerId);
+            if (!customer) continue;
+            const row: AcceptanceRow = {
+                customerId:      customer.id,
+                customerName:    `${customer.firstName} ${customer.lastName}`.trim(),
+                customerEmail:   customer.email,
+                customerImage:   customer.imageUrl,
+                customerInitials: customer.initials,
+                versionLabel: ca.status === "never_signed"
+                    ? "Not signed"
+                    : `Version ${ca.version}`,
+                lastSignedAt: ca.signedAtISO,
+                status:       ca.status,
+            };
+            if (ca.status === "signed")        signed.push(row);
+            else if (ca.status === "re_accept_due") reAccept.push(row);
+            else                                    never.push(row);
+        }
+        return { signed, reAccept, never };
+    }, [customerAgreements, customers, agreement.currentVersion, agreement.id]);
+
+    const [subTab, setSubTab] = useState<AcceptanceSubTab>("all_signed");
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    useEffect(() => { setPage(1); }, [subTab, search]);
+
+    const activeRows =
+        subTab === "all_signed"      ? buckets.signed
+      : subTab === "needs_re_accept" ? buckets.reAccept
+      :                                buckets.never;
+
+    const filtered = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return activeRows;
+        return activeRows.filter(r =>
+            r.customerName.toLowerCase().includes(q)
+            || r.customerEmail.toLowerCase().includes(q),
+        );
+    }, [activeRows, search]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const clampedPage = Math.min(Math.max(1, page), totalPages);
+    const paged = filtered.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    function handleViewCustomer(customerId: string) {
+        // Deep-link into the customer detail module. `returnTo` sends the
+        // admin back to THIS agreement's Acceptance tab if they hit
+        // Close on the customer page.
+        router.push(`/admin/customers/${customerId}?returnTo=${encodeURIComponent(`/settings/agreements/${agreement.id}`)}`);
+    }
+
+    return (
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-5">
+            {/* KPI cards (Figma 7684:192230 top row). */}
+            <div className="grid grid-cols-3 gap-4">
+                <AcceptanceKpiCard
+                    icon={<FileCheck02 className="w-5 h-5 text-[#658774]" />}
+                    tint="green"
+                    label="Signed current version"
+                    value={buckets.signed.length}
+                    subtitle={`Signed V${agreement.currentVersion}`}
+                />
+                <AcceptanceKpiCard
+                    icon={<FileCheck02 className="w-5 h-5 text-[#b54708]" />}
+                    tint="amber"
+                    label="On older version"
+                    value={buckets.reAccept.length}
+                    subtitle={`Signed V${Math.max(1, agreement.currentVersion - 1)} · prompted at next booking`}
+                />
+                <AcceptanceKpiCard
+                    icon={<FileX02 className="w-5 h-5 text-[#b42318]" />}
+                    tint="red"
+                    label="Pending / never signed"
+                    value={buckets.never.length}
+                    subtitle="Awaiting agreement before booking."
+                />
+            </div>
+
+            {/* Sub-tabs — SegmentedTabs pattern (matches Referral +
+                Customer detail Plan tab). */}
+            <div className="bg-[#f9fafb] rounded-[12px] p-1 flex items-center">
+                <AcceptanceSubTabButton active={subTab === "all_signed"}    label="All signed"          count={buckets.signed.length}   onClick={() => setSubTab("all_signed")} />
+                <AcceptanceSubTabButton active={subTab === "needs_re_accept"} label="Needs re-acceptance" count={buckets.reAccept.length} onClick={() => setSubTab("needs_re_accept")} />
+                <AcceptanceSubTabButton active={subTab === "pending_never"} label="Pending / never"     count={buckets.never.length}    onClick={() => setSubTab("pending_never")} />
+            </div>
+
+            {/* Toolbar row — Total + Search */}
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                    <p className="text-[12px] text-[#667085]">Total</p>
+                    <p className="text-[14px] font-semibold text-[#101828]">
+                        {filtered.length} {filtered.length === 1 ? "customer" : "customers"}
+                    </p>
+                </div>
+                <div className="relative w-[280px]">
+                    <SearchLg className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search customer..."
+                        className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    />
+                </div>
+            </div>
+
+            {/* Table — cols vary by sub-tab. Pending/never has no
+                "Last signed" (they never signed) so we render a 3-col
+                table for that bucket. */}
+            <div className="flex flex-col">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={AT_TH}>Name</th>
+                            <th className={AT_TH}>Version on file</th>
+                            {subTab !== "pending_never" && <th className={AT_TH}>Last signed</th>}
+                            <th className={cn(AT_TH, "w-[140px]")}>Status</th>
+                            <th className={cn(AT_TH, "w-[52px]")} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.length === 0 ? (
+                            <tr>
+                                <td className={cn(AT_TD, "text-center text-[#667085]")} colSpan={subTab === "pending_never" ? 4 : 5}>
+                                    No customers in this bucket.
+                                </td>
+                            </tr>
+                        ) : paged.map(r => (
+                            <tr key={r.customerId} className="hover:bg-[#f9fafb] transition-colors">
+                                <td className={AT_TD}>
+                                    <div className="flex items-center gap-3">
+                                        {r.customerImage ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img src={r.customerImage} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[13px] font-semibold text-[#344054] shrink-0">
+                                                {r.customerInitials ?? r.customerName.slice(0, 2).toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[14px] font-medium text-[#101828]">{r.customerName}</span>
+                                            <span className="text-[13px] text-[#475467]">{r.customerEmail}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className={cn(AT_TD, r.status === "never_signed" && "text-[#98a2b3]")}>
+                                    {r.versionLabel}
+                                </td>
+                                {subTab !== "pending_never" && (
+                                    <td className={cn(AT_TD, "whitespace-nowrap")}>
+                                        {r.lastSignedAt ? formatAcceptanceDate(r.lastSignedAt) : "—"}
+                                    </td>
+                                )}
+                                <td className={AT_TD}>
+                                    <AcceptanceStatusPill status={r.status} />
+                                </td>
+                                <td className={AT_TD}>
+                                    <RowActions items={[
+                                        { label: "View", icon: Eye, onClick: () => handleViewCustomer(r.customerId) },
+                                    ]} />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <VersionPagination
+                page={clampedPage} total={filtered.length} pageSize={pageSize}
+                onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+            />
+        </div>
+    );
+}
+
+// ─── Acceptance tab sub-components ──────────────────────────────────────────
+
+interface AcceptanceRow {
+    customerId:      string;
+    customerName:    string;
+    customerEmail:   string;
+    customerImage?:  string;
+    customerInitials?: string;
+    versionLabel:    string;
+    lastSignedAt?:   string;
+    status:          "signed" | "re_accept_due" | "never_signed";
+}
+
+const AT_TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const AT_TD = "px-4 py-4 text-[14px] text-[#475467] border-b border-[#f2f4f7]";
+
+function AcceptanceKpiCard({ icon, tint, label, value, subtitle }: {
+    icon: React.ReactNode;
+    tint: "green" | "amber" | "red";
+    label: string;
+    value: number;
+    subtitle: string;
+}) {
+    const iconTint =
+        tint === "green" ? "bg-[#ecfdf3] border-[#abefc6]"
+      : tint === "amber" ? "bg-[#fffaeb] border-[#fedf89]"
+      :                    "bg-[#fef3f2] border-[#fecdca]";
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+                <p className="text-[14px] text-[#667085]">{label}</p>
+                <div className={cn("w-8 h-8 rounded-[8px] border-1 flex items-center justify-center shrink-0", iconTint)}>
+                    {icon}
+                </div>
+            </div>
+            <p className="text-[28px] font-semibold text-[#101828] leading-[36px]">{value}</p>
+            <p className="text-[13px] text-[#667085] leading-[18px]">{subtitle}</p>
+        </div>
+    );
+}
+
+function AcceptanceSubTabButton({ active, label, count, onClick }: {
+    active: boolean; label: string; count: number; onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+                "flex-1 h-10 rounded-[8px] flex items-center justify-center gap-2 text-[14px] font-medium transition-colors",
+                active
+                    ? "bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.08)] text-[#101828]"
+                    : "text-[#667085] hover:text-[#344054]",
+            )}
+        >
+            <span>{label}</span>
+            <span className={cn(
+                "inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium border-1",
+                active
+                    ? "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]"
+                    : "bg-white border-[#e4e7ec] text-[#667085]",
+            )}>
+                {count}
+            </span>
+        </button>
+    );
+}
+
+function AcceptanceStatusPill({ status }: { status: AcceptanceRow["status"] }) {
+    const tone =
+        status === "signed"
+            ? { bg: "bg-[#ecfdf3]", border: "border-[#abefc6]", text: "text-[#067647]", label: "Signed" }
+        : status === "re_accept_due"
+            ? { bg: "bg-[#fffaeb]", border: "border-[#fedf89]", text: "text-[#b54708]", label: "Re-accept due" }
+        :   { bg: "bg-[#fef3f2]", border: "border-[#fecdca]", text: "text-[#b42318]", label: "Never signed" };
+    return (
+        <span className={cn(
+            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap",
+            tone.bg, tone.border, tone.text,
+        )}>
+            {tone.label}
+        </span>
+    );
+}
+
+/** "2025-02-20, 10:00 PM" — matches the Figma acceptance table date
+ *  format (Referrals tab uses the same style). */
+function formatAcceptanceDate(iso: string): string {
+    const d = new Date(iso.length <= 10 ? `${iso}T00:00:00Z` : iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    let h = d.getUTCHours();
+    const min = String(d.getUTCMinutes()).padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${y}-${m}-${day}, ${h}:${min} ${ampm}`;
+}
+
 // ─── Right panel (mirrors membership RightPanel — h-[48px] tabs) ────────────
 
-type TabId = "details" | "versions";
+type TabId = "details" | "versions" | "acceptance";
 
 function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
     agreement: Agreement;
@@ -500,8 +975,9 @@ function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
 }) {
     const [tab, setTab] = useState<TabId>("details");
     const TABS: { id: TabId; label: string }[] = [
-        { id: "details",  label: "Agreement details" },
-        { id: "versions", label: "Agreement version" },
+        { id: "details",    label: "Agreement details"  },
+        { id: "versions",   label: "Agreement version"  },
+        { id: "acceptance", label: "Acceptance status" },
     ];
 
     return (
@@ -523,9 +999,8 @@ function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
                 </div>
             </div>
 
-            {tab === "details" ? (
-                <DetailsTab agreement={agreement} serviceList={serviceList} />
-            ) : (
+            {tab === "details"    && <DetailsTab agreement={agreement} serviceList={serviceList} />}
+            {tab === "versions"   && (
                 <VersionsTab
                     agreement={agreement}
                     versions={versions}
@@ -533,6 +1008,7 @@ function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
                     onRepublish={onRepublish}
                 />
             )}
+            {tab === "acceptance" && <AcceptanceStatusTab agreement={agreement} />}
         </div>
     );
 }

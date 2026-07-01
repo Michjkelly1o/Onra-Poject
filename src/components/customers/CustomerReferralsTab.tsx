@@ -142,6 +142,7 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
 export function CustomerReferralsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const customerReferrals = useAppStore(s => s.customerReferrals);
+    const branches = useAppStore(s => s.branches);
     // Cross-module sync (Phase 4) — when the admin deactivates the referral
     // program in Settings → Referral, the customer-facing share affordance
     // disappears here and a banner surfaces so anyone reviewing the tab can
@@ -152,7 +153,18 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
      *  the Reward rules & limits side panel re-renders this tab on the
      *  same cycle. When set to 0 (unlimited), only the numerator shows. */
     const maxReferralsPerMember = useAppStore(s => s.referralSettings.maxReferralsPerMember);
+    /** v25 — Branch-lock toggle. When OFF, each row's earned credits
+     *  are pinned to `originBranchId` (the referrer's branch at
+     *  referral-creation). The Benefit column surfaces a small
+     *  "Redeemable at [branch]" subtitle so admins see the constraint
+     *  at a glance. */
+    const creditsRedeemableAllBranches = useAppStore(s => s.referralSettings.creditsRedeemableAllBranches);
     const showToast = useAppStore(s => s.showToast);
+
+    /** Look up a branch's display name from its id. Falls back to the
+     *  id so a deleted branch still reads meaningfully. */
+    const branchNameById = (id: string): string | undefined =>
+        branches.find(b => b.id === id)?.name;
 
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
@@ -317,7 +329,19 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                             </div>
                                         </td>
                                         <td className={cn(TD, "text-[#667085]")}>
-                                            {r.benefitCredits} free {r.benefitCredits === 1 ? "credit" : "credits"}
+                                            <div className="flex flex-col gap-0.5">
+                                                <span>{r.benefitCredits} free {r.benefitCredits === 1 ? "credit" : "credits"}</span>
+                                                {/* v25 — Branch-lock subtitle only surfaces when
+                                                    (a) the global toggle is OFF, and (b) the row
+                                                    has an origin branch captured. Amber tint
+                                                    matches the "Re-accept due" / "N to re-accept"
+                                                    warning stack. */}
+                                                {!creditsRedeemableAllBranches && r.originBranchId && (
+                                                    <span className="text-[12px] text-[#b54708] leading-[16px]">
+                                                        Redeemable at {branchNameById(r.originBranchId) ?? "origin branch"}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className={cn(TD, "text-[#667085] whitespace-nowrap")}>{fmtDateTime(r.referredAtISO)}</td>
                                         <td className={cn(TD, "text-[#667085] whitespace-nowrap")}>

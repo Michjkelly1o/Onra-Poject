@@ -31,8 +31,9 @@
 // forgot-password recovery path doesn't belong here.
 
 import { useState } from "react";
-import { Edit02, Eye, EyeOff } from "@untitledui/icons";
+import { Edit02, Eye, EyeOff, AlertCircle, Monitor01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 import type { User } from "@/types";
 import {
@@ -100,6 +101,9 @@ export default function AccountSettingsPage() {
     const showToast = useAppStore(s => s.showToast);
 
     const [flow, setFlow] = useState<FlowState>({ kind: "idle" });
+    // Active sessions — seeded from the mock list, held in local state
+    // so the "Sign out" action removes the row until page refresh.
+    const [sessions, setSessions] = useState<ActiveSession[]>(SEED_ACTIVE_SESSIONS);
 
     // ── Per-flow handlers ────────────────────────────────────────────────
 
@@ -221,8 +225,37 @@ export default function AccountSettingsPage() {
                     <SectionBlock title="Password">
                         <PasswordRow
                             password={currentUser.password ?? ""}
+                            lastChangedAt={currentUser.password_changed_at}
                             onChange={() => setFlow({ kind: "change_password" })}
                         />
+                    </SectionBlock>
+
+                    <Divider />
+
+                    {/* ── Active sessions (v24 — Figma 2858:110671) ──────── */}
+                    <SectionBlock title="Active sessions">
+                        <div className="flex flex-col gap-4 w-full">
+                            {sessions.map(s => (
+                                <ActiveSessionRow
+                                    key={s.id}
+                                    session={s}
+                                    onSignOut={() => {
+                                        setSessions(prev => prev.filter(x => x.id !== s.id));
+                                        showToast(
+                                            "Device signed out",
+                                            `${s.device} · ${s.browser} was signed out of your account.`,
+                                            "success",
+                                            "check",
+                                        );
+                                    }}
+                                />
+                            ))}
+                            {sessions.length === 0 && (
+                                <p className="text-[14px] text-[#667085]">
+                                    No other active sessions.
+                                </p>
+                            )}
+                        </div>
                     </SectionBlock>
                 </div>
             </div>
@@ -348,22 +381,25 @@ function InfoRow({
 }
 
 /** Password-specific row — same shape as InfoRow but the value has an
- *  inline eye-toggle so the saved password can be revealed in place. The
- *  toggle is local state (UI-only); the actual value comes from
- *  `currentUser.password` so a Change-password submit updates this row in
- *  the same render. */
+ *  inline eye-toggle so the saved password can be revealed in place.
+ *  Underneath the password value, an info line surfaces the last
+ *  change timestamp per Figma 2858:110671 ("Last changed Mar 14,
+ *  2026 · 104 days ago"). The relative age recomputes at render time
+ *  so it stays accurate. */
 function PasswordRow({
     password,
     onChange,
+    lastChangedAt,
 }: {
     password: string;
     onChange: () => void;
+    lastChangedAt?: string;
 }) {
     const [show, setShow] = useState(false);
     const displayed = show && password ? password : "••••••••••••";
     return (
-        <div className="flex items-center gap-6 w-full">
-            <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex items-start gap-6 w-full">
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <p className="text-[14px] text-[#667085] leading-5">Password</p>
                 <div className="flex items-center gap-2">
                     <p className="text-[16px] font-medium text-[#101828] leading-6 break-all">
@@ -379,12 +415,122 @@ function PasswordRow({
                         {show ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                     </button>
                 </div>
+                {lastChangedAt && (
+                    <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-[#98a2b3] shrink-0" />
+                        <p className="text-[13px] text-[#667085] leading-[18px]">
+                            Last changed {formatChangedOn(lastChangedAt)} · {formatDaysAgo(lastChangedAt)}
+                        </p>
+                    </div>
+                )}
             </div>
             <div className="shrink-0">
                 <Button variant="secondary-gray" size="md" onClick={onChange}>
                     Change password
                 </Button>
             </div>
+        </div>
+    );
+}
+
+/** "Mar 14, 2026" — matches the Figma date format on the Last-changed
+ *  info line. */
+function formatChangedOn(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** "104 days ago" / "1 day ago" / "Today" — relative-age suffix on
+ *  the Last-changed info line. Computed at render time against the
+ *  browser's clock so it stays fresh. */
+function formatDaysAgo(iso: string): string {
+    const d = new Date(iso).getTime();
+    const now = Date.now();
+    if (Number.isNaN(d)) return "—";
+    const days = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+    if (days <= 0) return "Today";
+    if (days === 1) return "1 day ago";
+    return `${days} days ago`;
+}
+
+// ─── Active sessions ────────────────────────────────────────────────────────
+//
+// Figma 2858:110671 shows two device rows: the current device (green
+// "Current" badge) and any other logged-in device (red "Sign out" text
+// action). This is a demo prototype — the sessions are seeded locally
+// on each mount so no store schema is needed. Signing out a device
+// removes it from the visible list until a page refresh reseeds.
+
+interface ActiveSession {
+    id: string;
+    device: string;
+    browser: string;
+    location: string;
+    lastActiveLabel: string;
+    /** Only one session is flagged as current — the one the admin is
+     *  currently viewing this page from. Renders a green "Current" pill
+     *  in place of the "Sign out" text action. */
+    isCurrent: boolean;
+}
+
+/** Seed active-session rows for the demo. Real deployments will replace
+ *  this with a live query against the auth provider (Supabase / etc). */
+const SEED_ACTIVE_SESSIONS: ActiveSession[] = [
+    {
+        id: "sess_current",
+        device: "MacBook Pro",
+        browser: "Chrome 126",
+        location: "Dubai, UAE",
+        lastActiveLabel: "Today at 1:34 PM",
+        isCurrent: true,
+    },
+    {
+        id: "sess_windows",
+        device: "Windows PC",
+        browser: "Chrome 126",
+        location: "Dubai, UAE",
+        lastActiveLabel: "Today at 1:34 PM",
+        isCurrent: false,
+    },
+];
+
+function ActiveSessionRow({
+    session,
+    onSignOut,
+}: {
+    session: ActiveSession;
+    onSignOut: () => void;
+}) {
+    return (
+        <div className="flex items-center gap-4 w-full">
+            <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center">
+                <Monitor01 className="w-5 h-5 text-[#475467]" />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col">
+                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                    {session.device} <span className="text-[#98a2b3] font-normal">·</span> {session.browser}
+                </p>
+                <p className="text-[13px] text-[#667085] leading-[18px]">
+                    {session.location} <span className="text-[#98a2b3]">·</span> {session.lastActiveLabel}
+                </p>
+            </div>
+            {session.isCurrent ? (
+                <span className={cn(
+                    "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap",
+                    "bg-[#ecfdf3] border-[#abefc6] text-[#067647]",
+                )}>
+                    Current
+                </span>
+            ) : (
+                <button
+                    type="button"
+                    onClick={onSignOut}
+                    className="text-[14px] font-semibold text-[#b42318] hover:text-[#912018] transition-colors whitespace-nowrap"
+                >
+                    Sign out
+                </button>
+            )}
         </div>
     );
 }

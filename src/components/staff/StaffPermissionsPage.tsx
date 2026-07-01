@@ -1021,11 +1021,18 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
-                <ExportDropdown disabled={totalCount === 0} onExportCsv={handleExport} />
+                {/* Roles & Permissions route hides the Export button —
+                    role definitions aren't something admins export as
+                    CSV. Kept for the Staff & shift route (still useful
+                    for HR exports). */}
+                {forceTab !== "roles" && (
+                    <ExportDropdown disabled={totalCount === 0} onExportCsv={handleExport} />
+                )}
                 {/* Role & permissions route puts Filter in the main toolbar
-                    (between Export and Add role) per Figma 7413:239946. The
-                    legacy combined view + Staff & shift route keep Filter
-                    inside the tab row so it sits next to the sub-tabs. */}
+                    (between Add role and the tab title) per Figma 7413:239946.
+                    The legacy combined view + Staff & shift route keep
+                    Filter inside the tab row so it sits next to the
+                    sub-tabs. */}
                 {forceTab === "roles" && (
                     <Button variant="secondary-gray" size="md"
                         leftIcon={

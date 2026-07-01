@@ -16,7 +16,7 @@ import {
     User01,
     BarChartSquare01,
     Users01,
-    Building01,
+    Settings01,
     Gift01,
     ChevronDown,
     ChevronUp,
@@ -395,12 +395,14 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
 
                     return (
                         <div key={item.label}>
-                            {/* Optional section caption (e.g. "Studio") — hidden
-                                in slim mode so the collapsed rail stays icon-only. */}
+                            {/* Section break — replaces the caption text
+                                (e.g. "Studio") with a horizontal divider
+                                line between the top-of-funnel modules
+                                and the studio-scoped ones. Hidden in
+                                slim mode so the collapsed rail stays
+                                icon-only. */}
                             {item.sectionLabel && !slim && (
-                                <div className="px-3 pt-3 pb-1 text-[12px] font-medium text-[#667085] uppercase tracking-[0.04em] leading-[18px]">
-                                    {item.sectionLabel}
-                                </div>
+                                <div className="mx-3 my-2 h-px bg-[#d0d5dd]" />
                             )}
                             {/* Parent row — wrapped so a collapsed icon shows
                                 the menu name in a tooltip on hover. */}
@@ -494,7 +496,7 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
                     <SidebarFooterLink
                         href={settingsHref}
                         label="Settings"
-                        icon={Building01}
+                        icon={Settings01}
                         // Active iff the global winner is this exact link.
                         // Prevents Settings from lighting up while the user
                         // is on a sub-route owned by another nav item

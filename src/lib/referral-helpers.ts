@@ -12,7 +12,7 @@
 // Lives outside the page.tsx file because Next.js App Router disallows
 // non-default exports from a Server / Client Component page module.
 
-import type { ReferralRewardType, ReferralUnlockTrigger } from "@/lib/store";
+import type { CustomerReferral, ReferralRewardType, ReferralUnlockTrigger } from "@/lib/store";
 
 /** Pretty label for a reward type — matches Figma 7661:54592 dropdown copy. */
 export function rewardTypeLabel(t: ReferralRewardType): string {
@@ -78,4 +78,54 @@ export function substituteReferralVariables(
         .replaceAll("{{friend}}",   rewardSummary(settings.friendEarnType,   settings.friendEarnAmount))
         .replaceAll("{{trigger}}",  triggerProse(settings.rewardUnlockTrigger))
         .replaceAll("{{cap}}",      String(settings.maxReferralsPerMember));
+}
+
+/** Gate result returned by `canRedeemReferralCreditsAt`. When `allowed`
+ *  is false, `reason` carries a short human-readable string suitable
+ *  for a toast body. */
+export interface ReferralRedemptionGate {
+    allowed: boolean;
+    reason?: string;
+}
+
+/** Can this referral's earned credits be redeemed at the given branch?
+ *
+ *  The gate follows the Settings → Referral → "Credits redeemable
+ *  across all branches" toggle:
+ *
+ *    • Toggle ON  → credits redeem anywhere. Always `{ allowed: true }`.
+ *    • Toggle OFF → credits redeem ONLY at the branch that was
+ *                    captured on the referral row at referral-creation
+ *                    time (the REFERRER's branch — Jenny's south
+ *                    branch in the "Jenny refers John" example).
+ *
+ *  Legacy rows without an `originBranchId` are treated as unrestricted
+ *  regardless of the toggle — the seed data pre-dates this field, so
+ *  it's safer to leave historical credits redeemable than to lock
+ *  everything to "no branch". Once new referrals are created through
+ *  the (future) referral-signup flow, every row will carry the id.
+ *
+ *  Single source of truth for the POS + customer-portal + admin-side
+ *  redemption gate. Kept as a pure function so every consumer stays
+ *  consistent. */
+export function canRedeemReferralCreditsAt(
+    referral: Pick<CustomerReferral, "originBranchId">,
+    currentBranchId: string | undefined,
+    settings: { creditsRedeemableAllBranches: boolean },
+    branchNameById?: (id: string) => string | undefined,
+): ReferralRedemptionGate {
+    if (settings.creditsRedeemableAllBranches) return { allowed: true };
+    if (!referral.originBranchId) return { allowed: true };
+    if (!currentBranchId) {
+        return {
+            allowed: false,
+            reason: "These credits are locked to the branch they were earned in.",
+        };
+    }
+    if (currentBranchId === referral.originBranchId) return { allowed: true };
+    const branchLabel = branchNameById?.(referral.originBranchId) ?? "the branch they were earned in";
+    return {
+        allowed: false,
+        reason: `These credits can only be redeemed at ${branchLabel}.`,
+    };
 }

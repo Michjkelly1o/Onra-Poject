@@ -17,6 +17,12 @@
 import type { CustomerReferral } from "./_types";
 import { DEMO_NOW_REFERRALS } from "./prototype_demo_data";
 
+/** Every seeded referrer sits on the Forma South branch — that's the
+ *  `origin_branch_id` captured on the row so the branch-gate helper
+ *  restricts redemption to South when the admin flips "Credits
+ *  redeemable across all branches" off. */
+const SOUTH = "branch_forma_south";
+
 export const customer_referrals: CustomerReferral[] = [
     ...DEMO_NOW_REFERRALS,
     // ── Ahmed Zayn — 2 referrals ─────────────────────────────────────────────
@@ -33,6 +39,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2025-03-28T22:00:00Z",
         expires_at:  "2025-06-26T22:00:00Z",
+        origin_branch_id: SOUTH,
     },
     {
         id: "ref_ahmed_2",
@@ -42,6 +49,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2025-02-28T22:00:00Z",
         expires_at:  "2025-05-29T22:00:00Z",
+        origin_branch_id: SOUTH,
     },
 
     // ── Ava Wright — 3 referrals ─────────────────────────────────────────────
@@ -53,6 +61,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2026-01-15T14:00:00Z",
         expires_at:  "2026-04-15T14:00:00Z",
+        origin_branch_id: SOUTH,
     },
     {
         id: "ref_ava_2",
@@ -62,6 +71,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 1,
         referred_at: "2025-12-02T11:30:00Z",
         expires_at:  "2026-03-02T11:30:00Z",
+        origin_branch_id: SOUTH,
     },
     {
         id: "ref_ava_3",
@@ -71,6 +81,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2025-10-20T16:45:00Z",
         expires_at:  "2026-01-18T16:45:00Z",
+        origin_branch_id: SOUTH,
     },
 
     // ── Rosale Martin — 1 referral ───────────────────────────────────────────
@@ -82,6 +93,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2026-02-10T10:15:00Z",
         expires_at:  "2026-05-11T10:15:00Z",
+        origin_branch_id: SOUTH,
     },
 
     // ── Sophia Lee — 2 referrals ─────────────────────────────────────────────
@@ -93,6 +105,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2026-01-22T13:00:00Z",
         expires_at:  "2026-04-22T13:00:00Z",
+        origin_branch_id: SOUTH,
     },
     {
         id: "ref_sophia_2",
@@ -102,6 +115,7 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 1,
         referred_at: "2025-11-18T09:40:00Z",
         expires_at:  "2026-02-16T09:40:00Z",
+        origin_branch_id: SOUTH,
     },
 
     // ── Fatima Al-Sayed — 1 referral ─────────────────────────────────────────
@@ -113,5 +127,6 @@ export const customer_referrals: CustomerReferral[] = [
         benefit_credits: 2,
         referred_at: "2026-02-25T15:20:00Z",
         expires_at:  "2026-05-26T15:20:00Z",
+        origin_branch_id: SOUTH,
     },
 ];

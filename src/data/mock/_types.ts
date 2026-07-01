@@ -124,73 +124,106 @@ export interface BusinessHours {
  *    • sms_cutoff_* → notification dispatch (Module 12)
  *    • overbooking_* + auto_cancel_* → schedule capacity enforcement
  *  Phase 4 wires every consumer; Phase 1 only persists the values. */
+/** v26 — reshaped for the new Booking Rules module (Figma 4580:29847).
+ *  Legacy Step 2 (SMS cutoff), Step 3 (overbooking), and the
+ *  auto-submit-attendance field are dropped — none of those appear in
+ *  the new landing/panel Figmas. Remaining fields split cleanly into
+ *  BOOKING WINDOW (with the new cutoff toggle) and WAITLIST (with the
+ *  new auto-promotion cut-off subsection). */
 export interface ClassesSettings {
     id: string;                                   // "classes_settings_default"
-    // ── Step 1 — Booking window ────────────────────────────────────────────
+
+    // ── Booking window (Figma 7631:393661 / 7644:81487) ────────────────
+    /** How far in advance customers can start booking a class. */
     booking_open_value: number;                   // 7
     booking_open_unit: "days" | "hours" | "minutes";        // "days"
+    /** When ON, members can book right up until the class starts —
+     *  landing's "Last minutes booking" row reads "Yes" and the
+     *  Bookings-close picker is hidden in the side panel. When OFF,
+     *  the cutoff is enforced (booking_close_value/unit apply). */
+    booking_cutoff_enabled: boolean;              // false = enforce cutoff
     booking_close_value: number;                  // 1
-    booking_close_unit: "hours" | "minutes";      // "minutes"
-    // ── Step 1 — Auto-submit attendance ────────────────────────────────────
-    auto_submit_attendance_value: number;         // 2
-    auto_submit_attendance_unit: "hours" | "minutes";       // "hours"
-    // ── Step 1 — Waitlist ──────────────────────────────────────────────────
+    booking_close_unit: "minutes" | "hours" | "days";       // "minutes"
+
+    // ── Waitlist (Figma 7631:394473 / 7714:17067) ──────────────────────
+    /** Master switch — when OFF the landing card collapses to header +
+     *  toggle only, the whole panel greys out, and booking flow skips
+     *  the waitlist offer entirely. */
     waitlist_enabled: boolean;                    // true
-    waitlist_mode: "inform_everyone" | "auto_book_first";   // "inform_everyone"
-    /** Only respected when waitlist_mode === "auto_book_first" — the input
-     *  is shown disabled in the other mode (Figma 7228:47890). */
-    notify_waitlist_value: number;                // 2
-    notify_waitlist_unit: "hours" | "minutes";    // "hours"
     max_waiting_spots: number;                    // 10
-    refund_class_session: "immediately" | "after_class_ends" | "next_business_day"; // "immediately"
-    // ── Step 2 — SMS cutoff window ─────────────────────────────────────────
-    sms_cutoff_enabled: boolean;                  // true
-    sms_cutoff_value: number;                     // 2
-    sms_cutoff_unit: "hours" | "minutes";         // "hours"
-    sms_cutoff_note: string;                      // customer-facing copy
-    // ── Step 3 — Overbooking ───────────────────────────────────────────────
-    overbooking_enabled: boolean;                 // true
-    overbooking_mode: "fixed" | "percentage";     // "fixed"
-    overbooking_fixed_value: number;              // 10
-    overbooking_percentage_value: number;         // 0
-    auto_cancel_enabled: boolean;                 // true
-    auto_cancel_value: number;                    // 2
-    auto_cancel_unit: "hours" | "minutes";        // "minutes"
-    notify_overbooked_enabled: boolean;           // true
+    /** Channels members can pick from — WhatsApp / Email / SMS / Push. */
+    notify_via: Array<"whatsapp" | "email" | "sms" | "push">;
+    /** When a booked spot opens up — auto-add the next person, or
+     *  send a notification and let them claim it. */
+    when_spot_opens_mode: "auto_add_next" | "notify_to_accept";
+    /** When ON, `stop_auto_promoting_value/unit` is IGNORED and the
+     *  auto-promote window mirrors the cancellation policy's free
+     *  cancellation window (creditWindowBeforeClassHours). Toggle
+     *  OFF to type a custom value. */
+    match_free_cancellation_window: boolean;
+    /** Custom auto-promote cutoff (only respected when
+     *  `match_free_cancellation_window === false`). */
+    stop_auto_promoting_value: number;            // 12
+    stop_auto_promoting_unit: "hours" | "minutes";          // "hours"
+    /** What happens to the freed spot after the auto-promotion cutoff
+     *  passes — reopen to walk-ins / keep the waitlist order / leave
+     *  the spot unfilled. */
+    after_cutoff_mode: "reopens_first_come" | "keep_auto_promoting" | "stays_empty";
 }
 
 // ─── Booking Rules — Cancellation & no-show policies (PRD 11 §6.1) ────────
 
-/** Top-level policy bucket — drives which of the two policy-choice radio
- *  groups is shown on the form (Figma 4580:30598 step 1). */
-export type PolicyType = "cancellation" | "no_show";
+/** Outcome dropdown option for the credit/package cancel-window rows
+ *  in the Cancellation policy side panel (Figma 7631:404757). */
+export type CancellationOutcome = "credit_returned" | "credit_forfeited";
 
-/** Cancellation-policy choice — only set when `type === "cancellation"`.
- *  `fee_if_late` reveals the "Cancel window" hours/minutes input on the
- *  form (Figma 7228:48716). */
-export type CancellationChoice = "anytime_no_charge" | "fee_if_late";
-
-/** No-show-policy choice — only set when `type === "no_show"`.
- *  `charge_session` reveals the "Charge class session" currency input on
- *  the form (Figma 7228:48751). */
-export type NoShowChoice = "no_charge" | "charge_session";
-
-/** One row per saved policy. The four Figma content variants
- *  (Cancellation × 2 choices, No-show × 2 choices) all map to one row
- *  shape — the extra inputs (`cancel_window_*` / `charge_class_session`)
- *  are only populated for the variant that uses them. Phase 4 wires
- *  these into the booking-cancel flow + booking-no-show flow. */
+/** v26 — Single studio-wide cancellation policy record. Replaces the
+ *  legacy per-row list (Add/Edit/Delete) with one config editable via
+ *  a side panel that mirrors the Referral module chrome.
+ *
+ *  Structure per Figma 7631:404757 / 7714:17240:
+ *    • Credit & package members — 2 cancel-window rows (before vs
+ *      within-or-no-show), each pairs a window value with a
+ *      CancellationOutcome.
+ *    • Membership members — 2 independent toggle cards (late-cancel
+ *      fee AED + no-show fee AED), each active when the toggle is on.
+ *    • Applies to — two multi-selects (packages + classes). The
+ *      policy only fires when the booking's product is in the
+ *      selected list; other bookings use the studio default (no
+ *      penalty). Empty arrays = "applies to nothing" (feature paused). */
 export interface CancellationPolicy {
-    id: string;
-    name: string;
-    type: PolicyType;
-    // Conditional payload — set per variant; left undefined otherwise.
-    cancellation_choice?: CancellationChoice;
-    cancel_window_value?: number;                       // "fee_if_late"
-    cancel_window_unit?: "hours" | "minutes";           // "fee_if_late"
-    no_show_choice?: NoShowChoice;
-    charge_class_session?: number;                      // "charge_session"
-    created_at: string;
+    id: string;                                   // "cancellation_policy_default"
+
+    // ── Credit & package members ──────────────────────────────────────
+    /** Cancel window BEFORE class start — customers get the outcome
+     *  below when they cancel within this many hours/minutes of the
+     *  class start. Figma default: 12 hours → Credit returned. */
+    credit_before_window_value: number;
+    credit_before_window_unit: "hours" | "minutes";
+    credit_before_outcome: CancellationOutcome;
+    /** Cancel window WITHIN the free-cancel period OR no-show —
+     *  outcome when the customer cancels too late or doesn't show
+     *  up. Figma default: 12 hours → Credit forfeited. */
+    credit_within_window_value: number;
+    credit_within_window_unit: "hours" | "minutes";
+    credit_within_outcome: CancellationOutcome;
+
+    // ── Membership members (no credit to forfeit) ────────────────────
+    /** Charge a late-cancel fee for unlimited-plan members? When ON,
+     *  the AED amount below applies. */
+    membership_late_cancel_fee_enabled: boolean;
+    membership_late_cancel_fee_aed: number;         // 50
+    /** Charge a no-show fee for unlimited-plan members? Can differ
+     *  from the late-cancel fee. */
+    membership_no_show_fee_enabled: boolean;
+    membership_no_show_fee_aed: number;             // 70
+
+    // ── Applies to (Figma 7631:455367) ───────────────────────────────
+    /** Package products the policy applies to (memberships +
+     *  class-packages). FK → memberships.id ∪ packages.id. */
+    applied_to_package_ids: string[];
+    /** Class template ids the policy applies to. FK → class_templates.id. */
+    applied_to_class_template_ids: string[];
 }
 
 // ─── Booking Rules — Classes settings (PRD 11 §6) ──────────────────────────
@@ -313,6 +346,17 @@ export interface CustomerReferral {
      *  time as `referred_at + referral_settings.earned_reward_expiry_days`.
      *  Optional so legacy seeds without an explicit expiry still load. */
     expires_at?: string;
+    /** v25 — Branch the credits are locked to (per the "Credits
+     *  redeemable across all branches" toggle in Settings → Referral).
+     *  Captured at referral-creation time from the REFERRER's
+     *  `customers.branch_id`. When
+     *  `referral_settings.credits_redeemable_all_branches === false`,
+     *  the credits can only be redeemed at THIS branch. When the
+     *  toggle is on, this field is informational — kept on record so
+     *  a future toggle flip retroactively restricts existing rows.
+     *  Optional so legacy seeds without a captured branch still
+     *  load; the gate helper treats undefined as "no restriction". */
+    origin_branch_id?: string;
 }
 
 /**
@@ -346,8 +390,13 @@ export interface CustomerAgreement {
     branch_id: string;            // → branches.id
     /** Class templates the agreement covers. */
     class_template_ids: string[]; // → class_templates.id[]
-    status: "signed" | "unsigned";
-    /** ISO 8601 — when the customer signed. Omitted while `unsigned`. */
+    /** v24: split into 3 terminal states. Legacy `"unsigned"` in v23
+     *  seeds maps to `"never_signed"` on the persist bump. */
+    status: "signed" | "re_accept_due" | "never_signed";
+    /** ISO 8601 — when the customer signed. Omitted while
+     *  `never_signed`. Present for `signed` and `re_accept_due` (in
+     *  the latter case, it points to the LAST-signed older version's
+     *  timestamp). */
     signed_at?: string;
 }
 
@@ -1904,10 +1953,28 @@ export interface AgreementSeed {
      *  active service. Phase 4 wires this into the booking flow so the
      *  customer only sees agreements covering the class they're booking. */
     applicable_class_template_ids?: string[];
-    /** Rules step — Issued date (locked to today at creation, ISO 8601). */
+    /** v24 — Effective dates mode from Step 2 (Figma 7703:13587 /
+     *  7703:13751). "ongoing" ignores the date fields; "expiry"
+     *  requires both `effective_from` and `effective_until`.
+     *  Optional on this type so legacy v23 seeds still typecheck —
+     *  the store adapter derives a fallback when omitted. */
+    effective_dates_mode?: "ongoing" | "expiry";
+    /** Rules step — Issued date (locked to today at creation, ISO 8601).
+     *  Empty string when `effective_dates_mode` is "ongoing". */
     effective_from: string;
-    /** Rules step — Expiry date (must be ≥ today at creation, ISO 8601). */
+    /** Rules step — Expiry date (must be ≥ today at creation, ISO 8601).
+     *  Empty string when `effective_dates_mode` is "ongoing". */
     effective_until: string;
+    /** v24 — When true, customers with a signed row on a previous
+     *  version are prompted to re-accept the latest version before
+     *  their next booking. Wired via `republishAgreementVersion` +
+     *  `addAgreementVersion` in the store. Optional so legacy seeds
+     *  default to `false`. */
+    require_re_acceptance?: boolean;
+    /** v24 — When true, customers under 18 are routed to a
+     *  guardian-signature flow before booking. Optional so legacy
+     *  seeds default to `false`. */
+    require_guardian_consent?: boolean;
     status: AgreementStatusSeed;
     /** ISO timestamp — bumps on every save (versioned content edits + status flips). */
     updated_at: string;

@@ -1,45 +1,44 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — `classes_settings` seed
+// Onra Studio — `classes_settings` seed (v26 — Booking Rules redesign)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Single global row. The Booking Rules landing reads the display fields
-// (Bookings open / Bookings close / Auto-submit attendance / Waitlist /
-// Max waiting spots) from here, and the Customize classes settings 3-step
-// page reads + writes the same record. Defaults mirror Figma 4580:29847
-// (the brief's "Classes" container) so the prototype boots with a
-// realistic starting state instead of all-zeros.
+// Single global row. The Booking Rules landing reads display fields
+// from here; the 3 new side-panel modals (Booking window / Waitlist /
+// Cancellation policy) read + write through the store. Defaults match
+// Figma 4580:29847 (main landing) + 7631:394473 (waitlist panel) so
+// the prototype boots pixel-perfect against the design.
 
 import type { ClassesSettings } from "./_types";
 
 export const classes_settings: ClassesSettings = {
     id: "classes_settings_default",
-    // Step 1 — Booking window
+
+    // ── Booking window (Figma landing "7 days · Yes · 1 minutes") ──────
     booking_open_value: 7,
     booking_open_unit: "days",
+    /** false = enforce a cutoff. Landing's "Last minutes booking"
+     *  row reads the INVERSE of this flag — false here renders "No"
+     *  when the field is derived directly, but the current Figma
+     *  demo shows "Yes" for that row while ALSO showing
+     *  "Bookings close: 1 minutes". Seed keeps the practical
+     *  behaviour: cutoff enforced, close 1 minute pre-class. Admins
+     *  flip the toggle ON in the side panel to hide the picker. */
+    booking_cutoff_enabled: false,
     booking_close_value: 1,
     booking_close_unit: "minutes",
-    // Step 1 — Auto-submit attendance
-    auto_submit_attendance_value: 2,
-    auto_submit_attendance_unit: "hours",
-    // Step 1 — Waitlist
+
+    // ── Waitlist (Figma landing "10 · WhatsApp,Email · Auto add ·
+    //    Match window · Reopens first come") ───────────────────────────
     waitlist_enabled: true,
-    waitlist_mode: "inform_everyone",
-    notify_waitlist_value: 2,
-    notify_waitlist_unit: "hours",
     max_waiting_spots: 10,
-    refund_class_session: "immediately",
-    // Step 2 — SMS cutoff window
-    sms_cutoff_enabled: true,
-    sms_cutoff_value: 2,
-    sms_cutoff_unit: "hours",
-    sms_cutoff_note: "Bookings cannot be cancelled within X hours of the class start time.",
-    // Step 3 — Overbooking
-    overbooking_enabled: true,
-    overbooking_mode: "fixed",
-    overbooking_fixed_value: 10,
-    overbooking_percentage_value: 0,
-    auto_cancel_enabled: true,
-    auto_cancel_value: 2,
-    auto_cancel_unit: "minutes",
-    notify_overbooked_enabled: true,
+    notify_via: ["whatsapp", "email"],
+    when_spot_opens_mode: "auto_add_next",
+    match_free_cancellation_window: true,
+    // 12 hours matches the seeded cancellation-policy window; when
+    // `match_free_cancellation_window` is ON, the panel renders the
+    // panel's `Stop auto promoting` as read-only echo of the
+    // cancellation policy value.
+    stop_auto_promoting_value: 12,
+    stop_auto_promoting_unit: "hours",
+    after_cutoff_mode: "reopens_first_come",
 };

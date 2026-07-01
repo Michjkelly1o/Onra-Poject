@@ -22,7 +22,7 @@
 // Implementation: `contentEditable` + the legacy `document.execCommand` API.
 // Lightweight, no dependencies. State is the editor's HTML.
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
     ChevronDown, Bold01, Italic01, Image01, Link01,
     AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -37,6 +37,26 @@ export interface RichTextEditorProps {
     placeholder?: string;
     rows?: number;
     className?: string;
+    /** Optional override of the placeholder's top offset (px). Defaults
+     *  to 12px which matches the editor body's `py-3`. Pass a smaller
+     *  value when the parent renders the editor inline with mixed
+     *  content (so the placeholder doesn't visually overlap a heading). */
+    placeholderTop?: number;
+}
+
+/** Imperative handle for parent components that need to programmatically
+ *  insert content into the editor. Used by the Referral customize page
+ *  to drop variable tokens AT the cursor position (or AT a drag-drop
+ *  point) instead of appending to the end. */
+export interface RichTextEditorHandle {
+    /** Insert plain text at the current cursor position. If the editor
+     *  hasn't been focused yet, falls back to the last-known selection
+     *  range, otherwise appends to the end. */
+    insertTextAtCursor: (text: string) => void;
+    /** Insert plain text at the caret position closest to the supplied
+     *  client coordinates. Used by drag-and-drop handlers — the caller
+     *  passes the drop event's clientX/clientY. */
+    insertTextAtPoint: (text: string, x: number, y: number) => void;
 }
 
 const PARAGRAPH_OPTIONS: { value: "h1" | "h2" | "h3" | "h4" | "p"; label: string }[] = [
@@ -99,13 +119,21 @@ function ToolbarDivider() {
     return <span className="w-px h-5 bg-[#e4e7ec] shrink-0" />;
 }
 
-export function RichTextEditor({ value, onChange, placeholder, rows = 6, className }: RichTextEditorProps) {
+export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor(
+    { value, onChange, placeholder, rows = 6, className, placeholderTop = 12 },
+    handleRef,
+) {
     const editorRef    = useRef<HTMLDivElement>(null);
     const dropdownRef  = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     // Selection saved when the Link modal opens, restored on Apply so the
     // URL wraps the originally-selected text rather than the modal's input.
     const savedRangeRef = useRef<Range | null>(null);
+    /** Last caret/selection range observed INSIDE this editor. Updated on
+     *  every selectionchange while focus is inside; used by
+     *  insertTextAtCursor when the editor has lost focus (e.g. admin
+     *  clicks a variable chip outside the editor, defocusing it). */
+    const lastInternalRangeRef = useRef<Range | null>(null);
 
     const [paragraphOpen, setParagraphOpen] = useState(false);
     const [isEmpty, setIsEmpty]             = useState(() => !stripHtml(value));
@@ -148,6 +176,12 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6, classNa
         if (!sel || !editor) return;
         const anchor = sel.anchorNode;
         if (!anchor || !editor.contains(anchor)) return;
+        // Stash the current range so external callers (variable chip
+        // click handlers) can later insert AT this position even after
+        // the editor has lost focus.
+        if (sel.rangeCount > 0) {
+            lastInternalRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
         const block = String(document.queryCommandValue("formatBlock") || "p").toLowerCase();
         setActive({
             bold:         document.queryCommandState("bold"),
@@ -249,6 +283,110 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6, classNa
         setLinkUrl("");
     }
 
+    // ── Imperative API (variable chips → cursor insert + drag drop) ──
+    //
+    // The Referral customize page consumes both methods: click → insert
+    // at the saved cursor position; drag-drop → insert at the drop
+    // point. Keeping the API generic (plain `text`) means future call
+    // sites can drop ANY string — emoji, hash tags, slash commands —
+    // without needing a referral-specific entry point on this editor.
+    function insertTextAtCursor(text: string) {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.focus();
+        // Restore the last in-editor selection if focus had been lost.
+        const sel = window.getSelection();
+        if (sel) {
+            const inside = sel.anchorNode && editor.contains(sel.anchorNode);
+            if (!inside && lastInternalRangeRef.current) {
+                sel.removeAllRanges();
+                sel.addRange(lastInternalRangeRef.current);
+            } else if (!inside) {
+                // No saved range and editor was unfocused — place caret
+                // at the end of the editor's content.
+                const range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+        document.execCommand("insertText", false, text);
+        emitChange();
+        // Stash the new caret so a subsequent chip-click drops the next
+        // token immediately AFTER the one we just placed.
+        const after = window.getSelection();
+        if (after && after.rangeCount > 0 && editor.contains(after.anchorNode)) {
+            lastInternalRangeRef.current = after.getRangeAt(0).cloneRange();
+        }
+    }
+    function insertTextAtPoint(text: string, x: number, y: number) {
+        const editor = editorRef.current;
+        if (!editor) return;
+        // Resolve the drop point to a Range via the cross-browser caret
+        // APIs. Chromium ships `caretRangeFromPoint`; Firefox ships
+        // `caretPositionFromPoint`; we try both before giving up.
+        let range: Range | null = null;
+        const docAny = document as unknown as {
+            caretRangeFromPoint?: (x: number, y: number) => Range | null;
+            caretPositionFromPoint?: (x: number, y: number) => {
+                offsetNode: Node; offset: number;
+            } | null;
+        };
+        if (typeof docAny.caretRangeFromPoint === "function") {
+            range = docAny.caretRangeFromPoint(x, y);
+        } else if (typeof docAny.caretPositionFromPoint === "function") {
+            const pos = docAny.caretPositionFromPoint(x, y);
+            if (pos) {
+                range = document.createRange();
+                range.setStart(pos.offsetNode, pos.offset);
+                range.collapse(true);
+            }
+        }
+        // If we couldn't resolve a caret, fall back to end-of-editor.
+        if (!range || !editor.contains(range.startContainer)) {
+            range = document.createRange();
+            range.selectNodeContents(editor);
+            range.collapse(false);
+        }
+        editor.focus();
+        const sel = window.getSelection();
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+        document.execCommand("insertText", false, text);
+        emitChange();
+        // Stash the post-insert caret so further chip clicks continue
+        // appending after this drop site.
+        const after = window.getSelection();
+        if (after && after.rangeCount > 0 && editor.contains(after.anchorNode)) {
+            lastInternalRangeRef.current = after.getRangeAt(0).cloneRange();
+        }
+    }
+    useImperativeHandle(handleRef, () => ({
+        insertTextAtCursor,
+        insertTextAtPoint,
+    }));
+
+    // ── Native drag-drop INTO the editor body ──
+    // The default contentEditable drop behaviour varies across browsers —
+    // some auto-insert, some don't. We override so the drop ALWAYS lands
+    // at the caret indicated by the cursor (matches the user's "drag and
+    // drop and place based on the typing indicator location" spec).
+    function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+        if (e.dataTransfer.types.includes("text/plain")) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+        }
+    }
+    function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+        const text = e.dataTransfer.getData("text/plain");
+        if (!text) return;
+        e.preventDefault();
+        insertTextAtPoint(text, e.clientX, e.clientY);
+    }
+
     const minHeight = rows * 22 + 24;
     const currentBlockLabel = BLOCK_LABEL[active.block] ?? "Paragraph";
 
@@ -318,6 +456,8 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6, classNa
                     contentEditable
                     suppressContentEditableWarning
                     onInput={emitChange}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
                     style={{ minHeight }}
                     className={cn(
                         "flex-1 min-h-0 w-full px-4 py-3 text-[14px] text-[#101828] focus:outline-none leading-[20px] overflow-y-auto",
@@ -332,7 +472,9 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6, classNa
                     )}
                 />
                 {isEmpty && placeholder && (
-                    <span className="absolute top-3 left-4 text-[14px] text-[#667085] pointer-events-none select-none">
+                    <span
+                        style={{ top: placeholderTop }}
+                        className="absolute left-4 text-[14px] text-[#667085] pointer-events-none select-none">
                         {placeholder}
                     </span>
                 )}
@@ -374,7 +516,7 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6, classNa
             )}
         </div>
     );
-}
+});
 
 /** Strip tags + nbsp so we can detect a truly-empty editor (which often
  *  contains a stray `<br>` or `<div><br></div>` after user clears it). */

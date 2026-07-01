@@ -6,32 +6,37 @@
 //
 // Full-page editor. 3-column layout:
 //
-//   • Left rail — single-step stepper "Referral information" (kept as a
-//     stepper instead of a static label because the original implementation
-//     used the same chrome and other settings pages still ship the chrome
-//     pattern; future steps can slot in without re-architecting the page).
+//   • Left rail — single-step stepper "Referral information".
 //
 //   • Center — Title input + Variables strip + Description rich-text
-//     editor. The Variables strip has 4 chips ({{referrer}} / {{friend}} /
-//     {{trigger}} / {{cap}}). Clicking a chip appends the token to the
-//     description; admins can also type or paste any token directly.
+//     editor.
+//     Variables ({{referrer}} / {{friend}} / {{trigger}} / {{cap}}) are
+//     draggable AND clickable:
+//       – Click       → inserts the token at the current cursor position
+//                       (restores the last-known caret if the editor lost
+//                       focus from the chip click).
+//       – Drag & drop → inserts the token at the caret position closest
+//                       to the drop point — visual feedback while
+//                       dragging follows the cursor.
 //
-//   • Right rail — Referral preview. A miniature of the customer-portal
-//     referral card with the Title + the description AFTER variable
-//     substitution. Reflects the LIVE local edits so admins see exactly
-//     what the customer will read.
-//
-// Save commits both `infoTitle` + `infoDescription` (raw, with tokens
-// intact so the editor can round-trip cleanly) via `updateReferralInformation`.
+//   • Right rail — Referral preview. Uses the same Template-preview chrome
+//     as the Membership / Package create flow (`TemplatePreviewCard` in
+//     ProductFormPage): outer card with header + subtitle + divider, then
+//     a `#f6f6f3` stage, with the mock customer card inside. The mock
+//     card uses a `DecorativeBanner` (sage palette to match the brand)
+//     and renders the Title + the description AFTER variable
+//     substitution so admins see exactly what the customer will read.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { XClose, Copy01, HeartHand } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/ui/RichTextEditor";
+import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import { useAppStore } from "@/lib/store";
 import { substituteReferralVariables } from "@/lib/referral-helpers";
+import { cn } from "@/lib/utils";
 
 export interface EditReferralInformationPageProps {
     returnTo?: string;
@@ -52,19 +57,25 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
 
     const [title,       setTitle]       = useState(settings.infoTitle);
     const [description, setDescription] = useState(settings.infoDescription);
+    /** Currently dragged variable token — drives the floating
+     *  "Drop to insert" indicator pill that follows the cursor. */
+    const [draggingToken, setDraggingToken] = useState<string | null>(null);
+
+    const editorRef = useRef<RichTextEditorHandle>(null);
 
     const valid = title.trim().length > 0 && description.trim().length > 0;
 
-    function handleInsertVariable(token: string) {
-        // Append at end + trailing space. Simpler than tracking the editor's
-        // contentEditable cursor — keeps RichTextEditor untouched per the
-        // user's "keep the editor like we have right now" directive.
-        setDescription(prev => {
-            // The editor stores HTML once edited; append the token as plain
-            // text so the substitution helper picks it up at render time.
-            const sep = prev.endsWith(" ") || prev.endsWith(">") || prev === "" ? "" : " ";
-            return `${prev}${sep}${token} `;
-        });
+    function handleChipClick(token: string) {
+        editorRef.current?.insertTextAtCursor(token);
+    }
+
+    function handleChipDragStart(e: React.DragEvent<HTMLButtonElement>, token: string) {
+        e.dataTransfer.setData("text/plain", token);
+        e.dataTransfer.effectAllowed = "copy";
+        setDraggingToken(token);
+    }
+    function handleChipDragEnd() {
+        setDraggingToken(null);
     }
 
     function handleSave() {
@@ -81,8 +92,9 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
         router.push(returnTo);
     }
 
-    // Substituted body for the right-rail preview.
+    // Plain-text preview body for the right-rail mock card.
     const previewBody = substituteReferralVariables(stripHtmlForPreview(description), settings);
+    const previewTitle = title.trim() || "Refer friends, get free credits";
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -106,8 +118,11 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                     </div>
                 </div>
 
-                {/* ── Center card ───────────────────────────────────── */}
-                <div className="flex-1 min-w-0 max-w-[640px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
+                {/* ── Center card — fills the remaining width between
+                       the left stepper rail and the right preview rail,
+                       no max-width clamp so the editor stretches as the
+                       window grows. ─────────────────────────────────── */}
+                <div className="flex-1 min-w-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 p-6 flex flex-col gap-5 overflow-y-auto scrollbar-hide">
                         {/* Title */}
                         <div className="flex flex-col gap-1.5 shrink-0">
@@ -123,14 +138,21 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
 
                         {/* Variables strip */}
                         <div className="flex flex-col gap-2 shrink-0">
-                            <p className="text-[14px] font-medium text-[#344054]">Variables (click to insert into the description)</p>
+                            <p className="text-[14px] font-medium text-[#344054]">Variables (drag or click into the description)</p>
                             <div className="flex flex-wrap gap-2 px-3 py-3 border-1 border-[#e4e7ec] rounded-[8px] bg-[#fafafa]">
                                 {VARIABLE_CHIPS.map(chip => (
                                     <button
                                         key={chip.token}
                                         type="button"
-                                        onClick={() => handleInsertVariable(chip.token)}
-                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] border-1 border-[#e9d7fe] bg-[#f4ebff] text-[#6941c6] text-[12px] font-medium hover:bg-[#e9d7fe] transition-colors"
+                                        draggable
+                                        onClick={() => handleChipClick(chip.token)}
+                                        onDragStart={e => handleChipDragStart(e, chip.token)}
+                                        onDragEnd={handleChipDragEnd}
+                                        title="Drag to place anywhere in the description, or click to insert at the cursor."
+                                        className={cn(
+                                            "cursor-grab active:cursor-grabbing flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] border-1 border-[#e9d7fe] bg-[#f4ebff] text-[#6941c6] text-[12px] font-medium hover:bg-[#e9d7fe] transition-colors select-none",
+                                            draggingToken === chip.token && "opacity-50",
+                                        )}
                                     >
                                         <Copy01 className="w-3 h-3" />
                                         <span>{chip.label}</span>
@@ -143,61 +165,72 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                         <div className="flex flex-col gap-1.5 flex-1 min-h-0">
                             <label className="text-[14px] font-medium text-[#344054] shrink-0">Referral information</label>
                             <RichTextEditor
+                                ref={editorRef}
                                 value={description}
                                 onChange={setDescription}
-                                placeholder="Write the referral information... use the variables above to personalize per-member values."
+                                placeholder="Write the referral information... drag a variable chip above into this field to personalize per-member values."
                                 rows={12}
                                 className="flex-1 min-h-0"
                             />
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className="shrink-0 px-6 py-4 flex items-center justify-end border-t border-[#e4e7ec]">
+                    {/* Footer — no top divider per the user's preference;
+                        the Save button sits flush against the editor
+                        body padding. */}
+                    <div className="shrink-0 px-6 py-4 flex items-center justify-end">
                         <Button variant="primary" size="md" disabled={!valid} onClick={handleSave}>
                             Save changes
                         </Button>
                     </div>
                 </div>
 
-                {/* ── Right preview rail ────────────────────────────── */}
-                <div className="w-[320px] shrink-0 flex flex-col gap-4">
-                    <div className="flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828]">Referral preview</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">This is how your referral will look like.</p>
+                {/* ── Right preview rail — matches Membership create
+                       Template-preview chrome (header + divider + #f6f6f3
+                       stage + inner mock card with DecorativeBanner). ── */}
+                <div className="w-[400px] shrink-0 self-start bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                    {/* Header */}
+                    <div className="flex flex-col">
+                        <div className="pt-6 px-6 flex flex-col gap-1">
+                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Referral preview</p>
+                            <p className="text-[14px] text-[#6e776f] leading-5">This is how your referral will look like.</p>
+                        </div>
+                        <div className="h-5" />
+                        <div className="h-px bg-[#e4e7ec]" />
                     </div>
-
-                    {/* Mock customer-portal referral card */}
-                    <div className="border-1 border-[#e4e7ec] rounded-[16px] bg-[#fafafa] p-5 flex flex-col items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-[#e9fff3] flex items-center justify-center">
-                            <HeartHand className="w-7 h-7 text-[#658774]" />
-                        </div>
-                        <div className="flex flex-col items-center gap-2 text-center">
-                            <p className="text-[18px] font-semibold text-[#101828] leading-[24px]">
-                                {title || "Refer friends, get free credits"}
-                            </p>
-                            <p className="text-[13px] text-[#475467] leading-[18px]">
-                                {previewBody || "Description preview shows once you start typing."}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2 w-full mt-2">
-                            <div className="flex-1 h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center text-[14px] text-[#101828]">
-                                Jtr.888
+                    {/* Stage */}
+                    <div className="bg-[#f6f6f3] px-6 py-10">
+                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
+                            <DecorativeBanner bannerHeight={120} iconBox={56} icon={HeartHand} {...BANNER_TINTS.package} />
+                            <div className="flex flex-col gap-4 px-5">
+                                <div className="flex flex-col gap-2 text-center">
+                                    <p className="text-[18px] leading-[24px] font-semibold text-[#101828]">
+                                        {previewTitle}
+                                    </p>
+                                    <p className="text-[13px] text-[#475467] leading-[18px]">
+                                        {previewBody || "Description preview shows once you start typing."}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2 w-full">
+                                    <div className="flex-1 h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center text-[14px] text-[#101828]">
+                                        Jtr.888
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center gap-1.5 text-[14px] text-[#344054]"
+                                    >
+                                        <Copy01 className="w-3.5 h-3.5" />
+                                        Copy
+                                    </button>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="w-full h-10 rounded-[8px] bg-[#a9d4b9] text-[#1d3a2a] text-[14px] font-semibold"
+                                >
+                                    Share
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center gap-1.5 text-[14px] text-[#344054]"
-                            >
-                                <Copy01 className="w-3.5 h-3.5" />
-                                Copy
-                            </button>
                         </div>
-                        <button
-                            type="button"
-                            className="w-full h-10 rounded-[8px] bg-[#a9d4b9] text-[#1d3a2a] text-[14px] font-semibold"
-                        >
-                            Share
-                        </button>
                     </div>
                 </div>
             </div>
@@ -208,9 +241,8 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
 }
 
 /** Strip HTML tags so the right-rail preview shows the substituted body
- *  as plain text. Keeps the implementation lightweight — the customer
- *  portal renders the rich HTML; the admin preview just shows the prose
- *  for readability. */
+ *  as plain text. The customer portal renders the rich HTML; the admin
+ *  preview just shows the prose for readability. */
 function stripHtmlForPreview(html: string): string {
     return html
         .replace(/<\s*br\s*\/?\s*>/gi, "\n")

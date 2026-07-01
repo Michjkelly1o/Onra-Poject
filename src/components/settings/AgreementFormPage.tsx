@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, Check, MarkerPin01, ChevronDown, ChevronUp, Lightbulb02,
     UploadCloud02, Trash01, File02, FilterLines,
+    RefreshCcw01, Calendar,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -186,6 +187,70 @@ function LargeToggle({ on, onChange, ariaLabel }: {
                 on ? "translate-x-5" : "translate-x-0",
             )} />
         </button>
+    );
+}
+
+// ─── Effective date mode + Toggle card (v24) ────────────────────────────────
+
+/** Radio card for the "Ongoing" / "Set an expiry date" choice in Step
+ *  2. Selected state paints the card border sage green + shows a sage
+ *  radio dot; unselected shows a subtle gray border + hollow ring. */
+function EffectiveDateModeCard({ selected, title, subtitle, icon, onSelect }: {
+    selected: boolean;
+    title: string;
+    subtitle: string;
+    icon: React.ReactNode;
+    onSelect: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onSelect}
+            className={cn(
+                "text-left rounded-[12px] border-1 p-4 flex items-start gap-3 transition-colors bg-white",
+                selected
+                    ? "border-[#7ba08c]"
+                    : "border-[#e4e7ec] hover:border-[#d0d5dd]",
+            )}
+        >
+            <div className="shrink-0 w-9 h-9 rounded-[8px] bg-[#f5fffa] flex items-center justify-center">
+                {icon}
+            </div>
+            <div className="flex-1 flex flex-col gap-1 min-w-0">
+                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+            </div>
+            <div className={cn(
+                "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0 mt-0.5",
+                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+            )}>
+                {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+            </div>
+        </button>
+    );
+}
+
+/** Toggle card for the Re-acceptance + Minors sections in Step 2. Same
+ *  visual pattern as the Referral module's Eligibility toggle cards —
+ *  sage border when on, gray when off, right-aligned pill switch. */
+function ToggleCard({ title, subtitle, on, onChange, ariaLabel }: {
+    title: string;
+    subtitle: string;
+    on: boolean;
+    onChange: (next: boolean) => void;
+    ariaLabel: string;
+}) {
+    return (
+        <div className={cn(
+            "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 bg-white transition-colors",
+            on ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+        )}>
+            <div className="flex-1 flex flex-col gap-1 min-w-0">
+                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+            </div>
+            <LargeToggle on={on} onChange={onChange} ariaLabel={ariaLabel} />
+        </div>
     );
 }
 
@@ -570,9 +635,20 @@ interface RulesState {
     /** Class-template (service) ids the agreement covers. Defaults to "all
      *  active services" — every template id pre-selected at first render. */
     applicableClassTemplateIds: string[];
-    /** ISO YYYY-MM-DD. */
+    /** v24 — Effective dates mode radio (Figma 7703:13587 vs 13751).
+     *  Ongoing hides the date pickers + persists empty strings; expiry
+     *  requires both dates before Continue. */
+    effectiveDatesMode: "ongoing" | "expiry";
+    /** ISO YYYY-MM-DD. Empty string when `effectiveDatesMode` is
+     *  "ongoing" — kept in state so switching back to "expiry"
+     *  mid-edit doesn't lose the previously-typed dates. */
     effectiveFrom: string;
     effectiveUntil: string;
+    /** v24 — Re-acceptance toggle (Step 2 "Re-acceptance" section). */
+    requireReAcceptance: boolean;
+    /** v24 — Guardian consent toggle (Step 2 "Minors & guardian
+     *  consent" section). */
+    requireGuardianConsent: boolean;
 }
 
 interface ContentState {
@@ -668,20 +744,31 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                 applicableClassTemplateIds: existing.applicableClassTemplateIds.length > 0
                     ? [...existing.applicableClassTemplateIds]
                     : allServiceIds,
-                effectiveFrom: existing.effectiveFrom.slice(0, 10),
-                effectiveUntil: existing.effectiveUntil.slice(0, 10),
+                effectiveDatesMode:     existing.effectiveDatesMode,
+                effectiveFrom:          existing.effectiveFrom.slice(0, 10),
+                effectiveUntil:         existing.effectiveUntil.slice(0, 10),
+                requireReAcceptance:    existing.requireReAcceptance,
+                requireGuardianConsent: existing.requireGuardianConsent,
             };
         }
-        // Brief: "make the issued date to be selectable, dont auto select" —
-        // start with empty effective dates; the user picks both.
+        // v24 create defaults per Figma:
+        //   • Ongoing (no expiry) pre-selected — Figma 7703:13587 shows
+        //     the Ongoing card highlighted green.
+        //   • Re-acceptance + guardian consent toggles default ON —
+        //     matches the Figma "recommended safe defaults" state.
+        //   • effectiveFrom/Until stay empty; the admin picks them ONLY
+        //     if they switch to "Set an expiry date".
         return {
             multiBranch: false,
             branchId: "",
             allLocations: false,
             locationIds: [],
             applicableClassTemplateIds: allServiceIds,
-            effectiveFrom: "",
-            effectiveUntil: "",
+            effectiveDatesMode:     "ongoing",
+            effectiveFrom:          "",
+            effectiveUntil:         "",
+            requireReAcceptance:    true,
+            requireGuardianConsent: true,
         };
     });
 
@@ -712,9 +799,14 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
         ? (rules.allLocations || rules.locationIds.length > 0)
         : rules.branchId.length > 0;
     const step2HasCategories = rules.applicableClassTemplateIds.length > 0;
-    const step2DatesValid = rules.effectiveFrom.length === 10
-        && rules.effectiveUntil.length === 10
-        && rules.effectiveUntil >= rules.effectiveFrom;
+    // v24 — Ongoing mode has NO date requirements; "expiry" mode
+    // requires both Issue + Expiry pickers (per user's answer to
+    // "both need input" clarifier — no defaults; both empty → invalid).
+    const step2DatesValid = rules.effectiveDatesMode === "ongoing"
+        ? true
+        : rules.effectiveFrom.length === 10
+            && rules.effectiveUntil.length === 10
+            && rules.effectiveUntil >= rules.effectiveFrom;
     const step2Valid = step2HasLocation && step2HasCategories && step2DatesValid;
 
     const step3Valid = isEdit
@@ -749,8 +841,14 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                 allLocations: allLoc,
                 locationIds: locIds,
                 applicableClassTemplateIds: svcIds,
-                effectiveFrom: rules.effectiveFrom,
-                effectiveUntil: rules.effectiveUntil,
+                // v24 — new Step 2 fields. Dates persist as empty
+                // strings when the admin switched to Ongoing so a
+                // future edit round-trip cleanly restores the mode.
+                effectiveDatesMode:     rules.effectiveDatesMode,
+                effectiveFrom:          rules.effectiveDatesMode === "expiry" ? rules.effectiveFrom  : "",
+                effectiveUntil:         rules.effectiveDatesMode === "expiry" ? rules.effectiveUntil : "",
+                requireReAcceptance:    rules.requireReAcceptance,
+                requireGuardianConsent: rules.requireGuardianConsent,
             });
             showToast(
                 "Agreement updated",
@@ -771,8 +869,16 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
             allLocations: allLoc,
             locationIds: locIds,
             applicableClassTemplateIds: svcIds,
-            effectiveFrom: rules.effectiveFrom,
-            effectiveUntil: rules.effectiveUntil,
+            // v24 — new Step 2 fields. `rules` gained
+            // `effectiveDatesMode` + `requireReAcceptance` +
+            // `requireGuardianConsent`; the wizard renders them in the
+            // Effective dates / Re-acceptance / Minors & guardian
+            // sections.
+            effectiveDatesMode:     rules.effectiveDatesMode,
+            effectiveFrom:          rules.effectiveDatesMode === "expiry" ? rules.effectiveFrom  : "",
+            effectiveUntil:         rules.effectiveDatesMode === "expiry" ? rules.effectiveUntil : "",
+            requireReAcceptance:    rules.requireReAcceptance,
+            requireGuardianConsent: rules.requireGuardianConsent,
             status: "active",
         });
 
@@ -938,31 +1044,83 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                                 />
                             </Section>
 
-                            {/* Effective dates — both selectable; minDate = today */}
+                            {/* Effective dates — 2 radio cards (Ongoing /
+                                Set an expiry date). When "expiry" is
+                                selected, the Issue + Expiry pickers
+                                appear below. Ongoing agreements persist
+                                empty date strings (see the create/edit
+                                submit paths — both branch on
+                                `effectiveDatesMode`). */}
                             <Section title="Effective dates">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField label="Issue Date">
-                                        <DatePicker
-                                            value={rules.effectiveFrom}
-                                            onChange={v => setRules(p => ({
-                                                ...p,
-                                                effectiveFrom: v,
-                                                // Keep expiry ≥ issue
-                                                effectiveUntil: p.effectiveUntil && v && p.effectiveUntil < v ? "" : p.effectiveUntil,
-                                            }))}
-                                            placeholder="Select date"
-                                            minDate={today}
+                                <FormField label="Effective dates">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <EffectiveDateModeCard
+                                            selected={rules.effectiveDatesMode === "ongoing"}
+                                            title="Ongoing (no expiry)"
+                                            subtitle="The agreement stays in effect until it is updated."
+                                            icon={<RefreshCcw01 className="w-5 h-5 text-[#658774]" />}
+                                            onSelect={() => setRules(p => ({ ...p, effectiveDatesMode: "ongoing" }))}
                                         />
-                                    </FormField>
-                                    <FormField label="Expiry Date">
-                                        <DatePicker
-                                            value={rules.effectiveUntil}
-                                            onChange={v => setRules(p => ({ ...p, effectiveUntil: v }))}
-                                            placeholder="Select date"
-                                            minDate={rules.effectiveFrom || today}
+                                        <EffectiveDateModeCard
+                                            selected={rules.effectiveDatesMode === "expiry"}
+                                            title="Set an expiry date"
+                                            subtitle="The agreement is valid until the selected expiry date."
+                                            icon={<Calendar className="w-5 h-5 text-[#658774]" />}
+                                            onSelect={() => setRules(p => ({ ...p, effectiveDatesMode: "expiry" }))}
                                         />
-                                    </FormField>
-                                </div>
+                                    </div>
+                                </FormField>
+                                {rules.effectiveDatesMode === "expiry" && (
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                        <FormField label="Issue Date">
+                                            <DatePicker
+                                                value={rules.effectiveFrom}
+                                                onChange={v => setRules(p => ({
+                                                    ...p,
+                                                    effectiveFrom: v,
+                                                    // Keep expiry ≥ issue
+                                                    effectiveUntil: p.effectiveUntil && v && p.effectiveUntil < v ? "" : p.effectiveUntil,
+                                                }))}
+                                                placeholder="Select date"
+                                                minDate={today}
+                                            />
+                                        </FormField>
+                                        <FormField label="Expiry Date">
+                                            <DatePicker
+                                                value={rules.effectiveUntil}
+                                                onChange={v => setRules(p => ({ ...p, effectiveUntil: v }))}
+                                                placeholder="Select date"
+                                                minDate={rules.effectiveFrom || today}
+                                            />
+                                        </FormField>
+                                    </div>
+                                )}
+                            </Section>
+
+                            {/* Re-acceptance — single toggle card. When ON,
+                                a new version published later flips signed
+                                customers to `re_accept_due` (drives the
+                                Acceptance status "Needs re-acceptance"
+                                sub-tab). */}
+                            <Section title="Re-acceptance">
+                                <ToggleCard
+                                    title="Require existing customers to re-accept"
+                                    subtitle="If a newer version is available, customers must accept it before they can complete their next booking."
+                                    on={rules.requireReAcceptance}
+                                    onChange={v => setRules(p => ({ ...p, requireReAcceptance: v }))}
+                                    ariaLabel="Require existing customers to re-accept"
+                                />
+                            </Section>
+
+                            {/* Minors & guardian consent — single toggle. */}
+                            <Section title="Minors & guardian consent">
+                                <ToggleCard
+                                    title="Require guardian signature for minors"
+                                    subtitle="Customers under 18 will be routed to a guardian-signature flow before they can book."
+                                    on={rules.requireGuardianConsent}
+                                    onChange={v => setRules(p => ({ ...p, requireGuardianConsent: v }))}
+                                    ariaLabel="Require guardian signature for minors"
+                                />
                             </Section>
 
                             {/* Info banner (Figma 5773:223106) */}

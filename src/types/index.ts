@@ -91,6 +91,13 @@ export interface User {
      *  eye-toggle. Seeded to `Demo1234!` per CLAUDE.md and updated when the
      *  Change-password modal is submitted. Never sent off-device. */
     password?: string;
+    /** ISO timestamp of the last successful password change (Figma
+     *  2858:110671). Drives the "Last changed Mar 14, 2026 · 104 days
+     *  ago" info line beneath the Password row. Bumped by
+     *  `updateAccountProfile` whenever `password` is in the patch.
+     *  Optional so legacy seeds without a value still typecheck; the UI
+     *  falls back to "—" when missing. */
+    password_changed_at?: string;
     created_at: string;
     // ── Instructor profile fields (only populated on instructor personas) ──
     // Optional so admin/member personas don't need them. The instructor

@@ -24,6 +24,7 @@
 // X close without saving.
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,19 +35,10 @@ import {
     type ReferralUnlockTrigger,
 } from "@/lib/store";
 
-const inputCls = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 const labelCls = "text-[14px] font-medium text-[#344054]";
 
 const REWARD_TYPE_OPTIONS = [
-    { value: "free_credits",  label: "Free credits"   },
-    { value: "wallet_credit", label: "Wallet credit"  },
-    { value: "discount",      label: "Discount"       },
-];
-
-const EXPIRY_UNIT_OPTIONS = [
-    { value: "days",   label: "days"   },
-    { value: "weeks",  label: "weeks"  },
-    { value: "months", label: "months" },
+    { value: "free_credits", label: "Free credits" },
 ];
 
 /** Numeric input that mirrors the project-wide convention:
@@ -103,30 +95,30 @@ const TRIGGER_OPTIONS: Array<{
     title: string;
     subtitle: string;
 }> = [
-    {
-        value: "friend_signup",
-        title: "Friend signs up",
-        subtitle: "Fastest, but pays out before any spend, higher abuse risk.",
-    },
-    {
-        value: "friend_first_purchase",
-        title: "Friend first purchase",
-        subtitle: "Recommended, reward only releases on real revenue.",
-    },
-    {
-        value: "friend_first_class",
-        title: "Friend attends first class",
-        subtitle: "Strongest quality signal; slowest to reward.",
-    },
-];
+        {
+            value: "friend_signup",
+            title: "Friend signs up",
+            subtitle: "Fastest, but pays out before any spend, higher abuse risk.",
+        },
+        {
+            value: "friend_first_purchase",
+            title: "Friend first purchase",
+            subtitle: "Recommended, reward only releases on real revenue.",
+        },
+        {
+            value: "friend_first_class",
+            title: "Friend attends first class",
+            subtitle: "Strongest quality signal; slowest to reward.",
+        },
+    ];
 
 export function ReferralRewardsPanel({ open, onClose }: {
     open: boolean;
     onClose: () => void;
 }) {
-    const settings              = useAppStore(s => s.referralSettings);
+    const settings = useAppStore(s => s.referralSettings);
     const updateReferralRewards = useAppStore(s => s.updateReferralRewards);
-    const showToast             = useAppStore(s => s.showToast);
+    const showToast = useAppStore(s => s.showToast);
 
     // Slide animation state — drives the same `right: -480 / 0` trick the
     // POS panel uses to avoid breaking `position: fixed` on inner
@@ -134,14 +126,14 @@ export function ReferralRewardsPanel({ open, onClose }: {
     const [shown, setShown] = useState(false);
 
     // Local form state — committed only on Save.
-    const [referrerType,   setReferrerType]   = useState<ReferralRewardType>(settings.referrerEarnType);
+    const [referrerType, setReferrerType] = useState<ReferralRewardType>(settings.referrerEarnType);
     const [referrerAmount, setReferrerAmount] = useState<number>(settings.referrerEarnAmount);
-    const [friendType,     setFriendType]     = useState<ReferralRewardType>(settings.friendEarnType);
-    const [friendAmount,   setFriendAmount]   = useState<number>(settings.friendEarnAmount);
-    const [trigger,        setTrigger]        = useState<ReferralUnlockTrigger>(settings.rewardUnlockTrigger);
-    const [maxReferrals,   setMaxReferrals]   = useState<number>(settings.maxReferralsPerMember);
-    const [expiryDays,     setExpiryDays]     = useState<number>(settings.earnedRewardExpiryDays);
-    const [budget,         setBudget]         = useState<number>(settings.monthlyProgramBudgetAed);
+    const [friendType, setFriendType] = useState<ReferralRewardType>(settings.friendEarnType);
+    const [friendAmount, setFriendAmount] = useState<number>(settings.friendEarnAmount);
+    const [trigger, setTrigger] = useState<ReferralUnlockTrigger>(settings.rewardUnlockTrigger);
+    const [maxReferrals, setMaxReferrals] = useState<number>(settings.maxReferralsPerMember);
+    const [expiryDays, setExpiryDays] = useState<number>(settings.earnedRewardExpiryDays);
+    const [budget, setBudget] = useState<number>(settings.monthlyProgramBudgetAed);
 
     // Reset every time the panel opens so the form mirrors the
     // currently-saved values (not stale local edits from a prior open).
@@ -180,13 +172,13 @@ export function ReferralRewardsPanel({ open, onClose }: {
     function handleSave() {
         if (!formValid) return;
         updateReferralRewards({
-            referrerEarnType:        referrerType,
-            referrerEarnAmount:      referrerAmount,
-            friendEarnType:          friendType,
-            friendEarnAmount:        friendAmount,
-            rewardUnlockTrigger:     trigger,
-            maxReferralsPerMember:   maxReferrals,
-            earnedRewardExpiryDays:  expiryDays,
+            referrerEarnType: referrerType,
+            referrerEarnAmount: referrerAmount,
+            friendEarnType: friendType,
+            friendEarnAmount: friendAmount,
+            rewardUnlockTrigger: trigger,
+            maxReferralsPerMember: maxReferrals,
+            earnedRewardExpiryDays: expiryDays,
             monthlyProgramBudgetAed: budget,
         });
         showToast(
@@ -198,9 +190,16 @@ export function ReferralRewardsPanel({ open, onClose }: {
     }
 
     if (!open) return null;
+    if (typeof document === "undefined") return null;
 
-    return (
-        <div className="fixed inset-0 z-[200]">
+    // PORTAL to document.body so the panel anchors to the VIEWPORT, not
+    // to any transformed/overflow-hidden ancestor. Without this, a
+    // `transform` on a parent layout chrome would re-base the panel's
+    // `fixed` positioning and the user could see it shift / clip / drag
+    // unexpectedly. Mounting at body guarantees the slide rides the
+    // right edge of the actual window every time.
+    return createPortal(
+        <div className="fixed inset-0 z-[200] select-none">
             {/* Backdrop fades in/out alongside the panel slide. */}
             <div
                 onClick={onClose}
@@ -209,20 +208,19 @@ export function ReferralRewardsPanel({ open, onClose }: {
                     shown ? "opacity-100" : "opacity-0",
                 )}
             />
-            {/* Panel slides via `right` (not `transform`) — see PosNewCustomerModal
-                for the full explanation. SelectInput's dropdown menu relies on
-                `position: fixed` anchored to the viewport, which `transform`
-                breaks. */}
+            {/* Panel slides via `right` (not `transform`) so SelectInput's
+                fixed-positioned dropdown menu stays anchored to the
+                viewport — `transform` on this element would re-base
+                every descendant's `position: fixed` to this box. */}
             <div
-                style={{ right: shown ? 0 : -480 }}
+                style={{ right: shown ? 0 : -600 }}
                 className={cn(
-                    "fixed top-0 w-[480px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
-                {/* Header — title + subtitle + X. The subtitle stack uses
-                    items-start so the X stays aligned to the title row. */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4">
+                {/* Header */}
+                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="font-semibold text-[18px] text-[#101828]">Reward rules &amp; limits</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
@@ -235,54 +233,72 @@ export function ReferralRewardsPanel({ open, onClose }: {
                     </button>
                 </div>
 
-                {/* Body — scrollable form */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-8">
+                {/* Body — scrollable form. The Who-earns-what rows use a
+                    flex layout with an inline `→` arrow connecting the
+                    dropdown and the Amount field so each pair reads as
+                    ONE control instead of two stranded inputs. */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-8 select-text">
                     {/* ── Who earns what ──────────────────────────────── */}
                     <Section title="Who earns what">
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                            <Field label="Referrer earns">
-                                <SelectInput
-                                    value={referrerType}
-                                    onChange={v => setReferrerType(v as ReferralRewardType)}
-                                    options={REWARD_TYPE_OPTIONS}
-                                />
-                            </Field>
-                            <span className="pb-3 text-[16px] text-[#667085]">→</span>
-                            <Field label="Amount">
-                                <NumberField
-                                    value={referrerAmount}
-                                    onChange={setReferrerAmount}
-                                    ariaLabel="Referrer reward amount"
-                                    suffixSlot={
-                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
-                                            {amountUnitLabel(referrerType)}
-                                        </span>
-                                    }
-                                />
-                            </Field>
+                        {/* 3-column grid: dropdown → arrow → Amount.
+                            `minmax(0, 1fr)` forces true 50/50 columns
+                            (a plain `1fr` grows the intrinsically wider
+                            side). Matches the Booking Rules Cancellation
+                            policy Credit&Package rows. */}
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-end">
+                            <div className="min-w-0">
+                                <Field label="Referrer earns">
+                                    <SelectInput
+                                        value={referrerType}
+                                        onChange={v => setReferrerType(v as ReferralRewardType)}
+                                        options={REWARD_TYPE_OPTIONS}
+                                        width="w-full"
+                                    />
+                                </Field>
+                            </div>
+                            <div className="h-10 flex items-center text-[16px] text-[#98a2b3]">→</div>
+                            <div className="min-w-0">
+                                <Field label="Amount">
+                                    <NumberField
+                                        value={referrerAmount}
+                                        onChange={setReferrerAmount}
+                                        ariaLabel="Referrer reward amount"
+                                        suffixSlot={
+                                            <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                                {amountUnitLabel(referrerType)}
+                                            </span>
+                                        }
+                                    />
+                                </Field>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                            <Field label="Friend earns">
-                                <SelectInput
-                                    value={friendType}
-                                    onChange={v => setFriendType(v as ReferralRewardType)}
-                                    options={REWARD_TYPE_OPTIONS}
-                                />
-                            </Field>
-                            <span className="pb-3 text-[16px] text-[#667085]">→</span>
-                            <Field label="Amount">
-                                <NumberField
-                                    value={friendAmount}
-                                    onChange={setFriendAmount}
-                                    ariaLabel="Friend reward amount"
-                                    suffixSlot={
-                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
-                                            {amountUnitLabel(friendType)}
-                                        </span>
-                                    }
-                                />
-                            </Field>
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-end">
+                            <div className="min-w-0">
+                                <Field label="Friend earns">
+                                    <SelectInput
+                                        value={friendType}
+                                        onChange={v => setFriendType(v as ReferralRewardType)}
+                                        options={REWARD_TYPE_OPTIONS}
+                                        width="w-full"
+                                    />
+                                </Field>
+                            </div>
+                            <div className="h-10 flex items-center text-[16px] text-[#98a2b3]">→</div>
+                            <div className="min-w-0">
+                                <Field label="Amount">
+                                    <NumberField
+                                        value={friendAmount}
+                                        onChange={setFriendAmount}
+                                        ariaLabel="Friend reward amount"
+                                        suffixSlot={
+                                            <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                                {amountUnitLabel(friendType)}
+                                            </span>
+                                        }
+                                    />
+                                </Field>
+                            </div>
                         </div>
                     </Section>
 
@@ -339,30 +355,23 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                 />
                             </Field>
                             <Field label="Earned reward expiry">
-                                <div className="flex gap-0 items-stretch">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        aria-label="Earned reward expiry days"
-                                        value={expiryDays === 0 ? "" : expiryDays}
-                                        placeholder="0"
-                                        onChange={e => {
-                                            const raw = e.target.value;
-                                            if (raw === "") { setExpiryDays(0); return; }
-                                            const stripped = raw.replace(/^0+(?=\d)/, "");
-                                            const parsed = parseInt(stripped, 10);
-                                            if (!Number.isNaN(parsed)) setExpiryDays(parsed);
-                                        }}
-                                        className={cn(inputCls, "rounded-r-none")}
-                                    />
-                                    <div className="w-[100px] shrink-0">
-                                        <SelectInput
-                                            value="days"
-                                            onChange={() => {}}
-                                            options={EXPIRY_UNIT_OPTIONS}
-                                        />
-                                    </div>
-                                </div>
+                                {/* Same single-container suffix pattern as
+                                    Max referrals / Monthly budget — input
+                                    on the left, unit on the right of ONE
+                                    shared bordered box. Days is the only
+                                    unit shipped today; switching to weeks
+                                    / months is wired through the seed
+                                    when needed. */}
+                                <NumberField
+                                    value={expiryDays}
+                                    onChange={setExpiryDays}
+                                    ariaLabel="Earned reward expiry days"
+                                    suffixSlot={
+                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            days
+                                        </span>
+                                    }
+                                />
                             </Field>
                         </div>
 
@@ -392,21 +401,22 @@ export function ReferralRewardsPanel({ open, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0">
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0 select-none">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave} disabled={!formValid}>
                         Save changes
                     </Button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
 
 function amountUnitLabel(type: ReferralRewardType): string {
     switch (type) {
-        case "free_credits":  return "credit";
+        case "free_credits": return "credit";
         case "wallet_credit": return "AED";
-        case "discount":      return "%";
+        case "discount": return "%";
     }
 }

@@ -23,7 +23,7 @@
 // asks us to skip it.
 
 import { useState } from "react";
-import { Edit02, Pencil02, Eye, EyeOff } from "@untitledui/icons";
+import { Edit02, Pencil02, Eye, EyeOff, AlertCircle, Monitor01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { Button } from "@/components/ui/button";
@@ -388,8 +388,16 @@ function PersonalInformationTab({
                 <Section title="Password">
                     <PasswordRow
                         password={user.password ?? ""}
+                        lastChangedAt={user.password_changed_at}
                         onChange={onChangePassword}
                     />
+                </Section>
+
+                <Divider />
+
+                {/* ── Active sessions ──────────────────────────────────── */}
+                <Section title="Active sessions">
+                    <ActiveSessionsBlock />
                 </Section>
             </div>
         </div>
@@ -459,15 +467,17 @@ function IntroductionCard({ text }: { text: string }) {
 function PasswordRow({
     password,
     onChange,
+    lastChangedAt,
 }: {
     password: string;
     onChange: () => void;
+    lastChangedAt?: string;
 }) {
     const [show, setShow] = useState(false);
     const displayed = show && password ? password : "••••••••••••";
     return (
-        <div className="flex items-center gap-6 w-full">
-            <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex items-start gap-6 w-full">
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <p className="text-[14px] text-[#667085] leading-5">Password</p>
                 <div className="flex items-center gap-2">
                     <p className="text-[16px] font-medium text-[#101828] leading-6 break-all">
@@ -482,6 +492,14 @@ function PasswordRow({
                         {show ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                     </button>
                 </div>
+                {lastChangedAt && (
+                    <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-[#98a2b3] shrink-0" />
+                        <p className="text-[13px] text-[#667085] leading-[18px]">
+                            Last changed {formatChangedOn(lastChangedAt)} · {formatDaysAgo(lastChangedAt)}
+                        </p>
+                    </div>
+                )}
             </div>
             <Button
                 variant="secondary-gray"
@@ -491,6 +509,108 @@ function PasswordRow({
             >
                 Change password
             </Button>
+        </div>
+    );
+}
+
+/** "Mar 14, 2026" — matches the admin Account settings date format. */
+function formatChangedOn(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** "104 days ago" / "1 day ago" / "Today" — same relative-age helper as
+ *  admin/settings/account. Computed at render so the string stays fresh. */
+function formatDaysAgo(iso: string): string {
+    const d = new Date(iso).getTime();
+    const now = Date.now();
+    if (Number.isNaN(d)) return "—";
+    const days = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+    if (days <= 0) return "Today";
+    if (days === 1) return "1 day ago";
+    return `${days} days ago`;
+}
+
+// ─── Active sessions ────────────────────────────────────────────────────────
+//
+// Mirrors the admin Account settings pattern: local-only demo sessions
+// (no store slice yet). The current device shows a green "Current" pill
+// on the right; other devices show a red "Sign out" text action that
+// removes the row + fires a toast.
+
+interface ActiveSession {
+    id: string;
+    device: string;
+    browser: string;
+    location: string;
+    lastActiveLabel: string;
+    isCurrent: boolean;
+}
+
+const SEED_INSTRUCTOR_SESSIONS: ActiveSession[] = [
+    {
+        id: "sess_instr_current",
+        device: "MacBook Pro",
+        browser: "Chrome 126",
+        location: "Dubai, UAE",
+        lastActiveLabel: "Today at 1:34 PM",
+        isCurrent: true,
+    },
+    {
+        id: "sess_instr_iphone",
+        device: "iPhone 15",
+        browser: "Safari",
+        location: "Dubai, UAE",
+        lastActiveLabel: "Today at 1:34 PM",
+        isCurrent: false,
+    },
+];
+
+function ActiveSessionsBlock() {
+    const showToast = useAppStore(s => s.showToast);
+    const [sessions, setSessions] = useState<ActiveSession[]>(SEED_INSTRUCTOR_SESSIONS);
+    return (
+        <div className="flex flex-col gap-4 w-full">
+            {sessions.map(s => (
+                <div key={s.id} className="flex items-center gap-4 w-full">
+                    <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center">
+                        <Monitor01 className="w-5 h-5 text-[#475467]" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                        <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                            {s.device} <span className="text-[#98a2b3] font-normal">·</span> {s.browser}
+                        </p>
+                        <p className="text-[13px] text-[#667085] leading-[18px]">
+                            {s.location} <span className="text-[#98a2b3]">·</span> {s.lastActiveLabel}
+                        </p>
+                    </div>
+                    {s.isCurrent ? (
+                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap bg-[#ecfdf3] border-[#abefc6] text-[#067647]">
+                            Current
+                        </span>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSessions(prev => prev.filter(x => x.id !== s.id));
+                                showToast(
+                                    "Device signed out",
+                                    `${s.device} · ${s.browser} was signed out of your account.`,
+                                    "success",
+                                    "check",
+                                );
+                            }}
+                            className="text-[14px] font-semibold text-[#b42318] hover:text-[#912018] transition-colors whitespace-nowrap"
+                        >
+                            Sign out
+                        </button>
+                    )}
+                </div>
+            ))}
+            {sessions.length === 0 && (
+                <p className="text-[14px] text-[#667085]">No other active sessions.</p>
+            )}
         </div>
     );
 }

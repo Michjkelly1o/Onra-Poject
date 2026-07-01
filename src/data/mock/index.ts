@@ -90,8 +90,8 @@ export { appointments, appointment_bookings, appointment_ratings } from "./appoi
 // Booking rules — global classes settings (no FKs; single-row config)
 export { classes_settings } from "./classes_settings";
 
-// Booking rules — cancellation & no-show policies (no FKs)
-export { cancellation_policies } from "./cancellation_policies";
+// Booking rules — single studio-wide cancellation policy (no FKs)
+export { cancellation_policy } from "./cancellation_policy";
 
 // Schedule (FK → class_templates, branches, rooms, staff_profiles)
 export { class_schedule } from "./class_schedule";

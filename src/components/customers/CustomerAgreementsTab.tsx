@@ -69,16 +69,31 @@ function fmtDateTime(iso?: string): string {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
+/** Human copy for the 3 v24 status values — reused by the badge here
+ *  AND by the Acceptance-status Filter chips so the copy stays 1:1.
+ *  Keep in sync with `AgreementStatus` in store.ts. */
+export const AGREEMENT_STATUS_LABEL: Record<AgreementStatus, string> = {
+    signed:          "Signed",
+    re_accept_due:   "Re-accept due",
+    never_signed:    "Never signed",
+};
+
 function AgreementStatusBadge({ status }: { status: AgreementStatus }) {
-    const signed = status === "signed";
+    // Green / amber / red mirrors the Figma spec + the Acceptance
+    // status KPI card icons. Amber gets the same tint stack the
+    // Referral module uses for warnings (`#fedf89` / `#b54708`).
+    const tone =
+        status === "signed"
+            ? { bg: "bg-[#ecfdf3]", border: "border-[#abefc6]", text: "text-[#067647]" }
+        : status === "re_accept_due"
+            ? { bg: "bg-[#fffaeb]", border: "border-[#fedf89]", text: "text-[#b54708]" }
+        :   { bg: "bg-[#fef3f2]", border: "border-[#fecdca]", text: "text-[#b42318]" };
     return (
         <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-            signed
-                ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-                : "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
+            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap border-1",
+            tone.bg, tone.border, tone.text,
         )}>
-            {signed ? "Signed" : "Unsigned"}
+            {AGREEMENT_STATUS_LABEL[status]}
         </span>
     );
 }
@@ -117,7 +132,10 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
         pending.statuses.length > 0 || pending.branchId !== "" ||
         pending.dateStart !== "" || pending.dateEnd !== "";
 
-    const STATUSES: AgreementStatus[] = ["unsigned", "signed"];
+    // v24 — 3-value split. Ordered "signed" → "re_accept_due" →
+    // "never_signed" (green → amber → red) so the filter chip stack
+    // reads left-to-right in urgency order.
+    const STATUSES: AgreementStatus[] = ["signed", "re_accept_due", "never_signed"];
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
@@ -148,7 +166,7 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {STATUSES.map(s => (
-                                <FilterPill key={s} label={s === "signed" ? "Signed" : "Unsigned"}
+                                <FilterPill key={s} label={AGREEMENT_STATUS_LABEL[s]}
                                     selected={pending.statuses.includes(s)}
                                     onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
                             ))}

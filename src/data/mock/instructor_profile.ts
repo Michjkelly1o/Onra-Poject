@@ -55,6 +55,11 @@ export const instructor_profile: User & { staff_profile_id: string } = {
     avatar_url: "/images/instructors/liam-chen.webp",
     // Demo password from CLAUDE.md — every demo persona uses `Demo1234!`.
     password: "Demo1234!",
+    // Seeded last-changed date so the Profile page renders the
+    // "Last changed Mar 14, 2026 · N days ago" info line straight out
+    // of the box (mirrors admin Account settings). Subsequent Change
+    // password submits overwrite this via `updateAccountProfile`.
+    password_changed_at: "2026-03-14T00:00:00Z",
     waiver_signed: true,
     is_active: true,
     created_at: "2024-01-01T00:00:00Z",

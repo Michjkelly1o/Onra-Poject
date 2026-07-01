@@ -1187,6 +1187,11 @@ export const DEMO_NOW_REFERRALS: CustomerReferral[] = REF_SPECS.map((r, idx) => 
     // the future so the Customer Referrals tab Expiry column shows
     // realistic upcoming dates instead of a wash of "expired".
     expires_at:  isoStamp(daysAhead(90 - r.daysAgo)),
+    // v25 — Referrer branch captured at referral-creation. All demo
+    // referrers sit on Forma South so the branch-gate helper
+    // restricts every seeded credit to South when the admin flips
+    // "Credits redeemable across all branches" off.
+    origin_branch_id: "branch_forma_south",
 }));
 
 // ─── Gift cards (current-month purchases) ──────────────────────────────────

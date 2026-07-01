@@ -53,6 +53,11 @@ export const account_profile: User = {
     // password modal overwrites it on submit so the toggle always reflects
     // the current value.
     password: "Demo1234!",
+    // Seed a plausible last-changed date so the Account settings page
+    // renders the "Last changed Mar 14, 2026 · N days ago" info line
+    // straight out of the box (Figma 2858:110671). Subsequent Change
+    // password submits overwrite this via `updateAccountProfile`.
+    password_changed_at: "2026-03-14T00:00:00Z",
     waiver_signed: true,
     is_active: true,
     created_at: "2024-01-01T00:00:00Z",

@@ -100,7 +100,7 @@ import {
     appointment_ratings as SEED_APPOINTMENT_RATINGS,
     class_categories as SEED_CLASS_CATEGORIES,
     classes_settings as SEED_CLASSES_SETTINGS,
-    cancellation_policies as SEED_CANCELLATION_POLICIES,
+    cancellation_policy as SEED_CANCELLATION_POLICY,
     branches as SEED_BRANCHES,
     rooms as SEED_ROOMS,
     business_hours as SEED_BUSINESS_HOURS,
@@ -156,9 +156,7 @@ import {
     type ClassCategory,
     type ClassesSettings,
     type CancellationPolicy,
-    type PolicyType,
-    type CancellationChoice,
-    type NoShowChoice,
+    type CancellationOutcome,
     type Branch,
     type Room,
     type BusinessHours,
@@ -227,7 +225,7 @@ import {
 
 // Re-export raw seed types — consumers can read these directly from the store.
 export type {
-    ClassCategory, ClassesSettings, CancellationPolicy, PolicyType, CancellationChoice, NoShowChoice, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
+    ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
 };
 
@@ -1063,7 +1061,20 @@ export interface CustomerAgreement {
     version: number;
     branchId: string;
     classTemplateIds: string[];
-    status: "signed" | "unsigned";
+    /** Split into 3 distinct terminal states (v24 — was
+     *  `"signed" | "unsigned"` in v23):
+     *    • "signed"         — customer signed the CURRENT version.
+     *    • "re_accept_due"  — customer signed an OLDER version; must
+     *                          accept the newer version before next
+     *                          booking. Drives amber pill + surfaces
+     *                          in the Acceptance status → Needs
+     *                          re-acceptance sub-tab.
+     *    • "never_signed"   — customer has never accepted this
+     *                          agreement. Drives red pill + surfaces
+     *                          in the Acceptance status → Pending /
+     *                          never sub-tab. Legacy `"unsigned"` rows
+     *                          migrate here on the v23→v24 persist bump. */
+    status: "signed" | "re_accept_due" | "never_signed";
     signedAtISO?: string;
 }
 
@@ -1082,6 +1093,14 @@ export interface CustomerReferral {
      *  column. Optional on the type so legacy seeds without an expiry
      *  still load; the UI renders "—" when missing. */
     expiresAtISO?: string;
+    /** v25 — Branch the credits are locked to when the "Credits
+     *  redeemable across all branches" toggle is OFF. Captured at
+     *  referral-creation from the REFERRER's `customer.branchId`.
+     *  Read by `canRedeemReferralCreditsAt()` in referral-helpers.ts
+     *  to gate POS + booking flow redemption. Undefined for legacy
+     *  seed rows — treated as "unrestricted" by the helper so
+     *  historical data doesn't get inadvertently locked out. */
+    originBranchId?: string;
 }
 
 // ─── Customer notification settings (PRD 11 §12) ───────────────────────────
@@ -1156,6 +1175,16 @@ export type AgreementType        = AgreementTypeSeed;
 export type AgreementStatus      = AgreementStatusSeed;
 export type AgreementContentType = AgreementContentTypeSeed;
 
+/** Effective-dates mode from Step 2 of the Agreement create/edit wizard
+ *  (Figma 7703:13587 / 7703:13751).
+ *    • "ongoing" — no expiry. Agreement stays in effect until updated.
+ *                  Detail page + list Effective-until column show an
+ *                  "Ongoing" pill (no dates rendered).
+ *    • "expiry"  — bounded window. Requires both `issueDate` and
+ *                  `expiryDate`; the list column renders the expiry
+ *                  date and the detail page shows both. */
+export type AgreementEffectiveDatesMode = "ongoing" | "expiry";
+
 /** Camel-cased mirror of `AgreementSeed`. Drives /admin/settings/agreements
  *  list + detail. */
 export interface Agreement {
@@ -1172,8 +1201,28 @@ export interface Agreement {
      *  "Applicable services" multi-select (grouped by branch). FK →
      *  class_templates.id. */
     applicableClassTemplateIds: string[];
+    /** v24 — new field. Drives which pair of date pickers renders in
+     *  Step 2 + how the Effective-until column reads on the list. When
+     *  "ongoing", `effectiveFrom` / `effectiveUntil` are ignored. */
+    effectiveDatesMode: AgreementEffectiveDatesMode;
+    /** Effective-from date (Step 2 "Issue Date"). Required when mode is
+     *  "expiry"; kept as-is (or empty) when "ongoing" so the field can
+     *  round-trip cleanly if the admin switches back mid-edit. */
     effectiveFrom: string;
+    /** Effective-until date (Step 2 "Expiry Date"). Same optionality as
+     *  `effectiveFrom`. */
     effectiveUntil: string;
+    /** v24 — Re-acceptance policy. When true and a new version
+     *  publishes, existing signed customers flip to
+     *  `re_accept_due` and are prompted to re-accept before their
+     *  next booking. Drives the tooltip "Customers must accept the
+     *  latest version before their next booking". */
+    requireReAcceptance: boolean;
+    /** v24 — Minors & guardian consent. When true, customers under 18
+     *  are routed to a guardian-signature flow before booking. Drives
+     *  the tooltip "Guardian consent is required for customers under
+     *  18". */
+    requireGuardianConsent: boolean;
     status: AgreementStatus;
     updatedAt: string;
     createdAt: string;
@@ -1945,7 +1994,8 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
         referredEmail: r.referred_email,
         benefitCredits: r.benefit_credits,
         referredAtISO: r.referred_at,
-        expiresAtISO: r.expires_at,
+        expiresAtISO:   r.expires_at,
+        originBranchId: r.origin_branch_id,
     };
 }
 
@@ -2327,6 +2377,15 @@ function agreementFromSeed(a: AgreementSeed): Agreement {
         allLocations: a.all_locations,
         locationIds: [...a.location_ids],
         applicableClassTemplateIds: [...(a.applicable_class_template_ids ?? [])],
+        // v24 — new fields with safe defaults for legacy seeds that
+        // predate the redesign: if `effective_dates_mode` isn't set,
+        // derive it from whether the seed carries `effective_until`
+        // (empty string ⇒ ongoing).
+        effectiveDatesMode:
+            a.effective_dates_mode
+            ?? (a.effective_until ? "expiry" : "ongoing"),
+        requireReAcceptance:    a.require_re_acceptance    ?? false,
+        requireGuardianConsent: a.require_guardian_consent ?? false,
         effectiveFrom: a.effective_from,
         effectiveUntil: a.effective_until,
         status: a.status,
@@ -2701,14 +2760,13 @@ interface AppState {
     classesSettings: ClassesSettings;
     updateClassesSettings: (patch: Partial<ClassesSettings>) => void;
 
-    /** Cancellation & no-show policies (Booking Rules Phase 2). The
-     *  populated container view, the add/edit page, the delete confirm
-     *  modal, and any future booking-cancel / booking-no-show flow all
-     *  read from this slice so changes propagate on the same render. */
-    cancellationPolicies: CancellationPolicy[];
-    addCancellationPolicy:    (policy: CancellationPolicy) => void;
-    updateCancellationPolicy: (id: string, patch: Partial<CancellationPolicy>) => void;
-    deleteCancellationPolicy: (id: string) => void;
+    /** v26 — Single studio-wide cancellation policy (Figma 4580:29847
+     *  landing card + 7631:404757 side panel). Replaces the legacy
+     *  list of policies (Add/Edit/Delete) with one config edited
+     *  via a side panel. The landing card + panel + waitlist "Match
+     *  free cancellation window" toggle all read from this slice. */
+    cancellationPolicy: CancellationPolicy;
+    updateCancellationPolicy: (patch: Partial<CancellationPolicy>) => void;
 
     /** Service categories (Booking Rules Phase 3 + Phase 4 wiring) — the
      *  same rows that drive class-template + schedule category selection.
@@ -3240,7 +3298,7 @@ export const useAppStore = create<AppState>()(persist(
     rooms:         SEED_ROOMS.map(r => ({ ...r })),
     businessHours: SEED_BUSINESS_HOURS.map(h => ({ ...h })),
     classesSettings: { ...SEED_CLASSES_SETTINGS },
-    cancellationPolicies: SEED_CANCELLATION_POLICIES.map(p => ({ ...p })),
+    cancellationPolicy: { ...SEED_CANCELLATION_POLICY },
     classCategories: SEED_CLASS_CATEGORIES.map(c => ({ ...c })),
     sidebarCollapsed: false,
     classTemplates: INITIAL_TEMPLATES,
@@ -3331,25 +3389,11 @@ export const useAppStore = create<AppState>()(persist(
         }));
         get().recordAudit("Updated booking rules", "settings", "classes_settings", "Booking rules");
     },
-    addCancellationPolicy: (policy) => {
+    updateCancellationPolicy: (patch: Partial<CancellationPolicy>) => {
         set(state => ({
-            cancellationPolicies: [policy, ...state.cancellationPolicies],
+            cancellationPolicy: { ...state.cancellationPolicy, ...patch },
         }));
-        get().recordAudit("Created cancellation policy", "settings", policy.id, policy.name);
-    },
-    updateCancellationPolicy: (id, patch) => {
-        const target = get().cancellationPolicies.find(p => p.id === id);
-        set(state => ({
-            cancellationPolicies: state.cancellationPolicies.map(p => p.id === id ? { ...p, ...patch } : p),
-        }));
-        if (target) get().recordAudit("Edited cancellation policy", "settings", id, target.name);
-    },
-    deleteCancellationPolicy: (id) => {
-        const target = get().cancellationPolicies.find(p => p.id === id);
-        set(state => ({
-            cancellationPolicies: state.cancellationPolicies.filter(p => p.id !== id),
-        }));
-        if (target) get().recordAudit("Deleted cancellation policy", "settings", id, target.name);
+        get().recordAudit("Updated cancellation policy", "settings", "cancellation_policy", "Cancellation policy");
     },
     addClassCategory: (category) => {
         set(state => ({
@@ -3501,7 +3545,15 @@ export const useAppStore = create<AppState>()(persist(
         // none of those touch `currentUser` since the admin isn't editing
         // their own auth profile when they update a staff row.
         set((state) => {
-            const nextUser = { ...state.currentUser, ...patch };
+            // Auto-stamp the password-change timestamp when `password`
+            // is part of the patch (Figma 2858:110671 — "Last changed
+            // Mar 14, 2026 · 104 days ago" line). Preserves any prior
+            // manual stamp when the field is untouched.
+            const patchWithStamp: Partial<User> =
+                patch.password !== undefined
+                    ? { ...patch, password_changed_at: new Date().toISOString() }
+                    : patch;
+            const nextUser = { ...state.currentUser, ...patchWithStamp };
             const staffId = (nextUser as typeof nextUser & { staff_profile_id?: string }).staff_profile_id;
 
             // Bail out of the cascade when we're not editing an instructor
@@ -4238,8 +4290,11 @@ export const useAppStore = create<AppState>()(persist(
         return id;
     },
     signWaiver: (customerId) => set((state) => ({
+        // Signs BOTH terminal not-signed states — a customer coming back
+        // to sign either a never-signed agreement OR a re-accept-due
+        // agreement flips to "signed" in the same action.
         customerAgreements: state.customerAgreements.map((ca) =>
-            ca.customerId === customerId && ca.status === "unsigned"
+            ca.customerId === customerId && ca.status !== "signed"
                 ? { ...ca, status: "signed" as const, signedAtISO: new Date().toISOString() }
                 : ca,
         ),
@@ -5450,6 +5505,19 @@ export const useAppStore = create<AppState>()(persist(
                     && ca.version === input.versionNumber,
                 );
                 if (already) return;
+                // When a new version publishes, customers with a prior
+                // signed row on this agreement transition to
+                // `re_accept_due` on the new-version row (they had a
+                // signature, now need to re-accept the update).
+                // Customers with no prior signed rows stay
+                // `never_signed`. The row we're creating is FOR the
+                // new version specifically, so it's always one of the
+                // two not-signed states — never `signed` at creation.
+                const hadSignedPriorVersion = state.customerAgreements.some(ca =>
+                    ca.agreementId === input.agreementId
+                    && ca.customerId === customerId
+                    && ca.status === "signed",
+                );
                 newCustomerRows.push({
                     id: `agr_${customerId}_v${input.versionNumber}_${Math.random().toString(36).slice(2, 6)}`,
                     customerId,
@@ -5458,7 +5526,7 @@ export const useAppStore = create<AppState>()(persist(
                     version: input.versionNumber,
                     branchId,
                     classTemplateIds: parent?.applicableClassTemplateIds ?? [],
-                    status: "unsigned",
+                    status: hadSignedPriorVersion ? "re_accept_due" : "never_signed",
                 });
             });
 
@@ -5483,11 +5551,17 @@ export const useAppStore = create<AppState>()(persist(
     },
     republishAgreementVersion: (agreementId, versionNumber) =>
         set(state => ({
+            // Republishing an existing version forces every SIGNED
+            // customer on this version to re-accept — flips them to
+            // `re_accept_due` (v24 rename — was `"unsigned"` in v23).
+            // Their prior signedAt stays on record so the acceptance
+            // table can still show "Signed V4 · prompted at next
+            // booking".
             customerAgreements: state.customerAgreements.map(ca =>
                 ca.agreementId === agreementId
                 && ca.version === versionNumber
                 && ca.status === "signed"
-                    ? { ...ca, status: "unsigned" as const, signedAtISO: undefined }
+                    ? { ...ca, status: "re_accept_due" as const }
                     : ca,
             ),
         })),
@@ -6341,12 +6415,47 @@ export const useAppStore = create<AppState>()(persist(
         // earnedRewardExpiryDays + monthlyProgramBudgetAed +
         // preventSelfReferral + newCustomersOnly + minFirstSpendAed +
         // creditsRedeemableAllBranches + infoTitle. CustomerReferral
-        // gains optional `expiresAtISO`. Without the bump persisted v22
-        // payloads carry incompatible field shapes — the Reward rules /
-        // Eligibility modals + customer-detail KPIs would crash on
-        // undefined reads. No migrate needed — the demo discards the
-        // old payload on version mismatch.
-        version: 23,
+        // gains optional `expiresAtISO`;
+        // v25: Referral credit branch-gate — CustomerReferral gains
+        // optional `originBranchId` (captured at referral-creation
+        // from the referrer's customer.branchId). Wired into the new
+        // `canRedeemReferralCreditsAt()` helper in referral-helpers.ts.
+        // Powers the "Redeemable at [branch]" subtitle on the customer-
+        // detail Referrals tab AND (when POS wallet redemption ships)
+        // the actual redemption gate. Seed rows all default to
+        // `branch_forma_south` since every seeded referrer sits there.
+        // Bumped from v24 so the field lands on every persisted row
+        // (existing localStorage payloads discard on load).
+        // v24: Agreements module redesign per Figma 4232:52279 series —
+        // Agreement gains `effectiveDatesMode` ("ongoing" | "expiry"),
+        // `requireReAcceptance` (boolean), `requireGuardianConsent`
+        // (boolean); `effectiveFrom` / `effectiveUntil` become semantic
+        // "empty when ongoing". CustomerAgreement.status expands from
+        // `"signed" | "unsigned"` to `"signed" | "re_accept_due" |
+        // "never_signed"` — legacy "unsigned" rows map to "never_signed"
+        // on the persist bump. `republishAgreementVersion` now flips
+        // signed rows to `re_accept_due` (was `unsigned`).
+        // `addAgreementVersion` picks `re_accept_due` / `never_signed`
+        // per prior-signed history. Without the bump, persisted v23
+        // payloads carry the old 2-value enum + missing Agreement
+        // fields — the new Acceptance status tab + Step 2 wizard
+        // would read undefined. No migrate needed;
+        // v26: Booking Rules module redesign per Figma 4580:29847 series.
+        // ClassesSettings sheds legacy Step 2 (SMS cutoff), Step 3
+        // (overbooking + auto-cancel), and auto_submit_attendance
+        // fields — none of these appear in the new landing/panel
+        // Figmas. Adds booking_cutoff_enabled (toggle), new waitlist
+        // fields (notify_via[], when_spot_opens_mode,
+        // match_free_cancellation_window, stop_auto_promoting_*,
+        // after_cutoff_mode). CancellationPolicy collapses from a
+        // LIST of policies (Add/Edit/Delete) into a SINGLE studio-
+        // wide record with credit/package window rules, membership
+        // fee toggles, and Applied-to package/class scoping.
+        // Persisted v25 payloads would carry incompatible field
+        // shapes — the new 3-card landing + 3 side panels would
+        // crash on undefined reads. No migrate needed — demo
+        // discards the old payload on version mismatch.
+        version: 26,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

@@ -46,6 +46,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Agreement, type AgreementStatus, type Branch } from "@/lib/store";
+import { branchLocationText, computeCoverage, type AgreementCoverage } from "@/lib/agreement-helpers";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -91,19 +92,56 @@ const TD = "px-4 py-4 text-[14px] text-[#475467] border-b border-[#f2f4f7]";
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
 /** Derived: Multi-branch (all_locations OR multiple location_ids) vs Specific
- *  branch (exactly one location_id). Matches the Figma's "Type" column. */
+ *  branch (exactly one location_id). Retained for the Type filter chips even
+ *  though the list column dropped in v24 (Figma 4232:52279 replaces Type
+ *  with the concrete "Branch location" column). */
 function scopeFor(a: Agreement): LocationScope {
     if (a.allLocations || a.locationIds.length > 1) return "multi";
     return "specific";
 }
 
-/** YYYY-MM-DD — matches the Figma's effective-until format (2025-04-22). */
+/** YYYY-MM-DD — matches the Figma's date-pill format (2025-04-22). */
 function formatDateISO(iso: string): string {
     return iso.slice(0, 10);
 }
 
+// Helpers live in `src/lib/agreement-helpers.ts` — imported above.
+
 // Local StatusBadge removed — uses canonical `<StatusBadge type="agreement">`
 // from `@/components/patterns/StatusBadge`.
+
+/** Coverage column cell — thin progress bar (48 px) + N% label + optional
+ *  amber "N to re-accept" subtitle when the current version has any
+ *  re-accept-due customers. Matches Figma 4232:52279 "80% · 31 to
+ *  re-accept" pattern. */
+function CoverageCell({ coverage }: { coverage: AgreementCoverage | undefined }) {
+    if (!coverage) return <span className="text-[#98a2b3]">—</span>;
+    const pct = coverage.percent;
+    return (
+        <div className="flex items-center gap-2">
+            <div className="w-[64px] h-[6px] rounded-full bg-[#eaecf0] overflow-hidden shrink-0">
+                <div className="h-full bg-[#658774] transition-[width]" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[14px] text-[#101828] shrink-0">{pct}%</span>
+            {coverage.pendingReAccept > 0 && (
+                <span className="text-[14px] text-[#b54708] shrink-0">
+                    · {coverage.pendingReAccept} to re-accept
+                </span>
+            )}
+        </div>
+    );
+}
+
+/** Blue "Ongoing" pill for the Effective-until column when the agreement
+ *  has no expiry. Matches the Figma blue-tinted pill (#eff8ff bg /
+ *  #b2ddff border / #175cd3 text). */
+function OngoingPill() {
+    return (
+        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]">
+            Ongoing
+        </span>
+    );
+}
 
 // Local AgreementAvatar removed — uses canonical `<IconAvatar icon={File06} />`
 // from `@/components/patterns/IconAvatar`.
@@ -350,23 +388,38 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
-function exportAgreementsCsv(rows: Agreement[], branchById: Map<string, Branch>) {
-    const headers = ["Name", "Type", "Version", "Scope", "Branches", "Effective from", "Effective until", "Status", "Required"];
+function exportAgreementsCsv(
+    rows: Agreement[],
+    branchById: Map<string, Branch>,
+    coverageById: Map<string, AgreementCoverage>,
+) {
+    // v24 columns match the new list view: Branch, Coverage, Effective
+    // until (Ongoing or date), plus the v24 policy toggles for
+    // completeness so admins can pull an audit trail.
+    const headers = [
+        "Name", "Version", "Branches", "Coverage %", "Pending re-accept",
+        "Effective mode", "Issue date", "Expiry date",
+        "Re-acceptance required", "Guardian consent required",
+        "Status", "Required",
+    ];
     const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
     const lines = [headers.join(",")];
     for (const r of rows) {
-        const scope = SCOPE_LABEL[scopeFor(r)];
         const branches = r.allLocations
             ? "All locations"
             : r.locationIds.map(id => branchById.get(id)?.name ?? id).join("; ");
+        const cov = coverageById.get(r.id);
         lines.push([
             r.name,
-            r.type,
             String(r.currentVersion),
-            scope,
             branches,
-            r.effectiveFrom.slice(0, 10),
-            r.effectiveUntil.slice(0, 10),
+            cov ? String(cov.percent) : "0",
+            cov ? String(cov.pendingReAccept) : "0",
+            r.effectiveDatesMode,
+            r.effectiveDatesMode === "expiry" ? r.effectiveFrom.slice(0, 10) : "",
+            r.effectiveDatesMode === "expiry" ? r.effectiveUntil.slice(0, 10) : "",
+            r.requireReAcceptance ? "Yes" : "No",
+            r.requireGuardianConsent ? "Yes" : "No",
             r.status,
             r.required ? "Yes" : "No",
         ].map(escape).join(","));
@@ -394,6 +447,9 @@ export default function AgreementsPage() {
     // ─── Store subscriptions ────────────────────────────────────────────────
     const agreements         = useAppStore(s => s.agreements);
     const branches           = useAppStore(s => s.branches);
+    // v24 — Coverage column reads live customerAgreements to compute
+    // the signed-current-version percentage + re-accept pending count.
+    const customerAgreements = useAppStore(s => s.customerAgreements);
     const setAgreementsStatus = useAppStore(s => s.setAgreementsStatus);
     const showToast          = useAppStore(s => s.showToast);
 
@@ -436,12 +492,14 @@ export default function AgreementsPage() {
                 // Type filter (derived scope)
                 if (applied.scopes.length > 0 && !applied.scopes.includes(scopeFor(a))) return false;
 
-                // Effective date range filter — agreement's effectiveUntil falls in [start, end]
-                if (applied.effectiveStart) {
-                    if (a.effectiveUntil.slice(0, 10) < applied.effectiveStart) return false;
-                }
-                if (applied.effectiveEnd) {
-                    if (a.effectiveUntil.slice(0, 10) > applied.effectiveEnd) return false;
+                // Effective date range filter — agreement's effectiveUntil
+                // falls in [start, end]. Ongoing agreements have no
+                // expiry date; when the admin sets ANY range filter,
+                // Ongoing rows are excluded (they're not in the range).
+                if (applied.effectiveStart || applied.effectiveEnd) {
+                    if (a.effectiveDatesMode === "ongoing") return false;
+                    if (applied.effectiveStart && a.effectiveUntil.slice(0, 10) < applied.effectiveStart) return false;
+                    if (applied.effectiveEnd   && a.effectiveUntil.slice(0, 10) > applied.effectiveEnd)   return false;
                 }
                 return true;
             })
@@ -452,11 +510,28 @@ export default function AgreementsPage() {
             });
     }, [agreements, search, branchId, applied]);
 
-    // ── Sortable columns — Name / Type / Effective until / Status. ──
+    // ── Sortable columns — Name / Branch / Coverage / Effective until
+    //    / Status. Coverage sorts by numeric percent so a 0% row lands
+    //    at the bottom when descending. Effective-until sort treats
+    //    Ongoing rows as sorting AFTER dated rows (Ongoing = furthest
+    //    away). ──
+    const coverageById = useMemo(() => {
+        const m = new Map<string, AgreementCoverage>();
+        for (const a of agreements) {
+            m.set(a.id, computeCoverage(a, customerAgreements));
+        }
+        return m;
+    }, [agreements, customerAgreements]);
+
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Agreement>(filtered, {
         name:       (a, b) => a.name.localeCompare(b.name),
-        type:       (a, b) => a.type.localeCompare(b.type),
-        effective:  (a, b) => a.effectiveUntil.localeCompare(b.effectiveUntil),
+        branch:     (a, b) => branchLocationText(a, branchById).localeCompare(branchLocationText(b, branchById)),
+        coverage:   (a, b) => (coverageById.get(a.id)?.percent ?? 0) - (coverageById.get(b.id)?.percent ?? 0),
+        effective:  (a, b) => {
+            const av = a.effectiveDatesMode === "ongoing" ? "9999-12-31" : a.effectiveUntil;
+            const bv = b.effectiveDatesMode === "ongoing" ? "9999-12-31" : b.effectiveUntil;
+            return av.localeCompare(bv);
+        },
         status:     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
     });
 
@@ -546,7 +621,7 @@ export default function AgreementsPage() {
 
     function handleExportCsv() {
         if (filtered.length === 0) return;
-        exportAgreementsCsv(filtered, branchById);
+        exportAgreementsCsv(filtered, branchById, coverageById);
         showToast(
             "Agreements exported",
             `${filtered.length} agreement${filtered.length === 1 ? "" : "s"} exported to CSV.`,
@@ -633,16 +708,19 @@ export default function AgreementsPage() {
                                                 ariaLabel="Select all rows on this page"
                                             />
                                         </th>
-                                        <th className={TH}>
+                                        <th className={cn(TH, "w-[280px]")}>
                                             <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Agreement name</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[180px]")}>
-                                            <SortableHeader sortKey="type"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
+                                        <th className={cn(TH, "w-[220px]")}>
+                                            <SortableHeader sortKey="branch"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective until</SortableHeader>
+                                        <th className={cn(TH, "w-[240px]")}>
+                                            <SortableHeader sortKey="coverage"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Coverage</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective until</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[52px]")} />
@@ -671,8 +749,15 @@ export default function AgreementsPage() {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className={TD}>{SCOPE_LABEL[scopeFor(r)]}</td>
-                                                <td className={TD}>{formatDateISO(r.effectiveUntil)}</td>
+                                                <td className={TD}>{branchLocationText(r, branchById)}</td>
+                                                <td className={TD}>
+                                                    <CoverageCell coverage={coverageById.get(r.id)} />
+                                                </td>
+                                                <td className={TD}>
+                                                    {r.effectiveDatesMode === "ongoing"
+                                                        ? <OngoingPill />
+                                                        : formatDateISO(r.effectiveUntil)}
+                                                </td>
                                                 <td className={TD}><StatusBadge type="agreement" status={r.status} /></td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions items={[

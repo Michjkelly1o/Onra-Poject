@@ -25,14 +25,13 @@
 //   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
 //   Membership & Package, Gift Cards, Promo codes, Campaigns, Customer,
 //   Services (incl. appointments), Insights, Pay rate, Payroll, Staff
-//   & Permissions (full), Agreements, Reports, Notifications, Customer
-//   notifications, Booking rules, Account settings, Business &
-//   Locations, Integrations (Payments + Apps).
+//   & Permissions (full), Referral, Tax, Branding, Reports,
+//   Notifications, Customer notifications, Account settings, Business
+//   & Locations, Integrations (Payments + Apps).
 //
 //   DISABLED (admin) — pending client review for the demo push:
-//     • Branding   (/admin/settings/branding + /settings/branding/*)
-//     • Tax        (/admin/settings/tax)
-//     • Referral   (/admin/settings/referral + /settings/referral/*)
+//     • Agreements    (/admin/settings/agreements + /settings/agreements/*)
+//     • Booking rules (/admin/settings/booking-rules + /settings/booking-rules/*)
 //   Sidebar menu items for these stay visible per the file convention;
 //   clicking through 404s. Re-enable by deleting the matching prefixes
 //   from the array below.
@@ -125,15 +124,13 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Customer notifications module ── (ENABLED — admin)
     //"/admin/settings/notifications", // per-event channel + template config
 
-    // ── Referral module ── (DISABLED — under review for client demo)
-    // Sidebar menu items (Marketing → Referral program) stay visible per
-    // the file convention; clicking 404s until the module is signed off.
-    "/admin/settings/referral",      // landing (3 cards: master toggle + rules/eligibility tabs + customize info)
-    "/settings/referral",            // edit-information full-page editor
+    // ── Referral module ── (ENABLED — pushing today)
+    //"/admin/settings/referral",      // landing (3 cards: master toggle + rules/eligibility tabs + customize info)
+    //"/settings/referral",            // edit-information full-page editor
 
-    // ── Agreements module ── (ENABLED — pushing today)
-    //"/admin/settings/agreements",    // list view
-    //"/settings/agreements",          // create / detail / edit / new-version
+    // ── Agreements module ── (DISABLED — under review for client demo)
+    "/admin/settings/agreements",    // list view
+    "/settings/agreements",          // create / detail / edit / new-version
 
     // ── Integrations module ── (ENABLED — pushing today)
     // Unified Payments + Apps page. Legacy /admin/settings/payments
@@ -144,15 +141,15 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Tax module ── (DISABLED — under review for client demo)
     // Sidebar / settings landing link stays visible; clicking 404s
     // until the module is signed off.
-    "/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
+    //"/admin/settings/tax",           // list view (Tax rates list + Apply tax rates tabs)
 
     // ── Payments module ── (DISABLED with Integrations)
     // Already listed above in the Integrations block — both routes are
     // 404'd together for the under-review client demo.
 
-    // ── Booking rules module ── (ENABLED — admin)
-    //"/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
-    //"/settings/booking-rules",       // customize classes / policy new+edit
+    // ── Booking rules module ── (DISABLED — under review for client demo)
+    "/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
+    "/settings/booking-rules",       // customize classes / policy new+edit
 
     // ── Settings landing ── (ENABLED — admin)
     // NB: `/admin/settings` is now the SETTINGS LANDING PAGE (4-card layout
@@ -177,8 +174,8 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Branding module ── (DISABLED — under review for client demo)
     // Brand identity (landing) + 3-step Customize design form + portal
     // preferences sub-page. All routes 404 together until ready.
-    "/admin/settings/branding",      // brand identity + customer portal config
-    "/settings/branding",            // edit sub-pages (portal / design)
+    //"/admin/settings/branding",      // brand identity + customer portal config
+    //"/settings/branding",            // edit sub-pages (portal / design)
 
     // ── Instructor experience ── (ENABLED with two exceptions)
     // Standalone role-scoped surface (separate sidebar, separate header
@@ -207,11 +204,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)
     // The sidebar menu item stays visible per the file convention; the
     // route 404s when clicked. Re-enable by commenting the line below.
-    //"/instructor/notifications",     // instructor notification feed
+    "/instructor/notifications",     // instructor notification feed
 
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
-    //"/instructor/account",           // instructor account / profile page
+    "/instructor/account",           // instructor account / profile page
 
     // ──────────────────────────────────────────────────────────────────
     // Customer experience — mobile-only surface (max-width 400px) with
