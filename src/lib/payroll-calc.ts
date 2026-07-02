@@ -127,3 +127,116 @@ export function payRateTypeLabel(p: PayRate | undefined): string {
         case "monthly": return "Monthly";
     }
 }
+
+/** Per-row payroll explanation used by the CSV export (client feedback
+ *  July 2026 — "so people understand the calculation"). Returns three
+ *  parallel strings the exporter drops straight into their own CSV
+ *  columns:
+ *
+ *    • `classRateAed`  — the primary AED-per-class figure that drove
+ *                        the calculation. Flat = the flat AED. Tiered
+ *                        = the weighted average across the classes
+ *                        (fallback when tier bands span multiple
+ *                        classes). Monthly = salary ÷ classes taught.
+ *                        Split-Rate = the per-customer top-up AED
+ *                        (the % lives in the Percentage column).
+ *                        Hybrid = the base AED.
+ *
+ *    • `percentage`    — populated ONLY for Split-Rate rows and
+ *                        Hybrid rows whose bonus condition is a
+ *                        revenue split. Empty string otherwise
+ *                        (client asked for the column to appear
+ *                        empty for the other rate types).
+ *
+ *    • `note`          — one-line prose explanation formatted with
+ *                        real numbers from THIS instructor's period
+ *                        (e.g. "AED 147 × 8 completed classes = AED
+ *                        1,176"). Safe for CSV (no line breaks or
+ *                        embedded commas). */
+export interface PayrollRowExplanation {
+    classRateAed: string;
+    percentage:   string;
+    note:         string;
+}
+
+export function explainPayrollRow(
+    payRate: PayRate | undefined,
+    stats: {
+        /** Sum of `earningsForClass` across the instructor's completed
+         *  classes in the period — same number as the "Instructor
+         *  payout (AED)" column. */
+        totalEarningsAed: number;
+        /** Number of completed classes in the period. */
+        completedClasses: number;
+        /** Sum of `booked` across completed classes — the stand-in for
+         *  attendance today. */
+        totalAttendees:   number;
+    },
+): PayrollRowExplanation {
+    if (!payRate) {
+        return { classRateAed: "", percentage: "", note: "No pay rate assigned" };
+    }
+    const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+    switch (payRate.type) {
+        case "flat": {
+            const per = payRate.flatAmount;
+            return {
+                classRateAed: String(Math.round(per)),
+                percentage:   "",
+                note: `AED ${fmt(per)} × ${stats.completedClasses} completed classes = AED ${fmt(stats.totalEarningsAed)}`,
+            };
+        }
+        case "tiered": {
+            // Tier band varies per class; report the weighted average so
+            // the client sees the effective AED-per-class figure.
+            const avg = stats.completedClasses > 0
+                ? stats.totalEarningsAed / stats.completedClasses
+                : 0;
+            const tierList = payRate.tiers.map(t => `${t.from}-${t.to} pax: AED ${fmt(t.aed)}`).join("; ");
+            return {
+                classRateAed: String(Math.round(avg)),
+                percentage:   "",
+                note: `Tiered rate (${tierList}) applied per class attendance. Average AED ${fmt(avg)} × ${stats.completedClasses} classes = AED ${fmt(stats.totalEarningsAed)}`,
+            };
+        }
+        case "revenue": {
+            // Split Rate — the column the client specifically asked to
+            // surface the % on. `revenueBase` is the studio-side revenue
+            // proxy (attendees × avg drop-in AED 150).
+            const revenueBase = stats.totalAttendees * 150;
+            const perCustomer = payRate.payPerCustomer ?? 0;
+            return {
+                classRateAed: String(Math.round(perCustomer)),
+                percentage:   `${payRate.splitPercent}%`,
+                note: `${payRate.splitPercent}% of AED ${fmt(revenueBase)} revenue + AED ${fmt(perCustomer)} × ${stats.totalAttendees} customers = AED ${fmt(stats.totalEarningsAed)}`,
+            };
+        }
+        case "hybrid": {
+            const base = payRate.baseRate;
+            if (payRate.condition.kind === "bonus_attendance") {
+                return {
+                    classRateAed: String(Math.round(base)),
+                    percentage:   "",
+                    note: `AED ${fmt(base)} base per class + AED ${fmt(payRate.condition.bonusPerCustomer)} bonus per customer when attendance ≥ ${payRate.condition.bonusThreshold}. Period total AED ${fmt(stats.totalEarningsAed)}`,
+                };
+            }
+            // Revenue-split hybrid — surface the % in the dedicated column.
+            const revenueBase = stats.totalAttendees * 150;
+            return {
+                classRateAed: String(Math.round(base)),
+                percentage:   `${payRate.condition.splitPercent}%`,
+                note: `AED ${fmt(base)} base per class + ${payRate.condition.splitPercent}% of AED ${fmt(revenueBase)} revenue = AED ${fmt(stats.totalEarningsAed)}`,
+            };
+        }
+        case "monthly": {
+            const perClass = stats.completedClasses > 0
+                ? stats.totalEarningsAed / stats.completedClasses
+                : 0;
+            return {
+                classRateAed: String(Math.round(perClass)),
+                percentage:   "",
+                note: `AED ${fmt(payRate.fixedSalary)} monthly salary ÷ ${stats.completedClasses} classes = AED ${fmt(perClass)}/class × ${stats.completedClasses} = AED ${fmt(stats.totalEarningsAed)}`,
+            };
+        }
+    }
+}

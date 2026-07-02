@@ -1306,8 +1306,10 @@ export interface PayrollEntrySeed {
     /** Total class duration in hours (sum of all completed classes).
      *  Surfaced as the "Total time (hour)" column on the Run Payroll page. */
     total_hours: number;
-    /** Revenue the studio earned from those classes (AED). Surfaced as the
-     *  "Gross revenue" column on the Run Payroll table. */
+    /** Revenue the studio earned from those classes (AED). Surfaced as
+     *  the "Class revenue base" column on the Run Payroll table + CSV
+     *  export (reference figure for Split-Rate / revenue-share
+     *  calculations, NOT the instructor's take-home). */
     gross_revenue: number;
     /** Earnings before any manual adjustment. */
     base_earnings: number;

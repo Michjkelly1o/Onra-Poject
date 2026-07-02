@@ -822,7 +822,10 @@ export interface PayrollEntry {
     totalAttendees: number;
     /** Sum of class durations in hours — "Total time (hour)" column. */
     totalHours: number;
-    /** Studio revenue from those classes (AED) — "Gross revenue" column. */
+    /** Studio revenue from those classes (AED) — surfaces on the
+     *  "Class revenue base" column of the Run Payroll table + CSV. Used
+     *  as the reference figure for Split-Rate / revenue-share payout
+     *  calculations, not as the instructor's take-home. */
     grossRevenue: number;
     baseEarnings: number;
     adjustmentAmount: number;

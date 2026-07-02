@@ -344,7 +344,7 @@ export default function CompensationPage() {
         <div className="flex flex-col gap-6">
             {/* Metric cards */}
             <div className="flex items-stretch gap-4">
-                <MetricCard label="Gross revenue"     value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
+                <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
                 <MetricCard label="Total payouts"     value={aed(totalPayouts)}     period={metricPeriodLabel} Icon={CoinsHand} />
                 <MetricCard label="Classes completed" value={totalClasses.toLocaleString("en-US")} period={metricPeriodLabel} Icon={CheckCircle} />
                 <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />

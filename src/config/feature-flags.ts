@@ -25,16 +25,13 @@
 //   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
 //   Membership & Package, Gift Cards, Promo codes, Campaigns, Customer,
 //   Services (incl. appointments), Insights, Pay rate, Payroll, Staff
-//   & Permissions (full), Referral, Tax, Branding, Reports,
-//   Notifications, Customer notifications, Account settings, Business
-//   & Locations, Integrations (Payments + Apps).
+//   & Permissions (full), Agreements, Booking rules, Referral, Tax,
+//   Branding, Reports, Notifications, Customer notifications, Account
+//   settings, Business & Locations, Integrations (Payments + Apps).
 //
-//   DISABLED (admin) — pending client review for the demo push:
-//     • Agreements    (/admin/settings/agreements + /settings/agreements/*)
-//     • Booking rules (/admin/settings/booking-rules + /settings/booking-rules/*)
-//   Sidebar menu items for these stay visible per the file convention;
-//   clicking through 404s. Re-enable by deleting the matching prefixes
-//   from the array below.
+//   DISABLED (admin): none currently — all admin modules are live for
+//   this demo push. If a module needs to be hidden again, add its
+//   route prefix(es) back to the array below.
 //
 //   ENABLED (instructor): Dashboard, Schedule, the upcoming/ongoing
 //   class takeover detail page (`/class/[id]`), the completed/cancelled
@@ -128,9 +125,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/settings/referral",      // landing (3 cards: master toggle + rules/eligibility tabs + customize info)
     //"/settings/referral",            // edit-information full-page editor
 
-    // ── Agreements module ── (DISABLED — under review for client demo)
-    "/admin/settings/agreements",    // list view
-    "/settings/agreements",          // create / detail / edit / new-version
+    // ── Agreements module ── (ENABLED — pushing today)
+    //"/admin/settings/agreements",    // list view
+    //"/settings/agreements",          // create / detail / edit / new-version
 
     // ── Integrations module ── (ENABLED — pushing today)
     // Unified Payments + Apps page. Legacy /admin/settings/payments
@@ -147,9 +144,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // Already listed above in the Integrations block — both routes are
     // 404'd together for the under-review client demo.
 
-    // ── Booking rules module ── (DISABLED — under review for client demo)
-    "/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
-    "/settings/booking-rules",       // customize classes / policy new+edit
+    // ── Booking rules module ── (ENABLED — pushing today)
+    //"/admin/settings/booking-rules", // landing (Classes settings + Policies + Service categories)
+    //"/settings/booking-rules",       // customize classes / policy new+edit
 
     // ── Settings landing ── (ENABLED — admin)
     // NB: `/admin/settings` is now the SETTINGS LANDING PAGE (4-card layout

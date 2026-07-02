@@ -44,6 +44,8 @@ import {
     type Instructor, type PayrollEntry, type PayrollEntryStatus, type Branch,
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
+import { findActiveTaxRuleFor } from "@/lib/tax-calc";
+import { explainPayrollRow } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -216,18 +218,27 @@ function MetricCard({ label, value, period, Icon }: {
 
 // ─── Process payroll confirm modal (Figma 4067-90235) ──────────────────────
 
-function ProcessPayrollModal({ open, instructorCount, grossRevenue, taxRate, total, onCancel, onConfirm }: {
+function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, onCancel, onConfirm }: {
     open: boolean;
     instructorCount: number;
-    grossRevenue: number;
-    /** Tax rate percentage applied — phase 2 hardcodes to 0 per the brief
-     *  (tax module isn't built yet). The line still renders for parity. */
+    /** Sum of instructor payouts (what each instructor has EARNED
+     *  before withholding). Renamed from "grossRevenue" per client
+     *  feedback — Revenue is a studio-side metric and doesn't belong
+     *  on a payroll summary. */
+    grossWages: number;
+    /** Tax rate percentage applied — read live from the Tax module's
+     *  "pay_rate" category rule (see `findActiveTaxRuleFor`). Falls
+     *  back to 0 when no active rule is configured. */
     taxRate: number;
-    total: number;
     onCancel: () => void;
     onConfirm: () => void;
 }) {
     if (!open) return null;
+    // Honest math: withholding = wages × rate; Total = wages − withholding.
+    // Rounded independently so the two lines sum to the same integer the
+    // Total row shows (no off-by-one when the client tallies by hand).
+    const withholding = Math.round(grossWages * (taxRate / 100));
+    const netTotal    = Math.round(grossWages) - withholding;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
@@ -252,17 +263,17 @@ function ProcessPayrollModal({ open, instructorCount, grossRevenue, taxRate, tot
                 <div className="mx-6 mt-6 rounded-[12px] border-1 border-[#e4e7ec] bg-[#f9fafb] p-4 flex flex-col gap-3">
                     <p className="text-[14px] font-semibold text-[#344054] leading-[20px]">Detail payroll</p>
                     <div className="flex items-center justify-between text-[14px]">
-                        <span className="text-[#667085]">Gross revenue</span>
-                        <span className="font-medium text-[#101828]">{aed(grossRevenue)}</span>
+                        <span className="text-[#667085]">Gross wages</span>
+                        <span className="font-medium text-[#101828]">{aed(grossWages)}</span>
                     </div>
                     <div className="flex items-center justify-between text-[14px]">
-                        <span className="text-[#667085]">Tax rate (<span className="text-[#658774]">{taxRate}%</span>)</span>
-                        <span className="font-medium text-[#101828]">{aed(grossRevenue * (taxRate / 100))}</span>
+                        <span className="text-[#667085]">Tax withholding (<span className="text-[#658774]">{taxRate}%</span>)</span>
+                        <span className="font-medium text-[#101828]">− {aed(withholding)}</span>
                     </div>
                     <div className="h-px w-full bg-[#e4e7ec]" />
                     <div className="flex items-center justify-between text-[14px]">
-                        <span className="font-semibold text-[#344054]">Total</span>
-                        <span className="font-semibold text-[#101828]">{aed(total)}</span>
+                        <span className="font-semibold text-[#344054]">Net payout</span>
+                        <span className="font-semibold text-[#101828]">{aed(netTotal)}</span>
                     </div>
                 </div>
 
@@ -324,6 +335,11 @@ interface RunRow {
     instructor: Instructor;
     branchId: string;
     payRateName: string;
+    /** Full pay-rate record — carried through so the CSV exporter can
+     *  render the client-requested per-row explanation (Class rate /
+     *  Notes / Percentage columns). Undefined when the instructor has
+     *  no pay-rate assigned. */
+    payRate?: import("@/lib/store").PayRate;
     classesCount: number;
     totalHours: number;
     grossRevenue: number;
@@ -337,17 +353,45 @@ interface RunRow {
 // ─── CSV export ────────────────────────────────────────────────────────────
 
 function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
-    const header = ["Instructor", "Email", "Branch", "Default pay rate", "Completed classes", "Total time (hrs)", "Gross revenue (AED)", "Instructor payout (AED)", "Status", "Period"];
+    // v27 client-feedback fix — 3 new columns after "Default pay rate":
+    //   • Class rate (AED)     — AED-per-class figure driving the row
+    //   • Percentage (%)       — filled only for Split-Rate + Hybrid-
+    //                             revenue-split rows; empty otherwise
+    //   • Notes / Explanation  — one-line prose showing how the payout
+    //                             was computed with real numbers
+    // Column order mirrors what the client asked for (rate details
+    // grouped with the pay-rate name; the ledger totals + status +
+    // period stay on the right so the payroll admin can find them
+    // where they already were).
+    const header = [
+        "Instructor", "Email", "Branch",
+        "Default pay rate", "Class rate (AED)", "Percentage (%)", "Notes / Explanation",
+        "Completed classes", "Total time (hrs)", "Class revenue base (AED)",
+        "Instructor payout (AED)", "Status", "Period",
+    ];
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = rows.map(r => [
-        r.instructor.name, r.instructor.email, branchName(r.branchId), r.payRateName,
-        r.classesCount, r.totalHours, Math.round(r.grossRevenue), Math.round(r.payout),
-        r.status === "paid" ? "Paid" : "Pending", periodLabel,
-    ].map(escape).join(","));
+    const lines = rows.map(r => {
+        // Attendee count is captured via the grossRevenue proxy
+        // (attendees × AED 150 per class per `earningsForClass`). When
+        // real per-booking attendance ships this becomes a live field.
+        const totalAttendees = Math.round(r.grossRevenue / 150);
+        const explain = explainPayrollRow(r.payRate, {
+            totalEarningsAed: r.payout,
+            completedClasses: r.classesCount,
+            totalAttendees,
+        });
+        return [
+            r.instructor.name, r.instructor.email, branchName(r.branchId),
+            r.payRateName, explain.classRateAed, explain.percentage, explain.note,
+            r.classesCount, r.totalHours, Math.round(r.grossRevenue),
+            Math.round(r.payout),
+            r.status === "paid" ? "Paid" : "Pending", periodLabel,
+        ].map(escape).join(",");
+    });
     const csv = [header.join(","), ...lines].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
@@ -372,6 +416,13 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const instructors           = useAppStore(s => s.instructors);
     const payRates              = useAppStore(s => s.payRates);
     const branches              = useAppStore(s => s.branches);
+    // v27 client-feedback fix — Process Payroll modal reads the
+    // withholding rate LIVE from the Tax module's "pay_rate" category
+    // rule so an owner editing tax in Settings sees the payroll modal
+    // update in the same render cycle. Falls back to 0 % when no
+    // active rule / rate is configured, mirroring `TaxSuffix`.
+    const taxRules              = useAppStore(s => s.taxRules);
+    const taxRates              = useAppStore(s => s.taxRates);
     const setPayrollEntriesStatus = useAppStore(s => s.setPayrollEntriesStatus);
     const showToast             = useAppStore(s => s.showToast);
 
@@ -417,15 +468,16 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             .filter(i => i.status === "active")
             .map(instructor => {
                 const entry = byInstructor.get(instructor.id);
-                const liveRateName = instructor.payRateId
-                    ? payRates.find(p => p.id === instructor.payRateId)?.name
+                const livePayRate = instructor.payRateId
+                    ? payRates.find(p => p.id === instructor.payRateId)
                     : undefined;
                 return {
                     entryId: entry?.id ?? `noentry_${instructor.id}`,
                     actualEntryId: entry?.id,
                     instructor,
                     branchId: instructor.branchId,
-                    payRateName: entry?.payRateName ?? liveRateName ?? "—",
+                    payRateName: entry?.payRateName ?? livePayRate?.name ?? "—",
+                    payRate:     livePayRate,
                     classesCount: entry?.classesCount ?? 0,
                     totalHours:   entry?.totalHours   ?? 0,
                     grossRevenue: entry?.grossRevenue ?? 0,
@@ -453,6 +505,15 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const totalClasses     = metricRows.reduce((s, r) => s + r.classesCount, 0);
     const grossRevenue     = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
     const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
+
+    // Payroll withholding rate — live-joined from the Tax module. Owner
+    // edits Settings → Tax → Pay rate rule → this recomputes without a
+    // page refresh. Zero when no active rule (matches TaxSuffix logic).
+    const payrollTaxMatch = useMemo(
+        () => findActiveTaxRuleFor({ taxRules, taxRates }, "pay_rate", undefined),
+        [taxRules, taxRates],
+    );
+    const payrollTaxRate = payrollTaxMatch?.rate.ratePercentage ?? 0;
 
     // ─── Pagination slice ─────────────────────────────────────────────────
     // ── Run payroll sort — Name / Branch / Pay rate / Classes / Hours /
@@ -512,9 +573,15 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
 
     function confirmProcessPayroll() {
         // Snapshot for the success modal — must capture BEFORE we mutate.
-        const totalForRun = filteredRows
+        // `totalForRun` is the NET payout (gross wages − tax withholding)
+        // so the "AED X processed" line in the submitted modal matches
+        // what actually leaves the studio's account. Same math the
+        // Process modal displays.
+        const grossForRun = filteredRows
             .filter(r => r.status === "pending" && r.actualEntryId)
             .reduce((s, r) => s + r.payout, 0);
+        const withholdingForRun = Math.round(grossForRun * (payrollTaxRate / 100));
+        const totalForRun = Math.round(grossForRun) - withholdingForRun;
         const countForRun = pendingEntryIds.length;
         const periodLabel = monthYearLabel(range.from);
 
@@ -571,7 +638,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             <div className="flex-1 overflow-y-auto px-6 py-6">
                 {/* Metric cards */}
                 <div className="flex items-stretch gap-4">
-                    <MetricCard label="Gross revenue"      value={aed(grossRevenue)}     period={monthYearLabel(range.from)} Icon={CoinsStacked01} />
+                    <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={monthYearLabel(range.from)} Icon={CoinsStacked01} />
                     <MetricCard label="Total payouts"      value={aed(totalPayouts)}     period={monthYearLabel(range.from)} Icon={CoinsHand} />
                     <MetricCard label="Classes completed"  value={totalClasses.toLocaleString("en-US")} period={monthYearLabel(range.from)} Icon={CheckCircle} />
                     <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={monthYearLabel(range.from)} Icon={Users01} />
@@ -632,7 +699,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                             <SortableHeader sortKey="hours"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Total time (hour)</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="gross"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Gross revenue</SortableHeader>
+                                            <SortableHeader sortKey="gross"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class revenue base</SortableHeader>
                                         </th>
                                         {/* Tax annotation sits in the column
                                             header rather than on every row —
@@ -708,11 +775,17 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             <ProcessPayrollModal
                 open={confirmOpen}
                 instructorCount={pendingEntryIds.length}
-                grossRevenue={grossRevenue}
-                taxRate={0}
-                total={filteredRows
+                // Gross wages = sum of instructor PAYOUTS across the
+                // pending rows about to be processed. Was previously
+                // labelled "Gross revenue" and summed studio-side
+                // revenue, which never subtracted cleanly to the Total
+                // line and confused the client. Payout is the sum of
+                // `earningsForClass` — the same number each instructor
+                // will actually receive before withholding.
+                grossWages={filteredRows
                     .filter(r => r.status === "pending" && r.actualEntryId)
                     .reduce((s, r) => s + r.payout, 0)}
+                taxRate={payrollTaxRate}
                 onCancel={() => setConfirmOpen(false)}
                 onConfirm={confirmProcessPayroll}
             />
