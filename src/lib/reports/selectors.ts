@@ -123,6 +123,73 @@ export interface GiftCardRow {
     branchId: string;
 }
 
+/** Booking row — one row per `classBookings` record joined with the
+ *  scheduled class + customer + branch. Feeds: Bookings, Cancellations
+ *  & No-shows reports. */
+export interface BookingRow {
+    id: string;
+    /** ISO date the booking was made (from bookingTime). */
+    bookingDateISO: string;
+    /** ISO date the class runs (from classSchedule.dateISO). */
+    classDateISO: string;
+    /** "Mon" / "Tue" / ... display for the class day. */
+    classDay: string;
+    startTime: string;
+    endTime: string;
+    /** Duration in minutes. */
+    durationMinutes: number;
+    /** Event type — "Class", "Appointment", "Course" (from category). */
+    typeLabel: string;
+    className: string;
+    classType: string;
+    instructor: string;
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    /** Booking outcome — attended / cancelled / no-show / waitlisted / booked. */
+    outcomeLabel: string;
+    /** Whether the booking was cancelled on-time or late (blank when not cancelled). */
+    cancellationType: "" | "On-time" | "Late";
+    /** Whether the client's credit was returned (on-time) or lost (late/no-show). */
+    creditOutcome: "" | "Returned" | "Lost";
+    /** Cancellation / no-show charge in AED (0 when not applicable). */
+    charge: number;
+    paymentStatus: "" | "Success" | "Pending" | "Failed" | "Refunded";
+    /** ISO date the booking was cancelled (blank when not cancelled). */
+    cancelledAtISO: string;
+    salesChannel: string;
+    branchId: string;
+    location: string;
+}
+
+/** Class session row — one row per `classSchedules` record with
+ *  aggregated attendance metrics computed from `classBookings`.
+ *  Feeds: Class Performance, Top Classes & Services reports. */
+export interface ClassSessionRow {
+    id: string;
+    dateISO: string;
+    className: string;
+    classType: string;
+    instructor: string;
+    capacity: number;
+    booked: number;
+    attended: number;
+    noShows: number;
+    lateCancellations: number;
+    waitlisted: number;
+    waitlistConverted: number;
+    /** Booked ÷ Capacity, expressed 0-100. */
+    fillRatePct: number;
+    /** Attended ÷ Booked, expressed 0-100. */
+    attendanceRatePct: number;
+    /** No-shows ÷ Booked, expressed 0-100. */
+    noShowRatePct: number;
+    /** Distinct customer count who attended. */
+    uniqueCustomers: number;
+    branchId: string;
+    location: string;
+}
+
 /** Customer plan row — one row per `customerPlans` record. Feeds:
  *  Memberships & Packages, Frozen Packages, Intro Offers, Upgrades &
  *  Downgrades. The store already carries every field we need
@@ -376,7 +443,159 @@ export function selectMemberships(state: AppState): CustomerPlanRow[] {
     return rows;
 }
 
-/** 4. selectGiftCards — one row per issued gift card, joined with the
+/** 4. selectBookings — one row per classBookings record joined with the
+ *  scheduled class + customer + branch. Feeds: Bookings, Cancellations
+ *  & No-shows reports. */
+export function selectBookings(state: AppState): BookingRow[] {
+    const loc = makeLocationLookup(state);
+    const cust = makeCustomerLookup(state);
+    const scheduleById = new Map((state as unknown as { classSchedules: import("@/lib/store").ClassSchedule[] }).classSchedules?.map(s => [s.id, s]) ?? []);
+
+    const OUTCOME_LABEL: Record<string, string> = {
+        booked:     "Booked",
+        waitlisted: "Waitlisted",
+        cancelled:  "Cancelled",
+        present:    "Attended",
+        no_show:    "No-show",
+        late_cancel: "Late cancel",
+    };
+    const SOURCE_LABEL: Record<string, string> = {
+        customer_portal: "Online",
+        pos:             "In person (POS)",
+        admin:           "Admin",
+        front_desk:      "In person (front desk)",
+    };
+
+    function toMinutes(t: string): number {
+        // "HH:MM" → minutes-of-day.
+        const [h, m] = t.split(":").map(Number);
+        return (h || 0) * 60 + (m || 0);
+    }
+
+    return state.classBookings.map(b => {
+        const sched = scheduleById.get(b.classScheduleId);
+        const c = cust(b.customerId);
+        const duration = sched ? Math.max(0, toMinutes(sched.endTime) - toMinutes(sched.startTime)) : 0;
+
+        // Outcome — prefer attendanceStatus when it's a terminal state,
+        // else fall back to the raw status.
+        let outcome = b.status as string;
+        if (b.attendanceStatus === "present")     outcome = "present";
+        else if (b.attendanceStatus === "no_show") outcome = "no_show";
+        else if (b.attendanceStatus === "late_cancel") outcome = "late_cancel";
+
+        // Cancellation type — late_cancel wins; else if status === "cancelled"
+        // treat as "On-time" (couldn't have been late — attendance flip
+        // to late_cancel is exclusive with cancelled status).
+        let cancellationType: BookingRow["cancellationType"] = "";
+        if (b.attendanceStatus === "late_cancel") cancellationType = "Late";
+        else if (b.status === "cancelled")        cancellationType = "On-time";
+
+        // Credit outcome — on-time cancels return credit; late/no-shows lose it.
+        let creditOutcome: BookingRow["creditOutcome"] = "";
+        if (cancellationType === "On-time") creditOutcome = "Returned";
+        else if (cancellationType === "Late" || outcome === "no_show") creditOutcome = "Lost";
+
+        // Charge — populated later when penalty settings wire through.
+        const charge = 0;
+        const paymentStatus: BookingRow["paymentStatus"] = "";
+
+        return {
+            id: b.id,
+            bookingDateISO: b.bookingTime.slice(0, 10),
+            classDateISO:   sched?.dateISO ?? "",
+            classDay:       sched?.dayOfWeek?.slice(0, 3) ?? "",
+            startTime:      sched?.startTime ?? "",
+            endTime:        sched?.endTime ?? "",
+            durationMinutes: duration,
+            typeLabel:      sched?.classType ?? "Class",
+            className:      sched?.name ?? "—",
+            classType:      sched?.category ?? "—",
+            instructor:     sched?.instructorName ?? "—",
+            customerId:     b.customerId,
+            customerName:   c ? `${c.firstName} ${c.lastName}`.trim() : "—",
+            customerEmail:  c?.email ?? "—",
+            outcomeLabel:   OUTCOME_LABEL[outcome] ?? outcome,
+            cancellationType,
+            creditOutcome,
+            charge,
+            paymentStatus,
+            cancelledAtISO: b.cancelledAt ? b.cancelledAt.slice(0, 10) : "",
+            salesChannel:   SOURCE_LABEL[b.bookingSource ?? "customer_portal"] ?? "Online",
+            branchId:       b.branchId,
+            location:       loc(b.branchId),
+        };
+    });
+}
+
+/** 5. selectClassSessions — one row per classSchedule record with
+ *  aggregated attendance metrics from classBookings. Feeds: Class
+ *  Performance, Top Classes & Services reports. */
+export function selectClassSessions(state: AppState): ClassSessionRow[] {
+    const loc = makeLocationLookup(state);
+    const schedules = (state as unknown as { classSchedules: import("@/lib/store").ClassSchedule[] }).classSchedules ?? [];
+
+    // Group bookings by classScheduleId once.
+    const bookingsBySchedule = new Map<string, import("@/lib/store").ClassBooking[]>();
+    for (const b of state.classBookings) {
+        const arr = bookingsBySchedule.get(b.classScheduleId) ?? [];
+        arr.push(b);
+        bookingsBySchedule.set(b.classScheduleId, arr);
+    }
+
+    return schedules.map(s => {
+        const bookings = bookingsBySchedule.get(s.id) ?? [];
+        let attended = 0, noShows = 0, lateCancels = 0, waitlisted = 0, waitlistConverted = 0;
+        const uniqueAttendees = new Set<string>();
+        let booked = 0;
+
+        for (const b of bookings) {
+            if (b.status === "waitlisted") {
+                waitlisted += 1;
+                continue;
+            }
+            if (b.status === "cancelled") continue;
+            // booked-status rows count as "confirmed seats held".
+            booked += 1;
+            if (b.attendanceStatus === "present") {
+                attended += 1;
+                uniqueAttendees.add(b.customerId);
+            } else if (b.attendanceStatus === "no_show") {
+                noShows += 1;
+            } else if (b.attendanceStatus === "late_cancel") {
+                lateCancels += 1;
+            }
+        }
+
+        const capacity = s.capacity || 0;
+        const fillRatePct = capacity > 0 ? (booked / capacity) * 100 : 0;
+        const attendanceRatePct = booked > 0 ? (attended / booked) * 100 : 0;
+        const noShowRatePct     = booked > 0 ? (noShows / booked)  * 100 : 0;
+
+        return {
+            id: s.id,
+            dateISO: s.dateISO,
+            className: s.name,
+            classType: s.category,
+            instructor: s.instructorName,
+            capacity,
+            booked,
+            attended,
+            noShows,
+            lateCancellations: lateCancels,
+            waitlisted,
+            waitlistConverted,
+            fillRatePct,
+            attendanceRatePct,
+            noShowRatePct,
+            uniqueCustomers: uniqueAttendees.size,
+            branchId: s.branchId,
+            location: loc(s.branchId),
+        };
+    });
+}
+
+/** 6. selectGiftCards — one row per issued gift card, joined with the
  *  design + buyer customer. Feeds: Gift Card report. Reads the raw
  *  snake_case seed shape since the store persists it verbatim. */
 export function selectGiftCards(state: AppState): GiftCardRow[] {

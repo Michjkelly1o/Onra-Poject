@@ -28,6 +28,8 @@ import {
     selectCustomers,
     selectGiftCards,
     selectMemberships,
+    selectBookings,
+    selectClassSessions,
 } from "@/lib/reports/selectors";
 import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
 import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
@@ -45,6 +47,14 @@ import { UPGRADES_DOWNGRADES_REPORT } from "./reports/upgrades-downgrades";
 import { MRR_REPORT }                 from "./reports/mrr";
 import { ARPM_REPORT }                from "./reports/arpm";
 import { REVENUE_PER_CLASS_REPORT }   from "./reports/revenue-per-class";
+import { CUSTOMER_DATA_REPORT }       from "./reports/customer-data";
+import { MEMBER_MOVEMENT_REPORT }     from "./reports/member-movement";
+import { RETENTION_CHURN_REPORT }     from "./reports/retention-churn";
+import { WIN_BACK_REPORT }            from "./reports/win-back";
+import { BOOKINGS_REPORT }            from "./reports/bookings";
+import { CLASS_PERFORMANCE_REPORT }   from "./reports/class-performance";
+import { CANCELLATIONS_NOSHOWS_REPORT } from "./reports/cancellations-noshows";
+import { TOP_CLASSES_SERVICES_REPORT } from "./reports/top-classes-services";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -82,10 +92,11 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
     selectGiftCards:          selectGiftCards          as unknown as SelectorFn,
     // Phase 4C — shipped
     selectMemberships:        selectMemberships        as unknown as SelectorFn,
+    // Phase 4D — shipped
+    selectBookings:           selectBookings           as unknown as SelectorFn,
+    selectClassSessions:      selectClassSessions      as unknown as SelectorFn,
 
     // Phase 4 — deferred (throws with a clear error if used prematurely)
-    selectBookings:           DEFERRED("selectBookings"),
-    selectClassSessions:      DEFERRED("selectClassSessions"),
     selectReferrals:          DEFERRED("selectReferrals"),
 };
 
@@ -118,6 +129,16 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     FROZEN_REPORT,
     INTRO_OFFERS_REPORT,
     UPGRADES_DOWNGRADES_REPORT,
+
+    // Phase 4D · Client + Activity
+    CUSTOMER_DATA_REPORT,
+    MEMBER_MOVEMENT_REPORT,
+    RETENTION_CHURN_REPORT,
+    WIN_BACK_REPORT,
+    BOOKINGS_REPORT,
+    CLASS_PERFORMANCE_REPORT,
+    CANCELLATIONS_NOSHOWS_REPORT,
+    TOP_CLASSES_SERVICES_REPORT,
 
     // Phase 4D · Client + Activity
     //   Customer Data · Member Movement · Retention & Churn · Win-back
