@@ -50,70 +50,82 @@ interface ReportCategory {
     items: ReportItem[];
 }
 
+// Item `ready: true` means the detail page is built on the new shell and
+// routes via `router.push(/reports/<slug>)`. Any item without `ready`
+// fires the "coming soon" toast — kept intentionally so the client sees
+// the full report catalogue and knows what's still queued.
 const CATEGORIES: ReportCategory[] = [
     {
         id: "financial",
         title: "Financial reports",
         description:
-            "Track your studio's financial performance, including total sales, payments, refunds, and revenue breakdown across different services and products.",
+            "Track your studio's financial performance — sales, refunds, discounts, gift cards, tax, revenue recognition, and per-visit / per-member economics.",
         icon: BankNote01,
         items: [
-            { slug: "total-sales",       label: "Total sales (orders)", ready: true },
-            { slug: "sales-by-category", label: "Sales by category",    ready: true },
-            { slug: "payments",          label: "Payments",             ready: true },
-            { slug: "gift-cards",        label: "Gift card",            ready: true },
+            { slug: "total-sales",         label: "Total sales (orders)",     ready: true },
+            { slug: "sales-by-category",   label: "Sales by category",        ready: true },
+            { slug: "sales-by-item",       label: "Sales by item",            ready: true },
+            { slug: "payments",            label: "Payments",                 ready: true },
+            { slug: "refunds",             label: "Refunds",                  ready: true },
+            { slug: "discounts",           label: "Discounts",                ready: true },
+            { slug: "gift-cards",          label: "Gift cards",               ready: true },
+            { slug: "tax-vat-export",      label: "Tax / VAT export",         ready: true },
+            { slug: "revenue-recognition", label: "Revenue recognition",      ready: true },
+            { slug: "revenue-per-class",   label: "Revenue per class / visit", ready: true },
         ],
     },
     {
         id: "memberships",
         title: "Membership & package reports",
         description:
-            "Monitor the status of memberships, subscriptions, and packages. Track active plans, remaining credits, and expiration details.",
+            "Monitor active plans, intro offers, plan changes, and recurring revenue. See who upgraded, who downgraded, and what MRR/ARPM look like month-over-month.",
         icon: CreditCard02,
         items: [
-            { slug: "memberships",   label: "Memberships",   ready: true },
-            { slug: "subscriptions", label: "Subscriptions", ready: true },
-            { slug: "packages",      label: "Packages",      ready: true },
+            { slug: "memberships-packages", label: "Memberships & packages",  ready: true },
+            { slug: "intro-offers",         label: "Intro offers",            ready: true },
+            { slug: "upgrades-downgrades",  label: "Upgrades & downgrades",   ready: true },
+            { slug: "mrr",                  label: "MRR — Monthly Recurring Revenue", ready: true },
+            { slug: "arpm",                 label: "ARPM — Avg Revenue Per Member", ready: true },
         ],
     },
     {
         id: "activity",
         title: "Activity reports",
         description:
-            "Gain insights into booking activity across your studio. Analyze class attendance, cancellations, no shows, and overall service performance.",
+            "Bookings, class attendance, cancellations, and no-shows across your studio.",
         icon: Activity,
         items: [
-            { slug: "bookings-by-class-events", label: "Bookings by class events", ready: true },
-            { slug: "bookings-by-customer",     label: "Bookings by customer",     ready: true },
-            { slug: "all-cancellations",        label: "All cancellations",        ready: true },
-            { slug: "all-no-shows",             label: "All no shows",             ready: true },
-            { slug: "all-bookings",             label: "All bookings",             ready: true },
-            { slug: "instructor-attendance",    label: "Instructor attendance",    ready: true },
+            { slug: "bookings-by-class-events", label: "Bookings by class events" },
+            { slug: "bookings-by-customer",     label: "Bookings by customer"     },
+            { slug: "all-cancellations",        label: "All cancellations"        },
+            { slug: "all-no-shows",             label: "All no shows"             },
+            { slug: "all-bookings",             label: "All bookings"             },
+            { slug: "instructor-attendance",    label: "Instructor attendance"    },
         ],
     },
     {
         id: "customer",
         title: "Customer reports",
         description:
-            "Understand how customers interact with your studio. Analyze attendance patterns, retention trends, active users, and popular services.",
+            "Understand how customers interact with your studio. Attendance patterns, retention, active vs inactive, referrals.",
         icon: User01,
         items: [
-            { slug: "attendance-frequency",  label: "Attendance frequency",    ready: true },
-            { slug: "retention",             label: "Retention",               ready: true },
-            { slug: "active-vs-inactive",    label: "Active vs inactive users",ready: true },
-            { slug: "top-services-used",     label: "Top services used",       ready: true },
-            { slug: "referral",              label: "Referral",                ready: true },
+            { slug: "attendance-frequency",  label: "Attendance frequency"     },
+            { slug: "retention",             label: "Retention"                },
+            { slug: "active-vs-inactive",    label: "Active vs inactive users" },
+            { slug: "top-services-used",     label: "Top services used"        },
+            { slug: "referral",              label: "Referral"                 },
         ],
     },
     {
         id: "frozen",
         title: "Frozen package",
         description:
-            "Track memberships and packages that are currently frozen and analyze how freezes impact usage, attendance, and revenue.",
+            "Currently-frozen memberships and packages — freeze source, days-so-far, plan value at risk.",
         icon: CoinsSwap02,
         items: [
-            { slug: "all-frozen-packages", label: "All frozen packages", ready: true },
-            { slug: "freeze-impact",       label: "Freeze impact",       ready: true },
+            { slug: "frozen",        label: "All frozen packages", ready: true },
+            { slug: "freeze-impact", label: "Freeze impact" },
         ],
     },
 ];
@@ -182,16 +194,25 @@ function CategoryCard({
                 </div>
             </div>
 
-            {/* Right — report items as a divider-separated list */}
+            {/* Right — report items as a divider-separated list. Built
+                items surface a "New" chip so testers can see at a glance
+                which reports route to the new centralized shell. */}
             <ul className="flex-1 min-w-0 flex flex-col rounded-[12px] overflow-hidden py-1">
                 {category.items.map((item, idx) => (
                     <li key={item.slug} className="flex flex-col w-full">
                         <button
                             type="button"
                             onClick={() => onSelect(item)}
-                            className="w-full text-left px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors text-[14px] font-medium leading-[20px] text-[#344054]"
+                            className="w-full text-left px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors flex items-center gap-2"
                         >
-                            {item.label}
+                            <span className="text-[14px] font-medium leading-[20px] text-[#344054] flex-1 min-w-0 truncate">
+                                {item.label}
+                            </span>
+                            {item.ready && (
+                                <span className="shrink-0 inline-flex items-center justify-center h-[20px] px-2 rounded-full bg-[#e9fff3] border-1 border-[#7ba08c] text-[11px] font-semibold text-[#065f46] tracking-wide">
+                                    NEW
+                                </span>
+                            )}
                         </button>
                         {idx < category.items.length - 1 && (
                             <div className="h-px bg-[#e4e7ec] my-1" />

@@ -1,343 +1,220 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Total sales (orders) report (/reports/total-sales)
+// Onra Studio — Total Sales report (/admin/reports/total-sales)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma 4211:128933 (page) + 4309:34763 (table) + 4233:102660 (Select column).
+// Phase 3 reference implementation. The FIRST report wired through the
+// centralized PivotableReportShell. Its sole job is to:
 //
-// **Phase 2 wired.** Rows derive from `customerTransactions` joined
-// with `customers`, `memberships`, `packages`, and `taxSettings`/
-// `taxRules`/`taxRates` for the per-product tax breakdown.
+//   1. Look up the Total Sales registry entry
+//   2. Resolve its selector via the dispatch table
+//   3. Map the resolved LedgerRow[] into the report's display shape
+//      (23 fields, one per Excel column)
+//   4. Hand the mapped rows to <PivotableReportShell />
 //
-// Calculation contract:
-//   Net sales              = `amountAed`           (gross, tax inclusive)
-//   Tax collected          = `taxAed` if set,
-//                            else derive via `findActiveTaxRuleFor()`
-//   Net sales without tax  = `subtotalAed` if set, else `netSales - tax`
-//   Discount value         = 0  (POS promo codes don't write back yet)
-//   Promo code             = "—" (no FK on transactions today)
-//   Refund amount          = `amountAed` when status === "refunded"
-//   Payment amount due     = `amountAed` when status === "pending" / "failed"
+// The shell owns everything else — toolbar, filtering, pivoting, exports,
+// column persistence. Adding the other 31 reports in Phase 4 follows the
+// same template: registry entry + tiny page like this + selector.
 //
-// Toolbar: Select column · Select location · Date period · Export invoice
-//          · Export.
+// The legacy /reports/total-sales page stays untouched during Phase 3 so
+// clients can compare side-by-side. Phase 5 (landing rebuild) swaps the
+// card link and removes the legacy route.
 
-import { useMemo, useState } from "react";
-import { MarkerPin01 } from "@untitledui/icons";
-import { ReportShell, type ReportColumn } from "@/components/reports/ReportShell";
-import { SelectColumnDropdown } from "@/components/reports/SelectColumnDropdown";
-import { MultiSelectFilterDropdown } from "@/components/reports/MultiSelectFilterDropdown";
-import { ExportDropdown } from "@/components/reports/ExportDropdown";
-import { useDefaultBranchFilter } from "@/components/reports/use-default-branch-filter";
-import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
-import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
-import { findActiveTaxRuleFor } from "@/lib/tax-calc";
+import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
-import { Badge } from "@/components/reports/badges";
+import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
+import { getReportById, resolveSelector } from "@/config/reports-registry";
+import type { LedgerRow } from "@/lib/reports/selectors";
 
-type Status = "Complete" | "Pending" | "Failed" | "Refunded";
+// ─── Display-row shape ────────────────────────────────────────────────────
+//
+// Keys MUST match the field-key vocabulary in
+// src/config/reports/total-sales.ts. Any drift trips at column-render
+// time (columns show blank) so keep them in lock-step.
 
-interface TotalSalesRow {
-    txnId: string;
-    branchId: string;
-    branchName: string;
-    orderDateISO: string;
-    orderNumber: string;
-    customerName: string;
-    customerEmail: string;
-    saleItems: string;
-    grossSales: number;
-    discountValue: number;
-    promoCode: string;
-    taxCollected: number;
-    refundAmount: number;
-    netSales: number;
-    netSalesWithoutTax: number;
-    paymentAmountDue: number;
-    paymentMethods: string;
-    paymentSource: string;
-    status: Status;
+interface TotalSalesDisplayRow {
+    // Index signature — matches the shell's `Record<string, unknown>`
+    // contract so the mapped rows are structurally assignable.
+    [k: string]: unknown;
+    // Bucketing / display date
+    orderDateISO:         string; // period bucket + "Date" column
+    // Transaction identity
+    txnId:                string;
+    transactionType:      "Sale" | "Refund" | "Write-off";
+    originalTxnId:        string;
+    // Customer join
+    customerId:           string;
+    customerName:         string;
+    customerEmail:        string;
+    // Staff join
+    staffId:              string;
+    staffName:            string;
+    // Sales channel + revenue category
+    salesChannel:         string;
+    revenueCategory:      "membership" | "package"; // raw key for filtering
+    revenueCategoryLabel: string;                   // display label
+    // Items
+    saleItems:            string;
+    quantity:             number;
+    // Amounts (all signed — sales +, refunds/write-offs −)
+    grossSales:           number;
+    discountCode:         string;
+    discountValue:        number;
+    netBeforeTax:         number;
+    taxCollected:         number;
+    netInclTax:           number;
+    paymentAmountDue:     number;
+    netPaymentAmount:     number;
+    // Payment attributes
+    paymentMethod:        "Card" | "Cash";
+    paymentStatus:        "Complete" | "Pending" | "Failed" | "Refunded";
+    ledgerStatus:         "Sale" | "Refund" | "Write-off";
+    // Scope keys
+    branchId:             string;
+    location:             string;
 }
 
-function aed(n: number): string {
-    return `AED ${Math.round(n).toLocaleString("en-US")}`;
-}
-function aedSigned(n: number): string {
-    if (n === 0) return "—";
-    const abs = Math.abs(n);
-    const formatted = `AED ${Math.round(abs).toLocaleString("en-US")}`;
-    return n < 0 ? `-${formatted}` : formatted;
-}
+// ─── Label helpers ────────────────────────────────────────────────────────
 
-function fmtDateTime(iso: string): string {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${y}-${m}-${day}, ${hh}:${mm}`;
-}
-
-const STATUS_TONE: Record<Status, Parameters<typeof Badge>[0]["tone"]> = {
-    Complete: "green",
-    Pending:  "yellow",
-    Failed:   "red",
-    Refunded: "blue",
-};
-
-function StatusPill({ status }: { status: Status }) {
-    return <Badge tone={STATUS_TONE[status]}>{status}</Badge>;
-}
-
-const SOURCE_LABEL: Record<string, string> = {
+const SALES_CHANNEL_LABEL: Record<string, string> = {
     pos:             "Point of Sale",
     customer_portal: "Customer portal",
     admin:           "Admin",
 };
-function sourceLabel(s: string | undefined): string {
-    return s ? (SOURCE_LABEL[s] ?? s) : "Point of Sale";
-}
 
+const REVENUE_CATEGORY_LABEL: Record<string, string> = {
+    membership: "Membership",
+    package:    "Package / Credits",
+};
+
+const PAYMENT_STATUS_LABEL: Record<LedgerRow["status"], TotalSalesDisplayRow["paymentStatus"]> = {
+    complete: "Complete",
+    pending:  "Pending",
+    failed:   "Failed",
+    refunded: "Refunded",
+};
+
+const TXN_TYPE_LABEL: Record<"sale" | "refund" | "write_off", TotalSalesDisplayRow["transactionType"]> = {
+    sale:      "Sale",
+    refund:    "Refund",
+    write_off: "Write-off",
+};
+
+/** Order # display — e.g. txn_ABC_123 → #R-ABC-123. Kept identical to the
+ *  legacy page's format so exports round-trip. */
 function orderNumberOf(txnId: string): string {
     return `#R-${txnId.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-")}`;
 }
 
-const COLUMNS: ReportColumn<TotalSalesRow>[] = [
-    { key: "location",            label: "Branch location",        minWidth: 200,              render: r => r.branchName,                                                                                          sort: { getValue: r => r.branchName } },
-    { key: "orderDate",           label: "Order date",             minWidth: 180, fixed: true, render: r => fmtDateTime(r.orderDateISO),                                                                            sort: { getValue: r => r.orderDateISO } },
-    { key: "orderNumber",         label: "Order #",                minWidth: 180, fixed: true, render: r => r.orderNumber,                                                                                          sort: { getValue: r => r.orderNumber } },
-    { key: "name",                label: "Name",                   minWidth: 180, fixed: true, render: r => r.customerName,                                                                                         sort: { getValue: r => r.customerName } },
-    { key: "email",               label: "Email address",          minWidth: 220,              render: r => r.customerEmail,                                                                                        sort: { getValue: r => r.customerEmail } },
-    { key: "saleItems",           label: "Sale items",             minWidth: 280,              render: r => r.saleItems,                                                                                            sort: { getValue: r => r.saleItems } },
-    { key: "grossSales",          label: "Gross sales",            minWidth: 140,              render: r => aed(r.grossSales),                                                                                      sort: { getValue: r => r.grossSales } },
-    { key: "discountValue",       label: "Discount value",         minWidth: 160,              render: r => <span className={r.discountValue < 0 ? "text-[#d92d20]" : undefined}>{aedSigned(r.discountValue)}</span>, sort: { getValue: r => r.discountValue } },
-    { key: "promoCode",           label: "Promo code",             minWidth: 140, fixed: true, render: r => r.promoCode || "—",                                                                                     sort: { getValue: r => r.promoCode } },
-    { key: "taxCollected",        label: "Tax collected",          minWidth: 140, fixed: true, render: r => aed(r.taxCollected),                                                                                    sort: { getValue: r => r.taxCollected } },
-    { key: "refundAmount",        label: "Refund amount",          minWidth: 160, fixed: true, render: r => <span className={r.refundAmount > 0 ? "text-[#d92d20]" : undefined}>{r.refundAmount > 0 ? aedSigned(-r.refundAmount) : "—"}</span>, sort: { getValue: r => r.refundAmount } },
-    { key: "netSales",            label: "Net sales",              minWidth: 140, fixed: true, render: r => aed(r.netSales),                                                                                        sort: { getValue: r => r.netSales } },
-    { key: "netSalesWithoutTax",  label: "Net sales without tax",  minWidth: 200, fixed: true, render: r => aed(r.netSalesWithoutTax),                                                                              sort: { getValue: r => r.netSalesWithoutTax } },
-    { key: "paymentAmountDue",    label: "Payment amount due",     minWidth: 180, fixed: true, render: r => aed(r.paymentAmountDue),                                                                                sort: { getValue: r => r.paymentAmountDue } },
-    { key: "paymentMethods",      label: "Payment methods",        minWidth: 160, fixed: true, render: r => r.paymentMethods,                                                                                       sort: { getValue: r => r.paymentMethods } },
-    { key: "paymentSource",       label: "Payment source",         minWidth: 180, fixed: true, render: r => r.paymentSource,                                                                                        sort: { getValue: r => r.paymentSource } },
-    { key: "status",              label: "Status",                 minWidth: 140, fixed: true, render: r => <StatusPill status={r.status} />,                                                                       sort: { getValue: r => r.status } },
-];
+// ─── Page ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_PERIOD: DateFilter = { type: "day", label: "Last 30 days" };
-const ALL_KEYS = new Set(COLUMNS.filter(c => !c.fixed).map(c => c.key));
-
-export default function TotalSalesReportPage() {
-    const branches     = useAppStore(s => s.branches);
-    const customers    = useAppStore(s => s.customers);
+export default function TotalSalesReportPageV2() {
+    // Reactive slices — anything the selector reads must be subscribed here
+    // (calling the selector from useMemo isn't enough on its own; Zustand
+    // only re-renders on the slices we subscribe to).
     const transactions = useAppStore(s => s.customerTransactions);
-    const taxRules     = useAppStore(s => s.taxRules);
-    const taxRates     = useAppStore(s => s.taxRates);
-    const showToast    = useAppStore(s => s.showToast);
+    const customers    = useAppStore(s => s.customers);
+    const branches     = useAppStore(s => s.branches);
+    const staff        = useAppStore(s => s.staff);
 
-    const [visibleKeys, setVisibleKeys] = useState<Set<string>>(ALL_KEYS);
-    const [branchFilter, setBranchFilter] = useDefaultBranchFilter();
-    const [period, setPeriod] = useState<DateFilter>(DEFAULT_PERIOD);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const report = getReportById("total-sales");
 
-    const rows = useMemo<TotalSalesRow[]>(() => {
-        const branchById   = new Map(branches.map(b => [b.id, b]));
-        const customerById = new Map(customers.map(c => [c.id, c]));
+    // Compose an AppState-shaped object with only the slices the selector
+    // reads. Cast to unknown-then-AppState — the selector signature is
+    // `(state: AppState) => LedgerRow[]` and we're passing a strict subset
+    // that covers every field it actually touches.
+    const rawLedger = useMemo<LedgerRow[]>(() => {
+        if (!report) return [];
+        const fn = resolveSelector(report) as unknown as (state: unknown) => LedgerRow[];
+        return fn({ customerTransactions: transactions, customers, branches, staff, classBookings: [] });
+    }, [report, transactions, customers, branches, staff]);
 
-        return transactions.map(t => {
-            const customer = customerById.get(t.customerId);
-            const branch   = branchById.get(t.branchId);
-            const customerName = customer
-                ? `${customer.firstName} ${customer.lastName}`.trim()
-                : "—";
+    // Map LedgerRow → the report's display row shape. Every field key here
+    // MUST match a ColumnDef.key in src/config/reports/total-sales.ts.
+    const rows = useMemo<TotalSalesDisplayRow[]>(() => {
+        return rawLedger.map(r => {
+            const signed = r.signedAmount;
+            // Refund + write-off rows are shown with negative gross so the
+            // period totals + pivot pill both roll them up correctly. On a
+            // sale row, taxCollected reads from the seed's taxAed (when
+            // present). On a refund/write-off row we mirror the sale's tax
+            // proportionally as negative.
+            const isSale = r.transactionType === "sale";
+            const taxPositive = Number(r.taxAed ?? 0);
+            const taxOnRow = isSale ? taxPositive : -Math.abs(taxPositive);
+            // Net = amountAed portion excluding tax. Fall back to signed
+            // amount when the seed doesn't carry the breakdown.
+            const netInclTax = signed;
+            const netBeforeTax = r.subtotalAed !== undefined
+                ? (isSale ? Math.abs(r.subtotalAed) : -Math.abs(r.subtotalAed))
+                : netInclTax - taxOnRow;
 
-            // Tax derivation — prefer the transaction's stored breakdown
-            // (filled by the post-Tax-module POS); fall back to live
-            // lookup against the active rule for the product category at
-            // this branch. Either way the gross stays `t.amountAed`.
-            const gross    = t.amountAed;
-            const category = t.kind === "membership" ? "membership" : "credit_package";
-            let taxAed = t.taxAed ?? 0;
-            let netWithoutTax = t.subtotalAed ?? gross;
-            if (t.taxAed === undefined) {
-                const match = findActiveTaxRuleFor(
-                    { taxRules, taxRates },
-                    category,
-                    t.branchId,
-                );
-                if (match) {
-                    // Treat the gross as tax-inclusive (matches the
-                    // TaxSuffix "Inc. X% tax" display on every product
-                    // surface).
-                    const rate = match.rate.ratePercentage / 100;
-                    netWithoutTax = gross / (1 + rate);
-                    taxAed = gross - netWithoutTax;
-                }
-            }
+            // Payment cash-flow columns. When the sale is complete the
+            // customer has paid → netPaymentAmount = signed, dueBalance = 0.
+            // When pending/failed → the customer hasn't paid → dueBalance
+            // = full net incl tax, netPayment = 0.
+            const paid = r.status === "complete";
+            const netPaymentAmount = paid ? netInclTax : 0;
+            const paymentAmountDue = paid ? 0 : netInclTax;
 
-            const refund = t.status === "refunded" ? gross : 0;
-            const amountDue = t.status === "pending" || t.status === "failed" ? gross : 0;
-            const method = t.paymentMethod === "card" ? "Card" : "Cash";
-            const statusLabel: Status =
-                t.status === "complete"  ? "Complete"
-              : t.status === "pending"   ? "Pending"
-              : t.status === "failed"    ? "Failed"
-              :                            "Refunded";
+            const salesChannel = SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale";
 
             return {
-                txnId: t.id,
-                branchId: t.branchId,
-                branchName: branch?.name ?? "—",
-                orderDateISO: t.createdAtISO,
-                orderNumber: orderNumberOf(t.id),
-                customerName,
-                customerEmail: customer?.email ?? "—",
-                saleItems: `${t.name} x1`,
-                grossSales: gross,
-                discountValue: 0,   // +wire: POS promo discounts (Phase 3)
-                promoCode: "",      // +wire: POS promo code FK (Phase 3)
-                taxCollected: taxAed,
-                refundAmount: refund,
-                netSales: gross,
-                netSalesWithoutTax: netWithoutTax,
-                paymentAmountDue: amountDue,
-                paymentMethods: method,
-                paymentSource: sourceLabel(t.paymentSource),
-                status: statusLabel,
+                orderDateISO: r.createdAtISO.slice(0, 10),
+                txnId: orderNumberOf(r.id),
+                transactionType: TXN_TYPE_LABEL[r.transactionType],
+                originalTxnId: r.originalTransactionId ? orderNumberOf(r.originalTransactionId) : "",
+                customerId: r.customerId,
+                customerName: r.customerName,
+                customerEmail: r.customerEmail,
+                staffId: r.staffId ?? "",
+                staffName: r.staffName ?? "",
+                salesChannel,
+                revenueCategory: r.kind,
+                revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
+                saleItems: `${r.name} × 1`,
+                quantity: 1,
+                grossSales: signed,
+                discountCode: "",       // POS doesn't write back promo FK yet — Phase 4 wires when available
+                discountValue: 0,
+                netBeforeTax,
+                taxCollected: taxOnRow,
+                netInclTax,
+                paymentAmountDue,
+                netPaymentAmount,
+                paymentMethod: r.paymentMethod === "card" ? "Card" : "Cash",
+                paymentStatus: PAYMENT_STATUS_LABEL[r.status],
+                ledgerStatus: TXN_TYPE_LABEL[r.transactionType],
+                branchId: r.branchId,
+                location: r.location,
             };
         });
-    }, [transactions, customers, branches, taxRules, taxRates]);
+    }, [rawLedger]);
 
-    const range = useMemo(() => dateFilterToRange(period), [period]);
-
-    const filteredRows = useMemo(() => {
-        return rows.filter(r => {
-            if (!branchFilter.has(r.branchId)) return false;
-            if (!isoInRange(r.orderDateISO, range)) return false;
-            return true;
-        });
-    }, [rows, branchFilter, range]);
-
-    const summaryText = useMemo(() => {
-        const count = filteredRows.length;
-        return `${count} record${count === 1 ? "" : "s"} · ${period.label}`;
-    }, [filteredRows, period]);
-
-    const branchOptions = useMemo(
-        () => branches.filter(b => b.status !== "archive").map(b => ({ value: b.id, label: b.name })),
+    // Branch options — Owner sees all; Branch Admin scope is enforced upstream
+    // (this reference page assumes admin scope for the demo).
+    const branchOptions = useMemo<BranchOption[]>(
+        () => branches
+            .filter(b => b.status !== "archive")
+            .map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 
-    function exportCsv() {
-        if (filteredRows.length === 0) {
-            showToast("Nothing to export", "No rows in the current view.", "error");
-            return;
-        }
-        const exportCols = COLUMNS.filter(c => c.fixed || visibleKeys.has(c.key));
-        const header = exportCols.map(c => c.label);
-        const body = filteredRows.map(r => exportCols.map(c => csvValue(r, c.key)));
-        const csv = buildCsv(header, body);
-        downloadCsv(`total-sales-${todayISO()}.csv`, csv);
-        showToast("Total sales exported", "CSV downloaded successfully.", "success", "check");
+    if (!report) {
+        return (
+            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+                Total Sales report definition is missing from the registry.
+            </div>
+        );
     }
-
-    function exportInvoicesCsv() {
-        if (filteredRows.length === 0) {
-            showToast("Nothing to export", "No invoices in the current view.", "error");
-            return;
-        }
-        const header = ["Order #", "Order date", "Branch", "Name", "Email", "Sale items", "Gross sales", "Discount value", "Promo code", "Tax collected", "Net sales", "Payment methods"];
-        const body = filteredRows.map(r => [
-            r.orderNumber,
-            fmtDateTime(r.orderDateISO),
-            r.branchName,
-            r.customerName,
-            r.customerEmail,
-            r.saleItems,
-            aed(r.grossSales),
-            r.discountValue === 0 ? "—" : aedSigned(r.discountValue),
-            r.promoCode || "—",
-            aed(r.taxCollected),
-            aed(r.netSales),
-            r.paymentMethods,
-        ]);
-        const csv = buildCsv(header, body);
-        downloadCsv(`total-sales-invoices-${todayISO()}.csv`, csv);
-        showToast("Invoices exported", "CSV downloaded successfully.", "success", "check");
-    }
-
-    const toolbar = (
-        <>
-            <SelectColumnDropdown
-                options={COLUMNS.filter(c => !c.fixed).map(c => ({ key: c.key, label: c.label }))}
-                value={visibleKeys}
-                onChange={setVisibleKeys}
-            />
-            <MultiSelectFilterDropdown
-                icon={MarkerPin01}
-                placeholder="Select location"
-                value={branchFilter}
-                options={branchOptions}
-                onChange={setBranchFilter}
-            />
-            <DateRangeFilter value={period} onChange={setPeriod} />
-            <ExportDropdown
-                label="Export invoice"
-                variant="invoice"
-                disabled={filteredRows.length === 0}
-                onExportCsv={exportInvoicesCsv}
-            />
-            <ExportDropdown
-                label="Export"
-                variant="export"
-                disabled={filteredRows.length === 0}
-                onExportCsv={exportCsv}
-            />
-        </>
-    );
 
     return (
-        <ReportShell<TotalSalesRow>
-            title="Total sales (orders)"
-            totalLabel="Total"
-            summaryText={summaryText}
-            toolbar={toolbar}
-            columns={COLUMNS}
-            visibleKeys={visibleKeys}
-            rows={filteredRows}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            page={page}
-            onPageChange={setPage}
-            emptyTitle="No orders found"
-            emptyMessage="Try a different location or period to see results."
+        <PivotableReportShell
+            report={report}
+            rows={rows}
+            branches={branchOptions}
+            backHref="/admin/reports"
         />
     );
-}
-
-function csvValue(r: TotalSalesRow, key: string): string {
-    switch (key) {
-        case "location":            return r.branchName;
-        case "orderDate":           return fmtDateTime(r.orderDateISO);
-        case "orderNumber":         return r.orderNumber;
-        case "name":                return r.customerName;
-        case "email":               return r.customerEmail;
-        case "saleItems":           return r.saleItems;
-        case "grossSales":          return aed(r.grossSales);
-        case "discountValue":       return r.discountValue === 0 ? "—" : aedSigned(r.discountValue);
-        case "promoCode":           return r.promoCode || "—";
-        case "taxCollected":        return aed(r.taxCollected);
-        case "refundAmount":        return r.refundAmount > 0 ? aedSigned(-r.refundAmount) : "—";
-        case "netSales":            return aed(r.netSales);
-        case "netSalesWithoutTax":  return aed(r.netSalesWithoutTax);
-        case "paymentAmountDue":    return aed(r.paymentAmountDue);
-        case "paymentMethods":      return r.paymentMethods;
-        case "paymentSource":       return r.paymentSource;
-        case "status":              return r.status;
-        default:                    return "";
-    }
 }
