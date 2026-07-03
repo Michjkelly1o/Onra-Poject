@@ -45,6 +45,8 @@ import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SelectInput } from "@/components/ui/select-input";
+import { COUNTRIES } from "@/lib/data/locales";
 import { TaxRateModal } from "@/components/settings/TaxRateModal";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
@@ -369,10 +371,33 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     );
 }
 
+/** Format a tax rate's effective window for the list column + CSV.
+ *  ISO → "DD/MM/YYYY". Missing bounds render as "Ongoing" (open-ended
+ *  future) or "Any" (fully unbounded). Client-requested format:
+ *  "DD/MM/YYYY - DD/MM/YYYY" per Figma 7769:118654. */
+function formatEffectiveWindow(rate: TaxRate): string {
+    const fmt = (iso?: string): string | null => {
+        if (!iso) return null;
+        const parts = iso.slice(0, 10).split("-");
+        if (parts.length !== 3) return null;
+        const [y, m, d] = parts;
+        return `${d}/${m}/${y}`;
+    };
+    const from  = fmt(rate.validFromISO);
+    const until = fmt(rate.validUntilISO);
+    if (!from && !until) return "";           // fully unbounded → shown as "—"
+    if (from && until)   return `${from} - ${until}`;
+    if (from)            return `${from} - Ongoing`;
+    return `Any - ${until}`;
+}
+
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
 function exportTaxRatesCsv(rows: TaxRate[]) {
-    const headers = ["Tax name", "Kind", "Type", "Tax rate (%)", "Calculation mode", "Status", "Description", "Created"];
+    const headers = [
+        "Tax name", "Kind", "Type", "Tax rate (%)", "Calculation mode",
+        "Effective date", "Status", "Description", "Created",
+    ];
     const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
     const lines = [headers.join(",")];
     for (const r of rows) {
@@ -382,6 +407,7 @@ function exportTaxRatesCsv(rows: TaxRate[]) {
             r.type,
             r.type === "exempt" ? "" : String(r.ratePercentage),
             r.calculationMode,
+            formatEffectiveWindow(r),
             r.status,
             r.description ?? "",
             r.createdAt.slice(0, 10),
@@ -408,9 +434,12 @@ export default function TaxPage() {
     // ─── Store subscriptions ────────────────────────────────────────────────
     const taxRates           = useAppStore(s => s.taxRates);
     const taxRules           = useAppStore(s => s.taxRules);
-    const taxSettings        = useAppStore(s => s.taxSettings);
-    const setPricesIncludeTax = useAppStore(s => s.setPricesIncludeTax);
-    const setRoundingMode     = useAppStore(s => s.setRoundingMode);
+    const taxSettings          = useAppStore(s => s.taxSettings);
+    const setPricesIncludeTax   = useAppStore(s => s.setPricesIncludeTax);
+    const setRoundingMode       = useAppStore(s => s.setRoundingMode);
+    const setTaxTrn             = useAppStore(s => s.setTaxTrn);
+    const setTaxTrnCountry      = useAppStore(s => s.setTaxTrnCountry);
+    const setDisplayTrnOnInvoice = useAppStore(s => s.setDisplayTrnOnInvoice);
     const setTaxRatesStatus  = useAppStore(s => s.setTaxRatesStatus);
     const deleteTaxRates     = useAppStore(s => s.deleteTaxRates);
     const showToast          = useAppStore(s => s.showToast);
@@ -471,12 +500,16 @@ export default function TaxPage() {
             });
     }, [taxRates, statusFilter]);
 
-    // ── Tax rate sort — Name / Type / Rate (numeric) / Status. ──
+    // ── Tax rate sort — Name / Type / Rate (numeric) / Effective / Status. ──
+    // Effective sorts by `validFromISO` ascending — earlier start dates
+    // first, rates with no `validFromISO` (fully unbounded) sort as
+    // empty-string so they land at the top on ascending order.
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<TaxRate>(filtered, {
-        name:   (a, b) => a.name.localeCompare(b.name),
-        type:   (a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type],
-        rate:   (a, b) => a.ratePercentage - b.ratePercentage,
-        status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
+        name:      (a, b) => a.name.localeCompare(b.name),
+        type:      (a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type],
+        rate:      (a, b) => a.ratePercentage - b.ratePercentage,
+        effective: (a, b) => (a.validFromISO ?? "").localeCompare(b.validFromISO ?? ""),
+        status:    (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
     });
 
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
@@ -661,6 +694,71 @@ export default function TaxPage() {
                 activeKey={topKind}
                 onChange={k => setTopKind(k as TaxRateKind)}
             />
+
+            {/* ── VAT-only TRN card (Figma 7769:106370) — sits above the
+                "Prices include tax" container per client feedback.
+                Row 1: display-on-invoice toggle + explanatory copy.
+                Row 2: two-column grid — TRN number text input + Country
+                dropdown (flag glyph inline, same COUNTRIES source as
+                the Studio profile form). The fields are always editable
+                even when the toggle is off — admins can capture the TRN
+                now and enable display later.
+            */}
+            {topKind === "vat" && (
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-4 p-6">
+                    <div className="flex items-center gap-4">
+                        <Toggle
+                            on={!!taxSettings.displayTrnOnInvoice}
+                            onChange={setDisplayTrnOnInvoice}
+                            ariaLabel="Display tax registration in invoice"
+                        />
+                        <div className="flex flex-col gap-1 flex-1 min-w-0">
+                            <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">
+                                Display tax registration in invoice
+                            </p>
+                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                                Show your Tax Registration Number (TRN) on customer invoices and receipts.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-[6px]">
+                            <label htmlFor="tax-trn-number" className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                                TRN number
+                            </label>
+                            <input
+                                id="tax-trn-number"
+                                type="text"
+                                value={taxSettings.trn ?? ""}
+                                onChange={e => setTaxTrn(e.target.value)}
+                                placeholder="Enter your TRN..."
+                                className="h-11 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:border-[#7ba08c] focus:ring-2 focus:ring-[#aad4bd] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">Country</label>
+                            {/* The option label already prefixes each row
+                             *  with the country flag, so we do NOT pass
+                             *  `triggerIcon` here — the selected option
+                             *  renders "🇦🇪  United Arab Emirates" all by
+                             *  itself. Passing a triggerIcon would stack
+                             *  a second flag on the left of the trigger
+                             *  (client-reported bug). */}
+                            <SelectInput
+                                value={taxSettings.trnCountry ?? ""}
+                                onChange={setTaxTrnCountry}
+                                placeholder="Select country"
+                                options={COUNTRIES.map(c => ({
+                                    value: c.name,
+                                    label: `${c.flag}  ${c.name}`,
+                                }))}
+                                width="w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── VAT-only container: "Prices include tax" + rounding mode ─── */}
             {topKind === "vat" && (
@@ -859,6 +957,9 @@ export default function TaxPage() {
                                             <th className={cn(TH, "w-[140px]")}>
                                                 <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax rate</SortableHeader>
                                             </th>
+                                            <th className={cn(TH, "w-[220px]")}>
+                                                <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective date</SortableHeader>
+                                            </th>
                                             <th className={cn(TH, "w-[140px]")}>
                                                 <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                                             </th>
@@ -890,6 +991,12 @@ export default function TaxPage() {
                                                         (no tax line at all) reads at a glance. */}
                                                     <td className={cn(TD, "text-[#475467]")}>
                                                         {r.type === "exempt" ? "—" : formatPct(r.ratePercentage)}
+                                                    </td>
+                                                    <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>
+                                                        {(() => {
+                                                            const win = formatEffectiveWindow(r);
+                                                            return win ? win : <span className="text-[#98a2b3]">—</span>;
+                                                        })()}
                                                     </td>
                                                     <td className={TD}><StatusBadge type="tax-rate" status={r.status} /></td>
                                                     <td className={TD}>

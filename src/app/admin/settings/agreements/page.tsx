@@ -46,7 +46,12 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Agreement, type AgreementStatus, type Branch } from "@/lib/store";
-import { branchLocationText, computeCoverage, type AgreementCoverage } from "@/lib/agreement-helpers";
+import {
+    branchLocationText,
+    computeCoverage,
+    computeAgreementLastSigned,
+    type AgreementCoverage,
+} from "@/lib/agreement-helpers";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -392,13 +397,15 @@ function exportAgreementsCsv(
     rows: Agreement[],
     branchById: Map<string, Branch>,
     coverageById: Map<string, AgreementCoverage>,
+    lastSignedById: Map<string, string | undefined>,
 ) {
     // v24 columns match the new list view: Branch, Coverage, Effective
     // until (Ongoing or date), plus the v24 policy toggles for
-    // completeness so admins can pull an audit trail.
+    // completeness so admins can pull an audit trail. Last signed added
+    // per client feedback so the audit trail includes recency at a glance.
     const headers = [
         "Name", "Version", "Branches", "Coverage %", "Pending re-accept",
-        "Effective mode", "Issue date", "Expiry date",
+        "Last signed", "Effective mode", "Issue date", "Expiry date",
         "Re-acceptance required", "Guardian consent required",
         "Status", "Required",
     ];
@@ -409,12 +416,14 @@ function exportAgreementsCsv(
             ? "All locations"
             : r.locationIds.map(id => branchById.get(id)?.name ?? id).join("; ");
         const cov = coverageById.get(r.id);
+        const lastSigned = lastSignedById.get(r.id);
         lines.push([
             r.name,
             String(r.currentVersion),
             branches,
             cov ? String(cov.percent) : "0",
             cov ? String(cov.pendingReAccept) : "0",
+            lastSigned ? lastSigned.slice(0, 10) : "",
             r.effectiveDatesMode,
             r.effectiveDatesMode === "expiry" ? r.effectiveFrom.slice(0, 10) : "",
             r.effectiveDatesMode === "expiry" ? r.effectiveUntil.slice(0, 10) : "",
@@ -523,6 +532,17 @@ export default function AgreementsPage() {
         return m;
     }, [agreements, customerAgreements]);
 
+    // Per-agreement max signature timestamp — feeds the Last signed
+    // column + its sort. Undefined for agreements no one has ever
+    // signed; those sort to the bottom on descending order.
+    const lastSignedById = useMemo(() => {
+        const m = new Map<string, string | undefined>();
+        for (const a of agreements) {
+            m.set(a.id, computeAgreementLastSigned(a, customerAgreements));
+        }
+        return m;
+    }, [agreements, customerAgreements]);
+
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Agreement>(filtered, {
         name:       (a, b) => a.name.localeCompare(b.name),
         branch:     (a, b) => branchLocationText(a, branchById).localeCompare(branchLocationText(b, branchById)),
@@ -530,6 +550,14 @@ export default function AgreementsPage() {
         effective:  (a, b) => {
             const av = a.effectiveDatesMode === "ongoing" ? "9999-12-31" : a.effectiveUntil;
             const bv = b.effectiveDatesMode === "ongoing" ? "9999-12-31" : b.effectiveUntil;
+            return av.localeCompare(bv);
+        },
+        lastSigned: (a, b) => {
+            // Never-signed rows sort AFTER dated rows (their "date" is
+            // treated as before any real timestamp on ascending, after
+            // on descending — matches how empty coverage sorts).
+            const av = lastSignedById.get(a.id) ?? "";
+            const bv = lastSignedById.get(b.id) ?? "";
             return av.localeCompare(bv);
         },
         status:     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
@@ -621,7 +649,7 @@ export default function AgreementsPage() {
 
     function handleExportCsv() {
         if (filtered.length === 0) return;
-        exportAgreementsCsv(filtered, branchById, coverageById);
+        exportAgreementsCsv(filtered, branchById, coverageById, lastSignedById);
         showToast(
             "Agreements exported",
             `${filtered.length} agreement${filtered.length === 1 ? "" : "s"} exported to CSV.`,
@@ -718,6 +746,9 @@ export default function AgreementsPage() {
                                             <SortableHeader sortKey="coverage"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Coverage</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="lastSigned" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Last signed</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>
                                             <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective until</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[120px]")}>
@@ -752,6 +783,17 @@ export default function AgreementsPage() {
                                                 <td className={TD}>{branchLocationText(r, branchById)}</td>
                                                 <td className={TD}>
                                                     <CoverageCell coverage={coverageById.get(r.id)} />
+                                                </td>
+                                                <td className={TD}>
+                                                    {/* Last signed — max signature timestamp across
+                                                     *  all versions. `—` when the agreement is
+                                                     *  brand-new / no one has signed yet. */}
+                                                    {(() => {
+                                                        const ts = lastSignedById.get(r.id);
+                                                        return ts
+                                                            ? <span className="whitespace-nowrap">{formatDateISO(ts)}</span>
+                                                            : <span className="text-[#98a2b3]">—</span>;
+                                                    })()}
                                                 </td>
                                                 <td className={TD}>
                                                     {r.effectiveDatesMode === "ongoing"

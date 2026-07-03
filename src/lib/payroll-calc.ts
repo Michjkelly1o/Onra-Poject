@@ -240,3 +240,206 @@ export function explainPayrollRow(
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Structured payroll breakdown (v28 client-feedback fix — replaces the messy
+// "Notes / Explanation" free-text column with typed rows the client can
+// slice + subtotal in Excel).
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Every pay model resolves to 1..N `PayrollComponent` rows plus (for multi-
+// component models) an implicit subtotal row that the exporter renders.
+// Columns match the client's spec: `component`, `basis`, `rate`, `amount`.
+//
+//   • Flat rate      →  1 row  ("Completed classes")
+//   • Tiered rate    →  1 row  ("Classes @ blended tier")
+//   • Split-rate     →  2 rows ("Revenue share" + "Per-customer")
+//   • Hybrid+bonus   →  2 rows ("Base per class" + "Attendance bonus")
+//   • Hybrid+split   →  2 rows ("Base per class" + "Revenue share")
+//   • Monthly salary →  1 row  ("Monthly salary")
+//
+// `basis`, `rate`, `amount` are formatted strings (locale-aware AED numbers,
+// percentages already suffixed) so consumers just splat them into CSV cells.
+
+export interface PayrollComponent {
+    /** Line-item label ("Completed classes", "Revenue share", …). */
+    component: string;
+    /** The count/base the rate multiplies against — always a string so
+     *  callers don't have to decide integer-vs-float formatting per row.
+     *  Examples: "5" (classes), "4,650" (revenue AED), "31" (customers). */
+    basis:  string;
+    /** Rate applied to the basis. AED figure ("147"), a percentage
+     *  ("30%"), or a per-unit AED ("15" for per-customer). */
+    rate:   string;
+    /** Component contribution to the payout, integer AED as a string
+     *  (e.g. "735"). Renders in the "Amount (AED)" column verbatim. */
+    amount: string;
+}
+
+export interface PayrollBreakdown {
+    /** Pay-model label shown once per instructor block. Derived from the
+     *  pay rate's `name` when present, falling back to the type. */
+    payModel:   string;
+    /** 1..N component rows. Order matches the reference table in the
+     *  client's ask; the exporter renders them in this order. */
+    components: PayrollComponent[];
+    /** Total payout AED as a string. Rendered as a "Subtotal" row after
+     *  the components ONLY when `components.length > 1` — a single
+     *  component is its own total, so a subtotal row would be noise. */
+    total:      string;
+}
+
+export function payrollBreakdownFor(
+    payRate: PayRate | undefined,
+    stats: {
+        totalEarningsAed: number;
+        completedClasses: number;
+        totalAttendees:   number;
+    },
+): PayrollBreakdown {
+    const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+    const total = fmt(stats.totalEarningsAed);
+
+    if (!payRate) {
+        return {
+            payModel: "No pay rate",
+            components: [{ component: "—", basis: "—", rate: "—", amount: total }],
+            total,
+        };
+    }
+
+    // Pay model label = the pay rate's user-facing name (studio-owned).
+    // If a studio calls their flat rate "Standard rate", the CSV reads
+    // "Standard rate" — matches the reference image where the name IS
+    // the pay model. Falls back to type when name is empty.
+    const payModel = payRate.name?.trim() || defaultPayModelLabel(payRate.type);
+
+    switch (payRate.type) {
+        case "flat": {
+            const per = payRate.flatAmount;
+            return {
+                payModel,
+                components: [{
+                    component: "Completed classes",
+                    basis:  fmt(stats.completedClasses),
+                    rate:   fmt(per),
+                    amount: total,
+                }],
+                total,
+            };
+        }
+        case "tiered": {
+            const avg = stats.completedClasses > 0
+                ? stats.totalEarningsAed / stats.completedClasses
+                : 0;
+            return {
+                payModel,
+                components: [{
+                    component: "Classes @ blended tier",
+                    basis:  fmt(stats.completedClasses),
+                    rate:   fmt(avg),
+                    amount: total,
+                }],
+                total,
+            };
+        }
+        case "revenue": {
+            // Revenue base = the studio-side revenue proxy the split
+            // percentage applies against (attendees × AED 150 per class).
+            const revenueBase       = stats.totalAttendees * 150;
+            const revenueShareAmount = revenueBase * (payRate.splitPercent / 100);
+            const perCustomer        = payRate.payPerCustomer ?? 0;
+            const perCustomerAmount  = perCustomer * stats.totalAttendees;
+            return {
+                payModel,
+                components: [
+                    {
+                        component: "Revenue share",
+                        basis:  fmt(revenueBase),
+                        rate:   `${payRate.splitPercent}%`,
+                        amount: fmt(revenueShareAmount),
+                    },
+                    {
+                        component: "Per-customer",
+                        basis:  fmt(stats.totalAttendees),
+                        rate:   fmt(perCustomer),
+                        amount: fmt(perCustomerAmount),
+                    },
+                ],
+                total,
+            };
+        }
+        case "hybrid": {
+            const base       = payRate.baseRate;
+            const baseAmount = base * stats.completedClasses;
+            if (payRate.condition.kind === "bonus_attendance") {
+                const bonusPerCustomer = payRate.condition.bonusPerCustomer;
+                const bonusAmount      = bonusPerCustomer * stats.totalAttendees;
+                return {
+                    payModel,
+                    components: [
+                        {
+                            component: "Base per class",
+                            basis:  fmt(stats.completedClasses),
+                            rate:   fmt(base),
+                            amount: fmt(baseAmount),
+                        },
+                        {
+                            component: `Attendance bonus (≤${payRate.condition.bonusThreshold})`,
+                            basis:  fmt(stats.totalAttendees),
+                            rate:   fmt(bonusPerCustomer),
+                            amount: fmt(bonusAmount),
+                        },
+                    ],
+                    total,
+                };
+            }
+            // Revenue-split hybrid.
+            const revenueBase = stats.totalAttendees * 150;
+            const shareAmount = revenueBase * (payRate.condition.splitPercent / 100);
+            return {
+                payModel,
+                components: [
+                    {
+                        component: "Base per class",
+                        basis:  fmt(stats.completedClasses),
+                        rate:   fmt(base),
+                        amount: fmt(baseAmount),
+                    },
+                    {
+                        component: "Revenue share",
+                        basis:  fmt(revenueBase),
+                        rate:   `${payRate.condition.splitPercent}%`,
+                        amount: fmt(shareAmount),
+                    },
+                ],
+                total,
+            };
+        }
+        case "monthly": {
+            return {
+                payModel,
+                components: [{
+                    component: "Monthly salary",
+                    basis:  fmt(stats.completedClasses),
+                    rate:   `${fmt(payRate.fixedSalary)} / mo`,
+                    amount: total,
+                }],
+                total,
+            };
+        }
+    }
+}
+
+/** Fallback pay-model label used when a pay rate has no user-facing
+ *  name (shouldn't happen in the seeded demo, but defensive so the CSV
+ *  never renders a blank Pay-model cell). */
+function defaultPayModelLabel(type: PayRate["type"]): string {
+    switch (type) {
+        case "flat":    return "Flat rate";
+        case "tiered":  return "Tiered rate";
+        case "revenue": return "Split rate";
+        case "hybrid":  return "Hybrid rate";
+        case "monthly": return "Monthly salary";
+    }
+}

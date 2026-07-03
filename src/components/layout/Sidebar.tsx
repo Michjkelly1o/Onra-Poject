@@ -26,8 +26,18 @@ import {
     LogOut01,
     UserCircle,
 } from "@untitledui/icons";
+import { SETTINGS_GROUPS, findSettingsGroupFor } from "@/config/settings-groups";
 
-export type NavChild = { label: string; href: string };
+export type NavChild = {
+    label: string;
+    href: string;
+    /** Optional per-child icon — currently used only by the Settings
+     *  parent (Business / Operations / Customer each carry their own
+     *  glyph per client feedback). Other parents keep text-only rows.
+     *  Typed as `ComponentType` (not `FC`) so class-component icon
+     *  exports from `@untitledui/icons` type-check cleanly. */
+    icon?: React.ComponentType<{ className?: string }>;
+};
 export type NavItemDef = {
     label: string;
     href?: string;
@@ -103,11 +113,11 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Payroll",            href: "/admin/compensation"   },
         ],
     },
-    // Settings + Profile no longer live in the scrollable nav — they're
-    // pinned to the bottom of the sidebar in a single footer group per
-    // Figma 7616:16658. Settings is rendered as a footer link by the
-    // SidebarFooter component below the nav; Profile is the chip beneath
-    // it. Both stay visible even when the nav scrolls.
+    // Settings does NOT live in the scrollable nav — it's rendered as
+    // a footer chip (see `SidebarSettingsChip` below) that opens a
+    // right-side popover with the 3 grouped children (Business /
+    // Operations / Customer). Matches the profile-chip dropdown
+    // pattern per the client's latest ask.
 ];
 
 // Among a parent's children, pick the SINGLE child whose href is the longest
@@ -140,11 +150,21 @@ function isUserMenuRoute(pathname: string): boolean {
 // href against the winner string for an exact-equality active check.
 function activeHrefFor(items: NavItemDef[], pathname: string): string | null {
     if (isUserMenuRoute(pathname)) return null;
+    // Settings group normalization — the sidebar's Settings children
+    // (Business / Operations / Customer) each point at their group's
+    // FIRST tab, but the client wants any tab within a group to light
+    // up the corresponding sidebar child. So a raw `/settings/agreements`
+    // (Customer group, 2nd tab) rewrites to `/settings/notifications`
+    // (Customer group, 1st tab = the sidebar child's href) BEFORE the
+    // longest-prefix winner runs. Non-settings paths pass through
+    // unchanged.
+    const settingsGroup = findSettingsGroupFor(pathname);
+    const matchPath = settingsGroup ? settingsGroup.tabs[0].href : pathname;
     let bestHref: string | null = null;
     let bestLen = -1;
     const consider = (href: string | undefined) => {
         if (!href) return;
-        const matches = pathname === href || pathname.startsWith(href + "/");
+        const matches = matchPath === href || matchPath.startsWith(href + "/");
         if (matches && href.length > bestLen) {
             bestHref = href;
             bestLen = href.length;
@@ -210,16 +230,9 @@ interface SidebarProps {
     /** Override the bottom user-menu "Account settings" link. Defaults
      *  to the admin account route. */
     accountHref?: string;
-    /** Footer "Settings" link target — admin layout passes
-     *  "/admin/settings" explicitly. Instructor layout MUST omit this so
-     *  the Settings row is hidden; instructors don't have admin settings
-     *  access, and clicking through would punch a hole between the two
-     *  personas. No default on purpose — leaving it out shouldn't silently
-     *  link to /admin/settings. */
-    settingsHref?: string;
 }
 
-export default function Sidebar({ navItems, accountHref, settingsHref }: SidebarProps = {}) {
+export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
@@ -248,9 +261,42 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
         return init;
     });
 
+    // Accordion behaviour (client feedback) — only ONE expandable
+    // parent can be open at a time. Clicking a closed parent collapses
+    // every other group; clicking the already-open parent just
+    // collapses it (so users can hide everything by clicking twice).
     const toggleGroup = (label: string) => {
-        setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+        setOpenGroups((prev) => {
+            const isOpen = !!prev[label];
+            if (isOpen) return { ...prev, [label]: false };
+            const next: Record<string, boolean> = {};
+            effectiveNavItems.forEach((item) => {
+                if (item.children) next[item.label] = item.label === label;
+            });
+            return next;
+        });
     };
+
+    // Route-driven accordion — whenever the pathname changes to a route
+    // that belongs to a parent's children, close every OTHER parent so
+    // only the container of the current route stays open. Without
+    // this, clicking a submenu leaves siblings from another group
+    // expanded from a prior interaction. `activeHrefFor` uses the
+    // longest-prefix winner (settings normalization + user-menu
+    // exclusion), same rule the active highlight uses.
+    useEffect(() => {
+        const winner = activeHrefFor(effectiveNavItems, pathname);
+        if (!winner) return;
+        setOpenGroups(() => {
+            const next: Record<string, boolean> = {};
+            effectiveNavItems.forEach((item) => {
+                if (item.children) {
+                    next[item.label] = item.children.some(c => c.href === winner);
+                }
+            });
+            return next;
+        });
+    }, [pathname, effectiveNavItems]);
 
     const slim = sidebarCollapsed;
 
@@ -447,7 +493,12 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
                             )}
                             </SlimNavItem>
 
-                            {/* Children — full width, text indented to align after parent icon */}
+                            {/* Children — indented rows (no rail line).
+                             *  Client asked to keep the hierarchy read
+                             *  through pure indentation without the
+                             *  connecting tree rail; the extra pl gives
+                             *  each child ~38px of left inset so it
+                             *  visually belongs to the parent above. */}
                             {hasChildren && !slim && open && (() => {
                                 // Filtered to this parent: returns the global
                                 // winner only if it belongs to one of this
@@ -456,26 +507,35 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
                                 // pricing vs /admin/products/promo-codes
                                 // under Marketing) can't double-light.
                                 const activeHref = activeChildHrefFor(item.children, navWinner);
+                                const kids = item.children!;
                                 return (
-                                <div className="mt-1 flex flex-col gap-0.5">
-                                    {item.children!.map((child) => {
+                                <div className="mt-1 pl-[38px] flex flex-col gap-0.5">
+                                    {kids.map((child) => {
                                         const childActive = child.href === activeHref;
+                                        const ChildIcon = child.icon;
                                         return (
-                                            <Link
-                                                key={child.href}
-                                                href={child.href}
-                                                className={cn(
-                                                    "block pl-[44px] pr-3 py-2 rounded-md text-sm font-medium transition-colors relative",
-                                                    childActive
-                                                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
-                                                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]"
-                                                )}
-                                            >
-                                                {childActive && (
-                                                    <span className="absolute left-0 top-[6px] w-1 h-5 bg-[#c4edd6] rounded-r" />
-                                                )}
-                                                {child.label}
-                                            </Link>
+                                            <div key={child.href} className="relative">
+                                                <Link
+                                                    href={child.href}
+                                                    className={cn(
+                                                        "relative flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-md text-sm font-medium transition-colors",
+                                                        childActive
+                                                            ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                                                            : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]"
+                                                    )}
+                                                >
+                                                    {childActive && (
+                                                        <span className="absolute left-0 top-[6px] w-1 h-5 bg-[#c4edd6] rounded-r" />
+                                                    )}
+                                                    {ChildIcon && (
+                                                        <ChildIcon className={cn(
+                                                            "w-4 h-4 shrink-0",
+                                                            childActive ? "text-[#101828]" : "text-[#667085]",
+                                                        )} />
+                                                    )}
+                                                    <span className="truncate">{child.label}</span>
+                                                </Link>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -486,26 +546,23 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
                 })}
             </nav>
 
-            {/* ── Bottom footer group (Settings + Profile) ─────────────────
-                Per Figma 7616:16658 the Settings link and Profile chip live
-                together at the bottom of the sidebar. They sit outside the
-                scrollable nav so they're always reachable, and they share
-                one container so a divider visually separates them as a
-                single footer group from the rest of the nav. */}
-            <div className="shrink-0 border-t border-[#e4e7ec] mt-1 px-3 pt-3 pb-3 flex flex-col gap-1">
-                {settingsHref && (
-                    <SidebarFooterLink
-                        href={settingsHref}
-                        label="Settings"
-                        icon={Settings01}
-                        // Active iff the global winner is this exact link.
-                        // Prevents Settings from lighting up while the user
-                        // is on a sub-route owned by another nav item
-                        // (none today, but the guarantee is wired now).
-                        active={navWinner === settingsHref}
-                        slim={slim}
-                    />
-                )}
+            {/* ── Bottom footer group (Settings chip + Profile chip) ──────
+                Settings is a footer chip that opens a right-side
+                popover with the 3 groups (Business / Operations /
+                Customer) — matches the profile-chip dropdown pattern
+                per client's latest ask. Only ONE rule inside this
+                block: a divider between the two chips. The border-t
+                separator from the nav was dropped per client feedback
+                (the top spacing + the inner divider already give the
+                block clear structure). Rule tone = #d0d5dd so it
+                stays visible without dominating. */}
+            <div className="shrink-0 mt-1 px-3 pt-3 pb-3 flex flex-col gap-2">
+                <SidebarSettingsChip slim={slim} />
+                {/* Inset horizontal margin so the divider matches the
+                 *  section-break rule in the middle of the nav — both
+                 *  now stop short of the sidebar's edge instead of
+                 *  bleeding right up to it. */}
+                <div className="h-px bg-[#d0d5dd] mx-3 my-1" />
                 <SidebarProfileChip
                     slim={slim}
                     avatarUrl={avatarUrl}
@@ -520,42 +577,111 @@ export default function Sidebar({ navItems, accountHref, settingsHref }: Sidebar
     );
 }
 
-// ─── Footer link (Settings, etc.) ─────────────────────────────────────────
-// Matches the chrome of the main nav rows but rendered separately so
-// Settings can sit in the bottom footer group next to the Profile chip
-// (per Figma 7616:16658). Active highlight + slim-mode tooltip behave
-// identically to the in-nav rows.
-function SidebarFooterLink({ href, label, icon: Icon, active, slim }: {
-    href: string;
-    label: string;
-    icon: React.FC<{ className?: string }>;
-    /** Pre-resolved by the parent against the sidebar-wide winner so the
-     *  footer link participates in the same single-highlight invariant as
-     *  the in-nav rows (no isolated prefix-match here). */
-    active: boolean;
-    slim: boolean;
-}) {
+// ─── Settings chip (sidebar footer) ─────────────────────────────────────
+// Trigger + right-side popover carrying the 3 settings groups (Business /
+// Operations / Customer). Mirrors the profile chip's popover chrome —
+// same shadow, same border, same close-on-outside behaviour — with two
+// differences: the popover opens to the RIGHT (into the main canvas)
+// instead of upward, and each row carries the group's icon so the client
+// gets the dropdown they asked for.
+//
+// Active-state rules: the chip lights up (green strip + highlighted box)
+// whenever the current path lives in ANY settings group. Inside the
+// popover, the group whose subtree matches the current path is
+// highlighted so the user sees where they are.
+function SidebarSettingsChip({ slim }: { slim: boolean }) {
+    const pathname = usePathname() ?? "";
+    const [open, setOpen] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    const activeGroup = findSettingsGroupFor(pathname);
+    const isActive = !!activeGroup;
+
+    // Close on outside click — same behaviour as the profile chip.
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
     return (
-        <SlimNavItem label={label} enabled={slim}>
-            <Link
-                href={href}
-                className={cn(
-                    "flex w-full items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
-                    active
-                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
-                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
-                    slim && "justify-center",
-                )}
-            >
-                {active && (
-                    <span className="absolute left-0 top-[7px] w-1 h-6 bg-[#c4edd6] rounded-r" />
-                )}
-                <Icon className={cn("w-5 h-5 shrink-0", active ? "text-[#101828]" : "text-[#667085]")} />
-                {!slim && (
-                    <span className="flex-1 text-sm font-medium truncate">{label}</span>
-                )}
-            </Link>
-        </SlimNavItem>
+        <div ref={wrapperRef} className="relative">
+            <SlimNavItem label="Settings" enabled={slim}>
+                <button
+                    type="button"
+                    onClick={() => setOpen(p => !p)}
+                    aria-label="Open settings menu"
+                    className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
+                        (isActive || open)
+                            ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                            : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
+                        slim && "justify-center",
+                    )}
+                >
+                    {(isActive || open) && (
+                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[#c4edd6] rounded-r" />
+                    )}
+                    <Settings01 className={cn(
+                        "w-5 h-5 shrink-0",
+                        (isActive || open) ? "text-[#101828]" : "text-[#667085]",
+                    )} />
+                    {!slim && (
+                        <>
+                            <span className="flex-1 text-left text-sm font-medium truncate">Settings</span>
+                            {/* Chevron mirrors the profile chip: pointing
+                             *  up when the popover is open (a visual hint
+                             *  the menu is elsewhere), down when closed. */}
+                            {open
+                                ? <ChevronUp   className="w-4 h-4 shrink-0 text-[#98a2b3]" />
+                                : <ChevronDown className="w-4 h-4 shrink-0 text-[#98a2b3]" />}
+                        </>
+                    )}
+                </button>
+            </SlimNavItem>
+
+            {open && (
+                <div className={cn(
+                    "absolute bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
+                    // Popover anchor — sits DIRECTLY ABOVE the chip
+                    // (client feedback: prefer up over side-open). Matches
+                    // the trigger's width in expanded mode; in slim mode
+                    // the popover is a fixed 240px anchored to the left
+                    // of the trigger so the labels have room to read.
+                    slim
+                        ? "bottom-[calc(100%+6px)] left-0 w-[240px]"
+                        : "bottom-[calc(100%+6px)] left-0 right-0",
+                )}>
+                    {SETTINGS_GROUPS.map((g, i) => {
+                        const isGroupActive = activeGroup?.id === g.id;
+                        const GroupIcon = g.icon;
+                        return (
+                            <Link
+                                key={g.id}
+                                href={g.tabs[0].href}
+                                onClick={() => setOpen(false)}
+                                className={cn(
+                                    "flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors",
+                                    isGroupActive
+                                        ? "text-[#101828] bg-[#f9fafb]"
+                                        : "text-[#344054] hover:bg-[#f9fafb]",
+                                    i < SETTINGS_GROUPS.length - 1 && "border-b border-[#f2f4f7]",
+                                )}
+                            >
+                                <GroupIcon className={cn(
+                                    "w-4 h-4",
+                                    isGroupActive ? "text-[#101828]" : "text-[#667085]",
+                                )} />
+                                {g.label}
+                            </Link>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -611,17 +737,28 @@ function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHr
                             <p className="text-[14px] font-semibold text-[#101828] truncate leading-5">{displayName}</p>
                             <p className="text-[12px] text-[#667085] truncate leading-[18px] mt-0.5">{roleLabel}</p>
                         </div>
+                        {/* Chevron matches Settings chip — up when the
+                         *  popover is open (menu is elsewhere), down
+                         *  when closed. Simpler + parity across footer
+                         *  chips since both now open to the side. */}
                         {open
-                            ? <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
-                            : <ChevronUp   className="w-4 h-4 text-[#667085] shrink-0" />}
+                            ? <ChevronUp   className="w-4 h-4 text-[#667085] shrink-0" />
+                            : <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />}
                     </>
                 )}
             </button>
 
             {open && (
                 <div className={cn(
-                    "absolute bottom-[calc(100%+6px)] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
-                    slim ? "left-[58px] w-[240px]" : "left-0 right-0",
+                    "absolute bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
+                    // Popover anchor — sits DIRECTLY ABOVE the chip
+                    // (client feedback: both footer popovers open up
+                    // now, matching each other). Expanded mode spans the
+                    // chip's width; slim mode uses a fixed 240px pinned
+                    // to the trigger's left edge.
+                    slim
+                        ? "bottom-[calc(100%+6px)] left-0 w-[240px]"
+                        : "bottom-[calc(100%+6px)] left-0 right-0",
                 )}>
                     <Link
                         href={accountHref}

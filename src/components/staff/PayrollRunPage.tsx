@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { explainPayrollRow } from "@/lib/payroll-calc";
+import { payrollBreakdownFor } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -363,45 +363,73 @@ interface RunRow {
 // ─── CSV export ────────────────────────────────────────────────────────────
 
 function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
-    // v27 client-feedback fix — 3 new columns after "Default pay rate":
-    //   • Class rate (AED)     — AED-per-class figure driving the row
-    //   • Percentage (%)       — filled only for Split-Rate + Hybrid-
-    //                             revenue-split rows; empty otherwise
-    //   • Notes / Explanation  — one-line prose showing how the payout
-    //                             was computed with real numbers
-    // Column order mirrors what the client asked for (rate details
-    // grouped with the pay-rate name; the ledger totals + status +
-    // period stay on the right so the payroll admin can find them
-    // where they already were).
+    // v28 client-feedback fix — the previous CSV shoehorned every pay
+    // model's math into a single free-text "Notes / Explanation" column
+    // that broke when Excel wrapped long strings. Client asked for the
+    // structured breakdown shown in the run-payroll reference table:
+    //
+    //   Pay model · Component · Basis · Rate · Amount
+    //
+    // Each instructor now expands to 1..N rows (one per pay-model
+    // component + an optional Subtotal row for multi-component
+    // models). Non-component context (Instructor / Email / Branch /
+    // Status / Period / Total payout) is emitted on the FIRST row of
+    // each instructor's block; blank on continuation rows so the
+    // grouping reads naturally in Excel. See `payrollBreakdownFor` for
+    // the per-model component shape.
     const header = [
         "Instructor", "Email", "Branch",
-        "Default pay rate", "Class rate (AED)", "Percentage (%)", "Notes / Explanation",
-        "Completed classes", "Total time (hrs)", "Class revenue base (AED)",
-        "Instructor payout (AED)", "Status", "Period",
+        "Pay model", "Component", "Basis", "Rate", "Amount (AED)",
+        "Total payout (AED)", "Status", "Period",
     ];
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = rows.map(r => {
+
+    const lines: string[] = [];
+    for (const r of rows) {
         // Attendee count is captured via the grossRevenue proxy
         // (attendees × AED 150 per class per `earningsForClass`). When
         // real per-booking attendance ships this becomes a live field.
         const totalAttendees = Math.round(r.grossRevenue / 150);
-        const explain = explainPayrollRow(r.payRate, {
+        const breakdown = payrollBreakdownFor(r.payRate, {
             totalEarningsAed: r.payout,
             completedClasses: r.classesCount,
             totalAttendees,
         });
-        return [
-            r.instructor.name, r.instructor.email, branchName(r.branchId),
-            r.payRateName, explain.classRateAed, explain.percentage, explain.note,
-            r.classesCount, r.totalHours, Math.round(r.grossRevenue),
-            Math.round(r.payout),
-            r.status === "paid" ? "Paid" : "Pending", periodLabel,
-        ].map(escape).join(",");
-    });
+        const statusLabel = r.status === "paid" ? "Paid" : "Pending";
+        const totalPayout = Math.round(r.payout);
+
+        breakdown.components.forEach((comp, idx) => {
+            const isFirst = idx === 0;
+            lines.push([
+                isFirst ? r.instructor.name  : "",
+                isFirst ? r.instructor.email : "",
+                isFirst ? branchName(r.branchId) : "",
+                isFirst ? breakdown.payModel : "",
+                comp.component,
+                comp.basis,
+                comp.rate,
+                comp.amount,
+                isFirst ? totalPayout : "",
+                isFirst ? statusLabel : "",
+                isFirst ? periodLabel : "",
+            ].map(escape).join(","));
+        });
+
+        // Multi-component models get an explicit Subtotal row so the
+        // client can see the sum without re-adding in Excel — matches
+        // the reference table shipped in the client's screenshot.
+        if (breakdown.components.length > 1) {
+            lines.push([
+                "", "", "", "", "Subtotal", "", "", breakdown.total,
+                "", "", "",
+            ].map(escape).join(","));
+        }
+    }
+
     const csv = [header.join(","), ...lines].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");

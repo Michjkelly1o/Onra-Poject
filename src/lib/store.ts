@@ -1205,6 +1205,10 @@ export interface TaxRate {
     calculationMode: TaxCalculationMode;
     status: TaxRateStatus;
     createdAt: string;
+    /** Effective-window bounds (ISO `YYYY-MM-DD`). Both optional — see
+     *  `TaxRateSeed` for the display rules. */
+    validFromISO?:  string;
+    validUntilISO?: string;
 }
 
 /** Studio-wide tax display + calculation settings. */
@@ -1212,6 +1216,16 @@ export interface TaxSettings {
     pricesIncludeTax: boolean;
     /** Per-line vs per-invoice rounding strategy. */
     roundingMode: TaxRoundingMode;
+    /** Tax Registration Number (TRN) — studio's VAT id with the tax
+     *  authority. Optional; empty when the studio hasn't been issued
+     *  one yet. Free-text for the prototype. */
+    trn?: string;
+    /** Country whose tax authority issued the TRN. Full country name;
+     *  matches `Country.name` in `src/lib/data/locales.ts`. */
+    trnCountry?: string;
+    /** When true, the TRN prints on every customer invoice + receipt
+     *  (Figma 7769:106370 toggle). Defaults on when a TRN is set. */
+    displayTrnOnInvoice?: boolean;
 }
 
 export type TaxRuleCategory = TaxRuleCategorySeed;
@@ -2436,6 +2450,8 @@ function taxRateFromSeed(t: TaxRateSeed): TaxRate {
         calculationMode: t.calculation_mode,
         status: t.status,
         createdAt: t.created_at,
+        validFromISO:  t.valid_from,
+        validUntilISO: t.valid_until,
     };
 }
 
@@ -2443,6 +2459,9 @@ function taxSettingsFromSeed(t: TaxSettingsSeed): TaxSettings {
     return {
         pricesIncludeTax: t.prices_include_tax,
         roundingMode: t.rounding_mode,
+        trn: t.trn,
+        trnCountry: t.trn_country,
+        displayTrnOnInvoice: t.display_trn_on_invoice,
     };
 }
 
@@ -3189,6 +3208,14 @@ interface AppState {
     /** Flip the per-line vs per-invoice rounding mode. Drives the POS +
      *  customer-checkout `computeTotals` calculation downstream. */
     setRoundingMode: (mode: TaxRoundingMode) => void;
+    /** Set the studio's Tax Registration Number (TRN). Empty string
+     *  clears the value back to undefined. */
+    setTaxTrn: (value: string) => void;
+    /** Set the country that issued the TRN. Full country name (matches
+     *  `Country.name` in `src/lib/data/locales.ts`). */
+    setTaxTrnCountry: (value: string) => void;
+    /** Toggle whether the TRN prints on customer invoices + receipts. */
+    setDisplayTrnOnInvoice: (value: boolean) => void;
     /** Append a new tax rate. Auto-generates id + createdAt when not
      *  supplied. Returns the resolved id. (Phase 2 wires the modal to this.) */
     addTaxRate: (input: Omit<TaxRate, "id" | "createdAt"> & { id?: string; createdAt?: string }) => string;
@@ -5493,6 +5520,27 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             taxSettings: { ...state.taxSettings, roundingMode: mode },
         })),
+    setTaxTrn: (value) =>
+        set(state => ({
+            // Normalise empty string → undefined so callers can distinguish
+            // "no TRN issued yet" from "TRN cleared to empty" cleanly. The
+            // UI shows a placeholder in both cases.
+            taxSettings: {
+                ...state.taxSettings,
+                trn: value.trim() === "" ? undefined : value.trim(),
+            },
+        })),
+    setTaxTrnCountry: (value) =>
+        set(state => ({
+            taxSettings: {
+                ...state.taxSettings,
+                trnCountry: value.trim() === "" ? undefined : value.trim(),
+            },
+        })),
+    setDisplayTrnOnInvoice: (value) =>
+        set(state => ({
+            taxSettings: { ...state.taxSettings, displayTrnOnInvoice: value },
+        })),
     addTaxRate: (input) => {
         const id = input.id ?? `tax_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         const record: TaxRate = {
@@ -6657,7 +6705,18 @@ export const useAppStore = create<AppState>()(persist(
         // in. Transactional emails are removed from marketing prefs —
         // they're covered by the (non-marketing) transactional
         // notification rows in the admin Customer notifications module.
-        version: 28,
+        //
+        // v29 (Figma 7769:118654) — Tax module expansion:
+        //   • `TaxSettings.trn` — studio's Tax Registration Number,
+        //     shown as a card above "Prices include tax" on the VAT tab.
+        //   • `TaxRate.validFromISO` / `validUntilISO` — effective-window
+        //     bounds on each rate. Feeds a new Effective date column on
+        //     the tax-rates list ("DD/MM/YYYY - DD/MM/YYYY") + two date
+        //     pickers at the bottom of the Add new / Edit modal (all
+        //     tax-rate types). Dispatch-time enforcement (POS/product/
+        //     payroll picking the ACTIVE rate for a transaction date)
+        //     lands in Phase 4 — for now the fields are stored/displayed.
+        version: 29,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

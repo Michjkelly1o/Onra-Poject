@@ -28,4 +28,17 @@ export const tax_settings: TaxSettingsSeed = {
     // workflows that prefer un-rounded line entries + a single rounded
     // invoice total.
     rounding_mode: "per_line",
+    // Studio TRN — 15-digit UAE VAT registration number by convention
+    // ("100" prefix = registered entity, remaining 12 digits are the
+    // entity's unique tax id). Realistic-looking demo value matching
+    // the Figma reference (7769:106370) so the VAT tab renders a real
+    // row on first boot; admins can edit via the TRN card.
+    trn: "100472839600003",
+    // TRN issued by the UAE FTA — matches the seeded businessProfile
+    // country. Full country name so the flag + code look up cleanly
+    // via `getCountryInfo(name)`.
+    trn_country: "United Arab Emirates",
+    // Toggle ON in the Figma reference — TRN prints on invoices by
+    // default once the studio has one issued.
+    display_trn_on_invoice: true,
 };

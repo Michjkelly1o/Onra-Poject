@@ -34,7 +34,7 @@ export default function AdminLayout({
                         sidebarCollapsed ? "w-[88px]" : "w-[280px]"
                     )}
                 >
-                    <Sidebar settingsHref="/admin/settings" />
+                    <Sidebar />
                 </div>
 
                 {/* Content area */}

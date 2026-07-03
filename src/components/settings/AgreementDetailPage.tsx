@@ -740,7 +740,10 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-5">
-            {/* KPI cards (Figma 7684:192230 top row). */}
+            {/* KPI cards (Figma 7684:192230 top row) — display-only
+             *  metrics. Filtering happens through the sub-tabs +
+             *  customer table below (client feedback: "just make the
+             *  metrics not be clickable"). */}
             <div className="grid grid-cols-3 gap-4">
                 <AcceptanceKpiCard
                     icon={<FileCheck02 className="w-5 h-5 text-[#658774]" />}
@@ -885,6 +888,10 @@ function AcceptanceKpiCard({ icon, tint, label, value, subtitle }: {
     value: number;
     subtitle: string;
 }) {
+    // Display-only cards — the client asked to keep these as metrics
+    // (not clickable) since the sub-tabs + customer table below
+    // already handle the drill-down. Reverted from the brief
+    // clickable-button experiment.
     const iconTint =
         tint === "green" ? "bg-[#ecfdf3] border-[#abefc6]"
       : tint === "amber" ? "bg-[#fffaeb] border-[#fedf89]"
@@ -973,7 +980,11 @@ function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
     onView: (v: AgreementVersion) => void;
     onRepublish: (v: AgreementVersion) => void;
 }) {
-    const [tab, setTab] = useState<TabId>("details");
+    // Default to the Acceptance status tab so the 3 clickable KPI
+    // boxes are the first thing an admin sees when they open an
+    // agreement (per client feedback). Details + Versions tabs are
+    // still reachable via the tab bar.
+    const [tab, setTab] = useState<TabId>("acceptance");
     const TABS: { id: TabId; label: string }[] = [
         { id: "details",    label: "Agreement details"  },
         { id: "versions",   label: "Agreement version"  },

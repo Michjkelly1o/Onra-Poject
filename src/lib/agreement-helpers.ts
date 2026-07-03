@@ -71,3 +71,20 @@ export function computeCoverage(
         pendingNever:    neverIds.size,
     };
 }
+
+/** Per-agreement max signature timestamp — reads across ALL versions
+ *  (not just the current one) so an older-version signature still
+ *  shows as recent activity. Returns undefined when no customer has
+ *  ever signed. Used by the agreements list "Last signed" column. */
+export function computeAgreementLastSigned(
+    agreement: Agreement,
+    customerAgreements: CustomerAgreement[],
+): string | undefined {
+    let latest: string | undefined;
+    for (const ca of customerAgreements) {
+        if (ca.agreementId !== agreement.id) continue;
+        if (!ca.signedAtISO) continue;
+        if (!latest || ca.signedAtISO > latest) latest = ca.signedAtISO;
+    }
+    return latest;
+}

@@ -35,6 +35,7 @@ import { XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type TaxRate, type TaxRateKind, type TaxRateType } from "@/lib/store";
 
 export interface TaxRateModalProps {
@@ -75,6 +76,12 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
     const [type, setType]               = useState<TaxRateType | null>(existing?.type ?? null);
     // Rate seeds from the existing row, or 0 for new (admin types it in).
     const [ratePercentage, setRate]     = useState<number>(existing?.ratePercentage ?? 0);
+    // v29 client-feedback fix (Figma 7769:118654) — effective-window
+    // captured on ALL tax rate types (Default / Zero-rated / Exempt).
+    // Empty string = no bound. Payload sends `undefined` when empty so
+    // the seed shape survives without an ISO placeholder.
+    const [validFrom, setValidFrom]     = useState<string>(existing?.validFromISO  ?? "");
+    const [validUntil, setValidUntil]   = useState<string>(existing?.validUntilISO ?? "");
     const [touched, setTouched]         = useState(false);
     const nameRef = useRef<HTMLInputElement>(null);
 
@@ -125,14 +132,26 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
             : ratePercentage > 100 ? "Tax rate cannot exceed 100%."
             : null)
         : null;
-    const canSubmit = !nameError && !typeError && !rateError;
+    // Date-order guard — if both bounds are set, `validUntil` must be
+    // ≥ `validFrom`. Empty strings (unbounded) skip the check.
+    const dateError = (validFrom && validUntil && validUntil < validFrom)
+        ? "Valid until must be on or after Valid from."
+        : null;
+    const canSubmit = !nameError && !typeError && !rateError && !dateError;
     const showNameError = touched && nameError !== null;
     const showTypeError = touched && typeError !== null;
     const showRateError = touched && rateError !== null;
+    const showDateError = touched && dateError !== null;
 
     function handleSubmit() {
         setTouched(true);
         if (!canSubmit || type === null) return;
+
+        // Empty date strings normalise to `undefined` so the seed shape
+        // stays clean — the store's `TaxRate` type treats missing bounds
+        // as "unbounded on that side" (see formatEffectiveWindow).
+        const validFromISO  = validFrom  || undefined;
+        const validUntilISO = validUntil || undefined;
 
         if (mode === "create") {
             const id = addTaxRate({
@@ -143,6 +162,8 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                 // Default to exclusive — global toggle is the visible source of truth.
                 calculationMode: "exclusive",
                 status: "active",
+                validFromISO,
+                validUntilISO,
             });
             const saved = useAppStore.getState().taxRates.find(t => t.id === id);
             if (saved) onSubmitted(saved);
@@ -154,6 +175,8 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                 // rules reference them) — we send the unchanged values
                 // so the store action signature stays uniform.
                 ratePercentage,
+                validFromISO,
+                validUntilISO,
             });
             const saved = useAppStore.getState().taxRates.find(t => t.id === existing.id);
             if (saved) onSubmitted(saved);
@@ -167,7 +190,15 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
-            <div className="relative bg-white rounded-[16px] w-[600px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+            {/* Fixed modal height so switching tax rate types doesn't
+             *  cause the frame to shrink/grow (client-reported jump:
+             *  Default has a rate input, Exempt hides it, and the
+             *  overall modal was jittering). `h-[680px]` sits at the
+             *  tallest variant's natural size; `max-h-[90vh]` caps the
+             *  modal on short viewports. Body area gets its own scroll
+             *  so any overflow stays reachable without changing the
+             *  frame. */}
+            <div className="relative bg-white rounded-[16px] w-[600px] h-[680px] max-h-[90vh] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 {/* Header */}
                 <div className="flex flex-col">
                     <div className="px-6 pt-6 flex items-start gap-4">
@@ -191,8 +222,13 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                     <div className="h-px bg-[#e4e7ec] w-full" />
                 </div>
 
-                {/* Body */}
-                <div className="px-6 py-5 flex flex-col gap-5">
+                {/* Body — scrolls independently so the frame stays a
+                 *  constant height and the footer stays pinned to the
+                 *  bottom regardless of which tax rate type is picked.
+                 *  Scrollbar is left VISIBLE (no `scrollbar-hide`) so
+                 *  the user gets a clear affordance that more content
+                 *  is reachable below the fold. */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-5">
                     {/* Tax name */}
                     <div className="flex flex-col gap-[6px]">
                         <label htmlFor="tax-name" className="text-[14px] font-medium text-[#344054] leading-[20px]">
@@ -287,6 +323,40 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                             )}
                         </div>
                     )}
+
+                    {/* Effective window (v29 — Figma 7769:118654). Shown for
+                        ALL tax rate types per client feedback ("we put it on
+                        the below"). Both bounds optional; leaving one blank
+                        means unbounded on that side (see
+                        `formatEffectiveWindow` in the list page). */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                                Valid from
+                            </label>
+                            <DatePicker
+                                value={validFrom}
+                                onChange={setValidFrom}
+                                placeholder="Start date"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                                Valid until
+                            </label>
+                            <DatePicker
+                                value={validUntil}
+                                onChange={setValidUntil}
+                                placeholder="End date"
+                                // Guard the picker cells too — can't pick a
+                                // date before the current `validFrom`.
+                                minDate={validFrom || undefined}
+                            />
+                        </div>
+                        {showDateError && (
+                            <p className="col-span-2 text-[13px] text-[#d92d20] leading-[18px]">{dateError}</p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}

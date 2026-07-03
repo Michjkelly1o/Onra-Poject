@@ -1934,6 +1934,21 @@ export interface TaxRateSeed {
     calculation_mode: TaxCalculationModeSeed;
     status: TaxRateStatusSeed;
     created_at: string;
+    // ── Effective window (client-feedback fix — Figma 7769:118654) ──────
+    // A rate's charge only applies between `valid_from` (inclusive) and
+    // `valid_until` (inclusive). Both are ISO `YYYY-MM-DD` strings.
+    //
+    //   • Both set   → definite window, list shows "DD/MM/YYYY - DD/MM/YYYY"
+    //   • Only from  → open-ended future, list shows "DD/MM/YYYY - Ongoing"
+    //   • Only until → applied retroactively up to date (rare)
+    //   • Neither    → rate has no time constraint, list shows "—"
+    //
+    // Enforcement (Phase 4): POS / product / payroll tax lookups must
+    // pick the ACTIVE rate at the transaction date — a rate whose window
+    // doesn't cover the sale date must not apply. For now the fields are
+    // captured + displayed only.
+    valid_from?: string;
+    valid_until?: string;
 }
 
 /** Per-invoice rounding strategy for the tax line on a multi-line cart:
@@ -1956,6 +1971,24 @@ export interface TaxSettingsSeed {
     prices_include_tax: boolean;
     /** Per-line vs per-invoice rounding — see TaxRoundingModeSeed. */
     rounding_mode: TaxRoundingModeSeed;
+    /** Tax Registration Number (TRN) — the studio's VAT registration id
+     *  with the local tax authority (UAE FTA / equivalent). Surfaced on
+     *  every tax invoice when `display_trn_on_invoice` is on. Optional
+     *  (a brand-new studio might not have one issued yet). Free-text
+     *  15-digit UAE format by convention but not enforced in the
+     *  prototype. */
+    trn?: string;
+    /** Country whose tax authority issued this TRN. Stored as the
+     *  full country name (matches `Country.name` in
+     *  `src/lib/data/locales.ts`) so the UI can look up the flag +
+     *  code without a translation table. Defaults to the studio's own
+     *  country when a TRN is first added. */
+    trn_country?: string;
+    /** Toggle for the "Display tax registration in invoice" row
+     *  (Figma 7769:106370). When true, the TRN prints on every
+     *  customer invoice + receipt. When false, invoices omit it (used
+     *  by studios below the VAT registration threshold). */
+    display_trn_on_invoice?: boolean;
 }
 
 // ─── Tax rules (Apply tax rates tab — PRD 11 §10.4 / Phase 3) ────────────────

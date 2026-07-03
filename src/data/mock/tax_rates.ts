@@ -37,6 +37,12 @@ export const tax_rates: TaxRateSeed[] = [
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-10T09:00:00Z",
+        // Effective window (Figma 7769:118654) — a definite year the
+        // rate applies. `Services VAT` is the flagship rate; showing
+        // both dates lets the demo render the "DD/MM/YYYY - DD/MM/YYYY"
+        // format on the list.
+        valid_from:  "2026-01-01",
+        valid_until: "2026-12-31",
     },
     {
         id: "tax_exported_services",
@@ -48,6 +54,8 @@ export const tax_rates: TaxRateSeed[] = [
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-11T09:00:00Z",
+        // Open-ended future — the list will render "01/02/2026 - Ongoing".
+        valid_from: "2026-02-01",
     },
     {
         id: "tax_financial_services",
@@ -59,6 +67,8 @@ export const tax_rates: TaxRateSeed[] = [
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-12T09:00:00Z",
+        // No time constraint — the list will render "—". Demonstrates the
+        // "always-on" bucket admins see in real deployments.
     },
     {
         id: "tax_pay_rate",
@@ -70,5 +80,7 @@ export const tax_rates: TaxRateSeed[] = [
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-15T09:00:00Z",
+        valid_from:  "2026-01-01",
+        valid_until: "2027-12-31",
     },
 ];
