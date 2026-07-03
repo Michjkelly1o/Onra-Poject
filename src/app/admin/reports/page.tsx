@@ -4,42 +4,26 @@
 // Onra Studio — Reports landing (/admin/reports)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma 6755:314471 — Reports module landing. Five category cards stacked
-// vertically; each card lists the individual reports inside that category.
-// Clicking a report item navigates to its detail page (Phase 2 — built one
-// at a time).
+// Six categories per the Excel spec's Sheet 1:
+//   Financial · Membership & Package · Client / Customer ·
+//   Activity / Class · Staff / Instructor · Marketing
 //
-// Layout per Figma:
-//   • Page chrome ("Reports" title + bell) comes from <Header /> (admin layout)
-//   • Body: vertical stack of 5 cards, 24px gap, full content width
-//   • Card: left = featured icon + title + description · right = menu list
-//   • Menu items separated by 1px dividers (#e4e7ec), each row clickable
-//
-// Phase 1 (this file): the landing view. Every report item shows a "coming
-// soon" toast on click — the slug is already wired so swapping to a real
-// router.push() per detail page is a one-line change when each detail
-// page lands.
+// Every item is a plain link. Clicking navigates to /reports/{slug}.
+// Built reports render on the shell. Unbuilt slugs 404 naturally —
+// the client sees the full catalogue that's coming (matches the Excel
+// scope) and knows what's still queued.
 
 import { useRouter } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
 import {
-    BankNote01, CreditCard02, Activity, User01, CoinsSwap02,
+    BankNote01, CreditCard02, Activity, User01, Users01, Announcement01,
 } from "@untitledui/icons";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-import { useAppStore } from "@/lib/store";
-
-// ─── Category model ────────────────────────────────────────────────────────
-//
-// `slug` is the URL fragment we'll eventually mount detail pages under
-// (e.g. `/admin/reports/total-sales`). `ready` flips to true once the
-// corresponding detail page is built — at that point the row navigates
-// instead of toasting.
 
 interface ReportItem {
     slug: string;
     label: string;
-    ready?: boolean;
 }
 
 interface ReportCategory {
@@ -50,82 +34,94 @@ interface ReportCategory {
     items: ReportItem[];
 }
 
-// Item `ready: true` means the detail page is built on the new shell and
-// routes via `router.push(/reports/<slug>)`. Any item without `ready`
-// fires the "coming soon" toast — kept intentionally so the client sees
-// the full report catalogue and knows what's still queued.
+// Category structure + item list mirror new-prd/Onra_Reporting.xlsx
+// (Sheet 1 · Report Catalogue). Order preserved. Retail's 2 reports
+// are skipped per plan (see new-prd/reports-implementation-plan.md §1).
 const CATEGORIES: ReportCategory[] = [
     {
         id: "financial",
         title: "Financial reports",
         description:
-            "Track your studio's financial performance — sales, refunds, discounts, gift cards, tax, revenue recognition, and per-visit / per-member economics.",
+            "Track studio performance — total sales, sales by category, sales by item, payments, refunds, discounts, gift cards, tax, revenue recognition, and per-visit / per-member economics.",
         icon: BankNote01,
         items: [
-            { slug: "total-sales",         label: "Total sales (orders)",     ready: true },
-            { slug: "sales-by-category",   label: "Sales by category",        ready: true },
-            { slug: "sales-by-item",       label: "Sales by item",            ready: true },
-            { slug: "payments",            label: "Payments",                 ready: true },
-            { slug: "refunds",             label: "Refunds",                  ready: true },
-            { slug: "discounts",           label: "Discounts",                ready: true },
-            { slug: "gift-cards",          label: "Gift cards",               ready: true },
-            { slug: "tax-vat-export",      label: "Tax / VAT export",         ready: true },
-            { slug: "revenue-recognition", label: "Revenue recognition",      ready: true },
-            { slug: "revenue-per-class",   label: "Revenue per class / visit", ready: true },
+            { slug: "total-sales",         label: "Total sales (orders)"      },
+            { slug: "sales-by-category",   label: "Sales by category"         },
+            { slug: "sales-by-item",       label: "Sales by item"             },
+            { slug: "payments",            label: "Payments"                  },
+            { slug: "refunds",             label: "Refunds"                   },
+            { slug: "discounts",           label: "Discounts"                 },
+            { slug: "gift-cards",          label: "Gift cards"                },
+            { slug: "tax-vat-export",      label: "Tax / VAT export"          },
+            { slug: "revenue-recognition", label: "Revenue recognition"       },
+            { slug: "revenue-per-class",   label: "Revenue per class / visit" },
         ],
     },
     {
-        id: "memberships",
-        title: "Membership & package reports",
+        id: "membership_package",
+        title: "Membership & Package reports",
         description:
-            "Monitor active plans, intro offers, plan changes, and recurring revenue. See who upgraded, who downgraded, and what MRR/ARPM look like month-over-month.",
+            "Active plans, frozen packages, intro offers, plan changes, MRR, ARPM. See who upgraded, who downgraded, and what recurring revenue looks like month-over-month.",
         icon: CreditCard02,
         items: [
-            { slug: "memberships-packages", label: "Memberships & packages",  ready: true },
-            { slug: "intro-offers",         label: "Intro offers",            ready: true },
-            { slug: "upgrades-downgrades",  label: "Upgrades & downgrades",   ready: true },
-            { slug: "mrr",                  label: "MRR — Monthly Recurring Revenue", ready: true },
-            { slug: "arpm",                 label: "ARPM — Avg Revenue Per Member", ready: true },
-        ],
-    },
-    {
-        id: "activity",
-        title: "Activity reports",
-        description:
-            "Bookings, class attendance, cancellations, and no-shows across your studio.",
-        icon: Activity,
-        items: [
-            { slug: "bookings-by-class-events", label: "Bookings by class events" },
-            { slug: "bookings-by-customer",     label: "Bookings by customer"     },
-            { slug: "all-cancellations",        label: "All cancellations"        },
-            { slug: "all-no-shows",             label: "All no shows"             },
-            { slug: "all-bookings",             label: "All bookings"             },
-            { slug: "instructor-attendance",    label: "Instructor attendance"    },
+            { slug: "memberships-packages", label: "Memberships & packages"           },
+            { slug: "frozen",               label: "Frozen packages"                  },
+            { slug: "intro-offers",         label: "Intro offers"                     },
+            { slug: "upgrades-downgrades",  label: "Upgrades & downgrades"            },
+            { slug: "mrr",                  label: "MRR — Monthly Recurring Revenue" },
+            { slug: "arpm",                 label: "ARPM — Avg Revenue Per Member"   },
         ],
     },
     {
         id: "customer",
-        title: "Customer reports",
+        title: "Client / Customer reports",
         description:
-            "Understand how customers interact with your studio. Attendance patterns, retention, active vs inactive, referrals.",
+            "Understand how customers interact with your studio — active vs inactive, sign-ups, movement, churn, retention, win-back.",
         icon: User01,
         items: [
-            { slug: "attendance-frequency",  label: "Attendance frequency"     },
-            { slug: "retention",             label: "Retention"                },
-            { slug: "active-vs-inactive",    label: "Active vs inactive users" },
-            { slug: "top-services-used",     label: "Top services used"        },
-            { slug: "referral",              label: "Referral"                 },
+            { slug: "customer-data",       label: "Customer data"        },
+            { slug: "member-movement",     label: "Member movement"      },
+            { slug: "retention-churn",     label: "Retention & churn"    },
+            { slug: "win-back",            label: "Win-back"             },
         ],
     },
     {
-        id: "frozen",
-        title: "Frozen package",
+        id: "class",
+        title: "Activity / Class reports",
         description:
-            "Currently-frozen memberships and packages — freeze source, days-so-far, plan value at risk.",
-        icon: CoinsSwap02,
+            "Bookings, class performance, cancellations, no-shows, and the top classes / services across the studio.",
+        icon: Activity,
         items: [
-            { slug: "frozen",        label: "All frozen packages", ready: true },
-            { slug: "freeze-impact", label: "Freeze impact" },
+            { slug: "bookings",              label: "Bookings"                },
+            { slug: "cancellations-noshows", label: "Cancellations & no-shows" },
+            { slug: "class-performance",     label: "Class performance"       },
+            { slug: "top-classes-services",  label: "Top classes & services"  },
+        ],
+    },
+    {
+        id: "staff",
+        title: "Staff / Instructor reports",
+        description:
+            "Instructor performance and staff attendance. Owner / manager / payroll access only.",
+        icon: Users01,
+        items: [
+            { slug: "instructor-performance", label: "Instructor performance" },
+            { slug: "staff-attendance",       label: "Staff attendance"       },
+        ],
+    },
+    {
+        id: "marketing",
+        title: "Marketing reports",
+        description:
+            "Leads, campaigns, promos, referrals, and acquisition efficiency — the pipeline into paying members.",
+        icon: Announcement01,
+        items: [
+            { slug: "referrals",              label: "Referrals"              },
+            { slug: "promo-redemptions",      label: "Promo redemptions"      },
+            { slug: "campaign-performance",   label: "Campaign performance"   },
+            { slug: "lead-data",              label: "Lead data"              },
+            { slug: "lead-conversion",        label: "Lead conversion"        },
+            { slug: "acquisition-efficiency", label: "Acquisition efficiency" },
         ],
     },
 ];
@@ -134,24 +130,12 @@ const CATEGORIES: ReportCategory[] = [
 
 export default function ReportsPage() {
     const router = useRouter();
-    const showToast = useAppStore(s => s.showToast);
 
-    function handleSelect(category: ReportCategory, item: ReportItem) {
-        if (item.ready) {
-            // Report detail pages live at the root `/reports/<slug>` so they
-            // render full-bleed (no admin sidebar / header), matching the
-            // Figma "X close" chrome.
-            router.push(`/reports/${item.slug}`);
-            return;
-        }
-        // Detail page not built yet — surface a clear "in progress" toast so
-        // the admin knows the link is real, just unfinished, instead of
-        // bouncing to a 404 mid-demo.
-        showToast(
-            "Report coming soon",
-            `${item.label} (${category.title}) is being built.`,
-            "success",
-        );
+    function handleSelect(item: ReportItem) {
+        // Every item routes to /reports/{slug}. Built ones render on the
+        // shell; unbuilt slugs 404 naturally — the client sees the full
+        // Excel catalogue on the landing.
+        router.push(`/reports/${item.slug}`);
     }
 
     return (
@@ -160,7 +144,7 @@ export default function ReportsPage() {
                 <CategoryCard
                     key={category.id}
                     category={category}
-                    onSelect={item => handleSelect(category, item)}
+                    onSelect={handleSelect}
                 />
             ))}
         </div>
@@ -194,25 +178,16 @@ function CategoryCard({
                 </div>
             </div>
 
-            {/* Right — report items as a divider-separated list. Built
-                items surface a "New" chip so testers can see at a glance
-                which reports route to the new centralized shell. */}
+            {/* Right — report items as a divider-separated list */}
             <ul className="flex-1 min-w-0 flex flex-col rounded-[12px] overflow-hidden py-1">
                 {category.items.map((item, idx) => (
                     <li key={item.slug} className="flex flex-col w-full">
                         <button
                             type="button"
                             onClick={() => onSelect(item)}
-                            className="w-full text-left px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors flex items-center gap-2"
+                            className="w-full text-left px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors text-[14px] font-medium leading-[20px] text-[#344054]"
                         >
-                            <span className="text-[14px] font-medium leading-[20px] text-[#344054] flex-1 min-w-0 truncate">
-                                {item.label}
-                            </span>
-                            {item.ready && (
-                                <span className="shrink-0 inline-flex items-center justify-center h-[20px] px-2 rounded-full bg-[#e9fff3] border-1 border-[#7ba08c] text-[11px] font-semibold text-[#065f46] tracking-wide">
-                                    NEW
-                                </span>
-                            )}
+                            {item.label}
                         </button>
                         {idx < category.items.length - 1 && (
                             <div className="h-px bg-[#e4e7ec] my-1" />

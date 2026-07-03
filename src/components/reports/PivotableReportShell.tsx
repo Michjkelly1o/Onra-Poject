@@ -1,29 +1,29 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Reports · shared shell (rewrite v2)
+// Onra Studio — Reports · shared shell (rewrite v3 — matches ReportShell)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Reuses the existing report chrome (X close header · summary top-right ·
-// toolbar row of dropdowns · sortable table · pagination). Every button in
-// the toolbar is a DROPDOWN matching the Onra DS style used by
-// SelectColumnDropdown / MultiSelectFilterDropdown / DateRangeFilter.
+// Chrome copied line-for-line from ReportShell (the existing per-report
+// shell used by every legacy /reports/{slug} page). NO deviations:
 //
-// Client's two new asks (the whole point of the rewrite):
-//   1. Grouping by PERIOD  — dropdown (None / Day / Week / Month / Quarter / Year).
-//                            Renders a pivot table with per-period totals + a
-//                            "Period change" line under the column totals row.
-//   2. Grouping by TYPE    — dropdown (None + report.dimensions[]).
-//                            When Period !== None, drives the row axis of the
-//                            pivot. When Period === None, groups the flat list.
+//   • Header (h-72): X close + title only. NO border-bottom.
+//   • Body: overflow-y-auto · px-6 pb-6.
+//   • Top row: LEFT = summary block ("Total" caption + "N records · date
+//     range · [by period]"). RIGHT = toolbar buttons.
+//   • Table: min-h-[600px], no card chrome, sortable header, one border-b
+//     under the header row only.
+//   • Pagination at the bottom (shared @/components/ui/Pagination).
 //
-// Refund model (client rule #10 — enforced by selectors, not by this shell):
-// same-day pre-settle refunds ARE voids and never appear here; later refunds
-// land in THEIR OWN period as negative amounts. Past months never restate.
+// The two client asks that DIFFER from ReportShell:
+//   1. Grouping by PERIOD (Week / Month / Quarter / etc). New dropdown in
+//      the toolbar. When != None, table swaps to pivot mode.
+//   2. Grouping by TYPE (Category / Channel / etc). New dropdown in the
+//      toolbar — drives the row axis in pivot mode; ignored in list mode.
 //
-// The 16+ pages that mount this shell pass a ReportDefinition (from
-// src/config/reports/*.ts) + a pre-mapped row array. This file owns the
-// entire visual layer.
+// Refund model (client rule #10 — enforced upstream by resolveLedger):
+// same-day pre-settle refunds are VOIDS (both rows erased); later refunds
+// land as negative rows in THEIR OWN period. Past never restates.
 
 import * as React from "react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -36,6 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Pagination } from "@/components/ui/Pagination";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { pivotRows, periodLabelFor } from "@/lib/reports/pivot";
 import {
@@ -60,6 +61,9 @@ export interface PivotableReportShellProps {
     branchField?: string;
     /** X-close target. Defaults to "/admin/reports". */
     backHref?: string;
+    /** Optional slot rendered to the right of the toolbar buttons. Rare —
+     *  most reports don't need it (kept for the legacy Total Sales "Export
+     *  invoice" split button). */
     toolbarRight?: React.ReactNode;
 }
 
@@ -75,10 +79,6 @@ const PERIOD_LABEL: Record<PeriodKey, string> = {
 };
 
 // ─── Date-range → concrete ISO bounds resolver ────────────────────────────
-//
-// The DateRangeFilter emits quick-option labels ("This year", "Last 30
-// days", etc); the shell resolves them into an inclusive [fromISO, toISO]
-// window used for row filtering.
 
 interface DateRangeISO { fromISO: string; toISO: string; label: string; }
 function iso(d: Date): string {
@@ -91,9 +91,9 @@ function addDays(d: Date, n: number): Date { const c = new Date(d); c.setDate(c.
 function resolveDateFilter(f: DateFilter | undefined): DateRangeISO {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     if (!f) {
-        const first = new Date(today.getFullYear(), 0, 1);
-        const last  = new Date(today.getFullYear(), 11, 31);
-        return { fromISO: iso(first), toISO: iso(last), label: "This year" };
+        // Default matches ReportShell: last 30 days
+        const from = addDays(today, -29);
+        return { fromISO: iso(from), toISO: iso(today), label: "Last 30 days" };
     }
     if (f.type === "custom") return { fromISO: iso(f.from), toISO: iso(f.to), label: f.label };
     const L = f.label;
@@ -128,13 +128,10 @@ function resolveDateFilter(f: DateFilter | undefined): DateRangeISO {
         const last  = new Date(today.getFullYear() - 1, 11, 31);
         return { fromISO: iso(first), toISO: iso(last), label: L };
     }
-    return { fromISO: iso(firstThisYear), toISO: iso(lastThisYear), label: L || "This year" };
+    return { fromISO: iso(addDays(today, -29)), toISO: iso(today), label: L || "Last 30 days" };
 }
 
 // ─── Column visibility persistence ────────────────────────────────────────
-//
-// Per-report key in localStorage so testers' visible-column choices survive
-// refresh + tab close. Falls back to `!hiddenByDefault` on the report def.
 
 const COL_STORAGE_PREFIX = "onra-reports";
 function loadColVisibility(reportId: string, columns: readonly ColumnDef[]): Set<string> {
@@ -169,9 +166,9 @@ function formatCell(value: unknown, kind: ColumnDef["kind"]): string {
     return String(value);
 }
 
-// ─────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════
 // The shell
-// ─────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════
 
 export function PivotableReportShell({
     report, rows: allRows, branches,
@@ -181,13 +178,11 @@ export function PivotableReportShell({
 }: PivotableReportShellProps) {
     const router = useRouter();
 
-    // Default period + measure. Period defaults to "none" so every report
-    // opens on flat list; user picks a grouping to switch to pivot.
     const defaultPeriod: PeriodKey =
         report.periods.includes("none") ? "none" : report.periods[0] ?? "none";
 
     const [period, setPeriod] = useState<PeriodKey>(defaultPeriod);
-    const [dimIdx, setDimIdx] = useState<number>(-1); // -1 = None
+    const [dimIdx, setDimIdx] = useState<number>(-1);   // -1 = None
     const [meaIdx, setMeaIdx] = useState<number>(0);
     const [dateFilter, setDateFilter] = useState<DateFilter | undefined>(undefined);
     const [visibleBranchIds, setVisibleBranchIds] = useState<Set<string>>(
@@ -198,11 +193,13 @@ export function PivotableReportShell({
     );
     useEffect(() => { saveColVisibility(report.id, visibleCols); }, [report.id, visibleCols]);
 
-    // Sort state (list mode only).
+    // List-mode sort + pagination (state kept but ignored in pivot mode).
     const [sortKey, setSortKey] = useState<string | null>(null);
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+    const [pageSize, setPageSize] = useState(10);
+    const [page, setPage] = useState(1);
 
-    // ─ Filter rows: branch + date range ─────────────────────────────────
+    // ─ Row filter (branch + date range) ─────────────────────────────────
     const dateISO = useMemo(() => resolveDateFilter(dateFilter), [dateFilter]);
     const periodField = report.periodField ?? "createdAtISO";
     const dimension = dimIdx >= 0 ? report.dimensions[dimIdx] ?? null : null;
@@ -239,13 +236,13 @@ export function PivotableReportShell({
         return copy;
     }, [filteredRows, period, sortKey, sortDir, report.columns]);
 
-    // ─ Pivot computation ────────────────────────────────────────────────
+    // Pivot.
     const pivot = useMemo(() => {
         if (period === "none" || !measure) return null;
         return pivotRows(filteredRows, { periodField, period, dimension, measure });
     }, [filteredRows, period, periodField, dimension, measure]);
 
-    // ─ Header summary line ──────────────────────────────────────────────
+    // Summary text ("N records · date range · by month").
     const summaryText = useMemo(() => {
         const count = filteredRows.length;
         const parts: string[] = [];
@@ -255,10 +252,11 @@ export function PivotableReportShell({
         return parts.join(" · ");
     }, [filteredRows.length, dateISO.label, period]);
 
-    // ─ Export handlers ─────────────────────────────────────────────────
+    // Export handlers.
     function buildFilename(ext: "csv" | "xlsx"): string {
         return `${report.id}_${dateISO.fromISO}_${dateISO.toISO}.${ext}`;
     }
+    function stamp(m: ExportMetadata): ExportMetadata { return { ...m, exportedAtISO: new Date().toISOString() }; }
     function buildMetadata(): ExportMetadata {
         const activeBranches = branches.filter(b => visibleBranchIds.has(b.id)).map(b => b.name);
         const locFilter = activeBranches.length === branches.length
@@ -270,11 +268,10 @@ export function PivotableReportShell({
             filters:     `Location: ${locFilter}`,
             period:      period === "none" ? "None (list)" : PERIOD_LABEL[period],
             breakdown:   dimension?.label ?? "None",
-            exportedAtISO: "",   // resolved on click — see below
+            exportedAtISO: "",
             rowCount:    period === "none" ? filteredRows.length : (pivot?.rowKeys.length ?? 0),
         };
     }
-    function stamp(m: ExportMetadata): ExportMetadata { return { ...m, exportedAtISO: new Date().toISOString() }; }
     function handleExportCsv() {
         const cols = report.columns.filter(c => visibleCols.has(c.key));
         if (period === "none" || !pivot) {
@@ -282,10 +279,7 @@ export function PivotableReportShell({
             triggerCsvDownload(csv, buildFilename("csv"));
         } else {
             const colHeaders = pivot.colKeys.map(k => periodLabelFor(k, period, period === "month"));
-            const csv = buildPivotCsv({
-                rowHeader: dimension?.label ?? "All",
-                colHeaders, pivot, filename: buildFilename("csv"),
-            });
+            const csv = buildPivotCsv({ rowHeader: dimension?.label ?? "All", colHeaders, pivot, filename: buildFilename("csv") });
             triggerCsvDownload(csv, buildFilename("csv"));
         }
     }
@@ -300,14 +294,13 @@ export function PivotableReportShell({
                 rowHeader: dimension?.label ?? "All",
                 colHeaders, pivot,
                 filename: buildFilename("xlsx"),
-                meta,
-                sheetName: report.title,
+                meta, sheetName: report.title,
                 valueKind: measure?.kind === "number" ? "number" : "currency",
             });
         }
     }
 
-    // ─ Toggle helpers ────────────────────────────────────────────────
+    // Toggle helpers.
     function toggleCol(key: string) {
         setVisibleCols(prev => {
             const next = new Set(prev);
@@ -332,117 +325,132 @@ export function PivotableReportShell({
         setSortKey(null); setSortDir("desc");
     }
 
-    // ─ Derived ─────────────────────────────────────────────────────────
+    // Pagination clamp for list mode.
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+    const clampedPage = Math.min(Math.max(1, page), totalPages);
+    const pageRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
     const visibleColDefs = report.columns.filter(c => visibleCols.has(c.key));
     const isPivot = period !== "none" && !!pivot;
-    const dimensionLabel = dimension?.label ?? "None";
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* ── Header (X close · title · summary right) ────────────── */}
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0 border-b border-[#e4e7ec]">
+            {/* ── Header — X close · title. NO border-bottom. ────────── */}
+            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(backHref)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{report.title}</h1>
-                <div className="ml-auto flex items-center gap-3">
-                    <span className="text-[14px] leading-[20px] text-[#667085]">{summaryText}</span>
-                    {toolbarRight}
-                </div>
             </div>
 
-            {/* ── Body ────────────────────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto">
-                {/* Toolbar row */}
-                <div className="px-6 py-4 flex items-center gap-3 flex-wrap">
-                    {/* Period */}
-                    {report.type === "lookback" && report.periods.length > 1 && (
-                        <SingleSelectDropdown
-                            icon={CalendarPlus01}
-                            label="Period"
-                            active={period !== "none"}
-                            options={report.periods.map(p => ({ value: p, label: PERIOD_LABEL[p] }))}
-                            value={period}
-                            onChange={v => setPeriod(v as PeriodKey)}
-                        />
-                    )}
+            {/* ── Body ─────────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+                {/* Top row — summary (left) · toolbar (right). */}
+                <div className="flex items-end justify-between gap-6 py-4 flex-wrap">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[14px] leading-[20px] text-[#667085]">Total</p>
+                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{summaryText}</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap justify-end">
+                        {/* Period */}
+                        {report.type === "lookback" && report.periods.length > 1 && (
+                            <SingleSelectDropdown
+                                icon={CalendarPlus01}
+                                label="Period"
+                                active={period !== "none"}
+                                options={report.periods.map(p => ({ value: p, label: PERIOD_LABEL[p] }))}
+                                value={period}
+                                onChange={v => { setPeriod(v as PeriodKey); setPage(1); }}
+                            />
+                        )}
 
-                    {/* Break down by */}
-                    {report.dimensions.length > 0 && (
-                        <SingleSelectDropdown
-                            icon={Grid01}
-                            label="Break down by"
-                            active={dimIdx >= 0}
-                            options={[
-                                { value: "-1", label: "None" },
-                                ...report.dimensions.map((d, i) => ({ value: String(i), label: d.label })),
-                            ]}
-                            value={String(dimIdx)}
-                            onChange={v => setDimIdx(Number(v))}
-                        />
-                    )}
+                        {/* Break down by */}
+                        {report.dimensions.length > 0 && (
+                            <SingleSelectDropdown
+                                icon={Grid01}
+                                label="Break down by"
+                                active={dimIdx >= 0}
+                                options={[
+                                    { value: "-1", label: "None" },
+                                    ...report.dimensions.map((d, i) => ({ value: String(i), label: d.label })),
+                                ]}
+                                value={String(dimIdx)}
+                                onChange={v => setDimIdx(Number(v))}
+                            />
+                        )}
 
-                    {/* Measure */}
-                    {report.measures.length > 1 && (
-                        <SingleSelectDropdown
-                            icon={CurrencyDollar}
-                            label=""
-                            active={false}
-                            options={report.measures.map((m, i) => ({ value: String(i), label: m.label }))}
-                            value={String(meaIdx)}
-                            onChange={v => setMeaIdx(Number(v))}
-                        />
-                    )}
+                        {/* Measure */}
+                        {report.measures.length > 1 && (
+                            <SingleSelectDropdown
+                                icon={CurrencyDollar}
+                                label=""
+                                active={false}
+                                options={report.measures.map((m, i) => ({ value: String(i), label: m.label }))}
+                                value={String(meaIdx)}
+                                onChange={v => setMeaIdx(Number(v))}
+                            />
+                        )}
 
-                    {/* Select column — flat mode only */}
-                    {!isPivot && (
-                        <CheckListDropdown
-                            icon={Columns01}
-                            label="Select column"
-                            options={report.columns.map(c => ({ value: c.key, label: c.label }))}
-                            value={visibleCols}
-                            onToggle={toggleCol}
-                        />
-                    )}
+                        {/* Select column — flat mode only */}
+                        {!isPivot && (
+                            <CheckListDropdown
+                                icon={Columns01}
+                                label="Select column"
+                                options={report.columns.map(c => ({ value: c.key, label: c.label }))}
+                                value={visibleCols}
+                                onToggle={toggleCol}
+                            />
+                        )}
 
-                    {/* Select location — only when > 1 branch scope */}
-                    {branches.length > 1 && (
-                        <CheckListDropdown
-                            icon={MarkerPin01}
-                            label="Select location"
-                            options={branches.map(b => ({ value: b.id, label: b.name }))}
-                            value={visibleBranchIds}
-                            onToggle={toggleBranch}
-                        />
-                    )}
+                        {/* Select location — only when > 1 branch scope */}
+                        {branches.length > 1 && (
+                            <CheckListDropdown
+                                icon={MarkerPin01}
+                                label="Select location"
+                                options={branches.map(b => ({ value: b.id, label: b.name }))}
+                                value={visibleBranchIds}
+                                onToggle={toggleBranch}
+                            />
+                        )}
 
-                    {/* Date range */}
-                    <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
+                        <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
 
-                    {/* Push export to the right */}
-                    <div className="ml-auto" />
+                        {toolbarRight}
 
-                    {/* Export — green primary, matching existing ExportDropdown */}
-                    <ExportInlineDropdown onExcel={handleExportXlsx} onCsv={handleExportCsv} />
+                        {/* Export — green primary */}
+                        <ExportInlineDropdown onExcel={handleExportXlsx} onCsv={handleExportCsv} />
+                    </div>
                 </div>
 
-                {/* Body — pivot OR list */}
+                {/* Body — pivot OR list. */}
                 {isPivot ? (
                     <PivotTable
                         pivot={pivot!}
                         period={period}
-                        rowHeader={dimensionLabel === "None" ? "Total" : dimensionLabel}
+                        rowHeader={(dimension?.label ?? "Total")}
                         measureKind={measure?.kind ?? "currency"}
                     />
                 ) : (
                     <ListTable
-                        rows={sortedRows}
+                        rows={pageRows}
+                        totalRowSource={sortedRows}
                         columns={visibleColDefs}
                         sortKey={sortKey}
                         sortDir={sortDir}
                         onToggleSort={toggleSort}
+                    />
+                )}
+
+                {/* Pagination — list mode only (pivot mode shows every group). */}
+                {!isPivot && sortedRows.length > 0 && (
+                    <Pagination
+                        page={clampedPage}
+                        total={sortedRows.length}
+                        pageSize={pageSize}
+                        onPage={setPage}
+                        onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 )}
             </div>
@@ -451,13 +459,8 @@ export function PivotableReportShell({
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Single-select dropdown (Period · Break down · Measure)
+// Single-select dropdown  (Period · Break down · Measure)
 // ═════════════════════════════════════════════════════════════════════════
-//
-// Chrome mirrors SelectColumnDropdown / MultiSelectFilterDropdown exactly:
-// h-40 trigger · white bg · #d0d5dd border · icon-left · label · chevron.
-// When `active` (non-default value picked), the border swaps to the DS
-// green (#7ba08c 2px) — same treatment as FilterPill selected.
 
 type IconCmp = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -473,7 +476,6 @@ function SingleSelectDropdown({
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
         function handler(e: MouseEvent) {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -481,7 +483,6 @@ function SingleSelectDropdown({
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
-
     const currentLabel = options.find(o => o.value === value)?.label ?? "—";
 
     return (
@@ -493,11 +494,10 @@ function SingleSelectDropdown({
                     active ? "border-2 border-[#7ba08c]" : "border-1 border-[#d0d5dd]",
                 )}>
                 <Icon className={cn("w-4 h-4", active ? "text-[#658774]" : "text-[#667085]")} />
-                {label && <span className={cn(active ? "text-[#182230]" : "")}>{label}:</span>}
-                <span className={cn("font-semibold", active ? "text-[#182230]" : "text-[#344054]")}>{currentLabel}</span>
+                {label && <span>{label}:</span>}
+                <span className="font-semibold text-[#182230]">{currentLabel}</span>
                 <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
             </button>
-
             {open && (
                 <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px] max-h-[360px] overflow-y-auto">
                     {options.map(opt => (
@@ -520,13 +520,8 @@ function SingleSelectDropdown({
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Multi-select checkbox dropdown (Select column · Select location)
+// Multi-select checkbox dropdown  (Select column · Select location)
 // ═════════════════════════════════════════════════════════════════════════
-//
-// Same trigger chrome as SingleSelectDropdown but with a count badge.
-// Popover: Select all + checkbox list. Matches existing
-// SelectColumnDropdown / MultiSelectFilterDropdown line-for-line so all
-// toolbar dropdowns read as one family.
 
 function CheckListDropdown({
     icon: Icon, label, options, value, onToggle,
@@ -539,7 +534,6 @@ function CheckListDropdown({
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
         function handler(e: MouseEvent) {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -547,7 +541,6 @@ function CheckListDropdown({
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
-
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
@@ -562,7 +555,6 @@ function CheckListDropdown({
                 </span>
                 <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
             </button>
-
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[240px] max-h-[400px] overflow-y-auto">
                     {options.map(opt => (
@@ -619,28 +611,31 @@ function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: 
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// List table (Period = None) — flat sortable list
+// List table  (Period === None)  — mirrors ReportShell exactly
 // ═════════════════════════════════════════════════════════════════════════
 
 function ListTable({
-    rows, columns, sortKey, sortDir, onToggleSort,
+    rows, totalRowSource, columns, sortKey, sortDir, onToggleSort,
 }: {
     rows: readonly Record<string, unknown>[];
+    /** All filtered rows (unpaged) — used for the Total row so it stays
+     *  correct as the user pages through. */
+    totalRowSource: readonly Record<string, unknown>[];
     columns: ColumnDef[];
     sortKey: string | null;
     sortDir: "asc" | "desc";
     onToggleSort: (key: string) => void;
 }) {
-    if (rows.length === 0) {
+    if (totalRowSource.length === 0) {
         return (
-            <div className="relative min-h-[400px]">
+            <div className="relative flex-1 min-h-[400px]">
                 <EmptyState title="No records found" subtitle="Adjust the filters above to see results." />
             </div>
         );
     }
     if (columns.length === 0) {
         return (
-            <div className="relative min-h-[400px]">
+            <div className="relative flex-1 min-h-[400px]">
                 <EmptyState title="No columns selected" subtitle="Pick at least one column from the Select column dropdown." />
             </div>
         );
@@ -649,13 +644,13 @@ function ListTable({
     function sumFor(col: ColumnDef): number | null {
         if (col.kind !== "currency" && col.kind !== "number") return null;
         let s = 0;
-        for (const r of rows) { const n = Number(r[col.key]); if (Number.isFinite(n)) s += n; }
+        for (const r of totalRowSource) { const n = Number(r[col.key]); if (Number.isFinite(n)) s += n; }
         return s;
     }
 
     return (
-        <div className="px-6 pb-6">
-            <div className="overflow-x-auto">
+        <div className="flex flex-col min-h-[600px]">
+            <div className="flex-1 min-h-0 overflow-x-auto">
                 <table className="w-full border-collapse" style={{ minWidth: columns.reduce((s, c) => s + (c.minWidth ?? 140), 0) }}>
                     <thead>
                         <tr className="border-b border-[#e4e7ec]">
@@ -692,8 +687,8 @@ function ListTable({
                                 ))}
                             </tr>
                         ))}
-                        {/* Total row */}
-                        <tr className="bg-[#f9fafb] border-t border-[#e4e7ec]">
+                        {/* Total row (based on the ENTIRE filtered set, not just the page). */}
+                        <tr>
                             {columns.map((c, i) => {
                                 const total = sumFor(c);
                                 return (
@@ -731,15 +726,14 @@ function SortIconButton({ label, active, dir, align, onClick }: {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Pivot table (Period != None)
+// Pivot table  (Period !== None)
 // ═════════════════════════════════════════════════════════════════════════
 //
-// Matches the client's screenshot exactly:
+// Matches the client's mockup:
 //   Header row  : [rowHeader] · [period cols] · Total
 //   Data rows   : rowKey values → per-column totals + row total
-//   Column totals row (bold, gray bg) at the bottom
-//   Period change row (▲ green / ▼ red / — muted) underneath the totals
-// The pivot logic (bucket / dim / measure) is done by pivotRows() upstream.
+//   Column-totals row at the bottom (bold, no fill)
+//   Period-change row underneath (▲ green / ▼ red / — muted)
 
 function PivotTable({
     pivot, period, rowHeader, measureKind,
@@ -751,7 +745,7 @@ function PivotTable({
 }) {
     if (pivot.colKeys.length === 0 || pivot.rowKeys.length === 0) {
         return (
-            <div className="relative min-h-[400px]">
+            <div className="relative flex-1 min-h-[400px]">
                 <EmptyState title="No data to pivot" subtitle="Adjust the date range, break-down, or measure to see data." />
             </div>
         );
@@ -777,8 +771,8 @@ function PivotTable({
     }
 
     return (
-        <div className="px-6 pb-6">
-            <div className="overflow-x-auto">
+        <div className="flex flex-col min-h-[600px]">
+            <div className="flex-1 min-h-0 overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="border-b border-[#e4e7ec]">
@@ -793,7 +787,7 @@ function PivotTable({
                                     {periodLabelFor(ck, period, period === "month")}
                                 </th>
                             ))}
-                            <th className="px-6 py-3 text-right text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap bg-[#f9fafb]"
+                            <th className="px-6 py-3 text-right text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap"
                                 style={{ minWidth: 140 }}>
                                 Total
                             </th>
@@ -811,30 +805,26 @@ function PivotTable({
                                         {fmt(pivot.matrix[rk]?.[ck] ?? 0)}
                                     </td>
                                 ))}
-                                <td className="px-6 py-4 text-[14px] text-[#101828] text-right tabular-nums font-semibold whitespace-nowrap bg-[#f9fafb]">
+                                <td className="px-6 py-4 text-[14px] text-[#101828] text-right tabular-nums font-semibold whitespace-nowrap">
                                     {fmtTotal(pivot.rowTotals[rk] ?? 0)}
                                 </td>
                             </tr>
                         ))}
-
                         {/* Column totals row */}
-                        <tr className="border-t-2 border-[#e4e7ec] bg-white">
-                            <td className="px-6 py-4 text-[14px] font-semibold text-[#101828]">
-                                Total
-                            </td>
+                        <tr>
+                            <td className="px-6 py-4 text-[14px] font-semibold text-[#101828]">Total</td>
                             {pivot.colKeys.map(ck => (
                                 <td key={ck}
                                     className="px-6 py-4 text-[14px] font-semibold text-[#101828] text-right tabular-nums whitespace-nowrap">
                                     {fmtTotal(pivot.colTotals[ck] ?? 0)}
                                 </td>
                             ))}
-                            <td className="px-6 py-4 text-[14px] font-bold text-[#101828] text-right tabular-nums whitespace-nowrap bg-[#f9fafb]">
+                            <td className="px-6 py-4 text-[14px] font-bold text-[#101828] text-right tabular-nums whitespace-nowrap">
                                 {fmtTotal(pivot.grandTotal)}
                             </td>
                         </tr>
-
                         {/* Period-change delta row */}
-                        <tr className="bg-white">
+                        <tr>
                             <td className="px-6 py-3 text-[13px] text-[#475467]">
                                 {period === "month" ? "MoM change" : period === "week" ? "WoW change" : period === "quarter" ? "QoQ change" : period === "year" ? "YoY change" : "Period change"}
                             </td>
