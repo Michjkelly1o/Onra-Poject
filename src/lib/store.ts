@@ -1679,6 +1679,22 @@ export interface CustomerTransaction {
     createdAtISO: string;
     refundedAtISO?: string;
     refundMethod?: "cash" | "card";
+    // ── Reports v30 ledger fields (all optional — see _types.ts for
+    //     the full refund/void model documentation) ──
+    transactionType?: "sale" | "refund" | "void" | "write_off";
+    originalTransactionId?: string;
+    settlementISO?: string;
+    refundReason?: string;
+    taxTreatment?: "standard" | "zero_rated" | "exempt" | "out_of_scope";
+    staffId?: string;
+    cardType?: "visa" | "mastercard" | "amex";
+    paymentType?: "one_off" | "recurring";
+    failureReason?: string;
+    retryAttempt?: number;
+    recovered?: boolean;
+    recoveredISO?: string;
+    payoutId?: string;
+    processorFee?: number;
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -2144,6 +2160,21 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         createdAtISO: t.created_at,
         refundedAtISO: t.refunded_at,
         refundMethod: t.refund_method,
+        // ── Reports v30 ledger fields ───────────────────────────────
+        transactionType:       t.transaction_type,
+        originalTransactionId: t.original_transaction_id,
+        settlementISO:         t.settlement_iso,
+        refundReason:          t.refund_reason,
+        taxTreatment:          t.tax_treatment,
+        staffId:               t.staff_id,
+        cardType:              t.card_type,
+        paymentType:           t.payment_type,
+        failureReason:         t.failure_reason,
+        retryAttempt:          t.retry_attempt,
+        recovered:             t.recovered,
+        recoveredISO:          t.recovered_iso,
+        payoutId:              t.payout_id,
+        processorFee:          t.processor_fee,
     };
 }
 

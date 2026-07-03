@@ -528,6 +528,59 @@ export interface CustomerTransaction {
     refunded_at?: string;
     /** Method the refund was issued through (chosen in the Refund modal). */
     refund_method?: "cash" | "card";
+    // ── Reports v30 ledger fields (2026-07-04 rewrite — all optional so
+    //     historical seeds keep loading; existing readers unaffected) ──
+    //
+    // The reports module treats `customer_transactions` as an honest
+    // ledger. Every row's LEDGER KIND is described by `transaction_type`
+    // (default = "sale" when omitted, preserving legacy read semantics).
+    // Refunds + voids + write-offs live as SEPARATE rows linked back to
+    // the original sale via `original_transaction_id`. The refund model
+    // is documented in `new-prd/reports-implementation-plan.md` §2.7.
+    //
+    // Void vs Refund rule:
+    //   • Cancel on the SAME date as the sale AND settlement not yet
+    //     reached → transaction_type = "void". The reports helper
+    //     `resolveLedger` erases BOTH rows from every report — the
+    //     original sale is treated as if it never happened.
+    //   • Later cancel → transaction_type = "refund". The original sale
+    //     stays in its own period; the refund lands as a negative row in
+    //     the refund's own date's period. Past months never restate.
+    //
+    /** Ledger kind — sale / refund / void / write-off. Default (omitted)
+     *  is "sale" to preserve legacy row semantics. */
+    transaction_type?: "sale" | "refund" | "void" | "write_off";
+    /** For refund / void / write_off rows: the id of the sale being
+     *  reversed. Blank on regular sales. */
+    original_transaction_id?: string;
+    /** ISO 8601 — when the payment cleared with the processor. Drives
+     *  the void-vs-refund rule (unset OR equal to sale date + same day =
+     *  eligible for void). */
+    settlement_iso?: string;
+    /** Free-text reason recorded on refund (e.g. "membership relocation",
+     *  "duplicate charge"). */
+    refund_reason?: string;
+    /** VAT treatment for tax export report. Default (omitted) = "standard". */
+    tax_treatment?: "standard" | "zero_rated" | "exempt" | "out_of_scope";
+    /** Staff member who processed the transaction. Blank on self-service
+     *  online purchases. */
+    staff_id?: string;
+    /** Card scheme — Visa / Mastercard / Amex. Only set on card payments. */
+    card_type?: "visa" | "mastercard" | "amex";
+    /** One-off charge vs recurring subscription charge. Default = "one_off". */
+    payment_type?: "one_off" | "recurring";
+    /** Why a charge failed (Payments report). */
+    failure_reason?: string;
+    /** Retry attempt # on a failed recurring charge. */
+    retry_attempt?: number;
+    /** Whether a failed charge was later recovered on retry. */
+    recovered?: boolean;
+    /** ISO — when a failed charge recovered. */
+    recovered_iso?: string;
+    /** Processor payout batch this payment settled in. */
+    payout_id?: string;
+    /** Processor fee deducted from the payment. */
+    processor_fee?: number;
 }
 
 // ─── Products: Memberships & Packages ───────────────────────────────────────
