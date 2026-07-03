@@ -385,7 +385,7 @@ export function payrollBreakdownFor(
                             amount: fmt(baseAmount),
                         },
                         {
-                            component: `Attendance bonus (≤${payRate.condition.bonusThreshold})`,
+                            component: `Attendance bonus (≥${payRate.condition.bonusThreshold})`,
                             basis:  fmt(stats.totalAttendees),
                             rate:   fmt(bonusPerCustomer),
                             amount: fmt(bonusAmount),

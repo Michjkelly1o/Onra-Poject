@@ -55,6 +55,9 @@ export default function InstructorLayout({
                     <Sidebar
                         navItems={INSTRUCTOR_NAV_ITEMS}
                         accountHref="/instructor/account"
+                        // Instructors have no admin settings module — hide
+                        // the footer Settings chip so it doesn't leak in.
+                        showSettings={false}
                     />
                 </div>
 

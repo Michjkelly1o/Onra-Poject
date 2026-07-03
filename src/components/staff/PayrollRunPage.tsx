@@ -625,7 +625,16 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         const grossForRun = filteredRows
             .filter(r => r.status === "pending" && r.actualEntryId)
             .reduce((s, r) => s + r.payout, 0);
-        const withholdingForRun = Math.round(grossForRun * (payrollTaxRate / 100));
+        // Gate withholding on the SAME country flag the Process modal
+        // uses (`showPayrollTax`). GCC studios (UAE default) show no
+        // withholding, so the success toast + submitted modal must
+        // report Net = Gross — matching exactly what the confirm modal
+        // just displayed. Without this gate the receipt silently under-
+        // reported by the seeded 5% pay-rate tax even though the modal
+        // showed the full gross.
+        const withholdingForRun = showPayrollTax
+            ? Math.round(grossForRun * (payrollTaxRate / 100))
+            : 0;
         const totalForRun = Math.round(grossForRun) - withholdingForRun;
         const countForRun = pendingEntryIds.length;
         const periodLabel = monthYearLabel(range.from);

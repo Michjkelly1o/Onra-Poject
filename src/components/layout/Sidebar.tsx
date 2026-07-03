@@ -230,9 +230,15 @@ interface SidebarProps {
     /** Override the bottom user-menu "Account settings" link. Defaults
      *  to the admin account route. */
     accountHref?: string;
+    /** Whether to render the admin Settings chip (Business / Operations
+     *  / Customer dropdown) in the footer. Defaults to true for the
+     *  admin sidebar. The instructor layout passes `false` — instructors
+     *  have no admin settings module, so the chip must not leak onto
+     *  their sidebar. */
+    showSettings?: boolean;
 }
 
-export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
+export default function Sidebar({ navItems, accountHref, showSettings = true }: SidebarProps = {}) {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
@@ -557,12 +563,20 @@ export default function Sidebar({ navItems, accountHref }: SidebarProps = {}) {
                 block clear structure). Rule tone = #d0d5dd so it
                 stays visible without dominating. */}
             <div className="shrink-0 mt-1 px-3 pt-3 pb-3 flex flex-col gap-2">
-                <SidebarSettingsChip slim={slim} />
-                {/* Inset horizontal margin so the divider matches the
-                 *  section-break rule in the middle of the nav — both
-                 *  now stop short of the sidebar's edge instead of
-                 *  bleeding right up to it. */}
-                <div className="h-px bg-[#d0d5dd] mx-3 my-1" />
+                {/* Settings chip + its divider render only on surfaces
+                 *  that HAVE an admin settings module (admin sidebar).
+                 *  The instructor layout passes showSettings={false}, so
+                 *  the footer collapses to just the profile chip. */}
+                {showSettings && (
+                    <>
+                        <SidebarSettingsChip slim={slim} />
+                        {/* Inset horizontal margin so the divider matches
+                         *  the section-break rule in the middle of the
+                         *  nav — both now stop short of the sidebar's
+                         *  edge instead of bleeding right up to it. */}
+                        <div className="h-px bg-[#d0d5dd] mx-3 my-1" />
+                    </>
+                )}
                 <SidebarProfileChip
                     slim={slim}
                     avatarUrl={avatarUrl}
