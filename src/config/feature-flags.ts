@@ -51,10 +51,14 @@
 //   uncomment to disable that module while keeping its BottomNav item
 //   visible per the file convention.
 //
-//   DISABLED (customer): Appointments (`/customer/appointments`),
-//   Packages (`/customer/packages`), Profile (`/customer/profile`).
-//   BottomNav items stay visible per the file convention; clicking
-//   each one 404s until the module ships.
+//   DISABLED (customer): 3 sub-sections under Profile that aren't
+//   shipping in this push — Promo (`/customer/profile/promo`), Gift
+//   cards (`/customer/profile/gift-cards`, incl. redeem), and Invite
+//   friends (`/customer/profile/referrals`). Logout is a landing
+//   action rather than a route, so it needs no flag entry — the
+//   Profile landing handles it internally. Every other Profile
+//   sub-page (Information, My plan, Payment methods, Integrations,
+//   Notifications, Emergency contact, Timezone) is live.
 
 export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Point of Sale module ── (ENABLED — pushed)
@@ -235,7 +239,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/customer/classes",             // class detail + book/checkout/plans/waiver/guest/processing/success
 
     // ── Customer → Appointment booking flow ──
-    //"/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
+    "/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
 
     // ── Customer → Instructor profile ──
     //"/customer/instructors",         // public instructor profile detail
@@ -250,7 +254,18 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/customer/products",            // catalog + checkout/promo/processing/success + gift-card design picker
 
     // ── Customer → Profile / account ──
-    //"/customer/profile",             // account profile + edit
+    // The Profile landing + 7 sub-pages are live for this push. Three
+    // sub-sections stay 404'd until they ship — entries below. Logout
+    // sits on the landing as an action, not a route, so nothing to add.
+    //"/customer/profile",             // account profile + edit (landing + 7 live sub-pages)
+
+    // ── Customer → Profile sub-sections (3 disabled this push) ──
+    // Same file convention as the instructor block above: the row in
+    // the Profile landing stays visible; tapping it 404s until the
+    // sub-page ships. Re-enable by commenting the matching line.
+    "/customer/profile/promo",       // apply a promo code
+    "/customer/profile/gift-cards",  // gift cards list + redeem/[code] flow
+    "/customer/profile/referrals",   // invite friends / referral rewards
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning
