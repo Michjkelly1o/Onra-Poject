@@ -49,10 +49,11 @@ import {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Map the prototype's three legacy role buckets to the human-readable label
- *  shown in the "Role" row. Owner-tier users land on "Super admin" to match
- *  the Figma; instructor / member personas show their own label. */
+ *  shown in the "Role" row. The demo runs as the studio Owner, so the
+ *  admin persona surfaces as "Owner" (was "Super admin"); instructor /
+ *  member personas show their own label. */
 function roleDisplayName(role: User["role"]): string {
-    if (role === "admin") return "Super admin";
+    if (role === "admin") return "Owner";
     if (role === "instructor") return "Instructor";
     return "Member";
 }

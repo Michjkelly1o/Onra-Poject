@@ -26,7 +26,7 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { RowActions } from "@/components/patterns/RowActions";
 import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { Toast } from "@/components/ui/Toast";
-import { useAppStore, hourFloatFromTime, DEFAULT_BRANCH_ID, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
@@ -1413,7 +1413,9 @@ function SchedulePage() {
     const [monthYear, setMonthYear] = useState(TODAY_MONTH_YEAR);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [location, setLocation] = useState(DEFAULT_BRANCH_ID);
+    // "" = "All locations" — schedule opens on the union view across every
+    // active branch (see the widening logic below) instead of a specific one.
+    const [location, setLocation] = useState<string>("");
     const [popup, setPopup] = useState<{ cls: ClassInstance; anchor: { x: number; y: number } } | null>(null);
     const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 

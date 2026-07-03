@@ -69,12 +69,13 @@ const NAV_ITEMS: NavItemDef[] = [
     { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
     {
         // NEW PARENT GROUP — collapses the old standalone Marketing leaf,
-        // Promo (renamed Promo codes), and Referral (renamed Referral
-        // program) into one Marketing module. Routes are unchanged.
+        // Promo (renamed Promo codes → Promotions), and Referral
+        // (renamed Referral program) into one Marketing module. Routes
+        // are unchanged — only display labels reflect the new naming.
         label: "Marketing", icon: Announcement01, permission: "manage_marketing",
         children: [
             { label: "Campaigns",        href: "/admin/marketing"            },
-            { label: "Promo codes",      href: "/admin/products/promo-codes" },
+            { label: "Promotions",       href: "/admin/products/promo-codes" },
             { label: "Referral program", href: "/admin/settings/referral"    },
         ],
     },
@@ -128,7 +129,7 @@ function isUserMenuRoute(pathname: string): boolean {
 // `pathname`. Prevents two rows from lighting up when one item's href is a
 // prefix of another's — even across different parent groups.
 //
-// Example: a user on `/admin/products/promo-codes` (Marketing → Promo codes)
+// Example: a user on `/admin/products/promo-codes` (Marketing → Promotions)
 // must NOT also highlight Services & pricing → Memberships & packages
 // (`/admin/products`), because the latter is a prefix of the former. Per-
 // parent resolution can't catch this since each parent's resolver runs in

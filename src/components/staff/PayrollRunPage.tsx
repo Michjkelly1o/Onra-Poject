@@ -45,6 +45,7 @@ import {
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
+import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { explainPayrollRow } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
@@ -218,7 +219,7 @@ function MetricCard({ label, value, period, Icon }: {
 
 // ─── Process payroll confirm modal (Figma 4067-90235) ──────────────────────
 
-function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, onCancel, onConfirm }: {
+function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, showTax, onCancel, onConfirm }: {
     open: boolean;
     instructorCount: number;
     /** Sum of instructor payouts (what each instructor has EARNED
@@ -228,8 +229,14 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, onCan
     grossWages: number;
     /** Tax rate percentage applied — read live from the Tax module's
      *  "pay_rate" category rule (see `findActiveTaxRuleFor`). Falls
-     *  back to 0 when no active rule is configured. */
+     *  back to 0 when no active rule is configured. Ignored when
+     *  `showTax` is false. */
     taxRate: number;
+    /** True when the studio's country has personal income tax on
+     *  payroll — render the withholding line + subtract from total.
+     *  False for GCC studios (see `payrollTaxAppliesForCountry`):
+     *  the withholding row hides and Net = Gross. */
+    showTax: boolean;
     onCancel: () => void;
     onConfirm: () => void;
 }) {
@@ -237,7 +244,8 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, onCan
     // Honest math: withholding = wages × rate; Total = wages − withholding.
     // Rounded independently so the two lines sum to the same integer the
     // Total row shows (no off-by-one when the client tallies by hand).
-    const withholding = Math.round(grossWages * (taxRate / 100));
+    // When `showTax` is false we skip both — Net = Gross verbatim.
+    const withholding = showTax ? Math.round(grossWages * (taxRate / 100)) : 0;
     const netTotal    = Math.round(grossWages) - withholding;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -266,10 +274,12 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, onCan
                         <span className="text-[#667085]">Gross wages</span>
                         <span className="font-medium text-[#101828]">{aed(grossWages)}</span>
                     </div>
-                    <div className="flex items-center justify-between text-[14px]">
-                        <span className="text-[#667085]">Tax withholding (<span className="text-[#658774]">{taxRate}%</span>)</span>
-                        <span className="font-medium text-[#101828]">− {aed(withholding)}</span>
-                    </div>
+                    {showTax && (
+                        <div className="flex items-center justify-between text-[14px]">
+                            <span className="text-[#667085]">Tax withholding (<span className="text-[#658774]">{taxRate}%</span>)</span>
+                            <span className="font-medium text-[#101828]">− {aed(withholding)}</span>
+                        </div>
+                    )}
                     <div className="h-px w-full bg-[#e4e7ec]" />
                     <div className="flex items-center justify-between text-[14px]">
                         <span className="font-semibold text-[#344054]">Net payout</span>
@@ -423,6 +433,13 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     // active rule / rate is configured, mirroring `TaxSuffix`.
     const taxRules              = useAppStore(s => s.taxRules);
     const taxRates              = useAppStore(s => s.taxRates);
+    // Country-gated payroll tax — GCC studios (UAE by default) don't
+    // show a withholding line. See `payrollTaxAppliesForCountry` for
+    // the country list + rationale. Reading `businessProfile` live
+    // means editing Settings → Studio Profile → Country propagates
+    // here without a refresh.
+    const businessCountry       = useAppStore(s => s.businessProfile.country);
+    const showPayrollTax        = payrollTaxAppliesForCountry(businessCountry);
     const setPayrollEntriesStatus = useAppStore(s => s.setPayrollEntriesStatus);
     const showToast             = useAppStore(s => s.showToast);
 
@@ -710,10 +727,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                             <SortableHeader sortKey="payout" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>
                                                 <div className="flex flex-col gap-0.5">
                                                     <span>Instructor payout</span>
-                                                    <TaxSuffix
-                                                        category="pay_rate"
-                                                        className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap"
-                                                    />
+                                                    {showPayrollTax && (
+                                                        <TaxSuffix
+                                                            category="pay_rate"
+                                                            className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap"
+                                                        />
+                                                    )}
                                                 </div>
                                             </SortableHeader>
                                         </th>
@@ -786,6 +805,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     .filter(r => r.status === "pending" && r.actualEntryId)
                     .reduce((s, r) => s + r.payout, 0)}
                 taxRate={payrollTaxRate}
+                showTax={showPayrollTax}
                 onCancel={() => setConfirmOpen(false)}
                 onConfirm={confirmProcessPayroll}
             />

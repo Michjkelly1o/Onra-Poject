@@ -48,6 +48,7 @@ import {
     type Instructor, type ClassSchedule, type PayRate,
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
+import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
@@ -382,7 +383,7 @@ function exportPayoutReport(rows: ClassRow[], instructor: Instructor, periodLabe
 
 // ─── Sidebar earnings summary (Figma — Total earnings this month card) ────
 
-function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateName, payRateAmount, branchId }: {
+function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateName, payRateAmount, branchId, showTax }: {
     totalThisMonth: number;
     classesCount: number;
     classCap: number;
@@ -390,6 +391,10 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateNa
     branchId: string;
     payRateName: string;
     payRateAmount: string;
+    /** Country-gated: hide the TaxSuffix line for GCC studios (see
+     *  `payrollTaxAppliesForCountry`). Passed from the page-level flag
+     *  so a country change in Settings propagates here live. */
+    showTax: boolean;
 }) {
     const pct = classCap > 0 ? Math.min(100, Math.round((classesCount / classCap) * 100)) : 0;
     return (
@@ -397,7 +402,7 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateNa
             <div className="flex flex-col gap-1">
                 <p className="text-[13px] text-[#667085] leading-[18px]">Total earnings this month</p>
                 <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{aed(totalThisMonth)}</p>
-                <TaxSuffix category="pay_rate" branchId={branchId} />
+                {showTax && <TaxSuffix category="pay_rate" branchId={branchId} />}
             </div>
             <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
                 <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
@@ -450,6 +455,12 @@ export default function PayrollInstructorDetailPage({
     const branches               = useAppStore(s => s.branches);
     const assignInstructorPayRate = useAppStore(s => s.assignInstructorPayRate);
     const showToast              = useAppStore(s => s.showToast);
+    // Country-gated payroll tax UI (see `payrollTaxAppliesForCountry`).
+    // False for GCC studios (UAE default) — hides the TaxSuffix line
+    // on the earnings card. Read from businessProfile live so a country
+    // change in Settings propagates without a refresh.
+    const businessCountry        = useAppStore(s => s.businessProfile.country);
+    const showPayrollTax         = payrollTaxAppliesForCountry(businessCountry);
 
     const instructor = useMemo(
         () => instructors.find(i => i.id === instructorId),
@@ -625,7 +636,7 @@ export default function PayrollInstructorDetailPage({
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Instructor details</h1>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Payroll Details</h1>
             </div>
 
             {/* Body — canonical DetailPageShell wraps the 832px frame. */}
@@ -653,6 +664,7 @@ export default function PayrollInstructorDetailPage({
                                     payRateName={payRate?.name ?? "—"}
                                     payRateAmount={payRateAmount}
                                     branchId={ins.branchId}
+                                    showTax={showPayrollTax}
                                 />
 
                                 <div className="flex flex-col gap-4">

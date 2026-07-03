@@ -86,7 +86,7 @@ const CARDS: SettingsCard[] = [
             // back-links keep working.
             //
             // Referral program was previously listed here, but it now lives
-            // in the sidebar's Marketing group (Campaigns / Promo codes /
+            // in the sidebar's Marketing group (Campaigns / Promotions /
             // Referral program). Removed from this landing to avoid two
             // entry points for the same page. The route itself
             // (/admin/settings/referral) is unchanged.

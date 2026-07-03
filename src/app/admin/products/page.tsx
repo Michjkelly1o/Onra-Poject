@@ -47,7 +47,7 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
-    useAppStore, DEFAULT_BRANCH_ID,
+    useAppStore,
     type Membership, type Package, type Customer, type Branch,
 } from "@/lib/store";
 import { findActiveTaxRuleFor, categoryForProductType } from "@/lib/tax-calc";
@@ -743,7 +743,8 @@ export default function ProductsPage() {
 
     // ─── Local UI state ─────────────────────────────────────────────────────
     const [tab, setTab] = useState<TabId>("memberships");
-    const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
+    // "" = "All locations" — products default to the aggregate view.
+    const [branchId, setBranchId] = useState<string>("");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);

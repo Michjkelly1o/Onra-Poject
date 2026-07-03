@@ -26,7 +26,7 @@ import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { useAppStore, DEFAULT_BRANCH_ID, type MarketingItem } from "@/lib/store";
+import { useAppStore, type MarketingItem } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 
@@ -315,9 +315,8 @@ export default function MarketingListPage() {
     const branches = useAppStore(s => s.branches);
 
     const [search, setSearch] = useState("");
-    // Default to the user's primary branch — matches the POS / schedule /
-    // dashboard / products / promo pickers (all seed from DEFAULT_BRANCH_ID).
-    const [locationId, setLocationId] = useState(DEFAULT_BRANCH_ID);
+    // "" = "All locations" — marketing items default to the aggregate view.
+    const [locationId, setLocationId] = useState<string>("");
     const [filter, setFilter] = useState<MarketingFilter>(EMPTY_FILTER);
     const [filterOpen, setFilterOpen] = useState(false);
 

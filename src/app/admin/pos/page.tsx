@@ -48,7 +48,7 @@ import { RangeSlider } from "@/components/ui/RangeSlider";
 import { PosNewCustomerModal } from "@/components/pos/PosNewCustomerModal";
 import {
     useAppStore,
-    MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS, DEFAULT_BRANCH_ID,
+    MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS,
     validatePromoCode, canApplyCustomDiscount, maxCustomDiscountPct,
     type Customer, type PurchaseLineItem,
 } from "@/lib/store";
@@ -227,7 +227,9 @@ function POSInner() {
     // UI state
     const [activeTab, setActiveTab] = useState<TabId>("all");
     const [search, setSearch] = useState("");
-    const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
+    // "" = "All locations" — POS catalog opens on the union view; a
+    // specific branch can be picked when the sale is branch-scoped.
+    const [branchId, setBranchId] = useState<string>("");
     // Cart starts VISIBLE by default. Operators can still collapse it via
     // the `CartToggleButton` (the chevron rail to the left of the cart)
     // when they want a wider catalog view.

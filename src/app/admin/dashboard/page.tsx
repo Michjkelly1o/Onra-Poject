@@ -19,7 +19,7 @@ import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, DEFAULT_BRANCH_ID } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
@@ -373,7 +373,9 @@ function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
 export default function AdminDashboard() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"today" | "performance">("today");
-    const [location, setLocation] = useState<string>(DEFAULT_BRANCH_ID);
+    // "" = "All locations" — dashboard opens on the aggregate view so
+    // KPIs read like the full studio on first paint.
+    const [location, setLocation] = useState<string>("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
     const [widgetModalOpen, setWidgetModalOpen] = useState(false);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);

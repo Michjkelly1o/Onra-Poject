@@ -37,7 +37,7 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { RowActions } from "@/components/patterns/RowActions";
 import {
-    useAppStore, DEFAULT_BRANCH_ID,
+    useAppStore,
     type PayRate, type PayRateStatus, type PayRateType,
     computePayRateDisplay,
 } from "@/lib/store";
@@ -295,7 +295,8 @@ export default function PayRatePage() {
     const deletePayRatesAction = useAppStore(s => s.deletePayRates);
     const showToast          = useAppStore(s => s.showToast);
 
-    const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
+    // "" = "All locations" — pay rates default to the aggregate view.
+    const [branchId, setBranchId] = useState<string>("");
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<StatusFilter>(null);
     const [page, setPage] = useState(1);

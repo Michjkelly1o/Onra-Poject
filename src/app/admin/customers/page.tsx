@@ -30,7 +30,7 @@ import { Toast } from "@/components/ui/Toast";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
-import { useAppStore, DEFAULT_BRANCH_ID, type Customer } from "@/lib/store";
+import { useAppStore, type Customer } from "@/lib/store";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -484,7 +484,10 @@ export default function CustomersPage() {
     const showToast = useAppStore(s => s.showToast);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
-    const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
+    // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
+    // both start on the aggregate view so the module reads like the full
+    // studio on first paint, not a branch slice.
+    const [branchId, setBranchId] = useState<string>("");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);

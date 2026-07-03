@@ -305,10 +305,32 @@ export interface Customer {
     street_address?: string;
     /** Whether the customer linked a Google account for sign-in. */
     google_connected?: boolean;
-    /** Marketing-preference opt-ins shown on the Details tab. */
-    marketing_emails?: boolean;
-    marketing_sms?: boolean;
-    transactional_emails?: boolean;
+    // ── Marketing preferences (customer-detail "Details" tab) ────────────
+    //
+    // Two orthogonal axes captured in Figma 7748:61474:
+    //
+    //   1. CHANNELS — which delivery channels the customer opts into for
+    //      marketing content. Mirrors the admin Customer notifications
+    //      module's channel matrix (Email · WhatsApp · SMS · Push).
+    //   2. TOPICS   — which marketing content types they want to hear
+    //      about. Mirrors the admin "Marketing & promotions" notification
+    //      category rows one-for-one (studio_announcements,
+    //      new_class_launch, special_offers, promo_code_offers).
+    //
+    // A marketing message is delivered only when BOTH the topic is opted
+    // in AND at least one channel is opted in — the customer-side portal
+    // and admin's dispatch layer will read this pair when the two-way
+    // wiring lands. For now these fields are display-only on the admin
+    // Details tab; the customer-facing prefs UI + dispatch join land in
+    // a later phase.
+    marketing_channel_email?: boolean;
+    marketing_channel_whatsapp?: boolean;
+    marketing_channel_sms?: boolean;
+    marketing_channel_push?: boolean;
+    marketing_topic_studio_announcements?: boolean;
+    marketing_topic_new_class_launch?: boolean;
+    marketing_topic_special_offers?: boolean;
+    marketing_topic_promo_code_offers?: boolean;
     /** Emergency contact captured at sign-up. */
     emergency_contact_name?: string;
     emergency_contact_phone?: string;
@@ -1527,7 +1549,7 @@ export interface StaffSeed {
     // +later: dob, gender, address, emergency_contact, working_days
 }
 
-// ─── Customer notification settings (PRD 11 §12) ──────────────────────────
+// ─── Customer notification settings (PRD 11 §12 — v27 redesign) ───────────
 
 export type NotificationCategorySeed =
     | "booking"
@@ -1535,6 +1557,48 @@ export type NotificationCategorySeed =
     | "package_membership"
     | "marketing"
     | "referral";
+
+/** WhatsApp Business template approval status per Meta's workflow.
+ *  Templates must be approved by Meta before they can be dispatched.
+ *  Editing the message body resubmits to Pending; rejection returns a
+ *  short reason the admin surfaces in the red banner. Seeded per
+ *  template row so the demo shows realistic Approved / Pending /
+ *  Rejected states out of the box. */
+export type WhatsappApprovalStatusSeed = "approved" | "pending" | "rejected";
+
+/** When a customer notification fires. `immediately` = dispatch on
+ *  event trigger; `scheduled` = one or more offsets ahead of the
+ *  trigger (e.g. class-reminder 24h + 2h before class start). Empty
+ *  `send_offsets` array is treated as "immediately" for safety. */
+export type NotificationSendModeSeed = "immediately" | "scheduled";
+
+/** Repeatable send-offset row. Unit is "minutes" | "hours" | "days"
+ *  per the Figma unit dropdown; matching landing summary format
+ *  compacts to "30m" / "24h, 2h". */
+export interface NotificationSendOffsetSeed {
+    value: number;
+    unit: "minutes" | "hours" | "days";
+}
+
+/** Single-record delivery window that all customer notifications
+ *  respect (unless the template is marked critical + the "critical
+ *  bypass" toggle is on). Drives the "Quiet hours 21:00-08:00" pill
+ *  + "Delivery hours" side-panel on the notifications landing. */
+export interface NotificationDeliverySettingsSeed {
+    id: string;                              // "notification_delivery_default"
+    /** Master switch. When OFF the quiet-hours pickers gray out and no
+     *  window is enforced. When ON, notifications outside the quiet
+     *  hours pause + queue until the window reopens. */
+    only_send_during_set_hours: boolean;
+    /** 24h-style clock time "HH:MM" (start of the quiet window). */
+    quiet_hours_start: string;
+    /** 24h-style clock time "HH:MM" (end of the quiet window). May be
+     *  before start (wrapping midnight — e.g. 21:00 → 07:00). */
+    quiet_hours_end: string;
+    /** When ON (Figma default), payment failures / confirmations /
+     *  refunds dispatch immediately regardless of quiet hours. */
+    critical_bypasses_quiet_hours: boolean;
+}
 
 // ─── Referral settings (PRD 11 §11 — redesigned per Figma 4620:151863) ─────
 
@@ -1577,9 +1641,9 @@ export interface ReferralSettingsSeed {
 }
 
 /** One row per customer-facing notification event. Drives the per-channel
- *  toggles + template editor on Settings → Customer notifications. Field set
- *  matches the inputs the UI actually edits (Figma 4467-35019): the three
- *  channel toggles + the three template fields. */
+ *  toggles + template editor on Settings → Customer notifications (v27
+ *  redesign per Figma 7745:26872). Every field the UI reads or writes
+ *  is captured on this row — the store hydrates directly, no adapter. */
 export interface NotificationSettingSeed {
     id: string;
     category: NotificationCategorySeed;
@@ -1587,14 +1651,60 @@ export interface NotificationSettingSeed {
     notification_type: string;
     /** Display label in the row. */
     label: string;
-    // ── Channel switches (the 3 row toggles) ──────────────────────────────
-    email_enabled: boolean;
+
+    // ── Channel switches (Email / WhatsApp / SMS — the 3 row toggles) ─
+    email_enabled:    boolean;
     whatsapp_enabled: boolean;
-    push_enabled: boolean;
-    // ── Template fields (set in the Edit template modal) ──────────────────
-    email_subject?: string;
-    email_template?: string;
+    /** v27 — SMS channel. Replaces the legacy `push_enabled` toggle
+     *  (Figma dropped Push from the customer notifications matrix in
+     *  favour of SMS, which real gyms in the UAE use as a fallback
+     *  when WhatsApp / email are patchy). */
+    sms_enabled:      boolean;
+
+    // ── Template fields (set in the Edit template modal tabs) ─────────
+    email_subject?:    string;
+    email_template?:   string;
     whatsapp_template?: string;
+    /** v27 — SMS message body. Plain text, 160-char SMS unit counter
+     *  in the SMS tab. Variables in `{curly_braces}` resolve at
+     *  send time. */
+    sms_template?:     string;
+
+    // ── WhatsApp Business template approval workflow ──────────────────
+    /** Meta approval state. Editing the message body resubmits to
+     *  Pending; approved-but-then-edited templates flip back to
+     *  Pending (real WA behaviour). Rejected templates fall back to
+     *  another enabled channel until fixed + resubmitted. */
+    whatsapp_approval_status:    WhatsappApprovalStatusSeed;
+    /** Short reason surfaced in the red banner when
+     *  whatsapp_approval_status === "rejected". Kept optional so the
+     *  vast majority (approved) rows don't need to define it. */
+    whatsapp_rejection_reason?:  string;
+
+    // ── Payment critical flag ─────────────────────────────────────────
+    /** When true the row shows a "Critical" pill + tooltip, and the
+     *  toggle-off refuses to flip the LAST enabled channel — at least
+     *  one delivery method must stay live so payment issues always
+     *  reach the customer. Seeded true for every payment row. */
+    is_critical: boolean;
+
+    // ── Send timing (Figma 7738:102822 / 7739:167412 / 7739:168559) ───
+    /** "Immediately" or "scheduled". When scheduled the send_offsets
+     *  list controls the schedule (fires once per offset before the
+     *  event, e.g. Class reminder 24h + 2h ahead). */
+    send_mode: NotificationSendModeSeed;
+    /** Offsets BEFORE the event trigger (Class reminder = 24h, 2h).
+     *  Empty array + send_mode === "scheduled" treated as
+     *  "immediately" so the UI doesn't break mid-edit. */
+    send_offsets: NotificationSendOffsetSeed[];
+
+    // ── Marketing-only display flag ──────────────────────────────────
+    /** When true the landing shows a "Sent during campaigns" pill in
+     *  the Send time column instead of the timing summary. Seeded
+     *  true for every row in the `marketing` category — those don't
+     *  fire on a per-customer trigger, they piggy-back the campaign
+     *  send. Read-only for the demo (admin can't toggle it). */
+    sent_during_campaigns?: boolean;
 }
 
 // ─── Notification records (in-app feed — PRD 12 §6.1) ────────────────────────

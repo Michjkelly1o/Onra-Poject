@@ -26,7 +26,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell01, MarkerPin01 } from "@untitledui/icons";
-import { useAppStore, DEFAULT_BRANCH_ID, type Notification } from "@/lib/store";
+import { useAppStore, type Notification } from "@/lib/store";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { Button } from "@/components/ui/button";
@@ -194,10 +194,10 @@ function NotificationsPage() {
         if (t === "booking" || t === "payment" || t === "team") setActiveTab(t);
         else setActiveTab("all");
     }, [searchParams]);
-    // Branch scope — empty string = "All branches" (no scope). Defaults to
-    // the main active branch so the feed opens pre-scoped like the other
-    // admin lists (customers, staff, etc.) instead of leaking every branch.
-    const [branchId, setBranchId] = useState<string>(DEFAULT_BRANCH_ID);
+    // Branch scope — "" = "All locations". Opens on the aggregate view
+    // to match every other admin list; a specific branch can still be
+    // picked from the toolbar.
+    const [branchId, setBranchId] = useState<string>("");
 
     // Active branches drive the picker — matches the toolbar pattern on
     // `/admin/customers` and `/admin/staff` (MarkerPin trigger icon).

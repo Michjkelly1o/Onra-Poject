@@ -44,11 +44,16 @@ export const integrations: IntegrationSeed[] = [
         status: "not_connected",
     },
     {
+        // Seeded as `connected` so the Customer notifications module ships
+        // with the WhatsApp column live on first boot — Approval status
+        // pills visible, WA toggles usable, and marketing template
+        // approval flows ready to demo. Admins can still disconnect from
+        // Settings → Integrations, which grays the column back out.
         id: "int_whatsapp_business",
         slug: "whatsapp_business",
         name: "WhatsApp Business",
         description: "Send automated booking confirmations and reminders.",
-        status: "not_connected",
+        status: "connected",
     },
     // ── 4 placeholder additions per Figma 7632:17561 (Apps tab — 8 total) ──
     // All four ship in `not_connected` state, matching the visual treatment

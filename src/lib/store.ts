@@ -122,6 +122,7 @@ import {
     blocked_times as SEED_BLOCKED_TIMES,
     payroll_entries as SEED_PAYROLL_ENTRIES,
     notification_settings as SEED_NOTIFICATION_SETTINGS,
+    notification_delivery_settings as SEED_NOTIFICATION_DELIVERY_SETTINGS,
     notifications as SEED_NOTIFICATIONS,
     notifications_instructor as SEED_NOTIFICATIONS_INSTRUCTOR,
     instructor_integrations as SEED_INSTRUCTOR_INTEGRATIONS,
@@ -182,6 +183,7 @@ import {
     type StaffStatusSeed,
     type NotificationSettingSeed,
     type NotificationCategorySeed,
+    type NotificationDeliverySettingsSeed,
     type NotificationSeed,
     type NotificationEventSeed,
     type NotificationTabSeed,
@@ -1041,9 +1043,17 @@ export interface Customer {
     streetAddress?: string;
     // Profile-detail fields surfaced on the customer-detail "Details" tab.
     googleConnected?: boolean;
-    marketingEmails?: boolean;
-    marketingSms?: boolean;
-    transactionalEmails?: boolean;
+    // ── Marketing preferences ────────────────────────────────────────
+    // 4 delivery channels + 4 content topics. See _types.ts for the
+    // dispatch semantics (topic AND channel both opted in = delivered).
+    marketingChannelEmail?: boolean;
+    marketingChannelWhatsapp?: boolean;
+    marketingChannelSms?: boolean;
+    marketingChannelPush?: boolean;
+    marketingTopicStudioAnnouncements?: boolean;
+    marketingTopicNewClassLaunch?: boolean;
+    marketingTopicSpecialOffers?: boolean;
+    marketingTopicPromoCodeOffers?: boolean;
     emergencyContactName?: string;
     emergencyContactPhone?: string;
     emergencyContactRelation?: string;
@@ -1110,19 +1120,66 @@ export interface CustomerReferral {
 
 export type NotificationCategory = NotificationCategorySeed;
 
+/** v27 — WhatsApp Business template approval workflow states. Mirror
+ *  of `WhatsappApprovalStatusSeed` — see the seed for prose. */
+export type WhatsappApprovalStatus = "approved" | "pending" | "rejected";
+
+/** v27 — send-timing mode. `immediately` = fire on trigger; `scheduled`
+ *  = fire at each offset in `sendOffsets` before the event. */
+export type NotificationSendMode = "immediately" | "scheduled";
+
+/** v27 — repeatable send-offset row inside the Manage-timing tab. */
+export interface NotificationSendOffset {
+    value: number;
+    unit: "minutes" | "hours" | "days";
+}
+
+/** v27 — single-record delivery window. Drives the "Quiet hours" pill
+ *  + "Delivery hours" side-panel on the notifications landing. */
+export interface NotificationDeliverySettings {
+    id: string;
+    onlySendDuringSetHours: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+    criticalBypassesQuietHours: boolean;
+}
+
 /** Camel-cased mirror of `NotificationSettingSeed`. Drives the per-event
- *  channel toggles + template editor on Settings → Customer notifications. */
+ *  channel toggles + template editor on Settings → Customer notifications
+ *  (v27 redesign per Figma 7745:26872). */
 export interface NotificationSetting {
     id: string;
     category: NotificationCategory;
     notificationType: string;
     label: string;
-    emailEnabled: boolean;
+
+    // Channel switches (v27 — Push replaced by SMS)
+    emailEnabled:    boolean;
     whatsappEnabled: boolean;
-    pushEnabled: boolean;
-    emailSubject?: string;
-    emailTemplate?: string;
+    smsEnabled:      boolean;
+
+    // Template bodies (one per channel)
+    emailSubject?:    string;
+    emailTemplate?:   string;
     whatsappTemplate?: string;
+    smsTemplate?:      string;
+
+    // WhatsApp Business template approval workflow
+    whatsappApprovalStatus:   WhatsappApprovalStatus;
+    whatsappRejectionReason?: string;
+
+    /** Payment critical flag — blocks disabling the LAST enabled
+     *  channel (toast fires) so payment issues always reach the
+     *  customer. */
+    isCritical: boolean;
+
+    /** Send-timing config — Immediately vs multi-offset. */
+    sendMode:    NotificationSendMode;
+    sendOffsets: NotificationSendOffset[];
+
+    /** Marketing-only flag — landing renders "Sent during campaigns"
+     *  pill in place of the send-time summary. */
+    sentDuringCampaigns?: boolean;
 }
 
 // ─── Tax module (PRD 11 §10) ───────────────────────────────────────────────
@@ -1630,8 +1687,11 @@ export interface ToastData {
     id: string;
     title: string;
     message: string;
-    type: "success" | "error";
-    icon?: "check" | "trash" | "archive" | "slash" | "refresh";
+    /** "warning" (Figma 7739:175065) is the amber tone used for
+     *  soft-block guidance ("this action is critical, keep at least one
+     *  channel on"). Distinct from "error" which is a hard failure. */
+    type: "success" | "error" | "warning";
+    icon?: "check" | "trash" | "archive" | "slash" | "refresh" | "alert";
 }
 
 /**
@@ -1979,9 +2039,14 @@ function customerFromSeed(c: SeedCustomer): Customer {
         postalCode: c.postal_code,
         streetAddress: c.street_address,
         googleConnected: c.google_connected,
-        marketingEmails: c.marketing_emails,
-        marketingSms: c.marketing_sms,
-        transactionalEmails: c.transactional_emails,
+        marketingChannelEmail:              c.marketing_channel_email,
+        marketingChannelWhatsapp:           c.marketing_channel_whatsapp,
+        marketingChannelSms:                c.marketing_channel_sms,
+        marketingChannelPush:               c.marketing_channel_push,
+        marketingTopicStudioAnnouncements:  c.marketing_topic_studio_announcements,
+        marketingTopicNewClassLaunch:       c.marketing_topic_new_class_launch,
+        marketingTopicSpecialOffers:        c.marketing_topic_special_offers,
+        marketingTopicPromoCodeOffers:      c.marketing_topic_promo_code_offers,
         emergencyContactName: c.emergency_contact_name,
         emergencyContactPhone: c.emergency_contact_phone,
         emergencyContactRelation: c.emergency_contact_relation,
@@ -2327,12 +2392,36 @@ function notificationSettingFromSeed(n: NotificationSettingSeed): NotificationSe
         category: n.category,
         notificationType: n.notification_type,
         label: n.label,
-        emailEnabled: n.email_enabled,
+
+        emailEnabled:    n.email_enabled,
         whatsappEnabled: n.whatsapp_enabled,
-        pushEnabled: n.push_enabled,
-        emailSubject: n.email_subject,
-        emailTemplate: n.email_template,
+        smsEnabled:      n.sms_enabled,
+
+        emailSubject:    n.email_subject,
+        emailTemplate:   n.email_template,
         whatsappTemplate: n.whatsapp_template,
+        smsTemplate:      n.sms_template,
+
+        whatsappApprovalStatus:   n.whatsapp_approval_status,
+        whatsappRejectionReason:  n.whatsapp_rejection_reason,
+
+        isCritical:  n.is_critical,
+        sendMode:    n.send_mode,
+        sendOffsets: n.send_offsets.map(o => ({ ...o })),
+
+        sentDuringCampaigns: n.sent_during_campaigns,
+    };
+}
+
+function notificationDeliverySettingsFromSeed(
+    d: NotificationDeliverySettingsSeed,
+): NotificationDeliverySettings {
+    return {
+        id: d.id,
+        onlySendDuringSetHours:      d.only_send_during_set_hours,
+        quietHoursStart:             d.quiet_hours_start,
+        quietHoursEnd:               d.quiet_hours_end,
+        criticalBypassesQuietHours:  d.critical_bypasses_quiet_hours,
     };
 }
 
@@ -2992,12 +3081,36 @@ interface AppState {
      *  step. Recomputes `totalEarnings` automatically. */
     setPayrollEntryAdjustment: (id: string, amount: number, reason?: string) => void;
 
-    // ── Customer notification settings (PRD 11 §12) ───────────────────────
+    // ── Customer notification settings (PRD 11 §12 — v27 redesign) ────────
     notificationSettings: NotificationSetting[];
-    /** Flip a single event's channel toggle. */
-    setNotificationEventChannel: (id: string, channel: "email" | "whatsapp" | "push", enabled: boolean) => void;
-    /** Save a template edit (subject / email body / whatsapp body) for one event. */
-    updateNotificationTemplate: (id: string, patch: Partial<Pick<NotificationSetting, "emailSubject" | "emailTemplate" | "whatsappTemplate">>) => void;
+    /** Flip a single event's channel toggle (v27 — Push replaced by SMS).
+     *  Payment critical rows enforce "at least one enabled channel" —
+     *  the store REFUSES to disable the last enabled channel on a
+     *  critical row + returns false so the UI can fire the toast. */
+    setNotificationEventChannel: (id: string, channel: "email" | "whatsapp" | "sms", enabled: boolean) => boolean;
+    /** Save a template edit (subject / body / sms / whatsapp body) for
+     *  one event. Editing the WhatsApp body ALSO flips
+     *  `whatsappApprovalStatus` back to "pending" (mirrors Meta's real
+     *  workflow — every content change goes through re-approval). */
+    updateNotificationTemplate: (
+        id: string,
+        patch: Partial<Pick<NotificationSetting,
+            | "emailSubject"    | "emailTemplate"
+            | "whatsappTemplate" | "smsTemplate"
+        >>,
+    ) => void;
+    /** Save the Manage timing tab (send-mode + offsets). */
+    updateNotificationTiming: (
+        id: string,
+        patch: Partial<Pick<NotificationSetting, "sendMode" | "sendOffsets">>,
+    ) => void;
+
+    // ── Delivery hours (v27 — Figma 7733:51010) ───────────────────────────
+    /** Single studio-wide record. Every notification respects this
+     *  window unless the row is marked critical AND the "critical
+     *  bypasses quiet hours" toggle is on. */
+    notificationDeliverySettings: NotificationDeliverySettings;
+    updateNotificationDeliverySettings: (patch: Partial<NotificationDeliverySettings>) => void;
 
     // ── In-app notifications feed (PRD 12) ────────────────────────────────
     /** Notification feed records — drives the bell-icon dropdown and the
@@ -3209,7 +3322,7 @@ interface AppState {
     setPendingPurchase: (purchase: PendingPurchase | null) => void;
     applyPurchase: (customerId: string, items: PurchaseLineItem[], paymentSource?: CustomerTransaction["paymentSource"]) => void;
 
-    showToast: (title: string, message: string, type?: "success" | "error", icon?: ToastData["icon"]) => void;
+    showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
     clearToast: () => void;
 }
 
@@ -3331,6 +3444,7 @@ export const useAppStore = create<AppState>()(persist(
     shifts: [...INITIAL_SHIFTS],
     blockedTimes: [...INITIAL_BLOCKED_TIMES],
     notificationSettings: [...INITIAL_NOTIFICATION_SETTINGS],
+    notificationDeliverySettings: notificationDeliverySettingsFromSeed(SEED_NOTIFICATION_DELIVERY_SETTINGS),
     notifications: [...INITIAL_NOTIFICATIONS],
     auditLog: [],
     referralSettings: { ...INITIAL_REFERRAL_SETTINGS },
@@ -5200,22 +5314,80 @@ export const useAppStore = create<AppState>()(persist(
         }
     },
 
-    // ── Customer notification settings ────────────────────────────────────
-    setNotificationEventChannel: (id, channel, enabled) =>
+    // ── Customer notification settings (v27) ──────────────────────────────
+    /** Toggle a channel on a notification row. Returns `false` (and
+     *  DOES NOT mutate) when the caller tried to disable the last
+     *  enabled channel on a critical row — the UI reads that return
+     *  value to fire the "at least one channel stays on" toast. */
+    setNotificationEventChannel: (id, channel, enabled) => {
+        const row = get().notificationSettings.find(n => n.id === id);
+        if (!row) return false;
+        // Payment-critical guard — count enabled channels AFTER the
+        // hypothetical flip and refuse if we'd drop to zero.
+        if (row.isCritical && !enabled) {
+            const nextEmail    = channel === "email"    ? false : row.emailEnabled;
+            const nextWhatsapp = channel === "whatsapp" ? false : row.whatsappEnabled;
+            const nextSms      = channel === "sms"      ? false : row.smsEnabled;
+            const remaining = [nextEmail, nextWhatsapp, nextSms].filter(Boolean).length;
+            if (remaining === 0) return false;
+        }
         set(state => ({
             notificationSettings: state.notificationSettings.map(n =>
                 n.id !== id ? n :
                 channel === "email"    ? { ...n, emailEnabled:    enabled } :
                 channel === "whatsapp" ? { ...n, whatsappEnabled: enabled } :
-                                         { ...n, pushEnabled:     enabled },
+                                         { ...n, smsEnabled:      enabled },
             ),
-        })),
+        }));
+        return true;
+    },
     updateNotificationTemplate: (id, patch) =>
+        set(state => ({
+            notificationSettings: state.notificationSettings.map(n => {
+                if (n.id !== id) return n;
+                // Editing the WhatsApp body invalidates any prior
+                // approval — Meta re-reviews every content change,
+                // so we flip status back to "pending" (mirrors the
+                // real Business API behaviour).
+                //
+                // Both sides get nullish-coerced to "" so a seed row
+                // with NO `whatsapp_template` (undefined) compares
+                // equal to the modal's default empty buffer. Otherwise
+                // opening the WA tab on such a row and saving unedited
+                // would silently flip approval to "pending" — approval
+                // reset with no user intent + a misleading "saved"
+                // toast (see audit fix #4).
+                const nextWa = patch.whatsappTemplate;
+                const whatsappEdited =
+                    nextWa !== undefined
+                    && (nextWa ?? "") !== (n.whatsappTemplate ?? "");
+                return {
+                    ...n,
+                    ...patch,
+                    ...(whatsappEdited
+                        ? { whatsappApprovalStatus: "pending" as const,
+                            whatsappRejectionReason: undefined }
+                        : {}),
+                };
+            }),
+        })),
+    updateNotificationTiming: (id, patch) =>
         set(state => ({
             notificationSettings: state.notificationSettings.map(n =>
                 n.id === id ? { ...n, ...patch } : n,
             ),
         })),
+    updateNotificationDeliverySettings: (patch) => {
+        set(state => ({
+            notificationDeliverySettings: { ...state.notificationDeliverySettings, ...patch },
+        }));
+        get().recordAudit(
+            "Updated delivery hours",
+            "settings",
+            "notification_delivery",
+            "Delivery hours",
+        );
+    },
 
     // ── In-app notifications feed ─────────────────────────────────────────
     //
@@ -6456,9 +6628,36 @@ export const useAppStore = create<AppState>()(persist(
         // fee toggles, and Applied-to package/class scoping.
         // Persisted v25 payloads would carry incompatible field
         // shapes — the new 3-card landing + 3 side panels would
-        // crash on undefined reads. No migrate needed — demo
-        // discards the old payload on version mismatch.
-        version: 26,
+        // crash on undefined reads. No migrate needed;
+        // v27: Customer Notifications redesign per Figma 7745:26872
+        // series. NotificationSetting sheds `pushEnabled` in favour
+        // of `smsEnabled`; adds `smsTemplate`, `whatsappApprovalStatus`
+        // (approved/pending/rejected), `whatsappRejectionReason`,
+        // `isCritical`, `sendMode` (immediately/scheduled),
+        // `sendOffsets[]`, and `sentDuringCampaigns`. New single-record
+        // `NotificationDeliverySettings` (quiet-hours window +
+        // critical-bypass toggle) drives the landing pill + Delivery
+        // hours side-panel. `setNotificationEventChannel` gains a
+        // return-value: `false` when the caller tried to disable the
+        // last enabled channel on a critical row (UI fires the "at
+        // least one channel stays on" toast). Editing the WhatsApp
+        // body flips `whatsappApprovalStatus` back to "pending" to
+        // mirror Meta's re-approval workflow. No migrate needed —
+        // demo discards the old payload on version mismatch.
+        //
+        // v28 (Figma 7748:61474) — Customer Marketing preferences
+        // expanded from the legacy 3-flag trio (`marketing_emails`,
+        // `marketing_sms`, `transactional_emails`) to 8 fields split
+        // across two axes: 4 channel opt-ins (email / whatsapp / sms /
+        // push) + 4 topic opt-ins (studio_announcements,
+        // new_class_launch, special_offers, promo_code_offers). Both
+        // axes are read by the (still-pending) customer-side prefs UI
+        // and admin's dispatch layer; a marketing message is delivered
+        // only when BOTH the topic AND at least one channel are opted
+        // in. Transactional emails are removed from marketing prefs —
+        // they're covered by the (non-marketing) transactional
+        // notification rows in the admin Customer notifications module.
+        version: 28,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

@@ -4,16 +4,23 @@
 // Onra Studio — Customer detail · Details tab
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma: 2481:19397.
+// Figma: 2481:19397 (base layout) + 7748:61474 (v28 Marketing preferences).
 //
 // A read-only profile display, split into four sections separated by dividers:
 //   • Personal information — name, DOB, gender, full address
 //   • Sign in credentials  — email, phone, linked Google account
-//   • Marketing preferences — email / SMS / transactional opt-ins
+//   • Marketing preferences — 8-field 2-col grid: 4 delivery channels
+//     (Email · WhatsApp · SMS · Push notifications) + 4 content topics
+//     (Studio announcements · New class launch · Special offers · Promo
+//     code offers). Each field renders "Subscribed" (green check) or
+//     "Unsubscribed" (red x). See customers.ts + _types.ts for the
+//     dispatch-time semantics — this tab is display-only.
 //   • Emergency contact    — name, phone, relation
 //
 // Every value is read live from the `customers` store so an Edit-customer
-// change is reflected here on the next render.
+// change is reflected here on the next render. Two-way wiring to the
+// customer-facing prefs UI and the admin dispatch layer lands in a later
+// phase; the fields exist now so the display is real.
 
 import { CheckCircle, XCircle } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
@@ -119,16 +126,35 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
 
             <Divider />
 
-            {/* Marketing preferences */}
+            {/* Marketing preferences — 4 channels + 4 topics, 2-col grid per
+             *  Figma 7748:61474. Reading order is left→right, top→bottom:
+             *  channels in the top two rows, topics in the bottom two. */}
             <div className="flex flex-col gap-3">
                 <SectionHeader>Marketing preferences</SectionHeader>
                 <div className={GRID}>
+                    {/* Row 1 — delivery channels (email + whatsapp) */}
                     <DetailField label="Marketing emails"
-                        value={<StatusValue ok={!!customer.marketingEmails} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+                        value={<StatusValue ok={!!customer.marketingChannelEmail} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+                    <DetailField label="Marketing WhatsApp"
+                        value={<StatusValue ok={!!customer.marketingChannelWhatsapp} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+
+                    {/* Row 2 — delivery channels (sms + push) */}
                     <DetailField label="Marketing SMS"
-                        value={<StatusValue ok={!!customer.marketingSms} onLabel="Subscribed" offLabel="Unsubscribed" />} />
-                    <DetailField label="Transactional emails"
-                        value={<StatusValue ok={!!customer.transactionalEmails} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+                        value={<StatusValue ok={!!customer.marketingChannelSms} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+                    <DetailField label="Push notifications"
+                        value={<StatusValue ok={!!customer.marketingChannelPush} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+
+                    {/* Row 3 — content topics (studio announcements + new class launch) */}
+                    <DetailField label="Studio announcements"
+                        value={<StatusValue ok={!!customer.marketingTopicStudioAnnouncements} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+                    <DetailField label="New class launch"
+                        value={<StatusValue ok={!!customer.marketingTopicNewClassLaunch} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+
+                    {/* Row 4 — content topics (special offers + promo code offers) */}
+                    <DetailField label="Special offers"
+                        value={<StatusValue ok={!!customer.marketingTopicSpecialOffers} onLabel="Subscribed" offLabel="Unsubscribed" />} />
+                    <DetailField label="Promo code offers"
+                        value={<StatusValue ok={!!customer.marketingTopicPromoCodeOffers} onLabel="Subscribed" offLabel="Unsubscribed" />} />
                 </div>
             </div>
 

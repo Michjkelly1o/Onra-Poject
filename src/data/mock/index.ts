@@ -115,8 +115,17 @@ export { instructors } from "./instructors";
 // Payroll entries (FK → instructors, branches, pay_rates) — one per instructor × period
 export { payroll_entries, DEMO_PERIOD_START, DEMO_PERIOD_END } from "./payroll_entries";
 
-// Customer notification settings (PRD 11 §12) — per-event channel + template config
-export { notification_settings } from "./notification_settings";
+// Customer notification settings (PRD 11 §12) — per-event channel + template config.
+// MARKETING_TOPIC_TO_NS_ID is the single source of truth for the join
+// between admin notification rows and per-customer marketing prefs —
+// future dispatch / analytics consumers should read from here instead of
+// hand-typing the topic → notification_type pairs.
+export {
+    notification_settings,
+    MARKETING_TOPIC_TO_NS_ID,
+    type MarketingTopicKey,
+} from "./notification_settings";
+export { notification_delivery_settings } from "./notification_delivery_settings";
 
 // In-app notification records (PRD 12 §6.1) — feed for bell + /admin/notifications
 export { notifications } from "./notifications";

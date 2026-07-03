@@ -261,7 +261,7 @@ function LeftSidebar({ vm, onAction, branches }: {
 
                 <div className="px-6 pb-6 shrink-0">
                     <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Promo code actions</p>
+                    <p className="text-[14px] text-[#667085] mb-4">Promotion actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
                 </div>
             </div>
@@ -403,7 +403,7 @@ function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] })
                         icon={<CheckVerified02 className="w-4 h-4" />}
                         label="Multi-location access"
                         value={vm.multiLocation ? "Yes" : "No"}
-                        tooltip="Promo code can be use on multiple branches"
+                        tooltip="Promotion can be used across multiple branches"
                     />
                 </div>
 
@@ -534,7 +534,7 @@ function PromoDetailPageInner() {
     if (!promo) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Promo code not found</p>
+                <p className="text-[18px] font-semibold text-[#101828]">Promotion not found</p>
                 <button type="button" onClick={() => router.push(returnTo)}
                     className="mt-4 text-[14px] text-[#658774] hover:underline">
                     Back to promos
@@ -606,24 +606,24 @@ function PromoDetailPageInner() {
         const name = vm.name;
         if (confirmAction === "archive") {
             updatePromoCode(id, { status: "archived" });
-            showToast("Promo code archived", `${name} has been archived.`, "success", "archive");
+            showToast("Promotion archived", `${name} has been archived.`, "success", "archive");
             setConfirmAction(null);
         } else if (confirmAction === "deactivate") {
             updatePromoCode(id, { status: "inactive" });
-            showToast("Promo code deactivated", `${name} is no longer redeemable.`, "error", "slash");
+            showToast("Promotion deactivated", `${name} is no longer redeemable.`, "error", "slash");
             setConfirmAction(null);
         } else if (confirmAction === "recover") {
             updatePromoCode(id, { status: "active" });
-            showToast("Promo code recovered", `${name} has been recovered and is now active.`, "success", "refresh");
+            showToast("Promotion recovered", `${name} has been recovered and is now active.`, "success", "refresh");
             setConfirmAction(null);
         } else if (confirmAction === "reactivate") {
             updatePromoCode(id, { status: "active" });
-            showToast("Promo code reactivated", `${name} is now active again.`, "success", "check");
+            showToast("Promotion reactivated", `${name} is now active again.`, "success", "check");
             setConfirmAction(null);
         } else if (confirmAction === "delete") {
             const ok = deletePromoCode(id);
             if (ok) {
-                showToast("Promo code deleted", `${name} has been deleted.`, "success", "trash");
+                showToast("Promotion deleted", `${name} has been deleted.`, "success", "trash");
                 setConfirmAction(null);
                 router.push(returnTo);
             } else {
@@ -646,7 +646,7 @@ function PromoDetailPageInner() {
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Promo code details</h1>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Promotion details</h1>
             </div>
 
             {/* Body — canonical DetailPageShell wraps the 832px frame. */}
