@@ -26,12 +26,17 @@ import {
     selectTransactionLedger,
     selectPayments,
     selectCustomers,
+    selectGiftCards,
 } from "@/lib/reports/selectors";
-import { TOTAL_SALES_REPORT }       from "./reports/total-sales";
-import { SALES_BY_CATEGORY_REPORT } from "./reports/sales-by-category";
-import { PAYMENTS_REPORT }          from "./reports/payments";
-import { REFUNDS_REPORT }           from "./reports/refunds";
-import { DISCOUNTS_REPORT }         from "./reports/discounts";
+import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
+import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
+import { PAYMENTS_REPORT }            from "./reports/payments";
+import { REFUNDS_REPORT }             from "./reports/refunds";
+import { DISCOUNTS_REPORT }           from "./reports/discounts";
+import { SALES_BY_ITEM_REPORT }       from "./reports/sales-by-item";
+import { GIFT_CARDS_REPORT }          from "./reports/gift-cards";
+import { TAX_VAT_EXPORT_REPORT }      from "./reports/tax-vat-export";
+import { REVENUE_RECOGNITION_REPORT } from "./reports/revenue-recognition";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -65,12 +70,13 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
     selectTransactionLedger: selectTransactionLedger as unknown as SelectorFn,
     selectPayments:           selectPayments           as unknown as SelectorFn,
     selectCustomers:          selectCustomers          as unknown as SelectorFn,
+    // Phase 4B — shipped
+    selectGiftCards:          selectGiftCards          as unknown as SelectorFn,
 
     // Phase 4 — deferred (throws with a clear error if used prematurely)
     selectMemberships:        DEFERRED("selectMemberships"),
     selectBookings:           DEFERRED("selectBookings"),
     selectClassSessions:      DEFERRED("selectClassSessions"),
-    selectGiftCards:          DEFERRED("selectGiftCards"),
     selectReferrals:          DEFERRED("selectReferrals"),
 };
 
@@ -90,7 +96,10 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     DISCOUNTS_REPORT,
 
     // Phase 4B · Financial batch 2
-    //   Sales by Item · Gift Card · Tax/VAT Export · Revenue Recognition
+    SALES_BY_ITEM_REPORT,
+    GIFT_CARDS_REPORT,
+    TAX_VAT_EXPORT_REPORT,
+    REVENUE_RECOGNITION_REPORT,
 
     // Phase 4C · Financial + Membership
     //   Revenue per Class · ARPM · MRR · Memberships & Packages · Frozen

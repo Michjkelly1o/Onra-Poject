@@ -38,6 +38,7 @@
 
 import type { AppState, Customer, CustomerTransaction } from "@/lib/store";
 import { resolveLedger, signedAmount, type ResolvedLedgerRow } from "./refunds";
+import type { IssuedGiftCard, GiftCardDesign } from "@/data/mock";
 
 // ─── Row shapes ────────────────────────────────────────────────────────────
 
@@ -87,6 +88,39 @@ export interface PaymentRow {
     processorFee?: number;
     /** Payment amount − processor fee (blank if fee is unknown). */
     netPayout?: number;
+}
+
+/** Gift card row — one row per issued gift card. Feeds the Gift Card
+ *  report: face value, current balance, redeemed value, status, expiry.
+ *  Values come straight off the raw seed shape (snake_case fields) since
+ *  that's what the store persists. */
+export interface GiftCardRow {
+    id: string;
+    code: string;
+    designId: string;
+    designName: string;
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    /** Card sold-at date (ISO). */
+    issuedAtISO: string;
+    /** Expiry (ISO). */
+    expiresAtISO: string;
+    /** Original loaded amount in AED. */
+    faceValue: number;
+    /** Remaining redeemable balance in AED. */
+    currentBalance: number;
+    /** faceValue − currentBalance. */
+    redeemed: number;
+    /** active | redeemed | expired. */
+    status: "active" | "redeemed" | "expired";
+    recipientName: string;
+    recipientEmail: string;
+    senderName: string;
+    /** Location the buyer purchased from — not on the seed today; falls
+     *  back to "—" until POS writes a branch FK back. */
+    location: string;
+    branchId: string;
 }
 
 /** Customer report row — full record joined with plan + visit + LTV.
@@ -205,7 +239,50 @@ export function selectPayments(state: AppState): PaymentRow[] {
     });
 }
 
-/** 3. selectCustomers — full customer record joined with visit + LTV.
+/** 3. selectGiftCards — one row per issued gift card, joined with the
+ *  design + buyer customer. Feeds: Gift Card report. Reads the raw
+ *  snake_case seed shape since the store persists it verbatim. */
+export function selectGiftCards(state: AppState): GiftCardRow[] {
+    // Access seed fields off the AppState — the store carries these as
+    // raw snake_case objects (mock-data convention documented in
+    // CLAUDE.md §"Mock Data Convention"). Cast where TypeScript can't
+    // infer the underlying seed shape from the store's aliased types.
+    const designs = (state as unknown as { giftCardDesigns: GiftCardDesign[] }).giftCardDesigns ?? [];
+    const cards   = (state as unknown as { issuedGiftCards: IssuedGiftCard[] }).issuedGiftCards ?? [];
+    const cust    = makeCustomerLookup(state);
+
+    const designName = new Map<string, string>();
+    for (const d of designs) designName.set(d.id, d.name);
+
+    return cards.map(c => {
+        const buyer = cust(c.customer_id);
+        return {
+            id:             c.id,
+            code:           c.code,
+            designId:       c.design_id,
+            designName:     designName.get(c.design_id) ?? "—",
+            customerId:     c.customer_id,
+            customerName:   buyer ? `${buyer.firstName} ${buyer.lastName}`.trim() : (c.recipient_name ?? "—"),
+            customerEmail:  buyer?.email ?? c.recipient_email ?? "—",
+            issuedAtISO:    c.issued_at,
+            expiresAtISO:   c.expires_at,
+            faceValue:      c.face_value_aed,
+            currentBalance: c.current_balance_aed,
+            redeemed:       c.face_value_aed - c.current_balance_aed,
+            status:         c.status,
+            recipientName:  c.recipient_name ?? "",
+            recipientEmail: c.recipient_email ?? "",
+            senderName:     c.sender_name ?? "",
+            // Gift cards aren't branch-scoped in the seed yet — hand off
+            // an empty branchId + location so the shell falls back to
+            // "no branch filter" on this report.
+            location:       buyer ? (state.branches.find(b => b.id === buyer.branchId)?.name ?? "—") : "—",
+            branchId:       buyer?.branchId ?? "",
+        };
+    });
+}
+
+/** 4. selectCustomers — full customer record joined with visit + LTV.
  *  Feeds: Customer Data (Active vs Inactive), Retention & Churn,
  *         Member Movement, Win-back, ARPM (partial). */
 export function selectCustomers(state: AppState): CustomerRow[] {
