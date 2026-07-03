@@ -6764,7 +6764,28 @@ export const useAppStore = create<AppState>()(persist(
         //     tax-rate types). Dispatch-time enforcement (POS/product/
         //     payroll picking the ACTIVE rate for a transaction date)
         //     lands in Phase 4 — for now the fields are stored/displayed.
-        version: 29,
+        //
+        // v30 (new-prd/reports-implementation-plan.md — Reports Phase 1) —
+        // Extended `customer_transactions` with 14 optional ledger fields
+        // to support the reports module rewrite. Every new field is
+        // additive; every existing row continues to load without change.
+        // The seed also gained a Jan-Jun 2026 ledger block (44 new rows)
+        // with 22 sales, 8 refunds (all in a LATER month than their
+        // sale), 3 same-day void pairs (6 rows), 3 write-off pairs
+        // (6 rows), and 2 failed→recovered rows — providing the demo
+        // data every Financial report reads through `resolveLedger()`.
+        //
+        // Legacy `status: "refunded"` rows still load and render on the
+        // customer-detail Payments tab unchanged. The new ledger fields
+        // (transaction_type, original_transaction_id, settlement_iso,
+        // refund_reason, tax_treatment, staff_id, card_type, payment_type,
+        // failure_reason, retry_attempt, recovered, recovered_iso,
+        // payout_id, processor_fee) feed the report registry + selectors.
+        //
+        // Bump reason: material change to the demo dataset. Every user
+        // gets the Jan-Jun 2026 ledger on next reload — the earlier
+        // localStorage payload is discarded.
+        version: 30,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
