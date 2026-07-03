@@ -110,13 +110,31 @@ export interface ActivePlanVM {
 /** The member's current plan (one membership OR packages), or null. */
 export function useActivePlan(): ActivePlanVM | null {
     const { member } = useCurrentCustomerContext();
+    const customerPlans = useAppStore((s) => s.customerPlans);
     return useMemo(() => {
         if (!member || !member.planKind || !member.planName) return null;
+        // Only surface the Active Plan card while the customer HOLDS a plan (active or
+        // frozen). Cancelled / expired / none → hide it (reflects a cancellation).
+        const held =
+            member.planKind === "membership"
+                ? customerPlans.some(
+                      (p) =>
+                          p.customerId === member.id &&
+                          p.productId === member.membershipId &&
+                          (p.status === "active" || p.status === "frozen"),
+                  )
+                : customerPlans.some(
+                      (p) =>
+                          p.customerId === member.id &&
+                          p.kind === "package" &&
+                          (p.status === "active" || p.status === "frozen"),
+                  );
+        if (!held) return null;
         const credits = typeof member.creditsRemaining === "number" ? member.creditsRemaining : null;
         const creditsLabel = credits === null ? "Active" : `${credits} credit${credits === 1 ? "" : "s"} remaining`;
         const expiry = member.planExpiryISO ? ` • expires ${fmtMonthDay(member.planExpiryISO)}` : "";
         return { name: member.planName, sub: `${creditsLabel}${expiry}` };
-    }, [member]);
+    }, [member, customerPlans]);
 }
 
 /** Product ids the member already holds — their "+" is hidden in the list. */

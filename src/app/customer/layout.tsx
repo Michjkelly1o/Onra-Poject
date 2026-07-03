@@ -38,7 +38,8 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         pathname.startsWith("/customer/appointments/") ||
         pathname.startsWith("/customer/bookings/") ||
         pathname.startsWith("/customer/search/") ||
-        pathname.startsWith("/customer/products/");
+        pathname.startsWith("/customer/products/") ||
+        pathname.startsWith("/customer/profile/");
 
     return (
         <CurrentCustomerProvider>

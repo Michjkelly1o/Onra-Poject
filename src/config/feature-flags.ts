@@ -235,7 +235,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/customer/classes",             // class detail + book/checkout/plans/waiver/guest/processing/success
 
     // ── Customer → Appointment booking flow ──
-    "/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
+    //"/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
 
     // ── Customer → Instructor profile ──
     //"/customer/instructors",         // public instructor profile detail
@@ -244,13 +244,13 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/customer/bookings",            // bookings list + per-booking detail + cancel/rate/reviews
 
     // ── Customer → Packages ──
-    "/customer/packages",            // my packages + credit balance
+    //"/customer/packages",            // my packages + credit balance
 
-    // ── Customer → Products (memberships, packages, gift cards catalog) ── (ENABLED — pushing today)
+    // ── Customer → Products (memberships, packages, gift cards catalog) ──
     //"/customer/products",            // catalog + checkout/promo/processing/success + gift-card design picker
 
     // ── Customer → Profile / account ──
-    "/customer/profile",             // account profile + edit
+    //"/customer/profile",             // account profile + edit
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning

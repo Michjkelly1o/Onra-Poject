@@ -36,7 +36,7 @@ export function CustomerSheet({ open, onClose, children }: CustomerSheetProps) {
     return createPortal(
         <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal="true">
             <button type="button" aria-label="Close" className="absolute inset-0 bg-black/40" onClick={onClose} />
-            <div className="relative z-10 w-full max-w-[500px] rounded-t-3xl bg-white px-4 pb-8 pt-3 shadow-[0_-8px_40px_rgba(16,24,40,0.12)]">
+            <div className="relative z-10 w-full max-w-[500px] rounded-t-3xl bg-white px-4 pb-5 pt-3 shadow-[0_-8px_40px_rgba(16,24,40,0.12)]">
                 <div className="mx-auto mb-4 h-1.5 w-9 rounded-full bg-[#e4e7ec]" />
                 {children}
             </div>
