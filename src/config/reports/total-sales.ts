@@ -80,7 +80,6 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
         { key: K.customerName,     label: "Customer name",                kind: "text",     minWidth: 200 },
         { key: K.customerEmail,    label: "Customer email",               kind: "text",     minWidth: 220, hiddenByDefault: true },
         { key: K.staffId,          label: "Staff ID",                     kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.staffName,        label: "Staff",                        kind: "text",     minWidth: 180, hiddenByDefault: true },
         { key: K.salesChannel,     label: "Sales channel",                kind: "text",     minWidth: 160 },
         { key: K.revenueCategoryLabel, label: "Revenue category",         kind: "text",     minWidth: 160 },
         { key: K.saleItems,        label: "Sale items",                   kind: "text",     minWidth: 240 },

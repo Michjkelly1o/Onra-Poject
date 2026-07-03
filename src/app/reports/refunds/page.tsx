@@ -1,11 +1,14 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Refunds report (/admin/reports/refunds)
+// Onra Studio — Refunds report (/reports/refunds)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Phase 4A. Filters the resolved ledger to refund + write-off rows only.
-// Each row lands on ITS OWN date (client rule #10 — past never restates).
+// Filters the resolved ledger to refund + write-off rows only. Row shape
+// matches Excel spec (Sheet 2 rows 91-105): Date, Transaction #,
+// Original transaction #, Customer name/ID/email, Item / package,
+// Revenue category, Refund amount (negative), Refund type (full /
+// partial), Reason, Sales channel, Staff ID.
 
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
@@ -18,19 +21,16 @@ interface RefundsDisplayRow {
     refundDateISO:        string;
     txnId:                string;
     originalTxnId:        string;
-    transactionType:      "Refund" | "Write-off";
-    refundReason:         string;
     customerName:         string;
     customerId:           string;
     customerEmail:        string;
-    staffName:            string;
+    itemPackage:          string;
     revenueCategoryLabel: string;
-    saleItems:            string;
-    grossRefunded:        number;
-    taxRefunded:          number;
-    netRefunded:          number;
-    refundMethod:         string;
+    refundAmount:         number;
+    refundType:           "Full" | "Partial";
+    reason:               string;
     salesChannel:         string;
+    staffId:              string;
     branchId:             string;
     location:             string;
 }
@@ -46,7 +46,7 @@ const SALES_CHANNEL_LABEL: Record<string, string> = {
 };
 
 function orderNumberOf(txnId: string): string {
-    return `#R-${txnId.replace(/^txn_/, "").replace(/^synthetic_/, "").toUpperCase().replace(/_/g, "-").replace(/::SYNTHETIC-REFUND$/, "")}`;
+    return `#R-${txnId.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-").replace(/::SYNTHETIC-REFUND$/, "")}`;
 }
 
 export default function RefundsReportPage() {
@@ -64,35 +64,32 @@ export default function RefundsReportPage() {
     }, [report, transactions, customers, branches, staff]);
 
     const rows = useMemo<RefundsDisplayRow[]>(() => {
-        // Filter to refund + write-off rows only. The ledger already
-        // splits legacy refunded rows into a positive sale row + a
-        // synthetic refund row on the refund date — this filter keeps
-        // only the refund side.
         const refundRows = rawLedger.filter(r =>
             r.transactionType === "refund" || r.transactionType === "write_off"
         );
+        // Look up original sale amount to detect partial refunds.
+        const originals = new Map(rawLedger.filter(r => r.transactionType === "sale").map(r => [r.id, r]));
 
         return refundRows.map(r => {
             const grossAbs = Math.abs(r.signedAmount);
-            const taxAbs   = Math.abs(Number(r.taxAed ?? 0));
-            const netAbs   = grossAbs - taxAbs;
+            const original = r.originalTransactionId ? originals.get(r.originalTransactionId) : undefined;
+            const originalGross = original ? Math.abs(original.signedAmount) : grossAbs;
+            const refundType: "Full" | "Partial" = grossAbs >= originalGross ? "Full" : "Partial";
+
             return {
                 refundDateISO:        r.createdAtISO.slice(0, 10),
                 txnId:                orderNumberOf(r.id),
                 originalTxnId:        r.originalTransactionId ? orderNumberOf(r.originalTransactionId) : "",
-                transactionType:      r.transactionType === "refund" ? "Refund" : "Write-off",
-                refundReason:         r.refundReason ?? "—",
                 customerName:         r.customerName,
                 customerId:           r.customerId,
                 customerEmail:        r.customerEmail,
-                staffName:            r.staffName ?? "—",
+                itemPackage:          r.name,
                 revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
-                saleItems:            r.name,
-                grossRefunded:        grossAbs,
-                taxRefunded:          taxAbs,
-                netRefunded:          netAbs,
-                refundMethod:         r.refundMethod === "card" ? "Card" : r.refundMethod === "cash" ? "Cash" : "—",
+                refundAmount:         -grossAbs,   // shown negative per Excel spec
+                refundType,
+                reason:               r.refundReason ?? "—",
                 salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale",
+                staffId:              r.staffId ?? "",
                 branchId:             r.branchId,
                 location:             r.location,
             } satisfies RefundsDisplayRow;
@@ -100,9 +97,7 @@ export default function RefundsReportPage() {
     }, [rawLedger]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches
-            .filter(b => b.status !== "archive")
-            .map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 
@@ -115,11 +110,6 @@ export default function RefundsReportPage() {
     }
 
     return (
-        <PivotableReportShell
-            report={report}
-            rows={rows}
-            branches={branchOptions}
-            backHref="/admin/reports"
-        />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
     );
 }

@@ -2,59 +2,60 @@
 // Onra Studio — Reports · Intro Offers registry entry
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Excel spec sheet "Intro offers". Every customer's FIRST plan
-// purchase — the acquisition pipeline's yield. Filter is
-// `isFirstPlan === true` from the selector.
+// Columns + labels are Excel-verbatim from new-prd/Onra_Reporting.xlsx
+// (Sheet 2 rows 218-244 · Intro Offers).
 
 import type { ReportDefinition } from "@/lib/reports/types";
 
 const K = {
-    customerName:   "customerName",
-    customerId:     "customerId",
-    customerEmail:  "customerEmail",
-    planName:       "planName",
-    kind:           "kindLabel",
-    priceAed:       "priceAed",
-    status:         "statusLabel",
-    purchasedAtISO: "purchasedAtISO",
-    expiryISO:      "expiryISO",
-    location:       "location",
-    branchId:       "branchId",
+    customerName:      "customerName",
+    customerId:        "customerId",
+    customerEmail:     "customerEmail",
+    introOfferName:    "introOfferName",
+    purchaseDateISO:   "purchaseDateISO",
+    expiryDateISO:     "expiryDateISO",
+    sessionsIncluded:  "sessionsIncluded",
+    sessionsUsed:      "sessionsUsed",
+    convertedTo:       "convertedTo",
+    price:             "price",
+    branchId:          "branchId",
+    location:          "location",
 } as const;
 
 export const INTRO_OFFERS_REPORT: ReportDefinition = {
     id:          "intro-offers",
     category:    "membership_package",
     title:       "Intro Offers",
-    description: "Every customer's first plan purchase — the acquisition pipeline's yield. Filter by kind or period to see which intro packages convert.",
+    description: "Intro offers currently running + conversion flag. The acquisition pipeline's yield.",
     type:        "lookback",
-    route:       "/admin/reports/intro-offers",
+    route:       "/reports/intro-offers",
     selector:    "selectMemberships",
-    periodField: "purchasedAtISO",
+    periodField: "purchaseDateISO",
     rbac:        ["admin"],
 
     columns: [
-        { key: K.customerName,   label: "Customer",       kind: "text",     minWidth: 200 },
-        { key: K.customerId,     label: "Customer ID",    kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.customerEmail,  label: "Customer email", kind: "text",     minWidth: 220, hiddenByDefault: true },
-        { key: K.planName,       label: "First plan",     kind: "text",     minWidth: 220 },
-        { key: K.kind,           label: "Kind",           kind: "text",     minWidth: 140 },
-        { key: K.priceAed,       label: "Intro price",    kind: "currency", minWidth: 130 },
-        { key: K.status,         label: "Current status", kind: "status",   minWidth: 130 },
-        { key: K.purchasedAtISO, label: "Purchased at",   kind: "date",     minWidth: 130 },
-        { key: K.expiryISO,      label: "Expires at",     kind: "date",     minWidth: 130, hiddenByDefault: true },
+        { key: K.customerName,     label: "Customer name",     kind: "text",     minWidth: 200 },
+        { key: K.customerId,       label: "Customer ID",       kind: "id",       minWidth: 160, hiddenByDefault: true },
+        { key: K.customerEmail,    label: "Customer email",    kind: "text",     minWidth: 220 },
+        { key: K.introOfferName,   label: "Intro offer name",  kind: "text",     minWidth: 220 },
+        { key: K.purchaseDateISO,  label: "Purchase date",     kind: "date",     minWidth: 140 },
+        { key: K.expiryDateISO,    label: "Expiry date",       kind: "date",     minWidth: 130 },
+        { key: K.sessionsIncluded, label: "Sessions included", kind: "number",   minWidth: 170 },
+        { key: K.sessionsUsed,     label: "Sessions used",     kind: "number",   minWidth: 140 },
+        { key: K.convertedTo,      label: "Converted to",      kind: "text",     minWidth: 200 },
+        { key: K.price,            label: "Price",             kind: "currency", minWidth: 130 },
     ],
 
+    // Sheet 1 defaults: offer · status.
     dimensions: [
-        { key: "kind",     label: "Kind",     extract: r => String(r[K.kind]     ?? "—") },
-        { key: "plan",     label: "Plan",     extract: r => String(r[K.planName] ?? "—") },
-        { key: "status",   label: "Status",   extract: r => String(r[K.status]   ?? "—") },
+        { key: "offer",    label: "Offer",    extract: r => String(r[K.introOfferName] ?? "—") },
+        { key: "status",   label: "Converted?", extract: r => r[K.convertedTo] ? "Converted" : "Not converted" },
         { key: "location", label: "Location", extract: r => String(r[K.location] ?? "—") },
     ],
 
     measures: [
-        { key: "priceAed", label: "Total intro AED",   kind: "currency", extract: r => Number(r[K.priceAed] ?? 0) },
-        { key: "count",    label: "New customers",     kind: "number",   extract: () => 1 },
+        { key: "price", label: "Intro price",   kind: "currency", extract: r => Number(r[K.price] ?? 0) },
+        { key: "count", label: "New customers", kind: "number",   extract: () => 1 },
     ],
 
     periods: ["none", "week", "month", "quarter", "year"],

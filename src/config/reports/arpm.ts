@@ -1,48 +1,57 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Reports · ARPM (Avg Revenue Per Member) registry entry
+// Onra Studio — Reports · Revenue per Member (ARPM) registry entry
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Excel spec sheet "ARPM". Aggregates net revenue ÷ active-members
-// per month. Uses the resolved ledger for revenue + customerPlans for
-// the active-member denominator.
+// Columns + labels are Excel-verbatim from new-prd/Onra_Reporting.xlsx
+// (Sheet 2 rows 173-191 · Revenue per Member).
+//
+// One row per segment (default: membership type). Compares current
+// period's ARPM to the previous equivalent period and shows the %
+// change.
 
 import type { ReportDefinition } from "@/lib/reports/types";
 
 const K = {
-    periodKey:      "periodKey",
-    period:         "period",
-    netRevenueAed:  "netRevenueAed",
-    activeMembers:  "activeMembers",
-    arpmAed:        "arpmAed",
-    location:       "location",
-    branchId:       "branchId",
+    segment:         "segment",
+    activeMembers:   "activeMembers",
+    netRevenue:      "netRevenue",
+    arpm:            "arpm",
+    priorPeriodArpm: "priorPeriodArpm",
+    pctChange:       "pctChange",
+    branchId:        "branchId",
+    location:        "location",
+    dateAnchorISO:   "dateAnchorISO",
 } as const;
 
 export const ARPM_REPORT: ReportDefinition = {
     id:          "arpm",
     category:    "financial",
     title:       "Revenue per Member (ARPM)",
-    description: "Net revenue ÷ active-members per month. Rising ARPM means members are spending more; falling means intro offers are diluting the average.",
+    description: "Net revenue ÷ active members. Rising ARPM means members are spending more; falling means intro offers are diluting the average.",
     type:        "lookback",
-    route:       "/admin/reports/arpm",
+    route:       "/reports/arpm",
     selector:    "selectTransactionLedger",
-    periodField: "periodKey",
+    periodField: "dateAnchorISO",
     rbac:        ["admin"],
 
     columns: [
-        { key: K.period,        label: "Period",         kind: "text",     minWidth: 140 },
-        { key: K.netRevenueAed, label: "Net revenue",    kind: "currency", minWidth: 150 },
-        { key: K.activeMembers, label: "Active members", kind: "number",   minWidth: 150 },
-        { key: K.arpmAed,       label: "ARPM",           kind: "currency", minWidth: 130, calc: "Net revenue ÷ Active members" },
+        { key: K.segment,         label: "Segment",           kind: "text",     minWidth: 220 },
+        { key: K.activeMembers,   label: "Active members",    kind: "number",   minWidth: 150 },
+        { key: K.netRevenue,      label: "Net revenue",       kind: "currency", minWidth: 160 },
+        { key: K.arpm,            label: "ARPM",              kind: "currency", minWidth: 130, calc: "Net revenue ÷ Active members" },
+        { key: K.priorPeriodArpm, label: "Prior-period ARPM", kind: "currency", minWidth: 180 },
+        { key: K.pctChange,       label: "% change",          kind: "percent",  minWidth: 130, calc: "(Current − Prior) ÷ Prior" },
     ],
 
+    // Sheet 1 defaults: membership type · location.
     dimensions: [
-        { key: "location", label: "Location", extract: r => String(r[K.location] ?? "—") },
+        { key: "segment",  label: "Membership type", extract: r => String(r[K.segment]  ?? "—") },
+        { key: "location", label: "Location",        extract: r => String(r[K.location] ?? "—") },
     ],
 
     measures: [
-        { key: "arpmAed",       label: "ARPM",           kind: "currency", extract: r => Number(r[K.arpmAed]       ?? 0) },
-        { key: "netRevenueAed", label: "Net revenue",    kind: "currency", extract: r => Number(r[K.netRevenueAed] ?? 0) },
+        { key: "arpm",          label: "ARPM",           kind: "currency", extract: r => Number(r[K.arpm]          ?? 0) },
+        { key: "netRevenue",    label: "Net revenue",    kind: "currency", extract: r => Number(r[K.netRevenue]    ?? 0) },
         { key: "activeMembers", label: "Active members", kind: "number",   extract: r => Number(r[K.activeMembers] ?? 0) },
     ],
 

@@ -43,7 +43,7 @@ export const SALES_BY_CATEGORY_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
-        { key: K.revenueCategory,  label: "Revenue category",             kind: "text",     minWidth: 200 },
+        { key: K.revenueCategory,  label: "Revenue category / stream",    kind: "text",     minWidth: 200 },
         { key: K.transactions,     label: "Transactions",                 kind: "number",   minWidth: 130, calc: "count(rows)" },
         { key: K.grossSales,       label: "Gross sales",                  kind: "currency", minWidth: 140 },
         { key: K.discountAmount,   label: "Discount amount",              kind: "currency", minWidth: 150 },

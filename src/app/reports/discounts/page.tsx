@@ -1,14 +1,15 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Discounts report (/admin/reports/discounts)
+// Onra Studio — Discounts report (/reports/discounts)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Phase 4A. Filters the resolved ledger to rows with a non-zero
-// discount. POS doesn't emit `discountValue` / `promoCode` on
-// customer_transactions yet, so the report renders empty on today's
-// seed. Everything lights up the moment POS starts writing the promo
-// FK back — no code change here.
+// Filters the resolved ledger to rows with a non-zero discount. POS
+// doesn't emit `discountValue` / `discountCode` on customer_transactions
+// yet, so the report renders empty on today's seed. Every column is
+// wired; report lights up when POS starts writing the promo FK back.
+//
+// Row shape matches Excel spec (Sheet 2 rows 101-122).
 
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
@@ -20,18 +21,18 @@ interface DiscountsDisplayRow {
     [k: string]: unknown;
     orderDateISO:         string;
     txnId:                string;
-    promoCode:            string;
-    discountValue:        number;
-    discountPct:          number;
     customerName:         string;
     customerId:           string;
     customerEmail:        string;
-    staffName:            string;
-    salesChannel:         string;
+    itemPackage:          string;
     revenueCategoryLabel: string;
-    saleItems:            string;
     grossSales:           number;
+    discountCode:         string;
+    discountValue:        number;
+    discountPct:          number;
     netAfterDiscount:     number;
+    salesChannel:         string;
+    staffId:              string;
     branchId:             string;
     location:             string;
 }
@@ -65,10 +66,6 @@ export default function DiscountsReportPage() {
     }, [report, transactions, customers, branches, staff]);
 
     const rows = useMemo<DiscountsDisplayRow[]>(() => {
-        // Filter to SALE rows that carry a positive discount value.
-        // Ledger fields for discount aren't emitted by POS yet — the
-        // filter falls through until they are. Kept in a single spot
-        // so wiring up discounts later is a one-line change.
         const discountRows = rawLedger.filter(r => {
             if (r.transactionType !== "sale") return false;
             const dv = Number((r as unknown as { discountValue?: number }).discountValue ?? 0);
@@ -78,25 +75,25 @@ export default function DiscountsReportPage() {
         return discountRows.map(r => {
             const gross = Math.abs(r.signedAmount);
             const discount = Number((r as unknown as { discountValue?: number }).discountValue ?? 0);
-            const promoCode = String((r as unknown as { promoCode?: string }).promoCode ?? "—");
+            const discountCode = String((r as unknown as { discountCode?: string }).discountCode ?? "—");
             const net = gross - discount;
             const pct = gross > 0 ? (discount / gross) * 100 : 0;
 
             return {
                 orderDateISO:         r.createdAtISO.slice(0, 10),
                 txnId:                orderNumberOf(r.id),
-                promoCode,
-                discountValue:        discount,
-                discountPct:          pct,
                 customerName:         r.customerName,
                 customerId:           r.customerId,
                 customerEmail:        r.customerEmail,
-                staffName:            r.staffName ?? "—",
-                salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale",
+                itemPackage:          r.name,
                 revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
-                saleItems:            r.name,
                 grossSales:           gross,
+                discountCode,
+                discountValue:        discount,
+                discountPct:          pct,
                 netAfterDiscount:     net,
+                salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale",
+                staffId:              r.staffId ?? "",
                 branchId:             r.branchId,
                 location:             r.location,
             } satisfies DiscountsDisplayRow;
@@ -104,9 +101,7 @@ export default function DiscountsReportPage() {
     }, [rawLedger]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches
-            .filter(b => b.status !== "archive")
-            .map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 
@@ -119,11 +114,6 @@ export default function DiscountsReportPage() {
     }
 
     return (
-        <PivotableReportShell
-            report={report}
-            rows={rows}
-            branches={branchOptions}
-            backHref="/admin/reports"
-        />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
     );
 }

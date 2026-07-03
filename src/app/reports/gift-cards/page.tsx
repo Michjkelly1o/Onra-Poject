@@ -1,12 +1,11 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Gift Card report (/admin/reports/gift-cards)
+// Onra Studio — Gift Card report (/reports/gift-cards)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Phase 4B. Snapshot report — one row per issued gift card. Uses the
-// new selectGiftCards selector. No period pivot; the shell renders
-// straight list mode.
+// Snapshot report — one row per issued gift card. Row shape matches
+// Excel spec (Sheet 2 rows 130-152).
 
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
@@ -22,26 +21,24 @@ const STATUS_LABEL: Record<GiftCardRow["status"], string> = {
 
 interface GiftCardDisplayRow {
     [k: string]: unknown;
-    code:           string;
-    designName:     string;
-    customerName:   string;
-    customerId:     string;
-    customerEmail:  string;
-    recipientName:  string;
-    recipientEmail: string;
-    senderName:     string;
-    faceValue:      number;
-    redeemed:       number;
-    currentBalance: number;
-    status:         string;
-    issuedAtISO:    string;
-    expiresAtISO:   string;
-    branchId:       string;
-    location:       string;
+    purchaseDateISO:     string;
+    expiryDateISO:       string;
+    giftCardNumber:      string;
+    transactionNumber:   string;
+    purchaserName:       string;
+    purchaserEmail:      string;
+    recipientName:       string;
+    recipientEmail:      string;
+    faceValue:           number;
+    redeemedAmount:      number;
+    balance:             number;
+    status:              string;
+    lastRedeemedDateISO: string;
+    branchId:            string;
+    location:            string;
 }
 
 export default function GiftCardsReportPage() {
-    // Reactive slices — subscribe to everything the selector touches.
     const issuedGiftCards = useAppStore(s => s.issuedGiftCards);
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
     const customers       = useAppStore(s => s.customers);
@@ -52,39 +49,36 @@ export default function GiftCardsReportPage() {
     const raw = useMemo<GiftCardRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => GiftCardRow[];
-        return fn({
-            issuedGiftCards,
-            giftCardDesigns,
-            customers,
-            branches,
-        });
+        return fn({ issuedGiftCards, giftCardDesigns, customers, branches });
     }, [report, issuedGiftCards, giftCardDesigns, customers, branches]);
 
     const rows = useMemo<GiftCardDisplayRow[]>(() => {
         return raw.map(c => ({
-            code:           c.code,
-            designName:     c.designName,
-            customerName:   c.customerName,
-            customerId:     c.customerId,
-            customerEmail:  c.customerEmail,
-            recipientName:  c.recipientName || "—",
-            recipientEmail: c.recipientEmail || "—",
-            senderName:     c.senderName || "—",
-            faceValue:      c.faceValue,
-            redeemed:       c.redeemed,
-            currentBalance: c.currentBalance,
-            status:         STATUS_LABEL[c.status] ?? c.status,
-            issuedAtISO:    c.issuedAtISO.slice(0, 10),
-            expiresAtISO:   c.expiresAtISO.slice(0, 10),
-            branchId:       c.branchId,
-            location:       c.location,
+            purchaseDateISO:     c.issuedAtISO.slice(0, 10),
+            expiryDateISO:       c.expiresAtISO.slice(0, 10),
+            giftCardNumber:      c.code,
+            // The store doesn't join gift-card issuance back to a
+            // transaction id — carrying a blank for now until POS starts
+            // writing the FK to `issued_gift_cards.transaction_id`.
+            transactionNumber:   "",
+            purchaserName:       c.customerName,
+            purchaserEmail:      c.customerEmail,
+            recipientName:       c.recipientName || "—",
+            recipientEmail:      c.recipientEmail || "—",
+            faceValue:           c.faceValue,
+            redeemedAmount:      c.redeemed,
+            balance:             c.currentBalance,
+            status:              STATUS_LABEL[c.status] ?? c.status,
+            // Not tracked per card in today's seed — the store carries
+            // only aggregate redeemed amount, not a per-redemption log.
+            lastRedeemedDateISO: "",
+            branchId:            c.branchId,
+            location:            c.location,
         } satisfies GiftCardDisplayRow));
     }, [raw]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches
-            .filter(b => b.status !== "archive")
-            .map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 
@@ -97,11 +91,6 @@ export default function GiftCardsReportPage() {
     }
 
     return (
-        <PivotableReportShell
-            report={report}
-            rows={rows}
-            branches={branchOptions}
-            backHref="/admin/reports"
-        />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
     );
 }

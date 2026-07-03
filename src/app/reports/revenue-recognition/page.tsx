@@ -1,13 +1,26 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Revenue Recognition report (/admin/reports/revenue-recognition)
+// Onra Studio — Revenue Recognition report (/reports/revenue-recognition)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Phase 4B. CASH-BASIS approximation until the store threads term-end
-// dates + credit-usage events. See registry entry header for the accrual
-// upgrade path — this file's aggregation logic is the ONLY thing that
-// changes when we upgrade; the registry / shell / selector stay put.
+// Per-contract report — one row per sale (paid plan / package). Reads
+// the resolved ledger for sales only (refunds & write-offs excluded)
+// and computes the recognition schedule at the page layer.
+//
+// Recognition basis:
+//   • Package / credits →  per credit used
+//                          Recognized this period = credits used ×
+//                                                   (Amount ÷ Total credits)
+//   • Membership       →  straight-line monthly
+//                          Recognized this period = (Amount ÷ Term months) ×
+//                                                   Months elapsed
+//
+// Today's demo seed doesn't track credit usage against a specific
+// contract, so `usedThisPeriod` / `recognizedToDate` / `remaining` /
+// `deferredBalance` show blank / 0 for packages until credit
+// consumption events land in the store. Membership rows compute
+// months-elapsed via the plan's purchase date and today's date.
 
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
@@ -15,17 +28,23 @@ import { PivotableReportShell, type BranchOption } from "@/components/reports/Pi
 import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { LedgerRow } from "@/lib/reports/selectors";
 
-interface RevenueRecognitionDisplayRow {
+interface RevRecDisplayRow {
     [k: string]: unknown;
-    periodKey:            string;
-    period:               string;
-    revenueCategory:      string;
-    grossReceived:        number;
-    deferredOpening:      number;
+    dateISO:              string;
+    txnId:                string;
+    customerName:         string;
+    customerId:           string;
+    customerEmail:        string;
+    itemPlan:             string;
+    revenueCategoryLabel: string;
+    recognitionBasis:     string;
+    amount:               number;
+    termOrCredits:        string;
+    usedThisPeriod:       string;
     recognizedThisPeriod: number;
-    refundedThisPeriod:   number;
-    deferredClosing:      number;
-    netRecognized:        number;
+    recognizedToDate:     number;
+    remaining:            string;
+    deferredBalance:      number;
     branchId:             string;
     location:             string;
 }
@@ -34,6 +53,12 @@ const REVENUE_CATEGORY_LABEL: Record<string, string> = {
     membership: "Membership",
     package:    "Package / Credits",
 };
+
+function orderNumberOf(txnId: string): string {
+    return `#R-${txnId.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-")}`;
+}
+
+const MEMBERSHIP_TERM_MONTHS = 1; // recurring monthly — one-month straight-line
 
 export default function RevenueRecognitionReportPage() {
     const transactions = useAppStore(s => s.customerTransactions);
@@ -49,80 +74,72 @@ export default function RevenueRecognitionReportPage() {
         return fn({ customerTransactions: transactions, customers, branches, staff, classBookings: [] });
     }, [report, transactions, customers, branches, staff]);
 
-    const rows = useMemo<RevenueRecognitionDisplayRow[]>(() => {
-        const monthKey = (iso: string) => `${iso.slice(0, 7)}-15`;
+    const rows = useMemo<RevRecDisplayRow[]>(() => {
+        const sales = rawLedger.filter(r => r.transactionType === "sale");
+        const today = new Date();
 
-        interface Bucket {
-            periodKey: string;
-            period: string;
-            revenueCategory: string;
-            grossReceived: number;
-            recognizedThisPeriod: number;
-            refundedThisPeriod: number;
-            branchId: string;
-            location: string;
-        }
+        return sales.map(r => {
+            const amount = Math.abs(r.signedAmount);
+            const isMembership = r.kind === "membership";
+            const purchased = new Date(r.createdAtISO);
+            const monthsElapsed = Math.max(0,
+                (today.getFullYear() - purchased.getFullYear()) * 12
+                + (today.getMonth() - purchased.getMonth()),
+            );
 
-        const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-        const periodLabel = (k: string) => {
-            const [y, m] = k.split("-");
-            return `${MONTH[Number(m) - 1] ?? m} ${y}`;
-        };
+            let recognizedThisPeriod = 0;
+            let recognizedToDate     = 0;
+            let deferredBalance      = amount;
+            let termOrCredits        = "";
+            let usedThisPeriod       = "";
+            let remaining            = "";
+            let recognitionBasis     = "";
 
-        const buckets = new Map<string, Bucket>();
-
-        for (const r of rawLedger) {
-            const catLabel = REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind;
-            const pkey = monthKey(r.createdAtISO);
-            const key  = `${r.branchId}|${r.kind}|${pkey}`;
-
-            const bucket = buckets.get(key) ?? {
-                periodKey: pkey,
-                period: periodLabel(pkey),
-                revenueCategory: catLabel,
-                grossReceived: 0,
-                recognizedThisPeriod: 0,
-                refundedThisPeriod: 0,
-                branchId: r.branchId,
-                location: r.location,
-            };
-
-            const gross = Math.abs(r.signedAmount);
-
-            if (r.transactionType === "sale") {
-                bucket.grossReceived         += gross;
-                // Cash-basis: recognized at sale. Accrual upgrade: split
-                // by term month-slice weighted by days-in-period.
-                bucket.recognizedThisPeriod  += gross;
+            if (isMembership) {
+                recognitionBasis = "Straight-line monthly";
+                termOrCredits    = `${MEMBERSHIP_TERM_MONTHS} month${MEMBERSHIP_TERM_MONTHS === 1 ? "" : "s"}`;
+                // Monthly membership → recognized 100% at end of month 1.
+                const monthsRec = Math.min(MEMBERSHIP_TERM_MONTHS, monthsElapsed);
+                recognizedToDate     = (amount / MEMBERSHIP_TERM_MONTHS) * monthsRec;
+                recognizedThisPeriod = amount / MEMBERSHIP_TERM_MONTHS;    // per-period slice
+                deferredBalance      = amount - recognizedToDate;
+                usedThisPeriod       = `${Math.min(monthsElapsed, MEMBERSHIP_TERM_MONTHS)} of ${MEMBERSHIP_TERM_MONTHS}`;
+                remaining            = `${Math.max(0, MEMBERSHIP_TERM_MONTHS - monthsElapsed)} months`;
             } else {
-                // Refund + write-off — subtract in period of occurrence
-                bucket.refundedThisPeriod    += gross;
+                recognitionBasis = "Per credit used";
+                // The store doesn't track per-contract credit usage yet;
+                // leave usage / recognition-to-date blank. Fill in when
+                // credit consumption events land.
+                termOrCredits    = "—";
+                usedThisPeriod   = "";
+                remaining        = "";
+                deferredBalance  = amount;
             }
 
-            buckets.set(key, bucket);
-        }
-
-        return Array.from(buckets.values()).map(b => ({
-            periodKey:            b.periodKey,
-            period:               b.period,
-            revenueCategory:      b.revenueCategory,
-            grossReceived:        b.grossReceived,
-            // Cash-basis approximation: no deferrals today. Once accrual
-            // ships, these two lines carry the running balance.
-            deferredOpening:      0,
-            recognizedThisPeriod: b.recognizedThisPeriod,
-            refundedThisPeriod:   b.refundedThisPeriod,
-            deferredClosing:      0,
-            netRecognized:        b.recognizedThisPeriod - b.refundedThisPeriod,
-            branchId:             b.branchId,
-            location:             b.location,
-        } satisfies RevenueRecognitionDisplayRow));
+            return {
+                dateISO:              r.createdAtISO.slice(0, 10),
+                txnId:                orderNumberOf(r.id),
+                customerName:         r.customerName,
+                customerId:           r.customerId,
+                customerEmail:        r.customerEmail,
+                itemPlan:             r.name,
+                revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
+                recognitionBasis,
+                amount,
+                termOrCredits,
+                usedThisPeriod,
+                recognizedThisPeriod,
+                recognizedToDate,
+                remaining,
+                deferredBalance,
+                branchId:             r.branchId,
+                location:             r.location,
+            } satisfies RevRecDisplayRow;
+        });
     }, [rawLedger]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches
-            .filter(b => b.status !== "archive")
-            .map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 
@@ -135,11 +152,6 @@ export default function RevenueRecognitionReportPage() {
     }
 
     return (
-        <PivotableReportShell
-            report={report}
-            rows={rows}
-            branches={branchOptions}
-            backHref="/admin/reports"
-        />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
     );
 }
