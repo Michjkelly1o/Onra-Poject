@@ -27,7 +27,11 @@ import {
     selectPayments,
     selectCustomers,
 } from "@/lib/reports/selectors";
-import { TOTAL_SALES_REPORT } from "./reports/total-sales";
+import { TOTAL_SALES_REPORT }       from "./reports/total-sales";
+import { SALES_BY_CATEGORY_REPORT } from "./reports/sales-by-category";
+import { PAYMENTS_REPORT }          from "./reports/payments";
+import { REFUNDS_REPORT }           from "./reports/refunds";
+import { DISCOUNTS_REPORT }         from "./reports/discounts";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -80,7 +84,10 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     TOTAL_SALES_REPORT,
 
     // Phase 4A · Financial batch 1
-    //   Sales by Category · Payments · Refunds · Discounts
+    SALES_BY_CATEGORY_REPORT,
+    PAYMENTS_REPORT,
+    REFUNDS_REPORT,
+    DISCOUNTS_REPORT,
 
     // Phase 4B · Financial batch 2
     //   Sales by Item · Gift Card · Tax/VAT Export · Revenue Recognition
