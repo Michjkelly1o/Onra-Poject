@@ -1,99 +1,69 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Reports · shared presentation shell
+// Onra Studio — Reports · shared shell (rewrite v2)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// ONE shell for all 32 reports. Reads a ReportDefinition + a pre-fetched
-// row array, and renders either:
+// Reuses the existing report chrome (X close header · summary top-right ·
+// toolbar row of dropdowns · sortable table · pagination). Every button in
+// the toolbar is a DROPDOWN matching the Onra DS style used by
+// SelectColumnDropdown / MultiSelectFilterDropdown / DateRangeFilter.
 //
-//   • List mode (Period === "none") — flat table, one row per data row,
-//     Total row at the bottom for numeric columns. Optional group-by
-//     dimension inserts group headers.
+// Client's two new asks (the whole point of the rewrite):
+//   1. Grouping by PERIOD  — dropdown (None / Day / Week / Month / Quarter / Year).
+//                            Renders a pivot table with per-period totals + a
+//                            "Period change" line under the column totals row.
+//   2. Grouping by TYPE    — dropdown (None + report.dimensions[]).
+//                            When Period !== None, drives the row axis of the
+//                            pivot. When Period === None, groups the flat list.
 //
-//   • Pivot mode (Period !== "none") — matrix, dimension down the side,
-//     period across the top, row/column totals + a "Period change (%)"
-//     delta row underneath.
+// Refund model (client rule #10 — enforced by selectors, not by this shell):
+// same-day pre-settle refunds ARE voids and never appear here; later refunds
+// land in THEIR OWN period as negative amounts. Past months never restate.
 //
-// Toolbar (matches the client's HTML mockup + Excel spec + admin DS):
-//   • Period pill    — None · Day · Week · Month · Quarter · Year
-//   • Break-down     — pill list of report's dimensions ("None" first)
-//   • Measure        — pill list of report's measures (only if >1)
-//   • Select column  — dropdown checklist; persisted per-report to
-//                      localStorage under `onra-reports:{id}:cols`
-//   • Location       — branch multi-select (Owner sees all; Branch
-//                      Admin+ scoped upstream)
-//   • Date range     — the shared DateRangeFilter chrome; a label
-//                      resolver derives ISO from/to from quick options
-//   • Export dropdown — CSV | Excel (SheetJS)
-//
-// This component is purely presentational — the parent page owns the raw
-// row array (from the resolved selector) + branch scope + date range,
-// and passes them in. Filtering by branch + date range happens here so
-// the toolbar wires straight into the visible surface.
-//
-// See new-prd/reports-implementation-plan.md §2.5 for the design.
+// The 16+ pages that mount this shell pass a ReportDefinition (from
+// src/config/reports/*.ts) + a pre-mapped row array. This file owns the
+// entire visual layer.
 
 import * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { useRouter } from "next/navigation";
 import {
-    ArrowLeft,
-    ChevronDown,
-    Download01,
-    Rows01,
+    XClose, ChevronDown, Check,
+    CurrencyDollar, Grid01, Columns01, MarkerPin01, CalendarPlus01,
+    ArrowUp, ArrowDown, ChevronSelectorVertical,
 } from "@untitledui/icons";
-import { Button } from "@/components/ui/button";
-import { FilterPill } from "@/components/ui/FilterPill";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
-import { EmptyState } from "@/components/ui/EmptyState";
-import {
-    DateRangeFilter,
-    type DateFilter,
-} from "@/components/ui/date-range-filter";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { pivotRows, periodLabelFor } from "@/lib/reports/pivot";
 import {
-    buildListCsv,
-    buildPivotCsv,
-    triggerCsvDownload,
+    buildListCsv, buildPivotCsv, triggerCsvDownload,
 } from "@/lib/reports/export-csv";
 import {
-    exportListXlsx,
-    exportPivotXlsx,
-    type ExportMetadata,
+    exportListXlsx, exportPivotXlsx, type ExportMetadata,
 } from "@/lib/reports/export-excel";
 import type {
-    ColumnDef,
-    PeriodKey,
-    ReportDefinition,
+    ColumnDef, PeriodKey, ReportDefinition,
 } from "@/lib/reports/types";
 
 // ─── Props ────────────────────────────────────────────────────────────────
 
-export interface BranchOption {
-    id: string;
-    name: string;
-}
+export interface BranchOption { id: string; name: string; }
 
 export interface PivotableReportShellProps {
-    /** Registry entry driving the layout. */
     report: ReportDefinition;
-    /** All rows produced by the resolved selector — the shell does the
-     *  branch + date filter itself so the toolbar wires straight into
-     *  what the user sees. */
     rows: readonly Record<string, unknown>[];
-    /** Branches the current user can scope to (Owner sees all). */
     branches: readonly BranchOption[];
     /** Field on each row that holds the branch id. Defaults to "branchId". */
     branchField?: string;
-    /** Back destination — usually "/admin/reports". */
+    /** X-close target. Defaults to "/admin/reports". */
     backHref?: string;
-    /** Optional right-side toolbar slot (rare — most reports don't need it). */
     toolbarRight?: React.ReactNode;
 }
 
-// ─── Period → PeriodKey conversion for the pill row ────────────────────────
+// ─── Period labels ────────────────────────────────────────────────────────
 
 const PERIOD_LABEL: Record<PeriodKey, string> = {
     none:    "None",
@@ -104,69 +74,42 @@ const PERIOD_LABEL: Record<PeriodKey, string> = {
     year:    "Year",
 };
 
-// ─── Date-filter resolver — turns a DateFilter into a concrete ISO range ───
+// ─── Date-range → concrete ISO bounds resolver ────────────────────────────
 //
-// Uses today's date locally. The label "This month" always resolves to
-// the current calendar month, "Last 30 days" to today - 29 → today, etc.
-// The resolver produces inclusive `[fromISO, toISO]` strings; downstream
-// filtering uses `row.periodField >= fromISO && row.periodField <= toISO`.
+// The DateRangeFilter emits quick-option labels ("This year", "Last 30
+// days", etc); the shell resolves them into an inclusive [fromISO, toISO]
+// window used for row filtering.
 
-interface DateRangeISO {
-    fromISO: string; // "YYYY-MM-DD"
-    toISO: string;   // "YYYY-MM-DD" inclusive
-    label: string;
-}
-
+interface DateRangeISO { fromISO: string; toISO: string; label: string; }
 function iso(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
 }
-
-function addDays(d: Date, n: number): Date {
-    const c = new Date(d);
-    c.setDate(c.getDate() + n);
-    return c;
-}
-
-/** Resolve a DateFilter (from the DateRangeFilter chrome) into an ISO
- *  range. Handles every quick option the chrome exposes + custom range. */
+function addDays(d: Date, n: number): Date { const c = new Date(d); c.setDate(c.getDate() + n); return c; }
 function resolveDateFilter(f: DateFilter | undefined): DateRangeISO {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     if (!f) {
-        // Sensible default: current calendar month.
-        const first = new Date(today.getFullYear(), today.getMonth(), 1);
-        const last  = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        return { fromISO: iso(first), toISO: iso(last), label: "This month" };
+        const first = new Date(today.getFullYear(), 0, 1);
+        const last  = new Date(today.getFullYear(), 11, 31);
+        return { fromISO: iso(first), toISO: iso(last), label: "This year" };
     }
-
-    if (f.type === "custom") {
-        return { fromISO: iso(f.from), toISO: iso(f.to), label: f.label };
-    }
-
+    if (f.type === "custom") return { fromISO: iso(f.from), toISO: iso(f.to), label: f.label };
     const L = f.label;
-
-    // Day-type quick options.
-    if (L === "Today")                return { fromISO: iso(today),               toISO: iso(today),               label: L };
-    if (L === "Yesterday")            { const y = addDays(today, -1);          return { fromISO: iso(y),        toISO: iso(y),        label: L }; }
-    if (L === "Last 7 days")          return { fromISO: iso(addDays(today, -6)),  toISO: iso(today),               label: L };
-    if (L === "Last 30 days")         return { fromISO: iso(addDays(today, -29)), toISO: iso(today),               label: L };
-    if (L === "Last 90 days")         return { fromISO: iso(addDays(today, -89)), toISO: iso(today),               label: L };
-
-    // Week (ISO — Monday-anchored).
-    const dow = (today.getDay() + 6) % 7; // 0 = Mon
+    if (L === "Today")        return { fromISO: iso(today), toISO: iso(today), label: L };
+    if (L === "Yesterday")    { const y = addDays(today, -1); return { fromISO: iso(y), toISO: iso(y), label: L }; }
+    if (L === "Last 7 days")  return { fromISO: iso(addDays(today, -6)),  toISO: iso(today), label: L };
+    if (L === "Last 30 days") return { fromISO: iso(addDays(today, -29)), toISO: iso(today), label: L };
+    if (L === "Last 90 days") return { fromISO: iso(addDays(today, -89)), toISO: iso(today), label: L };
+    const dow = (today.getDay() + 6) % 7;
     const monThis = addDays(today, -dow);
-    if (L === "This week")            return { fromISO: iso(monThis),           toISO: iso(addDays(monThis, 6)), label: L };
-    if (L === "Last week")            return { fromISO: iso(addDays(monThis, -7)), toISO: iso(addDays(monThis, -1)), label: L };
-
-    // Month.
+    if (L === "This week")    return { fromISO: iso(monThis),               toISO: iso(addDays(monThis, 6)),  label: L };
+    if (L === "Last week")    return { fromISO: iso(addDays(monThis, -7)),  toISO: iso(addDays(monThis, -1)), label: L };
     const firstThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastThisMonth  = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    if (L === "This month")           return { fromISO: iso(firstThisMonth), toISO: iso(lastThisMonth), label: L };
-    if (L === "Month to date")        return { fromISO: iso(firstThisMonth), toISO: iso(today),        label: L };
+    if (L === "This month")    return { fromISO: iso(firstThisMonth), toISO: iso(lastThisMonth), label: L };
+    if (L === "Month to date") return { fromISO: iso(firstThisMonth), toISO: iso(today),         label: L };
     if (L === "Last month") {
         const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const last  = new Date(today.getFullYear(), today.getMonth(),     0);
@@ -176,97 +119,72 @@ function resolveDateFilter(f: DateFilter | undefined): DateRangeISO {
         const from = new Date(today.getFullYear() - 1, today.getMonth() + 1, 1);
         return { fromISO: iso(from), toISO: iso(today), label: L };
     }
-
-    // Year.
     const firstThisYear = new Date(today.getFullYear(), 0, 1);
     const lastThisYear  = new Date(today.getFullYear(), 11, 31);
-    if (L === "This year")            return { fromISO: iso(firstThisYear), toISO: iso(lastThisYear), label: L };
-    if (L === "Year to date")         return { fromISO: iso(firstThisYear), toISO: iso(today),        label: L };
+    if (L === "This year")    return { fromISO: iso(firstThisYear), toISO: iso(lastThisYear), label: L };
+    if (L === "Year to date") return { fromISO: iso(firstThisYear), toISO: iso(today),        label: L };
     if (L === "Last year") {
         const first = new Date(today.getFullYear() - 1, 0, 1);
         const last  = new Date(today.getFullYear() - 1, 11, 31);
         return { fromISO: iso(first), toISO: iso(last), label: L };
     }
-
-    // Fallback — should never hit if the chrome only emits its documented options.
-    return { fromISO: iso(firstThisMonth), toISO: iso(lastThisMonth), label: L || "This month" };
+    return { fromISO: iso(firstThisYear), toISO: iso(lastThisYear), label: L || "This year" };
 }
 
-// ─── Column-visibility persistence ────────────────────────────────────────
+// ─── Column visibility persistence ────────────────────────────────────────
+//
+// Per-report key in localStorage so testers' visible-column choices survive
+// refresh + tab close. Falls back to `!hiddenByDefault` on the report def.
 
 const COL_STORAGE_PREFIX = "onra-reports";
-
 function loadColVisibility(reportId: string, columns: readonly ColumnDef[]): Set<string> {
-    if (typeof window === "undefined") {
-        return new Set(columns.filter(c => !c.hiddenByDefault).map(c => c.key));
-    }
+    if (typeof window === "undefined") return new Set(columns.filter(c => !c.hiddenByDefault).map(c => c.key));
     try {
         const raw = window.localStorage.getItem(`${COL_STORAGE_PREFIX}:${reportId}:cols`);
         if (raw) {
             const parsed = JSON.parse(raw) as string[];
-            // Guard: only keep keys that still exist on the report def.
             const allowed = new Set(columns.map(c => c.key));
             const visible = new Set(parsed.filter(k => allowed.has(k)));
             if (visible.size > 0) return visible;
         }
-    } catch { /* fall through to default */ }
+    } catch { /* fall through */ }
     return new Set(columns.filter(c => !c.hiddenByDefault).map(c => c.key));
 }
-
 function saveColVisibility(reportId: string, visible: Set<string>): void {
     if (typeof window === "undefined") return;
-    try {
-        window.localStorage.setItem(
-            `${COL_STORAGE_PREFIX}:${reportId}:cols`,
-            JSON.stringify(Array.from(visible)),
-        );
-    } catch { /* quota — silently ignore */ }
+    try { window.localStorage.setItem(`${COL_STORAGE_PREFIX}:${reportId}:cols`, JSON.stringify(Array.from(visible))); }
+    catch { /* quota — ignore */ }
 }
 
-// ─── Cell formatter (list mode) ───────────────────────────────────────────
+// ─── Cell formatting ──────────────────────────────────────────────────────
 
 const CURRENCY_FMT = new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 });
 const NUMBER_FMT   = new Intl.NumberFormat("en-US");
-
 function formatCell(value: unknown, kind: ColumnDef["kind"]): string {
     if (value === null || value === undefined || value === "") return "—";
-    if (kind === "currency") {
-        const n = Number(value);
-        if (!Number.isFinite(n)) return String(value);
-        return `AED ${CURRENCY_FMT.format(Math.round(n))}`;
-    }
-    if (kind === "number") {
-        const n = Number(value);
-        if (!Number.isFinite(n)) return String(value);
-        return NUMBER_FMT.format(Math.round(n));
-    }
-    if (kind === "percent") {
-        const n = Number(value);
-        if (!Number.isFinite(n)) return String(value);
-        return `${n.toFixed(1)}%`;
-    }
-    if (kind === "date") {
-        const s = String(value).slice(0, 10);
-        return s || "—";
-    }
+    if (kind === "currency") { const n = Number(value); if (!Number.isFinite(n)) return String(value); return `AED ${CURRENCY_FMT.format(Math.round(n))}`; }
+    if (kind === "number")   { const n = Number(value); if (!Number.isFinite(n)) return String(value); return NUMBER_FMT.format(Math.round(n)); }
+    if (kind === "percent")  { const n = Number(value); if (!Number.isFinite(n)) return String(value); return `${n.toFixed(1)}%`; }
+    if (kind === "date")     { const s = String(value).slice(0, 10); return s || "—"; }
     return String(value);
 }
 
-// ─── The shell ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// The shell
+// ─────────────────────────────────────────────────────────────────────────
 
 export function PivotableReportShell({
-    report,
-    rows: allRows,
-    branches,
+    report, rows: allRows, branches,
     branchField = "branchId",
     backHref = "/admin/reports",
     toolbarRight,
 }: PivotableReportShellProps) {
-    // ─ Toolbar state ─────────────────────────────────────────────────────
+    const router = useRouter();
+
+    // Default period + measure. Period defaults to "none" so every report
+    // opens on flat list; user picks a grouping to switch to pivot.
     const defaultPeriod: PeriodKey =
-        report.periods.includes("month") ? "month" :
-        report.periods.includes("none")  ? "none"  :
-        report.periods[0] ?? "none";
+        report.periods.includes("none") ? "none" : report.periods[0] ?? "none";
 
     const [period, setPeriod] = useState<PeriodKey>(defaultPeriod);
     const [dimIdx, setDimIdx] = useState<number>(-1); // -1 = None
@@ -278,10 +196,11 @@ export function PivotableReportShell({
     const [visibleCols, setVisibleCols] = useState<Set<string>>(
         () => loadColVisibility(report.id, report.columns),
     );
+    useEffect(() => { saveColVisibility(report.id, visibleCols); }, [report.id, visibleCols]);
 
-    useEffect(() => {
-        saveColVisibility(report.id, visibleCols);
-    }, [report.id, visibleCols]);
+    // Sort state (list mode only).
+    const [sortKey, setSortKey] = useState<string | null>(null);
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
     // ─ Filter rows: branch + date range ─────────────────────────────────
     const dateISO = useMemo(() => resolveDateFilter(dateFilter), [dateFilter]);
@@ -292,37 +211,54 @@ export function PivotableReportShell({
     const filteredRows = useMemo(() => {
         const { fromISO, toISO } = dateISO;
         return allRows.filter(r => {
-            // Branch scope
             const b = String(r[branchField] ?? "");
             if (b && visibleBranchIds.size > 0 && !visibleBranchIds.has(b)) return false;
-            // Date scope
             const d = String(r[periodField] ?? "").slice(0, 10);
-            if (!d) return true; // rows without a period date pass through
+            if (!d) return true;
             if (d < fromISO) return false;
             if (d > toISO)   return false;
             return true;
         });
     }, [allRows, branchField, visibleBranchIds, dateISO, periodField]);
 
-    // ─ Pivot result — computed only in pivot mode ───────────────────────
+    // Sort for list mode.
+    const sortedRows = useMemo(() => {
+        if (period !== "none") return filteredRows;
+        if (!sortKey) return filteredRows;
+        const col = report.columns.find(c => c.key === sortKey);
+        if (!col) return filteredRows;
+        const copy = [...filteredRows];
+        copy.sort((a, b) => {
+            const va = a[sortKey]; const vb = b[sortKey];
+            const na = Number(va); const nb = Number(vb);
+            if (Number.isFinite(na) && Number.isFinite(nb)) return sortDir === "asc" ? na - nb : nb - na;
+            return sortDir === "asc"
+                ? String(va ?? "").localeCompare(String(vb ?? ""))
+                : String(vb ?? "").localeCompare(String(va ?? ""));
+        });
+        return copy;
+    }, [filteredRows, period, sortKey, sortDir, report.columns]);
+
+    // ─ Pivot computation ────────────────────────────────────────────────
     const pivot = useMemo(() => {
         if (period === "none" || !measure) return null;
-        return pivotRows(filteredRows, {
-            periodField,
-            period,
-            dimension,
-            measure,
-        });
+        return pivotRows(filteredRows, { periodField, period, dimension, measure });
     }, [filteredRows, period, periodField, dimension, measure]);
 
-    // ─ Export ────────────────────────────────────────────────────────────
-    const [exportOpen, setExportOpen] = useState(false);
-    const exportTriggerRef = useRef<HTMLButtonElement>(null);
+    // ─ Header summary line ──────────────────────────────────────────────
+    const summaryText = useMemo(() => {
+        const count = filteredRows.length;
+        const parts: string[] = [];
+        parts.push(`${count} record${count === 1 ? "" : "s"}`);
+        parts.push(dateISO.label);
+        if (period !== "none") parts.push(`by ${PERIOD_LABEL[period].toLowerCase()}`);
+        return parts.join(" · ");
+    }, [filteredRows.length, dateISO.label, period]);
 
+    // ─ Export handlers ─────────────────────────────────────────────────
     function buildFilename(ext: "csv" | "xlsx"): string {
         return `${report.id}_${dateISO.fromISO}_${dateISO.toISO}.${ext}`;
     }
-
     function buildMetadata(): ExportMetadata {
         const activeBranches = branches.filter(b => visibleBranchIds.has(b.id)).map(b => b.name);
         const locFilter = activeBranches.length === branches.length
@@ -334,11 +270,11 @@ export function PivotableReportShell({
             filters:     `Location: ${locFilter}`,
             period:      period === "none" ? "None (list)" : PERIOD_LABEL[period],
             breakdown:   dimension?.label ?? "None",
-            exportedAtISO: new Date().toISOString(),
+            exportedAtISO: "",   // resolved on click — see below
             rowCount:    period === "none" ? filteredRows.length : (pivot?.rowKeys.length ?? 0),
         };
     }
-
+    function stamp(m: ExportMetadata): ExportMetadata { return { ...m, exportedAtISO: new Date().toISOString() }; }
     function handleExportCsv() {
         const cols = report.columns.filter(c => visibleCols.has(c.key));
         if (period === "none" || !pivot) {
@@ -348,520 +284,573 @@ export function PivotableReportShell({
             const colHeaders = pivot.colKeys.map(k => periodLabelFor(k, period, period === "month"));
             const csv = buildPivotCsv({
                 rowHeader: dimension?.label ?? "All",
-                colHeaders,
-                pivot,
-                filename: buildFilename("csv"),
+                colHeaders, pivot, filename: buildFilename("csv"),
             });
             triggerCsvDownload(csv, buildFilename("csv"));
         }
-        setExportOpen(false);
     }
-
     function handleExportXlsx() {
         const cols = report.columns.filter(c => visibleCols.has(c.key));
-        const meta = buildMetadata();
+        const meta = stamp(buildMetadata());
         if (period === "none" || !pivot) {
-            exportListXlsx({
-                columns: cols,
-                rows:    filteredRows,
-                filename: buildFilename("xlsx"),
-                meta,
-                sheetName: report.title,
-            });
+            exportListXlsx({ columns: cols, rows: filteredRows, filename: buildFilename("xlsx"), meta, sheetName: report.title });
         } else {
             const colHeaders = pivot.colKeys.map(k => periodLabelFor(k, period, period === "month"));
             exportPivotXlsx({
                 rowHeader: dimension?.label ?? "All",
-                colHeaders,
-                pivot,
+                colHeaders, pivot,
                 filename: buildFilename("xlsx"),
                 meta,
                 sheetName: report.title,
                 valueKind: measure?.kind === "number" ? "number" : "currency",
             });
         }
-        setExportOpen(false);
     }
 
-    // ─ Select-column dropdown ────────────────────────────────────────────
-    const [colsOpen, setColsOpen] = useState(false);
-    const colsTriggerRef = useRef<HTMLButtonElement>(null);
-
+    // ─ Toggle helpers ────────────────────────────────────────────────
     function toggleCol(key: string) {
         setVisibleCols(prev => {
             const next = new Set(prev);
-            if (next.has(key)) next.delete(key);
-            else next.add(key);
-            // Never allow zero visible cols — user always sees at least one.
+            if (next.has(key)) next.delete(key); else next.add(key);
             if (next.size === 0) next.add(key);
             return next;
         });
     }
-
-    // ─ Location dropdown ────────────────────────────────────────────────
-    const [locOpen, setLocOpen] = useState(false);
-    const locTriggerRef = useRef<HTMLButtonElement>(null);
-
     function toggleBranch(id: string) {
         setVisibleBranchIds(prev => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+            if (next.has(id)) next.delete(id); else next.add(id);
             if (next.size === 0) next.add(id);
             return next;
         });
     }
-    const locLabel = visibleBranchIds.size === branches.length
-        ? "All locations"
-        : visibleBranchIds.size === 1
-            ? branches.find(b => visibleBranchIds.has(b.id))?.name ?? "1 location"
-            : `${visibleBranchIds.size} locations`;
+    function toggleSort(key: string) {
+        const col = report.columns.find(c => c.key === key);
+        if (!col) return;
+        if (sortKey !== key) { setSortKey(key); setSortDir("desc"); return; }
+        if (sortDir === "desc") { setSortDir("asc"); return; }
+        setSortKey(null); setSortDir("desc");
+    }
 
-    // ─ Render ────────────────────────────────────────────────────────────
+    // ─ Derived ─────────────────────────────────────────────────────────
     const visibleColDefs = report.columns.filter(c => visibleCols.has(c.key));
+    const isPivot = period !== "none" && !!pivot;
+    const dimensionLabel = dimension?.label ?? "None";
 
     return (
-        <div className="flex flex-col gap-[24px] pt-[24px] pb-[48px]">
-            {/* ─── Page header ────────────────────────────────────────── */}
-            <div className="px-[24px] flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-[8px] min-w-0">
-                    <Link
-                        href={backHref}
-                        className="inline-flex items-center gap-[6px] text-[13px] font-medium text-[#475467] hover:text-[#182230] transition-colors w-fit"
-                    >
-                        <ArrowLeft className="w-[16px] h-[16px]" />
-                        Back to reports
-                    </Link>
-                    <div className="flex flex-col gap-[4px]">
-                        <h1 className="text-[24px] font-semibold text-[#101828] leading-tight">
-                            {report.title}
-                        </h1>
-                        <p className="text-[14px] text-[#475467] max-w-[720px]">
-                            {report.description}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-[8px] shrink-0">
+        <div className="h-screen bg-white flex flex-col overflow-hidden">
+            {/* ── Header (X close · title · summary right) ────────────── */}
+            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0 border-b border-[#e4e7ec]">
+                <button type="button" onClick={() => router.push(backHref)}
+                    aria-label="Close"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[#667085]" />
+                </button>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{report.title}</h1>
+                <div className="ml-auto flex items-center gap-3">
+                    <span className="text-[14px] leading-[20px] text-[#667085]">{summaryText}</span>
                     {toolbarRight}
                 </div>
             </div>
 
-            {/* ─── Toolbar ────────────────────────────────────────────── */}
-            <div className="px-[24px] flex flex-col gap-[12px]">
-                {/* Row 1 — pills (Period · Break-down · Measure) */}
-                <div className="flex flex-wrap items-center gap-[16px]">
-                    {/* Period pills — only shown for lookback reports */}
+            {/* ── Body ────────────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto">
+                {/* Toolbar row */}
+                <div className="px-6 py-4 flex items-center gap-3 flex-wrap">
+                    {/* Period */}
                     {report.type === "lookback" && report.periods.length > 1 && (
-                        <div className="flex items-center gap-[8px]">
-                            <span className="text-[13px] font-medium text-[#475467]">Period</span>
-                            <div className="flex flex-wrap gap-[6px]">
-                                {report.periods.map(p => (
-                                    <FilterPill
-                                        key={p}
-                                        label={PERIOD_LABEL[p]}
-                                        selected={period === p}
-                                        onClick={() => setPeriod(p)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        <SingleSelectDropdown
+                            icon={CalendarPlus01}
+                            label="Period"
+                            active={period !== "none"}
+                            options={report.periods.map(p => ({ value: p, label: PERIOD_LABEL[p] }))}
+                            value={period}
+                            onChange={v => setPeriod(v as PeriodKey)}
+                        />
                     )}
 
-                    {/* Break-down pills */}
+                    {/* Break down by */}
                     {report.dimensions.length > 0 && (
-                        <div className="flex items-center gap-[8px]">
-                            <span className="text-[13px] font-medium text-[#475467]">Break-down</span>
-                            <div className="flex flex-wrap gap-[6px]">
-                                <FilterPill label="None" selected={dimIdx === -1} onClick={() => setDimIdx(-1)} />
-                                {report.dimensions.map((d, i) => (
-                                    <FilterPill
-                                        key={d.key}
-                                        label={d.label}
-                                        selected={dimIdx === i}
-                                        onClick={() => setDimIdx(i)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        <SingleSelectDropdown
+                            icon={Grid01}
+                            label="Break down by"
+                            active={dimIdx >= 0}
+                            options={[
+                                { value: "-1", label: "None" },
+                                ...report.dimensions.map((d, i) => ({ value: String(i), label: d.label })),
+                            ]}
+                            value={String(dimIdx)}
+                            onChange={v => setDimIdx(Number(v))}
+                        />
                     )}
 
-                    {/* Measure pills — only shown when > 1 measure */}
+                    {/* Measure */}
                     {report.measures.length > 1 && (
-                        <div className="flex items-center gap-[8px]">
-                            <span className="text-[13px] font-medium text-[#475467]">Measure</span>
-                            <div className="flex flex-wrap gap-[6px]">
-                                {report.measures.map((m, i) => (
-                                    <FilterPill
-                                        key={m.key}
-                                        label={m.label}
-                                        selected={meaIdx === i}
-                                        onClick={() => setMeaIdx(i)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        <SingleSelectDropdown
+                            icon={CurrencyDollar}
+                            label=""
+                            active={false}
+                            options={report.measures.map((m, i) => ({ value: String(i), label: m.label }))}
+                            value={String(meaIdx)}
+                            onChange={v => setMeaIdx(Number(v))}
+                        />
                     )}
-                </div>
 
-                {/* Row 2 — right-side action buttons + date range */}
-                <div className="flex flex-wrap items-center justify-end gap-[8px]">
-                    {/* Select column */}
-                    <Button
-                        ref={colsTriggerRef}
-                        variant="secondary-gray"
-                        size="md"
-                        leftIcon={<Rows01 className="w-4 h-4" />}
-                        rightIcon={<ChevronDown className="w-4 h-4" />}
-                        onClick={() => setColsOpen(o => !o)}
-                    >
-                        Columns ({visibleCols.size}/{report.columns.length})
-                    </Button>
-                    <FixedDropdown
-                        triggerRef={colsTriggerRef}
-                        open={colsOpen}
-                        onClose={() => setColsOpen(false)}
-                        minWidth={260}
-                    >
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-[8px] max-h-[420px] overflow-y-auto">
-                            {report.columns.map(c => (
-                                <button
-                                    key={c.key}
-                                    type="button"
-                                    onClick={() => toggleCol(c.key)}
-                                    className="w-full flex items-center gap-[10px] px-[14px] py-[8px] text-left hover:bg-[#f9fafb] transition-colors"
-                                >
-                                    <span className={cn(
-                                        "w-[16px] h-[16px] rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                        visibleCols.has(c.key) ? "bg-[#658774] border-[#658774]" : "border-[#d0d5dd] bg-white",
-                                    )}>
-                                        {visibleCols.has(c.key) && (
-                                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                                <path d="M1.5 5.5 4 8L8.5 2" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                        )}
-                                    </span>
-                                    <span className="text-[13.5px] text-[#344054] flex-1 truncate">{c.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </FixedDropdown>
+                    {/* Select column — flat mode only */}
+                    {!isPivot && (
+                        <CheckListDropdown
+                            icon={Columns01}
+                            label="Select column"
+                            options={report.columns.map(c => ({ value: c.key, label: c.label }))}
+                            value={visibleCols}
+                            onToggle={toggleCol}
+                        />
+                    )}
 
-                    {/* Location filter — only when > 1 branch scope */}
+                    {/* Select location — only when > 1 branch scope */}
                     {branches.length > 1 && (
-                        <>
-                            <Button
-                                ref={locTriggerRef}
-                                variant="secondary-gray"
-                                size="md"
-                                rightIcon={<ChevronDown className="w-4 h-4" />}
-                                onClick={() => setLocOpen(o => !o)}
-                            >
-                                {locLabel}
-                            </Button>
-                            <FixedDropdown
-                                triggerRef={locTriggerRef}
-                                open={locOpen}
-                                onClose={() => setLocOpen(false)}
-                                minWidth={220}
-                            >
-                                <div className="bg-white border-1 border-[#e4e7ec] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-[8px]">
-                                    {branches.map(b => (
-                                        <button
-                                            key={b.id}
-                                            type="button"
-                                            onClick={() => toggleBranch(b.id)}
-                                            className="w-full flex items-center gap-[10px] px-[14px] py-[8px] text-left hover:bg-[#f9fafb] transition-colors"
-                                        >
-                                            <span className={cn(
-                                                "w-[16px] h-[16px] rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                                visibleBranchIds.has(b.id) ? "bg-[#658774] border-[#658774]" : "border-[#d0d5dd] bg-white",
-                                            )}>
-                                                {visibleBranchIds.has(b.id) && (
-                                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                                        <path d="M1.5 5.5 4 8L8.5 2" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                                    </svg>
-                                                )}
-                                            </span>
-                                            <span className="text-[13.5px] text-[#344054] flex-1 truncate">{b.name}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </FixedDropdown>
-                        </>
+                        <CheckListDropdown
+                            icon={MarkerPin01}
+                            label="Select location"
+                            options={branches.map(b => ({ value: b.id, label: b.name }))}
+                            value={visibleBranchIds}
+                            onToggle={toggleBranch}
+                        />
                     )}
 
                     {/* Date range */}
                     <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
 
-                    {/* Export dropdown */}
-                    <Button
-                        ref={exportTriggerRef}
-                        variant="secondary-gray"
-                        size="md"
-                        leftIcon={<Download01 className="w-4 h-4" />}
-                        rightIcon={<ChevronDown className="w-4 h-4" />}
-                        onClick={() => setExportOpen(o => !o)}
-                    >
-                        Export
-                    </Button>
-                    <FixedDropdown
-                        triggerRef={exportTriggerRef}
-                        open={exportOpen}
-                        onClose={() => setExportOpen(false)}
-                        minWidth={180}
-                    >
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-[8px]">
-                            <button type="button" onClick={handleExportXlsx}
-                                className="w-full text-left px-[14px] py-[8px] text-[13.5px] text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                                Download Excel (.xlsx)
-                            </button>
-                            <button type="button" onClick={handleExportCsv}
-                                className="w-full text-left px-[14px] py-[8px] text-[13.5px] text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                                Download CSV
-                            </button>
-                        </div>
-                    </FixedDropdown>
-                </div>
-            </div>
+                    {/* Push export to the right */}
+                    <div className="ml-auto" />
 
-            {/* ─── Body — list or pivot ──────────────────────────────── */}
-            <div className="px-[24px]">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] min-h-[760px] relative overflow-hidden">
-                    {period === "none" || !pivot ? (
-                        <ListMode
-                            rows={filteredRows}
-                            columns={visibleColDefs}
-                            groupBy={dimension}
-                            reportId={report.id}
-                        />
-                    ) : (
-                        <PivotMode
-                            pivot={pivot}
-                            period={period}
-                            rowHeader={dimension?.label ?? "Total"}
-                            measureKind={measure?.kind ?? "currency"}
-                        />
-                    )}
+                    {/* Export — green primary, matching existing ExportDropdown */}
+                    <ExportInlineDropdown onExcel={handleExportXlsx} onCsv={handleExportCsv} />
                 </div>
+
+                {/* Body — pivot OR list */}
+                {isPivot ? (
+                    <PivotTable
+                        pivot={pivot!}
+                        period={period}
+                        rowHeader={dimensionLabel === "None" ? "Total" : dimensionLabel}
+                        measureKind={measure?.kind ?? "currency"}
+                    />
+                ) : (
+                    <ListTable
+                        rows={sortedRows}
+                        columns={visibleColDefs}
+                        sortKey={sortKey}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                    />
+                )}
             </div>
         </div>
     );
 }
 
-// ─── ListMode ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════
+// Single-select dropdown (Period · Break down · Measure)
+// ═════════════════════════════════════════════════════════════════════════
+//
+// Chrome mirrors SelectColumnDropdown / MultiSelectFilterDropdown exactly:
+// h-40 trigger · white bg · #d0d5dd border · icon-left · label · chevron.
+// When `active` (non-default value picked), the border swaps to the DS
+// green (#7ba08c 2px) — same treatment as FilterPill selected.
 
-interface ListModeProps {
-    rows: readonly Record<string, unknown>[];
-    columns: ColumnDef[];
-    groupBy: { key: string; label: string; extract: (r: Record<string, unknown>) => string } | null;
-    reportId: string;
+type IconCmp = ComponentType<SVGProps<SVGSVGElement>>;
+
+function SingleSelectDropdown({
+    icon: Icon, label, options, value, onChange, active,
+}: {
+    icon: IconCmp;
+    label: string;
+    options: { value: string; label: string }[];
+    value: string;
+    onChange: (next: string) => void;
+    active: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const currentLabel = options.find(o => o.value === value)?.label ?? "—";
+
+    return (
+        <div ref={ref} className="relative">
+            <button type="button" onClick={() => setOpen(p => !p)}
+                className={cn(
+                    "h-[40px] bg-white rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    active ? "border-2 border-[#7ba08c]" : "border-1 border-[#d0d5dd]",
+                )}>
+                <Icon className={cn("w-4 h-4", active ? "text-[#658774]" : "text-[#667085]")} />
+                {label && <span className={cn(active ? "text-[#182230]" : "")}>{label}:</span>}
+                <span className={cn("font-semibold", active ? "text-[#182230]" : "text-[#344054]")}>{currentLabel}</span>
+                <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+            </button>
+
+            {open && (
+                <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px] max-h-[360px] overflow-y-auto">
+                    {options.map(opt => (
+                        <button key={opt.value} type="button"
+                            onClick={() => { onChange(opt.value); setOpen(false); }}
+                            className={cn(
+                                "w-full text-left px-3.5 py-[10px] text-[14px] font-medium transition-colors flex items-center justify-between",
+                                opt.value === value
+                                    ? "bg-[#f9fafb] text-[#182230]"
+                                    : "text-[#344054] hover:bg-[#f9fafb]",
+                            )}>
+                            <span>{opt.label}</span>
+                            {opt.value === value && <Check className="w-4 h-4 text-[#658774]" />}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
-function ListMode({ rows, columns, groupBy, reportId: _reportId }: ListModeProps) {
+// ═════════════════════════════════════════════════════════════════════════
+// Multi-select checkbox dropdown (Select column · Select location)
+// ═════════════════════════════════════════════════════════════════════════
+//
+// Same trigger chrome as SingleSelectDropdown but with a count badge.
+// Popover: Select all + checkbox list. Matches existing
+// SelectColumnDropdown / MultiSelectFilterDropdown line-for-line so all
+// toolbar dropdowns read as one family.
+
+function CheckListDropdown({
+    icon: Icon, label, options, value, onToggle,
+}: {
+    icon: IconCmp;
+    label: string;
+    options: { value: string; label: string }[];
+    value: Set<string>;
+    onToggle: (v: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    return (
+        <div ref={ref} className="relative">
+            <button type="button" onClick={() => setOpen(p => !p)}
+                className={cn(
+                    "h-[40px] bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                )}>
+                <Icon className="w-4 h-4 text-[#667085]" />
+                <span>{label}</span>
+                <span className="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[12px] font-medium text-[#344054]">
+                    {value.size}
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+            </button>
+
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[240px] max-h-[400px] overflow-y-auto">
+                    {options.map(opt => (
+                        <button key={opt.value} type="button"
+                            onClick={() => onToggle(opt.value)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#f9fafb] transition-colors">
+                            <span className={cn(
+                                "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
+                                value.has(opt.value) ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                            )}>
+                                {value.has(opt.value) && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                            </span>
+                            <span className="text-[14px] font-medium text-[#344054] leading-[20px] flex-1 text-left">{opt.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Export dropdown (green primary — matches existing ExportDropdown chrome)
+// ═════════════════════════════════════════════════════════════════════════
+
+function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: () => void; }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    return (
+        <div ref={ref} className="relative">
+            <Button variant="primary" size="md" onClick={() => setOpen(p => !p)}
+                rightIcon={<ChevronDown className="w-4 h-4" />}>
+                Export
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[180px]">
+                    <button type="button" onClick={() => { onExcel(); setOpen(false); }}
+                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        Excel (.xlsx)
+                    </button>
+                    <button type="button" onClick={() => { onCsv(); setOpen(false); }}
+                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        CSV
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// List table (Period = None) — flat sortable list
+// ═════════════════════════════════════════════════════════════════════════
+
+function ListTable({
+    rows, columns, sortKey, sortDir, onToggleSort,
+}: {
+    rows: readonly Record<string, unknown>[];
+    columns: ColumnDef[];
+    sortKey: string | null;
+    sortDir: "asc" | "desc";
+    onToggleSort: (key: string) => void;
+}) {
     if (rows.length === 0) {
-        return <EmptyState title="No rows in the selected range" subtitle="Adjust the date range, location, or filters to see data." />;
+        return (
+            <div className="relative min-h-[400px]">
+                <EmptyState title="No records found" subtitle="Adjust the filters above to see results." />
+            </div>
+        );
     }
     if (columns.length === 0) {
-        return <EmptyState title="No columns selected" subtitle="Pick at least one column from the Columns dropdown." />;
+        return (
+            <div className="relative min-h-[400px]">
+                <EmptyState title="No columns selected" subtitle="Pick at least one column from the Select column dropdown." />
+            </div>
+        );
     }
 
-    // Group rows if a dimension is chosen. Otherwise a single flat block.
-    const groups: { key: string; rows: readonly Record<string, unknown>[] }[] = groupBy
-        ? (() => {
-            const buckets = new Map<string, Record<string, unknown>[]>();
-            for (const r of rows) {
-                const k = groupBy.extract(r) || "—";
-                if (!buckets.has(k)) buckets.set(k, []);
-                buckets.get(k)!.push(r);
-            }
-            // Sort groups by row count DESC.
-            return Array.from(buckets.entries())
-                .sort((a, b) => b[1].length - a[1].length)
-                .map(([key, rs]) => ({ key, rows: rs }));
-        })()
-        : [{ key: "", rows }];
-
-    // Compute total row for numeric columns.
-    function sumFor(rs: readonly Record<string, unknown>[], col: ColumnDef): number | null {
+    function sumFor(col: ColumnDef): number | null {
         if (col.kind !== "currency" && col.kind !== "number") return null;
         let s = 0;
-        for (const r of rs) {
-            const n = Number(r[col.key]);
-            if (Number.isFinite(n)) s += n;
-        }
+        for (const r of rows) { const n = Number(r[col.key]); if (Number.isFinite(n)) s += n; }
         return s;
     }
 
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead className="bg-[#f9fafb] border-b border-[#e4e7ec] sticky top-0 z-10">
-                    <tr>
-                        {columns.map(c => (
-                            <th key={c.key}
-                                style={{ minWidth: c.minWidth ?? (c.kind === "text" ? 180 : 120) }}
-                                className={cn(
-                                    "px-[16px] py-[12px] text-[12px] font-semibold uppercase tracking-wide text-[#475467]",
-                                    c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right" : "text-left",
-                                )}>
-                                {c.label}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {groups.flatMap(g => {
-                        const rows: React.ReactNode[] = [];
-                        if (groupBy) {
-                            rows.push(
-                                <tr key={`h-${g.key}`} className="bg-[#f2f4f7]">
-                                    <td colSpan={columns.length}
-                                        className="px-[16px] py-[8px] text-[12.5px] font-semibold text-[#344054]">
-                                        {g.key} <span className="text-[#667085] font-normal">· {g.rows.length}</span>
-                                    </td>
-                                </tr>,
-                            );
-                        }
-                        g.rows.forEach((r, ri) => {
-                            rows.push(
-                                <tr key={`${g.key}-${ri}`} className="border-b border-[#f2f4f7] hover:bg-[#f9fafb] transition-colors">
-                                    {columns.map(c => (
-                                        <td key={c.key}
-                                            className={cn(
-                                                "px-[16px] py-[12px] text-[13.5px] text-[#344054] whitespace-nowrap",
-                                                c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
-                                            )}>
-                                            {formatCell(r[c.key], c.kind)}
-                                        </td>
-                                    ))}
-                                </tr>,
-                            );
-                        });
-                        return rows;
-                    })}
-
-                    {/* Grand-total row */}
-                    <tr className="bg-[#f9fafb] border-t-2 border-[#e4e7ec]">
-                        {columns.map((c, i) => {
-                            const total = sumFor(rows, c);
-                            return (
-                                <td key={c.key}
+        <div className="px-6 pb-6">
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse" style={{ minWidth: columns.reduce((s, c) => s + (c.minWidth ?? 140), 0) }}>
+                    <thead>
+                        <tr className="border-b border-[#e4e7ec]">
+                            {columns.map(col => (
+                                <th key={col.key}
+                                    style={{ minWidth: col.minWidth ?? 140 }}
                                     className={cn(
-                                        "px-[16px] py-[12px] text-[13.5px] font-semibold text-[#101828] whitespace-nowrap",
-                                        c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
+                                        "px-6 py-3 text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap",
+                                        col.kind === "currency" || col.kind === "number" || col.kind === "percent" ? "text-right" : "text-left",
                                     )}>
-                                    {i === 0 && total === null ? "Total" : total === null ? "" : formatCell(total, c.kind)}
-                                </td>
-                            );
-                        })}
-                    </tr>
-                </tbody>
-            </table>
+                                    <SortIconButton
+                                        label={col.label}
+                                        active={sortKey === col.key}
+                                        dir={sortDir}
+                                        align={col.kind === "currency" || col.kind === "number" || col.kind === "percent" ? "right" : "left"}
+                                        onClick={() => onToggleSort(col.key)}
+                                    />
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((r, ri) => (
+                            <tr key={ri} className="border-b border-[#e4e7ec] last:border-b-0 hover:bg-[#f9fafb] transition-colors">
+                                {columns.map(c => (
+                                    <td key={c.key}
+                                        style={{ minWidth: c.minWidth ?? 140 }}
+                                        className={cn(
+                                            "px-6 py-4 text-[14px] text-[#475467] leading-[20px] whitespace-nowrap",
+                                            c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
+                                        )}>
+                                        {formatCell(r[c.key], c.kind)}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                        {/* Total row */}
+                        <tr className="bg-[#f9fafb] border-t border-[#e4e7ec]">
+                            {columns.map((c, i) => {
+                                const total = sumFor(c);
+                                return (
+                                    <td key={c.key}
+                                        className={cn(
+                                            "px-6 py-4 text-[14px] font-semibold text-[#101828] whitespace-nowrap",
+                                            c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
+                                        )}>
+                                        {i === 0 && total === null ? "Total" : total === null ? "" : formatCell(total, c.kind)}
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
 
-// ─── PivotMode ────────────────────────────────────────────────────────────
+function SortIconButton({ label, active, dir, align, onClick }: {
+    label: string; active: boolean; dir: "asc" | "desc"; align: "left" | "right"; onClick: () => void;
+}) {
+    const Icon = !active ? ChevronSelectorVertical : dir === "asc" ? ArrowUp : ArrowDown;
+    return (
+        <button type="button" onClick={onClick}
+            className={cn(
+                "inline-flex items-center gap-1 hover:text-[#101828] transition-colors select-none",
+                align === "right" && "flex-row-reverse",
+            )}>
+            <span>{label}</span>
+            <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-[#475467]" : "text-[#98a2b3]")} />
+        </button>
+    );
+}
 
-interface PivotModeProps {
+// ═════════════════════════════════════════════════════════════════════════
+// Pivot table (Period != None)
+// ═════════════════════════════════════════════════════════════════════════
+//
+// Matches the client's screenshot exactly:
+//   Header row  : [rowHeader] · [period cols] · Total
+//   Data rows   : rowKey values → per-column totals + row total
+//   Column totals row (bold, gray bg) at the bottom
+//   Period change row (▲ green / ▼ red / — muted) underneath the totals
+// The pivot logic (bucket / dim / measure) is done by pivotRows() upstream.
+
+function PivotTable({
+    pivot, period, rowHeader, measureKind,
+}: {
     pivot: NonNullable<ReturnType<typeof pivotRows>>;
     period: PeriodKey;
     rowHeader: string;
     measureKind: "currency" | "number" | "percent";
-}
-
-function PivotMode({ pivot, period, rowHeader, measureKind }: PivotModeProps) {
+}) {
     if (pivot.colKeys.length === 0 || pivot.rowKeys.length === 0) {
-        return <EmptyState title="No data to pivot" subtitle="Adjust the date range, break-down, or measure to see data." />;
+        return (
+            <div className="relative min-h-[400px]">
+                <EmptyState title="No data to pivot" subtitle="Adjust the date range, break-down, or measure to see data." />
+            </div>
+        );
     }
 
     function fmt(n: number): string {
+        if (n === 0) return "—";
+        if (measureKind === "currency") return `AED ${CURRENCY_FMT.format(Math.round(n))}`;
+        if (measureKind === "percent")  return `${n.toFixed(1)}%`;
+        return NUMBER_FMT.format(Math.round(n));
+    }
+    function fmtTotal(n: number): string {
         if (measureKind === "currency") return `AED ${CURRENCY_FMT.format(Math.round(n))}`;
         if (measureKind === "percent")  return `${n.toFixed(1)}%`;
         return NUMBER_FMT.format(Math.round(n));
     }
     function fmtDelta(d: number | null): { text: string; cls: string } {
         if (d === null) return { text: "—", cls: "text-[#98a2b3]" };
-        const abs = Math.abs(d).toFixed(1);
-        if (d > 0) return { text: `▲ ${abs}%`, cls: "text-[#067647]" };
-        if (d < 0) return { text: `▼ ${abs}%`, cls: "text-[#b42318]" };
-        return { text: "0.0%", cls: "text-[#475467]" };
+        const abs = Math.abs(d).toFixed(0);
+        if (d > 0) return { text: `▲ ${abs}%`, cls: "text-[#079455] font-semibold" };
+        if (d < 0) return { text: `▼ ${abs}%`, cls: "text-[#d92d20] font-semibold" };
+        return { text: "0%", cls: "text-[#475467]" };
     }
 
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-                <thead className="bg-[#f9fafb] border-b border-[#e4e7ec] sticky top-0 z-10">
-                    <tr>
-                        <th className="px-[16px] py-[12px] text-left text-[12px] font-semibold uppercase tracking-wide text-[#475467] sticky left-0 bg-[#f9fafb] z-20"
-                            style={{ minWidth: 200 }}>
-                            {rowHeader}
-                        </th>
-                        {pivot.colKeys.map(ck => (
-                            <th key={ck}
-                                className="px-[16px] py-[12px] text-right text-[12px] font-semibold uppercase tracking-wide text-[#475467]"
-                                style={{ minWidth: 110 }}>
-                                {periodLabelFor(ck, period, period === "month")}
+        <div className="px-6 pb-6">
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="border-b border-[#e4e7ec]">
+                            <th className="px-6 py-3 text-left text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap"
+                                style={{ minWidth: 200 }}>
+                                {rowHeader}
                             </th>
+                            {pivot.colKeys.map(ck => (
+                                <th key={ck}
+                                    className="px-6 py-3 text-right text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap"
+                                    style={{ minWidth: 130 }}>
+                                    {periodLabelFor(ck, period, period === "month")}
+                                </th>
+                            ))}
+                            <th className="px-6 py-3 text-right text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap bg-[#f9fafb]"
+                                style={{ minWidth: 140 }}>
+                                Total
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pivot.rowKeys.map(rk => (
+                            <tr key={rk} className="border-b border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors">
+                                <td className="px-6 py-4 text-[14px] text-[#344054] font-medium whitespace-nowrap">
+                                    {rk}
+                                </td>
+                                {pivot.colKeys.map(ck => (
+                                    <td key={ck}
+                                        className="px-6 py-4 text-[14px] text-[#475467] text-right tabular-nums whitespace-nowrap">
+                                        {fmt(pivot.matrix[rk]?.[ck] ?? 0)}
+                                    </td>
+                                ))}
+                                <td className="px-6 py-4 text-[14px] text-[#101828] text-right tabular-nums font-semibold whitespace-nowrap bg-[#f9fafb]">
+                                    {fmtTotal(pivot.rowTotals[rk] ?? 0)}
+                                </td>
+                            </tr>
                         ))}
-                        <th className="px-[16px] py-[12px] text-right text-[12px] font-semibold uppercase tracking-wide text-[#475467]"
-                            style={{ minWidth: 120 }}>
-                            Total
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {pivot.rowKeys.map(rk => (
-                        <tr key={rk} className="border-b border-[#f2f4f7] hover:bg-[#f9fafb] transition-colors">
-                            <td className="px-[16px] py-[12px] text-[13.5px] text-[#344054] sticky left-0 bg-white whitespace-nowrap font-medium">
-                                {rk}
+
+                        {/* Column totals row */}
+                        <tr className="border-t-2 border-[#e4e7ec] bg-white">
+                            <td className="px-6 py-4 text-[14px] font-semibold text-[#101828]">
+                                Total
                             </td>
                             {pivot.colKeys.map(ck => (
                                 <td key={ck}
-                                    className="px-[16px] py-[12px] text-[13.5px] text-[#344054] text-right tabular-nums whitespace-nowrap">
-                                    {fmt(pivot.matrix[rk]?.[ck] ?? 0)}
+                                    className="px-6 py-4 text-[14px] font-semibold text-[#101828] text-right tabular-nums whitespace-nowrap">
+                                    {fmtTotal(pivot.colTotals[ck] ?? 0)}
                                 </td>
                             ))}
-                            <td className="px-[16px] py-[12px] text-[13.5px] text-[#101828] text-right tabular-nums font-semibold whitespace-nowrap">
-                                {fmt(pivot.rowTotals[rk] ?? 0)}
+                            <td className="px-6 py-4 text-[14px] font-bold text-[#101828] text-right tabular-nums whitespace-nowrap bg-[#f9fafb]">
+                                {fmtTotal(pivot.grandTotal)}
                             </td>
                         </tr>
-                    ))}
 
-                    {/* Column-totals row */}
-                    <tr className="bg-[#f9fafb] border-t-2 border-[#e4e7ec]">
-                        <td className="px-[16px] py-[12px] text-[13.5px] font-semibold text-[#101828] sticky left-0 bg-[#f9fafb]">
-                            Total
-                        </td>
-                        {pivot.colKeys.map(ck => (
-                            <td key={ck}
-                                className="px-[16px] py-[12px] text-[13.5px] font-semibold text-[#101828] text-right tabular-nums whitespace-nowrap">
-                                {fmt(pivot.colTotals[ck] ?? 0)}
+                        {/* Period-change delta row */}
+                        <tr className="bg-white">
+                            <td className="px-6 py-3 text-[13px] text-[#475467]">
+                                {period === "month" ? "MoM change" : period === "week" ? "WoW change" : period === "quarter" ? "QoQ change" : period === "year" ? "YoY change" : "Period change"}
                             </td>
-                        ))}
-                        <td className="px-[16px] py-[12px] text-[13.5px] font-bold text-[#101828] text-right tabular-nums whitespace-nowrap">
-                            {fmt(pivot.grandTotal)}
-                        </td>
-                    </tr>
-
-                    {/* Period-change delta row */}
-                    <tr className="bg-white">
-                        <td className="px-[16px] py-[10px] text-[12.5px] text-[#475467] sticky left-0 bg-white">
-                            Period change
-                        </td>
-                        {pivot.columnDeltasPct.map((d, i) => {
-                            const { text, cls } = fmtDelta(d);
-                            return (
-                                <td key={i}
-                                    className={cn("px-[16px] py-[10px] text-[12.5px] text-right tabular-nums whitespace-nowrap", cls)}>
-                                    {text}
-                                </td>
-                            );
-                        })}
-                        <td className="px-[16px] py-[10px]"></td>
-                    </tr>
-                </tbody>
-            </table>
+                            {pivot.columnDeltasPct.map((d, i) => {
+                                const { text, cls } = fmtDelta(d);
+                                return (
+                                    <td key={i} className={cn("px-6 py-3 text-[13px] text-right tabular-nums whitespace-nowrap", cls)}>
+                                        {text}
+                                    </td>
+                                );
+                            })}
+                            <td className="px-6 py-3"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
