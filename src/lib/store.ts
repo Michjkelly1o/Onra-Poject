@@ -2671,6 +2671,7 @@ interface AppState {
     unfreezeCustomerPlan: (planId: string) => void;
     /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
     cancelCustomerPlan: (planId: string, mode: "today" | "period_end", reason: string) => void;
+    reactivateCustomerPlan: (planId: string) => void;
     /** Remove a complimentary grant — status → removed, with reason + actor. */
     removeComplimentaryPlan: (planId: string, reason: string, removedBy: string, removedByRole: string) => void;
     /** Append a complimentary grant as a new plan row (from the add-credit flow). */
@@ -4462,6 +4463,22 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (targetPlan) {
             get().recordAudit(`Cancelled ${customerName}'s plan`, "customer_plan", planId, targetPlan.name, { mode });
+        }
+    },
+
+    reactivateCustomerPlan: (planId) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? { ...p, status: "active" as const, cancelMode: undefined, cancelReason: undefined, cancelledAtISO: undefined }
+                    : p,
+            ),
+        }));
+        if (target) {
+            const customer = get().customers.find(c => c.id === target.customerId);
+            const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
+            get().recordAudit(`Reactivated ${customerName}'s plan`, "customer_plan", planId, target.name);
         }
     },
 

@@ -4,11 +4,10 @@
 // Customer — ScrollRestoration — per-route scroll memory for the <main> container
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The customer shell scrolls inside a custom `<main>` (not the window), which
-// persists across route changes — so navigating to a shorter page clobbers its
-// scrollTop and "Back" lands mid-page / at the top. This remembers each route's
-// scroll offset and restores it: Back → the exact previous position; a first
-// visit (or forward to a new page) → the top. Memory lives for the session.
+// The customer shell scrolls inside a custom `<main>` that persists across route
+// changes. We want: Back → the exact previous position ("Back keeps your place");
+// opening a screen fresh (forward push, even to a route seen before) → the top.
+// Direction is detected via `popstate` (fires only for browser/back-forward nav).
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
@@ -19,6 +18,16 @@ export function ScrollRestoration() {
     const pathname = usePathname();
     const pathRef = useRef(pathname);
     pathRef.current = pathname;
+    // True only while handling a Back/Forward (popstate) navigation.
+    const popRef = useRef(false);
+
+    useEffect(() => {
+        const onPop = () => {
+            popRef.current = true;
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
 
     // Continuously remember the CURRENT route's scroll offset.
     useEffect(() => {
@@ -29,12 +38,15 @@ export function ScrollRestoration() {
         return () => el.removeEventListener("scroll", onScroll);
     }, []);
 
-    // On route change, restore the saved offset (Back) or go to the top (new page).
-    // rAF so the incoming content height is settled before we set scrollTop.
+    // On route change: Back (pop) → restore the saved offset; a fresh open (push)
+    // → reset to the top and forget any stale offset for that route.
     useEffect(() => {
         const el = document.querySelector("main");
         if (!el) return;
-        const target = positions.get(pathname) ?? 0;
+        const isPop = popRef.current;
+        popRef.current = false;
+        if (!isPop) positions.delete(pathname);
+        const target = isPop ? (positions.get(pathname) ?? 0) : 0;
         const raf = requestAnimationFrame(() => {
             el.scrollTop = target;
         });
