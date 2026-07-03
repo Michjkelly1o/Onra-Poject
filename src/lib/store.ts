@@ -2764,7 +2764,10 @@ const INITIAL_BRANDING_SETTINGS: BrandingSettings = {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-interface AppState {
+// Exported (v30 reports rewrite) so `src/lib/reports/selectors.ts` can type
+// its function signatures against the full store shape. Pure additive:
+// existing consumers using implicit inference are unaffected.
+export interface AppState {
     currentRole: UserRole;
     currentUser: User;
     sidebarCollapsed: boolean;
