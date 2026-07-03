@@ -56,7 +56,6 @@ import { pivotRows, periodLabelFor } from "@/lib/reports/pivot";
 import {
     buildListCsv,
     buildPivotCsv,
-    formatCellForCsv,
     triggerCsvDownload,
 } from "@/lib/reports/export-csv";
 import {
@@ -758,9 +757,6 @@ function ListMode({ rows, columns, groupBy, reportId: _reportId }: ListModeProps
                     </tr>
                 </tbody>
             </table>
-            {/* Reference `formatCellForCsv` so lint doesn't complain about the
-                indirect helper; kept for consumers building custom exports. */}
-            <span className="hidden" aria-hidden data-fmt={typeof formatCellForCsv} />
         </div>
     );
 }

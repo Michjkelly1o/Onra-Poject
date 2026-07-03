@@ -27,6 +27,7 @@ import {
     selectPayments,
     selectCustomers,
 } from "@/lib/reports/selectors";
+import { TOTAL_SALES_REPORT } from "./reports/total-sales";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -76,7 +77,7 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
 
 export const REPORTS_REGISTRY: ReportDefinition[] = [
     // Phase 3 · Reference implementation
-    //   Total Sales (financial)
+    TOTAL_SALES_REPORT,
 
     // Phase 4A · Financial batch 1
     //   Sales by Category · Payments · Refunds · Discounts
