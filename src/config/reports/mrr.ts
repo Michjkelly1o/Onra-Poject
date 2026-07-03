@@ -19,8 +19,8 @@ const K = {
 
 export const MRR_REPORT: ReportDefinition = {
     id:          "mrr",
-    category:    "membership_package",
-    title:       "MRR — Monthly Recurring Revenue",
+    category:    "financial",
+    title:       "Recurring Revenue (MRR)",
     description: "Sum of active membership monthly prices per (branch × month). The subscription business's forward revenue baseline.",
     type:        "lookback",
     route:       "/admin/reports/mrr",

@@ -27,7 +27,7 @@ const K = {
 export const FROZEN_REPORT: ReportDefinition = {
     id:          "frozen",
     category:    "membership_package",
-    title:       "Frozen Packages",
+    title:       "Frozen Memberships / Packages",
     description: "Currently-frozen memberships + packages. Freeze days-so-far + origin help retention ops re-engage before the window closes.",
     type:        "snapshot",
     route:       "/admin/reports/frozen",

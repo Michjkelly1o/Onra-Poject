@@ -20,8 +20,8 @@ const K = {
 
 export const ARPM_REPORT: ReportDefinition = {
     id:          "arpm",
-    category:    "membership_package",
-    title:       "ARPM — Avg Revenue Per Member",
+    category:    "financial",
+    title:       "Revenue per Member (ARPM)",
     description: "Net revenue ÷ active-members per month. Rising ARPM means members are spending more; falling means intro offers are diluting the average.",
     type:        "lookback",
     route:       "/admin/reports/arpm",

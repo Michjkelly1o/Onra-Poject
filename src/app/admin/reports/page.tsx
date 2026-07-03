@@ -34,94 +34,96 @@ interface ReportCategory {
     items: ReportItem[];
 }
 
-// Category structure + item list mirror new-prd/Onra_Reporting.xlsx
-// (Sheet 1 · Report Catalogue). Order preserved. Retail's 2 reports
-// are skipped per plan (see new-prd/reports-implementation-plan.md §1).
+// Category structure + item labels mirror new-prd/Onra_Reporting.xlsx
+// Sheet 1 "Reports" VERBATIM (rows B5-B45). Order preserved. Retail's
+// 2 reports are skipped per plan (see new-prd/reports-implementation-plan.md
+// §1). Any label change here must land in the corresponding registry
+// entry's `title` field too so the report page + landing agree.
 const CATEGORIES: ReportCategory[] = [
     {
         id: "financial",
-        title: "Financial reports",
+        title: "Financial",
         description:
-            "Track studio performance — total sales, sales by category, sales by item, payments, refunds, discounts, gift cards, tax, revenue recognition, and per-visit / per-member economics.",
+            "Track studio performance — sales, refunds, discounts, gift cards, tax, revenue recognition, MRR, ARPM, and per-visit economics.",
         icon: BankNote01,
         items: [
-            { slug: "total-sales",         label: "Total sales (orders)"      },
-            { slug: "sales-by-category",   label: "Sales by category"         },
-            { slug: "sales-by-item",       label: "Sales by item"             },
-            { slug: "payments",            label: "Payments"                  },
-            { slug: "refunds",             label: "Refunds"                   },
-            { slug: "discounts",           label: "Discounts"                 },
-            { slug: "gift-cards",          label: "Gift cards"                },
-            { slug: "tax-vat-export",      label: "Tax / VAT export"          },
-            { slug: "revenue-recognition", label: "Revenue recognition"       },
-            { slug: "revenue-per-class",   label: "Revenue per class / visit" },
+            { slug: "total-sales",         label: "Total Sales (orders)"         },
+            { slug: "sales-by-category",   label: "Sales by Category (stream)"   },
+            { slug: "sales-by-item",       label: "Sales by Item"                },
+            { slug: "payments",            label: "Payments"                     },
+            { slug: "refunds",             label: "Refunds"                      },
+            { slug: "discounts",           label: "Discounts"                    },
+            { slug: "tax-vat-export",      label: "Tax / VAT Export"             },
+            { slug: "gift-cards",          label: "Gift Card"                    },
+            { slug: "revenue-recognition", label: "Revenue Recognition"          },
+            { slug: "revenue-per-class",   label: "Revenue per Class / Visit"    },
+            { slug: "arpm",                label: "Revenue per Member (ARPM)"    },
+            { slug: "mrr",                 label: "Recurring Revenue (MRR)"      },
         ],
     },
     {
         id: "membership_package",
-        title: "Membership & Package reports",
+        title: "Membership & Package",
         description:
-            "Active plans, frozen packages, intro offers, plan changes, MRR, ARPM. See who upgraded, who downgraded, and what recurring revenue looks like month-over-month.",
+            "Active plans, frozen packages, intro offers, and plan changes.",
         icon: CreditCard02,
         items: [
-            { slug: "memberships-packages", label: "Memberships & packages"           },
-            { slug: "frozen",               label: "Frozen packages"                  },
-            { slug: "intro-offers",         label: "Intro offers"                     },
-            { slug: "upgrades-downgrades",  label: "Upgrades & downgrades"            },
-            { slug: "mrr",                  label: "MRR — Monthly Recurring Revenue" },
-            { slug: "arpm",                 label: "ARPM — Avg Revenue Per Member"   },
+            { slug: "memberships-packages", label: "Memberships & Packages"           },
+            { slug: "frozen",               label: "Frozen Memberships / Packages"    },
+            { slug: "intro-offers",         label: "Intro Offers"                     },
+            { slug: "upgrades-downgrades",  label: "Upgrades / Downgrades"            },
         ],
     },
     {
         id: "customer",
-        title: "Client / Customer reports",
+        title: "Client / Customer",
         description:
-            "Understand how customers interact with your studio — active vs inactive, sign-ups, movement, churn, retention, win-back.",
+            "How customers interact with the studio — active vs inactive, sign-ups, churn, retention, win-back.",
         icon: User01,
         items: [
-            { slug: "customer-data",       label: "Customer data"        },
-            { slug: "member-movement",     label: "Member movement"      },
-            { slug: "retention-churn",     label: "Retention & churn"    },
-            { slug: "win-back",            label: "Win-back"             },
+            { slug: "customer-data",       label: "Customer Data (Active vs Inactive)"      },
+            { slug: "member-movement",     label: "Member Movement (Sign-ups & Net Change)" },
+            { slug: "retention-churn",     label: "Retention & Churn"                       },
+            { slug: "win-back",            label: "Win-back"                                },
         ],
     },
     {
         id: "class",
-        title: "Activity / Class reports",
+        title: "Activity / Class",
         description:
-            "Bookings, class performance, cancellations, no-shows, and the top classes / services across the studio.",
+            "Bookings, class performance, cancellations, no-shows, and the top classes and services.",
         icon: Activity,
         items: [
-            { slug: "bookings",              label: "Bookings"                },
-            { slug: "cancellations-noshows", label: "Cancellations & no-shows" },
-            { slug: "class-performance",     label: "Class performance"       },
-            { slug: "top-classes-services",  label: "Top classes & services"  },
+            { slug: "bookings",              label: "Bookings"                 },
+            { slug: "class-performance",     label: "Class Performance"        },
+            { slug: "cancellations-noshows", label: "Cancellations & No-shows" },
+            { slug: "top-classes-services",  label: "Top Classes & Services"   },
         ],
     },
     {
         id: "staff",
-        title: "Staff / Instructor reports",
+        title: "Staff / Instructor",
         description:
             "Instructor performance and staff attendance. Owner / manager / payroll access only.",
         icon: Users01,
         items: [
-            { slug: "instructor-performance", label: "Instructor performance" },
-            { slug: "staff-attendance",       label: "Staff attendance"       },
+            { slug: "instructor-performance", label: "Instructor Performance" },
+            { slug: "staff-attendance",       label: "Staff Attendance"       },
         ],
     },
     {
         id: "marketing",
-        title: "Marketing reports",
+        title: "Marketing",
         description:
-            "Leads, campaigns, promos, referrals, and acquisition efficiency — the pipeline into paying members.",
+            "Leads, campaigns, promos, referrals, and acquisition efficiency.",
         icon: Announcement01,
         items: [
-            { slug: "referrals",              label: "Referrals"              },
-            { slug: "promo-redemptions",      label: "Promo redemptions"      },
-            { slug: "campaign-performance",   label: "Campaign performance"   },
-            { slug: "lead-data",              label: "Lead data"              },
-            { slug: "lead-conversion",        label: "Lead conversion"        },
-            { slug: "acquisition-efficiency", label: "Acquisition efficiency" },
+            { slug: "lead-data",              label: "Lead Data"              },
+            { slug: "lead-conversion",        label: "Lead Conversion"        },
+            { slug: "campaign-performance",   label: "Campaign Performance"   },
+            { slug: "promo-redemptions",      label: "Promo Redemptions"      },
+            { slug: "referrals",              label: "Referral Report"        },
+            { slug: "acquisition-efficiency", label: "Acquisition Efficiency" },
         ],
     },
 ];

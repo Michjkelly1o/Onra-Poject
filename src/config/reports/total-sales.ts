@@ -62,7 +62,7 @@ const K = {
 export const TOTAL_SALES_REPORT: ReportDefinition = {
     id:          "total-sales",
     category:    "financial",
-    title:       "Total Sales",
+    title:       "Total Sales (orders)",
     description: "Order-level list of everything sold — the financial source of truth. Refunds land in their own period; voids are erased.",
     type:        "lookback",
     route:       "/admin/reports/total-sales",

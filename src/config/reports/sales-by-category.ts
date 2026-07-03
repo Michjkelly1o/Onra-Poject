@@ -34,7 +34,7 @@ const K = {
 export const SALES_BY_CATEGORY_REPORT: ReportDefinition = {
     id:          "sales-by-category",
     category:    "financial",
-    title:       "Sales by Category",
+    title:       "Sales by Category (stream)",
     description: "Sales stream broken down by revenue category (memberships vs packages). Refund rate + share of total net make weak categories obvious.",
     type:        "lookback",
     route:       "/admin/reports/sales-by-category",
