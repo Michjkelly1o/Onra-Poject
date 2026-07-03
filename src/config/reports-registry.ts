@@ -27,6 +27,7 @@ import {
     selectPayments,
     selectCustomers,
     selectGiftCards,
+    selectMemberships,
 } from "@/lib/reports/selectors";
 import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
 import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
@@ -37,6 +38,13 @@ import { SALES_BY_ITEM_REPORT }       from "./reports/sales-by-item";
 import { GIFT_CARDS_REPORT }          from "./reports/gift-cards";
 import { TAX_VAT_EXPORT_REPORT }      from "./reports/tax-vat-export";
 import { REVENUE_RECOGNITION_REPORT } from "./reports/revenue-recognition";
+import { MEMBERSHIPS_PACKAGES_REPORT }from "./reports/memberships-packages";
+import { FROZEN_REPORT }              from "./reports/frozen";
+import { INTRO_OFFERS_REPORT }        from "./reports/intro-offers";
+import { UPGRADES_DOWNGRADES_REPORT } from "./reports/upgrades-downgrades";
+import { MRR_REPORT }                 from "./reports/mrr";
+import { ARPM_REPORT }                from "./reports/arpm";
+import { REVENUE_PER_CLASS_REPORT }   from "./reports/revenue-per-class";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -72,9 +80,10 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
     selectCustomers:          selectCustomers          as unknown as SelectorFn,
     // Phase 4B — shipped
     selectGiftCards:          selectGiftCards          as unknown as SelectorFn,
+    // Phase 4C — shipped
+    selectMemberships:        selectMemberships        as unknown as SelectorFn,
 
     // Phase 4 — deferred (throws with a clear error if used prematurely)
-    selectMemberships:        DEFERRED("selectMemberships"),
     selectBookings:           DEFERRED("selectBookings"),
     selectClassSessions:      DEFERRED("selectClassSessions"),
     selectReferrals:          DEFERRED("selectReferrals"),
@@ -102,8 +111,13 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     REVENUE_RECOGNITION_REPORT,
 
     // Phase 4C · Financial + Membership
-    //   Revenue per Class · ARPM · MRR · Memberships & Packages · Frozen
-    //   Intro Offers · Upgrades/Downgrades
+    REVENUE_PER_CLASS_REPORT,
+    ARPM_REPORT,
+    MRR_REPORT,
+    MEMBERSHIPS_PACKAGES_REPORT,
+    FROZEN_REPORT,
+    INTRO_OFFERS_REPORT,
+    UPGRADES_DOWNGRADES_REPORT,
 
     // Phase 4D · Client + Activity
     //   Customer Data · Member Movement · Retention & Churn · Win-back

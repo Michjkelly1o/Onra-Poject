@@ -123,6 +123,51 @@ export interface GiftCardRow {
     branchId: string;
 }
 
+/** Customer plan row — one row per `customerPlans` record. Feeds:
+ *  Memberships & Packages, Frozen Packages, Intro Offers, Upgrades &
+ *  Downgrades. The store already carries every field we need
+ *  (status / purchased-at / expiry / freeze window / price) so this
+ *  selector is a straight join with the customer + branch lookup. */
+export interface CustomerPlanRow {
+    id: string;
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    branchId: string;
+    location: string;
+    kind: "membership" | "package" | "complimentary";
+    /** membership id / package id — blank on complimentary grants. */
+    productId?: string;
+    /** Display name of the plan (e.g. "Unlimited Monthly"). */
+    planName: string;
+    planTypeLabel: string;
+    creditsLabel: string;
+    status: "active" | "expired" | "frozen" | "cancelled" | "removed";
+    purchasedAtISO: string;
+    expiryISO: string;
+    priceAed: number;
+    /** Blank when the plan isn't frozen. */
+    freezeStartISO?: string;
+    freezeEndISO?: string;
+    freezeSource?: "customer_portal" | "admin" | "front_desk";
+    /** Days frozen so far (0 when the plan is not frozen). */
+    freezeDays: number;
+    cancelledAtISO?: string;
+    cancelReason?: string;
+    /** True when this is the FIRST paid plan the customer ever bought
+     *  (used by the Intro Offers report to isolate new-member deals). */
+    isFirstPlan: boolean;
+    /** Rolling upgrade/downgrade classification. Blank on the first
+     *  plan; otherwise the pricing delta vs the customer's previous
+     *  plan. Feeds the Upgrades & Downgrades report. */
+    changeVsPrev?: "upgrade" | "downgrade" | "same" | "first";
+    /** Price delta vs previous plan (signed AED). */
+    priceDeltaAed: number;
+    /** Whether the customer's plan history is > 1 (used to filter the
+     *  Upgrades & Downgrades report to customers who ever changed). */
+    hasChanges: boolean;
+}
+
 /** Customer report row — full record joined with plan + visit + LTV.
  *  Field names mirror the underlying `Customer` store shape verbatim.
  *  The report registry translates `status` → "active/inactive/lapsed"
@@ -239,7 +284,99 @@ export function selectPayments(state: AppState): PaymentRow[] {
     });
 }
 
-/** 3. selectGiftCards — one row per issued gift card, joined with the
+/** 3. selectMemberships — one row per customer plan (membership /
+ *  package / complimentary). Feeds every membership-family report:
+ *  Memberships & Packages, Frozen Packages, Intro Offers, Upgrades &
+ *  Downgrades. Also carries the `isFirstPlan` + `changeVsPrev` fields
+ *  computed by walking each customer's plan history once. */
+export function selectMemberships(state: AppState): CustomerPlanRow[] {
+    const loc = makeLocationLookup(state);
+    const cust = makeCustomerLookup(state);
+
+    // Read customer plans off the state (the store aliases this slice
+    // as `customerPlans`).
+    const plans = (state as unknown as { customerPlans: import("@/lib/store").CustomerPlan[] }).customerPlans ?? [];
+
+    // Group plans by customer, sort ASC by purchase date so we can
+    // compute `isFirstPlan` + upgrade/downgrade deltas.
+    const byCustomer = new Map<string, import("@/lib/store").CustomerPlan[]>();
+    for (const p of plans) {
+        const arr = byCustomer.get(p.customerId) ?? [];
+        arr.push(p);
+        byCustomer.set(p.customerId, arr);
+    }
+    for (const arr of Array.from(byCustomer.values())) {
+        arr.sort((a, b) => a.purchasedAtISO.localeCompare(b.purchasedAtISO));
+    }
+
+    const nowMs = new Date().getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    const rows: CustomerPlanRow[] = [];
+    for (const arr of Array.from(byCustomer.values())) {
+        const hasChanges = arr.length > 1;
+
+        arr.forEach((p, idx) => {
+            const c = cust(p.customerId);
+            const price = p.priceAed ?? 0;
+
+            // Compute freezeDays: 0 unless plan is frozen; capped at
+            // the freeze window boundaries.
+            let freezeDays = 0;
+            if (p.status === "frozen" && p.freezeStartISO) {
+                const start = new Date(p.freezeStartISO).getTime();
+                const end   = p.freezeEndISO ? new Date(p.freezeEndISO).getTime() : nowMs;
+                freezeDays = Math.max(0, Math.floor((Math.min(end, nowMs) - start) / dayMs));
+            }
+
+            // Change classification vs the customer's PREVIOUS plan.
+            let changeVsPrev: CustomerPlanRow["changeVsPrev"];
+            let priceDeltaAed = 0;
+            if (idx === 0) {
+                changeVsPrev = "first";
+            } else {
+                const prev = arr[idx - 1];
+                const prevPrice = prev.priceAed ?? 0;
+                priceDeltaAed = price - prevPrice;
+                if (priceDeltaAed > 0)      changeVsPrev = "upgrade";
+                else if (priceDeltaAed < 0) changeVsPrev = "downgrade";
+                else                        changeVsPrev = "same";
+            }
+
+            rows.push({
+                id:             p.id,
+                customerId:     p.customerId,
+                customerName:   c ? `${c.firstName} ${c.lastName}`.trim() : "—",
+                customerEmail:  c?.email ?? "—",
+                branchId:       c?.branchId ?? "",
+                location:       c ? loc(c.branchId) : "—",
+                kind:           p.kind,
+                productId:      p.productId,
+                planName:       p.name,
+                planTypeLabel:  p.planTypeLabel,
+                creditsLabel:   p.creditsLabel,
+                status:         p.status,
+                purchasedAtISO: p.purchasedAtISO,
+                expiryISO:      p.expiryISO,
+                priceAed:       price,
+                freezeStartISO: p.freezeStartISO,
+                freezeEndISO:   p.freezeEndISO,
+                freezeSource:   p.freezeSource,
+                freezeDays,
+                cancelledAtISO: p.cancelledAtISO,
+                cancelReason:   p.cancelReason,
+                isFirstPlan:    idx === 0,
+                changeVsPrev,
+                priceDeltaAed,
+                hasChanges,
+            });
+        });
+    }
+
+    return rows;
+}
+
+/** 4. selectGiftCards — one row per issued gift card, joined with the
  *  design + buyer customer. Feeds: Gift Card report. Reads the raw
  *  snake_case seed shape since the store persists it verbatim. */
 export function selectGiftCards(state: AppState): GiftCardRow[] {
