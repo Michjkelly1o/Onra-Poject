@@ -499,7 +499,7 @@ function SingleSelectDropdown({
                 )}>
                 <Icon className={cn("w-4 h-4", active ? "text-[#658774]" : "text-[#667085]")} />
                 {label && <span>{label}:</span>}
-                <span className="font-semibold text-[#182230]">{currentLabel}</span>
+                <span className="text-[#182230]">{currentLabel}</span>
                 <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
             </button>
             {open && (
