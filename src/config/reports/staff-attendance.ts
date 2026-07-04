@@ -37,7 +37,7 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
     description: "Whether staff taught their scheduled classes — attendance, substitutions, no-shows, late starts and hours worked. Access-restricted.",
     type:        "lookback",
     route:       "/reports/staff-attendance",
-    selector:    "selectClassSessions",
+    selector:    "selectStaffAttendanceLog",
     periodField: "classDateISO",
     rbac:        ["admin", "instructor:self"],
 

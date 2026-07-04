@@ -85,14 +85,15 @@ export default function MembershipsPackagesReportPage() {
 
     const rows = useMemo<MembershipsDisplayRow[]>(() => {
         return raw.map(r => {
-            const total = parseCredits(r.creditsLabel);
-            // The store doesn't track per-plan credit usage yet — carry
-            // 0 used / total remaining until credit-consumption events
-            // land on customerPlans.
-            const used = 0;
-            const remaining = Math.max(0, total - used);
-            const autoRenew: "Y" | "N" = r.kind === "membership" ? "Y" : "N";
-            const nextBilling = r.status === "active" && r.kind === "membership" ? r.priceAed : 0;
+            // Reports v33 — new fields flow from the store adapter's
+            // deterministic derivation (see customerPlanFromSeed in
+            // store.ts). Fall back to previous heuristics if a legacy
+            // row doesn't carry them.
+            const total     = r.totalCredits     || parseCredits(r.creditsLabel);
+            const used      = r.creditsUsed      ?? 0;
+            const remaining = r.creditsRemaining ?? Math.max(0, total - used);
+            const autoRenew: "Y" | "N" = r.autoRenew ? "Y" : "N";
+            const nextBilling = r.nextBillingAmountAed || (r.status === "active" && r.kind === "membership" ? r.priceAed : 0);
 
             return {
                 customerName:      r.customerName,
@@ -100,7 +101,7 @@ export default function MembershipsPackagesReportPage() {
                 customerEmail:     r.customerEmail,
                 planName:          r.planName,
                 planType:          planTypeLabel(r.kind),
-                allowance:         allowanceOf(r.kind, r.creditsLabel),
+                allowance:         r.allowance || allowanceOf(r.kind, r.creditsLabel),
                 status:            STATUS_LABEL[r.status] ?? r.status,
                 purchaseStartISO:  r.purchasedAtISO.slice(0, 10),
                 renewsExpiresISO:  r.expiryISO.slice(0, 10),

@@ -33,7 +33,7 @@ export const ACQUISITION_EFFICIENCY_REPORT: ReportDefinition = {
     description: "CPL / CAC / ROAS / CAC:LTV (needs spend input).",
     type:        "lookback",
     route:       "/reports/acquisition-efficiency",
-    selector:    "selectCustomers",   // placeholder — no marketing spend input yet
+    selector:    "selectMarketingSpend",
     periodField: "dateAnchorISO",
     rbac:        ["admin"],
 

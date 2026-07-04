@@ -33,7 +33,7 @@ export const CAMPAIGN_PERFORMANCE_REPORT: ReportDefinition = {
     description: "Sends, engagement & attributed bookings/revenue.",
     type:        "lookback",
     route:       "/reports/campaign-performance",
-    selector:    "selectCustomers",   // placeholder — no campaign engagement selector yet
+    selector:    "selectCampaigns",
     periodField: "sendDateISO",
     rbac:        ["admin"],
 

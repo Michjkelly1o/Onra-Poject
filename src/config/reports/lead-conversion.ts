@@ -31,7 +31,7 @@ export const LEAD_CONVERSION_REPORT: ReportDefinition = {
     description: "Lead → trial → paid funnel + speed.",
     type:        "lookback",
     route:       "/reports/lead-conversion",
-    selector:    "selectCustomers",   // placeholder — no leads selector yet
+    selector:    "selectLeads",
     periodField: "periodKey",
     rbac:        ["admin"],
 

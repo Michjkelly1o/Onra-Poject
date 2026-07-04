@@ -31,6 +31,10 @@ import {
     selectBookings,
     selectClassSessions,
     selectReferrals,
+    selectLeads,
+    selectCampaigns,
+    selectMarketingSpend,
+    selectStaffAttendanceLog,
 } from "@/lib/reports/selectors";
 import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
 import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
@@ -106,6 +110,11 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
     selectClassSessions:      selectClassSessions      as unknown as SelectorFn,
     // Phase 4F — shipped
     selectReferrals:          selectReferrals          as unknown as SelectorFn,
+    // Reports v33 — shipped
+    selectLeads:              selectLeads              as unknown as SelectorFn,
+    selectCampaigns:          selectCampaigns          as unknown as SelectorFn,
+    selectMarketingSpend:     selectMarketingSpend     as unknown as SelectorFn,
+    selectStaffAttendanceLog: selectStaffAttendanceLog as unknown as SelectorFn,
 };
 
 // ─── The registry ─────────────────────────────────────────────────────────

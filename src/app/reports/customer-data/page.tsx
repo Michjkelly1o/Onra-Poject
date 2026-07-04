@@ -83,14 +83,14 @@ export default function CustomerDataReportPage() {
                 currentPlan:        c.currentPlan ?? "",
                 planType:           planTypeLabel,
                 joinedDateISO:      c.joinedDateISO.slice(0, 10),
-                firstVisitISO:      "",     // not tracked on Customer today
+                firstVisitISO:      c.firstVisitISO ? c.firstVisitISO.slice(0, 10) : "",
                 lastVisitISO:       c.lastVisitISO ? c.lastVisitISO.slice(0, 10) : "",
                 daysSinceLastVisit: c.daysSinceLastVisit ?? 0,
                 totalVisits:        c.totalVisits,
                 avgVisits,
                 newOrReturning,
-                convertedFrom:      "",     // not tracked on Customer today
-                marketingSource:    "",     // not tracked on Customer today
+                convertedFrom:      c.convertedFrom ?? "",
+                marketingSource:    c.marketingSource ?? "",
                 lifetimeValue:      c.lifetimeValue,
                 branchId:           c.location === "—" ? "" : (branches.find(b => b.name === c.location)?.id ?? ""),
                 location:           c.location,

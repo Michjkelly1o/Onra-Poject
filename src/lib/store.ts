@@ -141,6 +141,14 @@ import {
     customer_transactions as SEED_CUSTOMER_TRANSACTIONS,
     customer_agreements as SEED_CUSTOMER_AGREEMENTS,
     customer_referrals as SEED_CUSTOMER_REFERRALS,
+    // Reports v33 — new tables for demo data completeness
+    leads as SEED_LEADS,
+    marketing_campaign_stats as SEED_MARKETING_CAMPAIGN_STATS,
+    marketing_spend as SEED_MARKETING_SPEND,
+    type Lead,
+    type MarketingCampaignStat,
+    type MarketingSpend,
+    type StaffAttendanceLog,
     type Customer as SeedCustomer,
     type CustomerPlan as SeedCustomerPlan,
     type CustomerTransaction as SeedCustomerTransaction,
@@ -229,6 +237,8 @@ import {
 export type {
     ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
+    // Reports v33 — new seed types the selectors reach into
+    Lead, MarketingCampaignStat, MarketingSpend, StaffAttendanceLog,
 };
 
 // Also re-export the raw arrays for screens that filter against the entire table.
@@ -1058,6 +1068,10 @@ export interface Customer {
     emergencyContactPhone?: string;
     emergencyContactRelation?: string;
     referralCode?: string;
+    // ── Reports v33 fields (Customer Data report) ────────────────────────
+    firstVisitISO?: string;
+    marketingSource?: string;
+    convertedFrom?: "first-visit" | "intro-offer" | "trial-class" | "referral";
 }
 
 /** Customer agreement record — store shape (camelCase) of a
@@ -1114,6 +1128,12 @@ export interface CustomerReferral {
      *  seed rows — treated as "unrestricted" by the helper so
      *  historical data doesn't get inadvertently locked out. */
     originBranchId?: string;
+    // ── Reports v33 fields (Referral Report + Win-back) ──────────────────
+    campaign?: string;
+    reactivated?: boolean;
+    reactivationDateISO?: string;
+    newPlanId?: string;
+    revenueRecoveredAed?: number;
 }
 
 // ─── Customer notification settings (PRD 11 §12) ───────────────────────────
@@ -1647,6 +1667,12 @@ export interface CustomerPlan {
     removedBy?: string;
     removedByRole?: string;
     removedAtISO?: string;
+    // ── Reports v33 fields ───────────────────────────────────────────────
+    totalCredits?: number;
+    creditsUsed?: number;
+    autoRenew?: boolean;
+    nextBillingAmountAed?: number;
+    allowance?: string;
 }
 
 /** Customer transaction record — store shape (camelCase) of a
@@ -1695,6 +1721,9 @@ export interface CustomerTransaction {
     recoveredISO?: string;
     payoutId?: string;
     processorFee?: number;
+    // ── Reports v33 fields (Discounts + Promo Redemptions) ──────────────
+    discountCode?: string;
+    discountValue?: number;
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -2042,6 +2071,38 @@ function bookingFromSeed(b: SeedClassBooking): ClassBooking {
     };
 }
 
+// Reports v33 — deterministic derivation of first_visit / marketing_source
+// / converted_from from customer id + existing seed fields. Runs at
+// customerFromSeed() so every customer picks up the fields without
+// editing 1500+ seed rows. Same inputs → same outputs, so persist doesn't
+// churn.
+const MARKETING_SOURCES = ["Instagram", "Google", "Website", "Referral", "Walk-in", "WhatsApp"] as const;
+function hashString(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+function deriveMarketingSource(customerId: string): string {
+    return MARKETING_SOURCES[hashString(customerId) % MARKETING_SOURCES.length];
+}
+function deriveConvertedFrom(customerId: string, planKind: "membership" | "package" | null): "first-visit" | "intro-offer" | "trial-class" | "referral" {
+    if (!planKind) return "trial-class";
+    const options = ["first-visit", "intro-offer", "trial-class", "referral"] as const;
+    return options[hashString(customerId + "conv") % options.length];
+}
+function deriveFirstVisitISO(createdAt: string, lastVisitISO?: string): string | undefined {
+    // Prefer 3 days after creation as "first visit" — realistic for a
+    // studio (customer creates account → attends first class within days).
+    if (!createdAt) return lastVisitISO;
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return lastVisitISO;
+    d.setDate(d.getDate() + 3);
+    const iso = d.toISOString().slice(0, 10);
+    // Clamp: first_visit can't be after last_visit.
+    if (lastVisitISO && iso > lastVisitISO) return lastVisitISO;
+    return iso;
+}
+
 function customerFromSeed(c: SeedCustomer): Customer {
     return {
         id: c.id,
@@ -2081,10 +2142,43 @@ function customerFromSeed(c: SeedCustomer): Customer {
         emergencyContactPhone: c.emergency_contact_phone,
         emergencyContactRelation: c.emergency_contact_relation,
         referralCode: c.referral_code,
+        // Reports v33 — derived if seed doesn't declare explicitly.
+        firstVisitISO: c.first_visit_iso ?? deriveFirstVisitISO(c.created_at, c.last_visit_iso),
+        marketingSource: c.marketing_source ?? deriveMarketingSource(c.id),
+        convertedFrom: c.converted_from ?? deriveConvertedFrom(c.id, c.plan_kind),
     };
 }
 
+// Reports v33 — deterministic derivation for referral rows so the Referral
+// Report + Win-back columns render with realistic values without editing
+// the seed.
+const WINBACK_CAMPAIGNS = ["Spring Come-Back", "Summer Free Week", "New Year Restart", "Loyalty Reactivate"] as const;
+function derivedReferralCampaign(id: string): string {
+    return WINBACK_CAMPAIGNS[hashString(id) % WINBACK_CAMPAIGNS.length];
+}
+
 function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
+    const referredAt = r.referred_at;
+    // 60% of referrals reactivate — deterministic on id hash.
+    const reactivated = r.reactivated ?? (hashString(r.id + "react") % 10 < 6);
+    // Reactivation date = referred_at + 3-14 days.
+    let reactivationDateISO: string | undefined = r.reactivation_date;
+    if (!reactivationDateISO && reactivated && referredAt) {
+        const d = new Date(referredAt);
+        d.setDate(d.getDate() + 3 + (hashString(r.id) % 12));
+        reactivationDateISO = d.toISOString().slice(0, 10);
+    }
+    // New plan id = one of the seeded plans (Beginner / Advanced / 10-Class).
+    const planPool = ["mem_beginner_monthly", "mem_advanced_monthly", "pkg_10_class_month"];
+    const newPlanId = r.new_plan_id ?? (reactivated ? planPool[hashString(r.id + "plan") % planPool.length] : undefined);
+    // Revenue recovered based on new_plan_id pricing.
+    const planPrice: Record<string, number> = {
+        mem_beginner_monthly: 1200,
+        mem_advanced_monthly: 1500,
+        pkg_10_class_month:   1390,
+    };
+    const revenueRecoveredAed = r.revenue_recovered_aed ?? (reactivated && newPlanId ? planPrice[newPlanId] : undefined);
+
     return {
         id: r.id,
         referrerCustomerId: r.referrer_customer_id,
@@ -2094,6 +2188,12 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
         referredAtISO: r.referred_at,
         expiresAtISO:   r.expires_at,
         originBranchId: r.origin_branch_id,
+        // Reports v33 derivations
+        campaign: r.campaign ?? derivedReferralCampaign(r.id),
+        reactivated,
+        reactivationDateISO,
+        newPlanId,
+        revenueRecoveredAed,
     };
 }
 
@@ -2111,7 +2211,31 @@ function customerAgreementFromSeed(a: SeedCustomerAgreement): CustomerAgreement 
     };
 }
 
+// Reports v33 — derive Memberships & Packages report fields from the
+// existing seed. Parses total credits from `credits_label`, assigns
+// used-count via id hash (0-90% used), sets auto_renew per kind.
+function parseCredits(creditsLabel: string): number {
+    if (!creditsLabel) return 0;
+    if (/unlimited/i.test(creditsLabel)) return 0;
+    const m = /(\d+)/.exec(creditsLabel);
+    return m ? Number(m[1]) : 0;
+}
+
 function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
+    // Derive Reports v33 fields.
+    const totalCredits = p.total_credits ?? parseCredits(p.credits_label);
+    // Deterministic used-count between 0 and totalCredits × 0.9.
+    const usedRatio = (hashString(p.id) % 91) / 100; // 0-0.90
+    const derivedUsed = totalCredits > 0 ? Math.floor(totalCredits * usedRatio) : 0;
+    const creditsUsed = p.credits_used ?? derivedUsed;
+    const autoRenew = p.auto_renew ?? (p.kind === "membership" && p.status === "active");
+    const nextBilling = p.next_billing_amount_aed ?? (autoRenew && p.status === "active" ? (p.price_aed ?? 0) : 0);
+    const allowance = p.allowance ?? (
+        p.kind === "membership" && /unlimited/i.test(p.credits_label) ? "Unlimited"
+        : totalCredits > 0 ? `${totalCredits} credits`
+        : p.credits_label || "—"
+    );
+
     return {
         id: p.id,
         customerId: p.customer_id,
@@ -2138,6 +2262,12 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
         removedBy: p.removed_by,
         removedByRole: p.removed_by_role,
         removedAtISO: p.removed_at,
+        // Reports v33 derivations
+        totalCredits,
+        creditsUsed,
+        autoRenew,
+        nextBillingAmountAed: nextBilling,
+        allowance,
     };
 }
 
@@ -2175,7 +2305,54 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         recoveredISO:          t.recovered_iso,
         payoutId:              t.payout_id,
         processorFee:          t.processor_fee,
+        // Reports v33 — Discounts + Promo Redemptions. Apply a promo
+        // code to ~25% of sale transactions deterministically.
+        discountCode:          t.discount_code  ?? deriveDiscountCode(t.id, t.transaction_type),
+        discountValue:         t.discount_value ?? deriveDiscountValue(t.id, t.transaction_type, t.amount_aed),
     };
+}
+
+// Reports v33 — deterministic promo assignment. 25% of sale rows get a
+// promo, distributed across 4 codes matching `promo_codes.ts` seed.
+const PROMO_CODES = ["WELCOME20", "FRIEND10", "SUMMER15", "LOYAL5"] as const;
+const PROMO_PCT: Record<string, number> = { WELCOME20: 0.20, FRIEND10: 0.10, SUMMER15: 0.15, LOYAL5: 0.05 };
+function deriveDiscountCode(id: string, txnType?: string): string | undefined {
+    if (txnType && txnType !== "sale") return undefined;
+    if (hashString(id + "promo") % 4 !== 0) return undefined; // ~25%
+    return PROMO_CODES[hashString(id) % PROMO_CODES.length];
+}
+function deriveDiscountValue(id: string, txnType: string | undefined, amount: number): number | undefined {
+    const code = deriveDiscountCode(id, txnType);
+    if (!code) return undefined;
+    return Math.round(amount * (PROMO_PCT[code] ?? 0));
+}
+
+// Reports v33 — one StaffAttendanceLog row per scheduled class. Deterministic
+// derivation: non-cancelled → taught (with ~15% getting late-start minutes);
+// cancelled → no-show. actual_hours matches scheduled_hours until real
+// clock-in/out data lands post-demo.
+function deriveStaffAttendanceLog(schedules: ClassSchedule[]): StaffAttendanceLog[] {
+    return schedules.map(s => {
+        const [sh, sm] = s.startTime.split(":").map(Number);
+        const [eh, em] = s.endTime.split(":").map(Number);
+        const durationMin = Math.max(0, (eh || 0) * 60 + (em || 0) - ((sh || 0) * 60 + (sm || 0)));
+        const scheduled = durationMin / 60;
+        const isCancelled = s.status === "Cancelled";
+        const cancelledIdHash = hashString(s.id);
+        const lateStart = !isCancelled && cancelledIdHash % 7 === 0
+            ? 1 + (cancelledIdHash % 10)      // 1-10 min late on ~15% of classes
+            : 0;
+        return {
+            id: `sat_${s.id}`,
+            staff_id: s.instructorId,
+            class_schedule_id: s.id,
+            attendance_status: isCancelled ? "no-show" : "taught",
+            covered_by_staff_id: undefined,
+            late_start_minutes: lateStart,
+            scheduled_hours: scheduled,
+            actual_hours: isCancelled ? 0 : scheduled - (lateStart / 60),
+        };
+    });
 }
 
 function ratingFromSeed(r: SeedClassRating): ClassRating {
@@ -2813,6 +2990,22 @@ export interface AppState {
     promoCodes: PromoCode[];
     /** Live marketing items — powers the Marketing module list/detail (PRD 08). */
     marketingItems: MarketingItem[];
+    // ── Reports v33 slices ─────────────────────────────────────────────
+    /** Leads captured by the funnel — feeds Lead Data + Lead Conversion +
+     *  Acquisition Efficiency reports. Read-only for the demo; add-lead
+     *  actions land when the leads module ships. */
+    leads: Lead[];
+    /** Marketing campaign engagement rollups — one row per (campaign ×
+     *  channel × send). Feeds Campaign Performance. */
+    marketingCampaignStats: MarketingCampaignStat[];
+    /** Monthly ad spend per (channel × branch). Feeds Acquisition
+     *  Efficiency's CPL / CAC / ROAS / CAC:LTV columns. */
+    marketingSpend: MarketingSpend[];
+    /** Staff attendance log — one row per (staff × scheduled class).
+     *  Feeds Staff Attendance report's Actual hours / Late start / Hours
+     *  variance columns. Derived from `classSchedules` at store-init time
+     *  since clock-in/out data doesn't have a source module yet. */
+    staffAttendanceLog: StaffAttendanceLog[];
     /** Live pay rates — powers /admin/staff/pay-rate list/detail/payroll (PRD 10 §6). */
     payRates: PayRate[];
     /** Live instructors — the pay rate detail page's "Assigned instructor" tab
@@ -3498,6 +3691,11 @@ export const useAppStore = create<AppState>()(persist(
     issuedGiftCards: [...SEED_ISSUED_GIFT_CARDS],
     promoCodes: [...SEED_PROMO_CODES],
     marketingItems: [...SEED_MARKETING_ITEMS],
+    // Reports v33 slices
+    leads: [...SEED_LEADS],
+    marketingCampaignStats: [...SEED_MARKETING_CAMPAIGN_STATS],
+    marketingSpend: [...SEED_MARKETING_SPEND],
+    staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
     payRates: [...INITIAL_PAY_RATES],
     instructors: [...INITIAL_INSTRUCTORS],
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
@@ -6788,7 +6986,13 @@ export const useAppStore = create<AppState>()(persist(
         // Bump reason: material change to the demo dataset. Every user
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
-        version: 30,
+        //
+        // v31: Reports v33 — 4 new AppState slices (leads,
+        // marketingCampaignStats, marketingSpend, staffAttendanceLog) +
+        // new fields on Customer, CustomerPlan, CustomerTransaction,
+        // CustomerReferral. Backfills via deterministic derivation on
+        // rehydrate.
+        version: 31,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

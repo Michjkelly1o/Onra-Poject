@@ -36,7 +36,7 @@ export const LEAD_DATA_REPORT: ReportDefinition = {
     description: "New prospects captured, by source & stage.",
     type:        "lookback",
     route:       "/reports/lead-data",
-    selector:    "selectCustomers",   // placeholder — no leads selector yet
+    selector:    "selectLeads",
     periodField: "leadAddedISO",
     rbac:        ["admin"],
 

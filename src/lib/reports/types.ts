@@ -110,14 +110,18 @@ export type RbacRule = "admin" | "instructor:self" | "customer:self";
  *  dispatch table in the registry. Adding a new selector = extending
  *  this union + wiring the dispatch entry. */
 export type SelectorName =
-    | "selectTransactionLedger" // Phase 1 (shipped)
+    | "selectTransactionLedger"  // Phase 1 (shipped)
     | "selectPayments"           // Phase 1 (shipped)
     | "selectCustomers"          // Phase 1 (shipped)
-    | "selectMemberships"        // Phase 4C — pending
-    | "selectBookings"           // Phase 4D — pending
-    | "selectClassSessions"      // Phase 4E — pending
-    | "selectGiftCards"          // Phase 4B — pending
-    | "selectReferrals";         // Phase 4F — pending
+    | "selectMemberships"        // Phase 4C (shipped)
+    | "selectBookings"           // Phase 4D (shipped)
+    | "selectClassSessions"      // Phase 4E (shipped)
+    | "selectGiftCards"          // Phase 4B (shipped)
+    | "selectReferrals"          // Phase 4F (shipped)
+    | "selectLeads"              // Reports v33 — shipped
+    | "selectCampaigns"          // Reports v33 — shipped
+    | "selectMarketingSpend"     // Reports v33 — shipped
+    | "selectStaffAttendanceLog";// Reports v33 — shipped
 
 // ─── Full report registry entry ───────────────────────────────────────────
 

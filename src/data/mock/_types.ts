@@ -337,6 +337,21 @@ export interface Customer {
     emergency_contact_relation?: string;
     /** Personal referral code the customer shares — shown on the Referrals tab. */
     referral_code?: string;
+    // ── Reports v33 fields (Customer Data report) ────────────────────────
+    //
+    // Populated on the seed so the Customer Data report renders complete
+    // per Excel spec. Optional so legacy rows without them keep working —
+    // the report renders "—" via the shared formatCell() when missing.
+    /** Date of the customer's FIRST-ever visit. Distinct from `last_visit_iso`.
+     *  Drives the Customer Data report's "First visit date" column. */
+    first_visit_iso?: string;
+    /** How the customer was originally acquired (e.g. "Instagram", "Referral",
+     *  "Walk-in", "Website"). Drives Customer Data "Marketing source" +
+     *  Acquisition Efficiency attribution. */
+    marketing_source?: string;
+    /** What entry path converted them into a paying member: "first-visit",
+     *  "intro-offer", "trial-class". Drives Customer Data "Converted from". */
+    converted_from?: "first-visit" | "intro-offer" | "trial-class" | "referral";
     // +later (Module 07): notes, deleted_at, churn_risk_score,
     //                     customer_memberships[], customer_packages[]
 }
@@ -379,6 +394,21 @@ export interface CustomerReferral {
      *  Optional so legacy seeds without a captured branch still
      *  load; the gate helper treats undefined as "no restriction". */
     origin_branch_id?: string;
+    // ── Reports v33 fields (Referral Report + Win-back) ──────────────────
+    /** Win-back campaign that targeted the referrer / lapsed member. Used
+     *  for both the Referral Report's revenue-attribution column and the
+     *  Win-back report's "Campaign" column. */
+    campaign?: string;
+    /** Y/N — whether the lapsed customer came back. When Y, the row also
+     *  populates reactivation_date + new_plan_id + revenue_recovered.
+     *  Used ONLY by the Win-back report. */
+    reactivated?: boolean;
+    /** ISO 8601 — when the lapsed member reactivated (Win-back report). */
+    reactivation_date?: string;
+    /** Plan id the reactivation purchase was for (Win-back). */
+    new_plan_id?: string;
+    /** Revenue booked at reactivation (Win-back's "Revenue recovered" col). */
+    revenue_recovered_aed?: number;
 }
 
 /**
@@ -470,6 +500,25 @@ export interface CustomerPlan {
     removed_by?: string;
     removed_by_role?: string;
     removed_at?: string;
+    // ── Reports v33 fields (Memberships & Packages + Intro Offers + Revenue Recognition) ──
+    /** Total credits included in the plan (packages + intro offers).
+     *  Memberships with unlimited access → 0. Excel spec's "Total credits"
+     *  column. */
+    total_credits?: number;
+    /** Credits consumed to date. `total_credits - credits_used` produces
+     *  the Memberships & Packages "Credits remaining" column + Intro
+     *  Offers "Sessions used" column + Revenue Recognition "Used this
+     *  period" for packages. */
+    credits_used?: number;
+    /** Whether the plan auto-renews at term end. Memberships default Y,
+     *  packages default N. Feeds Memberships & Packages "Auto-renew". */
+    auto_renew?: boolean;
+    /** Amount due at next renewal. For memberships this equals `price_aed`;
+     *  for expired/cancelled it's 0. Feeds "Next billing amount". */
+    next_billing_amount_aed?: number;
+    /** Display "Allowance" string — "Unlimited", "10 credits", "5 sessions".
+     *  Feeds the Memberships & Packages "Allowance" column. */
+    allowance?: string;
 }
 
 /**
@@ -581,6 +630,13 @@ export interface CustomerTransaction {
     payout_id?: string;
     /** Processor fee deducted from the payment. */
     processor_fee?: number;
+    // ── Reports v33 fields (Discounts + Promo Redemptions) ────────────────
+    /** Promo code applied at POS. Feeds Discounts + Promo Redemptions
+     *  reports. Blank on transactions without a code. */
+    discount_code?: string;
+    /** Discount amount in AED (positive number). `amount_aed` is the NET
+     *  after discount. Excel spec column "Discount value". */
+    discount_value?: number;
 }
 
 // ─── Products: Memberships & Packages ───────────────────────────────────────
@@ -786,7 +842,13 @@ export interface IssuedGiftCard {
     sender_name?: string;
     /** Personal gift message printed on the card. */
     message?: string;
-    // +later: branch_id, transaction_id
+    // ── Reports v33 fields (Gift Card report) ────────────────────────────
+    /** FK → customer_transactions.id — the sale that purchased this card.
+     *  Feeds Gift Card report's "Transaction #" column. */
+    transaction_id?: string;
+    /** ISO — most recent redemption date. Feeds "Last redeemed date". */
+    last_redeemed_at?: string;
+    // +later: branch_id
 }
 
 /**
@@ -2315,3 +2377,113 @@ export interface PaymentProviderSeed {
      *  for Stripe, the Apple ID email for Apple Pay. Cleared on disconnect. */
     account_label?: string;
 }
+
+// ─── Reports v33 — new tables for demo data completeness ────────────────────
+//
+// Four new slices seeded so every report renders complete for the client
+// demo. Each is a plain seed array; the Reports selectors read them
+// directly. No admin CRUD lands with these — that's a separate marketing
+// module. Every field is snake_case for Supabase parity, mirroring the
+// convention documented in CLAUDE.md §"Mock Data Convention".
+
+/**
+ * Lead — a prospect captured in the funnel BEFORE they become a paying
+ * customer. Feeds Lead Data + Lead Conversion + Acquisition Efficiency.
+ *
+ * FK: `assigned_to_staff_id` → staff_profiles.id.
+ *     `first_purchase_transaction_id` → customer_transactions.id (set
+ *     once the lead converts).
+ */
+export interface Lead {
+    /** e.g. "lead_ahmed_1" */
+    id: string;
+    /** ISO — when the lead was captured. */
+    added_at: string;
+    contact_name: string;
+    contact_email: string;
+    phone?: string;
+    gender?: "Male" | "Female";
+    /** Acquisition channel — Instagram · Referral · Walk-in · Website · Google. */
+    source: "Instagram" | "Referral" | "Walk-in" | "Website" | "Google" | "WhatsApp";
+    /** Funnel stage. */
+    stage: "new" | "contacted" | "trial-booked" | "trial-attended" | "paid" | "lost";
+    /** Staff member who owns the lead. */
+    assigned_to_staff_id?: string;
+    engagement_status: "cold" | "warm" | "hot" | "converted" | "lost";
+    /** Trial / intro plan they booked, if any. */
+    first_purchase_name?: string;
+    /** ISO — first purchase date once converted. */
+    first_purchase_at?: string;
+    /** AED value of the first purchase. */
+    first_purchase_amount_aed?: number;
+    /** ISO — first staff-touch (for Avg time to first contact). */
+    first_contact_at?: string;
+    /** Home branch the lead is scoped to. */
+    branch_id: string;
+}
+
+/**
+ * Marketing campaign engagement rollup — one row per campaign send.
+ * Feeds Campaign Performance. Marketing campaigns themselves live on
+ * the existing `marketing_items` slice; this rollup is the engagement
+ * ledger the tracking pixel + email sends would populate.
+ *
+ * FK: `campaign_id` → marketing_items.id.
+ */
+export interface MarketingCampaignStat {
+    id: string;
+    campaign_id: string;
+    /** Denorm — kept on the row so the report doesn't need a join. */
+    campaign_name: string;
+    /** Channel used for THIS send (a campaign may fan out across channels). */
+    channel: "email" | "whatsapp" | "sms" | "push";
+    /** ISO — when the campaign was sent. */
+    sent_at: string;
+    sends: number;
+    opens_reads: number;
+    clicks_taps: number;
+    attributed_bookings: number;
+    attributed_revenue_aed: number;
+    /** Text describing the attribution window ("7 days", "14 days", "30 days"). */
+    attribution_window: string;
+    branch_id: string;
+}
+
+/**
+ * Marketing spend — one row per (channel × month × branch). Feeds
+ * Acquisition Efficiency's CPL / CAC / ROAS / CAC:LTV columns.
+ * Manually entered by the admin in a later module; seeded here for the demo.
+ */
+export interface MarketingSpend {
+    id: string;
+    /** YYYY-MM — the calendar month the spend applies to. */
+    month: string;
+    channel: "Instagram" | "Referral" | "Walk-in" | "Website" | "Google" | "WhatsApp";
+    spend_aed: number;
+    branch_id: string;
+}
+
+/**
+ * Staff attendance log — one row per (staff × scheduled class) recording
+ * whether they taught, substituted, or no-showed + their clock-in/out
+ * times. Feeds Staff Attendance report's "Actual hours" / "Late start" /
+ * "Hours variance" columns.
+ *
+ * FK: `staff_id` → staff_profiles.id; `class_schedule_id` → class_schedule.id.
+ */
+export interface StaffAttendanceLog {
+    id: string;
+    staff_id: string;
+    class_schedule_id: string;
+    /** Attendance outcome. */
+    attendance_status: "taught" | "substituted" | "no-show";
+    /** When substituted, the staff id who covered. */
+    covered_by_staff_id?: string;
+    /** Minutes late to class (0 = on time). */
+    late_start_minutes: number;
+    /** Scheduled hours for the shift (from class duration). */
+    scheduled_hours: number;
+    /** Actual hours worked (clock-in to clock-out). */
+    actual_hours: number;
+}
+

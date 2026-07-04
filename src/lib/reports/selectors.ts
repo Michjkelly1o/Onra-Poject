@@ -123,6 +123,78 @@ export interface GiftCardRow {
     branchId: string;
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+// Reports v33 — row shapes for the 4 new source slices
+// ═════════════════════════════════════════════════════════════════════════
+
+export interface LeadRow {
+    id: string;
+    addedAtISO: string;
+    contactName: string;
+    contactEmail: string;
+    phone: string;
+    gender: string;
+    source: string;
+    stage: string;
+    assignedTo: string;
+    engagementStatus: string;
+    firstPurchase: string;
+    firstPurchaseISO: string;
+    firstPurchaseAmountAed: number;
+    firstContactISO: string;
+    branchId: string;
+    location: string;
+}
+
+export interface CampaignStatRow {
+    id: string;
+    campaignId: string;
+    campaignName: string;
+    channel: string;
+    sendDateISO: string;
+    sends: number;
+    opensReads: number;
+    openReadRatePct: number;
+    clicksTaps: number;
+    clickRatePct: number;
+    attributedBookings: number;
+    attributedRevenueAed: number;
+    attributionWindow: string;
+    branchId: string;
+    location: string;
+}
+
+export interface MarketingSpendRow {
+    id: string;
+    month: string;
+    channel: string;
+    spendAed: number;
+    branchId: string;
+    location: string;
+}
+
+export interface StaffAttendanceLogRow {
+    id: string;
+    staffId: string;
+    staffName: string;
+    role: string;
+    classScheduleId: string;
+    classDateISO: string;
+    classDay: string;
+    startTime: string;
+    endTime: string;
+    durationMinutes: number;
+    className: string;
+    attendanceStatus: string;
+    coveredBy: string;
+    lateStartMin: number;
+    scheduledHours: number;
+    actualHours: number;
+    hoursVariance: number;
+    branchId: string;
+    location: string;
+}
+
 /** Referral row — one row per `customerReferrals` record joined with
  *  the referrer + branch. Feeds: Referral Report. */
 export interface ReferralRow {
@@ -249,6 +321,13 @@ export interface CustomerPlanRow {
     /** Whether the customer's plan history is > 1 (used to filter the
      *  Upgrades & Downgrades report to customers who ever changed). */
     hasChanges: boolean;
+    // ── Reports v33 exposed fields ───────────────────────────────────────
+    totalCredits: number;
+    creditsUsed: number;
+    creditsRemaining: number;
+    autoRenew: boolean;
+    nextBillingAmountAed: number;
+    allowance: string;
 }
 
 /** Customer report row — full record joined with plan + visit + LTV.
@@ -276,6 +355,10 @@ export interface CustomerRow {
     totalVisits: number;
     /** Total spend from resolveLedger (net of refunds + write-offs). */
     lifetimeValue: number;
+    // ── Reports v33 fields ───────────────────────────────────────────────
+    firstVisitISO?: string;
+    marketingSource?: string;
+    convertedFrom?: string;
 }
 
 // ─── Selectors ─────────────────────────────────────────────────────────────
@@ -452,6 +535,13 @@ export function selectMemberships(state: AppState): CustomerPlanRow[] {
                 changeVsPrev,
                 priceDeltaAed,
                 hasChanges,
+                // Reports v33 pass-through
+                totalCredits:         p.totalCredits ?? 0,
+                creditsUsed:          p.creditsUsed  ?? 0,
+                creditsRemaining:     Math.max(0, (p.totalCredits ?? 0) - (p.creditsUsed ?? 0)),
+                autoRenew:            p.autoRenew ?? false,
+                nextBillingAmountAed: p.nextBillingAmountAed ?? 0,
+                allowance:            p.allowance ?? "",
             });
         });
     }
@@ -738,6 +828,135 @@ export function selectCustomers(state: AppState): CustomerRow[] {
                 : undefined,
             totalVisits: total,
             lifetimeValue: ltvByCustomer.get(c.id) ?? 0,
+            // Reports v33 pass-through
+            firstVisitISO:   c.firstVisitISO,
+            marketingSource: c.marketingSource,
+            convertedFrom:   c.convertedFrom,
+        };
+    });
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Reports v33 — 4 new selectors for the new slices
+// ═════════════════════════════════════════════════════════════════════════
+
+/** selectLeads — one row per lead joined with the assigned staff + branch.
+ *  Feeds Lead Data + Lead Conversion + Acquisition Efficiency (via count). */
+export function selectLeads(state: AppState): LeadRow[] {
+    const loc = makeLocationLookup(state);
+    const staffById = new Map(state.staff.map(s => [
+        s.id,
+        `${(s as unknown as { first_name?: string; firstName?: string }).first_name ?? (s as unknown as { firstName?: string }).firstName ?? ""} ${(s as unknown as { last_name?: string; lastName?: string }).last_name ?? (s as unknown as { lastName?: string }).lastName ?? ""}`.trim(),
+    ]));
+    const leads = (state as unknown as { leads: import("@/lib/store").Lead[] }).leads ?? [];
+    return leads.map(l => ({
+        id: l.id,
+        addedAtISO: l.added_at.slice(0, 10),
+        contactName: l.contact_name,
+        contactEmail: l.contact_email,
+        phone: l.phone ?? "",
+        gender: l.gender ?? "",
+        source: l.source,
+        stage: l.stage.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+        assignedTo: l.assigned_to_staff_id ? (staffById.get(l.assigned_to_staff_id) ?? "—") : "",
+        engagementStatus: l.engagement_status.charAt(0).toUpperCase() + l.engagement_status.slice(1),
+        firstPurchase: l.first_purchase_name ?? "",
+        firstPurchaseISO: l.first_purchase_at ? l.first_purchase_at.slice(0, 10) : "",
+        firstPurchaseAmountAed: l.first_purchase_amount_aed ?? 0,
+        firstContactISO: l.first_contact_at ? l.first_contact_at.slice(0, 10) : "",
+        branchId: l.branch_id,
+        location: loc(l.branch_id),
+    }));
+}
+
+/** selectCampaigns — engagement stats per campaign send. Feeds
+ *  Campaign Performance. */
+export function selectCampaigns(state: AppState): CampaignStatRow[] {
+    const loc = makeLocationLookup(state);
+    const CHANNEL_LABEL: Record<string, string> = {
+        email: "Email", whatsapp: "WhatsApp", sms: "SMS", push: "Push",
+    };
+    const stats = (state as unknown as { marketingCampaignStats: import("@/lib/store").MarketingCampaignStat[] }).marketingCampaignStats ?? [];
+    return stats.map(s => ({
+        id: s.id,
+        campaignId: s.campaign_id,
+        campaignName: s.campaign_name,
+        channel: CHANNEL_LABEL[s.channel] ?? s.channel,
+        sendDateISO: s.sent_at.slice(0, 10),
+        sends: s.sends,
+        opensReads: s.opens_reads,
+        openReadRatePct: s.sends > 0 ? (s.opens_reads / s.sends) * 100 : 0,
+        clicksTaps: s.clicks_taps,
+        clickRatePct: s.sends > 0 ? (s.clicks_taps / s.sends) * 100 : 0,
+        attributedBookings: s.attributed_bookings,
+        attributedRevenueAed: s.attributed_revenue_aed,
+        attributionWindow: s.attribution_window,
+        branchId: s.branch_id,
+        location: loc(s.branch_id),
+    }));
+}
+
+/** selectMarketingSpend — one row per (channel × month × branch) with
+ *  spend + derived CPL / CAC / ROAS / LTV / CAC:LTV. Feeds Acquisition
+ *  Efficiency. */
+export function selectMarketingSpend(state: AppState): import("./selectors").MarketingSpendRow[] {
+    const loc = makeLocationLookup(state);
+    const spend = (state as unknown as { marketingSpend: import("@/lib/store").MarketingSpend[] }).marketingSpend ?? [];
+    return spend.map(s => ({
+        id: s.id,
+        month: s.month,
+        channel: s.channel,
+        spendAed: s.spend_aed,
+        branchId: s.branch_id,
+        location: loc(s.branch_id),
+    }));
+}
+
+/** selectStaffAttendanceLog — one row per (staff × class) with clock-in
+ *  metrics. Joins to classSchedules for date/time/class name. Feeds
+ *  Staff Attendance report. */
+export function selectStaffAttendanceLog(state: AppState): StaffAttendanceLogRow[] {
+    const loc = makeLocationLookup(state);
+    const schedules = new Map(state.classSchedules.map(s => [s.id, s]));
+    const staffMap = new Map(state.staff.map(s => [
+        s.id,
+        {
+            name: `${(s as unknown as { first_name?: string; firstName?: string }).first_name ?? (s as unknown as { firstName?: string }).firstName ?? ""} ${(s as unknown as { last_name?: string; lastName?: string }).last_name ?? (s as unknown as { lastName?: string }).lastName ?? ""}`.trim(),
+            role: (s as unknown as { role?: string }).role ?? "Instructor",
+        },
+    ]));
+    const STATUS_LABEL: Record<string, string> = {
+        taught: "Taught", substituted: "Substituted", "no-show": "No-show",
+    };
+    const log = (state as unknown as { staffAttendanceLog: import("@/lib/store").StaffAttendanceLog[] }).staffAttendanceLog ?? [];
+
+    return log.map(l => {
+        const sched = schedules.get(l.class_schedule_id);
+        const staffInfo = staffMap.get(l.staff_id);
+        const coveredBy = l.covered_by_staff_id ? (staffMap.get(l.covered_by_staff_id)?.name ?? "—") : "";
+        const [sh, sm] = (sched?.startTime ?? "0:0").split(":").map(Number);
+        const [eh, em] = (sched?.endTime ?? "0:0").split(":").map(Number);
+        const durationMin = Math.max(0, (eh || 0) * 60 + (em || 0) - ((sh || 0) * 60 + (sm || 0)));
+        return {
+            id: l.id,
+            staffId: l.staff_id,
+            staffName: staffInfo?.name ?? "—",
+            role: staffInfo?.role ?? "Instructor",
+            classScheduleId: l.class_schedule_id,
+            classDateISO: sched?.dateISO ?? "",
+            classDay: sched?.dayOfWeek?.slice(0, 3) ?? "",
+            startTime: sched?.startTime ?? "",
+            endTime: sched?.endTime ?? "",
+            durationMinutes: durationMin,
+            className: sched?.name ?? "—",
+            attendanceStatus: STATUS_LABEL[l.attendance_status] ?? l.attendance_status,
+            coveredBy,
+            lateStartMin: l.late_start_minutes,
+            scheduledHours: l.scheduled_hours,
+            actualHours: l.actual_hours,
+            hoursVariance: l.actual_hours - l.scheduled_hours,
+            branchId: sched?.branchId ?? "",
+            location: sched ? loc(sched.branchId) : "—",
         };
     });
 }
