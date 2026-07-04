@@ -30,6 +30,7 @@ import {
     selectMemberships,
     selectBookings,
     selectClassSessions,
+    selectReferrals,
 } from "@/lib/reports/selectors";
 import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
 import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
@@ -55,6 +56,14 @@ import { BOOKINGS_REPORT }            from "./reports/bookings";
 import { CLASS_PERFORMANCE_REPORT }   from "./reports/class-performance";
 import { CANCELLATIONS_NOSHOWS_REPORT } from "./reports/cancellations-noshows";
 import { TOP_CLASSES_SERVICES_REPORT } from "./reports/top-classes-services";
+import { INSTRUCTOR_PERFORMANCE_REPORT } from "./reports/instructor-performance";
+import { STAFF_ATTENDANCE_REPORT }     from "./reports/staff-attendance";
+import { LEAD_DATA_REPORT }            from "./reports/lead-data";
+import { LEAD_CONVERSION_REPORT }      from "./reports/lead-conversion";
+import { CAMPAIGN_PERFORMANCE_REPORT } from "./reports/campaign-performance";
+import { PROMO_REDEMPTIONS_REPORT }    from "./reports/promo-redemptions";
+import { REFERRALS_REPORT }            from "./reports/referrals";
+import { ACQUISITION_EFFICIENCY_REPORT } from "./reports/acquisition-efficiency";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -95,9 +104,8 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
     // Phase 4D — shipped
     selectBookings:           selectBookings           as unknown as SelectorFn,
     selectClassSessions:      selectClassSessions      as unknown as SelectorFn,
-
-    // Phase 4 — deferred (throws with a clear error if used prematurely)
-    selectReferrals:          DEFERRED("selectReferrals"),
+    // Phase 4F — shipped
+    selectReferrals:          selectReferrals          as unknown as SelectorFn,
 };
 
 // ─── The registry ─────────────────────────────────────────────────────────
@@ -139,6 +147,18 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     CLASS_PERFORMANCE_REPORT,
     CANCELLATIONS_NOSHOWS_REPORT,
     TOP_CLASSES_SERVICES_REPORT,
+
+    // Phase 4E · Staff / Instructor
+    INSTRUCTOR_PERFORMANCE_REPORT,
+    STAFF_ATTENDANCE_REPORT,
+
+    // Phase 4F · Marketing
+    LEAD_DATA_REPORT,
+    LEAD_CONVERSION_REPORT,
+    CAMPAIGN_PERFORMANCE_REPORT,
+    PROMO_REDEMPTIONS_REPORT,
+    REFERRALS_REPORT,
+    ACQUISITION_EFFICIENCY_REPORT,
 
     // Phase 4D · Client + Activity
     //   Customer Data · Member Movement · Retention & Churn · Win-back

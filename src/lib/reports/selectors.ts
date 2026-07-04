@@ -123,6 +123,22 @@ export interface GiftCardRow {
     branchId: string;
 }
 
+/** Referral row — one row per `customerReferrals` record joined with
+ *  the referrer + branch. Feeds: Referral Report. */
+export interface ReferralRow {
+    id: string;
+    dateISO: string;
+    referrerName: string;
+    referrerId: string;
+    referredMemberName: string;
+    referredMemberId: string;
+    referredEmail: string;
+    planPurchased: string;
+    revenue: number;
+    branchId: string;
+    location: string;
+}
+
 /** Booking row — one row per `classBookings` record joined with the
  *  scheduled class + customer + branch. Feeds: Bookings, Cancellations
  *  & No-shows reports. */
@@ -595,7 +611,45 @@ export function selectClassSessions(state: AppState): ClassSessionRow[] {
     });
 }
 
-/** 6. selectGiftCards — one row per issued gift card, joined with the
+/** 6. selectReferrals — one row per customerReferrals record joined
+ *  with the referrer + branch + optional new-member plan. Feeds:
+ *  Referral Report. */
+export function selectReferrals(state: AppState): ReferralRow[] {
+    const loc = makeLocationLookup(state);
+    const cust = makeCustomerLookup(state);
+    const referrals = (state as unknown as { customerReferrals: import("@/lib/store").CustomerReferral[] }).customerReferrals ?? [];
+    const plansByCustomer = new Map<string, import("@/lib/store").CustomerPlan[]>();
+    const plans = (state as unknown as { customerPlans: import("@/lib/store").CustomerPlan[] }).customerPlans ?? [];
+    for (const p of plans) {
+        const arr = plansByCustomer.get(p.customerId) ?? [];
+        arr.push(p);
+        plansByCustomer.set(p.customerId, arr);
+    }
+
+    return referrals.map(r => {
+        const referrer = cust(r.referrerCustomerId);
+        // Try to find the referred member by matching email.
+        const referredMember = state.customers.find(c => c.email.toLowerCase() === r.referredEmail.toLowerCase());
+        const referredMemberPlans = referredMember ? (plansByCustomer.get(referredMember.id) ?? []) : [];
+        const firstPlan = referredMemberPlans[0];
+
+        return {
+            id: r.id,
+            dateISO: r.referredAtISO.slice(0, 10),
+            referrerName: referrer ? `${referrer.firstName} ${referrer.lastName}`.trim() : "—",
+            referrerId: r.referrerCustomerId,
+            referredMemberName: referredMember ? `${referredMember.firstName} ${referredMember.lastName}`.trim() : r.referredName,
+            referredMemberId: referredMember?.id ?? "",
+            referredEmail: r.referredEmail,
+            planPurchased: firstPlan?.name ?? "",
+            revenue: firstPlan?.priceAed ?? 0,
+            branchId: referrer?.branchId ?? "",
+            location: referrer ? loc(referrer.branchId) : "—",
+        };
+    });
+}
+
+/** 7. selectGiftCards — one row per issued gift card, joined with the
  *  design + buyer customer. Feeds: Gift Card report. Reads the raw
  *  snake_case seed shape since the store persists it verbatim. */
 export function selectGiftCards(state: AppState): GiftCardRow[] {
