@@ -358,11 +358,11 @@ export function PivotableReportShell({
                         <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{summaryText}</p>
                     </div>
                     <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
-                        {/* Period */}
+                        {/* Period — no label prefix; just the selected value */}
                         {report.type === "lookback" && report.periods.length > 1 && (
                             <SingleSelectDropdown
                                 icon={CalendarPlus01}
-                                label="Period"
+                                label=""
                                 active={period !== "none"}
                                 options={report.periods.map(p => ({ value: p, label: PERIOD_LABEL[p] }))}
                                 value={period}
@@ -370,11 +370,11 @@ export function PivotableReportShell({
                             />
                         )}
 
-                        {/* Break down by */}
+                        {/* Break down — no label prefix; just the selected value */}
                         {report.dimensions.length > 0 && (
                             <SingleSelectDropdown
                                 icon={Grid01}
-                                label="Break down by"
+                                label=""
                                 active={dimIdx >= 0}
                                 options={[
                                     { value: "-1", label: "None" },
@@ -397,22 +397,22 @@ export function PivotableReportShell({
                             />
                         )}
 
-                        {/* Select column — flat mode only */}
+                        {/* Column — flat mode only */}
                         {!isPivot && (
                             <CheckListDropdown
                                 icon={Columns01}
-                                label="Select column"
+                                label="Column"
                                 options={report.columns.map(c => ({ value: c.key, label: c.label }))}
                                 value={visibleCols}
                                 onToggle={toggleCol}
                             />
                         )}
 
-                        {/* Select location — only when > 1 branch scope */}
+                        {/* Location — only when > 1 branch scope */}
                         {branches.length > 1 && (
                             <CheckListDropdown
                                 icon={MarkerPin01}
-                                label="Select location"
+                                label="Location"
                                 options={branches.map(b => ({ value: b.id, label: b.name }))}
                                 value={visibleBranchIds}
                                 onToggle={toggleBranch}
