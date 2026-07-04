@@ -35,13 +35,15 @@ export const LEAD_CONVERSION_REPORT: ReportDefinition = {
     periodField: "periodKey",
     rbac:        ["admin"],
 
+    // 7 columns — Excel-verbatim. Excel uses "Lead→trial %" and
+    // "Lead→paid %" (no spaces around the arrow) — preserved here.
+    // Period is not a column per spec.
     columns: [
-        { key: K.period,                label: "Period",                     kind: "text",    minWidth: 140 },
         { key: K.newLeads,              label: "New leads",                  kind: "number",  minWidth: 130 },
         { key: K.leadsToTrial,          label: "Leads → trial",              kind: "number",  minWidth: 160 },
-        { key: K.leadToTrialPct,        label: "Lead → trial %",             kind: "percent", minWidth: 160, calc: "Leads → trial ÷ New leads" },
+        { key: K.leadToTrialPct,        label: "Lead→trial %",               kind: "percent", minWidth: 160, calc: "Leads → trial ÷ New leads" },
         { key: K.leadsToPaid,           label: "Leads → paid",               kind: "number",  minWidth: 160 },
-        { key: K.leadToPaidPct,         label: "Lead → paid %",              kind: "percent", minWidth: 160, calc: "Leads → paid ÷ New leads" },
+        { key: K.leadToPaidPct,         label: "Lead→paid %",                kind: "percent", minWidth: 160, calc: "Leads → paid ÷ New leads" },
         { key: K.avgTimeToConvert,      label: "Avg time to convert",        kind: "number",  minWidth: 190 },
         { key: K.avgTimeToFirstContact, label: "Avg time to first contact",  kind: "number",  minWidth: 210 },
     ],

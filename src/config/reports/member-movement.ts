@@ -35,8 +35,12 @@ export const MEMBER_MOVEMENT_REPORT: ReportDefinition = {
     periodField: "periodKey",
     rbac:        ["admin"],
 
+    // 7 columns — Excel-verbatim. Period is not a column per spec; the
+    // period bucket is picked via the shell's Period dropdown (grouping
+    // dimension). Each row represents one branch × time-bucket
+    // aggregate; when Period=None (flat), the shell shows one row per
+    // (branch × month) driven by `periodField: "periodKey"`.
     columns: [
-        { key: K.period,          label: "Period",                 kind: "text",   minWidth: 140 },
         { key: K.activeAtStart,   label: "Active members at start", kind: "number", minWidth: 190 },
         { key: K.newSignups,      label: "New sign-ups",           kind: "number", minWidth: 150 },
         { key: K.reactivated,     label: "Reactivated",            kind: "number", minWidth: 140 },

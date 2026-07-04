@@ -32,8 +32,10 @@ export const RETENTION_CHURN_REPORT: ReportDefinition = {
     periodField: "periodKey",
     rbac:        ["admin"],
 
+    // 5 columns — Excel-verbatim. Period is not a column per spec.
+    // Each row = one branch × month aggregate; the shell buckets via
+    // `periodField: "periodKey"` when the user picks Period=Month.
     columns: [
-        { key: K.period,           label: "Period",                 kind: "text",    minWidth: 140 },
         { key: K.activeAtStart,    label: "Active members at start", kind: "number", minWidth: 190 },
         { key: K.membersRetained,  label: "Members retained",       kind: "number",  minWidth: 170 },
         { key: K.membersLost,      label: "Members lost",           kind: "number",  minWidth: 140 },
