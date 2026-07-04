@@ -348,19 +348,16 @@ export function PivotableReportShell({
             {/* ── Body ─────────────────────────────────────────────── */}
             <div className="flex-1 overflow-y-auto px-6 pb-6">
                 {/* Top row — summary (left) · toolbar (right).
-                    `flex-1 min-w-0` on the toolbar cluster is deliberate:
-                    it makes the toolbar grow to fill remaining space on
-                    the same row when space allows, AND take the FULL
-                    width when it wraps to its own row. Combined with
-                    `justify-end`, filters stay right-aligned in both
-                    layouts. Without flex-1, a wrapped toolbar becomes
-                    a fit-content item and drifts to the left. */}
+                    `ml-auto` on the toolbar keeps it fit-content but
+                    pushes it to the right edge of its row, whether on
+                    the same row as the summary or on its own wrapped
+                    row. Does NOT stretch to fill the row width. */}
                 <div className="flex items-end justify-between gap-6 py-4 flex-wrap">
                     <div className="flex flex-col gap-1">
                         <p className="text-[14px] leading-[20px] text-[#667085]">Total</p>
                         <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{summaryText}</p>
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap justify-end">
+                    <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
                         {/* Period */}
                         {report.type === "lookback" && report.periods.length > 1 && (
                             <SingleSelectDropdown
