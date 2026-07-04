@@ -37,7 +37,7 @@ export const SALES_BY_CATEGORY_REPORT: ReportDefinition = {
     title:       "Sales by Category (stream)",
     description: "Sales stream broken down by revenue category (memberships vs packages). Refund rate + share of total net make weak categories obvious.",
     type:        "lookback",
-    route:       "/admin/reports/sales-by-category",
+    route:       "/reports/sales-by-category",
     selector:    "selectTransactionLedger",
     periodField: "periodKey",
     rbac:        ["admin"],

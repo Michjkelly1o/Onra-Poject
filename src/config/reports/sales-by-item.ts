@@ -39,7 +39,7 @@ export const SALES_BY_ITEM_REPORT: ReportDefinition = {
     title:       "Sales by Item",
     description: "Line-item view of every sale. Pivot by item type / revenue category to see what's driving the top line.",
     type:        "lookback",
-    route:       "/admin/reports/sales-by-item",
+    route:       "/reports/sales-by-item",
     selector:    "selectTransactionLedger",
     periodField: "orderDateISO",
     rbac:        ["admin"],

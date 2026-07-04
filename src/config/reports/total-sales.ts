@@ -65,7 +65,7 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
     title:       "Total Sales (orders)",
     description: "Order-level list of everything sold — the financial source of truth. Refunds land in their own period; voids are erased.",
     type:        "lookback",
-    route:       "/admin/reports/total-sales",
+    route:       "/reports/total-sales",
     selector:    "selectTransactionLedger",
     periodField: "orderDateISO",
     rbac:        ["admin", "instructor:self"],

@@ -44,7 +44,7 @@ export const PAYMENTS_REPORT: ReportDefinition = {
     title:       "Payments",
     description: "Every payment attempt with processor metadata. Failed + recovered + refunded rows all appear here — this is finance ops' source of truth.",
     type:        "lookback",
-    route:       "/admin/reports/payments",
+    route:       "/reports/payments",
     selector:    "selectPayments",
     periodField: "paymentDateISO",
     rbac:        ["admin"],
