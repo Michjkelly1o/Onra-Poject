@@ -9,19 +9,25 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { ClassSessionRow } from "@/lib/reports/selectors";
+import { useInstructorScope } from "@/lib/reports/use-instructor-scope";
 
 export default function ClassPerformanceReportPage() {
     const classBookings  = useAppStore(s => s.classBookings);
     const classSchedules = useAppStore(s => s.classSchedules);
     const branches       = useAppStore(s => s.branches);
+    const scope          = useInstructorScope();
 
     const report = getReportById("class-performance");
 
     const rows = useMemo<ClassSessionRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => ClassSessionRow[];
-        return fn({ classBookings, classSchedules, branches });
-    }, [report, classBookings, classSchedules, branches]);
+        const all = fn({ classBookings, classSchedules, branches });
+        // Instructor scope: only sessions taught by the current
+        // instructor. Admin sees everything.
+        if (!scope.isInstructor) return all;
+        return all.filter(r => r.instructor === scope.instructorFullName);
+    }, [report, classBookings, classSchedules, branches, scope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),

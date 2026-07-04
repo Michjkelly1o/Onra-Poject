@@ -13,6 +13,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { ClassSessionRow } from "@/lib/reports/selectors";
+import { useInstructorScope } from "@/lib/reports/use-instructor-scope";
 
 interface InstructorPerfRow extends Record<string, unknown> {
     instructor:         string;
@@ -33,14 +34,19 @@ export default function InstructorPerformanceReportPage() {
     const classBookings  = useAppStore(s => s.classBookings);
     const classSchedules = useAppStore(s => s.classSchedules);
     const branches       = useAppStore(s => s.branches);
+    const scope          = useInstructorScope();
 
     const report = getReportById("instructor-performance");
 
     const raw = useMemo<ClassSessionRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => ClassSessionRow[];
-        return fn({ classBookings, classSchedules, branches });
-    }, [report, classBookings, classSchedules, branches]);
+        const all = fn({ classBookings, classSchedules, branches });
+        // Instructor scope: only THIS instructor's sessions feed the
+        // aggregation. Admin sees every instructor.
+        if (!scope.isInstructor) return all;
+        return all.filter(r => r.instructor === scope.instructorFullName);
+    }, [report, classBookings, classSchedules, branches, scope]);
 
     const rows = useMemo<InstructorPerfRow[]>(() => {
         // Rating map — from raw schedules (selector doesn't carry it).

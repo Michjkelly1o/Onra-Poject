@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
+import { useInstructorScope } from "@/lib/reports/use-instructor-scope";
 
 interface StaffAttendanceRow extends Record<string, unknown> {
     staffName:        string;
@@ -46,11 +47,17 @@ export default function StaffAttendanceReportPage() {
     const classSchedules = useAppStore(s => s.classSchedules);
     const staff          = useAppStore(s => s.staff);
     const branches       = useAppStore(s => s.branches);
+    const scope          = useInstructorScope();
 
     const report = getReportById("staff-attendance");
 
     const rows = useMemo<StaffAttendanceRow[]>(() => {
         const branchName = new Map(branches.map(b => [b.id, b.name]));
+        // Instructor scope: filter classSchedules to those assigned to
+        // the current instructor. Admin sees every scheduled class.
+        const schedules = scope.isInstructor
+            ? classSchedules.filter(s => s.instructorId === scope.instructorStaffId)
+            : classSchedules;
         const staffById = new Map(staff.map(s => [
             s.id,
             {
@@ -59,7 +66,7 @@ export default function StaffAttendanceReportPage() {
             },
         ]));
 
-        return classSchedules.map(sched => {
+        return schedules.map(sched => {
             const info = staffById.get(sched.instructorId);
             const durationMin = Math.max(0, toMinutes(sched.endTime) - toMinutes(sched.startTime));
             const scheduledHours = durationMin / 60;
@@ -90,7 +97,7 @@ export default function StaffAttendanceReportPage() {
                 location:         branchName.get(sched.branchId) ?? "—",
             } satisfies StaffAttendanceRow;
         });
-    }, [classSchedules, staff, branches]);
+    }, [classSchedules, staff, branches, scope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
