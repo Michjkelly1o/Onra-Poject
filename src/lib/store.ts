@@ -4936,6 +4936,7 @@ export const useAppStore = create<AppState>()(persist(
     addCustomer: (input) => {
         const id = `cu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         const initials = input.initials ?? `${input.firstName.charAt(0)}${input.lastName.charAt(0)}`.toUpperCase();
+        const createdAt = new Date().toISOString();
         const customer: Customer = {
             ...input,
             id,
@@ -4948,7 +4949,14 @@ export const useAppStore = create<AppState>()(persist(
             // Newly-created customers are Active by default — a brand-new
             // account is never seeded inactive/archived.
             status: input.status ?? "active",
-            createdAt: new Date().toISOString(),
+            createdAt,
+            // Reports v33 — mirror customerFromSeed's derivations so
+            // Customer Data + Acquisition Efficiency reports stay
+            // populated even for customers created via the admin form
+            // during the demo.
+            firstVisitISO:   input.firstVisitISO   ?? deriveFirstVisitISO(createdAt, input.lastVisitISO),
+            marketingSource: input.marketingSource ?? deriveMarketingSource(id),
+            convertedFrom:   input.convertedFrom   ?? deriveConvertedFrom(id, input.planKind),
         };
         set((state) => ({ customers: [customer, ...state.customers] }));
         return id;
