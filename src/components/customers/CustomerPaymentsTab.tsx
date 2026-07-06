@@ -26,6 +26,7 @@ import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
+    AlertTriangle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -129,10 +130,24 @@ function TxnStatusBadge({ status }: { status: TxnStatus }) {
 // ─── Transaction kind icon ────────────────────────────────────────────────────
 
 function TxnIcon({ kind }: { kind: TxnKind }) {
-    const Icon = kind === "membership" ? CreditCard02 : Package;
+    // Cancellation-penalty rows use a distinct alert-triangle glyph so
+    // the client can scan the history for penalties at a glance — the
+    // fallback `Package` icon (used only for `package` rows now)
+    // otherwise made every non-membership row read as "Credit package"
+    // visually. Membership → card · package → package · penalty → alert.
+    const Icon = kind === "membership"
+        ? CreditCard02
+        : kind === "cancellation_penalty"
+            ? AlertTriangle
+            : Package;
+    const bg = kind === "cancellation_penalty" ? "bg-[#fef3f2]" : "bg-[#f2f4f7]";
+    const fg = kind === "cancellation_penalty" ? "text-[#b42318]" : "text-[#475467]";
     return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <Icon className="w-5 h-5 text-[#475467]" />
+        <div className={cn(
+            "relative shrink-0 size-10 rounded-full flex items-center justify-center",
+            bg,
+        )}>
+            <Icon className={cn("w-5 h-5", fg)} />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );
@@ -249,7 +264,11 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
         pending.dateStart !== "" || pending.dateEnd !== "";
 
     const STATUSES: FilterStatus[] = ["complete", "pending", "failed"];
-    const KINDS: TxnKind[] = ["membership", "package"];
+    // Plan-type filter chips — every transaction `kind` needs a chip so
+    // the client can slice the history on it. `cancellation_penalty`
+    // rows land here alongside the two purchase kinds so admin can
+    // isolate every penalty for a customer at a glance.
+    const KINDS: TxnKind[] = ["membership", "package", "cancellation_penalty"];
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
