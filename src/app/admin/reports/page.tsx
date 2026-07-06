@@ -14,10 +14,12 @@
 // scope) and knows what's still queued.
 
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
     BankNote01, CreditCard02, Activity, User01, Users01, Announcement01,
 } from "@untitledui/icons";
+import { isReportCategoryDisabled, isReportSlugDisabled } from "@/config/feature-flags";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -140,9 +142,22 @@ export default function ReportsPage() {
         router.push(`/reports/${item.slug}`);
     }
 
+    // Filter categories + items via feature-flags so QA can hide whole
+    // categories (uncomment all its slugs in DISABLED_ROUTE_PREFIXES) or
+    // individual reports. Categories with no enabled items drop entirely.
+    const visibleCategories = useMemo(() =>
+        CATEGORIES
+            .filter(cat => !isReportCategoryDisabled(cat.id))
+            .map(cat => ({
+                ...cat,
+                items: cat.items.filter(item => !isReportSlugDisabled(item.slug)),
+            }))
+            .filter(cat => cat.items.length > 0),
+    []);
+
     return (
         <div className="flex flex-col gap-6 w-full">
-            {CATEGORIES.map(category => (
+            {visibleCategories.map(category => (
                 <CategoryCard
                     key={category.id}
                     category={category}

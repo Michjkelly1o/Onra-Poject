@@ -98,6 +98,13 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Insights module ── (ENABLED — pushed)
     //"/admin/insights",               // tabs: Finance / Memberships / Classes
 
+    // ── KPI module ── (ENABLED — pushed)
+    // 4 category tabs (Financial · Client · Class · Marketing) with
+    // 55 KPI cards + 16 chart widgets. Reuses the Insights shell
+    // (metric card + date filter + widget grid). Uncomment to 404
+    // the entire KPI page.
+    //"/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
+
     // ── Pay rate module ── (ENABLED — pushed)
     //"/admin/staff/pay-rate",         // list view
     //"/staff/pay-rate",               // create / detail / edit
@@ -107,8 +114,65 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/compensation",                 // run payroll / instructor earnings detail
 
     // ── Reports module ── (ENABLED — admin)
-    //"/admin/reports",                // landing (5 category containers)
-    //"/reports",                      // 20 detail pages (full-bleed, X-close chrome)
+    //
+    // 32 reports grouped into 6 categories per Excel spec
+    // (new-prd/Onra_Reporting.xlsx §"Reports"). The landing page
+    // (/admin/reports) shows one category "container" card per section.
+    //
+    // ── QA-friendly category toggling ──
+    // Each category below is a comment-fenced block of route prefixes.
+    // Uncomment ALL the prefixes in a block to 404 that entire category
+    // AND hide its container card from the landing (the landing page
+    // reads this same file via `isReportCategoryDisabled()` to decide
+    // which cards to show). Uncomment individual prefixes to hide just
+    // that one report — the category card stays visible with fewer rows.
+    //
+    // Landing route — 404s the whole surface if uncommented.
+    //"/admin/reports",                // landing (6 category containers)
+
+    // ── Reports · Financial (12 reports) ──
+    //"/reports/total-sales",
+    //"/reports/sales-by-category",
+    //"/reports/sales-by-item",
+    //"/reports/payments",
+    //"/reports/refunds",
+    //"/reports/discounts",
+    //"/reports/tax-vat-export",
+    //"/reports/gift-cards",
+    //"/reports/revenue-recognition",
+    //"/reports/revenue-per-class",
+    //"/reports/arpm",
+    //"/reports/mrr",
+
+    // ── Reports · Membership & Package (4 reports) ──
+    //"/reports/memberships-packages",
+    //"/reports/frozen",
+    //"/reports/intro-offers",
+    //"/reports/upgrades-downgrades",
+
+    // ── Reports · Client / Customer (4 reports) ──
+    //"/reports/customer-data",
+    //"/reports/member-movement",
+    //"/reports/retention-churn",
+    //"/reports/win-back",
+
+    // ── Reports · Activity / Class (4 reports) ──
+    //"/reports/bookings",
+    //"/reports/class-performance",
+    //"/reports/cancellations-noshows",
+    //"/reports/top-classes-services",
+
+    // ── Reports · Staff / Instructor (2 reports) ──
+    //"/reports/instructor-performance",
+    //"/reports/staff-attendance",
+
+    // ── Reports · Marketing (6 reports) ──
+    //"/reports/lead-data",
+    //"/reports/lead-conversion",
+    //"/reports/campaign-performance",
+    //"/reports/promo-redemptions",
+    //"/reports/referrals",
+    //"/reports/acquisition-efficiency",
 
     // ── Staff & Permissions module ── (PARTIALLY ENABLED — Shift create/detail/edit hidden today)
     // Exact-match only on the list — otherwise this prefix would also catch
@@ -276,4 +340,64 @@ export function isRouteDisabled(pathname: string): boolean {
         if (prefix.startsWith("=")) return pathname === prefix.slice(1);
         return pathname === prefix || pathname.startsWith(prefix + "/");
     });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reports category groupings
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Every report route (/reports/{slug}) belongs to exactly one of the 6
+// Excel-spec categories. When the landing page (/admin/reports) renders
+// its category container cards, it consults this mapping via
+// `isReportCategoryDisabled(categoryId)` to hide any category whose
+// entire slug list has been 404'd in the DISABLED_ROUTE_PREFIXES array
+// above.
+//
+// UX rules the landing enforces:
+//   • Category card shows only when AT LEAST ONE of its reports is enabled.
+//   • Inside a card, only enabled report items are listed (disabled items
+//     drop from the list).
+//   • A category becomes fully invisible when every one of its reports is
+//     disabled — QA can hide "Marketing" wholesale by uncommenting the 6
+//     Marketing prefixes in DISABLED_ROUTE_PREFIXES.
+
+/** The 6 Excel-spec report categories → the slugs that live under each. */
+export const REPORT_CATEGORY_SLUGS: Record<string, string[]> = {
+    financial: [
+        "total-sales", "sales-by-category", "sales-by-item", "payments",
+        "refunds", "discounts", "tax-vat-export", "gift-cards",
+        "revenue-recognition", "revenue-per-class", "arpm", "mrr",
+    ],
+    membership_package: [
+        "memberships-packages", "frozen", "intro-offers", "upgrades-downgrades",
+    ],
+    customer: [
+        "customer-data", "member-movement", "retention-churn", "win-back",
+    ],
+    class: [
+        "bookings", "class-performance", "cancellations-noshows", "top-classes-services",
+    ],
+    staff: [
+        "instructor-performance", "staff-attendance",
+    ],
+    marketing: [
+        "lead-data", "lead-conversion", "campaign-performance",
+        "promo-redemptions", "referrals", "acquisition-efficiency",
+    ],
+};
+
+/** True when EVERY report in `categoryId` is disabled. Used by the landing
+ *  page to drop the whole category card when QA has 404'd all its
+ *  reports. Unknown category → treated as enabled (no hide). */
+export function isReportCategoryDisabled(categoryId: string): boolean {
+    const slugs = REPORT_CATEGORY_SLUGS[categoryId];
+    if (!slugs || slugs.length === 0) return false;
+    return slugs.every(slug => isRouteDisabled(`/reports/${slug}`));
+}
+
+/** True when a specific report slug is disabled. Landing card filters
+ *  individual rows through this so a partially-disabled category still
+ *  shows the enabled reports. */
+export function isReportSlugDisabled(slug: string): boolean {
+    return isRouteDisabled(`/reports/${slug}`);
 }
