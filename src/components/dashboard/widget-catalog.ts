@@ -1,4 +1,10 @@
-export type WidgetCategory = "Finance" | "Memberships" | "Classes";
+export type WidgetCategory =
+    // Existing dashboard + insights categories
+    | "Finance" | "Memberships" | "Classes"
+    // KPI module categories — Onra_KPI_Catalogue.pdf sections. Widgets
+    // under these categories get populated during KPI phases 2-5. The
+    // KPI page's widget grid stays empty until entries land here.
+    | "Financial" | "Client" | "Class" | "Marketing";
 
 export interface WidgetMeta {
     id: string;

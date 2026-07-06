@@ -73,6 +73,7 @@ const NAV_ITEMS: NavItemDef[] = [
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
         children: [
             { label: "Insights", href: "/admin/insights" },
+            { label: "KPI",      href: "/admin/kpi"      },
             { label: "Reports",  href: "/admin/reports"  },
         ],
     },

@@ -1,26 +1,29 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Insights page (/admin/insights)
+// Onra Studio — KPI page (/admin/kpi)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma: 3636:11138 (Finance) + 3610:90785 (Memberships).
+// KPI catalogue from new-prd/Onra_KPI_Catalogue.pdf. Four category tabs —
+// Financial · Client · Class · Marketing — each rendered with the SAME
+// chrome as /admin/insights:
 //
-// Three category tabs — Finance / Memberships / Classes — each with a metric
-// grid on top and the dashboard's existing widget cards below. The same
-// `<DashboardWidgetCard>` and `WIDGET_CATALOG` powering the dashboard's
-// Performance tab are reused 1:1 (no duplication).
-//
-// Layout per tab:
 //   1. Tabs strip
-//   2. Toolbar — "Total · N {category} KPIs" + search + period dropdown
-//   3. Metric grid (4 per row, gap-6)
-//   4. Widget grid (2 per row, gap-6) using <DashboardWidgetCard widgetId=... />
+//   2. Toolbar — "Total · N X KPIs" + search + period dropdown
+//   3. Metric grid (4 per row, gap-6)  — the KPI cards
+//   4. Widget grid (2 per row, gap-6)  — Recharts widgets from WIDGET_CATALOG
 //
-// Search filters BOTH the metric grid and the widget grid by label/title
-// (case-insensitive). The period dropdown is a UI placeholder for now —
-// widgets render their own mock period internally; live filtering arrives
-// when the data layer is wired.
+// Layout, components, and styling are IDENTICAL to Insights. Only the
+// data (KPI list per tab) and the chart types inside the widget cards
+// differ — those land in Phases 2-5.
+//
+// Phase 1: scaffolding only. Every tab renders with an empty state.
+//
+// Not covered (out of scope per plan):
+//   • Inventory KPIs (13) — no retail module
+//   • Forward/live KPIs (4) — Dashboard's territory per PDF
+//
+// See new-prd/kpi-implementation-plan.md for the full phase timeline.
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -32,67 +35,34 @@ import { InsightMetricCard, type Metric } from "@/components/insights/InsightMet
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabKey = "finance" | "memberships" | "classes";
+type TabKey = "financial" | "client" | "class" | "marketing";
 
 interface TabConfig {
     key: TabKey;
     label: string;
-    /** Category used to filter the widget catalog. */
+    /** Category used to filter WIDGET_CATALOG for this tab. */
     widgetCategory: WidgetCategory;
     metrics: Metric[];
 }
 
-// ─── Tab content ──────────────────────────────────────────────────────────────
-//
-// Finance + Memberships metric values match the Figma exactly. Classes is a
-// sensible default (no Figma supplied yet) — same shape, ready to swap when
-// the spec lands. All values are mock for now; widgets render their own
-// derived data via the existing dashboard catalog.
+// ─── Tab content (Phase 1: empty; populated per phase) ────────────────────────
 
-const FINANCE_METRICS: Metric[] = [
-    { label: "Net revenue",                value: "AED 752",   change: 8 },
-    { label: "Revenue from subscriptions", value: "AED 120",   change: 2 },
-    { label: "Revenue from packages",      value: "AED 390",   change: 30 },
-    { label: "Payment amount dues",        value: "AED 345",   change: 100 },
-    { label: "Revenue from classes",       value: "AED 1,620", change: 8 },
-    { label: "Revenue from products",      value: "AED 112",   change: -5 },
-    { label: "Revenue from gift cards",    value: "AED 104",   change: 2 },
-    { label: "Payments collected",         value: "AED 407",   change: 30 },
-];
-
-const MEMBERSHIP_METRICS: Metric[] = [
-    { label: "Active memberships",               value: "7",   change: 2 },
-    { label: "Active subscriptions",             value: "14",  change: 4 },
-    { label: "Active packages",                  value: "4",   change: 4 },
-    { label: "Active intro offers",              value: "4",   change: -5 },
-    { label: "Membership cancellations",         value: "2",   change: 2 },
-    { label: "Memberships suspended",            value: "0" },
-    { label: "Memberships with billing issue",   value: "4",   change: 2 },
-    { label: "Membership cancellations %",       value: "1%",  change: 2 },
-    { label: "Memberships suspended %",          value: "0%" },
-    { label: "Memberships with billing issue %", value: "2%",  change: 2 },
-];
-
-const CLASSES_METRICS: Metric[] = [
-    { label: "Total class scheduled",     value: "175",    change: 8 },
-    { label: "Total class check-ins",     value: "5",      change: -5 },
-    { label: "Revenue per class",         value: "AED 162", change: -30 },
-    { label: "Revenue per visit",         value: "AED 62", change: -5 },
-    { label: "Unique visitors",           value: "3",      change: 8 },
-    { label: "First time class visitors", value: "1",      change: -5 },
-    { label: "Class occupancy rate",      value: "1%",     change: -10 },
-];
+const FINANCIAL_METRICS: Metric[] = [];
+const CLIENT_METRICS: Metric[]    = [];
+const CLASS_METRICS: Metric[]     = [];
+const MARKETING_METRICS: Metric[] = [];
 
 const TABS: TabConfig[] = [
-    { key: "finance",     label: "Finance",     widgetCategory: "Finance",     metrics: FINANCE_METRICS },
-    { key: "memberships", label: "Memberships", widgetCategory: "Memberships", metrics: MEMBERSHIP_METRICS },
-    { key: "classes",     label: "Classes",     widgetCategory: "Classes",     metrics: CLASSES_METRICS },
+    { key: "financial", label: "Financial", widgetCategory: "Financial", metrics: FINANCIAL_METRICS },
+    { key: "client",    label: "Client",    widgetCategory: "Client",    metrics: CLIENT_METRICS    },
+    { key: "class",     label: "Class",     widgetCategory: "Class",     metrics: CLASS_METRICS     },
+    { key: "marketing", label: "Marketing", widgetCategory: "Marketing", metrics: MARKETING_METRICS },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function InsightsPage() {
-    const [tab, setTab] = useState<TabKey>("finance");
+export default function KpiPage() {
+    const [tab, setTab] = useState<TabKey>("financial");
     const [search, setSearch] = useState("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
 
@@ -112,9 +82,14 @@ export default function InsightsPage() {
             w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
         : widgetsInCategory;
 
-    const kpiLabel = activeTab.key === "memberships"
-        ? "memberships KPIs"
-        : `${activeTab.key} KPIs`;
+    const kpiLabel = `${activeTab.label.toLowerCase()} KPIs`;
+
+    // Phase 1 empty state — surfaces when a tab has no metrics AND no
+    // widgets yet. Uses the same dashed-border card style Insights uses
+    // for its "search matched nothing" state.
+    const showPhaseEmptyState = !q
+        && filteredMetrics.length === 0
+        && filteredWidgets.length === 0;
 
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
@@ -146,7 +121,7 @@ export default function InsightsPage() {
                 <div className="relative w-[220px]">
                     <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search insight..."
+                        placeholder="Search KPI..."
                         className="h-10 w-full pl-[44px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
@@ -162,7 +137,7 @@ export default function InsightsPage() {
                 </div>
             )}
 
-            {/* Widget grid — reuses the dashboard's WIDGET_CATALOG + DashboardWidgetCard. */}
+            {/* Widget grid — reuses WIDGET_CATALOG + DashboardWidgetCard. */}
             {filteredWidgets.length > 0 && (
                 <div className="grid grid-cols-2 gap-6">
                     {filteredWidgets.map(w => (
@@ -171,10 +146,23 @@ export default function InsightsPage() {
                 </div>
             )}
 
-            {/* Empty state (search matched nothing) */}
+            {/* Phase 1 scaffolding — empty state. Removed once each tab
+                gets its metric cards + widgets in Phases 2-5. */}
+            {showPhaseEmptyState && (
+                <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
+                    <p className="text-[16px] font-semibold text-[#101828]">
+                        {activeTab.label} KPIs — coming soon
+                    </p>
+                    <p className="text-[14px] text-[#475467]">
+                        Metric cards + widget charts land in the phase for this tab.
+                    </p>
+                </div>
+            )}
+
+            {/* Empty state (search matched nothing) — same chrome as Insights. */}
             {q && filteredMetrics.length === 0 && filteredWidgets.length === 0 && (
                 <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
-                    <p className="text-[16px] font-semibold text-[#101828]">No insights found</p>
+                    <p className="text-[16px] font-semibold text-[#101828]">No KPIs found</p>
                     <p className="text-[14px] text-[#475467]">Try a different search term.</p>
                 </div>
             )}
