@@ -29,7 +29,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
     XClose, Eye, RefreshCcw01, Bell01, Users02, Pencil02, Announcement01,
-    SlashCircle01, Star01,
+    SlashCircle01, Star01, Trash01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -274,6 +274,7 @@ function fmtDateTime(iso: string | undefined): string {
 export interface RenewalDueModalProps { open: boolean; onClose: () => void; branchId?: string | null }
 
 export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProps) {
+    const router         = useRouter();
     const customers      = useAppStore(s => s.customers);
     const customerPlans  = useAppStore(s => s.customerPlans);
     const showToast      = useAppStore(s => s.showToast);
@@ -352,8 +353,16 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
     function sendReminderOne(customerName: string) {
         showToast("Reminder queued", `Renewal reminder sent to ${customerName}.`, "success", "check");
     }
-    function renewMembership(customerName: string) {
-        showToast("Membership renewed", `${customerName}'s membership has been renewed.`, "success", "check");
+    // "Renew membership" opens POS with the customer + product already
+    // in the cart (client review Jul 2026 — admin should land inside the
+    // renewal flow, not just see a toast). The POS page reads these
+    // query params on mount, seeds cart + customer, and strips the query
+    // afterwards so a refresh doesn't re-inject the prefill.
+    function renewMembership(plan: CustomerPlan, customer: Customer) {
+        const productKind = plan.kind === "membership" ? "membership" : "package";
+        const url = `/admin/pos?customerId=${customer.id}&productId=${plan.productId ?? ""}&productKind=${productKind}`;
+        router.push(url);
+        onClose();
     }
 
     return (
@@ -456,7 +465,7 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
                                             {
                                                 label: "Renew membership",
                                                 icon: RefreshCcw01,
-                                                onClick: () => renewMembership(`${r.customer.firstName} ${r.customer.lastName}`),
+                                                onClick: () => renewMembership(r.plan, r.customer),
                                             },
                                         ] : [
                                             {
@@ -779,12 +788,18 @@ export interface UnderFilledModalProps { open: boolean; onClose: () => void; bra
 export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalProps) {
     const router = useRouter();
     const classSchedules = useAppStore(s => s.classSchedules);
+    const classBookings  = useAppStore(s => s.classBookings);
     const cancelClassSchedule = useAppStore(s => s.cancelClassSchedule);
     const showToast = useAppStore(s => s.showToast);
 
     const [page, setPage]         = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    useEffect(() => { if (open) setPage(1); }, [open]);
+    /** Class the admin has picked "Cancel class" on but hasn't yet
+     *  confirmed. Renders the shared cancel-confirmation modal (lifted
+     *  visually from admin/schedule's AdminCancelClassModal) so the
+     *  action reads consistently across every schedule surface. */
+    const [pendingCancel, setPendingCancel] = useState<ClassSchedule | null>(null);
+    useEffect(() => { if (open) { setPage(1); setPendingCancel(null); } }, [open]);
 
     const rows = useMemo(() => {
         const now = new Date();
@@ -816,19 +831,27 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
         onClose();
     }
     function editClass(id: string) {
-        router.push(`/schedule/${id}?edit=true&returnTo=${encodeURIComponent("/admin/dashboard")}`);
+        // Routes to the dedicated edit page (same URL admin/schedule uses
+        // for its Edit class action) so the admin lands in the full-page
+        // edit form instead of the read-only detail view.
+        router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent("/admin/dashboard")}`);
         onClose();
     }
     function promoteClass() {
         router.push("/admin/promote-not-implemented");
     }
-    function cancelClass(s: ClassSchedule) {
-        cancelClassSchedule(s.id, true, "Cancelled from dashboard needs-attention");
+    function confirmCancelClass() {
+        if (!pendingCancel) return;
+        cancelClassSchedule(pendingCancel.id, true, "Cancelled from dashboard needs-attention");
         showToast(
             "Class cancelled",
-            `${s.name} on ${fmtDate(s.dateISO)} has been cancelled. Booked members will be refunded.`,
+            `${pendingCancel.name} on ${fmtDate(pendingCancel.dateISO)} has been cancelled. Booked members will be refunded.`,
             "success", "check",
         );
+        setPendingCancel(null);
+    }
+    function bookedCountFor(scheduleId: string): number {
+        return classBookings.filter(b => b.classScheduleId === scheduleId && b.status === "booked").length;
     }
 
     // "Sat, 27 Feb 2025" — Under-filled modal's date column format.
@@ -905,10 +928,21 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
                                     </td>
                                     <td className={TD}>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-[8px] bg-[#f2f4f7] flex items-center justify-center overflow-hidden shrink-0">
-                                                <span className="text-[10px] font-semibold text-[#475467] px-1 text-center leading-[12px]">
-                                                    {s.category?.slice(0, 3).toUpperCase() ?? "CLS"}
-                                                </span>
+                                            {/* Circle-rounded avatar with the template cover
+                                                image (or category-tinted initials fallback) —
+                                                same shape + fallback logic /admin/schedule uses
+                                                in its list table (schedule/page.tsx:678). */}
+                                            <div
+                                                className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-1 border-[#e4e7ec] flex items-center justify-center"
+                                                style={{ backgroundColor: s.coverColor }}
+                                            >
+                                                {s.coverImage ? (
+                                                    <img src={s.coverImage} alt={s.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-[12px] font-semibold text-[#475467]">
+                                                        {s.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex flex-col min-w-0">
                                                 <p className="text-[14px] font-semibold text-[#101828] leading-[20px] truncate">{s.name}</p>
@@ -952,7 +986,7 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
                                                 { label: "View details",  icon: Eye,             onClick: () => viewDetails(s.id) },
                                                 { label: "Edit class",    icon: Pencil02,        onClick: () => editClass(s.id) },
                                                 { label: "Promote class", icon: Announcement01,  onClick: promoteClass },
-                                                { label: "Cancel class",  icon: SlashCircle01,   onClick: () => cancelClass(s), danger: true },
+                                                { label: "Cancel class",  icon: SlashCircle01,   onClick: () => setPendingCancel(s), danger: true },
                                             ]}
                                         />
                                     </td>
@@ -969,7 +1003,77 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
                     </tbody>
                 </table>
             </div>
+            {/* Cancel-confirmation modal — same chrome + copy shape as the
+                AdminCancelClassModal on /admin/schedule so admins get a
+                consistent cancellation experience wherever they trigger
+                it from. Renders inside a portal so it stacks above the
+                Under-filled modal. */}
+            <CancelClassConfirmModal
+                open={!!pendingCancel}
+                schedule={pendingCancel}
+                bookedCount={pendingCancel ? bookedCountFor(pendingCancel.id) : 0}
+                onClose={() => setPendingCancel(null)}
+                onConfirm={confirmCancelClass}
+            />
         </ModalShell>
+    );
+}
+
+// ─── Cancel class confirmation modal ───────────────────────────────────────
+//
+// Lifted visually verbatim from `AdminCancelClassModal` in
+// `src/app/admin/schedule/page.tsx:275` so the Under-filled row action
+// matches every other cancel surface in the app. Own portal → stacks
+// above the parent ModalShell.
+function CancelClassConfirmModal({
+    open, schedule, bookedCount, onClose, onConfirm,
+}: {
+    open: boolean;
+    schedule: ClassSchedule | null;
+    bookedCount: number;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    if (!open || !schedule) return null;
+    if (typeof document === "undefined") return null;
+    return createPortal(
+        <div className="fixed inset-0 z-[300] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10"
+                    aria-label="Close"
+                >
+                    <XClose className="w-6 h-6 text-[#667085]" />
+                </button>
+                <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                    <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
+                        <Trash01 className="w-6 h-6 text-[#d92d20]" />
+                    </div>
+                    <div className="flex flex-col gap-1 text-center w-full">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            <span className="font-medium text-[#344054]">{schedule.name}</span>{" "}
+                            on {schedule.date} • {schedule.displayTime} will be cancelled.
+                            {bookedCount > 0 && (
+                                <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and credits refunded.</>
+                            )}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex gap-3 px-6 pt-6 pb-6">
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button variant="destructive" size="lg" className="flex-1" onClick={onConfirm}>
+                        Yes, cancel class
+                    </Button>
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }
 

@@ -167,6 +167,7 @@ function PerformanceTab({
     onRemoveWidget,
     onReorderWidgets,
     onOpenModal,
+    allWidgetsActive,
 }: {
     activeWidgets: string[];
     period: DateFilter;
@@ -176,6 +177,10 @@ function PerformanceTab({
      *  external dnd library required. */
     onReorderWidgets: (fromIndex: number, toIndex: number) => void;
     onOpenModal: () => void;
+    /** When every widget in the catalogue is already on the
+     *  dashboard, hide the dashed "Add widget" tile — clicking it
+     *  would open an empty picker. Client review Jul 2026. */
+    allWidgetsActive: boolean;
 }) {
     // Track which widget is being dragged (by its position) so the drop
     // handler knows what to move. Reset on dragend / drop so a fresh
@@ -256,20 +261,23 @@ function PerformanceTab({
                 </div>
             ))}
 
-            {/* Add widget entry point */}
-            <button
-                type="button"
-                onClick={onOpenModal}
-                className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
-            >
-                <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                    <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
-                </div>
-                <div className="text-center">
-                    <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                    <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
-                </div>
-            </button>
+            {/* Add widget entry point — hidden once every catalogue
+                widget is already active (would open an empty picker). */}
+            {!allWidgetsActive && (
+                <button
+                    type="button"
+                    onClick={onOpenModal}
+                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                    </div>
+                </button>
+            )}
         </div>
     );
 }
@@ -527,10 +535,13 @@ export default function AdminDashboard() {
 
     // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364).
     // Five cards replace the previous four:
-    //   Total sales / Total revenue / New customers / Total classes /
+    //   Total sales / Total revenue / New customers / Bookings today /
     //   Avg occupancy.
     // Every value reads live from the scoped slices so branch pick + all-
-    // locations aggregate stay in sync.
+    // locations aggregate stay in sync. "Bookings today" replaced the
+    // earlier "Total classes" per client review — clients wanted the
+    // metric to answer "how much activity is happening today" (booking
+    // count) rather than "how many classes are on the schedule".
     const metrics = useMemo<DashboardMetric[]>(() => {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
@@ -549,11 +560,17 @@ export default function AdminDashboard() {
             (c.createdAt ?? "").startsWith(todayISO),
         ).length;
 
-        // Classes scheduled today (any status) — the operational lens the
-        // dashboard needs. Cancelled classes still take a slot the front
-        // desk saw arriving, so they count too.
+        // Classes scheduled today — kept for the Avg occupancy calc
+        // below. Cancelled classes still take a slot the front desk saw
+        // arriving, so they count for scheduling density.
         const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
-        const totalClasses = todaySchedules.length;
+        // Bookings today — count of `booked` rows whose schedule is
+        // today's. Waitlist + cancelled bookings excluded so the number
+        // reads as "committed activity on the floor today".
+        const todayScheduleIdSet = new Set(todaySchedules.map(s => s.id));
+        const bookingsToday = scopedBookings.filter(b =>
+            b.status === "booked" && todayScheduleIdSet.has(b.classScheduleId),
+        ).length;
 
         // Average occupancy across today's classes with a real capacity.
         // Uncapped classes (capacity 0) drop out so a stray seed row can't
@@ -592,23 +609,29 @@ export default function AdminDashboard() {
                 icon: UserPlus01,
             },
             {
-                label: "Total classes",
-                value: totalClasses.toLocaleString("en-US"),
-                change: 1,
-                positive: false,
-                comparison: "vs yesterday",
-                icon: Calendar,
-            },
-            {
-                label: "Avg occupancy",
-                value: `${avgOccupancyPct}%`,
+                // Icon updated to TrendUp01 per client review (was
+                // Calendar). Renamed from "Total classes" to
+                // "Bookings today" so the metric answers "how much
+                // activity today?" instead of scheduling density.
+                label: "Bookings today",
+                value: bookingsToday.toLocaleString("en-US"),
                 change: 1,
                 positive: false,
                 comparison: "vs yesterday",
                 icon: TrendUp01,
             },
+            {
+                // Icon moved to Calendar so TrendUp01 stays unique on
+                // the Bookings-today card.
+                label: "Avg occupancy",
+                value: `${avgOccupancyPct}%`,
+                change: 1,
+                positive: false,
+                comparison: "vs yesterday",
+                icon: Calendar,
+            },
         ];
-    }, [scopedTransactions, scopedCustomers, scopedSchedules, todayISO]);
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
@@ -844,6 +867,7 @@ export default function AdminDashboard() {
                         );
                     }}
                     onOpenModal={() => setWidgetModalOpen(true)}
+                    allWidgetsActive={activeWidgets.length >= WIDGET_CATALOG.length}
                 />
             )}
 

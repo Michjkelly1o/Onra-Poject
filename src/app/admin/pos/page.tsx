@@ -306,6 +306,52 @@ function POSInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
+    // Pre-populate the POS from a deep-link (client review Jul 2026 —
+    // "Renew membership" on the dashboard's needs-attention modal
+    // navigates here with ?customerId=X&productId=Y&productKind=Z so
+    // the renewal flow drops the admin straight into a partially
+    // completed cart). Runs once on mount (searchParams is stable per
+    // navigation) — subsequent user edits are preserved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        const prefillCust = searchParams.get("customerId");
+        const prefillProd = searchParams.get("productId");
+        const prefillKind = searchParams.get("productKind") as "membership" | "package" | null;
+        if (!prefillCust && !prefillProd) return;
+        if (prefillCust) setCustomerId(prefillCust);
+        if (prefillProd && prefillKind) {
+            const membership = prefillKind === "membership"
+                ? memberships.find(m => m.id === prefillProd)
+                : undefined;
+            const pkg = prefillKind === "package"
+                ? packages.find(p => p.id === prefillProd)
+                : undefined;
+            const product = membership ?? pkg;
+            if (product) {
+                setCart(prev => {
+                    if (prev.some(l => l.productId === product.id)) return prev;
+                    return [...prev, {
+                        lineId: `cl_${Date.now()}_prefill`,
+                        productId: product.id,
+                        kind: prefillKind,
+                        name: product.name,
+                        unitPrice: product.price_aed,
+                        primaryMeta: prefillKind === "membership"
+                            ? (membership!.credits === "unlimited"
+                                ? "Unlimited"
+                                : `${membership!.credits} Credits`)
+                            : (pkg!.credits === 1 ? "1 Class" : `${pkg!.credits} Credits`),
+                        quantity: 1,
+                    }];
+                });
+            }
+        }
+        // Strip the query params after consuming them so a refresh
+        // doesn't re-inject the prefill on top of a cart the admin has
+        // edited.
+        router.replace("/admin/pos");
+    }, []);
+
     // Catalog filtered against the active tab, search box, and filter panel.
     const catalog = useMemo(
         () => buildCatalog(memberships, packages, giftCardDesigns),
