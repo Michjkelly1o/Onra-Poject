@@ -422,7 +422,7 @@ export function WaitlistPanel({ open, onClose }: {
                             />
                         </Field>
 
-                        <Field label="After cut off, a freed spot to">
+                        <Field label="After cut off, a freed spot to:">
                             <div className="grid grid-cols-2 gap-3">
                                 {AFTER_CUTOFF_OPTIONS.map(opt => (
                                     <RadioCard
