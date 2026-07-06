@@ -353,6 +353,13 @@ interface RunRow {
     classesCount: number;
     totalHours: number;
     grossRevenue: number;
+    /** Real sum of attendees across the period's completed classes
+     *  (`payroll_entries.total_attendees`). Carried here so the CSV
+     *  exporter can hand the actual figure to `payrollBreakdownFor`
+     *  instead of reconstructing it from `grossRevenue / 150`, which
+     *  silently divides by an approximate per-customer price and
+     *  breaks reconciliation on Split-Rate + hybrid revenue rows. */
+    totalAttendees: number;
     payout: number;
     status: PayrollEntryStatus;
 }
@@ -390,14 +397,18 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
 
     const lines: string[] = [];
     for (const r of rows) {
-        // Attendee count is captured via the grossRevenue proxy
-        // (attendees × AED 150 per class per `earningsForClass`). When
-        // real per-booking attendance ships this becomes a live field.
-        const totalAttendees = Math.round(r.grossRevenue / 150);
+        // Pipe REAL totals through — `totalAttendees` and `grossRevenue`
+        // both come from the payroll entry, so the breakdown row math
+        // (basis × rate = amount) reconciles to the entry's
+        // `total_earnings` on every pay model. The old code
+        // reconstructed attendees as `grossRevenue / 150`, which
+        // silently divided by an approximate per-customer price and
+        // desynced Split-Rate + hybrid-revenue rows from their subtotal.
         const breakdown = payrollBreakdownFor(r.payRate, {
             totalEarningsAed: r.payout,
             completedClasses: r.classesCount,
-            totalAttendees,
+            totalAttendees:   r.totalAttendees,
+            revenueBaseAed:   r.grossRevenue,
         });
         const statusLabel = r.status === "paid" ? "Paid" : "Pending";
         const totalPayout = Math.round(r.payout);
@@ -523,11 +534,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     branchId: instructor.branchId,
                     payRateName: entry?.payRateName ?? livePayRate?.name ?? "—",
                     payRate:     livePayRate,
-                    classesCount: entry?.classesCount ?? 0,
-                    totalHours:   entry?.totalHours   ?? 0,
-                    grossRevenue: entry?.grossRevenue ?? 0,
-                    payout:       entry?.totalEarnings ?? 0,
-                    status:       entry?.status ?? "pending",
+                    classesCount:   entry?.classesCount   ?? 0,
+                    totalHours:     entry?.totalHours     ?? 0,
+                    grossRevenue:   entry?.grossRevenue   ?? 0,
+                    totalAttendees: entry?.totalAttendees ?? 0,
+                    payout:         entry?.totalEarnings  ?? 0,
+                    status:         entry?.status         ?? "pending",
                 } satisfies RunRow;
             });
     }, [payrollEntries, instructors, payRates, range]);

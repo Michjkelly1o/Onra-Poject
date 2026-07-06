@@ -295,6 +295,16 @@ export function payrollBreakdownFor(
         totalEarningsAed: number;
         completedClasses: number;
         totalAttendees:   number;
+        /** Actual studio revenue for the period, AED (the "Class revenue
+         *  base" column). Used AS-IS as the base for Revenue share rows
+         *  so the exported row math reconciles to the real payroll
+         *  entry — matches the formula the seed uses to compute
+         *  `total_earnings`. Optional so legacy callers can still pass
+         *  only stats; falls back to `totalAttendees × 150` (the same
+         *  `earningsForClass` approximation used elsewhere) when
+         *  omitted. Always prefer to pass the real value from the
+         *  payroll entry. */
+        revenueBaseAed?: number;
     },
 ): PayrollBreakdown {
     const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -344,9 +354,12 @@ export function payrollBreakdownFor(
             };
         }
         case "revenue": {
-            // Revenue base = the studio-side revenue proxy the split
-            // percentage applies against (attendees × AED 150 per class).
-            const revenueBase       = stats.totalAttendees * 150;
+            // Revenue base = the studio's real "Class revenue base"
+            // figure for the period (`payroll_entries.gross_revenue`).
+            // Passed by the exporter so the row math reconciles with
+            // the entry's `total_earnings`. Falls back to
+            // `attendees × 150` only when a caller doesn't supply it.
+            const revenueBase        = stats.revenueBaseAed ?? stats.totalAttendees * 150;
             const revenueShareAmount = revenueBase * (payRate.splitPercent / 100);
             const perCustomer        = payRate.payPerCustomer ?? 0;
             const perCustomerAmount  = perCustomer * stats.totalAttendees;
@@ -414,8 +427,9 @@ export function payrollBreakdownFor(
                     total,
                 };
             }
-            // Revenue-split hybrid.
-            const revenueBase = stats.totalAttendees * 150;
+            // Revenue-split hybrid — same real-revenue-base logic as
+            // the pure `revenue` type above.
+            const revenueBase = stats.revenueBaseAed ?? stats.totalAttendees * 150;
             const shareAmount = revenueBase * (payRate.condition.splitPercent / 100);
             return {
                 payModel,
