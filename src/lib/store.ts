@@ -1687,7 +1687,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package";
+    kind: "membership" | "package" | "cancellation_penalty";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -1729,6 +1729,15 @@ export interface CustomerTransaction {
     // ── Reports v33 fields (Discounts + Promo Redemptions) ──────────────
     discountCode?: string;
     discountValue?: number;
+    // ── Cancellation-penalty flow (Jul 2026) ────────────────────────────
+    /** Refundability guard. Undefined = refundable (legacy default);
+     *  explicit `false` = the Refund action is hidden on Payment
+     *  history and `refundTransaction` rejects the call. Always
+     *  `false` on `kind: "cancellation_penalty"` rows. */
+    isRefundable?: boolean;
+    /** For `kind: "cancellation_penalty"` rows only — which scenario
+     *  triggered the fee. Drives display copy on Payment history. */
+    cancellationScenario?: "late_cancel" | "no_show";
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -2315,6 +2324,9 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         // code to ~25% of sale transactions deterministically.
         discountCode:          t.discount_code  ?? deriveDiscountCode(t.id, t.transaction_type),
         discountValue:         t.discount_value ?? deriveDiscountValue(t.id, t.transaction_type, t.amount_aed),
+        // ── Cancellation-penalty flow (Jul 2026) ────────────────────
+        isRefundable:          t.is_refundable,
+        cancellationScenario:  t.cancellation_scenario,
     };
 }
 
@@ -3201,6 +3213,34 @@ export interface AppState {
     removeClassBooking: (id: string) => void;
     removeClassBookings: (ids: string[]) => void;
     cancelClassBookings: (ids: string[], reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
+    /** Customer-portal cancel that ALSO charges the cancellation-penalty
+     *  fee when applicable (Jul 2026 client feedback, Figma 7790:27893).
+     *  Delegates the booking mutation to `cancelClassBooking` with
+     *  `source: "customer_portal"` so the existing admin cancel path
+     *  stays untouched, then — if the customer's plan is an unlimited
+     *  membership AND the studio's cancellation policy has the penalty
+     *  gate ON AND the customer's LIFETIME late-cancel + no-show count
+     *  has ALREADY crossed the threshold — emits a non-refundable
+     *  `customer_transactions` row of `kind: "cancellation_penalty"`.
+     *  Returns `{ bookingCancelled: true, penaltyTransactionId?: string,
+     *  penaltyAedCharged?: number }` so the caller UI can show the
+     *  "You were charged AED X" confirmation. */
+    cancelClassBookingByCustomer: (
+        bookingId: string,
+        scenario: "late_cancel" | "no_show",
+        reason?: string,
+    ) => { bookingCancelled: boolean; penaltyTransactionId?: string; penaltyAedCharged?: number };
+    /** Pure selector — how much penalty would the customer owe if they
+     *  cancelled this booking now with the given scenario? Callers
+     *  (customer UI) use it to render the confirmation modal BEFORE
+     *  calling `cancelClassBookingByCustomer`. `amountAed` is 0 (and
+     *  `applies` is `false`) when the gate is off, the plan isn't
+     *  unlimited, the fee toggle for this scenario is off, or the
+     *  customer hasn't yet crossed the threshold. */
+    computeCancellationPenalty: (
+        customerId: string,
+        scenario: "late_cancel" | "no_show",
+    ) => { applies: boolean; amountAed: number; scenario: "late_cancel" | "no_show" };
     updateAttendance: (bookingId: string, status: ClassBooking["attendanceStatus"]) => void;
     /** Member-portal booking. Adds a booked/waitlisted ClassBooking, bumps the
      *  schedule's booked count + spends one class credit (booked only, package
@@ -4807,6 +4847,121 @@ export const useAppStore = create<AppState>()(persist(
             }
         }
     },
+    // ── Customer-portal cancel-with-penalty flow (Jul 2026) ────────────────
+    // Kept as a SEPARATE action from `cancelClassBooking` so the existing
+    // admin cancel path is unchanged. This delegates the booking-side
+    // mutation back to `cancelClassBooking` (source: "customer_portal")
+    // then, if the policy dictates, appends a non-refundable penalty
+    // transaction. Any surface (the friend's customer UI, a future admin
+    // "cancel on behalf of customer" flow, etc.) can call this without
+    // duplicating the penalty math.
+    computeCancellationPenalty: (customerId, scenario) => {
+        const state = get();
+        const policy = state.cancellationPolicy;
+        // Gate 1: master penalty toggle must be ON.
+        if (!policy.membership_penalty_after_cancellations_enabled) {
+            return { applies: false, amountAed: 0, scenario };
+        }
+        // Gate 2: this scenario's fee toggle must be ON.
+        const feeOn = scenario === "late_cancel"
+            ? policy.membership_late_cancel_fee_enabled
+            : policy.membership_no_show_fee_enabled;
+        if (!feeOn) {
+            return { applies: false, amountAed: 0, scenario };
+        }
+        // Gate 3: customer's active plan must be an UNLIMITED membership.
+        // Same detection pattern used elsewhere (memberships.credits ===
+        // "unlimited" is canonical — see `schedule/[classId]/page.tsx:607`).
+        const customer = state.customers.find(c => c.id === customerId);
+        if (!customer) return { applies: false, amountAed: 0, scenario };
+        const isUnlimited = customer.planKind === "membership"
+            && state.memberships.find(m => m.name === customer.planName)?.credits === "unlimited";
+        if (!isUnlimited) return { applies: false, amountAed: 0, scenario };
+        // Gate 4: the customer's LIFETIME late-cancel + no-show count
+        // (including the pending cancellation the caller is about to
+        // commit) must be STRICTLY GREATER than the threshold. Design
+        // reads "Charge penalty AFTER X cancellations" — X freebies,
+        // penalty starts on cancel #(X+1). This one counts too.
+        const priorCancels = state.classBookings.filter(b =>
+            b.customerId === customerId
+            && b.status === "cancelled"
+            // Same-day no-shows also live under `attendanceStatus: "no_show"`
+            // on rows that were never explicitly cancelled — include both
+            // to match "late cancellations OR no-shows" in the policy copy.
+        ).length;
+        const priorNoShows = state.classBookings.filter(b =>
+            b.customerId === customerId
+            && b.status !== "cancelled"
+            && b.attendanceStatus === "no_show"
+        ).length;
+        const lifetimeCount = priorCancels + priorNoShows + 1;
+        if (lifetimeCount <= policy.membership_penalty_after_cancellations_count) {
+            return { applies: false, amountAed: 0, scenario };
+        }
+        const amountAed = scenario === "late_cancel"
+            ? policy.membership_late_cancel_fee_aed
+            : policy.membership_no_show_fee_aed;
+        return { applies: true, amountAed, scenario };
+    },
+    cancelClassBookingByCustomer: (bookingId, scenario, reason) => {
+        const stateBefore = get();
+        const booking = stateBefore.classBookings.find(b => b.id === bookingId);
+        if (!booking) return { bookingCancelled: false };
+        const customer = stateBefore.customers.find(c => c.id === booking.customerId);
+        // Compute penalty BEFORE the cancel — the helper counts this
+        // booking's cancellation as part of the lifetime tally already,
+        // so we can't call it after `cancelClassBooking` mutates state.
+        const penalty = get().computeCancellationPenalty(booking.customerId, scenario);
+        // Delegate booking mutation to the existing admin action so BOTH
+        // paths keep identical booking-side behaviour (status, roster
+        // decrement, notifications). Source flag distinguishes them.
+        const scenarioLabel = scenario === "late_cancel" ? "Late cancellation" : "No-show";
+        const cancelReason = reason ?? scenarioLabel;
+        // Never refund credit on an unlimited membership — there's no
+        // credit to return. Matches the current admin behaviour when
+        // cancelling an unlimited-plan booking.
+        get().cancelClassBooking(bookingId, cancelReason, false, "customer_portal");
+
+        if (!penalty.applies || !customer) {
+            return { bookingCancelled: true };
+        }
+        // Emit the non-refundable penalty row. `productId` points to the
+        // cancelled booking so Payment history can deep-link back to it.
+        const now = new Date().toISOString();
+        const txnId = `txn_${customer.id}_penalty_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const displayName = scenario === "late_cancel"
+            ? "Late cancellation penalty"
+            : "No-show penalty";
+        const penaltyTxn: CustomerTransaction = {
+            id: txnId,
+            customerId: customer.id,
+            branchId: booking.branchId,
+            kind: "cancellation_penalty",
+            productId: bookingId,
+            name: displayName,
+            amountAed: penalty.amountAed,
+            status: "complete",
+            // Studio-side operational fee — most demos charge this to
+            // the card on file. UI can override via a future param.
+            paymentMethod: "card",
+            paymentSource: "customer_portal",
+            createdAtISO: now,
+            // Ledger classification: penalties are their own sub-kind of
+            // sale for accounting purposes (money-in). Not a refund/void.
+            transactionType: "sale",
+            // The core rule: cancellation penalties CAN'T be refunded.
+            isRefundable: false,
+            cancellationScenario: scenario,
+        };
+        set(state => ({
+            customerTransactions: [...state.customerTransactions, penaltyTxn],
+        }));
+        return {
+            bookingCancelled: true,
+            penaltyTransactionId: txnId,
+            penaltyAedCharged: penalty.amountAed,
+        };
+    },
     removeClassBooking: (id) =>
         set((state) => {
             const target = state.classBookings.find(b => b.id === id);
@@ -5172,9 +5327,13 @@ export const useAppStore = create<AppState>()(persist(
 
     refundTransaction: (id, method) => {
         const target = get().customerTransactions.find(t => t.id === id);
+        // Belt-and-braces guard — even if a future UI surface skips
+        // its own `isRefundable` check, the store rejects the refund
+        // on non-refundable rows (e.g. cancellation-penalty fees).
+        if (target && target.isRefundable === false) return;
         set(state => ({
             customerTransactions: state.customerTransactions.map(t =>
-                t.id === id && t.status === "complete"
+                t.id === id && t.status === "complete" && t.isRefundable !== false
                     ? {
                         ...t,
                         status: "refunded" as const,
@@ -7048,6 +7207,23 @@ export const useAppStore = create<AppState>()(persist(
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
         //
+        // v33: Cancellation-penalty flow (Jul 2026 client feedback,
+        // Figma 7631:454486 / 7790:27893).
+        //   • `CancellationPolicy` gained
+        //     `membership_penalty_after_cancellations_enabled` +
+        //     `membership_penalty_after_cancellations_count` — the
+        //     master gate + threshold for the existing membership
+        //     late-cancel + no-show fee toggles.
+        //   • `CustomerTransaction` gained kind
+        //     `"cancellation_penalty"` + `isRefundable` +
+        //     `cancellationScenario` — non-refundable fee row emitted
+        //     when a customer's cancel-with-penalty flow triggers.
+        //   • New store action `cancelClassBookingByCustomer` +
+        //     selector `computeCancellationPenalty` — the customer-
+        //     portal cancel path. Admin cancel path unchanged.
+        //   • Seed adds Mia's 4 cancels + linked penalty transaction
+        //     so the demo boots with a live example.
+        //
         // v32: Role-branch alignment fix — added 3 branch-scoped
         // instructor roles (East/West/Spa), corrected 4 East-branch
         // instructors that were mistakenly assigned to South's
@@ -7061,7 +7237,7 @@ export const useAppStore = create<AppState>()(persist(
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 32,
+        version: 33,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

@@ -171,8 +171,13 @@ export default function TotalSalesReportPageV2() {
                 staffId: r.staffId ?? "",
                 staffName: r.staffName ?? "",
                 salesChannel,
-                revenueCategory: r.kind,
-                revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
+                // `selectTransactionLedger` already filters out
+                // `cancellation_penalty` rows (operational fees, not
+                // product revenue), so `r.kind` here is always
+                // membership | package — assert to satisfy the report's
+                // narrower display type.
+                revenueCategory: r.kind as "membership" | "package",
+                revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind as "membership" | "package"] ?? r.kind,
                 saleItems: `${r.name} × 1`,
                 quantity: 1,
                 grossSales: signed,

@@ -58,15 +58,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     );
 }
 
-function Toggle({ on, onChange, ariaLabel }: {
+function Toggle({ on, onChange, ariaLabel, disabled = false }: {
     on: boolean; onChange: (next: boolean) => void; ariaLabel: string;
+    /** When `true` the switch renders muted and rejects clicks — used
+     *  to gate the late-cancel + no-show fee toggles behind the
+     *  "Charge penalty after X cancellations" master toggle. */
+    disabled?: boolean;
 }) {
     return (
         <button type="button" role="switch" aria-checked={on} aria-label={ariaLabel}
-            onClick={() => onChange(!on)}
+            disabled={disabled}
+            onClick={() => { if (!disabled) onChange(!on); }}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
                 on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                disabled && "opacity-50 cursor-not-allowed",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -206,6 +212,14 @@ export function CancellationPolicyPanel({ open, onClose }: {
     const [withinValue,  setWithinValue]  = useState<number>(policy.credit_within_window_value);
     const [withinUnit,   setWithinUnit]   = useState<WindowUnit>(policy.credit_within_window_unit);
     const [withinOutcome, setWithinOutcome] = useState<CancellationOutcome>(policy.credit_within_outcome);
+    // Master penalty gate — when OFF, the two fee toggles below are
+    // disabled + forced OFF. See Figma 7631:454486 (default) + 7790:27893
+    // (penalty on). Client wants "Charge a late cancel fee" and
+    // "Charge a no show fee" to never enable while the master gate is
+    // off. Turning the gate OFF cascades: fee toggles reset to OFF and
+    // their AED fields collapse.
+    const [penaltyOn,    setPenaltyOn]    = useState<boolean>(policy.membership_penalty_after_cancellations_enabled);
+    const [penaltyCount, setPenaltyCount] = useState<number>(policy.membership_penalty_after_cancellations_count);
     const [lateFeeOn,    setLateFeeOn]    = useState<boolean>(policy.membership_late_cancel_fee_enabled);
     const [lateFeeAed,   setLateFeeAed]   = useState<number>(policy.membership_late_cancel_fee_aed);
     const [noShowOn,     setNoShowOn]     = useState<boolean>(policy.membership_no_show_fee_enabled);
@@ -221,6 +235,8 @@ export function CancellationPolicyPanel({ open, onClose }: {
             setWithinValue(policy.credit_within_window_value);
             setWithinUnit(policy.credit_within_window_unit);
             setWithinOutcome(policy.credit_within_outcome);
+            setPenaltyOn(policy.membership_penalty_after_cancellations_enabled);
+            setPenaltyCount(policy.membership_penalty_after_cancellations_count);
             setLateFeeOn(policy.membership_late_cancel_fee_enabled);
             setLateFeeAed(policy.membership_late_cancel_fee_aed);
             setNoShowOn(policy.membership_no_show_fee_enabled);
@@ -240,6 +256,16 @@ export function CancellationPolicyPanel({ open, onClose }: {
         document.addEventListener("keydown", onKey);
         return () => document.removeEventListener("keydown", onKey);
     }, [open, onClose]);
+
+    // Cascade — turning the master penalty gate OFF forces both fee
+    // toggles OFF too (collapses their AED inputs in the UI). Matches
+    // the client's "fee toggles can't be on while penalty is off" rule.
+    useEffect(() => {
+        if (!penaltyOn) {
+            if (lateFeeOn) setLateFeeOn(false);
+            if (noShowOn) setNoShowOn(false);
+        }
+    }, [penaltyOn, lateFeeOn, noShowOn]);
 
     const packageOptions: MultiSelectOption[] = useMemo(() => [
         ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership" })),
@@ -265,9 +291,14 @@ export function CancellationPolicyPanel({ open, onClose }: {
             credit_within_window_value: withinValue,
             credit_within_window_unit:  withinUnit,
             credit_within_outcome:      withinOutcome,
-            membership_late_cancel_fee_enabled: lateFeeOn,
+            membership_penalty_after_cancellations_enabled: penaltyOn,
+            membership_penalty_after_cancellations_count:   penaltyCount,
+            // Belt-and-braces: even if the UI ever lets a fee toggle
+            // slip through with penalty off, snap it to false at save
+            // time so the persisted policy always honours the gate.
+            membership_late_cancel_fee_enabled: penaltyOn && lateFeeOn,
             membership_late_cancel_fee_aed:     lateFeeAed,
-            membership_no_show_fee_enabled:     noShowOn,
+            membership_no_show_fee_enabled:     penaltyOn && noShowOn,
             membership_no_show_fee_aed:         noShowAed,
             applied_to_package_ids:        packageIds,
             applied_to_class_template_ids: classIds,
@@ -335,12 +366,53 @@ export function CancellationPolicyPanel({ open, onClose }: {
 
                     {/* ── Membership members (no credit to forfeit) ─ */}
                     <Section title="Membership members (no credit to forfeit)">
+                        {/* Master penalty gate — sits ABOVE the two fee
+                            cards. When OFF the two cards below render
+                            disabled + collapsed. Figma 7631:454486 /
+                            7790:27893. */}
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
-                            lateFeeOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            penaltyOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
                         )}>
                             <div className="flex items-start gap-4">
                                 <div className="flex-1 flex flex-col gap-1 min-w-0">
+                                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge penalty after X cancellations</p>
+                                    <p className="text-[14px] text-[#667085] leading-[20px]">
+                                        For unlimited memberships, apply a penalty after the specified number of late cancellations or no-shows.
+                                    </p>
+                                </div>
+                                <Toggle
+                                    on={penaltyOn}
+                                    onChange={setPenaltyOn}
+                                    ariaLabel="Charge penalty after X cancellations"
+                                />
+                            </div>
+                            {penaltyOn && (
+                                <Field label="Number of cancellation">
+                                    <NumberField
+                                        value={penaltyCount}
+                                        onChange={setPenaltyCount}
+                                        ariaLabel="Number of cancellation"
+                                        suffixSlot={
+                                            <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                                cancellation
+                                            </span>
+                                        }
+                                    />
+                                </Field>
+                            )}
+                        </div>
+
+                        <div className={cn(
+                            "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
+                            !penaltyOn && "bg-[#f9fafb]",
+                            penaltyOn && lateFeeOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                        )}>
+                            <div className="flex items-start gap-4">
+                                <div className={cn(
+                                    "flex-1 flex flex-col gap-1 min-w-0",
+                                    !penaltyOn && "opacity-50",
+                                )}>
                                     <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge a late cancel fee</p>
                                     <p className="text-[14px] text-[#667085] leading-[20px]">For unlimited members.</p>
                                 </div>
@@ -348,10 +420,11 @@ export function CancellationPolicyPanel({ open, onClose }: {
                                     on={lateFeeOn}
                                     onChange={setLateFeeOn}
                                     ariaLabel="Charge a late cancel fee"
+                                    disabled={!penaltyOn}
                                 />
                             </div>
-                            {lateFeeOn && (
-                                <Field label="Number of user">
+                            {penaltyOn && lateFeeOn && (
+                                <Field label="Late cancel fee">
                                     <AedInput value={lateFeeAed} onChange={setLateFeeAed} ariaLabel="Late cancel fee AED" />
                                 </Field>
                             )}
@@ -359,10 +432,14 @@ export function CancellationPolicyPanel({ open, onClose }: {
 
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
-                            noShowOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            !penaltyOn && "bg-[#f9fafb]",
+                            penaltyOn && noShowOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
                         )}>
                             <div className="flex items-start gap-4">
-                                <div className="flex-1 flex flex-col gap-1 min-w-0">
+                                <div className={cn(
+                                    "flex-1 flex flex-col gap-1 min-w-0",
+                                    !penaltyOn && "opacity-50",
+                                )}>
                                     <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge a no show fee</p>
                                     <p className="text-[14px] text-[#667085] leading-[20px]">Can differ from late cancel</p>
                                 </div>
@@ -370,9 +447,10 @@ export function CancellationPolicyPanel({ open, onClose }: {
                                     on={noShowOn}
                                     onChange={setNoShowOn}
                                     ariaLabel="Charge a no show fee"
+                                    disabled={!penaltyOn}
                                 />
                             </div>
-                            {noShowOn && (
+                            {penaltyOn && noShowOn && (
                                 <Field label="No show fee">
                                     <AedInput value={noShowAed} onChange={setNoShowAed} ariaLabel="No show fee AED" />
                                 </Field>

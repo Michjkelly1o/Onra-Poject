@@ -209,12 +209,24 @@ export interface CancellationPolicy {
     credit_within_outcome: CancellationOutcome;
 
     // ── Membership members (no credit to forfeit) ────────────────────
-    /** Charge a late-cancel fee for unlimited-plan members? When ON,
-     *  the AED amount below applies. */
+    /** Gate for the two membership-fee toggles below. When OFF, the
+     *  late-cancel + no-show fee toggles are locked OFF (disabled in
+     *  the UI, ignored at dispatch time) — unlimited members can
+     *  cancel freely without a fee. When ON, the studio charges a
+     *  penalty only AFTER the customer's LIFETIME late-cancel +
+     *  no-show count crosses the threshold below. Client feedback
+     *  Jul 2026 — see Figma 7631:454486 (off) + 7790:27893 (on). */
+    membership_penalty_after_cancellations_enabled: boolean;
+    /** Lifetime late-cancel + no-show count that must be crossed
+     *  before the penalty starts charging. Figma default: 3. */
+    membership_penalty_after_cancellations_count: number;
+    /** Charge a late-cancel fee for unlimited-plan members? Gated by
+     *  `membership_penalty_after_cancellations_enabled` — the toggle
+     *  can only be flipped ON while the penalty gate is ON. */
     membership_late_cancel_fee_enabled: boolean;
     membership_late_cancel_fee_aed: number;         // 50
-    /** Charge a no-show fee for unlimited-plan members? Can differ
-     *  from the late-cancel fee. */
+    /** Charge a no-show fee for unlimited-plan members? Same gate
+     *  as the late-cancel fee above. Can differ in AED. */
     membership_no_show_fee_enabled: boolean;
     membership_no_show_fee_aed: number;             // 70
 
@@ -540,9 +552,16 @@ export interface CustomerTransaction {
     id: string;
     customer_id: string;   // → customers.id
     branch_id: string;     // → branches.id
-    /** Product type bought — drives the "Plan type" column + filter. */
-    kind: "membership" | "package";
-    /** FK → memberships.id / packages.id (depending on `kind`). */
+    /** Product type bought — drives the "Plan type" column + filter.
+     *  `cancellation_penalty` was added Jul 2026 for the unlimited-
+     *  membership cancellation-penalty flow (Figma 7790:27893). It
+     *  represents a fee CHARGED (not a purchase); such rows are
+     *  always flagged `is_refundable: false` per client spec. */
+    kind: "membership" | "package" | "cancellation_penalty";
+    /** FK → memberships.id / packages.id (depending on `kind`). For
+     *  `cancellation_penalty` rows this instead references the
+     *  cancelled `class_bookings.id` so Payment history rows can
+     *  deep-link back to the booking that triggered the fee. */
     product_id: string;
     /** Denormalized product name shown in the table + refund modal. */
     name: string;
@@ -637,6 +656,18 @@ export interface CustomerTransaction {
     /** Discount amount in AED (positive number). `amount_aed` is the NET
      *  after discount. Excel spec column "Discount value". */
     discount_value?: number;
+    // ── Cancellation-penalty flow (Jul 2026) ──────────────────────────────
+    /** Refundability guard on the Payment history table's "Refund
+     *  payment" row action. Undefined (legacy default) = refundable.
+     *  Explicit `false` = the Refund action is hidden and the store's
+     *  `refundTransaction` guard rejects the call. Set to `false` on
+     *  every `kind: "cancellation_penalty"` row per client spec:
+     *  cancellation penalties are non-refundable. */
+    is_refundable?: boolean;
+    /** For `kind: "cancellation_penalty"` rows only — which scenario
+     *  triggered the fee. Drives the row's display copy on Payment
+     *  history ("Late cancellation penalty" vs "No-show penalty"). */
+    cancellation_scenario?: "late_cancel" | "no_show";
 }
 
 // ─── Products: Memberships & Packages ───────────────────────────────────────

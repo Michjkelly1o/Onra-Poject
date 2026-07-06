@@ -400,18 +400,25 @@ export function selectTransactionLedger(state: AppState): LedgerRow[] {
         staff.set(s.id, `${first} ${last}`.trim());
     }
 
-    return resolveLedger(state.customerTransactions).map(t => {
-        const c = cust(t.customerId);
-        return {
-            ...t,
-            location: loc(t.branchId),
-            customerName: c ? `${c.firstName} ${c.lastName}`.trim() : "—",
-            customerEmail: c?.email ?? "—",
-            customerPhone: c?.phone,
-            staffName: t.staffId ? staff.get(t.staffId) : undefined,
-            signedAmount: signedAmount(t),
-        };
-    });
+    // Cancellation-penalty rows are operational fees, not product
+    // revenue — exclude them from Total Sales so revenue totals + Excel
+    // exports don't get polluted with penalty AED. Same rule applies in
+    // `selectPayments` below (payments report also filters them out).
+    return resolveLedger(state.customerTransactions)
+        .filter(t => t.kind !== "cancellation_penalty")
+        .map(t => {
+            const c = cust(t.customerId);
+            return {
+                ...t,
+                kind: t.kind as "membership" | "package",
+                location: loc(t.branchId),
+                customerName: c ? `${c.firstName} ${c.lastName}`.trim() : "—",
+                customerEmail: c?.email ?? "—",
+                customerPhone: c?.phone,
+                staffName: t.staffId ? staff.get(t.staffId) : undefined,
+                signedAmount: signedAmount(t),
+            };
+        });
 }
 
 /** 2. selectPayments — every payment attempt, honest to the processor.
@@ -422,7 +429,9 @@ export function selectPayments(state: AppState): PaymentRow[] {
     const loc = makeLocationLookup(state);
     const cust = makeCustomerLookup(state);
 
-    return state.customerTransactions.map(t => {
+    return state.customerTransactions
+        .filter(t => t.kind !== "cancellation_penalty")
+        .map(t => {
         const c = cust(t.customerId);
         const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;
         return {
@@ -433,7 +442,7 @@ export function selectPayments(state: AppState): PaymentRow[] {
             customerName: c ? `${c.firstName} ${c.lastName}`.trim() : "—",
             customerEmail: c?.email ?? "—",
             itemName: t.name,
-            revenueCategory: t.kind,
+            revenueCategory: t.kind as "membership" | "package",
             paymentAmount: t.amountAed,
             paymentMethod: t.paymentMethod,
             cardType: t.cardType,

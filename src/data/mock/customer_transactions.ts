@@ -572,4 +572,12 @@ export const customer_transactions: CustomerTransaction[] = [
     // ── FAILED → RECOVERED (2) — retry succeeds, ends up as a normal sale ───
     { id: "txn_v30_rec01", customer_id: "cust_sophia_lee",     branch_id: SOUTH, kind: "membership", product_id: "mem_advanced_monthly", name: "Advanced Monthly Membership",   amount_aed: 1500, subtotal_aed: 1429, tax_aed: 71, tax_rate_percentage: 5, tax_inclusive: false, status: "complete", payment_method: "card", payment_source: "customer_portal", card_type: "visa",       payment_type: "recurring", transaction_type: "sale", tax_treatment: "standard", failure_reason: "Insufficient funds", retry_attempt: 1, recovered: true, recovered_iso: "2026-01-26T09:00:00Z", payout_id: "po_2026_01_wk4", processor_fee: 28, created_at: "2026-01-25T08:00:00Z", settlement_iso: "2026-01-26T09:00:00Z" },
     { id: "txn_v30_rec02", customer_id: "cust_james_taylor",   branch_id: SOUTH, kind: "package",    product_id: "pkg_10_class",       name: "10-Class Package for One Month", amount_aed: 1390, subtotal_aed: 1324, tax_aed: 66, tax_rate_percentage: 5, tax_inclusive: false, status: "complete", payment_method: "card", payment_source: "customer_portal", card_type: "mastercard", payment_type: "one_off",   transaction_type: "sale", tax_treatment: "standard", failure_reason: "3D secure timeout", retry_attempt: 1, recovered: true, recovered_iso: "2026-03-11T10:30:00Z", payout_id: "po_2026_03_wk2", processor_fee: 27, created_at: "2026-03-10T14:00:00Z", settlement_iso: "2026-03-11T10:30:00Z" },
+
+    // ── CANCELLATION PENALTY (Jul 2026 client feedback) ─────────────────────
+    // Mia's 4th late-cancel crossed the "penalty after 3 cancellations"
+    // threshold on the default seeded policy. Fee is `is_refundable: false`
+    // per spec — Payment history hides the Refund action for this row.
+    // `product_id` points back to `bk_mia_cancel_4_penalty` so the row can
+    // deep-link to the booking that triggered it.
+    { id: "txn_mia_penalty_1", customer_id: "cust_mia_anderson", branch_id: SOUTH, kind: "cancellation_penalty", product_id: "bk_mia_cancel_4_penalty", name: "Late cancellation penalty", amount_aed: 50, status: "complete", payment_method: "card", payment_source: "customer_portal", card_type: "visa", payment_type: "one_off", transaction_type: "sale", tax_treatment: "out_of_scope", is_refundable: false, cancellation_scenario: "late_cancel", created_at: "2026-05-15T09:20:00Z", settlement_iso: "2026-05-16T09:20:00Z" },
 ];

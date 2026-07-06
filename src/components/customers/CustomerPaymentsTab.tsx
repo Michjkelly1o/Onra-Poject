@@ -61,6 +61,10 @@ const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", status
 const KIND_LABEL: Record<TxnKind, string> = {
     membership: "Membership",
     package: "Credit package",
+    // Cancellation-penalty rows are always non-refundable and use their
+    // own display copy via `cancellationScenario` further down the table
+    // renderer. Fallback label if a row shows up in a filter chip.
+    cancellation_penalty: "Cancellation penalty",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -678,8 +682,14 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                 <td className={TD}><TxnStatusBadge status={t.status} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
                                                 <td className={TD}>
-                                                    {/* Only completed payments can be refunded. */}
-                                                    {t.status === "complete" && (
+                                                    {/* Only completed AND refundable payments can be
+                                                        refunded. `isRefundable === false` is set on
+                                                        every `cancellation_penalty` row per client
+                                                        spec — those rows never expose the Refund
+                                                        action. Legacy rows without the flag stay
+                                                        refundable (undefined → falsy check misses,
+                                                        explicit false gates). */}
+                                                    {t.status === "complete" && t.isRefundable !== false && (
                                                         <RowActions
                                                             items={[{
                                                                 label: "Refund payment",
