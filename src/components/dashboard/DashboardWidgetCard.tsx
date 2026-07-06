@@ -35,6 +35,11 @@ const SEEDS: Record<string, Record<string, number[]>> = {
     "bookings-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
     "bookings-vs-visits":  { bookings: [35, 28, 32, 40, 38, 42, 36], visits: [28, 22, 25, 32, 30, 35, 28] },
     "attendance-overview": { visits: [22, 18, 12, 35, 25, 28, 22], cancellations: [8, 30, 10, 6, 22, 24, 20], noShow: [3, 4, 2, 3, 2, 3, 2] },
+    // KPI · Marketing widgets — added Phase 5. Values sized to match
+    // the surrounding widgets so charts don't look out of scale.
+    "kpi-leads-by-source":     { instagram: [6, 4, 5, 7, 6, 5, 8], google: [4, 3, 5, 3, 4, 5, 4], referral: [2, 3, 2, 4, 3, 2, 3], website: [3, 2, 4, 3, 5, 3, 4] },
+    "kpi-campaign-perf":       { sends: [1200, 950, 1420, 1310, 1180, 1100, 1230], opens: [670, 520, 800, 720, 640, 590, 680], clicks: [110, 75, 145, 120, 105, 95, 118] },
+    "kpi-marketing-efficiency": { cpl: [65, 58, 62, 60, 55, 63, 58], cac: [280, 260, 275, 265, 250, 285, 270], roas: [3.2, 2.9, 3.4, 3.1, 3.5, 3.0, 3.3] },
 };
 
 const STATIC: Record<string, object[]> = {
@@ -50,6 +55,15 @@ const STATIC: Record<string, object[]> = {
         { name: "Mat Pilates",      instructor: "Liam Chen",      color: "#92baa4", bookings: 98,  occupancy: 78 },
         { name: "Barre",            instructor: "Maya Johnson",   color: "#92d1de", bookings: 87,  occupancy: 72 },
         { name: "Hot Yoga",         instructor: "Liam Chen",      color: "#dc6803", bookings: 45,  occupancy: 65 },
+    ],
+    // KPI · Marketing — funnel stages, descending. Values sized to the
+    // demo seed's 20-lead scale.
+    "kpi-lead-funnel": [
+        { stage: "New leads",       v: 20, color: "#92d1de" },
+        { stage: "Contacted",       v: 14, color: "#aad4bd" },
+        { stage: "Trial booked",    v: 8,  color: "#b892ba" },
+        { stage: "Trial attended",  v: 5,  color: "#f7b955" },
+        { stage: "Paid",            v: 2,  color: "#92baa4" },
     ],
 };
 
@@ -424,6 +438,95 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                 </div>
             );
         }
+
+        // ── KPI · Marketing widgets (Phase 5) ────────────────────────
+        case "kpi-leads-by-source":
+            return (
+                <div className="flex flex-col gap-2">
+                    <Legend items={[
+                        { color: "#b892ba", label: "Instagram" },
+                        { color: "#92d1de", label: "Google" },
+                        { color: "#aad4bd", label: "Referral" },
+                        { color: "#f7b955", label: "Website" },
+                    ]} />
+                    <ResponsiveContainer width="100%" height={h}>
+                        <BarChart data={data} barCategoryGap="30%">
+                            <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={28} />
+                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
+                            <Bar dataKey="instagram" name="Instagram" fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="google"    name="Google"    fill="#92d1de" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="referral"  name="Referral"  fill="#aad4bd" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="website"   name="Website"   fill="#f7b955" radius={[3,3,0,0]} maxBarSize={8} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            );
+
+        case "kpi-lead-funnel": {
+            const rows = data as { stage: string; v: number; color: string }[];
+            const maxV = Math.max(1, ...rows.map(r => r.v));
+            return (
+                <div className="flex flex-col gap-3 mt-1">
+                    {rows.map(row => (
+                        <div key={row.stage} className="flex items-center gap-3">
+                            <p className="text-sm text-[#344054] w-32 flex-shrink-0">{row.stage}</p>
+                            <div className="flex-1 h-8 bg-[#f9fafb] rounded-md overflow-hidden">
+                                <div className="h-full rounded-md flex items-center justify-end px-2"
+                                    style={{ width: `${(row.v / maxV) * 100}%`, backgroundColor: row.color }}>
+                                    <span className="text-xs font-semibold text-white">{row.v}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        case "kpi-campaign-perf":
+            return (
+                <div className="flex flex-col gap-2">
+                    <Legend items={[
+                        { color: "#92d1de", label: "Sends" },
+                        { color: "#aad4bd", label: "Opens" },
+                        { color: "#b892ba", label: "Clicks" },
+                    ]} />
+                    <ResponsiveContainer width="100%" height={h}>
+                        <BarChart data={data} barCategoryGap="30%">
+                            <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={40} />
+                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
+                            <Bar dataKey="sends"  name="Sends"  fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
+                            <Bar dataKey="opens"  name="Opens"  fill="#aad4bd" radius={[3,3,0,0]} maxBarSize={10} />
+                            <Bar dataKey="clicks" name="Clicks" fill="#b892ba" radius={[3,3,0,0]} maxBarSize={10} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            );
+
+        case "kpi-marketing-efficiency":
+            return (
+                <div className="flex flex-col gap-2">
+                    <Legend items={[
+                        { color: "#92d1de", label: "CPL (AED)" },
+                        { color: "#f7b955", label: "CAC (AED)" },
+                        { color: "#92baa4", label: "ROAS (×)" },
+                    ]} />
+                    <ResponsiveContainer width="100%" height={h}>
+                        <LineChart data={data}>
+                            <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={40} />
+                            <Tooltip content={<ChartTooltip />} />
+                            <Line type="monotone" dataKey="cpl"  name="CPL"  stroke="#92d1de" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="cac"  name="CAC"  stroke="#f7b955" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="roas" name="ROAS" stroke="#92baa4" strokeWidth={2} dot={false} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            );
 
         default:
             return null;

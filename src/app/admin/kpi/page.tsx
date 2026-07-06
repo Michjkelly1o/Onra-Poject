@@ -39,6 +39,7 @@ import { resolveRangePair } from "@/lib/kpi/date-range";
 import { computeFinancialKpis } from "@/lib/kpi/financial";
 import { computeClientKpis } from "@/lib/kpi/client";
 import { computeClassKpis } from "@/lib/kpi/class";
+import { computeMarketingKpis } from "@/lib/kpi/marketing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,17 @@ const TABS: TabConfig[] = [
         //   class-by-popularity  → Class popularity ranked
         widgetIds: ["class-bookings", "bookings-by-source", "attendance-overview", "class-by-popularity"],
     },
-    { key: "marketing", label: "Marketing", widgetIds: [] },
+    {
+        key: "marketing",
+        label: "Marketing",
+        // Phase 5 hero charts — new Marketing widgets added to the
+        // catalog for the KPI module:
+        //   kpi-leads-by-source      → Acquisition source split
+        //   kpi-lead-funnel          → New → Trial → Paid funnel
+        //   kpi-campaign-perf        → Campaign performance
+        //   kpi-marketing-efficiency → CPL / CAC / ROAS trend
+        widgetIds: ["kpi-leads-by-source", "kpi-lead-funnel", "kpi-campaign-perf", "kpi-marketing-efficiency"],
+    },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -130,16 +141,29 @@ export default function KpiPage() {
     } as unknown as import("@/lib/store").AppState),
     [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings]);
 
+    // Marketing tab needs additional slices — subscribe once here so
+    // switching to that tab doesn't lag on first render.
+    const leads                  = useAppStore(s => s.leads);
+    const marketingCampaignStats = useAppStore(s => s.marketingCampaignStats);
+    const marketingSpend         = useAppStore(s => s.marketingSpend);
+
+    const marketingState = useMemo(() => ({
+        ...kpiState,
+        leads, marketingCampaignStats, marketingSpend,
+    } as unknown as import("@/lib/store").AppState),
+    [kpiState, leads, marketingCampaignStats, marketingSpend]);
+
     // KPI compute — memoised per tab, recomputed when slices or range change.
     const financialKpis = useMemo(() => computeFinancialKpis(kpiState, range, branchFilter), [kpiState, range, branchFilter]);
     const clientKpis    = useMemo(() => computeClientKpis(kpiState, range, branchFilter),    [kpiState, range, branchFilter]);
     const classKpis     = useMemo(() => computeClassKpis(kpiState, range, branchFilter),     [kpiState, range, branchFilter]);
+    const marketingKpis = useMemo(() => computeMarketingKpis(marketingState, range, branchFilter), [marketingState, range, branchFilter]);
 
     const metricsByTab: Record<TabKey, Metric[]> = {
         financial: financialKpis,
         client:    clientKpis,
         class:     classKpis,
-        marketing: [],
+        marketing: marketingKpis,
     };
 
     const activeTab = TABS.find(t => t.key === tab)!;

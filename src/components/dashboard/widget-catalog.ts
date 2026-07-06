@@ -33,6 +33,13 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     { id: "bookings-vs-visits",  title: "Bookings vs visits",                description: "Compare total bookings with actual visits over time.",        category: "Classes" },
     { id: "attendance-overview", title: "Attendance overview",               description: "Track attendance rate, cancellations, and no-shows.",         category: "Classes" },
     { id: "class-by-popularity", title: "Class by popularity",               description: "Class popularity overtime",                                   category: "Classes" },
+    // Marketing (KPI-tab exclusive) — added in Phase 5. Follow the same
+    // SEEDS/renderChart convention as the existing widgets so the shell
+    // treats them identically.
+    { id: "kpi-leads-by-source",    title: "Leads by source",              description: "Acquisition mix across sources over time.",                   category: "Marketing" },
+    { id: "kpi-lead-funnel",        title: "Lead conversion funnel",       description: "New → Trial → Paid across the acquisition funnel.",           category: "Marketing" },
+    { id: "kpi-campaign-perf",      title: "Campaign performance",         description: "Sends, opens, clicks, and attributed bookings by campaign.",  category: "Marketing" },
+    { id: "kpi-marketing-efficiency", title: "Marketing efficiency",       description: "CPL, CAC, and ROAS per acquisition channel.",                 category: "Marketing" },
 ];
 
 export const DEFAULT_ACTIVE_WIDGETS = [
