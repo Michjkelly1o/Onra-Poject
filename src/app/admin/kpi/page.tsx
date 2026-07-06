@@ -159,11 +159,18 @@ export default function KpiPage() {
     const classKpis     = useMemo(() => computeClassKpis(kpiState, range, branchFilter),     [kpiState, range, branchFilter]);
     const marketingKpis = useMemo(() => computeMarketingKpis(marketingState, range, branchFilter), [marketingState, range, branchFilter]);
 
+    // Phase 6 — attach the active range label to every metric so
+    // drill-through links carry it as ?range= for the destination
+    // Report to pre-apply the same filter.
+    const rangeParam = period.label;
+    function withRange(list: Metric[]): Metric[] {
+        return list.map(m => (m.drillTo ? { ...m, rangeParam } : m));
+    }
     const metricsByTab: Record<TabKey, Metric[]> = {
-        financial: financialKpis,
-        client:    clientKpis,
-        class:     classKpis,
-        marketing: marketingKpis,
+        financial: withRange(financialKpis),
+        client:    withRange(clientKpis),
+        class:     withRange(classKpis),
+        marketing: withRange(marketingKpis),
     };
 
     const activeTab = TABS.find(t => t.key === tab)!;

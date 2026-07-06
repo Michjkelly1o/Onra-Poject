@@ -9,14 +9,18 @@
 // from Insights so both surfaces render identical cards.
 //
 // Card structure:
-//   • Label row: 14px muted text + info tooltip icon
+//   • Label row: 14px muted text + info tooltip icon (native title attr)
 //   • Value:     24px semibold
 //   • Change:    signed % chip (green up / red down) + period label
 //
-// The `change` field is optional — when absent, only the period label
-// renders (no chip). The `period` label defaults to "vs last week" to
-// match the Insights source, but any comparison label works.
+// Optional extensions used by the KPI module (Phase 6):
+//   • description — hover text on the info icon (KPI catalogue "what it
+//                   measures" copy)
+//   • drillTo     — route the whole card navigates to on click, with
+//                   ?range= query param appended when `rangeParam` is
+//                   set. Cards without drillTo render non-interactive.
 
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, InfoCircle } from "@untitledui/icons";
 
@@ -27,18 +31,48 @@ export interface Metric {
     change?: number;
     /** Default "vs last week". */
     period?: string;
+    /** Hover text for the info icon (KPI catalogue "what it measures"). */
+    description?: string;
+    /** Route to navigate to on card click. When set, the whole card is
+     *  a click target with hover feedback. */
+    drillTo?: string;
+    /** Query param appended to `drillTo` — carries the active date range
+     *  so the destination Report pre-applies the same filter. */
+    rangeParam?: string;
 }
 
 export function InsightMetricCard({ metric }: { metric: Metric }) {
+    const router = useRouter();
     const hasChange = typeof metric.change === "number";
     const positive = (metric.change ?? 0) >= 0;
     const periodLabel = metric.period ?? "vs last week";
+    const clickable = !!metric.drillTo;
+
+    function handleClick() {
+        if (!metric.drillTo) return;
+        const url = metric.rangeParam
+            ? `${metric.drillTo}?range=${encodeURIComponent(metric.rangeParam)}`
+            : metric.drillTo;
+        router.push(url);
+    }
+
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
+        <div
+            onClick={clickable ? handleClick : undefined}
+            className={cn(
+                "bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2 transition-all",
+                clickable && "cursor-pointer hover:border-[#7ba08c] hover:shadow-[0px_2px_6px_rgba(122,160,140,0.15)]",
+            )}
+        >
             {/* Label + info */}
             <div className="flex items-center justify-between gap-2">
                 <p className="text-[14px] text-[#667085]">{metric.label}</p>
-                <InfoCircle className="w-5 h-5 text-[#98a2b3] shrink-0" />
+                <InfoCircle
+                    className="w-5 h-5 text-[#98a2b3] shrink-0"
+                    aria-label={metric.description}
+                >
+                    {metric.description ? <title>{metric.description}</title> : null}
+                </InfoCircle>
             </div>
             {/* Value */}
             <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{metric.value}</p>
