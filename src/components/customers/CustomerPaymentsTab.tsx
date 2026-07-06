@@ -151,20 +151,14 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 }
 
 // Plan-type column resolver — for the two purchase kinds we render the
-// kind's label; for a cancellation-penalty row we look up the customer
-// so the column reads their ACTUAL plan (Membership / Credit package)
-// rather than the transaction's kind. Falls back to "—" when the
-// customer's plan can't be resolved (e.g. no active plan). Client
-// requirement Jul 2026 — the penalty row must NOT change Plan type.
-function planTypeLabel(
-    t: CustomerTransaction,
-    customerPlanKind: "membership" | "package" | undefined,
-): string {
-    if (t.kind === "cancellation_penalty") {
-        if (customerPlanKind === "membership") return "Membership";
-        if (customerPlanKind === "package")    return "Credit package";
-        return "—";
-    }
+// kind's label; for a cancellation-penalty row we ALWAYS return
+// "Membership" because the cancellation-penalty flow is scoped to
+// UNLIMITED-membership customers ONLY (`computeCancellationPenalty`
+// gates on `membership.credits === "unlimited"`) — credit-package
+// customers can never receive one, so there's no "Credit package"
+// case here. Client requirement Jul 2026.
+function planTypeLabel(t: CustomerTransaction): string {
+    if (t.kind === "cancellation_penalty") return "Membership";
     return KIND_LABEL[t.kind];
 }
 
@@ -467,21 +461,10 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const customerTransactions = useAppStore(s => s.customerTransactions);
-    const customers            = useAppStore(s => s.customers);
     const issuedGiftCards = useAppStore(s => s.issuedGiftCards);
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
     const refundTransaction = useAppStore(s => s.refundTransaction);
     const showToast = useAppStore(s => s.showToast);
-
-    // The customer being viewed — used to resolve the Plan type
-    // column for a cancellation-penalty row back to the customer's
-    // actual plan (Membership / Credit package), never "Cancellation
-    // penalty". Client requirement Jul 2026.
-    const customer = customers.find(c => c.id === customerId);
-    const customerPlanKind: "membership" | "package" | undefined =
-        customer?.planKind === "membership" ? "membership"
-      : customer?.planKind === "package"    ? "package"
-      : undefined;
 
     // Notification click-through can deep-link to the Payment history
     // sub-tab via `?payment=history` (and optionally `?tx=<id>` to highlight
@@ -721,7 +704,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                         <span className="text-[14px] font-medium text-[#101828]">{t.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t, customerPlanKind)}</td>
+                                                <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t)}</td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtAed(t.amountAed)}</td>
                                                 <td className={TD}><TxnStatusBadge status={t.status} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>

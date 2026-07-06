@@ -2286,6 +2286,70 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
     };
 }
 
+/** Recompute the denormalized "current plan" fields on a `Customer` row
+ *  (`planKind`, `planName`, `membershipId`, `packageIds`, `planExpiryISO`)
+ *  from the authoritative `customerPlans[]` array. Used by every store
+ *  action that changes plan status (cancel / reactivate / freeze) so
+ *  the flat fields stay in lock-step with the plan list — otherwise
+ *  Customer badges, Reports v33, and the customer-portal Plan page all
+ *  read stale data. Complimentary plans are exempt (free credits, not
+ *  the customer's active plan).
+ *
+ *  Preserves `creditsRemaining` — that's clamped by the caller
+ *  (`cancelCustomerPlan`) which has the credits math already.
+ *
+ *  Client Jul 2026: a customer holds either ONE active membership OR
+ *  one+ active packages, never both — this helper is the single point
+ *  the invariant is projected onto the flat fields. */
+function derivedFlatPlanFields(
+    plans: CustomerPlan[],
+    customerId: string,
+): Pick<Customer, "planKind" | "planName" | "membershipId" | "packageIds" | "planExpiryISO"> {
+    const heldMemberships = plans.filter(p =>
+        p.customerId === customerId
+        && p.kind === "membership"
+        && (p.status === "active" || p.status === "frozen"));
+    const heldPackages = plans.filter(p =>
+        p.customerId === customerId
+        && p.kind === "package"
+        && (p.status === "active" || p.status === "frozen"));
+    // Membership wins over package if both are present — matches
+    // `applyPurchase`'s cascade-cancel bias and reads correctly on the
+    // rare interim state before the cascade has run.
+    if (heldMemberships.length > 0) {
+        const m = heldMemberships[0];
+        return {
+            planKind: "membership",
+            planName: m.name,
+            membershipId: m.productId,
+            packageIds: undefined,
+            planExpiryISO: m.expiryISO,
+        };
+    }
+    if (heldPackages.length > 0) {
+        // Latest expiry drives `planExpiryISO`; every held package id
+        // is aggregated into `packageIds`.
+        const sorted = [...heldPackages].sort((a, b) =>
+            (b.expiryISO ?? "").localeCompare(a.expiryISO ?? ""));
+        return {
+            planKind: "package",
+            planName: sorted.length === 1
+                ? sorted[0].name
+                : `${sorted.length} credit packages`,
+            membershipId: undefined,
+            packageIds: sorted.map(p => p.productId).filter((id): id is string => typeof id === "string"),
+            planExpiryISO: sorted[0].expiryISO,
+        };
+    }
+    return {
+        planKind: null,
+        planName: undefined,
+        membershipId: undefined,
+        packageIds: undefined,
+        planExpiryISO: undefined,
+    };
+}
+
 function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransaction {
     return {
         id: t.id,
@@ -5236,20 +5300,37 @@ export const useAppStore = create<AppState>()(persist(
             // allotment ceiling so a cancelled plan visibly removes credits
             // from the side-panel widget (and anywhere else reading the
             // balance). Unlimited plans keep credits uncapped.
+            //
+            // ALSO recompute the flat plan fields (`planKind` / `planName`
+            // / `membershipId` / `packageIds` / `planExpiryISO`) from the
+            // remaining held plans — cancelling the only active
+            // membership must flip `planKind` to null (or to "package"
+            // if the customer still holds packages), otherwise the
+            // Customer badge + Reports v33 keep reading the cancelled
+            // plan's kind (bug the audit surfaced Jul 2026).
             const customers = !target ? state.customers : state.customers.map(c => {
                 if (c.id !== target.customerId) return c;
                 const stillCounted = customerPlans.filter(p =>
                     p.customerId === c.id
                     && (p.status === "active" || p.status === "frozen"));
                 let cap = 0;
+                let hasUnlimited = false;
                 for (const p of stillCounted) {
                     if (p.creditsLabel.toLowerCase().includes("unlimited")) {
-                        return c; // any remaining unlimited plan → no clamp
+                        hasUnlimited = true;
+                        continue;
                     }
                     const m = p.creditsLabel.match(/\d+/);
                     cap += p.freeCredits ?? (m ? Number(m[0]) : 0);
                 }
-                return { ...c, creditsRemaining: Math.min(c.creditsRemaining ?? 0, cap) };
+                const flat = derivedFlatPlanFields(customerPlans, c.id);
+                return {
+                    ...c,
+                    ...flat,
+                    creditsRemaining: hasUnlimited
+                        ? c.creditsRemaining
+                        : Math.min(c.creditsRemaining ?? 0, cap),
+                };
             });
             return { customerPlans, customers };
         });
@@ -5260,13 +5341,40 @@ export const useAppStore = create<AppState>()(persist(
 
     reactivateCustomerPlan: (planId) => {
         const target = get().customerPlans.find(p => p.id === planId);
-        set(state => ({
-            customerPlans: state.customerPlans.map(p =>
-                p.id === planId
-                    ? { ...p, status: "active" as const, cancelMode: undefined, cancelReason: undefined, cancelledAtISO: undefined }
-                    : p,
-            ),
-        }));
+        set(state => {
+            const t = state.customerPlans.find(p => p.id === planId);
+            if (!t) return {};
+            // Reactivating a plan mustn't recreate the mem+pkg violation
+            // — if the customer currently holds a plan of the OTHER
+            // kind, cascade-cancel it first (mirrors `applyPurchase`'s
+            // rule). Complimentary plans stay untouched.
+            const nowISO = new Date().toISOString();
+            const reactivatingKind = t.kind;
+            const displacedKind = reactivatingKind === "membership" ? "package" : "membership";
+            const customerPlans = state.customerPlans.map(p => {
+                if (p.id === planId) {
+                    return { ...p, status: "active" as const, cancelMode: undefined, cancelReason: undefined, cancelledAtISO: undefined };
+                }
+                if (p.customerId !== t.customerId) return p;
+                if (p.kind !== displacedKind) return p;
+                if (p.status !== "active" && p.status !== "frozen") return p;
+                return {
+                    ...p,
+                    status: "cancelled" as const,
+                    cancelReason: reactivatingKind === "membership"
+                        ? "Switched to membership"
+                        : "Switched to credit package",
+                    cancelledAtISO: nowISO,
+                };
+            });
+            // Recompute flat fields from the new plan list.
+            const customers = state.customers.map(c =>
+                c.id === t.customerId
+                    ? { ...c, ...derivedFlatPlanFields(customerPlans, c.id) }
+                    : c,
+            );
+            return { customerPlans, customers };
+        });
         if (target) {
             const customer = get().customers.find(c => c.id === target.customerId);
             const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
@@ -5383,9 +5491,17 @@ export const useAppStore = create<AppState>()(persist(
     deleteMembership: (id) => {
         // Block deletion if any customer currently holds this membership.
         // Returns false so the UI can show "X customers still hold this — archive instead".
-        const holders = get().customers.some(c => c.planKind === "membership" && c.membershipId === id);
-        if (holders) return false;
-        set(state => ({ memberships: state.memberships.filter(m => m.id !== id) }));
+        // Checks BOTH the denormalized flat field on Customer AND the
+        // authoritative `customerPlans[]` array (in case the flat field
+        // is stale — belt-and-braces for the invariant audit Jul 2026).
+        const state = get();
+        const heldByCustomer = state.customers.some(c => c.planKind === "membership" && c.membershipId === id);
+        const heldInPlans    = state.customerPlans.some(p =>
+            p.productId === id
+            && p.kind === "membership"
+            && (p.status === "active" || p.status === "frozen"));
+        if (heldByCustomer || heldInPlans) return false;
+        set(s => ({ memberships: s.memberships.filter(m => m.id !== id) }));
         return true;
     },
     deleteMemberships: (ids) => {
@@ -5393,8 +5509,12 @@ export const useAppStore = create<AppState>()(persist(
         const deleted: string[] = [];
         const blocked: string[] = [];
         for (const id of ids) {
-            const holders = state.customers.some(c => c.planKind === "membership" && c.membershipId === id);
-            if (holders) blocked.push(id);
+            const heldByCustomer = state.customers.some(c => c.planKind === "membership" && c.membershipId === id);
+            const heldInPlans    = state.customerPlans.some(p =>
+                p.productId === id
+                && p.kind === "membership"
+                && (p.status === "active" || p.status === "frozen"));
+            if (heldByCustomer || heldInPlans) blocked.push(id);
             else deleted.push(id);
         }
         if (deleted.length > 0) {
@@ -5430,9 +5550,17 @@ export const useAppStore = create<AppState>()(persist(
         targets.forEach(t => get().recordAudit(`${verb} class package`, "package", t.id, t.name, { status }));
     },
     deletePackage: (id) => {
-        const holders = get().customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
-        if (holders) return false;
-        set(state => ({ packages: state.packages.filter(p => p.id !== id) }));
+        // Same defensive check as deleteMembership — Customer.packageIds
+        // (denormalized) OR customerPlans[] (authoritative) either
+        // holding this package id blocks the delete.
+        const state = get();
+        const heldByCustomer = state.customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
+        const heldInPlans    = state.customerPlans.some(p =>
+            p.productId === id
+            && p.kind === "package"
+            && (p.status === "active" || p.status === "frozen"));
+        if (heldByCustomer || heldInPlans) return false;
+        set(s => ({ packages: s.packages.filter(p => p.id !== id) }));
         return true;
     },
     deletePackages: (ids) => {
@@ -5440,8 +5568,12 @@ export const useAppStore = create<AppState>()(persist(
         const deleted: string[] = [];
         const blocked: string[] = [];
         for (const id of ids) {
-            const holders = state.customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
-            if (holders) blocked.push(id);
+            const heldByCustomer = state.customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
+            const heldInPlans    = state.customerPlans.some(p =>
+                p.productId === id
+                && p.kind === "package"
+                && (p.status === "active" || p.status === "frozen"));
+            if (heldByCustomer || heldInPlans) blocked.push(id);
             else deleted.push(id);
         }
         if (deleted.length > 0) {
@@ -7011,14 +7143,59 @@ export const useAppStore = create<AppState>()(persist(
                 });
             });
 
+            // ─── Plan-exclusivity cascade (Jul 2026 client feedback) ──────
+            // The customer either holds ONE active membership OR one or
+            // more active credit packages — never both. Buying a
+            // membership must therefore cancel any previously-held
+            // packages, and buying a package must cancel any
+            // previously-held membership. `complimentary` plans are
+            // exempt (free credits, not a membership/package). Only
+            // active + frozen rows count as "held"; historical
+            // (cancelled/expired/removed) rows are untouched. Ignored
+            // when the current purchase is gift-card-only (planKind ===
+            // null) — that path never displaces the current plan.
+            const cascadeReason = planKind === "membership"
+                ? "Switched to membership"
+                : "Switched to credit package";
+            const shouldCascade = planKind !== null && (
+                planKind === "membership"
+                    ? state.customerPlans.some(p =>
+                        p.customerId === customerId
+                        && p.kind === "package"
+                        && (p.status === "active" || p.status === "frozen"))
+                    : state.customerPlans.some(p =>
+                        p.customerId === customerId
+                        && p.kind === "membership"
+                        && (p.status === "active" || p.status === "frozen"))
+            );
+            const cascadedPlans: CustomerPlan[] = shouldCascade
+                ? state.customerPlans.map(p => {
+                    if (p.customerId !== customerId) return p;
+                    if (p.kind === "complimentary") return p;
+                    if (p.status !== "active" && p.status !== "frozen") return p;
+                    const displaced = planKind === "membership"
+                        ? p.kind === "package"
+                        : p.kind === "membership";
+                    if (!displaced) return p;
+                    return {
+                        ...p,
+                        status: "cancelled" as const,
+                        cancelReason: cascadeReason,
+                        cancelledAtISO: nowISO,
+                    };
+                })
+                : state.customerPlans;
+
             return {
                 customers,
                 ...(newIssued.length > 0
                     ? { issuedGiftCards: [...state.issuedGiftCards, ...newIssued] }
                     : {}),
                 ...(newPlans.length > 0
-                    ? { customerPlans: [...newPlans, ...state.customerPlans] }
-                    : {}),
+                    ? { customerPlans: [...newPlans, ...cascadedPlans] }
+                    : shouldCascade
+                        ? { customerPlans: cascadedPlans }
+                        : {}),
                 ...(newTransactions.length > 0
                     ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
                     : {}),
@@ -7207,6 +7384,22 @@ export const useAppStore = create<AppState>()(persist(
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
         //
+        // v34: Plan-exclusivity invariant (Jul 2026 client audit).
+        //   • Seed fix — DEMO_NOW_PLANS no longer piles active/frozen
+        //     rows on top of the same 10 hand-authored customers.
+        //     Only cancelled/expired history rows survive there.
+        //   • `applyPurchase` cascade-cancels any pre-existing plan of
+        //     the OTHER kind (mem → cancel active pkgs, and vice versa)
+        //     so the customerPlans[] array can never hold both.
+        //   • `cancelCustomerPlan` + `reactivateCustomerPlan` re-derive
+        //     the flat `Customer.planKind/planName/membershipId/
+        //     packageIds/planExpiryISO` fields from the plan list so
+        //     Customer badges, Reports v33, and the customer-portal
+        //     Plan page can't drift from the authoritative array.
+        //   • `deleteMembership/deletePackage` gates now check
+        //     customerPlans[] too, not just the flat fields.
+        //   • Bumped so testers rehydrate against the corrected seed.
+        //
         // v33: Cancellation-penalty flow (Jul 2026 client feedback,
         // Figma 7631:454486 / 7790:27893).
         //   • `CancellationPolicy` gained
@@ -7237,7 +7430,7 @@ export const useAppStore = create<AppState>()(persist(
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 33,
+        version: 34,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

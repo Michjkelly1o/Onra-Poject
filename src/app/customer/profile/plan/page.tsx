@@ -35,12 +35,18 @@ export default function MyPlanPage() {
     const reactivateCustomerPlan = useAppStore((s) => s.reactivateCustomerPlan);
     const showToast = useAppStore((s) => s.showToast);
 
-    // Admin invariant: a customer holds EITHER one Membership OR one-or-more credit
-    // packages — never both. `planKind` (the admin record) decides which is shown.
+    // Admin invariant: a customer holds EITHER one Membership OR one-
+    // or-more credit packages — never both (client rule Jul 2026,
+    // enforced in the store by `applyPurchase` + `cancelCustomerPlan`
+    // + `reactivateCustomerPlan`). The customer-portal Plan page
+    // therefore trusts `planKind` as the single source of truth for
+    // WHICH kind to show; we further filter to non-complimentary
+    // rows because free credits are surfaced elsewhere in the portal.
     const planKind = member?.planKind ?? null;
     const rawPlans = useAppStore((s) => s.customerPlans).filter(
         (p) =>
             p.customerId === member?.id &&
+            p.kind !== "complimentary" &&
             p.kind === planKind &&
             (p.status === "active" || p.status === "frozen" || p.status === "cancelled"),
     );

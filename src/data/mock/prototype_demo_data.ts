@@ -1071,29 +1071,28 @@ interface PlanSpec {
     freezeEndDaysAhead?: number;
 }
 
+// Plan-exclusivity invariant (client Jul 2026): each customer holds
+// EITHER one active membership OR one+ active credit packages — never
+// both, and never two memberships. Every hand-authored customer in
+// `customer_plans.ts` already ships with a valid current plan (`cp_*`
+// rows) so this seed no longer piles ACTIVE / FROZEN rows on top of
+// them — that pile was the entire source of the "membership + package
+// on the same customer" bug the client spotted.
+//
+// What stays here now: only the CANCELLED and EXPIRED history rows.
+// Historical statuses don't count as "held" for exclusivity, they
+// only feed report columns (Subscription end date, "Cancelled" /
+// "Expired" pills on the Memberships tab, etc). The frozen-package
+// report demo is covered by hand-authored `cp_bosa_2` (frozen
+// package on Bosa) so removing the frozen entries here doesn't blank
+// the Frozen package report.
 const PLAN_SPECS: PlanSpec[] = [
-    { customerIdx: 0, kind: "membership", productKey: "mem_unlimited_monthly", purchasedDaysAgo: 28, expiryDaysAhead: 2,  status: "active" },
-    { customerIdx: 1, kind: "membership", productKey: "mem_advanced_monthly",  purchasedDaysAgo: 26, expiryDaysAhead: 4,  status: "active" },
-    { customerIdx: 2, kind: "package",    productKey: "pkg_10_class",          purchasedDaysAgo: 24, expiryDaysAhead: 6,  status: "active" },
-    { customerIdx: 3, kind: "membership", productKey: "mem_beginner_monthly",  purchasedDaysAgo: 22, expiryDaysAhead: 8,  status: "active" },
-    { customerIdx: 4, kind: "package",    productKey: "pkg_5_class",           purchasedDaysAgo: 21, expiryDaysAhead: 9,  status: "active" },
-    { customerIdx: 5, kind: "membership", productKey: "mem_yoga_focused",      purchasedDaysAgo: 19, expiryDaysAhead: 11, status: "active" },
-    { customerIdx: 6, kind: "package",    productKey: "pkg_20_class",          purchasedDaysAgo: 17, expiryDaysAhead: 43, status: "active" },
-    { customerIdx: 7, kind: "membership", productKey: "mem_advanced_monthly",  purchasedDaysAgo: 14, expiryDaysAhead: 16, status: "active" },
-    // Frozen overlap with the current month — drives Frozen package +
-    // Freeze impact reports.
-    { customerIdx: 8, kind: "membership", productKey: "mem_unlimited_monthly", purchasedDaysAgo: 35, expiryDaysAhead: 35, status: "frozen",
-      freezeStartDaysAgo: 10, freezeEndDaysAhead: 4 },
-    { customerIdx: 9, kind: "package",    productKey: "pkg_10_class",          purchasedDaysAgo: 30, expiryDaysAhead: 28, status: "frozen",
-      freezeStartDaysAgo: 7,  freezeEndDaysAhead: 7 },
-    { customerIdx: 0, kind: "package",    productKey: "pkg_5_class",           purchasedDaysAgo: 18, expiryDaysAhead: 12, status: "frozen",
-      freezeStartDaysAgo: 4,  freezeEndDaysAhead: 10 },
-    { customerIdx: 1, kind: "package",    productKey: "pkg_3_class_trial",     purchasedDaysAgo: 14, expiryDaysAhead: 14, status: "frozen",
-      freezeStartDaysAgo: 12, freezeEndDaysAhead: -3 },     // ended freeze
     // ── End-of-life subscriptions / packages — feeds Subscription end +
     //    expired columns + the Memberships "Cancelled" / "Expired" pills.
     //    Each row triggers a different combination of dates so the
     //    columns render with meaningful values instead of em-dashes.
+    //    NONE of these count as "held" (status !== "active"/"frozen") so
+    //    they don't violate the one-membership-OR-packages invariant.
     { customerIdx: 2, kind: "membership", productKey: "mem_advanced_monthly",  purchasedDaysAgo: 40, expiryDaysAhead: -2,  status: "cancelled" },
     { customerIdx: 4, kind: "membership", productKey: "mem_beginner_monthly",  purchasedDaysAgo: 28, expiryDaysAhead: 1,   status: "cancelled" },
     { customerIdx: 6, kind: "membership", productKey: "mem_yoga_focused",      purchasedDaysAgo: 22, expiryDaysAhead: 4,   status: "cancelled" },
