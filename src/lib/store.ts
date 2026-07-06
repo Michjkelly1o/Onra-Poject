@@ -1205,6 +1205,13 @@ export interface NotificationSetting {
     /** Marketing-only flag — landing renders "Sent during campaigns"
      *  pill in place of the send-time summary. */
     sentDuringCampaigns?: boolean;
+
+    /** Who receives this event's notification. Omitted = "customer"
+     *  (the customer tied to the source event, e.g. buyer on a
+     *  payment). `"gift_card_recipient"` = the recipient stored on
+     *  the IssuedGiftCard row so the person BEING GIFTED the card
+     *  gets the redemption code, not the buyer. */
+    recipientSource?: "customer" | "gift_card_recipient";
 }
 
 // ─── Tax module (PRD 11 §10) ───────────────────────────────────────────────
@@ -2714,6 +2721,7 @@ function notificationSettingFromSeed(n: NotificationSettingSeed): NotificationSe
         sendOffsets: n.send_offsets.map(o => ({ ...o })),
 
         sentDuringCampaigns: n.sent_during_campaigns,
+        recipientSource:     n.recipient_source,
     };
 }
 
@@ -7384,6 +7392,15 @@ export const useAppStore = create<AppState>()(persist(
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
         //
+        // v35: Gift card purchase notification event (Jul 2026 client
+        // request). New seed row `ns_gift_card_purchase` under the
+        // Payment category with the new
+        // `NotificationSetting.recipientSource` field set to
+        // `"gift_card_recipient"` so the future dispatch layer targets
+        // IssuedGiftCard.recipient_email instead of the buyer.
+        // Template introduces `{gift_card_code}`, `{gift_card_amount}`,
+        // `{sender_name}`, `{recipient_name}`, `{gift_message}` tokens.
+        //
         // v34: Plan-exclusivity invariant (Jul 2026 client audit).
         //   • Seed fix — DEMO_NOW_PLANS no longer piles active/frozen
         //     rows on top of the same 10 hand-authored customers.
@@ -7430,7 +7447,7 @@ export const useAppStore = create<AppState>()(persist(
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 34,
+        version: 35,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

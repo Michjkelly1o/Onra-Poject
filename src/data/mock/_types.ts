@@ -1851,6 +1851,18 @@ export interface NotificationSettingSeed {
      *  fire on a per-customer trigger, they piggy-back the campaign
      *  send. Read-only for the demo (admin can't toggle it). */
     sent_during_campaigns?: boolean;
+
+    // ── Recipient targeting (Jul 2026 — gift-card purchase) ───────────
+    /** Who receives the notification when this event fires.
+     *  `"customer"` (default when omitted) = the customer tied to
+     *  the source event, e.g. the buyer on a payment confirmation.
+     *  `"gift_card_recipient"` = the RECIPIENT stored on the
+     *  IssuedGiftCard row (`recipient_name` + `recipient_email`),
+     *  used only by the "Gift card purchase" event so the person
+     *  receiving the gift card gets the redemption code, not the
+     *  buyer. Consumers (future dispatch layer) branch on this
+     *  field to resolve `to_email` / `to_phone`. */
+    recipient_source?: "customer" | "gift_card_recipient";
 }
 
 // ─── Notification records (in-app feed — PRD 12 §6.1) ────────────────────────

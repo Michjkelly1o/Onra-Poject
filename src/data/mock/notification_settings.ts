@@ -233,6 +233,35 @@ export const notification_settings: NotificationSettingSeed[] = [
         send_mode: "immediately",
         send_offsets: [],
     },
+    // ── Gift card purchase (Jul 2026 client request) ──────────────────
+    // Unlike every other payment row above, this notification is
+    // dispatched to the RECIPIENT of the gift card (the person being
+    // gifted the card), NOT the buyer. The recipient needs the
+    // redemption code to spend the balance, so the template embeds
+    // `{gift_card_code}` alongside the sender's name + amount. Set
+    // `recipient_source: "gift_card_recipient"` so the future dispatch
+    // layer resolves `to_email` / `to_phone` from
+    // IssuedGiftCard.recipient_email / recipient_phone rather than
+    // customers[buyer_id]. Marked critical — the recipient can't
+    // redeem without the code.
+    {
+        id: "ns_gift_card_purchase",
+        category: "payment",
+        notification_type: "gift_card_purchase",
+        label: "Gift card purchase",
+        recipient_source: "gift_card_recipient",
+        email_enabled: true,
+        whatsapp_enabled: true,
+        sms_enabled: true,
+        email_subject: "{sender_name} sent you a {studio_name} gift card",
+        email_template: "Hi {recipient_name},\n\n{sender_name} has sent you a {studio_name} gift card worth AED {gift_card_amount}.\n\nRedeem it at checkout with this code:\n\n{gift_card_code}\n\n\"{gift_message}\"\n\nEnjoy!\n— {studio_name}",
+        whatsapp_template: "Hi {recipient_name}! 🎁 {sender_name} sent you a {studio_name} gift card worth AED {gift_card_amount}. Redeem with code: {gift_card_code}",
+        sms_template: "{studio_name}: {sender_name} sent you a gift card (AED {gift_card_amount}). Redeem with code {gift_card_code}.",
+        whatsapp_approval_status: "approved",
+        is_critical: true,
+        send_mode: "immediately",
+        send_offsets: [],
+    },
 
     // ── Package & membership (7) ───────────────────────────────────────────
     {
