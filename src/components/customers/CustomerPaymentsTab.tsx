@@ -26,7 +26,7 @@ import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
-    AlertTriangle,
+    SlashCircle01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,13 +59,16 @@ interface PaymentFilter {
 }
 const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", statuses: [], kinds: [] };
 
-const KIND_LABEL: Record<TxnKind, string> = {
+// Filter-chip / column labels. Only the two purchase kinds get a chip
+// or a column value — a `cancellation_penalty` row's Plan type column
+// is derived from the CUSTOMER'S plan (see `planTypeLabel` below) so a
+// penalty on a membership-plan customer reads "Membership" and on a
+// package-plan customer reads "Credit package". The row is identified
+// as a penalty via its icon + transaction name, NOT its plan-type text
+// (client feedback Jul 2026).
+const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package">, string> = {
     membership: "Membership",
     package: "Credit package",
-    // Cancellation-penalty rows are always non-refundable and use their
-    // own display copy via `cancellationScenario` further down the table
-    // renderer. Fallback label if a row shows up in a filter chip.
-    cancellation_penalty: "Cancellation penalty",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -130,27 +133,39 @@ function TxnStatusBadge({ status }: { status: TxnStatus }) {
 // ─── Transaction kind icon ────────────────────────────────────────────────────
 
 function TxnIcon({ kind }: { kind: TxnKind }) {
-    // Cancellation-penalty rows use a distinct alert-triangle glyph so
-    // the client can scan the history for penalties at a glance — the
-    // fallback `Package` icon (used only for `package` rows now)
-    // otherwise made every non-membership row read as "Credit package"
-    // visually. Membership → card · package → package · penalty → alert.
+    // Membership → card · package → package · penalty → slash-circle
+    // (block glyph — per client spec Jul 2026). Same neutral colour
+    // stack as the other two so the row doesn't shout — the icon is
+    // just there to identify the row shape at a glance.
     const Icon = kind === "membership"
         ? CreditCard02
         : kind === "cancellation_penalty"
-            ? AlertTriangle
+            ? SlashCircle01
             : Package;
-    const bg = kind === "cancellation_penalty" ? "bg-[#fef3f2]" : "bg-[#f2f4f7]";
-    const fg = kind === "cancellation_penalty" ? "text-[#b42318]" : "text-[#475467]";
     return (
-        <div className={cn(
-            "relative shrink-0 size-10 rounded-full flex items-center justify-center",
-            bg,
-        )}>
-            <Icon className={cn("w-5 h-5", fg)} />
+        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
+            <Icon className="w-5 h-5 text-[#475467]" />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );
+}
+
+// Plan-type column resolver — for the two purchase kinds we render the
+// kind's label; for a cancellation-penalty row we look up the customer
+// so the column reads their ACTUAL plan (Membership / Credit package)
+// rather than the transaction's kind. Falls back to "—" when the
+// customer's plan can't be resolved (e.g. no active plan). Client
+// requirement Jul 2026 — the penalty row must NOT change Plan type.
+function planTypeLabel(
+    t: CustomerTransaction,
+    customerPlanKind: "membership" | "package" | undefined,
+): string {
+    if (t.kind === "cancellation_penalty") {
+        if (customerPlanKind === "membership") return "Membership";
+        if (customerPlanKind === "package")    return "Credit package";
+        return "—";
+    }
+    return KIND_LABEL[t.kind];
 }
 
 // ─── Card-brand mark (Payment method section) ─────────────────────────────────
@@ -264,11 +279,10 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
         pending.dateStart !== "" || pending.dateEnd !== "";
 
     const STATUSES: FilterStatus[] = ["complete", "pending", "failed"];
-    // Plan-type filter chips — every transaction `kind` needs a chip so
-    // the client can slice the history on it. `cancellation_penalty`
-    // rows land here alongside the two purchase kinds so admin can
-    // isolate every penalty for a customer at a glance.
-    const KINDS: TxnKind[] = ["membership", "package", "cancellation_penalty"];
+    // Plan-type filter chips — only the two purchase kinds. Penalty
+    // rows are surfaced via icon + transaction name, not via a plan-
+    // type chip (client spec Jul 2026).
+    const KINDS: Extract<TxnKind, "membership" | "package">[] = ["membership", "package"];
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
@@ -453,10 +467,21 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const customerTransactions = useAppStore(s => s.customerTransactions);
+    const customers            = useAppStore(s => s.customers);
     const issuedGiftCards = useAppStore(s => s.issuedGiftCards);
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
     const refundTransaction = useAppStore(s => s.refundTransaction);
     const showToast = useAppStore(s => s.showToast);
+
+    // The customer being viewed — used to resolve the Plan type
+    // column for a cancellation-penalty row back to the customer's
+    // actual plan (Membership / Credit package), never "Cancellation
+    // penalty". Client requirement Jul 2026.
+    const customer = customers.find(c => c.id === customerId);
+    const customerPlanKind: "membership" | "package" | undefined =
+        customer?.planKind === "membership" ? "membership"
+      : customer?.planKind === "package"    ? "package"
+      : undefined;
 
     // Notification click-through can deep-link to the Payment history
     // sub-tab via `?payment=history` (and optionally `?tx=<id>` to highlight
@@ -696,7 +721,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                         <span className="text-[14px] font-medium text-[#101828]">{t.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{KIND_LABEL[t.kind]}</td>
+                                                <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t, customerPlanKind)}</td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtAed(t.amountAed)}</td>
                                                 <td className={TD}><TxnStatusBadge status={t.status} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>

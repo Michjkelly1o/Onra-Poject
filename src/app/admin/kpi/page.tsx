@@ -159,12 +159,17 @@ export default function KpiPage() {
     const classKpis     = useMemo(() => computeClassKpis(kpiState, range, branchFilter),     [kpiState, range, branchFilter]);
     const marketingKpis = useMemo(() => computeMarketingKpis(marketingState, range, branchFilter), [marketingState, range, branchFilter]);
 
-    // Phase 6 — attach the active range label to every metric so
-    // drill-through links carry it as ?range= for the destination
-    // Report to pre-apply the same filter.
-    const rangeParam = period.label;
+    // KPI metrics are NOT clickable per client Jul 2026 — this module
+    // is a read-only overview. We strip `drillTo` (and its companion
+    // `rangeParam`) so InsightMetricCard renders each tile non-
+    // interactive; the info-icon tooltip is what admins hover for
+    // context. Insights module still gets drill-through — the strip
+    // is local to `/admin/kpi`.
     function withRange(list: Metric[]): Metric[] {
-        return list.map(m => (m.drillTo ? { ...m, rangeParam } : m));
+        return list.map(m => {
+            const { drillTo: _drillTo, rangeParam: _rangeParam, ...rest } = m;
+            return rest;
+        });
     }
     const metricsByTab: Record<TabKey, Metric[]> = {
         financial: withRange(financialKpis),
