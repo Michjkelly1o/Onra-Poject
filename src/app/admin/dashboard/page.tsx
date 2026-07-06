@@ -33,6 +33,12 @@ import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
+import {
+    RenewalDueModal,
+    FailedPaymentsModal,
+    AtRiskClientsModal,
+    UnderFilledModal,
+} from "@/components/dashboard/NeedsAttentionModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
@@ -440,6 +446,11 @@ export default function AdminDashboard() {
     const [location, setLocation] = useState<string>("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
     const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+    // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
+    // 245665 / 246710). Renewal + Expire cards share the Renewal-due
+    // modal per client Jul 2026.
+    type NeedsAttentionModal = "renewal" | "failed" | "atrisk" | "underfilled" | null;
+    const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
 
@@ -973,7 +984,7 @@ export default function AdminDashboard() {
                             iconFg="text-[#175cd3]"
                             title={`${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`}
                             subtitle={`AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`}
-                            onView={() => router.push("/admin/customers?renewing=today")}
+                            onView={() => setAttentionModal("renewal")}
                         />
                         <NeedsAttentionRow
                             icon={Bell01}
@@ -981,7 +992,7 @@ export default function AdminDashboard() {
                             iconFg="text-[#c4320a]"
                             title={`${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`}
                             subtitle="Send a reminder before membership expire"
-                            onView={() => router.push("/admin/settings/notifications")}
+                            onView={() => setAttentionModal("renewal")}
                         />
                         <NeedsAttentionRow
                             icon={CreditCard01}
@@ -989,7 +1000,7 @@ export default function AdminDashboard() {
                             iconFg="text-[#b42318]"
                             title={`${needsAttention.failedCount} failed ${needsAttention.failedCount === 1 ? "payment" : "payments"}`}
                             subtitle={`Payment failed · AED ${needsAttention.failedTotalAed.toLocaleString("en-US")}`}
-                            onView={() => router.push("/reports/refunds")}
+                            onView={() => setAttentionModal("failed")}
                         />
                         <NeedsAttentionRow
                             icon={UserX01}
@@ -997,7 +1008,7 @@ export default function AdminDashboard() {
                             iconFg="text-[#a15c07]"
                             title={`${needsAttention.clientsAtRisk} ${needsAttention.clientsAtRisk === 1 ? "client" : "clients"} at risk`}
                             subtitle="No visit in 14-30 days · win them back"
-                            onView={() => router.push("/reports/win-back")}
+                            onView={() => setAttentionModal("atrisk")}
                         />
                         <NeedsAttentionRow
                             icon={CalendarCheck01}
@@ -1005,7 +1016,7 @@ export default function AdminDashboard() {
                             iconFg="text-[#079455]"
                             title="Under filled classes"
                             subtitle={`${needsAttention.underFilled} ${needsAttention.underFilled === 1 ? "class" : "classes"} below 50% capacity`}
-                            onView={() => router.push("/admin/schedule")}
+                            onView={() => setAttentionModal("underfilled")}
                             isLast
                         />
                     </div>
@@ -1018,6 +1029,30 @@ export default function AdminDashboard() {
                 activeWidgetIds={activeWidgets}
                 onAdd={handleAddWidget}
                 onRemove={handleRemoveWidget}
+            />
+
+            {/* Needs-attention drill-down modals — all four share the same
+                branch-scope filter (empty string = all locations, matches
+                the rest of the dashboard). */}
+            <RenewalDueModal
+                open={attentionModal === "renewal"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <FailedPaymentsModal
+                open={attentionModal === "failed"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <AtRiskClientsModal
+                open={attentionModal === "atrisk"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <UnderFilledModal
+                open={attentionModal === "underfilled"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
             />
 
             <Toast />

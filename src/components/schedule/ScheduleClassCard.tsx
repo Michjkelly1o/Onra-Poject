@@ -139,11 +139,14 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
 
     // ── LG ───────────────────────────────────────────────────────────────────
     if (size === "lg") {
-        // Ongoing-only extras — Figma 7798:80399 (Jul 2026 client
-        // update). Adds an "Ongoing" pill + Users01 glyph in the
-        // top-right corner and a green capacity progress bar pinned
-        // to the bottom edge. Non-Ongoing rows render the pre-existing
-        // layout, so admin schedule + report surfaces are unaffected.
+        // Client dashboard polish Jul 2026 (Figma 7798:80399). Every
+        // class card now shows the capacity progress bar pinned to
+        // the bottom edge — Ongoing rows also get a "Ongoing" pill in
+        // the top-right. Badge palette matches the shared
+        // `/admin/schedule` blue variant (StatusBadge blue: bg #eff8ff
+        // border #b2ddff text #175cd3) instead of the sage green the
+        // earlier draft used — client asked for parity across every
+        // schedule surface.
         const isOngoing = cls.status === "Ongoing";
         const fillPct = cls.capacity > 0
             ? Math.min(100, Math.round((cls.booked / cls.capacity) * 100))
@@ -152,28 +155,27 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
             <button type="button" onClick={onClick}
                 style={{ backgroundColor: cls.color.bg, borderLeft: `4px solid ${cls.color.border}`, ...baseStyle }}
                 className={cn(
-                    "relative w-full rounded-[10px] pl-4 pr-4 pt-3 flex flex-col gap-1 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
-                    isOngoing ? "pb-4" : "pb-3",
+                    // Extra bottom padding (pb-4) leaves room for the
+                    // 4px progress bar without touching the meta row;
+                    // gap-1.5 opens the interior so a 3-row card feels
+                    // balanced against the Recent activity list next
+                    // to it on the dashboard.
+                    "relative w-full rounded-[10px] pl-4 pr-4 pt-3 pb-4 flex flex-col gap-1.5 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden min-h-[92px]",
                     className,
                 )}>
-                {/* Title row + Ongoing pill / participant glyph.
-                    Icon column stays visible on non-Ongoing rows too
-                    so the layout doesn't jump when a class flips into
-                    Ongoing partway through a slot. */}
+                {/* Title row + Ongoing pill / participant glyph. */}
                 <div className="flex items-start gap-2 w-full">
                     <span className="flex-1 min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
                     {isOngoing && (
-                        <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] shrink-0">
+                        <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3] shrink-0">
                             Ongoing
                         </span>
                     )}
                     <Users01 className="w-4 h-4 text-[#667085] shrink-0 mt-0.5" />
                 </div>
-                {/* Meta row — time · instructor · room · count. On the
-                    dashboard's LG variant we collapse everything to one
-                    line and use a bullet separator so the card matches
-                    Figma 7798:80399's compact information density.
-                    Non-Ongoing rows keep the same layout for consistency. */}
+                {/* Meta row — time · instructor · room · count. Single
+                    line separated by bullets so the card matches Figma
+                    7798:80399's compact density. */}
                 <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#667085]">
                     <span className="shrink-0">{rangeLabel}</span>
                     <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
@@ -196,19 +198,17 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                         {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
                     </span>
                 </div>
-                {/* Capacity progress bar — Ongoing-only. Sits flush to
-                    the bottom edge so it reads as a fill indicator on
-                    the whole card rather than a separate widget. Track
-                    is neutral gray; fill is the sage-green from the DS
-                    "Ongoing" palette. */}
-                {isOngoing && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#e4e7ec] overflow-hidden">
-                        <div
-                            className="h-full bg-[#658774] transition-all"
-                            style={{ width: `${fillPct}%` }}
-                        />
-                    </div>
-                )}
+                {/* Capacity progress bar — pinned to the bottom edge of
+                    every LG card so admins scan capacity at a glance
+                    regardless of status. Track is neutral gray; fill
+                    uses the card's category border colour so it reads
+                    as a natural extension of the left accent stripe. */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#e4e7ec] overflow-hidden">
+                    <div
+                        className="h-full transition-all"
+                        style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
+                    />
+                </div>
             </button>
         );
     }
