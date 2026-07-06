@@ -7392,6 +7392,18 @@ export const useAppStore = create<AppState>()(persist(
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
         //
+        // v36: Dashboard Needs-attention demo fixtures (Jul 2026) —
+        //   • DEMO_NOW_RENEWAL_PLANS: 8 memberships expiring in next 30
+        //     days (active + expired) on synthetic customers.
+        //   • DEMO_NOW_FAILED_TRANSACTIONS: 6 failed/pending txns on
+        //     synthetic customers.
+        //   • DEMO_NOW_AT_RISK_LAST_VISITS: 12 last_visit_iso overrides
+        //     on synthetic customers so the At-risk modal always
+        //     renders 12 rows.
+        //   • 12 additional Upcoming schedules with < 50% capacity so
+        //     the Under-filled modal is guaranteed populated.
+        //   Bumped so testers pull fresh seed data.
+        //
         // v35: Gift card purchase notification event (Jul 2026 client
         // request). New seed row `ns_gift_card_purchase` under the
         // Payment category with the new
@@ -7447,7 +7459,7 @@ export const useAppStore = create<AppState>()(persist(
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 35,
+        version: 36,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

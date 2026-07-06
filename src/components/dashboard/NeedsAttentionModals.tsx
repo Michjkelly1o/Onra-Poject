@@ -29,7 +29,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
     XClose, Eye, RefreshCcw01, Bell01, Users02, Pencil02, Announcement01,
-    SlashCircle01, Star01, Trash01,
+    SlashCircle01, Star01, Trash01, Check,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -141,6 +141,35 @@ function ModalShell({
             </div>
         </div>,
         document.body,
+    );
+}
+
+// ─── Bulk-select checkbox ──────────────────────────────────────────────────
+//
+// Same primitive `/admin/products` (memberships + packages page) uses at
+// products/page.tsx:465 — sage-green (#658774) fill + white check when
+// checked, sage-green border hover when idle. Client feedback Jul 2026:
+// modal checkboxes must match the other admin list tables' style
+// (the previous native `<input type="checkbox">` was orange-tinted from
+// the browser default + didn't match the DS palette).
+function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
+    checked: boolean; onChange: (next: boolean) => void; indeterminate?: boolean; ariaLabel: string;
+}) {
+    return (
+        <button type="button" role="checkbox" aria-label={ariaLabel} aria-checked={indeterminate ? "mixed" : checked}
+            onClick={() => onChange(!checked)}
+            className={cn(
+                "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
+                (checked || indeterminate)
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+            )}>
+            {indeterminate ? (
+                <span className="block w-2 h-[1.5px] bg-white" />
+            ) : checked ? (
+                <Check className="w-3 h-3" />
+            ) : null}
+        </button>
     );
 }
 
@@ -326,6 +355,7 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
     const totalRows = sortedRows.length;
     const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
     const allChecked = paged.length > 0 && paged.every(r => selected.has(r.plan.id));
+    const someChecked = !allChecked && paged.some(r => selected.has(r.plan.id));
 
     function toggleAll() {
         setSelected(prev => {
@@ -407,11 +437,11 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
                     <thead>
                         <tr>
                             <th className={cn(TH, "w-10")}>
-                                <input
-                                    type="checkbox"
+                                <CheckboxCell
                                     checked={allChecked}
+                                    indeterminate={someChecked}
                                     onChange={toggleAll}
-                                    className="w-4 h-4 rounded-[4px] border-[#d0d5dd] text-[#658774] focus:ring-[#aad4bd] cursor-pointer"
+                                    ariaLabel={allChecked ? "Deselect all" : "Select all"}
                                 />
                             </th>
                             <th className={TH}>
@@ -433,11 +463,10 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
                         {paged.map(r => (
                             <tr key={r.plan.id} className="hover:bg-[#f9fafb]/50 transition-colors">
                                 <td className={TD}>
-                                    <input
-                                        type="checkbox"
+                                    <CheckboxCell
                                         checked={selected.has(r.plan.id)}
                                         onChange={() => toggleOne(r.plan.id)}
-                                        className="w-4 h-4 rounded-[4px] border-[#d0d5dd] text-[#658774] focus:ring-[#aad4bd] cursor-pointer"
+                                        ariaLabel={`Select ${r.customer.firstName} ${r.customer.lastName}`}
                                     />
                                 </td>
                                 <td className={TD}><CustomerCell c={r.customer} /></td>

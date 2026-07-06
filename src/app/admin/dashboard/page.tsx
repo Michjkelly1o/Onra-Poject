@@ -867,7 +867,22 @@ export default function AdminDashboard() {
                         );
                     }}
                     onOpenModal={() => setWidgetModalOpen(true)}
-                    allWidgetsActive={activeWidgets.length >= WIDGET_CATALOG.length}
+                    allWidgetsActive={
+                        // Only compare against categories the dashboard's
+                        // AddWidgetModal actually surfaces (Finance +
+                        // Memberships + Classes). KPI-only widgets
+                        // (Financial / Client / Class / Marketing) are
+                        // reachable ONLY from /admin/kpi and don't count
+                        // toward the dashboard's "all widgets added" state.
+                        (() => {
+                            const eligible = WIDGET_CATALOG.filter(w =>
+                                w.category === "Finance"
+                                || w.category === "Memberships"
+                                || w.category === "Classes"
+                            ).map(w => w.id);
+                            return eligible.every(id => activeWidgets.includes(id));
+                        })()
+                    }
                 />
             )}
 

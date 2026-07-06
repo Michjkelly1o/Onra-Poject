@@ -25,7 +25,7 @@
 //     `product_id` → memberships.id / packages.id
 
 import type { CustomerTransaction } from "./_types";
-import { DEMO_NOW_TRANSACTIONS } from "./prototype_demo_data";
+import { DEMO_NOW_TRANSACTIONS, DEMO_NOW_FAILED_TRANSACTIONS } from "./prototype_demo_data";
 
 const SOUTH = "branch_forma_south";
 
@@ -38,6 +38,10 @@ const daysAgo    = (n: number) => minutesAgo(n * 60 * 24);
 
 export const customer_transactions: CustomerTransaction[] = [
     ...DEMO_NOW_TRANSACTIONS,
+    // Dashboard Failed-payments modal fixtures — failed + pending
+    // rows anchored on NOW so the modal always has something to
+    // recover.
+    ...DEMO_NOW_FAILED_TRANSACTIONS,
     // ── Ahmed Zayn ───────────────────────────────────────────────────────────
     {
         id: "txn_ahmed_1",

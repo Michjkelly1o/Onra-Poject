@@ -43,6 +43,7 @@
 // customers when those branches are exercised by a screen.
 
 import type { Customer } from "./_types";
+import { DEMO_NOW_AT_RISK_LAST_VISITS } from "./prototype_demo_data";
 
 // ─── Hand-authored customers ─────────────────────────────────────────────
 //
@@ -584,7 +585,18 @@ function generateSyntheticCustomers(count: number): Customer[] {
 /** Final export: 10 hand-authored "story" customers + 1,520 synthetic
  *  filler = 1,530 total. Order preserved so `customers[0]` stays Ahmed
  *  (used by hardcoded demo links / screenshots). */
+// Dashboard At-risk clients modal fixture — patches each hand-
+// authored customer's `last_visit_iso` to a relative-to-now date in
+// the 14–30 day window so the modal always renders 10+ rows for
+// the client demo. Applied at export time (not at each row site) so
+// the base seed stays readable + a single edit in
+// `prototype_demo_data.ts` updates every consumer.
+const patchedHandAuthored = handAuthoredCustomers.map(c => {
+    const override = DEMO_NOW_AT_RISK_LAST_VISITS[c.id];
+    return override ? { ...c, last_visit_iso: override } : c;
+});
+
 export const customers: Customer[] = [
-    ...handAuthoredCustomers,
+    ...patchedHandAuthored,
     ...generateSyntheticCustomers(1520),
 ];

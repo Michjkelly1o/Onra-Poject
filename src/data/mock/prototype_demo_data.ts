@@ -193,6 +193,23 @@ const SCHEDULE_SPECS: ScheduleSpec[] = [
     { daysFromNow: 8,   slotIdx: 1, branchId: EAST,  templateIdx: 0, capacity: 6,  booked: 3,  status: "Upcoming" },
     { daysFromNow: 9,   slotIdx: 2, branchId: SOUTH, templateIdx: 2, capacity: 12, booked: 8,  status: "Upcoming" },
     { daysFromNow: 10,  slotIdx: 0, branchId: SOUTH, templateIdx: 1, capacity: 10, booked: 5,  status: "Upcoming" },
+    // Under-filled schedules — < 50% capacity in the next 30 days so
+    // the dashboard's Needs-attention "Under filled classes" card + its
+    // drill-down modal always have rows to render. Client demo Jul 2026.
+    // Slot indices rotate through all 4 time slots so the modal shows
+    // a mix of morning + evening classes.
+    { daysFromNow: 1,   slotIdx: 3, branchId: SOUTH, templateIdx: 2, capacity: 12, booked: 3,  status: "Upcoming" }, // 25%
+    { daysFromNow: 2,   slotIdx: 1, branchId: SOUTH, templateIdx: 1, capacity: 10, booked: 2,  status: "Upcoming" }, // 20%
+    { daysFromNow: 3,   slotIdx: 0, branchId: EAST,  templateIdx: 0, capacity:  6, booked: 1,  status: "Upcoming" }, // 17%
+    { daysFromNow: 4,   slotIdx: 2, branchId: SOUTH, templateIdx: 2, capacity: 12, booked: 4,  status: "Upcoming" }, // 33%
+    { daysFromNow: 5,   slotIdx: 1, branchId: EAST,  templateIdx: 1, capacity: 10, booked: 3,  status: "Upcoming" }, // 30%
+    { daysFromNow: 7,   slotIdx: 2, branchId: SOUTH, templateIdx: 0, capacity:  6, booked: 2,  status: "Upcoming" }, // 33%
+    { daysFromNow: 9,   slotIdx: 3, branchId: SOUTH, templateIdx: 1, capacity: 10, booked: 3,  status: "Upcoming" }, // 30%
+    { daysFromNow: 11,  slotIdx: 0, branchId: SOUTH, templateIdx: 2, capacity: 12, booked: 5,  status: "Upcoming" }, // 42%
+    { daysFromNow: 13,  slotIdx: 2, branchId: EAST,  templateIdx: 1, capacity: 10, booked: 4,  status: "Upcoming" }, // 40%
+    { daysFromNow: 15,  slotIdx: 1, branchId: SOUTH, templateIdx: 0, capacity:  6, booked: 2,  status: "Upcoming" }, // 33%
+    { daysFromNow: 17,  slotIdx: 3, branchId: SOUTH, templateIdx: 2, capacity: 12, booked: 4,  status: "Upcoming" }, // 33%
+    { daysFromNow: 20,  slotIdx: 0, branchId: EAST,  templateIdx: 1, capacity: 10, booked: 3,  status: "Upcoming" }, // 30%
 ];
 
 export const DEMO_NOW_SCHEDULES: ClassSchedule[] = SCHEDULE_SPECS.map((s, idx) => {
@@ -1234,3 +1251,155 @@ export const DEMO_NOW_GIFT_CARDS: IssuedGiftCard[] = GC_SPECS.map((g, idx) => ({
     recipient_name: g.recipientName,
     recipient_email: g.recipientEmail,
 }));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard Needs-attention modal fixtures (Jul 2026 client demo)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The four Needs-attention modals opened from `/admin/dashboard` (Renewal
+// due, Failed payments, At-risk clients, Under-filled classes) must always
+// render populated tables regardless of when the demo is opened. Base
+// seeds carry static ISO dates that drift out of every modal's rolling
+// window (30 days forward for renewals + under-filled, 14–30 days back
+// for at-risk). Fixtures below anchor rows to `NOW` at module-load time
+// so the modals stay demo-ready.
+//
+// Data-integrity rules honoured:
+//   • Every membership plan added below references a real customer id
+//     that already holds NO other active membership (per Jul 2026 plan-
+//     exclusivity rule). We attach them to customers who exclusively
+//     hold packages so no one ends up with membership+package.
+//   • At-risk `last_visit_iso` overrides target customers whose status
+//     is already "active" in the base seed.
+//   • Failed transactions reference a real customer + branch id.
+//   • No new customer records — only new plans + transactions +
+//     `last_visit_iso` patches keyed by existing customer ids.
+
+// ── 1. Renewal-due membership plans (kind: membership, expiring soon) ──
+//
+// 8 rows across the next 30 days — mix of Active (autoRenew=true → will
+// renew) and Expired (autoRenew=false → needs a Send-reminder nudge).
+// Attached to SYNTHETIC customer ids (`cust_synth_0000`+) which carry
+// no active plan in the base seed so the "1 membership OR 1+ packages"
+// invariant stays intact — the base seed's 10 hand-authored customers
+// already hold plans and can't take a second one without breaking that
+// rule.
+
+interface RenewalPlanSpec {
+    /** cust_synth_XXXX index (0..7 are guaranteed status=active by
+     *  the SYNTH_STATUSES cycle in `customers.ts`). */
+    synthIdx: number;
+    productKey: typeof MEMBERSHIPS[number];
+    expiryInDays: number;                         // negative = already expired
+    autoRenew: boolean;
+}
+const RENEWAL_PLAN_SPECS: RenewalPlanSpec[] = [
+    { synthIdx: 0, productKey: "mem_beginner_monthly",  expiryInDays:  0,  autoRenew: true  }, // renews today
+    { synthIdx: 1, productKey: "mem_advanced_monthly",  expiryInDays:  0,  autoRenew: true  }, // renews today
+    { synthIdx: 2, productKey: "mem_yoga_focused",      expiryInDays:  0,  autoRenew: false }, // expires today
+    { synthIdx: 3, productKey: "mem_unlimited_monthly", expiryInDays:  3,  autoRenew: true  },
+    { synthIdx: 4, productKey: "mem_advanced_monthly",  expiryInDays:  7,  autoRenew: true  },
+    { synthIdx: 5, productKey: "mem_beginner_monthly",  expiryInDays: 14,  autoRenew: false },
+    { synthIdx: 6, productKey: "mem_advanced_monthly",  expiryInDays: -2,  autoRenew: false }, // already expired
+    { synthIdx: 7, productKey: "mem_unlimited_monthly", expiryInDays: -5,  autoRenew: false }, // already expired
+];
+
+function synthCustomerId(idx: number): string {
+    return `cust_synth_${String(idx).padStart(4, "0")}`;
+}
+
+export const DEMO_NOW_RENEWAL_PLANS: CustomerPlan[] = RENEWAL_PLAN_SPECS.map((p, idx) => {
+    const price = MEMBERSHIP_PRICE[p.productKey];
+    const name = humanizeMembership(p.productKey);
+    const expiryDate = p.expiryInDays >= 0 ? daysAhead(p.expiryInDays) : daysAgo(-p.expiryInDays);
+    const purchaseDate = daysAgo(30 - Math.max(0, p.expiryInDays));
+    // Rows with expiryInDays < 0 rendered as `expired` so the modal
+    // shows the "Renew membership" secondary action; the rest stay
+    // active so autoRenew flags flow through the renewal counter.
+    const status: CustomerPlan["status"] = p.expiryInDays < 0 ? "expired" : "active";
+    return {
+        id: `plan_renew_${String(idx + 1).padStart(3, "0")}`,
+        customer_id: synthCustomerId(p.synthIdx),
+        kind: "membership",
+        product_id: p.productKey,
+        name,
+        plan_type_label: "Membership",
+        credits_label: p.productKey === "mem_unlimited_monthly" ? "Unlimited" : "Monthly billing",
+        status,
+        purchased_at: isoDay(purchaseDate),
+        expiry_iso: isoStamp(expiryDate),
+        price_aed: price,
+        // Reports v33 fields — needed so downstream reports don't NaN.
+        total_credits: 0,
+        credits_used: 0,
+        auto_renew: p.autoRenew,
+        next_billing_amount_aed: p.autoRenew ? price : 0,
+    };
+});
+
+// ── 2. Failed-payment transactions (Jul 2026) ──────────────────────────
+//
+// Six rows — 4 failed (card errors) and 2 pending (bank hold) — dated
+// today so they're guaranteed to land in the modal's window (which
+// currently filters ALL time but scans newest-first for display).
+
+interface FailedTxnSpec {
+    /** cust_synth_XXXX index — same "guaranteed active" pool used by
+     *  the renewal fixtures above (0..7). */
+    synthIdx: number;
+    productLabel: string;
+    amountAed: number;
+    hoursAgo: number;
+    kind: "membership" | "package";
+    productId: string;
+    status: "failed" | "pending";
+    failureReason: string;
+}
+const FAILED_TXN_SPECS: FailedTxnSpec[] = [
+    { synthIdx: 0, productLabel: "Unlimited Monthly Membership", amountAed: 2800, hoursAgo:  2, kind: "membership", productId: "mem_unlimited_monthly", status: "failed",  failureReason: "Card declined"       },
+    { synthIdx: 1, productLabel: "Advanced Monthly Membership",  amountAed: 1500, hoursAgo:  4, kind: "membership", productId: "mem_advanced_monthly",  status: "failed",  failureReason: "Insufficient funds"  },
+    { synthIdx: 2, productLabel: "Yoga Focused Monthly",         amountAed: 1800, hoursAgo:  6, kind: "membership", productId: "mem_yoga_focused",      status: "failed",  failureReason: "Card expired"        },
+    { synthIdx: 3, productLabel: "5-Class Package",              amountAed:  750, hoursAgo:  9, kind: "package",    productId: "pkg_5_class",           status: "failed",  failureReason: "3D secure timeout"   },
+    { synthIdx: 4, productLabel: "10-Class Package",             amountAed: 1390, hoursAgo: 12, kind: "package",    productId: "pkg_10_class",          status: "pending", failureReason: "Bank hold"           },
+    { synthIdx: 5, productLabel: "Beginner Monthly Membership",  amountAed: 1200, hoursAgo: 18, kind: "membership", productId: "mem_beginner_monthly",  status: "pending", failureReason: "Bank hold"           },
+];
+
+export const DEMO_NOW_FAILED_TRANSACTIONS: CustomerTransaction[] = FAILED_TXN_SPECS.map((f, idx) => {
+    const createdAt = new Date(NOW.getTime() - f.hoursAgo * 60 * 60 * 1000);
+    return {
+        id: `txn_failed_demo_${String(idx + 1).padStart(3, "0")}`,
+        customer_id: synthCustomerId(f.synthIdx),
+        branch_id: SOUTH,
+        kind: f.kind,
+        product_id: f.productId,
+        name: f.productLabel,
+        amount_aed: f.amountAed,
+        status: f.status,
+        payment_method: "card",
+        payment_source: "customer_portal",
+        payment_type: "recurring",
+        transaction_type: "sale",
+        failure_reason: f.failureReason,
+        retry_attempt: 1,
+        recovered: false,
+        created_at: isoStamp(createdAt),
+    };
+});
+
+// ── 3. At-risk `last_visit_iso` overrides ─────────────────────────────
+//
+// A patch table: synthetic customer id → new `last_visit_iso` in the
+// 14-30 day window so the at-risk modal always has 12 rows to render.
+// Consumers (`customers.ts`) spread this over the base row via
+// `Object.assign`. Only synthetic ids 0..7 (guaranteed active by the
+// SYNTH_STATUSES cycle) and 10..13 (next batch of actives) are used
+// so no inactive/archived customer accidentally lands in a modal
+// that filters by status="active". Total: 12 rows.
+
+const AT_RISK_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
+const AT_RISK_DAYS    = [15, 18, 20, 22, 24, 26, 28, 29, 16, 19, 21, 27];
+
+export const DEMO_NOW_AT_RISK_LAST_VISITS: Record<string, string> =
+    Object.fromEntries(
+        AT_RISK_INDICES.map((idx, i) => [synthCustomerId(idx), isoDay(daysAgo(AT_RISK_DAYS[i]))]),
+    );
