@@ -155,12 +155,13 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
             <button type="button" onClick={onClick}
                 style={{ backgroundColor: cls.color.bg, borderLeft: `4px solid ${cls.color.border}`, ...baseStyle }}
                 className={cn(
-                    // Extra bottom padding (pb-4) leaves room for the
-                    // 4px progress bar without touching the meta row;
-                    // gap-1.5 opens the interior so a 3-row card feels
-                    // balanced against the Recent activity list next
-                    // to it on the dashboard.
-                    "relative w-full rounded-[10px] pl-4 pr-4 pt-3 pb-4 flex flex-col gap-1.5 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden min-h-[92px]",
+                    // Progress bar sits INSIDE the card body now (Figma
+                    // 7798:80399 review Jul 2026) — the previous version
+                    // pinned it to the bottom edge which looked like a
+                    // hairline rule instead of a filled indicator. Card
+                    // is a plain flex column with rounded corners honoured
+                    // by all children.
+                    "relative w-full rounded-[10px] px-4 py-3 flex flex-col gap-2 text-left cursor-pointer hover:brightness-95 transition-all min-h-[96px]",
                     className,
                 )}>
                 {/* Title row + Ongoing pill / participant glyph. */}
@@ -198,14 +199,16 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                         {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
                     </span>
                 </div>
-                {/* Capacity progress bar — pinned to the bottom edge of
-                    every LG card so admins scan capacity at a glance
-                    regardless of status. Track is neutral gray; fill
-                    uses the card's category border colour so it reads
-                    as a natural extension of the left accent stripe. */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#e4e7ec] overflow-hidden">
+                {/* Capacity progress bar — inline at the bottom of the
+                    card body with the same horizontal padding as the
+                    meta row above. Track is a neutral gray rounded
+                    pill; fill uses the card's category border colour
+                    so it reads as an extension of the left accent
+                    stripe. mt-auto pushes it to the bottom so short
+                    cards still align their bars. */}
+                <div className="mt-auto w-full h-1.5 bg-white/70 rounded-full overflow-hidden">
                     <div
-                        className="h-full transition-all"
+                        className="h-full rounded-full transition-all"
                         style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
                     />
                 </div>

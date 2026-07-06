@@ -32,9 +32,12 @@ import {
     SlashCircle01, Star01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { TABLE_TH, TABLE_TD } from "@/lib/table-styles";
 import {
     useAppStore, type Customer, type CustomerPlan,
     type CustomerTransaction, type ClassSchedule,
@@ -57,6 +60,13 @@ interface ModalShellProps {
      *  Figma widths except the wider Under-filled variant. */
     width?: number;
 }
+
+/** Fixed modal height across every drill-down so switching between the
+ *  four (renewal → failed → at-risk → under-filled) doesn't jump the
+ *  viewport. Client feedback Jul 2026. Chosen to match the Figma
+ *  mockups' visible body height plus header + footer chrome. Falls back
+ *  to viewport minus 48px gutter on smaller screens. */
+const MODAL_FIXED_HEIGHT = 780;
 
 function ModalShell({
     open, onClose, title, subtitle, children, footer, width = 900,
@@ -86,10 +96,10 @@ function ModalShell({
             />
             <div
                 onClick={e => e.stopPropagation()}
-                style={{ maxWidth: width }}
+                style={{ maxWidth: width, height: `min(${MODAL_FIXED_HEIGHT}px, calc(100vh - 48px))` }}
                 className={cn(
                     "relative bg-white rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
-                    "flex flex-col w-full max-h-[calc(100vh-48px)] overflow-hidden",
+                    "flex flex-col w-full overflow-hidden",
                 )}
             >
                 {/* Header */}
@@ -112,7 +122,10 @@ function ModalShell({
                     </button>
                 </div>
                 <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
-                {/* Body — scrolls when the table overflows */}
+                {/* Body — scrolls when the table overflows. Each modal's
+                    body wraps its table in an inner `px-6` container so
+                    the table edges align with the header padding — same
+                    convention every admin list page follows. */}
                 <div className="flex-1 min-h-0 overflow-y-auto">
                     {children}
                 </div>
@@ -128,6 +141,41 @@ function ModalShell({
             </div>
         </div>,
         document.body,
+    );
+}
+
+// ─── Bulk action bar (Renewal-due only) ────────────────────────────────────
+//
+// Lifted verbatim from `/admin/customers` (`BulkActionBar` at
+// customers/page.tsx:334) so the modal's multi-select toolbar matches
+// every other admin list page — floating pill anchored to the bottom of
+// the viewport with a count + clear + action buttons. Kept scoped to
+// this file (not extracted to /patterns) because the Renewal-due modal
+// is the only surface here that supports bulk selection.
+
+function RenewalBulkBar({ count, onClear, onSendReminder }: {
+    count: number;
+    onClear: () => void;
+    onSendReminder: () => void;
+}) {
+    if (count === 0) return null;
+    return (
+        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-[210]">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
+                <button type="button" onClick={onClear}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    {count} selected
+                    <XClose className="w-5 h-5 text-[#667085]" />
+                </button>
+                <div className="flex items-center gap-3">
+                    <Button variant="secondary-gray" size="sm"
+                        leftIcon={<Bell01 className="w-5 h-5 text-[#667085]" />}
+                        onClick={onSendReminder}>
+                        Send reminder
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -182,8 +230,13 @@ function CustomerCell({ c }: { c: Customer }) {
     );
 }
 
-const TH = "px-6 py-3 text-left text-[12px] font-medium text-[#667085]";
-const TD = "px-6 py-4 align-middle";
+// Shared table styles are imported from `@/lib/table-styles`
+// (`TABLE_TH` / `TABLE_TD`) — used verbatim so the four drill-down
+// modals scan identically to every other admin list table. The
+// `align-middle` extension is applied per-cell where a row's inner
+// content taller than a single line would otherwise land top-aligned.
+const TH = TABLE_TH;
+const TD = cn(TABLE_TD, "align-middle");
 
 /** "Mar 25, 2026" — matches the Figma date format across every modal. */
 function fmtDate(iso: string | undefined): string {
@@ -251,17 +304,26 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
                 const isExpired = expiryDate < todayISO || p.status === "expired";
                 return { plan: p, customer: c, expiryDate, isExpired };
             })
-            .filter((r): r is NonNullable<typeof r> => !!r)
-            .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
+            .filter((r): r is NonNullable<typeof r> => !!r);
     }, [customerPlans, customers, branchId]);
+
+    // Sortable columns — Customer / Membership / Status / Renews.
+    // Sorting cycles desc → asc → off just like every other admin table.
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer:   (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            membership: (a, b) => a.plan.name.localeCompare(b.plan.name),
+            status:     (a, b) => Number(a.isExpired) - Number(b.isExpired),
+            renews:     (a, b) => a.expiryDate.localeCompare(b.expiryDate),
+        });
 
     const totalAtStake = useMemo(
         () => rows.reduce((sum, r) => sum + (r.plan.nextBillingAmountAed ?? r.plan.priceAed ?? 0), 0),
         [rows],
     );
 
-    const totalRows = rows.length;
-    const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
     const allChecked = paged.length > 0 && paged.every(r => selected.has(r.plan.id));
 
     function toggleAll() {
@@ -312,104 +374,111 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
                 </>
             }
             footer={
-                <div className="flex items-center gap-4">
-                    {selected.size > 0 && (
-                        <button
-                            type="button"
-                            onClick={sendReminderBulk}
-                            className="text-[14px] font-semibold text-[#175cd3] hover:text-[#0e4890] transition-colors"
-                        >
-                            Send reminder to {selected.size} selected
-                        </button>
-                    )}
-                    <div className="flex-1" />
-                    <Pagination
-                        variant="compact"
-                        page={page}
-                        total={totalRows}
-                        pageSize={pageSize}
-                        onPage={setPage}
-                        onPageSize={size => { setPageSize(size); setPage(1); }}
-                    />
-                </div>
+                <Pagination
+                    variant="compact"
+                    page={page}
+                    total={totalRows}
+                    pageSize={pageSize}
+                    onPage={setPage}
+                    onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
             }
         >
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-[#e4e7ec]">
-                        <th className={cn(TH, "w-10")}>
-                            <input
-                                type="checkbox"
-                                checked={allChecked}
-                                onChange={toggleAll}
-                                className="w-4 h-4 rounded-[4px] border-[#d0d5dd] text-[#658774] focus:ring-[#aad4bd] cursor-pointer"
-                            />
-                        </th>
-                        <th className={TH}>Customer</th>
-                        <th className={TH}>Membership name</th>
-                        <th className={TH}>Status</th>
-                        <th className={TH}>Renews</th>
-                        <th className={cn(TH, "w-14")} />
-                    </tr>
-                </thead>
-                <tbody>
-                    {paged.map(r => (
-                        <tr key={r.plan.id} className="border-b border-[#f2f4f7] last:border-b-0 hover:bg-[#f9fafb]/50 transition-colors">
-                            <td className={TD}>
+            {/* Floating bulk-action bar — lifted from /admin/customers so
+                the multi-select toolbar matches every other admin list. */}
+            <RenewalBulkBar
+                count={selected.size}
+                onClear={() => setSelected(new Set())}
+                onSendReminder={sendReminderBulk}
+            />
+            {/* Table wrapped in `px-6` so cell edges align with the header
+                text padding — same convention every admin list follows. */}
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={cn(TH, "w-10")}>
                                 <input
                                     type="checkbox"
-                                    checked={selected.has(r.plan.id)}
-                                    onChange={() => toggleOne(r.plan.id)}
+                                    checked={allChecked}
+                                    onChange={toggleAll}
                                     className="w-4 h-4 rounded-[4px] border-[#d0d5dd] text-[#658774] focus:ring-[#aad4bd] cursor-pointer"
                                 />
-                            </td>
-                            <td className={TD}><CustomerCell c={r.customer} /></td>
-                            <td className={TD}>
-                                <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.plan.name}</p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">AED {(r.plan.priceAed ?? 0).toLocaleString("en-US")}</p>
-                            </td>
-                            <td className={TD}>
-                                <StatusBadge
-                                    type="customer"
-                                    status={r.isExpired ? "archived" : "active"}
-                                    label={r.isExpired ? "Expired" : "Active"}
-                                    className={r.isExpired ? "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" : ""}
-                                />
-                            </td>
-                            <td className={cn(TD, "text-[14px] text-[#475467]")}>{fmtDate(r.plan.expiryISO)}</td>
-                            <td className={TD}>
-                                <RowActions
-                                    items={r.isExpired ? [
-                                        {
-                                            label: "Send reminder",
-                                            icon: Bell01,
-                                            onClick: () => sendReminderOne(`${r.customer.firstName} ${r.customer.lastName}`),
-                                        },
-                                        {
-                                            label: "Renew membership",
-                                            icon: RefreshCcw01,
-                                            onClick: () => renewMembership(`${r.customer.firstName} ${r.customer.lastName}`),
-                                        },
-                                    ] : [
-                                        {
-                                            label: "Send reminder",
-                                            icon: Bell01,
-                                            onClick: () => sendReminderOne(`${r.customer.firstName} ${r.customer.lastName}`),
-                                        },
-                                    ]}
-                                />
-                            </td>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="membership" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Membership name</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="renews" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Renews</SortableHeader>
+                            </th>
+                            <th className={cn(TH, "w-14")} />
                         </tr>
-                    ))}
-                    {paged.length === 0 && (
-                        <tr>
-                            <td colSpan={6} className="px-6 py-16 text-center text-[14px] text-[#667085]">
-                                No memberships due in the next 30 days.
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.plan.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                <td className={TD}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selected.has(r.plan.id)}
+                                        onChange={() => toggleOne(r.plan.id)}
+                                        className="w-4 h-4 rounded-[4px] border-[#d0d5dd] text-[#658774] focus:ring-[#aad4bd] cursor-pointer"
+                                    />
+                                </td>
+                                <td className={TD}><CustomerCell c={r.customer} /></td>
+                                <td className={TD}>
+                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.plan.name}</p>
+                                    <p className="text-[14px] text-[#667085] leading-[20px]">AED {(r.plan.priceAed ?? 0).toLocaleString("en-US")}</p>
+                                </td>
+                                <td className={TD}>
+                                    <StatusBadge
+                                        type="customer"
+                                        status={r.isExpired ? "archived" : "active"}
+                                        label={r.isExpired ? "Expired" : "Active"}
+                                        className={r.isExpired ? "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" : ""}
+                                    />
+                                </td>
+                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{fmtDate(r.plan.expiryISO)}</td>
+                                <td className={TD}>
+                                    <RowActions
+                                        items={r.isExpired ? [
+                                            {
+                                                label: "Send reminder",
+                                                icon: Bell01,
+                                                onClick: () => sendReminderOne(`${r.customer.firstName} ${r.customer.lastName}`),
+                                            },
+                                            {
+                                                label: "Renew membership",
+                                                icon: RefreshCcw01,
+                                                onClick: () => renewMembership(`${r.customer.firstName} ${r.customer.lastName}`),
+                                            },
+                                        ] : [
+                                            {
+                                                label: "Send reminder",
+                                                icon: Bell01,
+                                                onClick: () => sendReminderOne(`${r.customer.firstName} ${r.customer.lastName}`),
+                                            },
+                                        ]}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No memberships due in the next 30 days.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </ModalShell>
     );
 }
@@ -441,16 +510,23 @@ export function FailedPaymentsModal({ open, onClose, branchId }: FailedPaymentsM
                 if (!c) return null;
                 return { txn: t, customer: c };
             })
-            .filter((r): r is NonNullable<typeof r> => !!r)
-            .sort((a, b) => b.txn.createdAtISO.localeCompare(a.txn.createdAtISO));
+            .filter((r): r is NonNullable<typeof r> => !!r);
     }, [customerTransactions, customers, branchId]);
+
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer: (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            product:  (a, b) => a.txn.name.localeCompare(b.txn.name),
+            status:   (a, b) => a.txn.status.localeCompare(b.txn.status),
+            date:     (a, b) => a.txn.createdAtISO.localeCompare(b.txn.createdAtISO),
+        });
 
     const recoverableAed = useMemo(
         () => rows.reduce((sum, r) => sum + Math.abs(r.txn.amountAed), 0),
         [rows],
     );
-    const totalRows = rows.length;
-    const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
 
     return (
         <ModalShell
@@ -480,40 +556,50 @@ export function FailedPaymentsModal({ open, onClose, branchId }: FailedPaymentsM
                 />
             }
         >
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-[#e4e7ec]">
-                        <th className={TH}>Customer</th>
-                        <th className={TH}>Products or service</th>
-                        <th className={TH}>Status</th>
-                        <th className={TH}>Date &amp; Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {paged.map(r => (
-                        <tr key={r.txn.id} className="border-b border-[#f2f4f7] last:border-b-0 hover:bg-[#f9fafb]/50 transition-colors">
-                            <td className={TD}><CustomerCell c={r.customer} /></td>
-                            <td className={TD}>
-                                <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.txn.name}</p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
-                            </td>
-                            <td className={TD}>
-                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]">
-                                    Failed
-                                </span>
-                            </td>
-                            <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.txn.createdAtISO)}</td>
-                        </tr>
-                    ))}
-                    {paged.length === 0 && (
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
                         <tr>
-                            <td colSpan={4} className="px-6 py-16 text-center text-[14px] text-[#667085]">
-                                No failed payments to recover.
-                            </td>
+                            <th className={TH}>
+                                <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products or service</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; Time</SortableHeader>
+                            </th>
                         </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.txn.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                <td className={TD}><CustomerCell c={r.customer} /></td>
+                                <td className={TD}>
+                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.txn.name}</p>
+                                    <p className="text-[14px] text-[#667085] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
+                                </td>
+                                <td className={TD}>
+                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]">
+                                        Failed
+                                    </span>
+                                </td>
+                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.txn.createdAtISO)}</td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No failed payments to recover.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </ModalShell>
     );
 }
@@ -573,12 +659,19 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                 }
                 return { customer: c, planLabel, pattern };
             })
-            .filter((r): r is NonNullable<typeof r> => !!r)
-            .sort((a, b) => (b.customer.lastVisitISO ?? "").localeCompare(a.customer.lastVisitISO ?? ""));
+            .filter((r): r is NonNullable<typeof r> => !!r);
     }, [customers, memberships, packages, classBookings, branchId]);
 
-    const totalRows = rows.length;
-    const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer:  (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            lastVisit: (a, b) => (a.customer.lastVisitISO ?? "").localeCompare(b.customer.lastVisitISO ?? ""),
+            plan:      (a, b) => a.planLabel.localeCompare(b.planLabel),
+            pattern:   (a, b) => a.pattern.localeCompare(b.pattern),
+        });
+
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
 
     function viewCustomer(id: string) {
         router.push(`/customers/${id}?returnTo=${encodeURIComponent("/admin/dashboard")}`);
@@ -614,50 +707,60 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                 />
             }
         >
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-[#e4e7ec]">
-                        <th className={TH}>Customer</th>
-                        <th className={TH}>Last visit</th>
-                        <th className={TH}>Plan</th>
-                        <th className={TH}>Pattern</th>
-                        <th className={cn(TH, "w-14")} />
-                    </tr>
-                </thead>
-                <tbody>
-                    {paged.map(r => (
-                        <tr key={r.customer.id} className="border-b border-[#f2f4f7] last:border-b-0 hover:bg-[#f9fafb]/50 transition-colors">
-                            <td className={TD}><CustomerCell c={r.customer} /></td>
-                            <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDate(r.customer.lastVisitISO)}</td>
-                            <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.planLabel}</td>
-                            <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{r.pattern}</td>
-                            <td className={TD}>
-                                <RowActions
-                                    items={[
-                                        {
-                                            label: "View",
-                                            icon: Eye,
-                                            onClick: () => viewCustomer(r.customer.id),
-                                        },
-                                        {
-                                            label: "Win back",
-                                            icon: Users02,
-                                            onClick: winBack,
-                                        },
-                                    ]}
-                                />
-                            </td>
-                        </tr>
-                    ))}
-                    {paged.length === 0 && (
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
                         <tr>
-                            <td colSpan={5} className="px-6 py-16 text-center text-[14px] text-[#667085]">
-                                No customers in the at-risk window right now.
-                            </td>
+                            <th className={TH}>
+                                <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Last visit</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="plan" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Plan</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="pattern" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pattern</SortableHeader>
+                            </th>
+                            <th className={cn(TH, "w-14")} />
                         </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.customer.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                <td className={TD}><CustomerCell c={r.customer} /></td>
+                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDate(r.customer.lastVisitISO)}</td>
+                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.planLabel}</td>
+                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{r.pattern}</td>
+                                <td className={TD}>
+                                    <RowActions
+                                        items={[
+                                            {
+                                                label: "View",
+                                                icon: Eye,
+                                                onClick: () => viewCustomer(r.customer.id),
+                                            },
+                                            {
+                                                label: "Win back",
+                                                icon: Users02,
+                                                onClick: winBack,
+                                            },
+                                        ]}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No customers in the at-risk window right now.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </ModalShell>
     );
 }
@@ -692,12 +795,21 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
             .filter(s => s.status === "Upcoming" || s.status === "Ongoing")
             .filter(s => s.dateISO >= todayISO && s.dateISO <= in30ISO)
             .filter(s => s.capacity > 0 && (s.booked / s.capacity) < 0.5)
-            .filter(s => !branchId || s.branchId === branchId)
-            .sort((a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`));
+            .filter(s => !branchId || s.branchId === branchId);
     }, [classSchedules, branchId]);
 
-    const totalRows = rows.length;
-    const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<ClassSchedule>(rows, {
+            datetime:   (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
+            className:  (a, b) => a.name.localeCompare(b.name),
+            location:   (a, b) => (a.room ?? "").localeCompare(b.room ?? ""),
+            attendance: (a, b) => (a.booked / Math.max(1, a.capacity)) - (b.booked / Math.max(1, b.capacity)),
+            rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
+            status:     (a, b) => a.status.localeCompare(b.status),
+        });
+
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
 
     function viewDetails(id: string) {
         router.push(`/schedule/${id}?returnTo=${encodeURIComponent("/admin/dashboard")}`);
@@ -757,92 +869,106 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
                 />
             }
         >
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-[#e4e7ec]">
-                        <th className={TH}>Date &amp; time</th>
-                        <th className={TH}>Class name</th>
-                        <th className={TH}>Location</th>
-                        <th className={TH}>Attendance</th>
-                        <th className={TH}>Rating</th>
-                        <th className={TH}>Status</th>
-                        <th className={cn(TH, "w-14")} />
-                    </tr>
-                </thead>
-                <tbody>
-                    {paged.map(s => {
-                        const fillPct = s.capacity > 0 ? Math.min(100, Math.round((s.booked / s.capacity) * 100)) : 0;
-                        return (
-                            <tr key={s.id} className="border-b border-[#f2f4f7] last:border-b-0 hover:bg-[#f9fafb]/50 transition-colors">
-                                <td className={TD}>
-                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{fmtDayDate(s.dateISO)}</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px] whitespace-nowrap">{fmtStartEnd(s.startTime, s.endTime)}</p>
-                                </td>
-                                <td className={TD}>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-[8px] bg-[#f2f4f7] flex items-center justify-center overflow-hidden shrink-0">
-                                            <span className="text-[10px] font-semibold text-[#475467] px-1 text-center leading-[12px]">
-                                                {s.category?.slice(0, 3).toUpperCase() ?? "CLS"}
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TH}>
+                                <SortableHeader sortKey="datetime" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="className" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class name</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="location" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Location</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="rating" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rating</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                            </th>
+                            <th className={cn(TH, "w-14")} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(s => {
+                            const fillPct = s.capacity > 0 ? Math.min(100, Math.round((s.booked / s.capacity) * 100)) : 0;
+                            return (
+                                <tr key={s.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                    <td className={TD}>
+                                        <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{fmtDayDate(s.dateISO)}</p>
+                                        <p className="text-[14px] text-[#667085] leading-[20px] whitespace-nowrap">{fmtStartEnd(s.startTime, s.endTime)}</p>
+                                    </td>
+                                    <td className={TD}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-[8px] bg-[#f2f4f7] flex items-center justify-center overflow-hidden shrink-0">
+                                                <span className="text-[10px] font-semibold text-[#475467] px-1 text-center leading-[12px]">
+                                                    {s.category?.slice(0, 3).toUpperCase() ?? "CLS"}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <p className="text-[14px] font-semibold text-[#101828] leading-[20px] truncate">{s.name}</p>
+                                                <p className="text-[14px] text-[#667085] leading-[20px] truncate">with {s.instructorName}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className={cn(TD, "text-[14px] text-[#475467]")}>{s.room ?? "—"}</td>
+                                    <td className={TD}>
+                                        <div className="flex items-center gap-2 min-w-[100px]">
+                                            <div className="flex-1 h-1.5 bg-[#e4e7ec] rounded-full overflow-hidden">
+                                                <div className="h-full bg-[#658774] transition-all" style={{ width: `${fillPct}%` }} />
+                                            </div>
+                                            <span className="text-[14px] text-[#475467] whitespace-nowrap">{s.booked}/{s.capacity}</span>
+                                        </div>
+                                    </td>
+                                    <td className={TD}>
+                                        <div className="flex items-center gap-1">
+                                            {[0, 1, 2, 3, 4].map(i => (
+                                                <Star01
+                                                    key={i}
+                                                    className={cn(
+                                                        "w-4 h-4",
+                                                        i < Math.round(s.rating ?? 0)
+                                                            ? "text-[#f79009] fill-[#f79009]"
+                                                            : "text-[#d0d5dd]",
+                                                    )}
+                                                />
+                                            ))}
+                                            <span className="ml-1 text-[14px] text-[#475467]">
+                                                {(s.rating ?? 0).toFixed(0)} ({s.ratingCount ?? 0} ratings)
                                             </span>
                                         </div>
-                                        <div className="flex flex-col min-w-0">
-                                            <p className="text-[14px] font-semibold text-[#101828] leading-[20px] truncate">{s.name}</p>
-                                            <p className="text-[14px] text-[#667085] leading-[20px] truncate">with {s.instructorName}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{s.room ?? "—"}</td>
-                                <td className={TD}>
-                                    <div className="flex items-center gap-2 min-w-[100px]">
-                                        <div className="flex-1 h-1.5 bg-[#e4e7ec] rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#658774] transition-all" style={{ width: `${fillPct}%` }} />
-                                        </div>
-                                        <span className="text-[14px] text-[#475467] whitespace-nowrap">{s.booked}/{s.capacity}</span>
-                                    </div>
-                                </td>
-                                <td className={TD}>
-                                    <div className="flex items-center gap-1">
-                                        {[0, 1, 2, 3, 4].map(i => (
-                                            <Star01
-                                                key={i}
-                                                className={cn(
-                                                    "w-4 h-4",
-                                                    i < Math.round(s.rating ?? 0)
-                                                        ? "text-[#f79009] fill-[#f79009]"
-                                                        : "text-[#d0d5dd]",
-                                                )}
-                                            />
-                                        ))}
-                                        <span className="ml-1 text-[14px] text-[#475467]">
-                                            {(s.rating ?? 0).toFixed(0)} ({s.ratingCount ?? 0} ratings)
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className={TD}>
-                                    <StatusBadge type="classLifecycle" status={s.status} />
-                                </td>
-                                <td className={TD}>
-                                    <RowActions
-                                        items={[
-                                            { label: "View details",  icon: Eye,             onClick: () => viewDetails(s.id) },
-                                            { label: "Edit class",    icon: Pencil02,        onClick: () => editClass(s.id) },
-                                            { label: "Promote class", icon: Announcement01,  onClick: promoteClass },
-                                            { label: "Cancel class",  icon: SlashCircle01,   onClick: () => cancelClass(s), danger: true },
-                                        ]}
-                                    />
+                                    </td>
+                                    <td className={TD}>
+                                        <StatusBadge type="classLifecycle" status={s.status} />
+                                    </td>
+                                    <td className={TD}>
+                                        <RowActions
+                                            items={[
+                                                { label: "View details",  icon: Eye,             onClick: () => viewDetails(s.id) },
+                                                { label: "Edit class",    icon: Pencil02,        onClick: () => editClass(s.id) },
+                                                { label: "Promote class", icon: Announcement01,  onClick: promoteClass },
+                                                { label: "Cancel class",  icon: SlashCircle01,   onClick: () => cancelClass(s), danger: true },
+                                            ]}
+                                        />
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={7} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No under-filled classes in the next 30 days.
                                 </td>
                             </tr>
-                        );
-                    })}
-                    {paged.length === 0 && (
-                        <tr>
-                            <td colSpan={7} className="px-6 py-16 text-center text-[14px] text-[#667085]">
-                                No under-filled classes in the next 30 days.
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </ModalShell>
     );
 }
