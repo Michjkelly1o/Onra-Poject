@@ -9,7 +9,7 @@
 // module singleton (same pattern as bookingDraft). Business rule (CLAUDE.md):
 // ONE membership OR multiple credit packages — never both.
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useAppStore } from "@/lib/store";
 
 export type PlanKind = "membership" | "package" | "gift_card";
@@ -46,10 +46,17 @@ export interface CartItem extends PlanRow {
     message?: string;
 }
 
-export const purchaseCart: { classId: string | null; items: CartItem[]; promoId: string | null } = {
+export const purchaseCart: {
+    classId: string | null;
+    items: CartItem[];
+    promoId: string | null;
+    /** Selected payment method id — persists across the "Add gift card" round-trip. */
+    paymentMethod: string;
+} = {
     classId: null,
     items: [],
     promoId: null,
+    paymentMethod: "apple",
 };
 
 export function ensurePurchaseCart(classId: string): void {
@@ -57,6 +64,52 @@ export function ensurePurchaseCart(classId: string): void {
         purchaseCart.classId = classId;
         purchaseCart.items = [];
         purchaseCart.promoId = null;
+        purchaseCart.paymentMethod = "apple";
+    }
+}
+
+// ── Gift card as a payment method (checkout ⇄ Gift card page round-trip) ──────
+//
+// "Add gift card" opens the Gift card page in PICKER mode; its "Use gift card"
+// requests the checkout select the (combined-balance) gift-card method and pops
+// back. The apply is a reactive one-shot signal so the CheckoutCart applies it on
+// return whether or not the page re-mounts.
+
+const giftPicker = { pickMode: false };
+let giftApplySignal = false;
+const giftApplyListeners = new Set<() => void>();
+
+/** Checkout "Add gift card" — the Gift card page should open as a picker. */
+export function openGiftCardPicker(): void {
+    giftPicker.pickMode = true;
+}
+/** Read + clear the picker flag (Gift card page, once on mount). */
+export function consumeGiftCardPickMode(): boolean {
+    const v = giftPicker.pickMode;
+    giftPicker.pickMode = false;
+    return v;
+}
+/** "Use gift card" — request the checkout select the gift-card method. */
+export function requestGiftCardPayment(): void {
+    giftApplySignal = true;
+    giftApplyListeners.forEach((l) => l());
+}
+/** Reactive read of the pending apply signal (CheckoutCart subscribes). */
+export function useGiftCardApplySignal(): boolean {
+    return useSyncExternalStore(
+        (cb) => {
+            giftApplyListeners.add(cb);
+            return () => giftApplyListeners.delete(cb);
+        },
+        () => giftApplySignal,
+        () => false,
+    );
+}
+/** Clear the apply signal once consumed. */
+export function consumeGiftCardApply(): void {
+    if (giftApplySignal) {
+        giftApplySignal = false;
+        giftApplyListeners.forEach((l) => l());
     }
 }
 
@@ -202,16 +255,27 @@ function fmtDate(iso?: string): string {
         : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Non-archived promos, mapped to the customer voucher card shape. */
-export function usePromos(): PromoVM[] {
+/** Which purchase the voucher list is being shown for. Appointments are AED-priced
+ *  services — the seeded class/package vouchers (action `buy_package` / `book_class`)
+ *  don't apply to them, so in that scope they surface DISABLED. */
+export type PromoScope = "class" | "appointment";
+
+/** Non-archived promos, mapped to the customer voucher card shape. `scope` gates
+ *  which vouchers can actually be applied (the rest render disabled). */
+export function usePromos(scope: PromoScope = "class"): PromoVM[] {
     const promoCodes = useAppStore((s) => s.promoCodes);
     return useMemo(
         () =>
             promoCodes
                 .filter((p) => p.status !== "archived")
                 .map((p) => {
-                    const applicable = p.offer_type === "percentage" || p.offer_type === "fixed_amount";
-                    const label = !applicable
+                    // A monetary voucher (percentage / fixed-amount) can reduce a total.
+                    const monetary = p.offer_type === "percentage" || p.offer_type === "fixed_amount";
+                    // Class-/package-scoped vouchers target plan purchases + class bookings —
+                    // not 1-on-1 or open-session appointments.
+                    const classScoped = p.action === "buy_package" || p.action === "book_class";
+                    const applicable = monetary && (scope === "appointment" ? !classScoped : true);
+                    const label = !monetary
                         ? (p.name ?? p.code)
                         : p.discount_type === "fixed"
                           ? `AED ${p.discount_value} OFF`
@@ -220,10 +284,10 @@ export function usePromos(): PromoVM[] {
                         id: p.id,
                         code: p.code,
                         label,
-                        category: applicable ? "CLASS PACKAGES" : "WEEKEND",
+                        category: monetary ? "CLASS PACKAGES" : "WEEKEND",
                         description:
                             p.description ??
-                            (applicable
+                            (monetary
                                 ? `Get ${label.toLowerCase()} when you purchase any class package. Perfect time to stay consistent and save more on your workouts.`
                                 : (p.name ?? p.code)),
                         validUntil: fmtDate(p.valid_until),
@@ -236,7 +300,7 @@ export function usePromos(): PromoVM[] {
                             "All Forma Studio branches",
                     };
                 }),
-        [promoCodes],
+        [promoCodes, scope],
     );
 }
 

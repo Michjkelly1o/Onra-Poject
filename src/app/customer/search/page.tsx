@@ -33,6 +33,7 @@ import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ScheduleDateBar } from "@/components/customer/classes/ScheduleDateBar";
 import { ClassScheduleCard } from "@/components/customer/classes/ClassScheduleCard";
 import { AppointmentCard } from "@/components/customer/appointments/AppointmentCard";
+import { resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassesFilterModal } from "@/components/customer/home/ClassesFilterModal";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
@@ -226,19 +227,24 @@ export default function SearchPage() {
                                 coverImage={a.coverImage}
                                 coverColor={a.coverColor}
                                 capacity={a.capacity}
-                                onBook={() =>
+                                onBook={() => {
+                                    // Fresh entry — clear any abandoned instructor/slot pick.
+                                    resetAppointmentDraft();
                                     router.push(
                                         a.type === "private"
                                             ? `/customer/appointments/${a.id}/instructor`
                                             : `/customer/appointments/${a.id}/slot`,
-                                    )
-                                }
+                                    );
+                                }}
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-1 items-center justify-center">
-                        <SearchEmptyState />
+                    <div className="flex min-h-[calc(100dvh-260px)] flex-1 items-center justify-center">
+                        <SearchEmptyState
+                            title="No appointment found"
+                            description="Try selecting another branch to find available appointments."
+                        />
                     </div>
                 )}
             </div>

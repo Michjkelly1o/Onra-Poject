@@ -200,17 +200,20 @@ export default function PaymentSettingsPage() {
                     <div className="flex size-12 items-center justify-center rounded-full bg-[#fee4e2]">
                         <LinkBroken01 className="size-6 text-[#d92d20]" aria-hidden />
                     </div>
-                    <p className="text-sm leading-5 text-[#475467]">
-                        This will remove all of the payment information and no longer can be use.
-                    </p>
-                    <div className="flex w-full gap-3 pt-1">
-                        <Button variant="secondary-gray" size="lg" className="flex-1 rounded-full" onClick={() => setDisconnect(null)}>
-                            Cancel
-                        </Button>
-                        <Button variant="destructive-secondary" size="lg" className="flex-1 rounded-full" onClick={confirmDisconnect}>
-                            Disconnect
-                        </Button>
+                    <div>
+                        <p className="text-lg font-semibold leading-7 text-[#101828]">Disconnect payment method?</p>
+                        <p className="mt-1 text-sm leading-5 text-[#475467]">
+                            This will remove all of the payment information and it can no longer be used.
+                        </p>
                     </div>
+                    <Button
+                        variant="destructive-secondary"
+                        size="xl"
+                        className="mt-1 w-full rounded-full"
+                        onClick={confirmDisconnect}
+                    >
+                        Disconnect
+                    </Button>
                 </div>
             </CustomerSheet>
 

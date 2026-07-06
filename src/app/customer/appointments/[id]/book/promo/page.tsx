@@ -14,7 +14,7 @@ import { PromoCard } from "@/components/customer/products/PromoCard";
 export default function AppointmentPromoListPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
-    const promos = usePromos();
+    const promos = usePromos("appointment");
     const showToast = useAppStore((s) => s.showToast);
 
     const CHECKOUT = `/customer/appointments/${id}/book`;
@@ -40,7 +40,7 @@ export default function AppointmentPromoListPage() {
             apply(match);
             return;
         }
-        setError(match ? "This code has expired" : "Promo not found");
+        setError(match ? "This code doesn't apply to appointments" : "Promo not found");
     }
 
     const promoField = (

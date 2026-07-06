@@ -239,7 +239,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/customer/classes",             // class detail + book/checkout/plans/waiver/guest/processing/success
 
     // ── Customer → Appointment booking flow ──
-    "/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
+    //"/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
 
     // ── Customer → Instructor profile ──
     //"/customer/instructors",         // public instructor profile detail
@@ -263,9 +263,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // Same file convention as the instructor block above: the row in
     // the Profile landing stays visible; tapping it 404s until the
     // sub-page ships. Re-enable by commenting the matching line.
-    "/customer/profile/promo",       // apply a promo code
-    "/customer/profile/gift-cards",  // gift cards list + redeem/[code] flow
-    "/customer/profile/referrals",   // invite friends / referral rewards
+    //"/customer/profile/promo",       // apply a promo code
+    //"/customer/profile/gift-cards",  // gift cards list + redeem/[code] flow
+    //"/customer/profile/referrals",   // invite friends / referral rewards
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning

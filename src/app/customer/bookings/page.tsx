@@ -28,7 +28,7 @@ import { BookingCard } from "@/components/customer/bookings/BookingCard";
 import { BookingsFilterModal } from "@/components/customer/bookings/BookingsFilterModal";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
-import { to12h } from "@/lib/customer/dates";
+import { REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 
 function fmtShortDate(iso: string): string {
@@ -38,9 +38,18 @@ function fmtShortDate(iso: string): string {
 export default function BookingsPage() {
     const router = useRouter();
     const { upcoming, past } = useMemberBookings();
-    // Booked appointments (UI-only store) show in Upcoming alongside class bookings.
+    // Booked appointments (UI-only store) show alongside class bookings: active
+    // future ones under Upcoming, cancelled/past ones under Past.
     const apptBookings = useAppointmentBookings();
-    const showAppts = bookingsUi.tab === "upcoming" ? apptBookings : [];
+    const apptSplit = useMemo(() => {
+        // Date-based (like classes: today still counts as upcoming). Any non-cancelled
+        // record — including legacy rows written before `status` existed — is bookable.
+        return {
+            upcoming: apptBookings.filter((a) => a.status !== "cancelled" && a.slotISO >= REAL_TODAY_ISO),
+            past: apptBookings.filter((a) => a.status === "cancelled" || a.slotISO < REAL_TODAY_ISO),
+        };
+    }, [apptBookings]);
+    const showAppts = bookingsUi.tab === "upcoming" ? apptSplit.upcoming : apptSplit.past;
     const [, force] = useReducer((x) => x + 1, 0);
     // Draft + filterOpen persist in bookingsUi so they survive the "See all"
     // instructor screen round-trip (mirrors the Search filter).
@@ -65,6 +74,54 @@ export default function BookingsPage() {
     const baseList = tab === "upcoming" ? upcoming : past;
     const list = applyBookingFilters(baseList, applied);
     const fcount = bookingFilterCount(applied);
+
+    // Merge appointments + class bookings into ONE list sorted by date/time —
+    // Upcoming = soonest first, Past = most recent first — so the two kinds
+    // interleave chronologically instead of appointments always sitting on top.
+    const mergedRows: { sortKey: string; el: React.ReactNode }[] = [
+        ...showAppts.map((a) => ({
+            sortKey: `${a.slotISO}T${a.slotTime}`,
+            el: (
+                <BookingCard
+                    key={`appt-${a.id}`}
+                    name={a.name}
+                    date={fmtShortDate(a.slotISO)}
+                    time={to12h(a.slotTime)}
+                    location={a.branchName}
+                    status={
+                        a.status === "cancelled"
+                            ? { label: "Cancelled", tone: "error" as const }
+                            : tab === "past"
+                              ? { label: "Completed", tone: "success" as const }
+                              : { label: "Booked", tone: "success" as const }
+                    }
+                    mutedCover={a.status === "cancelled"}
+                    image={a.coverImage}
+                    imageColor={a.coverColor}
+                    onClick={() => router.push(`/customer/bookings/appointment/${a.id}`)}
+                />
+            ),
+        })),
+        ...list.map((b) => ({
+            sortKey: b.sortKey,
+            el: (
+                <BookingCard
+                    key={b.bookingId}
+                    name={b.name}
+                    date={b.dateShort}
+                    time={b.time}
+                    location={b.location}
+                    status={BOOKING_STATUS[b.viewStatus].card}
+                    mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
+                    image={b.coverImage}
+                    imageColor={b.coverColor}
+                    onClick={() => router.push(`/customer/bookings/${b.bookingId}`)}
+                />
+            ),
+        })),
+    ].sort((x, y) =>
+        tab === "upcoming" ? x.sortKey.localeCompare(y.sortKey) : y.sortKey.localeCompare(x.sortKey),
+    );
 
     // Instructors — the SAME shared, branch-scoped list as the Search filter.
     const instructors = useFilterInstructors();
@@ -144,35 +201,7 @@ export default function BookingsPage() {
                         />
                     )
                 ) : (
-                    <div className="flex flex-col gap-3">
-                        {showAppts.map((a) => (
-                            <BookingCard
-                                key={a.id}
-                                name={a.name}
-                                date={fmtShortDate(a.slotISO)}
-                                time={to12h(a.slotTime)}
-                                location={a.branchName}
-                                status={{ label: "Booked", tone: "success" }}
-                                image={a.coverImage}
-                                imageColor={a.coverColor}
-                                onClick={() => router.push(`/customer/bookings/appointment/${a.id}`)}
-                            />
-                        ))}
-                        {list.map((b) => (
-                            <BookingCard
-                                key={b.bookingId}
-                                name={b.name}
-                                date={b.dateShort}
-                                time={b.time}
-                                location={b.location}
-                                status={BOOKING_STATUS[b.viewStatus].card}
-                                mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
-                                image={b.coverImage}
-                                imageColor={b.coverColor}
-                                onClick={() => router.push(`/customer/bookings/${b.bookingId}`)}
-                            />
-                        ))}
-                    </div>
+                    <div className="flex flex-col gap-3">{mergedRows.map((r) => r.el)}</div>
                 )}
             </div>
 

@@ -8,7 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Clock, MarkerPin01, Percent03, Sale04, Tag01, Ticket01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
-import { ensurePurchaseCart, purchaseCart, usePromo } from "@/lib/customer/purchase";
+import { ensurePurchaseCart, purchaseCart, usePromos } from "@/lib/customer/purchase";
 import { PromoBanner } from "@/components/customer/products/PromoCard";
 import { Button } from "@/components/ui/button";
 
@@ -28,14 +28,14 @@ export default function AppointmentPromoDetailPage() {
     const { id, promoId } = useParams<{ id: string; promoId: string }>();
     const scrolled = useMainScrolled();
     const scrollable = useMainScrollable();
-    const promo = usePromo(promoId);
+    const promo = usePromos("appointment").find((p) => p.id === promoId) ?? null;
     const showToast = useAppStore((s) => s.showToast);
 
     const CHECKOUT = `/customer/appointments/${id}/book`;
     ensurePurchaseCart(`appointment-${id}`);
 
     function apply() {
-        if (!promo) return;
+        if (!promo || !promo.applicable) return;
         purchaseCart.promoId = promo.id;
         showToast("Promo applied", `${promo.label} has been applied.`, "success");
         router.replace(CHECKOUT);
@@ -83,7 +83,11 @@ export default function AppointmentPromoDetailPage() {
                         </div>
 
                         <div className="flex flex-col gap-4">
-                            <TermRow icon={Tag01}>Eligible for appointment bookings</TermRow>
+                            <TermRow icon={Tag01}>
+                                {promo.applicable
+                                    ? "Eligible for appointment bookings"
+                                    : "Not valid for appointments — this voucher applies to class packages"}
+                            </TermRow>
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <TermRow icon={Percent03}>
                                 Discount:{" "}
@@ -107,7 +111,13 @@ export default function AppointmentPromoDetailPage() {
                             scrollable ? "bg-white" : ""
                         }`}
                     >
-                        <Button variant="primary" size="xl" className="w-full rounded-full" onClick={apply}>
+                        <Button
+                            variant="primary"
+                            size="xl"
+                            className="w-full rounded-full"
+                            disabled={!promo.applicable}
+                            onClick={apply}
+                        >
                             Apply promo
                         </Button>
                     </div>

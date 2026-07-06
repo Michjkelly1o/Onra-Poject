@@ -20,6 +20,7 @@ import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
+import { ShareSheet } from "@/components/customer/shell/ShareSheet";
 
 const CHECK_IN_GUIDANCE = ["Arrive 10 minutes early", "Late entry not permitted after 5 min"];
 
@@ -43,7 +44,12 @@ export interface ClassDetailLayoutProps {
     heroBadge?: ReactNode;
     /** Desaturate the cover (cancelled / no-show bookings). */
     mutedCover?: boolean;
-    /** Rendered under the hero, above "Class details" (Booking Status card). */
+    /** Section heading over the description. Default "Class details". */
+    detailsHeading?: string;
+    /** Replaces the default 2×2 class info grid (Duration/Capacity/Instructor/Type)
+     *  — appointments pass their own Duration / Session-type / Instructor grid. */
+    infoGrid?: ReactNode;
+    /** Rendered under the hero, above the description (Booking Status card). */
     statusBlock?: ReactNode;
     /** Rendered after the Location section (Ratings section). */
     afterLocation?: ReactNode;
@@ -58,6 +64,8 @@ export function ClassDetailLayout({
     heroSubtitle,
     heroBadge,
     mutedCover,
+    detailsHeading,
+    infoGrid,
     statusBlock,
     afterLocation,
     actionZone,
@@ -67,6 +75,7 @@ export function ClassDetailLayout({
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
     const [expanded, setExpanded] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
 
     return (
         <div className="flex min-h-full flex-col">
@@ -82,7 +91,7 @@ export function ClassDetailLayout({
                 <div className="flex-1" />
                 <button
                     type="button"
-                    onClick={() => showToast("Share", `Share ${detail.name} — coming soon.`, "success")}
+                    onClick={() => setShareOpen(true)}
                     aria-label="Share"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
                 >
@@ -118,7 +127,7 @@ export function ClassDetailLayout({
 
                 {/* Class details */}
                 <section className="flex flex-col gap-2">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Class details</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[#101828]">{detailsHeading ?? "Class details"}</h2>
                     <p className={`text-sm font-normal leading-5 text-[#475467] ${expanded ? "" : "line-clamp-3"}`}>
                         {detail.description}
                     </p>
@@ -133,7 +142,8 @@ export function ClassDetailLayout({
                     )}
                 </section>
 
-                {/* Info grid */}
+                {/* Info grid — default class 2×2, or a caller-supplied grid (appointments). */}
+                {infoGrid ?? (
                 <div className="flex flex-col gap-4">
                     <div className="flex gap-4">
                         <InfoCell>
@@ -198,6 +208,7 @@ export function ClassDetailLayout({
                         </InfoCell>
                     </div>
                 </div>
+                )}
 
                 {detail.equipment.length > 0 && (
                     <>
@@ -257,7 +268,7 @@ export function ClassDetailLayout({
                         <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <p className="text-sm font-medium leading-5 text-[#101828]">
-                                {detail.room} - {detail.branchName}
+                                {detail.room ? `${detail.room} - ` : ""}{detail.branchName}
                             </p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{detail.branchAddress}</p>
                         </div>
@@ -276,6 +287,13 @@ export function ClassDetailLayout({
                     {actionZone}
                 </div>
             )}
+
+            <ShareSheet
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                message={`Check out ${detail.name} at ${detail.branchName} on Onra!`}
+                url={`https://onra.app/s/${detail.id}`}
+            />
         </div>
     );
 }

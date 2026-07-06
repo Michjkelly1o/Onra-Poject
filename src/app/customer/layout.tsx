@@ -52,7 +52,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                         sticky cluster (taller on Home, which also has the Book now button). */}
                     <main
                         className={`relative z-10 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-                            isFullScreen ? "pb-0" : isHome ? "pb-[172px]" : "pb-[96px]"
+                            isFullScreen ? "pb-0" : isHome ? "pb-[172px]" : "pb-[93px]"
                         }`}
                     >
                         {children}

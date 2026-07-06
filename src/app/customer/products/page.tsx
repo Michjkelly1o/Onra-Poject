@@ -45,6 +45,7 @@ export default function ProductsPage() {
     const { selectedBranchId, member } = useCurrentCustomerContext();
     const branches = useAppStore((s) => s.branches);
     const memberships = useAppStore((s) => s.memberships);
+    const customerPlans = useAppStore((s) => s.customerPlans);
     const showToast = useAppStore((s) => s.showToast);
     const { plans, giftCards } = useCatalogProducts();
     const activePlan = useActivePlan();
@@ -61,10 +62,26 @@ export default function ProductsPage() {
 
     // When the member already holds a membership, opening a different membership
     // shows Upgrade / Downgrade (by tier price) instead of Add to cart.
-    const currentMembership =
-        member?.planKind === "membership" && member.membershipId
-            ? memberships.find((m) => m.id === member.membershipId) ?? null
-            : null;
+    // A membership only "counts" while a matching plan is ACTIVE or FROZEN. A
+    // cancelled / expired plan is treated as no active plan → every plan (incl.
+    // a fresh membership or credit package) becomes purchasable again.
+    // The customer's actively-held membership plan (active or frozen), read straight
+    // from customerPlans — so a cancelled / expired plan (or a stale
+    // member.membershipId in persisted demo state) is correctly treated as "no
+    // active plan", and every plan becomes purchasable again.
+    const activeMembershipPlan =
+        member != null
+            ? customerPlans.find(
+                  (p) =>
+                      p.customerId === member.id &&
+                      p.kind === "membership" &&
+                      (p.status === "active" || p.status === "frozen"),
+              )
+            : undefined;
+    const heldMembership = !!activeMembershipPlan;
+    const currentMembership = activeMembershipPlan?.productId
+        ? memberships.find((m) => m.id === activeMembershipPlan.productId) ?? null
+        : null;
     function upgradeFor(p: PlanRow) {
         if (p.kind === "membership" && currentMembership && currentMembership.id !== p.id) {
             return {
@@ -108,8 +125,8 @@ export default function ProductsPage() {
     // One membership OR many packages may be in the cart (gift cards are separate).
     // Owning an active membership disables package purchases entirely.
     const hasPackageInCart = purchaseCart.items.some((i) => i.kind === "package");
-    const ownsMembership = member?.planKind === "membership";
-    const ownedMembershipId = ownsMembership ? member?.membershipId : undefined;
+    const ownsMembership = heldMembership;
+    const ownedMembershipId = activeMembershipPlan?.productId;
     // Unlimited memberships carry no `creditsRemaining` → treated as "has credits".
     const ownedHasCredits =
         ownsMembership && (member?.creditsRemaining === undefined || (member?.creditsRemaining ?? 0) > 0);

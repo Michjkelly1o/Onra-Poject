@@ -47,6 +47,8 @@ export function lookupGift(code: string): RedeemableGift | null {
 }
 
 const KEY = "onra-customer-redeemed-gift-cards";
+// Bump to force-reset previously-redeemed cards back to empty (demo re-test).
+const VERSION = 3;
 let redeemed: RedeemedGiftCard[] = [];
 let hydrated = false;
 const listeners = new Set<() => void>();
@@ -55,6 +57,13 @@ function hydrate() {
     if (hydrated || typeof window === "undefined") return;
     hydrated = true;
     try {
+        if (window.localStorage.getItem(`${KEY}-v`) !== String(VERSION)) {
+            // Version bump — discard old redeemed cards so the flow can be re-tested.
+            window.localStorage.removeItem(KEY);
+            window.localStorage.setItem(`${KEY}-v`, String(VERSION));
+            redeemed = [];
+            return;
+        }
         const raw = window.localStorage.getItem(KEY);
         if (raw) redeemed = JSON.parse(raw) as RedeemedGiftCard[];
     } catch {

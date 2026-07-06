@@ -191,22 +191,17 @@ export default function ProfilePage() {
                             You&apos;ll need to sign in again to access your bookings.
                         </p>
                     </div>
-                    <div className="flex w-full gap-3 pt-1">
-                        <Button variant="secondary-gray" size="lg" className="flex-1 rounded-full" onClick={() => setLogoutOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive-secondary"
-                            size="lg"
-                            className="flex-1 rounded-full"
-                            onClick={() => {
-                                setLogoutOpen(false);
-                                router.push("/customer");
-                            }}
-                        >
-                            Logout
-                        </Button>
-                    </div>
+                    <Button
+                        variant="destructive-secondary"
+                        size="xl"
+                        className="mt-1 w-full rounded-full"
+                        onClick={() => {
+                            setLogoutOpen(false);
+                            router.push("/customer");
+                        }}
+                    >
+                        Log out
+                    </Button>
                 </div>
             </CustomerSheet>
         </div>

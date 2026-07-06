@@ -181,7 +181,7 @@ export default function RateBookingPage() {
                                     type="button"
                                     onClick={() => toggleTag(t)}
                                     className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 text-[#344054] transition-colors ${
-                                        on ? "border-[1.5px] border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
+                                        on ? "border-2 border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
                                     {t}

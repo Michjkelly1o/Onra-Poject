@@ -6733,7 +6733,7 @@ export const useAppStore = create<AppState>()(persist(
         //     tax-rate types). Dispatch-time enforcement (POS/product/
         //     payroll picking the ACTIVE rate for a transaction date)
         //     lands in Phase 4 — for now the fields are stored/displayed.
-        version: 29,
+        version: 30,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
