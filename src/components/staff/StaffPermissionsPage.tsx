@@ -652,11 +652,20 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     }, [tab]);
 
     const rolesById = useMemo(() => new Map(roles.map(r => [r.id, r] as const)), [roles]);
+    // Defensive branch-scope guard: a branch-scoped role counts only
+    // staff whose branch actually matches. Prevents the "staffs" column
+    // + delete-gate from over-counting if the store transiently holds a
+    // mismatched pair (mirrors the guard on RoleDetailPage).
     const staffByRole = useMemo(() => {
         const m = new Map<string, number>();
-        for (const s of staff) m.set(s.roleId, (m.get(s.roleId) ?? 0) + 1);
+        for (const s of staff) {
+            const r = rolesById.get(s.roleId);
+            if (!r) continue;
+            if (r.branchId !== null && s.branchId !== r.branchId) continue;
+            m.set(s.roleId, (m.get(s.roleId) ?? 0) + 1);
+        }
         return m;
-    }, [staff]);
+    }, [staff, rolesById]);
 
     // ─── Filtered roles ────────────────────────────────────────────────────
     const filteredRoles = useMemo(() => {

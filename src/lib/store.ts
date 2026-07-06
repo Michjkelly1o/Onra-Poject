@@ -688,6 +688,11 @@ export interface ScheduleInstructor {
     initials: string;
     color: string;
     imageUrl?: string;
+    /** Branch the instructor belongs to (mirrors staff.branch_id). `null`
+     *  for Owner-type staff who span all locations. Consumers filter the
+     *  instructor picker by this so a class scheduled at Branch X can
+     *  only pick instructors whose branch is X (or is null). */
+    branchId: string | null;
 }
 
 /** Status for a directory instructor. Mirrors the customer/staff status model:
@@ -1837,6 +1842,7 @@ export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF_PROFILES.ma
     initials: s.initials,
     color: s.color_hex,
     imageUrl: s.image_url,
+    branchId: s.branch_id,
 }));
 
 // ─── Adapters (snake_case seed → camelCase store shape) ─────────────────────
@@ -6169,13 +6175,33 @@ export const useAppStore = create<AppState>()(persist(
         return id;
     },
     updateRole: (id, patch) =>
-        set(state => ({
+        set(state => {
             // Locked rows (Owner) ignore patches except status flips coming
             // from setRolesStatus (which uses a separate code path below).
-            roles: state.roles.map(r =>
-                r.id === id && !r.locked ? { ...r, ...patch } : r,
-            ),
-        })),
+            const before = state.roles.find(r => r.id === id);
+            if (!before || before.locked) return {};
+            const nextRole = { ...before, ...patch };
+            const nextRoles = state.roles.map(r => r.id === id ? nextRole : r);
+            // Branch-scope cascade: when a role's `branchId` changes to a
+            // non-null value, every staffer currently on this role must
+            // move with it — otherwise the role would silently hold
+            // cross-branch staff (the exact bug the client flagged).
+            // Owner-type roles (`null` branchId) skip the cascade because
+            // they legitimately span all locations. No-op when the branch
+            // wasn't touched.
+            const branchChanged =
+                patch.branchId !== undefined && patch.branchId !== before.branchId;
+            const shouldCascade =
+                branchChanged && nextRole.branchId !== null;
+            const nextStaff = shouldCascade
+                ? state.staff.map(s =>
+                    s.roleId === id && s.branchId !== nextRole.branchId
+                        ? { ...s, branchId: nextRole.branchId }
+                        : s,
+                )
+                : state.staff;
+            return { roles: nextRoles, staff: nextStaff };
+        }),
     setRolesStatus: (ids, status) =>
         set(state => ({
             roles: state.roles.map(r =>
@@ -6396,9 +6422,22 @@ export const useAppStore = create<AppState>()(persist(
     // reflect Staff & Permissions changes immediately.
     addStaff: (input) => {
         const id = input.id ?? `staff_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        // Branch-scope invariant: a staff's `branchId` MUST equal their
+        // role's `branchId` (unless the role is an Owner-type null-branch
+        // "all locations" role, in which case the caller's branch stands).
+        // Callers today all derive the staff's branch from the picked role
+        // (StaffFormPage.tsx:523, ChangeRoleModal.tsx:106) so this snap
+        // is a defensive no-op on the happy path — its only job is to
+        // stop future callers from ever inserting a mismatched pair.
+        const role = get().roles.find(r => r.id === input.roleId);
+        const coercedBranchId =
+            role && role.branchId !== null
+                ? role.branchId
+                : input.branchId;
         const next: Staff = {
             ...input,
             id,
+            branchId: coercedBranchId,
             // New staff start Pending unless the caller overrides.
             status: input.status,
             inviteSentAt: input.inviteSentAt ?? new Date().toISOString(),
@@ -6435,7 +6474,21 @@ export const useAppStore = create<AppState>()(persist(
         // Together with the forward cascade on `updateAccountProfile`,
         // edits flow bi-directionally and the two views never drift.
         set(state => {
-            const nextStaff = state.staff.map(s => s.id === id ? { ...s, ...patch } : s);
+            // Branch-scope invariant, applied on every patch. When the
+            // patch touches `roleId` and the new role is branch-scoped,
+            // snap `branchId` to the role's branch — same guarantee as
+            // `addStaff` above. Never leaves a mismatched pair in the
+            // store even if a future caller forgets to include the
+            // branch patch alongside the role patch.
+            const nextStaff = state.staff.map(s => {
+                if (s.id !== id) return s;
+                const merged = { ...s, ...patch };
+                const roleAfter = state.roles.find(r => r.id === merged.roleId);
+                if (roleAfter && roleAfter.branchId !== null) {
+                    merged.branchId = roleAfter.branchId;
+                }
+                return merged;
+            });
             const nextInstructors = syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]);
 
             const currentStaffId = (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
