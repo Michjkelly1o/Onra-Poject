@@ -37,6 +37,7 @@ import { InsightMetricCard, type Metric } from "@/components/insights/InsightMet
 import { useAppStore } from "@/lib/store";
 import { resolveRangePair } from "@/lib/kpi/date-range";
 import { computeFinancialKpis } from "@/lib/kpi/financial";
+import { computeClientKpis } from "@/lib/kpi/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +69,17 @@ const TABS: TabConfig[] = [
         //   payments-collected   → Revenue per class trend proxy (line)
         widgetIds: ["revenue-overview", "sales-by-product", "payments-status", "payments-collected"],
     },
-    { key: "client",    label: "Client",    widgetIds: [] },
+    {
+        key: "client",
+        label: "Client",
+        // Phase 3 hero charts — reuse existing Memberships widgets that
+        // map cleanly to the PDF's Client charts:
+        //   active-memberships   → Active members trend
+        //   active-subscriptions → Active recurring subscriptions trend
+        //   memberships-sold     → New sign-ups over time (proxy)
+        //   top-memberships      → Top spenders / most-purchased plans (ranked)
+        widgetIds: ["active-memberships", "active-subscriptions", "memberships-sold", "top-memberships"],
+    },
     { key: "class",     label: "Class",     widgetIds: [] },
     { key: "marketing", label: "Marketing", widgetIds: [] },
 ];
@@ -86,6 +97,7 @@ export default function KpiPage() {
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const customerPlans        = useAppStore(s => s.customerPlans);
     const customers            = useAppStore(s => s.customers);
+    const customerReferrals    = useAppStore(s => s.customerReferrals);
     const branches             = useAppStore(s => s.branches);
     const staff                = useAppStore(s => s.staff);
     const classSchedules       = useAppStore(s => s.classSchedules);
@@ -99,22 +111,22 @@ export default function KpiPage() {
     // the Reports shell UX.
     const branchFilter: Set<string> | null = null;
 
-    // Financial KPIs — recomputed when store slices or range change.
-    const financialKpis = useMemo(
-        () => computeFinancialKpis(
-            {
-                customerTransactions, customerPlans, customers, branches, staff,
-                classSchedules, classBookings,
-            } as unknown as import("@/lib/store").AppState,
-            range,
-            branchFilter,
-        ),
-        [customerTransactions, customerPlans, customers, branches, staff, classSchedules, classBookings, range, branchFilter],
-    );
+    // Pack the state slices into a single object for KPI helpers. Every
+    // helper reads through the same shape so adding a new tab is a
+    // one-import change.
+    const kpiState = useMemo(() => ({
+        customerTransactions, customerPlans, customers, customerReferrals,
+        branches, staff, classSchedules, classBookings,
+    } as unknown as import("@/lib/store").AppState),
+    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings]);
+
+    // KPI compute — memoised per tab, recomputed when slices or range change.
+    const financialKpis = useMemo(() => computeFinancialKpis(kpiState, range, branchFilter), [kpiState, range, branchFilter]);
+    const clientKpis    = useMemo(() => computeClientKpis(kpiState, range, branchFilter),    [kpiState, range, branchFilter]);
 
     const metricsByTab: Record<TabKey, Metric[]> = {
         financial: financialKpis,
-        client:    [],
+        client:    clientKpis,
         class:     [],
         marketing: [],
     };
