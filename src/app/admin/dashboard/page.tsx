@@ -21,6 +21,7 @@ import {
     Bell01,
     CreditCard01,
     UserX01,
+    UserCheck01,
 } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -533,16 +534,16 @@ export default function AdminDashboard() {
         return customerPlans.filter(p => inScope.has(p.customerId));
     }, [customerPlans, scopedCustomers, branchScopeId]);
 
-    // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364).
-    // Five cards replace the previous four:
-    //   Total sales / Total revenue / New customers / Bookings today /
-    //   Avg occupancy.
+    // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
+    // for Today, 7799:109180 for Performance). Each tab surfaces its own
+    // metric strip:
+    //   • Today at a glance  (5 cards): Total sales / Total revenue /
+    //                        New customers / Bookings today / Avg occupancy
+    //   • Performance        (4 cards): Today's revenue / Active members /
+    //                        Classes today / Bookings today
     // Every value reads live from the scoped slices so branch pick + all-
-    // locations aggregate stay in sync. "Bookings today" replaced the
-    // earlier "Total classes" per client review — clients wanted the
-    // metric to answer "how much activity is happening today" (booking
-    // count) rather than "how many classes are on the schedule".
-    const metrics = useMemo<DashboardMetric[]>(() => {
+    // locations aggregate stay in sync.
+    const { todayMetrics, performanceMetrics } = useMemo(() => {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
         // void / write-off rows so the two totals stay honest.
@@ -560,10 +561,15 @@ export default function AdminDashboard() {
             (c.createdAt ?? "").startsWith(todayISO),
         ).length;
 
+        // Active members — all-time count of customers with status "active"
+        // in scope. Performance-tab only.
+        const activeMembers = scopedCustomers.filter(c => c.status === "active").length;
+
         // Classes scheduled today — kept for the Avg occupancy calc
         // below. Cancelled classes still take a slot the front desk saw
         // arriving, so they count for scheduling density.
         const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
+        const classesTodayCount = todaySchedules.length;
         // Bookings today — count of `booked` rows whose schedule is
         // today's. Waitlist + cancelled bookings excluded so the number
         // reads as "committed activity on the floor today".
@@ -583,55 +589,75 @@ export default function AdminDashboard() {
                 / capped.length,
             );
 
-        return [
+        const today: DashboardMetric[] = [
             {
                 label: "Total sales",
                 value: totalSalesCount.toLocaleString("en-US"),
-                change: 3,
-                positive: true,
-                comparison: "vs yesterday",
+                change: 3, positive: true, comparison: "vs yesterday",
                 icon: CurrencyDollar,
             },
             {
                 label: "Total revenue",
                 value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
-                change: 3,
-                positive: true,
-                comparison: "vs yesterday",
+                change: 3, positive: true, comparison: "vs yesterday",
                 icon: CoinsStacked01,
             },
             {
                 label: "New customers",
                 value: newCustomers.toLocaleString("en-US"),
-                change: 2,
-                positive: false,
-                comparison: "vs yesterday",
+                change: 2, positive: false, comparison: "vs yesterday",
                 icon: UserPlus01,
             },
             {
-                // Icon updated to TrendUp01 per client review (was
-                // Calendar). Renamed from "Total classes" to
-                // "Bookings today" so the metric answers "how much
-                // activity today?" instead of scheduling density.
                 label: "Bookings today",
                 value: bookingsToday.toLocaleString("en-US"),
-                change: 1,
-                positive: false,
-                comparison: "vs yesterday",
+                change: 1, positive: false, comparison: "vs yesterday",
                 icon: TrendUp01,
             },
             {
-                // Icon moved to Calendar so TrendUp01 stays unique on
-                // the Bookings-today card.
                 label: "Avg occupancy",
                 value: `${avgOccupancyPct}%`,
-                change: 1,
-                positive: false,
-                comparison: "vs yesterday",
+                change: 1, positive: false, comparison: "vs yesterday",
                 icon: Calendar,
             },
         ];
+
+        // Performance-tab metrics — 4 cards per Figma 7799:109180.
+        const performance: DashboardMetric[] = [
+            {
+                label: "Today's revenue",
+                value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
+                change: 3, positive: true, comparison: "vs yesterday",
+                icon: CurrencyDollar,
+            },
+            {
+                label: "Active members",
+                value: activeMembers.toLocaleString("en-US"),
+                change: 3, positive: true, comparison: "vs yesterday",
+                icon: UserCheck01,
+            },
+            {
+                label: "Classes today",
+                value: classesTodayCount.toLocaleString("en-US"),
+                change: 2, positive: false, comparison: "vs yesterday",
+                icon: CalendarCheck01,
+            },
+            {
+                label: "Bookings today",
+                value: bookingsToday.toLocaleString("en-US"),
+                change: 1, positive: false, comparison: "vs yesterday",
+                icon: TrendUp01,
+            },
+        ];
+
+        return { todayMetrics: today, performanceMetrics: performance };
     }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
+
+    // Pick the strip that matches the active tab. `metrics` stays the
+    // stable public name (used by CSV export + a couple of downstream
+    // references) so the CSV etc. keep exporting the metrics the admin
+    // is currently looking at.
+    const metrics = activeTab === "performance" ? performanceMetrics : todayMetrics;
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless

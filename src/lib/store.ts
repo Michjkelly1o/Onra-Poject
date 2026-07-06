@@ -7392,6 +7392,15 @@ export const useAppStore = create<AppState>()(persist(
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
         //
+        // v37: At-risk fixture bug fix + Performance-tab metrics.
+        //   • customers.ts now applies the at-risk `last_visit_iso`
+        //     patch to BOTH hand-authored + synthetic customers (was
+        //     only hand-authored so the fixture — keyed by synthetic
+        //     ids — never landed). Modal now populates.
+        //   • Performance tab gets its own 4-metric strip per Figma
+        //     7799:109180 (Today's revenue / Active members / Classes
+        //     today / Bookings today) — the Today tab keeps the 5.
+        //
         // v36: Dashboard Needs-attention demo fixtures (Jul 2026) —
         //   • DEMO_NOW_RENEWAL_PLANS: 8 memberships expiring in next 30
         //     days (active + expired) on synthetic customers.
@@ -7459,7 +7468,7 @@ export const useAppStore = create<AppState>()(persist(
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 36,
+        version: 37,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

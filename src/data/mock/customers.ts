@@ -585,18 +585,20 @@ function generateSyntheticCustomers(count: number): Customer[] {
 /** Final export: 10 hand-authored "story" customers + 1,520 synthetic
  *  filler = 1,530 total. Order preserved so `customers[0]` stays Ahmed
  *  (used by hardcoded demo links / screenshots). */
-// Dashboard At-risk clients modal fixture — patches each hand-
-// authored customer's `last_visit_iso` to a relative-to-now date in
-// the 14–30 day window so the modal always renders 10+ rows for
-// the client demo. Applied at export time (not at each row site) so
-// the base seed stays readable + a single edit in
+// Dashboard At-risk clients modal fixture — the fixture in
+// `prototype_demo_data.ts` keys `last_visit_iso` overrides by
+// SYNTHETIC customer id (cust_synth_XXXX). Patch is therefore
+// applied to BOTH the hand-authored list AND the generated
+// synthetic list so whichever ids the fixture uses, the modal
+// picks them up. Applied at export time (not at each row site)
+// so the base seed stays readable + a single edit in
 // `prototype_demo_data.ts` updates every consumer.
-const patchedHandAuthored = handAuthoredCustomers.map(c => {
-    const override = DEMO_NOW_AT_RISK_LAST_VISITS[c.id];
-    return override ? { ...c, last_visit_iso: override } : c;
-});
+function applyAtRiskPatch(row: Customer): Customer {
+    const override = DEMO_NOW_AT_RISK_LAST_VISITS[row.id];
+    return override ? { ...row, last_visit_iso: override } : row;
+}
 
 export const customers: Customer[] = [
-    ...patchedHandAuthored,
-    ...generateSyntheticCustomers(1520),
+    ...handAuthoredCustomers.map(applyAtRiskPatch),
+    ...generateSyntheticCustomers(1520).map(applyAtRiskPatch),
 ];
