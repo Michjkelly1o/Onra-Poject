@@ -5,12 +5,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Figma 7282:5289 (Personal information tab) + Phase-1 modals
-// (6378:546422 / 6378:547208 / 6378:547271).
+// (6378:546422 / 6378:547208 / 6378:547271) + 7624:142838 (Security tab).
 //
 // Tab strip:
-//   • Personal information — built this phase
-//   • Integrations         — Phase 2 (placeholder for now)
-//   • Notification settings — Phase 3 (placeholder for now)
+//   • Personal information — profile fields + Introduction + Branch info
+//   • Integrations         — connected services
+//   • Notification settings — per-event channel toggles
+//   • Security             — Password + Active sessions (Jul 2026 split
+//                            out of Personal information per client
+//                            request; earlier design bundled everything
+//                            on one tab which was hard to scan)
 //
 // All data flows through `currentUser` on the centralized store —
 // instructor_profile is pushed in when the user lands on `/instructor/*`,
@@ -36,11 +40,16 @@ import { IntegrationsTab } from "@/components/instructor/account/IntegrationsTab
 import { NotificationSettingsTab } from "@/components/instructor/account/NotificationSettingsTab";
 import { cn } from "@/lib/utils";
 
-type TabKey = "personal" | "integrations" | "notifications";
+type TabKey = "personal" | "integrations" | "notifications" | "security";
 const TABS: { key: TabKey; label: string }[] = [
     { key: "personal",      label: "Personal information" },
     { key: "integrations",  label: "Integrations" },
     { key: "notifications", label: "Notification settings" },
+    // Jul 2026 — Security tab houses Password + Active sessions
+    // (Figma 7624:142838). Both blocks used to live at the bottom of
+    // Personal information; the split makes the profile page shorter
+    // and gives the two security concerns a dedicated home.
+    { key: "security",      label: "Security" },
 ];
 
 type FlowState = { kind: "idle" } | { kind: "edit_profile" } | { kind: "change_password" };
@@ -184,7 +193,6 @@ export default function InstructorAccountPage() {
                         shiftEnd={myShift?.end_time}
                         shiftWorkingDays={myShift?.working_days}
                         onEditProfile={openEditProfile}
-                        onChangePassword={openChangePassword}
                     />
                 )}
                 {tab === "integrations" && (
@@ -192,6 +200,13 @@ export default function InstructorAccountPage() {
                 )}
                 {tab === "notifications" && (
                     <NotificationSettingsTab />
+                )}
+                {tab === "security" && (
+                    <SecurityTab
+                        password={currentUser.password ?? ""}
+                        passwordChangedAt={currentUser.password_changed_at}
+                        onChangePassword={openChangePassword}
+                    />
                 )}
             </div>
 
@@ -240,7 +255,6 @@ interface PersonalInformationTabProps {
      *  Working days glyph row; otherwise falls back to `user.working_days`. */
     shiftWorkingDays?: boolean[];
     onEditProfile: () => void;
-    onChangePassword: () => void;
 }
 function PersonalInformationTab({
     user,
@@ -252,7 +266,6 @@ function PersonalInformationTab({
     shiftEnd,
     shiftWorkingDays,
     onEditProfile,
-    onChangePassword,
 }: PersonalInformationTabProps) {
     const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || "—";
     const initials = `${(user.first_name?.[0] ?? "").toUpperCase()}${(user.last_name?.[0] ?? "").toUpperCase()}`;
@@ -382,13 +395,37 @@ function PersonalInformationTab({
                     </FieldGrid>
                 </Section>
 
-                <Divider />
+                {/* Password + Active sessions moved to the Security tab
+                    per Figma 7624:142838. */}
+            </div>
+        </div>
+    );
+}
 
+// ────────────────────────────────────────────────────────────────────────────
+// Security tab (Figma 7624:142838) — Password + Active sessions
+// ────────────────────────────────────────────────────────────────────────────
+
+interface SecurityTabProps {
+    /** Denormalized password from `currentUser`. Only the length is
+     *  meaningful — the row itself shows a masked dot string. */
+    password: string;
+    passwordChangedAt?: string;
+    onChangePassword: () => void;
+}
+function SecurityTab({
+    password,
+    passwordChangedAt,
+    onChangePassword,
+}: SecurityTabProps) {
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
+            <div className="flex flex-col gap-6">
                 {/* ── Password ─────────────────────────────────────────── */}
                 <Section title="Password">
                     <PasswordRow
-                        password={user.password ?? ""}
-                        lastChangedAt={user.password_changed_at}
+                        password={password}
+                        lastChangedAt={passwordChangedAt}
                         onChange={onChangePassword}
                     />
                 </Section>
