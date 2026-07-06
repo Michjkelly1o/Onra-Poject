@@ -38,6 +38,7 @@ import { useAppStore } from "@/lib/store";
 import { resolveRangePair } from "@/lib/kpi/date-range";
 import { computeFinancialKpis } from "@/lib/kpi/financial";
 import { computeClientKpis } from "@/lib/kpi/client";
+import { computeClassKpis } from "@/lib/kpi/class";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,16 @@ const TABS: TabConfig[] = [
         //   top-memberships      → Top spenders / most-purchased plans (ranked)
         widgetIds: ["active-memberships", "active-subscriptions", "memberships-sold", "top-memberships"],
     },
-    { key: "class",     label: "Class",     widgetIds: [] },
+    {
+        key: "class",
+        label: "Class",
+        // Phase 4 hero charts — reuse existing Classes widgets:
+        //   class-bookings       → Bookings over time
+        //   bookings-by-source   → Where bookings come from (grouped bar)
+        //   attendance-overview  → Attendance vs cancellations vs no-shows
+        //   class-by-popularity  → Class popularity ranked
+        widgetIds: ["class-bookings", "bookings-by-source", "attendance-overview", "class-by-popularity"],
+    },
     { key: "marketing", label: "Marketing", widgetIds: [] },
 ];
 
@@ -123,11 +133,12 @@ export default function KpiPage() {
     // KPI compute — memoised per tab, recomputed when slices or range change.
     const financialKpis = useMemo(() => computeFinancialKpis(kpiState, range, branchFilter), [kpiState, range, branchFilter]);
     const clientKpis    = useMemo(() => computeClientKpis(kpiState, range, branchFilter),    [kpiState, range, branchFilter]);
+    const classKpis     = useMemo(() => computeClassKpis(kpiState, range, branchFilter),     [kpiState, range, branchFilter]);
 
     const metricsByTab: Record<TabKey, Metric[]> = {
         financial: financialKpis,
         client:    clientKpis,
-        class:     [],
+        class:     classKpis,
         marketing: [],
     };
 
