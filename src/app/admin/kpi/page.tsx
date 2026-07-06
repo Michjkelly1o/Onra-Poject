@@ -14,12 +14,14 @@
 //   4. Widget grid (2 per row, gap-6)  — Recharts widgets from WIDGET_CATALOG
 //
 // Layout, components, and styling are IDENTICAL to Insights. Only the
-// data (KPI list per tab) and the chart types inside the widget cards
-// differ — those land in Phases 2-5.
+// data (KPI list per tab) and the chart selection differ.
 //
-// Phase 1: scaffolding only. Every tab renders with an empty state.
+// Phase 2 (this file): Financial tab fully wired. 10 KPI cards computed
+// from real store data via `computeFinancialKpis`. 4 chart widgets
+// reused from the existing "Finance" widget catalog (revenue-overview,
+// sales-by-product, payments-status, payments-collected).
 //
-// Not covered (out of scope per plan):
+// Not covered per plan:
 //   • Inventory KPIs (13) — no retail module
 //   • Forward/live KPIs (4) — Dashboard's territory per PDF
 //
@@ -30,8 +32,11 @@ import { cn } from "@/lib/utils";
 import { SearchMd } from "@untitledui/icons";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
-import { WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
+import { WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
 import { InsightMetricCard, type Metric } from "@/components/insights/InsightMetricCard";
+import { useAppStore } from "@/lib/store";
+import { resolveRangePair } from "@/lib/kpi/date-range";
+import { computeFinancialKpis } from "@/lib/kpi/financial";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,23 +45,32 @@ type TabKey = "financial" | "client" | "class" | "marketing";
 interface TabConfig {
     key: TabKey;
     label: string;
-    /** Category used to filter WIDGET_CATALOG for this tab. */
-    widgetCategory: WidgetCategory;
-    metrics: Metric[];
+    /** Widget IDs to render on this tab (in order). Empty = no widget grid
+     *  yet. Phase 2-5 fills each tab's list. */
+    widgetIds: string[];
 }
 
-// ─── Tab content (Phase 1: empty; populated per phase) ────────────────────────
-
-const FINANCIAL_METRICS: Metric[] = [];
-const CLIENT_METRICS: Metric[]    = [];
-const CLASS_METRICS: Metric[]     = [];
-const MARKETING_METRICS: Metric[] = [];
+// ─── Tab widget selection ───────────────────────────────────────────────────
+//
+// Widgets reused from the existing WIDGET_CATALOG (Finance category
+// today; other categories light up in later phases). The KPI page never
+// duplicates widget definitions — it just picks which ones to render.
 
 const TABS: TabConfig[] = [
-    { key: "financial", label: "Financial", widgetCategory: "Financial", metrics: FINANCIAL_METRICS },
-    { key: "client",    label: "Client",    widgetCategory: "Client",    metrics: CLIENT_METRICS    },
-    { key: "class",     label: "Class",     widgetCategory: "Class",     metrics: CLASS_METRICS     },
-    { key: "marketing", label: "Marketing", widgetCategory: "Marketing", metrics: MARKETING_METRICS },
+    {
+        key: "financial",
+        label: "Financial",
+        // Phase 2 hero charts — reuse existing Finance widgets that map
+        // cleanly to the PDF's Financial charts:
+        //   revenue-overview     → Net revenue vs last period (line)
+        //   sales-by-product     → Sales by stream (bar)
+        //   payments-status      → Payments over time with status (bar)
+        //   payments-collected   → Revenue per class trend proxy (line)
+        widgetIds: ["revenue-overview", "sales-by-product", "payments-status", "payments-collected"],
+    },
+    { key: "client",    label: "Client",    widgetIds: [] },
+    { key: "class",     label: "Class",     widgetIds: [] },
+    { key: "marketing", label: "Marketing", widgetIds: [] },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -66,27 +80,68 @@ export default function KpiPage() {
     const [search, setSearch] = useState("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
 
+    // Store slices the KPI compute functions need. Zustand's per-slice
+    // subscription means POS / booking / plan writes trigger recompute
+    // in the same render tick.
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const customerPlans        = useAppStore(s => s.customerPlans);
+    const customers            = useAppStore(s => s.customers);
+    const branches             = useAppStore(s => s.branches);
+    const staff                = useAppStore(s => s.staff);
+    const classSchedules       = useAppStore(s => s.classSchedules);
+    const classBookings        = useAppStore(s => s.classBookings);
+
+    // Date range → concrete current + prior windows.
+    const range = useMemo(() => resolveRangePair(period), [period]);
+
+    // Location filter — Phase 2 uses "all branches" for the demo. Phase 6
+    // will wire a location dropdown alongside the date picker matching
+    // the Reports shell UX.
+    const branchFilter: Set<string> | null = null;
+
+    // Financial KPIs — recomputed when store slices or range change.
+    const financialKpis = useMemo(
+        () => computeFinancialKpis(
+            {
+                customerTransactions, customerPlans, customers, branches, staff,
+                classSchedules, classBookings,
+            } as unknown as import("@/lib/store").AppState,
+            range,
+            branchFilter,
+        ),
+        [customerTransactions, customerPlans, customers, branches, staff, classSchedules, classBookings, range, branchFilter],
+    );
+
+    const metricsByTab: Record<TabKey, Metric[]> = {
+        financial: financialKpis,
+        client:    [],
+        class:     [],
+        marketing: [],
+    };
+
     const activeTab = TABS.find(t => t.key === tab)!;
-    const widgetsInCategory = useMemo(
-        () => WIDGET_CATALOG.filter(w => w.category === activeTab.widgetCategory),
-        [activeTab.widgetCategory],
+    const activeMetrics = metricsByTab[activeTab.key];
+    const widgetsForTab = useMemo(
+        () => activeTab.widgetIds
+            .map(id => WIDGET_CATALOG.find(w => w.id === id))
+            .filter((w): w is NonNullable<typeof w> => !!w),
+        [activeTab.widgetIds],
     );
 
     // Search filters metrics + widgets simultaneously, case-insensitive.
     const q = search.trim().toLowerCase();
     const filteredMetrics = q
-        ? activeTab.metrics.filter(m => m.label.toLowerCase().includes(q))
-        : activeTab.metrics;
+        ? activeMetrics.filter(m => m.label.toLowerCase().includes(q))
+        : activeMetrics;
     const filteredWidgets = q
-        ? widgetsInCategory.filter(w =>
+        ? widgetsForTab.filter(w =>
             w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
-        : widgetsInCategory;
+        : widgetsForTab;
 
     const kpiLabel = `${activeTab.label.toLowerCase()} KPIs`;
 
     // Phase 1 empty state — surfaces when a tab has no metrics AND no
-    // widgets yet. Uses the same dashed-border card style Insights uses
-    // for its "search matched nothing" state.
+    // widgets yet. Removed once each tab gets its cards + widgets.
     const showPhaseEmptyState = !q
         && filteredMetrics.length === 0
         && filteredWidgets.length === 0;
@@ -146,8 +201,7 @@ export default function KpiPage() {
                 </div>
             )}
 
-            {/* Phase 1 scaffolding — empty state. Removed once each tab
-                gets its metric cards + widgets in Phases 2-5. */}
+            {/* Coming-soon empty state (tabs not yet built). */}
             {showPhaseEmptyState && (
                 <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
                     <p className="text-[16px] font-semibold text-[#101828]">
@@ -159,7 +213,7 @@ export default function KpiPage() {
                 </div>
             )}
 
-            {/* Empty state (search matched nothing) — same chrome as Insights. */}
+            {/* Search empty state — same chrome as Insights. */}
             {q && filteredMetrics.length === 0 && filteredWidgets.length === 0 && (
                 <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
                     <p className="text-[16px] font-semibold text-[#101828]">No KPIs found</p>
