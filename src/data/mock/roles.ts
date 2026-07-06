@@ -118,6 +118,45 @@ export const roles: RoleSeed[] = [
         permissions: PERM_INSTRUCTOR,
         locked: false,
     },
+    // Bug fix — before this row, only `role_instructor_south` existed, so
+    // instructors physically working at East / West / Spa were being
+    // shoe-horned onto the South role. That violated the branch-scope
+    // invariant (a branch-scoped role must only hold staff from that
+    // same branch). One instructor role per branch, mirroring the
+    // branch-admin pattern.
+    {
+        id: "role_instructor_east",
+        name: "Instructor",
+        description: "Delivers classes and manages attendance and session-related activities",
+        type: "instructor",
+        branch_id: "branch_forma_east",
+        status: "active",
+        grant_limits: DEFAULT_GRANT_LIMITS,
+        permissions: PERM_INSTRUCTOR,
+        locked: false,
+    },
+    {
+        id: "role_instructor_west",
+        name: "Instructor",
+        description: "Delivers classes and manages attendance and session-related activities",
+        type: "instructor",
+        branch_id: "branch_forma_west",
+        status: "active",
+        grant_limits: DEFAULT_GRANT_LIMITS,
+        permissions: PERM_INSTRUCTOR,
+        locked: false,
+    },
+    {
+        id: "role_instructor_spa",
+        name: "Instructor",
+        description: "Delivers classes and manages attendance and session-related activities. Spa-specific — routes to /admin/services for appointments.",
+        type: "instructor",
+        branch_id: "branch_forma_spa",
+        status: "active",
+        grant_limits: DEFAULT_GRANT_LIMITS,
+        permissions: PERM_INSTRUCTOR,
+        locked: false,
+    },
     {
         id: "role_front_desk_south",
         name: "Front desk",

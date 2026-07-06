@@ -204,11 +204,10 @@ export const staff: StaffSeed[] = [
         email: "lucy@formastudio.ae", phone: "+971 55 200 2004",
         initials: "LH", color_hex: "#d92d20",
         image_url: "/images/instructors/lucy-hale.webp",
-        // Lucy belongs to East branch — we put her under the instructor-south
-        // role for now since phase-1 doesn't ship a separate east-branch
-        // instructor role. Phase 2 can split this when admins start creating
-        // branch-scoped instructor roles.
-        role_id: "role_instructor_south",
+        // Bug fix — Lucy works at East, now correctly under East's
+        // instructor role (was previously on South's role by mistake,
+        // violating the branch-scope invariant).
+        role_id: "role_instructor_east",
         branch_id: "branch_forma_east",
         status: "active",
         first_login_completed: true,
@@ -270,7 +269,7 @@ export const staff: StaffSeed[] = [
         first_name: "Demi", last_name: "Wilkinson", full_name: "Demi Wilkinson",
         email: "demi@email.com", phone: "+971 55 200 2008",
         initials: "DW", color_hex: "#b54708",
-        role_id: "role_instructor_south",
+        role_id: "role_instructor_east",
         branch_id: "branch_forma_east",
         status: "active",
         first_login_completed: true,
@@ -285,7 +284,7 @@ export const staff: StaffSeed[] = [
         first_name: "Candice", last_name: "Wu", full_name: "Candice Wu",
         email: "candice@email.com", phone: "+971 55 200 2009",
         initials: "CW", color_hex: "#3538cd",
-        role_id: "role_instructor_south",
+        role_id: "role_instructor_east",
         branch_id: "branch_forma_east",
         status: "active",
         first_login_completed: true,
@@ -303,7 +302,7 @@ export const staff: StaffSeed[] = [
         first_name: "Natali", last_name: "Craig", full_name: "Natali Craig",
         email: "natali@email.com", phone: "+971 55 200 2010",
         initials: "NC", color_hex: "#f79009",
-        role_id: "role_instructor_south",
+        role_id: "role_instructor_east",
         branch_id: "branch_forma_east",
         status: "active",
         first_login_completed: true,
@@ -312,6 +311,92 @@ export const staff: StaffSeed[] = [
         pay_rate_id: "pr_trial_class",
         shift_id: "shift_east_day",
         category_ids: ["cat_yoga", "cat_pilates"],
+    },
+    // ── West-branch instructors ────────────────────────────────────────────
+    // Bug fix — before this pair, West had 0 seeded instructors even though
+    // the branch is a valid location. Every branch must ship with ≥1
+    // instructor so filters / dropdowns don't render an empty state.
+    // Both entries are scoped strictly to West via `role_id` +
+    // `branch_id` to preserve the branch-scope invariant.
+    {
+        id: "staff_amelia_park",
+        first_name: "Amelia", last_name: "Park", full_name: "Amelia Park",
+        email: "amelia@formastudio.ae", phone: "+971 55 200 2011",
+        initials: "AP", color_hex: "#0e9384",
+        role_id: "role_instructor_west",
+        branch_id: "branch_forma_west",
+        status: "active",
+        first_login_completed: true,
+        joined_date: "Aug 5, 2024",
+        bio: "Yoga instructor blending vinyasa and restorative flows for all levels.",
+        specialties: ["Yoga", "Mindful Flow"],
+        pay_rate_id: "pr_standard",
+        short_intro: "Amelia leads West's morning yoga programme with 4 years teaching across Dubai's boutique studios.",
+        working_experience_years: 4,
+        shift_id: "shift_morning",
+        category_ids: ["cat_yoga"],
+    },
+    {
+        id: "staff_ryan_ford",
+        first_name: "Ryan", last_name: "Ford", full_name: "Ryan Ford",
+        email: "ryan@formastudio.ae", phone: "+971 55 200 2012",
+        initials: "RF", color_hex: "#6941c6",
+        role_id: "role_instructor_west",
+        branch_id: "branch_forma_west",
+        status: "active",
+        first_login_completed: true,
+        joined_date: "Sep 12, 2024",
+        bio: "Reformer Pilates specialist focused on functional movement and rehab.",
+        specialties: ["Reformer Pilates", "Barre"],
+        pay_rate_id: "pr_class_tiers",
+        short_intro: "Ryan brings 5 years of Pilates coaching to West, with a strong background in sports rehab.",
+        working_experience_years: 5,
+        shift_id: "shift_afternoon",
+        category_ids: ["cat_pilates", "cat_barre"],
+    },
+    // ── Spa-branch practitioners ───────────────────────────────────────────
+    // Bug fix — Spa branch previously seeded with zero practitioners even
+    // though Forma Spa hosts private recovery services (massage / IV
+    // therapy). Two entries here so /admin/services and appointment
+    // instructor pickers have something to render for spa services. Note
+    // the appointment seed's SPA_INSTRUCTORS pool stays empty on purpose
+    // — that array powers the historical appointment backfill; live
+    // creation flows read the staff store, which now has entries.
+    {
+        id: "staff_nadia_hassan",
+        first_name: "Nadia", last_name: "Hassan", full_name: "Nadia Hassan",
+        email: "nadia@formastudio.ae", phone: "+971 55 200 2013",
+        initials: "NH", color_hex: "#dd2590",
+        role_id: "role_instructor_spa",
+        branch_id: "branch_forma_spa",
+        status: "active",
+        first_login_completed: true,
+        joined_date: "Oct 1, 2024",
+        bio: "Licensed massage therapist specialising in deep tissue and sports recovery.",
+        specialties: ["Deep Tissue Massage", "Sports Recovery"],
+        pay_rate_id: "pr_private_sess",
+        short_intro: "Nadia leads Forma Spa's private recovery bookings with 8 years of clinical massage practice.",
+        working_experience_years: 8,
+        shift_id: "shift_morning",
+        category_ids: [],
+    },
+    {
+        id: "staff_omar_saeed",
+        first_name: "Omar", last_name: "Saeed", full_name: "Omar Saeed",
+        email: "omar@formastudio.ae", phone: "+971 55 200 2014",
+        initials: "OS", color_hex: "#2e90fa",
+        role_id: "role_instructor_spa",
+        branch_id: "branch_forma_spa",
+        status: "active",
+        first_login_completed: true,
+        joined_date: "Nov 4, 2024",
+        bio: "Breathwork and wellness coach guiding recovery-focused open sessions.",
+        specialties: ["Breathwork", "Sauna Guidance"],
+        pay_rate_id: "pr_community",
+        short_intro: "Omar runs Forma Spa's group breathwork and sauna sessions, drawing on 6 years of holistic wellness coaching.",
+        working_experience_years: 6,
+        shift_id: "shift_afternoon",
+        category_ids: [],
     },
     // ── Extra Pending invite — demoes the resend-invite flow ──────────────
     {

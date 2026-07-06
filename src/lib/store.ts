@@ -6995,12 +6995,20 @@ export const useAppStore = create<AppState>()(persist(
         // gets the Jan-Jun 2026 ledger on next reload — the earlier
         // localStorage payload is discarded.
         //
+        // v32: Role-branch alignment fix — added 3 branch-scoped
+        // instructor roles (East/West/Spa), corrected 4 East-branch
+        // instructors that were mistakenly assigned to South's
+        // instructor role, and seeded 2 instructors each for West
+        // and Spa branches so every branch ships with staff. No AppState
+        // shape change, but bumping so testers with a persisted v31
+        // payload rehydrate against the corrected seed.
+        //
         // v31: Reports v33 — 4 new AppState slices (leads,
         // marketingCampaignStats, marketingSpend, staffAttendanceLog) +
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 31,
+        version: 32,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
