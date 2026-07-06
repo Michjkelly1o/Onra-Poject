@@ -98,12 +98,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Insights module ── (ENABLED — pushed)
     //"/admin/insights",               // tabs: Finance / Memberships / Classes
 
-    // ── KPI module ── (ENABLED — pushed)
+    // ── KPI module ── (DISABLED — for client demo)
     // 4 category tabs (Financial · Client · Class · Marketing) with
     // 55 KPI cards + 16 chart widgets. Reuses the Insights shell
-    // (metric card + date filter + widget grid). Uncomment to 404
-    // the entire KPI page.
-    //"/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
+    // (metric card + date filter + widget grid).
+    "/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
 
     // ── Pay rate module ── (ENABLED — pushed)
     //"/admin/staff/pay-rate",         // list view
@@ -113,7 +112,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/compensation",           // list view
     //"/compensation",                 // run payroll / instructor earnings detail
 
-    // ── Reports module ── (ENABLED — admin)
+    // ── Reports module ── (DISABLED — for client demo)
     //
     // 32 reports grouped into 6 categories per Excel spec
     // (new-prd/Onra_Reporting.xlsx §"Reports"). The landing page
@@ -127,52 +126,52 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // which cards to show). Uncomment individual prefixes to hide just
     // that one report — the category card stays visible with fewer rows.
     //
-    // Landing route — 404s the whole surface if uncommented.
-    //"/admin/reports",                // landing (6 category containers)
+    // Landing route — 404s the whole surface.
+    "/admin/reports",                // landing (6 category containers)
 
     // ── Reports · Financial (12 reports) ──
-    //"/reports/total-sales",
-    //"/reports/sales-by-category",
-    //"/reports/sales-by-item",
-    //"/reports/payments",
-    //"/reports/refunds",
-    //"/reports/discounts",
-    //"/reports/tax-vat-export",
-    //"/reports/gift-cards",
-    //"/reports/revenue-recognition",
-    //"/reports/revenue-per-class",
-    //"/reports/arpm",
-    //"/reports/mrr",
+    "/reports/total-sales",
+    "/reports/sales-by-category",
+    "/reports/sales-by-item",
+    "/reports/payments",
+    "/reports/refunds",
+    "/reports/discounts",
+    "/reports/tax-vat-export",
+    "/reports/gift-cards",
+    "/reports/revenue-recognition",
+    "/reports/revenue-per-class",
+    "/reports/arpm",
+    "/reports/mrr",
 
     // ── Reports · Membership & Package (4 reports) ──
-    //"/reports/memberships-packages",
-    //"/reports/frozen",
-    //"/reports/intro-offers",
-    //"/reports/upgrades-downgrades",
+    "/reports/memberships-packages",
+    "/reports/frozen",
+    "/reports/intro-offers",
+    "/reports/upgrades-downgrades",
 
     // ── Reports · Client / Customer (4 reports) ──
-    //"/reports/customer-data",
-    //"/reports/member-movement",
-    //"/reports/retention-churn",
-    //"/reports/win-back",
+    "/reports/customer-data",
+    "/reports/member-movement",
+    "/reports/retention-churn",
+    "/reports/win-back",
 
     // ── Reports · Activity / Class (4 reports) ──
-    //"/reports/bookings",
-    //"/reports/class-performance",
-    //"/reports/cancellations-noshows",
-    //"/reports/top-classes-services",
+    "/reports/bookings",
+    "/reports/class-performance",
+    "/reports/cancellations-noshows",
+    "/reports/top-classes-services",
 
     // ── Reports · Staff / Instructor (2 reports) ──
-    //"/reports/instructor-performance",
-    //"/reports/staff-attendance",
+    "/reports/instructor-performance",
+    "/reports/staff-attendance",
 
     // ── Reports · Marketing (6 reports) ──
-    //"/reports/lead-data",
-    //"/reports/lead-conversion",
-    //"/reports/campaign-performance",
-    //"/reports/promo-redemptions",
-    //"/reports/referrals",
-    //"/reports/acquisition-efficiency",
+    "/reports/lead-data",
+    "/reports/lead-conversion",
+    "/reports/campaign-performance",
+    "/reports/promo-redemptions",
+    "/reports/referrals",
+    "/reports/acquisition-efficiency",
 
     // ── Staff & Permissions module ── (PARTIALLY ENABLED — Shift create/detail/edit hidden today)
     // Exact-match only on the list — otherwise this prefix would also catch
