@@ -374,7 +374,21 @@ export function payrollBreakdownFor(
             const baseAmount = base * stats.completedClasses;
             if (payRate.condition.kind === "bonus_attendance") {
                 const bonusPerCustomer = payRate.condition.bonusPerCustomer;
-                const bonusAmount      = bonusPerCustomer * stats.totalAttendees;
+                const threshold        = payRate.condition.bonusThreshold;
+                // Bonus is per-class conditional: `earningsForClass` only
+                // pays the bonus on classes whose attendance actually hit
+                // the threshold. The row's `basis` must therefore be the
+                // count of qualifying attendees (attendees in classes
+                // that hit the threshold), NOT `stats.totalAttendees`
+                // (which counts EVERY attendee). Derive it exactly from
+                // the already-computed period total — subtract the base
+                // portion from the period earnings and divide by the
+                // per-customer bonus. Guards against divide-by-zero when
+                // the seed misconfigures a 0-AED bonus.
+                const bonusAmount = Math.max(stats.totalEarningsAed - baseAmount, 0);
+                const qualifyingAttendees = bonusPerCustomer > 0
+                    ? Math.round(bonusAmount / bonusPerCustomer)
+                    : 0;
                 return {
                     payModel,
                     components: [
@@ -385,8 +399,14 @@ export function payrollBreakdownFor(
                             amount: fmt(baseAmount),
                         },
                         {
-                            component: `Attendance bonus (≥${payRate.condition.bonusThreshold})`,
-                            basis:  fmt(stats.totalAttendees),
+                            // Client feedback (Jul 2026): the old
+                            // "(≥8)" shorthand was unreadable in the
+                            // CSV — no one knew if 8 meant classes,
+                            // customers, or something else. Long-form
+                            // label spells it out so the export tells
+                            // its own story.
+                            component: `Attendance bonus (classes with ${threshold}+ attendees)`,
+                            basis:  fmt(qualifyingAttendees),
                             rate:   fmt(bonusPerCustomer),
                             amount: fmt(bonusAmount),
                         },
@@ -417,12 +437,19 @@ export function payrollBreakdownFor(
             };
         }
         case "monthly": {
+            // Client feedback (Jul 2026): the old row read
+            // "basis: 2, rate: 8,000 / mo, amount: 8,000" — 2 was the
+            // completed-classes count, but next to a "/mo" rate it
+            // scanned as "2 months" and made the total look off by
+            // half. Basis is now "1" (one month of salary) so basis
+            // × rate = amount, and the rate drops the "/mo" suffix
+            // since the basis IS the month unit.
             return {
                 payModel,
                 components: [{
                     component: "Monthly salary",
-                    basis:  fmt(stats.completedClasses),
-                    rate:   `${fmt(payRate.fixedSalary)} / mo`,
+                    basis:  "1",
+                    rate:   fmt(payRate.fixedSalary),
                     amount: total,
                 }],
                 total,

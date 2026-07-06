@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Run payroll page (/compensation/run)
+// Onra Studio — Payroll details page (/compensation/run)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // PRD 10 §7.3 — payroll calculation wizard. Figma:
@@ -685,7 +685,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Run payroll</h1>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Payroll details</h1>
             </div>
 
             {/* Body */}
