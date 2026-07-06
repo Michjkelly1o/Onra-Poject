@@ -41,6 +41,12 @@ export interface ScheduleCardClass {
     room?: string;
     booked: number;
     capacity: number;
+    /** Optional lifecycle status — LG uses it to render an "Ongoing"
+     *  pill in the top-right + a green capacity progress bar at the
+     *  bottom of the card (Figma 7798:80399, Jul 2026). Absent value
+     *  falls back to the pre-existing card layout so non-dashboard
+     *  callers keep their current look. */
+    status?: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 }
 
 export type ScheduleCardSize = "xs" | "sm" | "md" | "lg";
@@ -133,35 +139,76 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
 
     // ── LG ───────────────────────────────────────────────────────────────────
     if (size === "lg") {
+        // Ongoing-only extras — Figma 7798:80399 (Jul 2026 client
+        // update). Adds an "Ongoing" pill + Users01 glyph in the
+        // top-right corner and a green capacity progress bar pinned
+        // to the bottom edge. Non-Ongoing rows render the pre-existing
+        // layout, so admin schedule + report surfaces are unaffected.
+        const isOngoing = cls.status === "Ongoing";
+        const fillPct = cls.capacity > 0
+            ? Math.min(100, Math.round((cls.booked / cls.capacity) * 100))
+            : 0;
         return (
             <button type="button" onClick={onClick}
                 style={{ backgroundColor: cls.color.bg, borderLeft: `4px solid ${cls.color.border}`, ...baseStyle }}
                 className={cn(
-                    "w-full rounded-[10px] pl-4 pr-4 py-3 flex flex-col gap-1 text-left cursor-pointer hover:brightness-95 transition-all",
+                    "relative w-full rounded-[10px] pl-4 pr-4 pt-3 flex flex-col gap-1 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
+                    isOngoing ? "pb-4" : "pb-3",
                     className,
                 )}>
-                <span className="block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
-                <p className="text-[14px] text-[#667085]">{rangeLabel}</p>
-                <div className="flex items-center gap-2 min-w-0">
+                {/* Title row + Ongoing pill / participant glyph.
+                    Icon column stays visible on non-Ongoing rows too
+                    so the layout doesn't jump when a class flips into
+                    Ongoing partway through a slot. */}
+                <div className="flex items-start gap-2 w-full">
+                    <span className="flex-1 min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {isOngoing && (
+                        <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] shrink-0">
+                            Ongoing
+                        </span>
+                    )}
+                    <Users01 className="w-4 h-4 text-[#667085] shrink-0 mt-0.5" />
+                </div>
+                {/* Meta row — time · instructor · room · count. On the
+                    dashboard's LG variant we collapse everything to one
+                    line and use a bullet separator so the card matches
+                    Figma 7798:80399's compact information density.
+                    Non-Ongoing rows keep the same layout for consistency. */}
+                <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#667085]">
+                    <span className="shrink-0">{rangeLabel}</span>
+                    <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
                     <div className="flex items-center gap-1.5 min-w-0">
                         <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
-                        <span className="text-[14px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
+                        <span className="truncate">{instructorShortName(cls.instructorName)}</span>
                     </div>
                     {cls.room && (
                         <>
                             <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
                             <div className="flex items-center gap-1 min-w-0">
                                 <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                <span className="text-[14px] text-[#667085] truncate">{cls.room}</span>
+                                <span className="truncate">{cls.room}</span>
                             </div>
                         </>
                     )}
                     <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
-                    <div className="flex items-center gap-1 shrink-0">
-                        <Users01 className="w-4 h-4 text-[#667085]" />
-                        <span className="text-[14px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
-                    </div>
+                    <span className="shrink-0">
+                        {cls.booked}/{cls.capacity}
+                        {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
+                    </span>
                 </div>
+                {/* Capacity progress bar — Ongoing-only. Sits flush to
+                    the bottom edge so it reads as a fill indicator on
+                    the whole card rather than a separate widget. Track
+                    is neutral gray; fill is the sage-green from the DS
+                    "Ongoing" palette. */}
+                {isOngoing && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#e4e7ec] overflow-hidden">
+                        <div
+                            className="h-full bg-[#658774] transition-all"
+                            style={{ width: `${fillPct}%` }}
+                        />
+                    </div>
+                )}
             </button>
         );
     }

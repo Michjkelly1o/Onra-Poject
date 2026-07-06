@@ -59,6 +59,9 @@ interface ScheduleClass {
     booked: number;
     capacity: number;
     color: { bg: string; border: string; text: string };
+    /** Lifecycle status — drives the Ongoing pill + progress bar on
+     *  the LG variant of ScheduleClassCard (Figma 7798:80399). */
+    status: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 }
 
 interface TimeSlot {
@@ -319,15 +322,19 @@ function NeedsAttentionRow({
 function MetricCard({ metric }: { metric: DashboardMetric }) {
     const Icon = metric.icon;
     return (
-        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-6 items-start justify-end min-w-0 p-6 relative rounded-2xl">
-            <div className="flex flex-1 flex-col gap-2 items-start min-w-0 relative">
+        // Padding / value size shrunk Jul 2026 so 5 cards on one row
+        // don't force the value+icon combo to wrap. Value drops from
+        // text-2xl (24px) → text-xl (20px); label + change/comparison
+        // stay text-sm.
+        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-4 items-start justify-end min-w-0 p-4 relative rounded-2xl">
+            <div className="flex flex-1 flex-col gap-1.5 items-start min-w-0 relative">
                 <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
                     {metric.label}
                 </p>
-                <p className="font-semibold text-2xl text-[#101828]">
+                <p className="font-semibold text-xl text-[#101828] leading-[28px] whitespace-nowrap">
                     {metric.value}
                 </p>
-                <div className="flex gap-1 items-center">
+                <div className="flex gap-1 items-center whitespace-nowrap">
                     {/* Badge */}
                     <div className={cn(
                         "flex gap-1 items-center py-0.5 rounded-full",
@@ -339,20 +346,20 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
                             <ArrowDown size={12} className="text-[#b42318]" />
                         )}
                         <span className={cn(
-                            "font-medium text-sm",
+                            "font-medium text-xs",
                             metric.positive ? "text-[#067647]" : "text-[#b42318]"
                         )}>
                             {metric.change}%
                         </span>
                     </div>
-                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
+                    <p className="font-normal text-xs text-[#667085]">
                         {metric.comparison}
                     </p>
                 </div>
             </div>
-            {/* Featured icon */}
-            <div className="bg-[#f1f2ed] overflow-hidden relative rounded-full flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                <Icon size={20} className="text-[#475467]" />
+            {/* Featured icon — shrunk to 32px to match the smaller card. */}
+            <div className="bg-[#f1f2ed] overflow-hidden relative rounded-full flex-shrink-0 w-8 h-8 flex items-center justify-center">
+                <Icon size={16} className="text-[#475467]" />
             </div>
         </div>
     );
@@ -617,6 +624,7 @@ export default function AdminDashboard() {
                     booked: ci.booked,
                     capacity: ci.capacity,
                     color: palette,
+                    status: ci.status,
                 };
             });
     }, [scopedSchedules]);
@@ -895,6 +903,7 @@ export default function AdminDashboard() {
                                                     room: c.room,
                                                     booked: c.booked,
                                                     capacity: c.capacity,
+                                                    status: c.status,
                                                 }}
                                             />
                                         ))}
