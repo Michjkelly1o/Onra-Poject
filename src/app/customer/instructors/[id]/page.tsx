@@ -17,6 +17,7 @@ import { useMemo, useState, type ComponentType, type SVGProps } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Briefcase01, ChevronLeft, Cryptocurrency04, Maximize01, MarkerPin01, Phone, Share02, UserCircle } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { useCustomerInstructors } from "@/lib/customer/instructors";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { firstOfMonthISO, monthYearOf, REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { cardPresentation, useInstructorDayClasses } from "@/lib/customer/search-data";
@@ -100,7 +101,7 @@ const lastSelectedByInstructor = new Map<string, string>();
 export default function InstructorDetailPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
-    const instructors = useAppStore((s) => s.instructors);
+    const instructors = useCustomerInstructors();
     const branches = useAppStore((s) => s.branches);
     const schedules = useAppStore((s) => s.classSchedules);
     const showToast = useAppStore((s) => s.showToast);

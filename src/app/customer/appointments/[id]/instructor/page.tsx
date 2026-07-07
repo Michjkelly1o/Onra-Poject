@@ -12,7 +12,7 @@
 import { useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Check } from "@untitledui/icons";
-import { useAppStore } from "@/lib/store";
+import { useCustomerInstructors } from "@/lib/customer/instructors";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { appointmentDraft, ensureAppointmentDraft, resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { AppointmentFlowHeader } from "@/components/customer/appointments/AppointmentFlowHeader";
@@ -21,7 +21,7 @@ export default function SelectInstructorPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const appointment = useAppointment(id);
-    const instructors = useAppStore((s) => s.instructors);
+    const instructors = useCustomerInstructors();
 
     ensureAppointmentDraft(id);
     const [selected, setSelected] = useState<string | null>(appointmentDraft.instructorId);

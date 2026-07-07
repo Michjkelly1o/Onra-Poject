@@ -24,14 +24,17 @@ export interface RedeemedGiftCard {
     redeemedAtISO: string;
 }
 
-/** Demo gift codes a customer can redeem (UI-only — not part of the seed). */
+/** Demo gift codes a customer can redeem (UI-only — not part of the seed).
+ *  Enter any of these on the Gift card page ("Enter gift card code") to run the
+ *  redeem flow. Codes are case-insensitive. Mix of amounts + senders so the demo
+ *  shows variety; each can only be redeemed once (resets on a store version bump). */
 const REDEEMABLE: RedeemableGift[] = [
     {
-        code: "GIFT2026",
-        senderName: "Sam Lee",
-        message: "Happy birthday Kate! Enjoy your classes",
-        faceValue: 250,
-        expiresISO: "2027-04-15",
+        code: "WELCOME50",
+        senderName: "Forma Studio",
+        message: "Welcome to Forma! Enjoy your first few sessions on us.",
+        faceValue: 50,
+        expiresISO: "2027-06-30",
     },
     {
         code: "FORMA100",
@@ -39,6 +42,34 @@ const REDEEMABLE: RedeemableGift[] = [
         message: "A little something to keep you moving.",
         faceValue: 100,
         expiresISO: "2027-01-31",
+    },
+    {
+        code: "SPA200",
+        senderName: "Maya Johnson",
+        message: "Some well-earned recovery time — treat yourself at the spa.",
+        faceValue: 200,
+        expiresISO: "2027-05-31",
+    },
+    {
+        code: "GIFT2026",
+        senderName: "Sam Lee",
+        message: "Happy birthday Kate! Enjoy your classes.",
+        faceValue: 250,
+        expiresISO: "2027-04-15",
+    },
+    {
+        code: "GIFT2027",
+        senderName: "Sophia Turner",
+        message: "Happy holidays — here's to a stronger year ahead!",
+        faceValue: 300,
+        expiresISO: "2027-12-31",
+    },
+    {
+        code: "FORMA500",
+        senderName: "Ethan Brooks",
+        message: "Congrats! Book whatever classes you like — it's on me.",
+        faceValue: 500,
+        expiresISO: "2027-09-30",
     },
 ];
 

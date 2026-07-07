@@ -36,6 +36,7 @@ import {
 } from "@/lib/store";
 import type { ClassCategory, MarketingItem, Branch } from "@/data/mock";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "./context";
+import { useCustomerInstructors } from "./instructors";
 import { REAL_TODAY_ISO } from "./dates";
 
 /** Seed-anchored "today" — the date the schedule/booking seeds are built around. */
@@ -380,7 +381,7 @@ export function useHomeData(todayISO: string = REAL_TODAY_ISO): HomeViewModel {
     const classBookings = useAppStore((s) => s.classBookings);
     const classSchedules = useAppStore((s) => s.classSchedules);
     const classCategories = useAppStore((s) => s.classCategories);
-    const instructors = useAppStore((s) => s.instructors);
+    const instructors = useCustomerInstructors();
     const marketingItems = useAppStore((s) => s.marketingItems);
     const branches = useAppStore((s) => s.branches);
     const notifications = useAppStore((s) => s.notifications);
