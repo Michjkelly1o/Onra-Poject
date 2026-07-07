@@ -32,6 +32,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     // Full-screen flows render their own header + footer and hide the shared
     // bottom nav — e.g. Select branch (§6.1) and Instructor Detail (§6 / §3.10).
     const isFullScreen =
+        pathname === "/customer/welcome" ||
+        pathname === "/customer/auth" ||
+        pathname.startsWith("/customer/auth/") ||
         pathname === "/customer/select-branch" ||
         pathname.startsWith("/customer/instructors/") ||
         pathname.startsWith("/customer/classes/") ||
@@ -39,7 +42,8 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         pathname.startsWith("/customer/bookings/") ||
         pathname.startsWith("/customer/search/") ||
         pathname.startsWith("/customer/products/") ||
-        pathname.startsWith("/customer/profile/");
+        pathname.startsWith("/customer/profile/") ||
+        pathname.startsWith("/customer/notifications");
 
     return (
         <CurrentCustomerProvider>

@@ -26,6 +26,9 @@ import { usePathname } from "next/navigation";
  *  the bottom nav, so the template must give them a definite height. */
 function isFullScreenRoute(pathname: string): boolean {
     return (
+        pathname === "/customer/welcome" ||
+        pathname === "/customer/auth" ||
+        pathname.startsWith("/customer/auth/") ||
         pathname === "/customer/select-branch" ||
         pathname.startsWith("/customer/instructors/") ||
         pathname.startsWith("/customer/classes/") ||
@@ -33,7 +36,8 @@ function isFullScreenRoute(pathname: string): boolean {
         pathname.startsWith("/customer/bookings/") ||
         pathname.startsWith("/customer/search/") ||
         pathname.startsWith("/customer/products/") ||
-        pathname.startsWith("/customer/profile/")
+        pathname.startsWith("/customer/profile/") ||
+        pathname.startsWith("/customer/notifications")
     );
 }
 

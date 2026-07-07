@@ -22,6 +22,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAppStore, type Customer } from "@/lib/store";
+import { useAuthSession } from "@/lib/customer/auth";
 
 /**
  * The demo member persona for the customer experience.
@@ -67,15 +68,29 @@ const CurrentCustomerContext = createContext<CurrentCustomerContextValue | null>
  * store, so member-side edits (profile, plan, credits) and admin-side changes to
  * the same customer reflect live on every member screen in the same render cycle.
  */
-export function CurrentCustomerProvider({
-    memberId = DEMO_MEMBER_ID,
-    children,
-}: {
-    memberId?: string;
-    children: ReactNode;
-}) {
-    const member = useAppStore((s) => s.customers.find((c) => c.id === memberId) ?? null);
-    const fallbackBranch = member?.branchId ?? "";
+export function CurrentCustomerProvider({ children }: { children: ReactNode }) {
+    // The auth session is the single source of truth for "who is signed in".
+    // Guest → `customerId` null → `member` null → every module renders its guest
+    // variant. Authenticated → resolve that customer row reactively so member +
+    // admin edits reflect live on every customer screen (same render cycle).
+    const auth = useAuthSession();
+    const memberId = auth.customerId ?? "";
+    const member = useAppStore((s) =>
+        auth.customerId ? s.customers.find((c) => c.id === auth.customerId) ?? null : null,
+    );
+    // A guest still browses a real studio: default the active-branch scope to the
+    // demo member's home branch (falling back to the first active branch) so
+    // Home / Search / Products render populated content before any login.
+    const guestBranch = useAppStore((s) => {
+        const demo = s.customers.find((c) => c.id === DEMO_MEMBER_ID);
+        return (
+            demo?.branchId ??
+            s.branches.find((b) => b.status === "active")?.id ??
+            s.branches[0]?.id ??
+            ""
+        );
+    });
+    const fallbackBranch = member?.branchId ?? guestBranch;
 
     // `null` until hydrated from localStorage, so the server render and the first
     // client paint agree (both fall back to the member's home branch). The effect

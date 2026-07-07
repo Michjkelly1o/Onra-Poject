@@ -6,7 +6,7 @@
 //
 // The Bookings filter: the same full-screen modal chrome as the Search filter,
 // but the Time section is replaced by a Class type segmented control. Sections:
-// Class type (Group / Private), Instructor (multi-select pills), Categories
+// Class type (Group / Appointment), Instructor (multi-select pills), Categories
 // (multi-select chips). Multi within Instructor/Categories; Class type is single.
 
 import { FullScreenFilterModal } from "@/components/customer/shell/FullScreenFilterModal";
@@ -43,7 +43,7 @@ export function BookingsFilterModal({
     const pillInstructors = instructors.slice(0, 5);
     const showSeeAll = instructors.length > 5;
 
-    const setClassType = (ct: "Group" | "Private") =>
+    const setClassType = (ct: "Group" | "Appointment") =>
         onDraftChange({ ...draft, classType: draft.classType === ct ? null : ct });
     const toggleInstructor = (id: string) =>
         onDraftChange({
@@ -72,7 +72,7 @@ export function BookingsFilterModal({
                 <div className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-5 text-[#344054]">Class type</span>
                     <div className="flex overflow-hidden rounded-md border border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        {(["Group", "Private"] as const).map((ct, i) => {
+                        {(["Group", "Appointment"] as const).map((ct, i) => {
                             const on = draft.classType === ct;
                             return (
                                 <button

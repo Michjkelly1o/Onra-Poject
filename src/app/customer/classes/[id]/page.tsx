@@ -103,18 +103,26 @@ export default function ClassDetailPage() {
                                     variant="primary"
                                     size="xl"
                                     className="rounded-full"
-                                    onClick={() => router.push(`/customer/classes/${detail.id}/book`)}
+                                    onClick={() =>
+                                        router.push(member ? `/customer/classes/${detail.id}/book` : "/customer/auth")
+                                    }
                                 >
-                                    Book class
+                                    {member ? "Book class" : "Log in to book"}
                                 </Button>
                             ) : detail.state === "waitlist" ? (
                                 <Button
                                     variant="primary"
                                     size="xl"
                                     className="rounded-full"
-                                    onClick={() => router.push(`/customer/classes/${detail.id}/book?mode=waitlist`)}
+                                    onClick={() =>
+                                        router.push(
+                                            member
+                                                ? `/customer/classes/${detail.id}/book?mode=waitlist`
+                                                : "/customer/auth",
+                                        )
+                                    }
                                 >
-                                    Join waitlist
+                                    {member ? "Join waitlist" : "Log in to join"}
                                 </Button>
                             ) : (
                                 <Button variant="secondary" size="xl" className="rounded-full" disabled>

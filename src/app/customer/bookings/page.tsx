@@ -10,7 +10,7 @@
 // (Class type · Instructor · Categories) narrows the active tab. Tab + filters
 // persist across detail round-trips via a module cache.
 
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterLines } from "@untitledui/icons";
 import {
@@ -30,6 +30,7 @@ import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
+import { useIsAuthenticated } from "@/lib/customer/auth";
 
 function fmtShortDate(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -37,6 +38,12 @@ function fmtShortDate(iso: string): string {
 
 export default function BookingsPage() {
     const router = useRouter();
+    // Bookings is auth-only — a guest (tab hidden, but reachable by deep link) is
+    // redirected to the login front door.
+    const isAuth = useIsAuthenticated();
+    useEffect(() => {
+        if (!isAuth) router.replace("/customer/auth");
+    }, [isAuth, router]);
     const { upcoming, past } = useMemberBookings();
     // Booked appointments (UI-only store) show alongside class bookings: active
     // future ones under Upcoming, cancelled/past ones under Past.
@@ -75,11 +82,21 @@ export default function BookingsPage() {
     const list = applyBookingFilters(baseList, applied);
     const fcount = bookingFilterCount(applied);
 
+    // Appointment bookings honour the SAME filter: "Group" hides them (they're the
+    // Appointment kind); instructor + category narrow them just like class rows.
+    const filteredAppts = showAppts.filter(
+        (a) =>
+            applied.classType !== "Group" &&
+            (applied.instructorIds.length === 0 ||
+                (a.instructorId != null && applied.instructorIds.includes(a.instructorId))) &&
+            (applied.categories.length === 0 || applied.categories.includes(a.category)),
+    );
+
     // Merge appointments + class bookings into ONE list sorted by date/time —
     // Upcoming = soonest first, Past = most recent first — so the two kinds
     // interleave chronologically instead of appointments always sitting on top.
     const mergedRows: { sortKey: string; el: React.ReactNode }[] = [
-        ...showAppts.map((a) => ({
+        ...filteredAppts.map((a) => ({
             sortKey: `${a.slotISO}T${a.slotTime}`,
             el: (
                 <BookingCard
@@ -125,12 +142,17 @@ export default function BookingsPage() {
 
     // Instructors — the SAME shared, branch-scoped list as the Search filter.
     const instructors = useFilterInstructors();
-    // Categories present across the member's bookings.
+    // Categories present across the member's bookings — class AND appointment — so
+    // an appointment-only category is still selectable in the filter.
     const categories = useMemo(() => {
         const cats = new Set<string>();
         for (const b of [...upcoming, ...past]) cats.add(b.category);
+        for (const a of apptBookings) if (a.category) cats.add(a.category);
         return Array.from(cats);
-    }, [upcoming, past]);
+    }, [upcoming, past, apptBookings]);
+
+    // Guest — nothing personal renders while the redirect effect runs.
+    if (!isAuth) return null;
 
     return (
         <div className="flex min-h-full flex-col">

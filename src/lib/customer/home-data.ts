@@ -134,28 +134,6 @@ export interface HomeViewModel {
     unreadNotifications: number;
 }
 
-const EMPTY_METRICS: HomeMetricsVM = {
-    totalClasses: 0,
-    classesThisMonth: 0,
-    dayStreak: 0,
-    longestStreak: 0,
-    classesRemaining: { value: null, unlimited: false },
-    upcomingCount: 0,
-    mostClassesInMonth: null,
-};
-
-const EMPTY_HOME_VM: HomeViewModel = {
-    member: null,
-    studio: null,
-    switchableStudios: [],
-    metrics: EMPTY_METRICS,
-    upcomingBookings: [],
-    instructors: [],
-    categories: [],
-    whatsOn: [],
-    unreadNotifications: 0,
-};
-
 // ── Date helpers (UTC, ISO `YYYY-MM-DD`) ─────────────────────────────────────
 
 /** "2026-05-08" → "2026-05". */
@@ -221,14 +199,17 @@ export function buildHomeViewModel(
     todayISO: string = DEMO_TODAY_ISO,
     scope?: string,
 ): HomeViewModel {
-    if (!member) return EMPTY_HOME_VM;
-
     const { classBookings, classSchedules, classCategories, instructors, marketingItems, branches, notifications } =
         slices;
 
+    // A GUEST (member === null) still sees the public studio surface: studio +
+    // switchable studios, instructors, categories and "What's on". Only the
+    // member-specific bits (metrics, streak, upcoming bookings, unread bell) are
+    // empty/zero — and the guest Home hides the metrics row entirely anyway.
+
     // Active branch scope — the persisted Select-branch choice (a `branches.id`)
-    // or `ALL_BRANCHES`. Defaults to the member's home branch.
-    const scopeBranchId = scope ?? member.branchId;
+    // or `ALL_BRANCHES`. Defaults to the member's home branch, else the scope.
+    const scopeBranchId = scope ?? member?.branchId ?? ALL_BRANCHES;
     const isAllBranches = scopeBranchId === ALL_BRANCHES;
     const branchId = scopeBranchId; // a branches.id, or "all" (guarded by isAllBranches)
     const scheduleById = new Map(classSchedules.map((s) => [s.id, s]));
@@ -244,8 +225,8 @@ export function buildHomeViewModel(
         .filter((b) => b.status === "active")
         .map((b) => ({ id: b.id, name: b.name }));
 
-    // ── Member bookings, joined to their schedule ──
-    const memberBookings = classBookings.filter((b) => b.customerId === member.id);
+    // ── Member bookings, joined to their schedule (none for a guest) ──
+    const memberBookings = member ? classBookings.filter((b) => b.customerId === member.id) : [];
 
     const attendedDayISOs: string[] = [];
     for (const b of memberBookings) {
@@ -285,9 +266,11 @@ export function buildHomeViewModel(
         });
 
     const classesRemaining: HomeMetricsVM["classesRemaining"] =
-        typeof member.creditsRemaining === "number"
-            ? { value: member.creditsRemaining, unlimited: false }
-            : { value: null, unlimited: true };
+        member == null
+            ? { value: null, unlimited: false }
+            : typeof member.creditsRemaining === "number"
+              ? { value: member.creditsRemaining, unlimited: false }
+              : { value: null, unlimited: true };
 
     const metrics: HomeMetricsVM = {
         totalClasses,
@@ -366,7 +349,9 @@ export function buildHomeViewModel(
         }));
 
     // ── Notifications (member feed by customerId — audience gap, PRD 18) ──
-    const unreadNotifications = notifications.filter((n) => n.customerId === member.id && !n.isRead).length;
+    const unreadNotifications = member
+        ? notifications.filter((n) => n.customerId === member.id && !n.isRead).length
+        : 0;
 
     return {
         member,

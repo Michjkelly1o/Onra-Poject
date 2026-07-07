@@ -99,6 +99,11 @@ export default function ProductsPage() {
 
     function onAdd(plan: PlanRow, qty: number) {
         setSheetPlan(null);
+        // Guests can't purchase — any add-to-cart routes to the login front door.
+        if (!member) {
+            router.push("/customer/auth");
+            return;
+        }
         // Gift cards are configured per-recipient on the Gift Card Information page;
         // the sheet's "Add to cart" routes there (the line is added on Confirm), so
         // multiple gift cards can be purchased by repeating the flow.
@@ -251,6 +256,7 @@ export default function ProductsPage() {
                 onAdd={onAdd}
                 upgrade={sheetPlan ? upgradeFor(sheetPlan) : null}
                 disabled={sheetPlan ? addDisabledFor(sheetPlan) : false}
+                guest={!member}
                 initialQty={sheetPlan?.kind === "package" ? cartQtyFor(sheetPlan) || 1 : 1}
             />
         </div>

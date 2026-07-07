@@ -16,6 +16,7 @@ import { AlertTriangle, ChevronLeft, Clock, Lightbulb02, MarkerPin01, SlashCircl
 import { useAppStore } from "@/lib/store";
 import { to12h } from "@/lib/customer/dates";
 import { cancelAppointmentBooking, useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
+import { addCustomerNotification } from "@/lib/customer/notifications-feed";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,14 @@ export default function CancelAppointmentPage() {
     function confirmCancel() {
         if (!booking) return;
         cancelAppointmentBooking(apptId, isLate);
+        addCustomerNotification({
+            tab: "bookings",
+            event: "appointment_cancelled",
+            title: "Appointment cancelled",
+            message: `Your ${booking.name} appointment on ${fullDate} has been cancelled.`,
+            relatedType: "appointment",
+            relatedId: apptId,
+        });
         showToast(
             "Appointment cancelled",
             isLate
