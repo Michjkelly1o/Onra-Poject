@@ -73,9 +73,8 @@ const NAV_ITEMS: NavItemDef[] = [
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
         children: [
             { label: "Insights", href: "/admin/insights" },
-            // KPI hidden from the sidebar per client Jul 2026 (also
-            // 404'd via feature-flags.ts). Restore by uncommenting.
-            // { label: "KPI",      href: "/admin/kpi"      },
+            // KPI restored to the sidebar (feature flag lifted).
+            { label: "KPI",      href: "/admin/kpi"      },
             { label: "Reports",  href: "/admin/reports"  },
         ],
     },

@@ -102,7 +102,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // 4 category tabs (Financial · Client · Class · Marketing) with
     // 55 KPI cards + 16 chart widgets. Reuses the Insights shell
     // (metric card + date filter + widget grid).
-    "/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
+    // "/admin/kpi",                    // tabs: Financial / Client / Class / Marketing   // [enabled: feature flag lifted]
 
     // ── Pay rate module ── (ENABLED — pushed)
     //"/admin/staff/pay-rate",         // list view
@@ -127,51 +127,51 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // that one report — the category card stays visible with fewer rows.
     //
     // Landing route — 404s the whole surface.
-    "/admin/reports",                // landing (6 category containers)
+    // "/admin/reports",                // landing (6 category containers)   // [enabled: feature flag lifted]
 
     // ── Reports · Financial (12 reports) ──
-    "/reports/total-sales",
-    "/reports/sales-by-category",
-    "/reports/sales-by-item",
-    "/reports/payments",
-    "/reports/refunds",
-    "/reports/discounts",
-    "/reports/tax-vat-export",
-    "/reports/gift-cards",
-    "/reports/revenue-recognition",
-    "/reports/revenue-per-class",
-    "/reports/arpm",
-    "/reports/mrr",
+    // "/reports/total-sales",   // [enabled: feature flag lifted]
+    // "/reports/sales-by-category",   // [enabled: feature flag lifted]
+    // "/reports/sales-by-item",   // [enabled: feature flag lifted]
+    // "/reports/payments",   // [enabled: feature flag lifted]
+    // "/reports/refunds",   // [enabled: feature flag lifted]
+    // "/reports/discounts",   // [enabled: feature flag lifted]
+    // "/reports/tax-vat-export",   // [enabled: feature flag lifted]
+    // "/reports/gift-cards",   // [enabled: feature flag lifted]
+    // "/reports/revenue-recognition",   // [enabled: feature flag lifted]
+    // "/reports/revenue-per-class",   // [enabled: feature flag lifted]
+    // "/reports/arpm",   // [enabled: feature flag lifted]
+    // "/reports/mrr",   // [enabled: feature flag lifted]
 
     // ── Reports · Membership & Package (4 reports) ──
-    "/reports/memberships-packages",
-    "/reports/frozen",
-    "/reports/intro-offers",
-    "/reports/upgrades-downgrades",
+    // "/reports/memberships-packages",   // [enabled: feature flag lifted]
+    // "/reports/frozen",   // [enabled: feature flag lifted]
+    // "/reports/intro-offers",   // [enabled: feature flag lifted]
+    // "/reports/upgrades-downgrades",   // [enabled: feature flag lifted]
 
     // ── Reports · Client / Customer (4 reports) ──
-    "/reports/customer-data",
-    "/reports/member-movement",
-    "/reports/retention-churn",
-    "/reports/win-back",
+    // "/reports/customer-data",   // [enabled: feature flag lifted]
+    // "/reports/member-movement",   // [enabled: feature flag lifted]
+    // "/reports/retention-churn",   // [enabled: feature flag lifted]
+    // "/reports/win-back",   // [enabled: feature flag lifted]
 
     // ── Reports · Activity / Class (4 reports) ──
-    "/reports/bookings",
-    "/reports/class-performance",
-    "/reports/cancellations-noshows",
-    "/reports/top-classes-services",
+    // "/reports/bookings",   // [enabled: feature flag lifted]
+    // "/reports/class-performance",   // [enabled: feature flag lifted]
+    // "/reports/cancellations-noshows",   // [enabled: feature flag lifted]
+    // "/reports/top-classes-services",   // [enabled: feature flag lifted]
 
     // ── Reports · Staff / Instructor (2 reports) ──
-    "/reports/instructor-performance",
-    "/reports/staff-attendance",
+    // "/reports/instructor-performance",   // [enabled: feature flag lifted]
+    // "/reports/staff-attendance",   // [enabled: feature flag lifted]
 
     // ── Reports · Marketing (6 reports) ──
-    "/reports/lead-data",
-    "/reports/lead-conversion",
-    "/reports/campaign-performance",
-    "/reports/promo-redemptions",
-    "/reports/referrals",
-    "/reports/acquisition-efficiency",
+    // "/reports/lead-data",   // [enabled: feature flag lifted]
+    // "/reports/lead-conversion",   // [enabled: feature flag lifted]
+    // "/reports/campaign-performance",   // [enabled: feature flag lifted]
+    // "/reports/promo-redemptions",   // [enabled: feature flag lifted]
+    // "/reports/referrals",   // [enabled: feature flag lifted]
+    // "/reports/acquisition-efficiency",   // [enabled: feature flag lifted]
 
     // ── Staff & Permissions module ── (PARTIALLY ENABLED — Shift create/detail/edit hidden today)
     // Exact-match only on the list — otherwise this prefix would also catch
@@ -268,11 +268,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)
     // The sidebar menu item stays visible per the file convention; the
     // route 404s when clicked. Re-enable by commenting the line below.
-    "/instructor/notifications",     // instructor notification feed
+    // "/instructor/notifications",     // instructor notification feed   // [enabled: feature flag lifted]
 
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
-    "/instructor/account",           // instructor account / profile page
+    // "/instructor/account",           // instructor account / profile page   // [enabled: feature flag lifted]
 
     // ──────────────────────────────────────────────────────────────────
     // Customer experience — mobile-only surface (max-width 400px) with
