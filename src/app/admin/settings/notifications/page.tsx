@@ -17,8 +17,10 @@
 //   • Bottom banner on Marketing group
 //
 // Modals:
-//   • Edit template — 4 tabs (Email / WhatsApp / SMS / Manage timing) per
-//     Figma 7745:28301 series
+//   • Edit template — 5 tabs (Email / WhatsApp / SMS / Manage timing /
+//     Condition) per Figma 7745:28301 series + 7808:58413 (Condition
+//     tab added Jul 2026 to let admin flip any event's `isCritical`
+//     flag — was previously payments-only in the seed).
 //   • Delivery hours — quiet-window side panel per Figma 7733:51010
 //
 // Cross-module wiring:
@@ -291,7 +293,7 @@ function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate,
                 {ns.isCritical && (
                     <>
                         <Pill tone="blue">Critical</Pill>
-                        <InfoTooltip content="At least one channel stays on. Payment notifications must always reach the customer, so you can't disable the last enabled channel." />
+                        <InfoTooltip content="At least one channel stays on. Critical notifications must always reach the customer, so you can't disable the last enabled channel." />
                     </>
                 )}
                 {ns.sentDuringCampaigns && (
@@ -418,7 +420,7 @@ function ColumnHeaders({ waConnected }: { waConnected: boolean }) {
 
 // ─── Template editor modal (4 tabs) ────────────────────────────────────────
 
-type TemplateTab = "email" | "whatsapp" | "sms" | "timing";
+type TemplateTab = "email" | "whatsapp" | "sms" | "timing" | "condition";
 
 function TemplateEditor({ ns, initialTab, onClose }: {
     ns: NotificationSetting;
@@ -427,11 +429,14 @@ function TemplateEditor({ ns, initialTab, onClose }: {
 }) {
     const updateTemplate = useAppStore(s => s.updateNotificationTemplate);
     const updateTiming   = useAppStore(s => s.updateNotificationTiming);
+    const setCritical    = useAppStore(s => s.setNotificationEventCritical);
     const showToast      = useAppStore(s => s.showToast);
 
     const [tab, setTab] = useState<TemplateTab>(initialTab ?? "email");
 
-    // Local buffers — committed on Save template / Save timing.
+    // Local buffers — committed on Save template / Save timing / Save
+    // condition. Every tab keeps its own draft so switching tabs never
+    // wipes unsaved edits on another.
     const [emailSubject,     setEmailSubject]     = useState(ns.emailSubject ?? "");
     const [emailBody,        setEmailBody]        = useState(ns.emailTemplate ?? "");
     const [whatsappBody,     setWhatsappBody]     = useState(ns.whatsappTemplate ?? "");
@@ -440,6 +445,10 @@ function TemplateEditor({ ns, initialTab, onClose }: {
     const [sendOffsets,      setSendOffsets]      = useState<NotificationSendOffset[]>(
         ns.sendOffsets.length > 0 ? ns.sendOffsets.map(o => ({ ...o })) : [{ value: 0, unit: "hours" }],
     );
+    // Condition tab draft — mirrors the row's current `isCritical`.
+    // Payments seeded true; anything else defaults false but can now be
+    // flipped by admin (Figma 7808:58413).
+    const [isCritical,       setIsCritical]       = useState<boolean>(ns.isCritical);
 
     useEffect(() => {
         function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -498,6 +507,33 @@ function TemplateEditor({ ns, initialTab, onClose }: {
         onClose();
     }
 
+    function handleSaveCondition() {
+        // No-op when the draft matches the store (avoids a spurious
+        // toast when admin opens the tab, doesn't change anything, and
+        // clicks Save).
+        if (isCritical === ns.isCritical) {
+            onClose();
+            return;
+        }
+        // If admin turned critical ON while every channel was off, the
+        // store auto-enables Email (default primary channel) so the
+        // "one channel stays on" contract holds. Detect that here so the
+        // toast tells the admin exactly what happened.
+        const noChannelBefore = !ns.emailEnabled && !ns.whatsappEnabled && !ns.smsEnabled;
+        const autoEnabledEmail = isCritical && noChannelBefore;
+        setCritical(ns.id, isCritical);
+        showToast(
+            isCritical ? `${ns.label} is now critical` : `${ns.label} no longer critical`,
+            isCritical
+                ? autoEnabledEmail
+                    ? "Email was enabled as the required delivery channel — at least one channel must stay on."
+                    : "At least one delivery channel must stay enabled from now on."
+                : "Any channel can be turned off for this event.",
+            "success", "check",
+        );
+        onClose();
+    }
+
     if (typeof document === "undefined") return null;
     return createPortal(
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -510,14 +546,22 @@ function TemplateEditor({ ns, initialTab, onClose }: {
              *  keeps its own scroll so overflowing content stays
              *  reachable without changing the frame. */}
             <div className="relative bg-white rounded-[16px] w-[720px] max-w-full h-[720px] max-h-[90vh] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
-                {/* Header */}
+                {/* Header — Condition tab uses its own title + subtitle
+                    per Figma 7808:58413; the other four tabs share the
+                    template-editor copy. */}
                 <div className="flex items-start gap-4 px-6 py-5 border-b border-[#e4e7ec] shrink-0">
                     <div className="flex-1 flex flex-col gap-1">
                         <h3 className="text-[18px] font-semibold text-[#101828] leading-[28px]">
-                            Edit template — {ns.label}
+                            {tab === "condition"
+                                ? "Notification conditions"
+                                : `Edit template — ${ns.label}`}
                         </h3>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
-                            Customize the copy sent to members for this event. Variables in <span className="text-[#6941c6]">{"{curly_braces}"}</span> are replaced at send time.
+                            {tab === "condition" ? (
+                                "Manage when we push the reminder."
+                            ) : (
+                                <>Customize the copy sent to members for this event. Variables in <span className="text-[#6941c6]">{"{curly_braces}"}</span> are replaced at send time.</>
+                            )}
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
@@ -529,7 +573,7 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                 {/* Tabs (underline) */}
                 <div className="border-b border-[#e4e7ec] px-6 shrink-0">
                     <div className="flex gap-1">
-                        {(["email", "whatsapp", "sms", "timing"] as const).map(k => (
+                        {(["email", "whatsapp", "sms", "timing", "condition"] as const).map(k => (
                             <button key={k} type="button" onClick={() => setTab(k)}
                                 className={cn(
                                     "h-[44px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
@@ -537,10 +581,11 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                                         ? "border-b-2 border-[#101828] text-[#101828]"
                                         : "text-[#667085] hover:text-[#344054]",
                                 )}>
-                                {k === "email"    ? "Email"
-                               : k === "whatsapp" ? "WhatsApp"
-                               : k === "sms"      ? "SMS"
-                               :                    "Manage timing"}
+                                {k === "email"     ? "Email"
+                               : k === "whatsapp"  ? "WhatsApp"
+                               : k === "sms"       ? "SMS"
+                               : k === "timing"    ? "Manage timing"
+                               :                     "Condition"}
                             </button>
                         ))}
                     </div>
@@ -575,6 +620,12 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                             offsets={sendOffsets} onOffsetsChange={setSendOffsets}
                         />
                     )}
+                    {tab === "condition" && (
+                        <ConditionTab
+                            isCritical={isCritical}
+                            onChange={setIsCritical}
+                        />
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -586,6 +637,10 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                             <Button variant="primary" size="md" onClick={handleSaveTiming}
                                 disabled={!timingCanSave}>
                                 <span className="flex items-center gap-2"><Check className="w-4 h-4" />Save timing</span>
+                            </Button>
+                        ) : tab === "condition" ? (
+                            <Button variant="primary" size="md" onClick={handleSaveCondition}>
+                                <span className="flex items-center gap-2"><Check className="w-4 h-4" />Save changes</span>
                             </Button>
                         ) : (
                             <Button variant="primary" size="md" onClick={handleSaveTemplate}>
@@ -821,6 +876,43 @@ function TimingTab({ mode, onModeChange, offsets, onOffsetsChange }: {
                         onClick={addOffset}>Add send time</Button>
                 </div>
             )}
+        </div>
+    );
+}
+
+// ─── Condition tab (Figma 7808:58413) ──────────────────────────────────────
+//
+// Flip the "Notification is critical" flag on the current event. Critical
+// rows enforce the "at least one channel stays enabled" contract (already
+// wired in `setNotificationEventChannel` in the store — the guard reads
+// `row.isCritical`, no payment-specific check). This tab is the single
+// surface where admin can extend the critical treatment beyond Payments.
+function ConditionTab({ isCritical, onChange }: {
+    isCritical: boolean;
+    onChange: (next: boolean) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-4">
+            <div
+                className={cn(
+                    "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 transition-colors",
+                    isCritical ? "border-[#7ba08c] bg-white" : "border-[#e4e7ec] bg-white",
+                )}
+            >
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                        Notification is critical
+                    </p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">
+                        At least one delivery channel must remain enabled for critical notifications.
+                    </p>
+                </div>
+                <Toggle
+                    on={isCritical}
+                    onChange={onChange}
+                    ariaLabel="Mark this notification as critical"
+                />
+            </div>
         </div>
     );
 }

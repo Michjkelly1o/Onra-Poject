@@ -5,19 +5,24 @@
 
 import { useState, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Copy01, Gift01, ShoppingBag03, Upload01 } from "@untitledui/icons";
+import { ChevronLeft, Copy01, HeartHand, ShoppingCart01, Stars02, Upload01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { substituteReferralVariables } from "@/lib/referral-helpers";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
-import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
-import { SheetToolbar } from "@/components/customer/shell/SheetToolbar";
+import { ShareSheet } from "@/components/customer/shell/ShareSheet";
+import { FeaturedIconHero } from "@/components/customer/profile/FeaturedIconHero";
 import { Button } from "@/components/ui/button";
 
 const STEPS: { icon: ComponentType<SVGProps<SVGSVGElement>>; text: string }[] = [
     { icon: Upload01, text: "Share your unique link to your friends to join the program." },
-    { icon: ShoppingBag03, text: "Your friends signs up and makes a purchase of membership/product." },
-    { icon: Gift01, text: "1 day after the purchase, you and your friend will both get 2 free class credits." },
+    { icon: ShoppingCart01, text: "Your friends signs up and makes a purchase of membership/product." },
+    { icon: Stars02, text: "1 day after the purchase, you and your friend will both get 2 free class credits." },
 ];
+
+/** A referral counts as "successful" once the friend has earned their credits
+ *  (full reward granted); otherwise it's still pending (joined, not purchased). */
+const isSuccessful = (benefitCredits: number) => benefitCredits >= 2;
 
 function initialsOf(name: string): string {
     return name
@@ -26,6 +31,14 @@ function initialsOf(name: string): string {
         .slice(0, 2)
         .map((w) => w[0]?.toUpperCase() ?? "")
         .join("");
+}
+
+/** ISO → "DD/MM/YYYY". */
+function ddmmyyyy(iso?: string): string {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
 export default function ReferralsPage() {
@@ -37,15 +50,24 @@ export default function ReferralsPage() {
     const [shareOpen, setShareOpen] = useState(false);
 
     const code = member?.referralCode ?? "";
-    const successful = referrals.length;
-    const totalBonus = referrals.reduce((n, r) => n + (r.benefitCredits || 0), 0);
-    const shareMessage =
-        referralSettings.infoDescription || `Join me on Onra! Use my code ${code} and we both get 2 free credits.`;
+    const maxReferrals = referralSettings.maxReferralsPerMember || 10;
+    const successfulRefs = referrals.filter((r) => isSuccessful(r.benefitCredits));
+    const successful = successfulRefs.length;
+    const totalBonus = successfulRefs.reduce((n, r) => n + (r.benefitCredits || 0), 0);
 
-    function copy() {
+    // The admin-authored referral message with its {{variables}} resolved, plus
+    // the sign-up deep link (new users enter the code during sign-up).
+    const resolvedMessage = substituteReferralVariables(
+        referralSettings.infoDescription || `Join me on Onra! We both get free credits when you sign up.`,
+        referralSettings,
+    );
+    const signupLink = `https://onra.app/join?ref=${encodeURIComponent(code)}`;
+    const shareBody = `${resolvedMessage}\n\nUse my code: ${code}`;
+
+    function copyAll() {
         navigator.clipboard
-            ?.writeText(code)
-            .then(() => showToast("Referral code copied", "Share it with your friends.", "success"))
+            ?.writeText(`${shareBody}\n${signupLink}`)
+            .then(() => showToast("Copied to clipboard", "Your referral message is ready to share.", "success"))
             .catch(() => showToast("Couldn't copy", "Please try again.", "error"));
     }
 
@@ -60,20 +82,29 @@ export default function ReferralsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">Invite friends</h1>
+                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[#101828]">Invite friends</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
-            <div className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-[80px]">
-                <div className="flex flex-col items-center text-center">
-                    <div className="flex size-14 items-center justify-center rounded-2xl bg-[#ecfdf3]">
-                        <Gift01 className="size-7 text-[#067647]" aria-hidden />
-                    </div>
-                    <p className="mt-3 text-xl font-semibold leading-7 text-[#101828]">Refer friends, get free credits</p>
-                    <p className="mt-1 text-sm leading-5 text-[#475467]">Get 2 free credits for each you invite.</p>
-                </div>
+            <div className="relative flex flex-1 flex-col gap-5 px-4 pb-8 pt-[80px]">
+                {/* Soft mint radial wash over the top (shared with Gift card). */}
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-[380px]"
+                    style={{ background: "radial-gradient(125% 78% at 50% -18%, #dff6ed 0%, rgba(255,255,255,0) 72%)" }}
+                />
 
-                <div className="flex items-center gap-2">
+                {/* Hero — shared pattern; upright green tile (rectangle, not diamond). */}
+                <FeaturedIconHero
+                    icon={HeartHand}
+                    upright
+                    tileClassName="bg-[#dcfae5] shadow-[0px_4px_18px_0px_rgba(220,250,229,0.7),0px_2px_4px_0px_rgba(16,24,40,0.04)]"
+                    iconClassName="size-9 text-[#079455]"
+                    title="Refer friends, get free credits"
+                    subtitle="Get 2 free credits for each you invite."
+                />
+
+                <div className="relative flex items-center gap-2">
                     <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828]">
                         {code}
                     </div>
@@ -82,91 +113,129 @@ export default function ReferralsPage() {
                         size="lg"
                         leftIcon={<Copy01 className="size-4" aria-hidden />}
                         className="rounded-lg"
-                        onClick={copy}
+                        onClick={copyAll}
                     >
                         Copy
                     </Button>
                 </div>
-                <Button variant="primary" size="xl" className="w-full rounded-full" onClick={() => setShareOpen(true)}>
+                <Button
+                    variant="primary"
+                    size="xl"
+                    className="relative w-full rounded-full"
+                    onClick={() => setShareOpen(true)}
+                >
                     Share
                 </Button>
 
-                <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
+                {/* Program steps — connector line runs between the step icons. */}
+                <div className="relative flex flex-col rounded-2xl border border-[#eaecf0] bg-white p-4">
                     {STEPS.map((s, i) => {
                         const Icon = s.icon;
+                        const last = i === STEPS.length - 1;
                         return (
-                            <div key={i} className={`flex gap-3 ${i > 0 ? "pt-4" : ""}`}>
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#ecfdf3] text-[#067647]">
-                                    <Icon className="size-4" aria-hidden />
+                            <div key={i} className="flex gap-3">
+                                <div className="flex flex-col items-center self-stretch">
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#ecfdf3] text-[#079455]">
+                                        <Icon className="size-4" aria-hidden />
+                                    </div>
+                                    {!last && (
+                                        <div className="my-1 w-0.5 flex-1 rounded-full bg-gradient-to-b from-[#a9efc5] to-[#ecfdf3]" />
+                                    )}
                                 </div>
-                                <p className="flex-1 pt-1 text-sm leading-5 text-[#344054]">{s.text}</p>
+                                <p className={`flex-1 pt-1 text-sm leading-5 text-[#344054] ${last ? "" : "pb-5"}`}>
+                                    {s.text}
+                                </p>
                             </div>
                         );
                     })}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                {/* Metrics */}
+                <div className="relative grid grid-cols-2 gap-3">
                     <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
-                        <p className="text-sm leading-5 text-[#475467]">Total bonus class</p>
-                        <p className="mt-1 text-xl font-semibold leading-7 text-[#101828]">{totalBonus} class</p>
+                        <p className="text-sm leading-5 text-[#475467]">Total bonus credit</p>
+                        <p className="mt-1 text-xl font-semibold leading-7 text-[#101828]">{totalBonus} credit</p>
                     </div>
                     <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
                         <p className="text-sm leading-5 text-[#475467]">Successful referrals</p>
-                        <p className="mt-1 text-xl font-semibold leading-7 text-[#101828]">{successful}</p>
+                        <p className="mt-1 text-xl font-semibold leading-7 text-[#101828]">
+                            {successful}/{maxReferrals}
+                        </p>
                     </div>
                 </div>
 
-                <div>
+                {/* Referred customers */}
+                <div className="relative">
                     <p className="mb-3 text-sm font-semibold leading-5 text-[#101828]">Referred customers</p>
                     {referrals.length > 0 ? (
                         <div className="flex flex-col gap-3">
-                            {referrals.map((r) => (
-                                <div
-                                    key={r.id}
-                                    className="flex items-center gap-3 rounded-2xl border border-[#eaecf0] bg-white p-3"
-                                >
-                                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e0e0e0] text-sm font-semibold text-[#475467]">
-                                        {initialsOf(r.referredName)}
+                            {referrals.map((r) => {
+                                const success = isSuccessful(r.benefitCredits);
+                                return (
+                                    <div
+                                        key={r.id}
+                                        className="flex items-center gap-3 rounded-2xl border border-[#eaecf0] bg-white p-3"
+                                    >
+                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e0e0e0] text-sm font-semibold text-[#475467]">
+                                            {initialsOf(r.referredName)}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-base font-medium leading-6 text-[#101828]">
+                                                {r.referredName}
+                                            </p>
+                                            <p className="truncate text-sm leading-5 text-[#475467]">
+                                                {success
+                                                    ? `Expiry until ${ddmmyyyy(r.expiresAtISO)}`
+                                                    : `Joined ${ddmmyyyy(r.referredAtISO)}`}
+                                            </p>
+                                        </div>
+                                        {success ? (
+                                            <span className="shrink-0 rounded-full bg-[#ecfdf3] px-2.5 py-0.5 text-xs font-medium leading-5 text-[#067647] ring-1 ring-inset ring-[#abefc6]">
+                                                +{r.benefitCredits} credits
+                                            </span>
+                                        ) : (
+                                            <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium leading-5 text-[#475467] ring-1 ring-inset ring-[#d0d5dd]">
+                                                Pending
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-base font-medium leading-6 text-[#101828]">{r.referredName}</p>
-                                        <p className="truncate text-sm leading-5 text-[#475467]">{r.referredEmail}</p>
-                                    </div>
-                                    <span className="shrink-0 rounded-full bg-[#ecfdf3] px-2.5 py-0.5 text-xs font-medium leading-5 text-[#067647] ring-1 ring-inset ring-[#abefc6]">
-                                        Success
-                                    </span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-[#eaecf0] py-10 text-center">
                             <p className="text-base font-semibold leading-6 text-[#101828]">No referrals yet</p>
-                            <p className="text-sm leading-5 text-[#475467]">refer friends and get free class!</p>
+                            <p className="text-sm leading-5 text-[#475467]">Refer friends and get free credits!</p>
                         </div>
                     )}
                 </div>
             </div>
 
-            <CustomerSheet open={shareOpen} onClose={() => setShareOpen(false)}>
-                <SheetToolbar title="Share" onClose={() => setShareOpen(false)} />
-                <div className="flex flex-col gap-4 pt-1">
-                    <div className="rounded-xl bg-[#f9fafb] p-4 text-sm leading-5 text-[#344054]">{shareMessage}</div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828]">
-                            {code}
+            <ShareSheet
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                message={shareBody}
+                url={signupLink}
+                preview={
+                    <div className="flex flex-col gap-4">
+                        <div className="rounded-xl bg-[#f9fafb] p-4 text-sm leading-5 text-[#344054]">{resolvedMessage}</div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828]">
+                                {code}
+                            </div>
+                            <Button
+                                variant="secondary-gray"
+                                size="lg"
+                                leftIcon={<Copy01 className="size-4" aria-hidden />}
+                                className="rounded-lg"
+                                onClick={copyAll}
+                            >
+                                Copy
+                            </Button>
                         </div>
-                        <Button
-                            variant="primary"
-                            size="lg"
-                            leftIcon={<Copy01 className="size-4" aria-hidden />}
-                            className="rounded-lg"
-                            onClick={copy}
-                        >
-                            Copy
-                        </Button>
                     </div>
-                </div>
-            </CustomerSheet>
+                }
+            />
         </div>
     );
 }

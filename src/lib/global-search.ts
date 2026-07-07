@@ -87,8 +87,9 @@ const PAGES: PageEntry[] = [
     { title: "Memberships & Packages", href: "/admin/products",                   icon: ShoppingBag01 },
     { title: "Gift Cards",             href: "/admin/products/gift-cards",        icon: Tag01 },
     { title: "Promo codes",            href: "/admin/products/promo-codes",       icon: Percent01 },
-    // Analytics group — Sidebar parent is BarChartSquare01
-    { title: "Insights",               href: "/admin/insights",                   icon: BarChartSquare01 },
+    // Analytics group — Sidebar parent is BarChartSquare01. Client Jul 2026:
+    // "Insights" now points to the KPI page (legacy /admin/insights archived).
+    { title: "Insights",               href: "/admin/kpi",                        icon: BarChartSquare01 },
     // Staff group — Sidebar parent is Users01; Pay rate + Payroll keep
     // money-specific glyphs (CoinsHand / CreditCard02) so they're
     // distinguishable at a glance.
@@ -351,7 +352,9 @@ const SUGGESTED_PAGE_HREFS = [
     "/admin/customers",
     "/admin/pos",
     "/admin/products",
-    "/admin/insights",
+    // "/admin/insights" archived Jul 2026 — the "Insights" chip lands on
+    // /admin/kpi instead. Left commented for the eventual unarchive.
+    "/admin/kpi",
     "/admin/settings",
 ];
 

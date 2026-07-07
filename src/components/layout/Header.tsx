@@ -30,7 +30,10 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/staff/roles": "Role & permissions",
     "/admin/staff/pay-rate": "Pay rate",
     "/admin/compensation": "Payroll",
-    "/admin/insights": "Insights",
+    // Client Jul 2026: legacy /admin/insights archived (404'd); KPI page
+    // now carries the "Insights" title so the header reads consistently
+    // with the sidebar label.
+    "/admin/kpi": "Insights",
     "/admin/reports": "Reports",
     "/admin/notifications": "Notifications",
     "/admin/settings": "Settings",

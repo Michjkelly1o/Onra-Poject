@@ -74,7 +74,7 @@ export default function ReviewsPage() {
                                         type="button"
                                         onClick={() => setTopic(on ? null : t.tag)}
                                         className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm leading-5 ${
-                                            on ? "border-[1.5px] border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
+                                            on ? "border-2 border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
                                         }`}
                                     >
                                         <span className="font-medium text-[#344054]">{t.tag}</span>
@@ -93,7 +93,7 @@ export default function ReviewsPage() {
                         type="button"
                         onClick={openFilter}
                         className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-2 ${
-                            star !== null ? "border-[1.5px] border-[#7ba08c] bg-white" : "border border-[#e4e7ec] bg-white"
+                            star !== null ? "border-2 border-[#7ba08c] bg-white" : "border border-[#e4e7ec] bg-white"
                         }`}
                     >
                         <Star01 className="size-4" style={{ fill: "#fdb022", color: "#fdb022" }} aria-hidden />

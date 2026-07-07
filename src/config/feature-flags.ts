@@ -95,14 +95,18 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // the location changed.
     //"/admin/categories",             // list view + create/edit/delete
 
-    // ── Insights module ── (ENABLED — pushed)
-    //"/admin/insights",               // tabs: Finance / Memberships / Classes
+    // ── Insights module ── (DISABLED — client Jul 2026 renamed KPI → Insights,
+    // legacy insights module archived at code level. Old /admin/insights
+    // route 404s; the "Insights" label in the sidebar now points at /admin/kpi.
+    // Unarchive by re-commenting the line below AND rolling back the Sidebar +
+    // Header + global-search relabels.)
+    "/admin/insights",               // tabs: Finance / Memberships / Classes
 
-    // ── KPI module ── (DISABLED — for client demo)
+    // ── KPI module ── (ENABLED — for client demo)
     // 4 category tabs (Financial · Client · Class · Marketing) with
     // 55 KPI cards + 16 chart widgets. Reuses the Insights shell
     // (metric card + date filter + widget grid).
-    "/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
+    //"/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
 
     // ── Pay rate module ── (ENABLED — pushed)
     //"/admin/staff/pay-rate",         // list view
@@ -127,45 +131,45 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // that one report — the category card stays visible with fewer rows.
     //
     // Landing route — 404s the whole surface.
-    "/admin/reports",                // landing (6 category containers)
+    //"/admin/reports",                // landing (6 category containers)
 
     // ── Reports · Financial (12 reports) ──
-    "/reports/total-sales",
-    "/reports/sales-by-category",
-    "/reports/sales-by-item",
-    "/reports/payments",
-    "/reports/refunds",
-    "/reports/discounts",
-    "/reports/tax-vat-export",
-    "/reports/gift-cards",
-    "/reports/revenue-recognition",
-    "/reports/revenue-per-class",
-    "/reports/arpm",
-    "/reports/mrr",
+    //"/reports/total-sales",
+    //"/reports/sales-by-category",
+    //"/reports/sales-by-item",
+    //"/reports/payments",
+    //"/reports/refunds",
+    //"/reports/discounts",
+    //"/reports/tax-vat-export",
+    //"/reports/gift-cards",
+    //"/reports/revenue-recognition",
+    //"/reports/revenue-per-class",
+    //"/reports/arpm",
+    //"/reports/mrr",
 
-    // ── Reports · Membership & Package (4 reports) ──
+    // ── Reports · Membership & Package (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/memberships-packages",
     "/reports/frozen",
     "/reports/intro-offers",
     "/reports/upgrades-downgrades",
 
-    // ── Reports · Client / Customer (4 reports) ──
+    // ── Reports · Client / Customer (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/customer-data",
     "/reports/member-movement",
     "/reports/retention-churn",
     "/reports/win-back",
 
-    // ── Reports · Activity / Class (4 reports) ──
+    // ── Reports · Activity / Class (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/bookings",
     "/reports/class-performance",
     "/reports/cancellations-noshows",
     "/reports/top-classes-services",
 
-    // ── Reports · Staff / Instructor (2 reports) ──
+    // ── Reports · Staff / Instructor (2 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/instructor-performance",
     "/reports/staff-attendance",
 
-    // ── Reports · Marketing (6 reports) ──
+    // ── Reports · Marketing (6 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/lead-data",
     "/reports/lead-conversion",
     "/reports/campaign-performance",
@@ -286,6 +290,12 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // separate entries for each step of a checkout flow.
     // ──────────────────────────────────────────────────────────────────
 
+    // ── Customer → Auth flow ── (DISABLED — client demo Jul 2026: no
+    // login/signup/OTP/emergency/loading. Customer surface starts on
+    // the guest state directly. Any write action that pushes to
+    // `/customer/auth` will 404 — accepted for this demo.)
+    "/customer/auth",                // login + signup + otp + emergency + loading (covers all sub-routes)
+
     // ── Customer → Home / landing ──
     //"=/customer",                    // home landing page (exact match — keeps sub-routes reachable)
 
@@ -302,7 +312,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/customer/classes",             // class detail + book/checkout/plans/waiver/guest/processing/success
 
     // ── Customer → Appointment booking flow ──
-    "/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
+    //"/customer/appointments",        // appointment instructor pick + slot + book/promo/processing/success
 
     // ── Customer → Instructor profile ──
     //"/customer/instructors",         // public instructor profile detail
@@ -326,9 +336,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // Same file convention as the instructor block above: the row in
     // the Profile landing stays visible; tapping it 404s until the
     // sub-page ships. Re-enable by commenting the matching line.
-    "/customer/profile/promo",       // apply a promo code
-    "/customer/profile/gift-cards",  // gift cards list + redeem/[code] flow
-    "/customer/profile/referrals",   // invite friends / referral rewards
+    //"/customer/profile/promo",       // apply a promo code
+    //"/customer/profile/gift-cards",  // gift cards list + redeem/[code] flow
+    //"/customer/profile/referrals",   // invite friends / referral rewards
 ];
 
 /** True when `pathname` falls under a disabled route prefix. Entries beginning

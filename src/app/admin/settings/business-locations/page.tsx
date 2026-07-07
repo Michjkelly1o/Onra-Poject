@@ -16,11 +16,15 @@
 //     multi-select) + "Add location" green primary dropdown (Branch / Room).
 //   ✓ Table with expandable branch rows. Each branch row shows the
 //     "M T W T F S S" working-days strip (closed days in red) + working
-//     hour string + address + status badge + Enable toggle + row-actions
-//     menu (View details / Edit / Add room / Archive).
+//     hour string + address + status badge + row-actions menu (View
+//     details / Edit / Add room / Reactivate / Archive / Deactivate).
+//     Enable toggle lives inside the dropdown as Reactivate + Deactivate
+//     items per client review Jul 2026 — matches the memberships &
+//     packages module.
 //   ✓ Indented room rows under their parent branch (when expanded), each
 //     with a LayoutGrid avatar + "X max" capacity subtitle + status badge
-//     + Enable toggle + row-actions menu (View details / Edit / Archive).
+//     + row-actions menu (View details / Edit / Reactivate / Archive /
+//     Deactivate).
 //   ✓ Empty state when search + filter combo yields no results.
 //   ✓ Every action (Edit studio, Add branch, Add room, row-Edit, row-View,
 //     row-Add-room, row-Archive, toggle flip) fires a success toast as
@@ -637,14 +641,18 @@ function MenuItem({ icon, label, onClick, danger = false }: {
 // ─── Table chrome ───────────────────────────────────────────────────────────
 
 function TableHeader() {
+    // Enable-toggle column was removed Jul 2026 per client review — the
+    // action moved into the row-actions dropdown (Deactivate / Reactivate
+    // items) so this module matches the memberships & packages module.
+    // Same requestToggle → applyPendingToggle flow, just wired into the
+    // menu instead of a dedicated column.
     return (
-        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[44px] border-b border-[#e4e7ec] bg-white">
+        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[44px] border-b border-[#e4e7ec] bg-white">
             <TableHeaderCell className="pl-8 pr-6">Location name</TableHeaderCell>
             <TableHeaderCell className="px-6">Working days</TableHeaderCell>
             <TableHeaderCell className="px-6">Working hour</TableHeaderCell>
             <TableHeaderCell className="px-6">Address</TableHeaderCell>
             <TableHeaderCell className="px-6">Status</TableHeaderCell>
-            <TableHeaderCell className="px-6">Enable</TableHeaderCell>
             <TableHeaderCell className="px-2" />
         </div>
     );
@@ -686,7 +694,7 @@ function BranchRow({
     return (
         <div
             onClick={onView}
-            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors cursor-pointer">
+            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[72px] border-b border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors cursor-pointer">
             {/* Col 1 — Location name (with expand chevron) */}
             <div className="flex items-center gap-2 pl-3 pr-6 h-full">
                 <button
@@ -735,17 +743,7 @@ function BranchRow({
             <div className="px-6">
                 <StatusBadge type="branch" status={status} size="sm" />
             </div>
-            {/* Col 6 — Enable toggle (only when active/inactive) */}
-            <div onClick={e => e.stopPropagation()} className="px-6">
-                {status !== "archive" ? (
-                    <Toggle
-                        on={status === "active"}
-                        onChange={onToggleEnable}
-                        ariaLabel={`Toggle ${branch.name}`}
-                    />
-                ) : null}
-            </div>
-            {/* Col 7 — Actions */}
+            {/* Col 6 — Actions (Enable moved into the dropdown Jul 2026) */}
             <div ref={ref} onClick={e => e.stopPropagation()} className="relative px-2 flex justify-end">
                 <button
                     type="button"
@@ -763,6 +761,7 @@ function BranchRow({
                         onView={onView}
                         onEdit={onEdit}
                         onAddRoom={onAddRoom}
+                        onToggleEnable={onToggleEnable}
                         onArchive={onArchive}
                         onRecover={onRecover}
                         onDelete={onDelete}
@@ -793,7 +792,7 @@ function RoomRow({
     return (
         <div
             onClick={onView}
-            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_88px_56px] items-center h-[72px] border-b border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors cursor-pointer">
+            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[72px] border-b border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors cursor-pointer">
             {/* Col 1 — Room name (indented under branch) */}
             <div className="flex items-center gap-3 pl-[60px] pr-6 h-full">
                 <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
@@ -816,17 +815,7 @@ function RoomRow({
             <div className="px-6">
                 <StatusBadge type="branch" status={status} size="sm" />
             </div>
-            {/* Col 6 — Enable toggle (only when active/inactive) */}
-            <div onClick={e => e.stopPropagation()} className="px-6">
-                {status !== "archive" ? (
-                    <Toggle
-                        on={status === "active"}
-                        onChange={onToggleEnable}
-                        ariaLabel={`Toggle ${room.name}`}
-                    />
-                ) : null}
-            </div>
-            {/* Col 7 — Actions */}
+            {/* Col 6 — Actions (Enable moved into the dropdown Jul 2026) */}
             <div ref={ref} onClick={e => e.stopPropagation()} className="relative px-2 flex justify-end">
                 <button
                     type="button"
@@ -841,6 +830,7 @@ function RoomRow({
                         status={status}
                         onView={onView}
                         onEdit={onEdit}
+                        onToggleEnable={onToggleEnable}
                         onArchive={onArchive}
                         onRecover={onRecover}
                         onDelete={onDelete}
@@ -854,7 +844,7 @@ function RoomRow({
 // ─── Row action menus ──────────────────────────────────────────────────────
 
 function BranchActionMenu({
-    status, canDelete, branchKind, onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
+    status, canDelete, branchKind, onView, onEdit, onAddRoom, onToggleEnable, onArchive, onRecover, onDelete,
 }: {
     status: "active" | "inactive" | "archive";
     /** True when the branch has zero rooms — delete is only offered then. */
@@ -865,6 +855,12 @@ function BranchActionMenu({
     onView: () => void;
     onEdit: () => void;
     onAddRoom: () => void;
+    /** Enable toggle moved into this menu Jul 2026 (was a dedicated
+     *  column). Reactivate/Deactivate items surface conditionally
+     *  based on `status`; the parent still routes through
+     *  `requestToggle → applyPendingToggle` for the confirmation
+     *  modal, so all existing state-change logic is unchanged. */
+    onToggleEnable: () => void;
     onArchive: () => void;
     onRecover: () => void;
     onDelete: () => void;
@@ -879,7 +875,13 @@ function BranchActionMenu({
                     {branchKind !== "spa" && (
                         <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
                     )}
+                    {status === "inactive" && (
+                        <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate"  onClick={onToggleEnable} />
+                    )}
                     <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"     onClick={onArchive} />
+                    {status === "active" && (
+                        <MenuItem icon={<SlashCircle01 className="w-4 h-4 text-[#d92d20]" />} label="Deactivate" onClick={onToggleEnable} danger />
+                    )}
                 </>
             )}
             {archived && (
@@ -893,11 +895,15 @@ function BranchActionMenu({
 }
 
 function RoomActionMenu({
-    status, onView, onEdit, onArchive, onRecover, onDelete,
+    status, onView, onEdit, onToggleEnable, onArchive, onRecover, onDelete,
 }: {
     status: "active" | "inactive" | "archive";
     onView: () => void;
     onEdit: () => void;
+    /** Enable toggle moved into this menu Jul 2026 (was a dedicated
+     *  column). Same requestToggle → applyPendingToggle flow, so all
+     *  existing state-change logic is unchanged. */
+    onToggleEnable: () => void;
     onArchive: () => void;
     onRecover: () => void;
     onDelete: () => void;
@@ -909,7 +915,13 @@ function RoomActionMenu({
             {!archived && (
                 <>
                     <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit room" onClick={onEdit} />
+                    {status === "inactive" && (
+                        <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate" onClick={onToggleEnable} />
+                    )}
                     <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"   onClick={onArchive} />
+                    {status === "active" && (
+                        <MenuItem icon={<SlashCircle01 className="w-4 h-4 text-[#d92d20]" />} label="Deactivate" onClick={onToggleEnable} danger />
+                    )}
                 </>
             )}
             {archived && (

@@ -16,7 +16,7 @@
 //          Stop-auto-promoting is READ-ONLY and echoes the cancellation
 //          policy's credit-window value; when OFF, admin picks a
 //          custom value.
-//   3. After cut off, a freed spot to (3 radio cards)
+//   3. After cut off, a freed spot (3 radio cards)
 //   4. Tip banner (light-yellow) with the before/after cutoff summary.
 
 import { useEffect, useRef, useState } from "react";
@@ -422,7 +422,7 @@ export function WaitlistPanel({ open, onClose }: {
                             />
                         </Field>
 
-                        <Field label="After cut off, a freed spot to:">
+                        <Field label="After cut off, a freed spot:">
                             <div className="grid grid-cols-2 gap-3">
                                 {AFTER_CUTOFF_OPTIONS.map(opt => (
                                     <RadioCard

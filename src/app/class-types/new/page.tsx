@@ -3,8 +3,9 @@
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
+import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import {
-    XClose, UploadCloud02, Grid01,
+    XClose, Grid01,
     ClockFastForward, Users01,
     ChevronDown, ChevronUp, Check, Lightbulb02, FilterLines,
 } from "@untitledui/icons";
@@ -147,60 +148,9 @@ function FormField({ label, hint, children }: { label: string; hint?: string; ch
     );
 }
 
-// ─── Image upload area ────────────────────────────────────────────────────────
-
-function ImageUploadArea({
-    preview, onChange,
-}: {
-    preview: string | null;
-    onChange: (url: string | null, file: File | null) => void;
-}) {
-    const ref = useRef<HTMLInputElement>(null);
-
-    function handleFile(file: File) {
-        const url = URL.createObjectURL(file);
-        onChange(url, file);
-    }
-
-    function handleDrop(e: React.DragEvent) {
-        e.preventDefault();
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith("image/")) handleFile(file);
-    }
-
-    return (
-        <div
-            onClick={() => ref.current?.click()}
-            onDrop={handleDrop}
-            onDragOver={e => e.preventDefault()}
-            className={cn(
-                "h-[200px] w-full border border-[#e4e7ec] rounded-[12px] flex flex-col items-center justify-center cursor-pointer transition-colors",
-                preview ? "p-0 overflow-hidden" : "bg-white hover:bg-[#f9fafb]",
-            )}
-        >
-            {preview ? (
-                <img src={preview} alt="Banner" className="w-full h-full object-cover" />
-            ) : (
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#f1f2ed] border border-[#e4e7ec] flex items-center justify-center">
-                        <UploadCloud02 className="w-6 h-6 text-[#475467]" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <span className="text-[14px] font-semibold text-[#4f6e5d]">Upload image</span>
-                        <span className="text-[12px] text-[#475467]">PNG or JPG (max. 800×400px)</span>
-                    </div>
-                </div>
-            )}
-            <input
-                ref={ref}
-                type="file"
-                accept="image/png,image/jpeg"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-            />
-        </div>
-    );
-}
+// The image upload lives in `src/components/ui/ImageBannerUpload.tsx` —
+// shared with class schedule / promotions / campaigns / services so every
+// create + edit form renders the same tile + right-column layout.
 
 // ─── Template preview card ────────────────────────────────────────────────────
 
@@ -327,13 +277,12 @@ function BasicInformationStep({
                 <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Class template detail</h2>
 
                 <div className="flex flex-col gap-4">
-                    {/* Image banner */}
-                    <FormField label="Image banner">
-                        <ImageUploadArea
-                            preview={data.coverPreview}
-                            onChange={(url, file) => onChange({ coverPreview: url, coverFile: file })}
-                        />
-                    </FormField>
+                    {/* Image banner — label is embedded in the shared uploader's
+                        right column per Figma 7781:220725, no wrapping FormField. */}
+                    <ImageBannerUpload
+                        preview={data.coverPreview}
+                        onChange={(url, file) => onChange({ coverPreview: url, coverFile: file })}
+                    />
 
                     {/* Class name */}
                     <FormField label="Class name">

@@ -96,10 +96,16 @@ const FALLBACK_PALETTE = { bg: "#f7f3f7", border: "#b892ba", text: "#4a1fb8" };
 interface DashboardMetric {
     label: string;
     value: string;
-    change: number;
-    positive: boolean;
+    /** Percent-change badge. Optional — Coming-up cards without a trend
+     *  (renewals due / failed payments / at-risk / underfilled) omit it and
+     *  render just the `comparison` line as supporting copy. */
+    change?: number;
+    positive?: boolean;
     comparison: string;
     icon: typeof CurrencyDollar;
+    /** Optional click handler. When set, the whole card becomes a button
+     *  (used by the Coming-up tab to open the needs-attention modals). */
+    onClick?: () => void;
 }
 
 // ─── CSV export — Performance snapshot ──────────────────────────────────────
@@ -336,12 +342,24 @@ function NeedsAttentionRow({
 
 function MetricCard({ metric }: { metric: DashboardMetric }) {
     const Icon = metric.icon;
+    const clickable = typeof metric.onClick === "function";
+    // Rendered as a <button> only when `onClick` is set so the card gets
+    // native keyboard + focus semantics on the Coming-up tab. Non-clickable
+    // cards stay a plain <div> to avoid an unnecessary interactive role.
+    const Root = (clickable ? "button" : "div") as "button" | "div";
     return (
         // Padding / value size shrunk Jul 2026 so 5 cards on one row
         // don't force the value+icon combo to wrap. Value drops from
         // text-2xl (24px) → text-xl (20px); label + change/comparison
         // stay text-sm.
-        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-4 items-start justify-end min-w-0 p-4 relative rounded-2xl">
+        <Root
+            type={clickable ? "button" : undefined}
+            onClick={metric.onClick}
+            className={cn(
+                "bg-white border border-[#e4e7ec] flex flex-1 gap-4 items-start justify-end min-w-0 p-4 relative rounded-2xl text-left",
+                clickable && "cursor-pointer hover:border-[#d0d5dd] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
+            )}
+        >
             <div className="flex flex-1 flex-col gap-1.5 items-start min-w-0 relative">
                 <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
                     {metric.label}
@@ -350,23 +368,27 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
                     {metric.value}
                 </p>
                 <div className="flex gap-1 items-center whitespace-nowrap">
-                    {/* Badge */}
-                    <div className={cn(
-                        "flex gap-1 items-center py-0.5 rounded-full",
-                        metric.positive ? "text-[#067647]" : "text-[#b42318]"
-                    )}>
-                        {metric.positive ? (
-                            <ArrowUp size={12} className="text-[#067647]" />
-                        ) : (
-                            <ArrowDown size={12} className="text-[#b42318]" />
-                        )}
-                        <span className={cn(
-                            "font-medium text-xs",
+                    {/* Badge — only when a trend is provided. Coming-up cards
+                        without a percent (renewals / failed / at-risk /
+                        underfilled) skip this and show just the sub-line. */}
+                    {typeof metric.change === "number" && (
+                        <div className={cn(
+                            "flex gap-1 items-center py-0.5 rounded-full",
                             metric.positive ? "text-[#067647]" : "text-[#b42318]"
                         )}>
-                            {metric.change}%
-                        </span>
-                    </div>
+                            {metric.positive ? (
+                                <ArrowUp size={12} className="text-[#067647]" />
+                            ) : (
+                                <ArrowDown size={12} className="text-[#b42318]" />
+                            )}
+                            <span className={cn(
+                                "font-medium text-xs",
+                                metric.positive ? "text-[#067647]" : "text-[#b42318]"
+                            )}>
+                                {metric.change}%
+                            </span>
+                        </div>
+                    )}
                     <p className="font-normal text-xs text-[#667085]">
                         {metric.comparison}
                     </p>
@@ -376,7 +398,7 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
             <div className="bg-[#f1f2ed] overflow-hidden relative rounded-full flex-shrink-0 w-8 h-8 flex items-center justify-center">
                 <Icon size={16} className="text-[#475467]" />
             </div>
-        </div>
+        </Root>
     );
 }
 
@@ -449,7 +471,9 @@ function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
 // ── Main Dashboard ──
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"today" | "performance">("today");
+    const [activeTab, setActiveTab] = useState<"today" | "coming" | "performance">("today");
+    // Coming-up tab range — 7 or 30 days (Figma 7823:53746 segmented pill).
+    const [comingRange, setComingRange] = useState<7 | 30>(7);
     // "" = "All locations" — dashboard opens on the aggregate view so
     // KPIs read like the full studio on first paint.
     const [location, setLocation] = useState<string>("");
@@ -653,11 +677,140 @@ export default function AdminDashboard() {
         return { todayMetrics: today, performanceMetrics: performance };
     }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
 
+    // ── Coming-up metrics — 6 KPI cards per Figma 7823:53746 ──
+    //
+    // Each card looks N days ahead where N ∈ {7, 30} (segmented pill next to
+    // the location dropdown). Numbers are derived from the same slices the
+    // Needs-attention section reads today — just widened to a rolling range.
+    const comingMetrics: DashboardMetric[] = useMemo(() => {
+        const now = Date.now();
+        const DAY = 24 * 60 * 60 * 1000;
+        const horizonMs = now + comingRange * DAY;
+        // Forward window — future events (bookings, renewals, upcoming
+        // revenue, under-filled schedules).
+        const inRange = (iso: string) => {
+            const t = new Date(iso).getTime();
+            if (Number.isNaN(t)) return false;
+            return t >= now && t <= horizonMs;
+        };
+        // Backward window — past events that are still open (failed
+        // payments). Same window size as the pill so the card still
+        // reacts to Next 7 / Next 30, but looks the correct direction.
+        const pastStartMs = now - comingRange * DAY;
+        const inPastRange = (iso: string) => {
+            const t = new Date(iso).getTime();
+            if (Number.isNaN(t)) return false;
+            return t >= pastStartMs && t <= now;
+        };
+
+        const heldMemberships = scopedCustomerPlans.filter(p =>
+            p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
+        );
+        // 1. Upcoming recurring revenue — sum next-billing AED across
+        //    auto-renewing memberships whose next cycle lands in range.
+        const upcomingBillingPlans = heldMemberships.filter(p => (p.autoRenew ?? false) && inRange(p.expiryISO ?? ""));
+        const upcomingRevenueAed = upcomingBillingPlans.reduce(
+            (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
+        );
+
+        // 2. Bookings ahead — confirmed future bookings for schedules in range.
+        const scheduleIdsInRange = new Set(
+            scopedSchedules.filter(s => inRange(`${s.dateISO}T00:00:00Z`)).map(s => s.id),
+        );
+        const bookingsAhead = scopedBookings.filter(b =>
+            b.status === "booked" && scheduleIdsInRange.has(b.classScheduleId),
+        ).length;
+
+        // 3. Renewals due — held memberships expiring in range (auto-renew
+        //    or not), plus their recurring value.
+        const renewalsDuePlans = heldMemberships.filter(p => inRange(p.expiryISO ?? ""));
+        const renewalsDueCount = renewalsDuePlans.length;
+        const renewalsDueAed = renewalsDuePlans.reduce(
+            (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
+        );
+
+        // 4. Failed payments — truly failed transactions in the past N
+        //    days (window flipped from forward → backward Jul 2026 because
+        //    failed transactions are historical; the "next 7/30 days"
+        //    pill acts as a rolling window over recent failures instead).
+        //    Modal receives the same window prop so the count + list agree.
+        const failedTxns = scopedTransactions.filter(t =>
+            t.status === "failed" && inPastRange(t.createdAtISO),
+        );
+        const failedAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
+
+        // 5. At-risk clients — same 14-30 day silent-window as Needs-attention.
+        //    Range-independent (it's a bucket, not a horizon).
+        const clientsAtRisk = scopedCustomers.filter(c => {
+            if (c.status !== "active") return false;
+            if (!c.lastVisitISO) return false;
+            const d = new Date(c.lastVisitISO).getTime();
+            if (Number.isNaN(d)) return false;
+            const daysAgo = Math.floor((now - d) / DAY);
+            return daysAgo >= 14 && daysAgo <= 30;
+        }).length;
+
+        // 6. Under-filled classes — schedules in range with < 50% capacity.
+        //    Matches the UnderFilledModal filter (status Upcoming|Ongoing +
+        //    same date window) so count + list agree at both pill settings.
+        const underFilledInRange = scopedSchedules.filter(s =>
+            (s.status === "Upcoming" || s.status === "Ongoing")
+            && inRange(`${s.dateISO}T00:00:00Z`)
+            && s.capacity > 0
+            && (s.booked / s.capacity) < 0.5,
+        ).length;
+
+        return [
+            {
+                label: "Upcoming recurring revenue",
+                value: `AED ${upcomingRevenueAed.toLocaleString("en-US")}`,
+                change: 3, positive: true, comparison: "expected vs last month",
+                icon: CurrencyDollar,
+            },
+            {
+                label: "Bookings ahead",
+                value: `${bookingsAhead.toLocaleString("en-US")} booked`,
+                change: 3, positive: true, comparison: `pace vs prior ${comingRange} days`,
+                icon: Calendar,
+            },
+            {
+                label: "Renewals due",
+                value: `${renewalsDueCount} ${renewalsDueCount === 1 ? "member" : "members"}`,
+                comparison: `AED ${renewalsDueAed.toLocaleString("en-US")} recurring`,
+                icon: RefreshCw01,
+                onClick: () => setAttentionModal("renewal"),
+            },
+            {
+                label: "Failed payments",
+                value: `${failedTxns.length} · AED ${failedAed.toLocaleString("en-US")}`,
+                comparison: "Recoverable now",
+                icon: CreditCard01,
+                onClick: () => setAttentionModal("failed"),
+            },
+            {
+                label: "At-risk clients",
+                value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
+                comparison: "no visit 14-30 days",
+                icon: UserX01,
+                onClick: () => setAttentionModal("atrisk"),
+            },
+            {
+                label: "Under filled classes",
+                value: `${underFilledInRange} ${underFilledInRange === 1 ? "class" : "classes"}`,
+                comparison: "below 50% capacity",
+                icon: CalendarCheck01,
+                onClick: () => setAttentionModal("underfilled"),
+            },
+        ];
+    }, [comingRange, scopedCustomerPlans, scopedSchedules, scopedBookings, scopedTransactions, scopedCustomers]);
+
     // Pick the strip that matches the active tab. `metrics` stays the
     // stable public name (used by CSV export + a couple of downstream
     // references) so the CSV etc. keep exporting the metrics the admin
     // is currently looking at.
-    const metrics = activeTab === "performance" ? performanceMetrics : todayMetrics;
+    const metrics = activeTab === "performance" ? performanceMetrics
+                  : activeTab === "coming"      ? comingMetrics
+                  :                                todayMetrics;
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
@@ -729,11 +882,12 @@ export default function AdminDashboard() {
         );
         const renewTotalAed = renewToday.reduce((sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0);
 
-        // Failed / pending transactions from today — the front desk
-        // needs to chase these before the billing window closes.
+        // Truly failed transactions from today — the front desk chases
+        // these before the retry window closes. Pending rows are excluded
+        // so this count matches the FailedPayments modal + the customer's
+        // Payments tab (which shows the true "Pending" / "Failed" status).
         const failedTxns = scopedTransactions.filter(t =>
-            (t.status === "failed" || t.status === "pending")
-            && t.createdAtISO.startsWith(todayISO),
+            t.status === "failed" && t.createdAtISO.startsWith(todayISO),
         );
         const failedTotalAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
 
@@ -800,6 +954,17 @@ export default function AdminDashboard() {
                         <span className="text-sm">Today at glance</span>
                     </button>
                     <button
+                        onClick={() => setActiveTab("coming")}
+                        className={cn(
+                            "flex gap-2 h-8 items-center justify-center pb-3 px-1 relative flex-shrink-0 transition-colors",
+                            activeTab === "coming"
+                                ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
+                                : "text-[#667085] font-semibold hover:text-[#344054]"
+                        )}
+                    >
+                        <span className="text-sm">Coming up</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab("performance")}
                         className={cn(
                             "flex gap-2 h-8 items-center justify-center pb-3 px-1 relative flex-shrink-0 transition-colors",
@@ -813,10 +978,10 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* Welcome + Location Picker + Performance actions */}
+            {/* Welcome + Location Picker + tab-specific actions */}
             <div className="flex gap-2 items-center">
                 <p className="flex-1 font-semibold text-base text-[#101828]">
-                    Welcome, {studioDisplayName}
+                    {activeTab === "coming" ? "What's ahead" : `Welcome, ${studioDisplayName}`}
                 </p>
 
                 {/* Location picker — always visible */}
@@ -828,6 +993,29 @@ export default function AdminDashboard() {
                     onChange={setLocation}
                     width="w-[220px]"
                 />
+
+                {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
+                    7823:53746). Height locked to h-10 (40px) to match the
+                    Location dropdown so the header row reads as one strip. */}
+                {activeTab === "coming" && (
+                    <div className="flex items-center gap-1 h-10 p-1 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px]">
+                        {([7, 30] as const).map(n => (
+                            <button
+                                key={n}
+                                type="button"
+                                onClick={() => setComingRange(n)}
+                                className={cn(
+                                    "h-8 px-3 rounded-[6px] text-[13px] font-medium transition-colors",
+                                    comingRange === n
+                                        ? "bg-white text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                        : "text-[#667085] hover:text-[#344054]",
+                                )}
+                            >
+                                Next {n} days
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* Performance-only controls */}
                 {activeTab === "performance" && (
@@ -863,8 +1051,14 @@ export default function AdminDashboard() {
                 )}
             </div>
 
-            {/* KPI Metrics */}
-            <div className="flex flex-wrap gap-6 items-start">
+            {/* KPI Metrics — Coming-up uses a fixed 3-col grid to match the
+                Figma 6-card layout; Today/Performance keep the wrap-flex
+                behavior so 4-5 cards fill one row without gaps. */}
+            <div className={cn(
+                activeTab === "coming"
+                    ? "grid grid-cols-3 gap-6 items-start"
+                    : "flex flex-wrap gap-6 items-start",
+            )}>
                 {metrics.map((metric) => (
                     <MetricCard key={metric.label} metric={metric} />
                 ))}
@@ -1029,64 +1223,11 @@ export default function AdminDashboard() {
                 </div>
             </div>}
 
-            {/* Needs attention today — client dashboard update Jul 2026
-                (Figma 7798:80427). Sits BELOW the Today's classes +
-                Recent activity row so the front desk works top-down:
-                metrics → schedule + feed → outstanding actions. Each
-                row's "View" button links to the module that owns the
-                fix (renewals → customers list, expiring → notification
-                composer, failed payment → refunds report, at-risk →
-                win-back report, under-filled → schedule). Rows with a
-                zero count still render so admins learn the shape of
-                the surface even on a quiet day. */}
-            {activeTab === "today" && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                    <p className="font-semibold text-lg text-[#101828]">Needs attention today</p>
-                    <div className="flex flex-col">
-                        <NeedsAttentionRow
-                            icon={RefreshCw01}
-                            iconBg="bg-[#eff8ff]"
-                            iconFg="text-[#175cd3]"
-                            title={`${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`}
-                            subtitle={`AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`}
-                            onView={() => setAttentionModal("renewal")}
-                        />
-                        <NeedsAttentionRow
-                            icon={Bell01}
-                            iconBg="bg-[#fff6ed]"
-                            iconFg="text-[#c4320a]"
-                            title={`${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`}
-                            subtitle="Send a reminder before membership expire"
-                            onView={() => setAttentionModal("renewal")}
-                        />
-                        <NeedsAttentionRow
-                            icon={CreditCard01}
-                            iconBg="bg-[#fef3f2]"
-                            iconFg="text-[#b42318]"
-                            title={`${needsAttention.failedCount} failed ${needsAttention.failedCount === 1 ? "payment" : "payments"}`}
-                            subtitle={`Payment failed · AED ${needsAttention.failedTotalAed.toLocaleString("en-US")}`}
-                            onView={() => setAttentionModal("failed")}
-                        />
-                        <NeedsAttentionRow
-                            icon={UserX01}
-                            iconBg="bg-[#fefbe8]"
-                            iconFg="text-[#a15c07]"
-                            title={`${needsAttention.clientsAtRisk} ${needsAttention.clientsAtRisk === 1 ? "client" : "clients"} at risk`}
-                            subtitle="No visit in 14-30 days · win them back"
-                            onView={() => setAttentionModal("atrisk")}
-                        />
-                        <NeedsAttentionRow
-                            icon={CalendarCheck01}
-                            iconBg="bg-[#ecfdf3]"
-                            iconFg="text-[#079455]"
-                            title="Under filled classes"
-                            subtitle={`${needsAttention.underFilled} ${needsAttention.underFilled === 1 ? "class" : "classes"} below 50% capacity`}
-                            onView={() => setAttentionModal("underfilled")}
-                            isLast
-                        />
-                    </div>
-                </div>
-            )}
+            {/* "Needs attention today" section was removed per client Jul
+                2026 — the four drill-down modals are now triggered from
+                the Coming-up tab KPI cards instead. Modal markup + the
+                `needsAttention` derivation are kept below since the
+                Coming-up metric card click handlers still consume them. */}
 
             <AddWidgetModal
                 open={widgetModalOpen}
@@ -1103,11 +1244,17 @@ export default function AdminDashboard() {
                 open={attentionModal === "renewal"}
                 onClose={() => setAttentionModal(null)}
                 branchId={branchScopeId}
+                /* Forward-N-day window — matches the Coming-up "Renewals
+                   due" metric so count + list agree at both pill settings. */
+                forwardRangeDays={comingRange}
             />
             <FailedPaymentsModal
                 open={attentionModal === "failed"}
                 onClose={() => setAttentionModal(null)}
                 branchId={branchScopeId}
+                /* Past-N-day window — matches the Coming-up "Failed payments"
+                   metric so count + list agree at both pill settings. */
+                pastRangeDays={comingRange}
             />
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}
@@ -1118,6 +1265,10 @@ export default function AdminDashboard() {
                 open={attentionModal === "underfilled"}
                 onClose={() => setAttentionModal(null)}
                 branchId={branchScopeId}
+                /* Forward-N-day window — matches the Coming-up "Under
+                   filled classes" metric so count + list agree at both
+                   pill settings. */
+                forwardRangeDays={comingRange}
             />
 
             <Toast />

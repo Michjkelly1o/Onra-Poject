@@ -12,12 +12,20 @@
 
 import { useSyncExternalStore } from "react";
 
+export type AppointmentBookingStatus = "booked" | "cancelled";
+
 export interface AppointmentBooking {
     id: string;
     appointmentId: string;
     name: string;
     type: "private" | "open";
+    /** Service description — carried so the reused class-detail layout can render it. */
+    description: string;
+    /** Category display name (e.g. "Recovery", "Reformer"). */
+    category: string;
     durationMins: number;
+    /** Open-session capacity (participants). 0/undefined for private (1-on-1). */
+    capacity?: number;
     price: number;
     coverImage?: string;
     coverColor: string;
@@ -31,6 +39,12 @@ export interface AppointmentBooking {
     instructorInitials?: string;
     /** ISO created-at — newest first. */
     bookingTime: string;
+    /** Lifecycle — "booked" on create, "cancelled" after the cancel flow. */
+    status: AppointmentBookingStatus;
+    /** ISO timestamp of cancellation (set when status → "cancelled"). */
+    cancelledAt?: string;
+    /** True when cancelled <24h before the slot (no refund). */
+    lateCancel?: boolean;
 }
 
 const KEY = "onra-customer-appointment-bookings";
@@ -57,13 +71,26 @@ function persist() {
 }
 
 /** Record a confirmed appointment booking; returns its id. */
-export function addAppointmentBooking(b: Omit<AppointmentBooking, "id" | "bookingTime">): string {
+export function addAppointmentBooking(
+    b: Omit<AppointmentBooking, "id" | "bookingTime" | "status">,
+): string {
     hydrate();
     const id = `apptbk_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
-    bookings = [{ ...b, id, bookingTime: new Date().toISOString() }, ...bookings];
+    bookings = [{ ...b, id, status: "booked", bookingTime: new Date().toISOString() }, ...bookings];
     persist();
     listeners.forEach((l) => l());
     return id;
+}
+
+/** Cancel a booked appointment (UI-only). `lateCancel` records the <24h no-refund
+ *  case for the detail-page copy. */
+export function cancelAppointmentBooking(id: string, lateCancel: boolean): void {
+    hydrate();
+    bookings = bookings.map((b) =>
+        b.id === id ? { ...b, status: "cancelled", cancelledAt: new Date().toISOString(), lateCancel } : b,
+    );
+    persist();
+    listeners.forEach((l) => l());
 }
 
 function subscribe(cb: () => void) {

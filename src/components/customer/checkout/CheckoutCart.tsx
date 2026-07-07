@@ -10,7 +10,7 @@
 // illustration), an Add-gift-card rounded button, the payment breakdown, and a
 // sticky bottom group: the Apply-promo row + Total / Pay now.
 
-import { useReducer, useState, type ReactNode } from "react";
+import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Minus, Plus, Ticket01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
@@ -24,9 +24,14 @@ import {
     removeFromCart,
     TAX_RATE_PCT,
     usePromo,
+    openGiftCardPicker,
+    useGiftCardApplySignal,
+    consumeGiftCardApply,
 } from "@/lib/customer/purchase";
 import { ProductArt } from "@/components/customer/products/ProductArt";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
+import { useRedeemedGiftCards } from "@/lib/customer/gift-cards";
+import { GiftCardMark } from "@/components/customer/products/GiftCardArt";
 import { Button } from "@/components/ui/button";
 
 interface PayMethod {
@@ -50,26 +55,6 @@ export interface CheckoutCartProps {
     fixedSubtotal?: number;
     /** Tax rate % — defaults to the products TAX_RATE_PCT; pass 0 for appointments. */
     taxRatePct?: number;
-}
-
-/** Forma gift-card payment tile — green-wash card with the shape + logomark (DS 4095-88345). */
-function GiftCardLogo() {
-    return (
-        <span
-            className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border-[0.17px] border-[#e4e7ec]"
-            style={{
-                backgroundImage:
-                    "linear-gradient(178deg, rgb(234,239,243) 4%, rgb(216,243,228) 23%, rgb(177,231,201) 34%, rgb(239,250,244) 69%, rgb(196,237,214) 100%)",
-            }}
-        >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/pay/gift-shape.svg" alt="" className="absolute left-[-7px] top-1/2 size-11 -translate-y-1/2" />
-            <span className="absolute left-[2.5px] top-1/2 flex -translate-y-1/2 items-center p-[3.3px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/pay/forma-logomark.svg" alt="" className="h-[13.7px] w-[11.4px]" />
-            </span>
-        </span>
-    );
 }
 
 /** Circular ± stepper button (DS Buttons/Secondary, scaled). */
@@ -112,22 +97,46 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
 
     ensurePurchaseCart(originId);
     const [, bump] = useReducer((x) => x + 1, 0);
-    const [method, setMethod] = useState("apple");
+    const [method, setMethodState] = useState(purchaseCart.paymentMethod);
+    const setMethod = (m: string) => {
+        purchaseCart.paymentMethod = m;
+        setMethodState(m);
+    };
 
     const promo = usePromo(purchaseCart.promoId);
     const taxPct = taxRatePct ?? TAX_RATE_PCT;
     const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct);
 
-    // The Forma gift card can only pay when its balance covers the full total.
-    const giftCardBalance = 250;
+    // Gift-card payment reflects the customer's currently-redeemed cards: a single
+    // "Forma gift card" method carrying the COMBINED balance. Hidden when none.
+    const redeemedCards = useRedeemedGiftCards();
+    const giftCardBalance = redeemedCards.reduce((n, r) => n + r.balance, 0);
+    const hasGiftCard = redeemedCards.length > 0;
     const giftDisabled = giftCardBalance < totals.total;
+
+    // Select the gift-card method when returning from the picker ("Use gift card").
+    const applyGiftSignal = useGiftCardApplySignal();
+    useEffect(() => {
+        if (applyGiftSignal) {
+            if (hasGiftCard) setMethod("gift");
+            consumeGiftCardApply();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [applyGiftSignal, hasGiftCard]);
+    // Fall back if a previously-selected gift card is no longer available.
+    useEffect(() => {
+        if (method === "gift" && !hasGiftCard) setMethod("apple");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [method, hasGiftCard]);
 
     const cardName = member ? `${member.firstName} ${member.lastName}`.trim() : "Card holder";
     const methods: PayMethod[] = [
         { id: "apple", label: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" },
         { id: "visa", label: cardName, sub: "**** **** **** 0000", logo: "/images/pay/visa.svg", inset: "inset-[33.75%_17.1%_33.67%_13.91%]" },
         { id: "master", label: cardName, sub: "**** **** **** 0000", logo: "/images/pay/mastercard.svg", inset: "inset-[20.96%_17.8%_23.21%_17.39%]" },
-        { id: "gift", label: "Forma gift card", sub: `Current balance: AED ${giftCardBalance}`, icon: "gift" },
+        ...(hasGiftCard
+            ? [{ id: "gift", label: "Forma gift card", sub: `Current balance: AED ${giftCardBalance}`, icon: "gift" as const }]
+            : []),
     ];
     const methodLabel = methods.find((m) => m.id === method)?.label ?? "Apple pay";
 
@@ -154,7 +163,9 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
     }
 
     function payNow() {
-        if (purchaseCart.items.length === 0) return;
+        // Appointments pay a fixedSubtotal with no cart line items — only block when
+        // there's neither a fixed price nor any cart items.
+        if (fixedSubtotal == null && purchaseCart.items.length === 0) return;
         const label = method === "apple" ? "Apple pay" : method === "gift" ? "Forma gift card" : `${methodLabel} •••• 0000`;
         router.push(`${processingHref}?method=${encodeURIComponent(label)}`);
     }
@@ -236,7 +247,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                                 } ${mDisabled ? "opacity-50" : ""}`}
                             >
                                 {m.icon === "gift" ? (
-                                    <GiftCardLogo />
+                                    <GiftCardMark />
                                 ) : (
                                     <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[#e4e7ec] bg-white">
                                         <span className={`absolute ${m.inset}`}>
@@ -256,7 +267,15 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                         );
                     })}
 
-                    <Button variant="secondary" size="sm" disabled className="w-full rounded-full">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full rounded-full"
+                        onClick={() => {
+                            openGiftCardPicker();
+                            router.push("/customer/profile/gift-cards");
+                        }}
+                    >
                         <Plus className="size-5" aria-hidden />
                         Add gift card
                     </Button>

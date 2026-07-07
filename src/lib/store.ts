@@ -3014,8 +3014,39 @@ const INITIAL_APPOINTMENT_RATINGS:  AppointmentRating[]  = SEED_APPOINTMENT_RATI
 const INITIAL_SCHEDULES: ClassSchedule[] = SEED_CLASS_SCHEDULE.map(s => scheduleFromSeed(s, INITIAL_TEMPLATES));
 const INITIAL_BOOKINGS:  ClassBooking[]  = SEED_CLASS_BOOKINGS.map(bookingFromSeed);
 const INITIAL_RATINGS:   ClassRating[]   = SEED_CLASS_RATINGS.map(ratingFromSeed);
-const INITIAL_CUSTOMERS: Customer[]      = SEED_CUSTOMERS.map(customerFromSeed);
 const INITIAL_CUSTOMER_PLANS: CustomerPlan[] = SEED_CUSTOMER_PLANS.map(customerPlanFromSeed);
+
+/** Reconcile `customer.creditsRemaining` from active/frozen finite plans.
+ *  If the seed omits `credits_remaining` (undefined) AND the customer has
+ *  at least one finite active/frozen plan, initialize the counter to the
+ *  sum of the plan allotments so the Plan-tab widget shows a real number
+ *  AND subsequent bookings decrement (they skip when the field is
+ *  undefined). Customers on an unlimited membership legitimately have no
+ *  counter and stay undefined. Pre-set values (from seed or from prior
+ *  booking history) are never overwritten — this only backfills undefined. */
+function reconcileCreditsRemaining(customers: Customer[], plans: CustomerPlan[]): Customer[] {
+    return customers.map(c => {
+        if (typeof c.creditsRemaining === "number") return c;
+        const cust_plans = plans.filter(p =>
+            p.customerId === c.id
+            && (p.status === "active" || p.status === "frozen"),
+        );
+        if (cust_plans.length === 0) return c;
+        // Any active unlimited plan → leave the counter undefined so
+        // "Unlimited" renders throughout the UI.
+        if (cust_plans.some(p => /unlimited/i.test(p.creditsLabel))) return c;
+        // Sum finite allotments. `totalCredits` was already normalized at
+        // seed-transform time (falls back to parsing the credits_label).
+        const total = cust_plans.reduce((s, p) => s + (p.totalCredits ?? 0), 0);
+        if (total <= 0) return c;
+        return { ...c, creditsRemaining: total };
+    });
+}
+
+const INITIAL_CUSTOMERS: Customer[] = reconcileCreditsRemaining(
+    SEED_CUSTOMERS.map(customerFromSeed),
+    INITIAL_CUSTOMER_PLANS,
+);
 const INITIAL_CUSTOMER_TRANSACTIONS: CustomerTransaction[] = SEED_CUSTOMER_TRANSACTIONS.map(customerTransactionFromSeed);
 const INITIAL_CUSTOMER_AGREEMENTS: CustomerAgreement[] = SEED_CUSTOMER_AGREEMENTS.map(customerAgreementFromSeed);
 const INITIAL_CUSTOMER_REFERRALS: CustomerReferral[] = SEED_CUSTOMER_REFERRALS.map(customerReferralFromSeed);
@@ -3469,6 +3500,13 @@ export interface AppState {
         id: string,
         patch: Partial<Pick<NotificationSetting, "sendMode" | "sendOffsets">>,
     ) => void;
+    /** Save the Condition tab — flip the "Notification is critical" flag
+     *  on a single event (Figma 7808:58413). Enabling critical when
+     *  every channel is already off is refused: a critical row must
+     *  have ≥1 channel to satisfy the "at least one channel stays on"
+     *  contract. Disabling critical is always allowed. Returns `false`
+     *  when the flip was refused so the caller can surface a toast. */
+    setNotificationEventCritical: (id: string, isCritical: boolean) => boolean;
 
     // ── Delivery hours (v27 — Figma 7733:51010) ───────────────────────────
     /** Single studio-wide record. Every notification respects this
@@ -5960,6 +5998,34 @@ export const useAppStore = create<AppState>()(persist(
                 };
             }),
         })),
+    setNotificationEventCritical: (id, isCritical) => {
+        const row = get().notificationSettings.find(n => n.id === id);
+        if (!row) return false;
+        // Turning critical ON must guarantee at least one channel is on —
+        // otherwise the "one channel stays on" contract enforced by
+        // `setNotificationEventChannel` would be broken immediately. If
+        // every channel is off when the admin flips critical, auto-enable
+        // Email (the default primary channel — same as payments seed).
+        // Client-flagged Jul 2026: the previous behavior refused the toggle
+        // silently which read as "critical doesn't work here", when the fix
+        // is just to make Email the default delivery when none is picked.
+        let autoEnabledEmail = false;
+        if (isCritical) {
+            const anyChannelOn = row.emailEnabled || row.whatsappEnabled || row.smsEnabled;
+            if (!anyChannelOn) autoEnabledEmail = true;
+        }
+        set(state => ({
+            notificationSettings: state.notificationSettings.map(n => {
+                if (n.id !== id) return n;
+                return {
+                    ...n,
+                    isCritical,
+                    ...(autoEnabledEmail ? { emailEnabled: true } : {}),
+                };
+            }),
+        }));
+        return true;
+    },
     updateNotificationTiming: (id, patch) =>
         set(state => ({
             notificationSettings: state.notificationSettings.map(n =>
@@ -7079,15 +7145,25 @@ export const useAppStore = create<AppState>()(persist(
                 const isMembership = it.productType === "membership";
                 const expiry = new Date();
                 let creditsLabel: string;
+                // Numeric total credits carried onto the plan record so the
+                // Plan-tab "Credit left" column never falls back to 0/0 after
+                // a persist reload. Unlimited memberships stay at 0 (the
+                // planAllotment helper reads `isUnlimited` via creditsLabel).
+                let totalCredits = 0;
                 if (isMembership) {
                     const m = state.memberships.find(mm => mm.id === it.productId);
                     expiry.setMonth(expiry.getMonth() + (m?.duration_months ?? 1));
-                    creditsLabel = m && m.credits !== "unlimited" ? `${m.credits} credits` : "Unlimited";
+                    if (m && m.credits !== "unlimited") {
+                        totalCredits = typeof m.credits === "number" ? m.credits : 0;
+                        creditsLabel = `${totalCredits} credits`;
+                    } else {
+                        creditsLabel = "Unlimited";
+                    }
                 } else {
                     const p = state.packages.find(pp => pp.id === it.productId);
                     expiry.setDate(expiry.getDate() + (p?.validity_days ?? 30));
-                    const credits = (typeof p?.credits === "number" ? p.credits : 0) * it.quantity;
-                    creditsLabel = `${credits} ${credits === 1 ? "credit" : "credits"}`;
+                    totalCredits = (typeof p?.credits === "number" ? p.credits : 0) * it.quantity;
+                    creditsLabel = `${totalCredits} ${totalCredits === 1 ? "credit" : "credits"}`;
                 }
                 newPlans.push({
                     id: `cp_sale_${stamp}_${idx}`,
@@ -7097,6 +7173,11 @@ export const useAppStore = create<AppState>()(persist(
                     name: it.name,
                     planTypeLabel: isMembership ? "Membership" : "Credit package",
                     creditsLabel,
+                    // Reports v33 + Plan-tab column read these. Unlimited
+                    // memberships store 0 → the unlimited-label check on
+                    // read swaps to the "Unlimited" render.
+                    totalCredits,
+                    creditsUsed: 0,
                     status: "active",
                     purchasedAtISO: nowISO,
                     expiryISO: expiry.toISOString(),
@@ -7371,26 +7452,12 @@ export const useAppStore = create<AppState>()(persist(
         //     payroll picking the ACTIVE rate for a transaction date)
         //     lands in Phase 4 — for now the fields are stored/displayed.
         //
-        // v30 (new-prd/reports-implementation-plan.md — Reports Phase 1) —
-        // Extended `customer_transactions` with 14 optional ledger fields
-        // to support the reports module rewrite. Every new field is
-        // additive; every existing row continues to load without change.
-        // The seed also gained a Jan-Jun 2026 ledger block (44 new rows)
-        // with 22 sales, 8 refunds (all in a LATER month than their
-        // sale), 3 same-day void pairs (6 rows), 3 write-off pairs
-        // (6 rows), and 2 failed→recovered rows — providing the demo
-        // data every Financial report reads through `resolveLedger()`.
-        //
-        // Legacy `status: "refunded"` rows still load and render on the
-        // customer-detail Payments tab unchanged. The new ledger fields
-        // (transaction_type, original_transaction_id, settlement_iso,
-        // refund_reason, tax_treatment, staff_id, card_type, payment_type,
-        // failure_reason, retry_attempt, recovered, recovered_iso,
-        // payout_id, processor_fee) feed the report registry + selectors.
-        //
-        // Bump reason: material change to the demo dataset. Every user
-        // gets the Jan-Jun 2026 ledger on next reload — the earlier
-        // localStorage payload is discarded.
+        // v38: Merge `feature/customer-experience` — customer-side
+        // appointments availability + gift-card checkout payment +
+        // referral share sheet + product/plan fixes. No AppState shape
+        // change (customer branch's own store additions were merged
+        // cleanly into the current shape); bumping so testers with a
+        // persisted v37 payload rehydrate against the merged seed.
         //
         // v37: At-risk fixture bug fix + Performance-tab metrics.
         //   • customers.ts now applies the at-risk `last_visit_iso`
@@ -7468,7 +7535,38 @@ export const useAppStore = create<AppState>()(persist(
         // new fields on Customer, CustomerPlan, CustomerTransaction,
         // CustomerReferral. Backfills via deterministic derivation on
         // rehydrate.
-        version: 37,
+        //
+        // v39: POS-created customer_plans rows now carry `totalCredits`
+        // + `creditsUsed: 0`. Pre-v39 persisted plans stored these as
+        // undefined, causing the Plan-tab "Credit left" column to
+        // render "0/0" for POS sales after a persist reload. Bumped
+        // so testers get fresh seed on next load.
+        //
+        // v40: DEMO_NOW_RENEWAL_PLANS fixture (at-risk synth customers)
+        // stopped hardcoding `credits_label: "Monthly billing"` +
+        // `total_credits: 0`. Now pulls the real per-tier cap from
+        // MEMBERSHIP_CREDITS (10 / 20 / 12 / unlimited), so the Plan
+        // tab renders "0/10" | "0/20" | "0/12" instead of "0/0".
+        // Also: Failed-payments bucket restricted to status === "failed"
+        // only (was failed OR pending) — so the dashboard count, modal
+        // rows, and each customer's Payments tab agree on the same
+        // records.
+        //
+        // v41: `reconcileCreditsRemaining` boot pass initializes
+        // `customer.creditsRemaining` from active finite plan allotments
+        // when the seed omits the field. Without this, the Plan-tab
+        // side-panel widget showed "0 credits left" while the table
+        // row showed "12/12" for the same customer (Layla Chahine
+        // client-flagged Jul 2026). Also fixed: bookings decrement now
+        // has a real counter to work against instead of skipping when
+        // undefined. Notification setCritical also auto-enables Email
+        // when flipping critical ON with no channels selected.
+        //
+        // v42: merged feature/customer-experience which brought in
+        // customer-side auth + notification-center updates. Data-
+        // integrity fixes above (v39-v41) preserved. Bumped one
+        // notch so friend's persisted state also refreshes cleanly.
+        version: 42,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

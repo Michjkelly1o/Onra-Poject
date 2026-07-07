@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronDown, ChevronUp, ChevronRight, Check, SearchMd,
     Calendar, MarkerPin01, ClockFastForward, Users01,
-    UploadCloud01, AlertCircle, Plus, Trash01,
+    AlertCircle, Plus, Trash01,
     Settings03, Building01, Star01, Grid01, ArrowRight,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSl
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
 import { FieldLabel } from "@/components/patterns/FieldLabel";
 import {
@@ -2214,30 +2215,13 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                             {isScratch ? "Class details" : "Class template detail"}
                                         </p>
 
-                                        {/* Image banner */}
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className={labelCls}>Image banner</label>
-                                            <div className="relative w-full h-[200px] rounded-[12px] overflow-hidden flex items-center justify-center cursor-pointer group border-1 border-[#e4e7ec]"
-                                                style={{ backgroundColor: coverCol }}>
-                                                {coverImage && <img src={coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-                                                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                                        <UploadCloud01 className="w-5 h-5 text-white" />
-                                                    </div>
-                                                    <p className="text-white text-[14px] font-semibold">Change image</p>
-                                                    <p className="text-white/80 text-[12px]">PNG or JPG (max. 800×400px)</p>
-                                                </div>
-                                                {!coverImage && (
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center">
-                                                            <UploadCloud01 className="w-5 h-5 text-[#667085]" />
-                                                        </div>
-                                                        <p className="text-[#344054] text-[14px] font-semibold">Change image</p>
-                                                        <p className="text-[#667085] text-[12px]">PNG or JPG (max. 800×400px)</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                        {/* Image banner — shared uploader (Figma 7781:220725).
+                                            Preview seeds from the picked template's cover; admin
+                                            can replace it before saving. */}
+                                        <ImageBannerUpload
+                                            preview={coverImage || null}
+                                            onChange={url => setCoverImage(url ?? "")}
+                                        />
 
                                         {/* Class name — class type input was removed
                                             since class schedules always represent Group

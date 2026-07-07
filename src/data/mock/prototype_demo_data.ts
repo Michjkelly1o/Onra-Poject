@@ -85,6 +85,16 @@ const MEMBERSHIP_PRICE: Record<typeof MEMBERSHIPS[number], number> = {
     mem_unlimited_monthly: 2800,
     mem_yoga_focused:      1800,
 };
+/** Monthly class credits per membership tier — mirrors `memberships.ts`.
+ *  `null` = unlimited. Used by the synthetic renewal-plan fixture so the
+ *  Plan-tab "Credit left" column renders the real cap (10/20/12) instead
+ *  of collapsing to 0/0. */
+const MEMBERSHIP_CREDITS: Record<typeof MEMBERSHIPS[number], number | null> = {
+    mem_beginner_monthly:  10,
+    mem_advanced_monthly:  20,
+    mem_unlimited_monthly: null,
+    mem_yoga_focused:      12,
+};
 
 const PACKAGES = [
     "pkg_5_class",
@@ -1317,6 +1327,15 @@ export const DEMO_NOW_RENEWAL_PLANS: CustomerPlan[] = RENEWAL_PLAN_SPECS.map((p,
     // shows the "Renew membership" secondary action; the rest stay
     // active so autoRenew flags flow through the renewal counter.
     const status: CustomerPlan["status"] = p.expiryInDays < 0 ? "expired" : "active";
+    // Real per-tier credit cap from `memberships.ts` — null = unlimited.
+    // Prior version hardcoded `total_credits: 0` + `credits_label:
+    // "Monthly billing"`, which stripped both the label parse AND the
+    // stored total to 0. Result: at-risk customers whose plan is one of
+    // these renewal fixtures showed "0/0" in the Plan tab (client-flagged
+    // Jul 2026). Now the cap flows through so the column renders
+    // "N/10" | "N/20" | "N/12" or "Unlimited".
+    const cap = MEMBERSHIP_CREDITS[p.productKey];
+    const isUnlimited = cap === null;
     return {
         id: `plan_renew_${String(idx + 1).padStart(3, "0")}`,
         customer_id: synthCustomerId(p.synthIdx),
@@ -1324,13 +1343,14 @@ export const DEMO_NOW_RENEWAL_PLANS: CustomerPlan[] = RENEWAL_PLAN_SPECS.map((p,
         product_id: p.productKey,
         name,
         plan_type_label: "Membership",
-        credits_label: p.productKey === "mem_unlimited_monthly" ? "Unlimited" : "Monthly billing",
+        credits_label: isUnlimited ? "Unlimited" : `${cap} credits`,
         status,
         purchased_at: isoDay(purchaseDate),
         expiry_iso: isoStamp(expiryDate),
         price_aed: price,
-        // Reports v33 fields — needed so downstream reports don't NaN.
-        total_credits: 0,
+        // Reports v33 — real cap on finite tiers, 0 for unlimited (the
+        // /unlimited/i label check on read swaps to the Unlimited render).
+        total_credits: isUnlimited ? 0 : (cap ?? 0),
         credits_used: 0,
         auto_renew: p.autoRenew,
         next_billing_amount_aed: p.autoRenew ? price : 0,

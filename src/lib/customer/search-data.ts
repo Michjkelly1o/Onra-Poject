@@ -150,12 +150,14 @@ export function useDayClasses(dateISO: string): SearchClassVM[] {
     const maxWaitingSpots = useAppStore((s) => s.classesSettings.max_waiting_spots);
 
     return useMemo(() => {
-        if (!member) return [];
+        // Classes are PUBLIC — a guest (member === null) browses the same schedule
+        // as a logged-in member; only the per-card booked/waitlisted state (which
+        // needs a member id) differs, and an empty id simply resolves to none.
         const isAll = selectedBranchId === ALL_BRANCHES;
         return classSchedules
             .filter((s) => s.status === "Upcoming" && s.dateISO === dateISO && (isAll || s.branchId === selectedBranchId))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .map((s) => buildDetailVM(s, { instructors, branches, bookings, memberId: member.id, maxWaitingSpots }));
+            .map((s) => buildDetailVM(s, { instructors, branches, bookings, memberId: member?.id ?? "", maxWaitingSpots }));
     }, [member, selectedBranchId, classSchedules, instructors, branches, bookings, maxWaitingSpots, dateISO]);
 }
 
@@ -172,11 +174,12 @@ export function useInstructorDayClasses(instructorId: string, dateISO: string): 
     const maxWaitingSpots = useAppStore((s) => s.classesSettings.max_waiting_spots);
 
     return useMemo(() => {
-        if (!member) return [];
+        // Public — a guest sees the instructor's classes too (booked state needs an
+        // id, so an empty id resolves to none).
         return classSchedules
             .filter((s) => s.instructorId === instructorId && s.status === "Upcoming" && s.dateISO === dateISO)
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .map((s) => buildDetailVM(s, { instructors, branches, bookings, memberId: member.id, maxWaitingSpots }));
+            .map((s) => buildDetailVM(s, { instructors, branches, bookings, memberId: member?.id ?? "", maxWaitingSpots }));
     }, [member, instructorId, classSchedules, instructors, branches, bookings, maxWaitingSpots, dateISO]);
 }
 
@@ -191,8 +194,10 @@ export function useClassDetail(id: string): ClassDetailVM | null {
 
     return useMemo(() => {
         const schedule = classSchedules.find((s) => s.id === id);
-        if (!schedule || !member) return null;
-        return buildDetailVM(schedule, { instructors, branches, bookings, memberId: member.id, maxWaitingSpots });
+        // The class detail is PUBLIC — a guest (member === null) sees the same page;
+        // only the per-member booked/waitlisted state needs an id (empty = none).
+        if (!schedule) return null;
+        return buildDetailVM(schedule, { instructors, branches, bookings, memberId: member?.id ?? "", maxWaitingSpots });
     }, [id, member, classSchedules, instructors, branches, bookings, maxWaitingSpots]);
 }
 

@@ -35,6 +35,8 @@ export interface ProductDetailsSheetProps {
     initialQty?: number;
     /** Disables "Add to cart" (e.g. a package while the member owns a membership). */
     disabled?: boolean;
+    /** Guest mode — the CTA becomes "Log in to purchase" (full-width, no stepper). */
+    guest?: boolean;
 }
 
 const STEP_BTN =
@@ -51,7 +53,7 @@ function PlanChip({ name }: { name: string }) {
     );
 }
 
-export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initialQty = 1, disabled = false }: ProductDetailsSheetProps) {
+export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initialQty = 1, disabled = false, guest = false }: ProductDetailsSheetProps) {
     const [qty, setQty] = useState(1);
     useEffect(() => {
         if (open) setQty(Math.max(1, initialQty));
@@ -103,41 +105,55 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                         </p>
                     </div>
 
-                    {/* Footer — quantity stepper + Add to cart (consistent across sheets) */}
-                    <div className="flex w-full items-center justify-between gap-4 pt-2">
-                        <div className="flex items-center gap-4">
-                            <button
-                                type="button"
-                                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                                aria-label="Decrease quantity"
-                                disabled={disabled || !isPackage || qty <= 1}
-                                className={STEP_BTN}
+                    {/* Footer — quantity stepper + Add to cart (consistent across sheets).
+                        Guests can't purchase → a single full-width "Log in to purchase" CTA. */}
+                    {guest ? (
+                        <div className="w-full pt-2">
+                            <Button
+                                variant="primary"
+                                size="xl"
+                                className="w-full rounded-full"
+                                onClick={() => onAdd(plan, 1)}
                             >
-                                <Minus className="size-5 text-[#344054]" aria-hidden />
-                            </button>
-                            <span className="min-w-4 text-center text-base font-semibold leading-6 text-[#101828]">
-                                {qty}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => setQty((q) => q + 1)}
-                                aria-label="Increase quantity"
-                                disabled={disabled || !isPackage}
-                                className={STEP_BTN}
-                            >
-                                <Plus className="size-5 text-[#344054]" aria-hidden />
-                            </button>
+                                Log in to purchase
+                            </Button>
                         </div>
-                        <Button
-                            variant="primary"
-                            size="xl"
-                            className="shrink-0 rounded-full"
-                            disabled={disabled}
-                            onClick={() => onAdd(plan, isPackage ? qty : 1)}
-                        >
-                            Add to cart
-                        </Button>
-                    </div>
+                    ) : (
+                        <div className="flex w-full items-center justify-between gap-4 pt-2">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                                    aria-label="Decrease quantity"
+                                    disabled={disabled || !isPackage || qty <= 1}
+                                    className={STEP_BTN}
+                                >
+                                    <Minus className="size-5 text-[#344054]" aria-hidden />
+                                </button>
+                                <span className="min-w-4 text-center text-base font-semibold leading-6 text-[#101828]">
+                                    {qty}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setQty((q) => q + 1)}
+                                    aria-label="Increase quantity"
+                                    disabled={disabled || !isPackage}
+                                    className={STEP_BTN}
+                                >
+                                    <Plus className="size-5 text-[#344054]" aria-hidden />
+                                </button>
+                            </div>
+                            <Button
+                                variant="primary"
+                                size="xl"
+                                className="shrink-0 rounded-full"
+                                disabled={disabled}
+                                onClick={() => onAdd(plan, isPackage ? qty : 1)}
+                            >
+                                Add to cart
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
         </CustomerSheet>

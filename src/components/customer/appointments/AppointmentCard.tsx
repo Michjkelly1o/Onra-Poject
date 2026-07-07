@@ -23,6 +23,8 @@ export interface AppointmentCardProps {
     /** Open sessions only. */
     capacity?: number;
     onBook: () => void;
+    /** CTA label — defaults to "Book now"; guests get "Log in to book". */
+    ctaLabel?: string;
 }
 
 export function AppointmentCard({
@@ -35,6 +37,7 @@ export function AppointmentCard({
     coverColor,
     capacity,
     onBook,
+    ctaLabel = "Book now",
 }: AppointmentCardProps) {
     const isPrivate = type === "private";
     const BadgeIcon = isPrivate ? User01 : Users01;
@@ -79,7 +82,7 @@ export function AppointmentCard({
 
             {/* Book now */}
             <Button variant="primary" size="sm" className="w-full rounded-full" onClick={onBook}>
-                Book now
+                {ctaLabel}
             </Button>
         </div>
     );

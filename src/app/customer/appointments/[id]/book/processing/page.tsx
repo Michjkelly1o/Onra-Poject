@@ -14,6 +14,8 @@ import { useAppStore } from "@/lib/store";
 import { appointmentDraft } from "@/lib/customer/booking-flow";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { addAppointmentBooking } from "@/lib/customer/appointment-bookings";
+import { addCustomerNotification } from "@/lib/customer/notifications-feed";
+import { to12h } from "@/lib/customer/dates";
 
 const STEPS = ["Checking availability", "Securing your appointment", "Confirming your booking"];
 const STEP_MS = 900;
@@ -51,7 +53,10 @@ export default function AppointmentProcessingPage() {
                 appointmentId: appointment.id,
                 name: appointment.name,
                 type: appointment.type,
+                description: appointment.description,
+                category: appointment.category,
                 durationMins: appointment.durationMins,
+                capacity: appointment.capacity,
                 price: appointment.price,
                 coverImage: appointment.coverImage,
                 coverColor: appointment.coverColor,
@@ -63,6 +68,19 @@ export default function AppointmentProcessingPage() {
                 instructorName: inst?.name,
                 instructorImageUrl: inst?.imageUrl,
                 instructorInitials: inst?.initials,
+            });
+            const when = `${new Date(`${appointmentDraft.slotISO}T00:00:00`).toLocaleDateString("en-GB", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+            })} at ${to12h(appointmentDraft.slotTime)}`;
+            addCustomerNotification({
+                tab: "bookings",
+                event: "appointment_booked",
+                title: "Appointment booked",
+                message: `You're all set for ${appointment.name} on ${when}.`,
+                relatedType: "appointment",
+                relatedId: bookingId,
             });
         }
         const t1 = setTimeout(() => setStep(1), STEP_MS);

@@ -300,9 +300,16 @@ function fmtDateTime(iso: string | undefined): string {
 // Header bulk-actions (checkbox column) let admin blast a reminder to
 // every selected row at once.
 
-export interface RenewalDueModalProps { open: boolean; onClose: () => void; branchId?: string | null }
+export interface RenewalDueModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchId?: string | null;
+    /** Forward-N-day window (matches the dashboard Coming-up pill).
+     *  Omit / undefined = defaults to 30 days (legacy behaviour). */
+    forwardRangeDays?: number;
+}
 
-export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProps) {
+export function RenewalDueModal({ open, onClose, branchId, forwardRangeDays }: RenewalDueModalProps) {
     const router         = useRouter();
     const customers      = useAppStore(s => s.customers);
     const customerPlans  = useAppStore(s => s.customerPlans);
@@ -319,12 +326,15 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
 
     const rows = useMemo(() => {
         const now = new Date();
-        const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
-        const in30ISO = in30.toISOString().slice(0, 10);
+        // Default legacy window = 30 days; caller passes 7 when the
+        // dashboard's Coming-up pill is on "Next 7 days".
+        const rangeDays = forwardRangeDays ?? 30;
+        const horizon = new Date(now); horizon.setDate(horizon.getDate() + rangeDays);
+        const horizonISO = horizon.toISOString().slice(0, 10);
         const todayISO = now.toISOString().slice(0, 10);
         return customerPlans
             .filter(p => p.kind === "membership")
-            .filter(p => (p.expiryISO ?? "").slice(0, 10) <= in30ISO)
+            .filter(p => (p.expiryISO ?? "").slice(0, 10) <= horizonISO)
             .filter(p => p.status === "active" || p.status === "frozen" || p.status === "expired")
             .map(p => {
                 const c = customers.find(cx => cx.id === p.customerId);
@@ -335,7 +345,7 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
                 return { plan: p, customer: c, expiryDate, isExpired };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerPlans, customers, branchId]);
+    }, [customerPlans, customers, branchId, forwardRangeDays]);
 
     // Sortable columns — Customer / Membership / Status / Renews.
     // Sorting cycles desc → asc → off just like every other admin table.
@@ -529,9 +539,17 @@ export function RenewalDueModal({ open, onClose, branchId }: RenewalDueModalProp
 // the customer's new card). Read-only in the mock — no row action per
 // Figma 7785:227786.
 
-export interface FailedPaymentsModalProps { open: boolean; onClose: () => void; branchId?: string | null }
+export interface FailedPaymentsModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchId?: string | null;
+    /** Past-N-day window (matches the dashboard Coming-up pill).
+     *  Omit / undefined = show all failed rows regardless of date. */
+    pastRangeDays?: number;
+}
 
-export function FailedPaymentsModal({ open, onClose, branchId }: FailedPaymentsModalProps) {
+export function FailedPaymentsModal({ open, onClose, branchId, pastRangeDays }: FailedPaymentsModalProps) {
+    const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const customerTransactions = useAppStore(s => s.customerTransactions);
 
@@ -539,17 +557,46 @@ export function FailedPaymentsModal({ open, onClose, branchId }: FailedPaymentsM
     const [pageSize, setPageSize] = useState(10);
     useEffect(() => { if (open) setPage(1); }, [open]);
 
+    // Deep-link a row → that customer's Payment history tab. Same pattern
+    // the Renewal-due modal uses (line 715) — returnTo lets the customer
+    // page's close button flow straight back to the dashboard.
+    function openCustomerPayments(id: string) {
+        onClose();
+        router.push(`/customers/${id}?tab=Payments&returnTo=${encodeURIComponent("/admin/dashboard")}`);
+    }
+
     const rows = useMemo(() => {
+        const now = Date.now();
+        const DAY = 24 * 60 * 60 * 1000;
+        const pastStartMs = typeof pastRangeDays === "number"
+            ? now - pastRangeDays * DAY
+            : null;
         return customerTransactions
-            .filter(t => t.status === "failed" || t.status === "pending")
+            // "Failed payments" means truly failed only. Pending rows were
+            // included previously + painted with a red "Failed" chip — but
+            // the customer's own Payments tab shows the real "Pending"
+            // status, so the two views disagreed on the same customer.
+            // Restrict to `failed` so the modal, its badge, and the tab
+            // all mean the same thing (client-flagged Jul 2026).
+            .filter(t => t.status === "failed")
             .filter(t => !branchId || t.branchId === branchId)
+            // Optional past-window scope — set by the dashboard's Coming-up
+            // pill so the modal list matches the metric count. When the
+            // modal is opened outside the dashboard, `pastRangeDays` stays
+            // undefined and every failed row shows.
+            .filter(t => {
+                if (pastStartMs === null) return true;
+                const ts = new Date(t.createdAtISO).getTime();
+                if (Number.isNaN(ts)) return false;
+                return ts >= pastStartMs && ts <= now;
+            })
             .map(t => {
                 const c = customers.find(cx => cx.id === t.customerId);
                 if (!c) return null;
                 return { txn: t, customer: c };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerTransactions, customers, branchId]);
+    }, [customerTransactions, customers, branchId, pastRangeDays]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -614,7 +661,9 @@ export function FailedPaymentsModal({ open, onClose, branchId }: FailedPaymentsM
                     </thead>
                     <tbody>
                         {paged.map(r => (
-                            <tr key={r.txn.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                            <tr key={r.txn.id}
+                                onClick={() => openCustomerPayments(r.customer.id)}
+                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
                                 <td className={TD}>
                                     <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.txn.name}</p>
@@ -766,12 +815,14 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                     </thead>
                     <tbody>
                         {paged.map(r => (
-                            <tr key={r.customer.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                            <tr key={r.customer.id}
+                                onClick={() => viewCustomer(r.customer.id)}
+                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
                                 <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDate(r.customer.lastVisitISO)}</td>
                                 <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.planLabel}</td>
                                 <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{r.pattern}</td>
-                                <td className={TD}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         items={[
                                             {
@@ -812,9 +863,16 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
 //   • Promote class → 404 (client hasn't decided destination yet)
 //   • Cancel class → calls store.cancelClassSchedule with an audit reason
 
-export interface UnderFilledModalProps { open: boolean; onClose: () => void; branchId?: string | null }
+export interface UnderFilledModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchId?: string | null;
+    /** Forward-N-day window (matches the dashboard Coming-up pill).
+     *  Omit / undefined = defaults to 30 days (legacy behaviour). */
+    forwardRangeDays?: number;
+}
 
-export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalProps) {
+export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: UnderFilledModalProps) {
     const router = useRouter();
     const classSchedules = useAppStore(s => s.classSchedules);
     const classBookings  = useAppStore(s => s.classBookings);
@@ -832,15 +890,18 @@ export function UnderFilledModal({ open, onClose, branchId }: UnderFilledModalPr
 
     const rows = useMemo(() => {
         const now = new Date();
-        const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
-        const in30ISO = in30.toISOString().slice(0, 10);
+        // Default legacy window = 30 days; caller can pass 7 to match the
+        // dashboard's Coming-up "Next 7 days" pill so count + list agree.
+        const rangeDays = forwardRangeDays ?? 30;
+        const horizon = new Date(now); horizon.setDate(horizon.getDate() + rangeDays);
+        const horizonISO = horizon.toISOString().slice(0, 10);
         const todayISO = now.toISOString().slice(0, 10);
         return classSchedules
             .filter(s => s.status === "Upcoming" || s.status === "Ongoing")
-            .filter(s => s.dateISO >= todayISO && s.dateISO <= in30ISO)
+            .filter(s => s.dateISO >= todayISO && s.dateISO <= horizonISO)
             .filter(s => s.capacity > 0 && (s.booked / s.capacity) < 0.5)
             .filter(s => !branchId || s.branchId === branchId);
-    }, [classSchedules, branchId]);
+    }, [classSchedules, branchId, forwardRangeDays]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<ClassSchedule>(rows, {

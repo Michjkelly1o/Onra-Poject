@@ -43,6 +43,7 @@ import { CustomerDetailsTab } from "./CustomerDetailsTab";
 import { CustomerAgreementsTab } from "./CustomerAgreementsTab";
 import { CustomerReferralsTab } from "./CustomerReferralsTab";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { derivePlanBalances } from "@/lib/plan-credits";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,7 @@ function parseCredits(label: string): number {
     const m = label.match(/\d+/);
     return m ? Number(m[0]) : 0;
 }
+
 
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
@@ -778,6 +780,13 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         [customerPlans, customerId],
     );
 
+    // Per-plan balances derived from customer.creditsRemaining so the
+    // "Credit left" column always matches the "Total credits" widget below.
+    const planBalances = useMemo(
+        () => derivePlanBalances(plans, customer?.creditsRemaining),
+        [plans, customer?.creditsRemaining],
+    );
+
     const filteredPlans = useMemo(() => {
         const q = search.trim().toLowerCase();
         return plans.filter(p => {
@@ -797,10 +806,17 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         active: 0, frozen: 1, expired: 2, cancelled: 3, removed: 4,
     };
     const { sorted: sortedPlans, sortKey: planSortKey, sortDir: planSortDir, toggle: togglePlanSort } = useSort<CustomerPlan>(filteredPlans, {
-        name:     (a, b) => a.name.localeCompare(b.name),
-        planType: (a, b) => a.planTypeLabel.localeCompare(b.planTypeLabel),
-        status:   (a, b) => (PLAN_STATUS_ORDER[a.status] ?? 99) - (PLAN_STATUS_ORDER[b.status] ?? 99),
-        expiry:   (a, b) => a.expiryISO.localeCompare(b.expiryISO),
+        name:       (a, b) => a.name.localeCompare(b.name),
+        planType:   (a, b) => a.planTypeLabel.localeCompare(b.planTypeLabel),
+        // Unlimited memberships sort as "the most credit left" — infinity beats any finite balance.
+        creditLeft: (a, b) => {
+            const ba = planBalances.get(a.id), bb = planBalances.get(b.id);
+            const va = ba?.isUnlimited ? Number.POSITIVE_INFINITY : (ba?.left ?? 0);
+            const vb = bb?.isUnlimited ? Number.POSITIVE_INFINITY : (bb?.left ?? 0);
+            return va - vb;
+        },
+        status:     (a, b) => (PLAN_STATUS_ORDER[a.status] ?? 99) - (PLAN_STATUS_ORDER[b.status] ?? 99),
+        expiry:     (a, b) => a.expiryISO.localeCompare(b.expiryISO),
     });
 
     const totalPages = Math.max(1, Math.ceil(sortedPlans.length / pageSize));
@@ -808,26 +824,34 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const pagedPlans = sortedPlans.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     // ─── Credit-balance widget data ─────────────────────────────────────────
-    // Everything in this widget reflects the LIVE remaining balance:
-    //   • Headline = customer.creditsRemaining (or "Unlimited")
-    //   • Bar      = remaining / total allotment
-    //   • Each breakdown row = remaining credits from THAT source, so the rows
-    //                          sum to the headline (no disconnect with the bar).
+    // Widget MUST sum to what the Plan tab table shows — client-flagged Jul
+    // 2026 after Layla Chahine (12/12 in table, "0 credits left" in widget).
+    // Root cause: widget was reading `customer.creditsRemaining` raw (0 when
+    // undefined for seed customers), while the table went through
+    // `derivePlanBalances` which fell back to full allotment. Fix: derive
+    // the widget's per-kind sums from the SAME `planBalances` map, so the
+    // widget is a strict aggregate of the table.
     const activePlans = plans.filter(p => p.status === "active" || p.status === "frozen");
     const planCreditPlans = activePlans.filter(p => p.kind === "membership" || p.kind === "package");
     const freeCreditPlans = activePlans.filter(p => p.kind === "complimentary");
     const hasUnlimited = planCreditPlans.some(p => p.creditsLabel.toLowerCase().includes("unlimited"));
-    // Allotments — used as the bar denominator and to split remaining credits
-    // between plan-portion and free-portion.
-    const planAllotment = planCreditPlans.reduce((s, p) => s + parseCredits(p.creditsLabel), 0);
-    const freeAllotment = freeCreditPlans.reduce((s, p) => s + (p.freeCredits ?? parseCredits(p.creditsLabel)), 0);
+    // Denominators — allotment totals (used for the bar %).
+    const planAllotment = planCreditPlans.reduce(
+        (s, p) => s + (planBalances.get(p.id)?.total ?? 0), 0,
+    );
+    const freeAllotment = freeCreditPlans.reduce(
+        (s, p) => s + (planBalances.get(p.id)?.total ?? 0), 0,
+    );
     const totalAllotment = planAllotment + freeAllotment;
-    const creditsLeft = customer?.creditsRemaining ?? 0;
-    // Live remaining split: free credits stay credited to "free" until the
-    // total balance drops below the free count; the plan portion is whatever's
-    // left after that (clamped at 0). Keeps the numbers consistent.
-    const freeRemaining = freeAllotment > 0 ? Math.min(freeAllotment, creditsLeft) : 0;
-    const planRemaining = Math.max(0, creditsLeft - freeRemaining);
+    // Numerators — sum of per-plan "left" from the Plan-tab derivation. This
+    // is the single source of truth for the widget's numbers.
+    const planRemaining = planCreditPlans.reduce(
+        (s, p) => s + (planBalances.get(p.id)?.left ?? 0), 0,
+    );
+    const freeRemaining = freeCreditPlans.reduce(
+        (s, p) => s + (planBalances.get(p.id)?.left ?? 0), 0,
+    );
+    const creditsLeft = planRemaining + freeRemaining;
     const creditDisplay = hasUnlimited
         ? "Unlimited"
         : `${creditsLeft} ${creditsLeft === 1 ? "credit" : "credits"} left`;
@@ -1112,6 +1136,9 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                         <th className={cn(TH, "w-[160px]")}>
                                                             <SortableHeader sortKey="planType" currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Plan type</SortableHeader>
                                                         </th>
+                                                        <th className={cn(TH, "w-[200px]")}>
+                                                            <SortableHeader sortKey="creditLeft" currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Credit left</SortableHeader>
+                                                        </th>
                                                         <th className={cn(TH, "w-[120px]")}>
                                                             <SortableHeader sortKey="status"   currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Status</SortableHeader>
                                                         </th>
@@ -1122,7 +1149,14 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {pagedPlans.map(p => (
+                                                    {pagedPlans.map(p => {
+                                                        // Terminal statuses mute ONLY the Credit-left column (bar +
+                                                        // count). Transaction name / Plan type / Expiry date stay at
+                                                        // normal color — status is already conveyed by the badge.
+                                                        const isDisabled = p.status === "expired" || p.status === "removed";
+                                                        const creditTextCls = isDisabled ? "text-[#98a2b3]" : "text-[#101828]";
+                                                        const barFill       = isDisabled ? "bg-[#d0d5dd]" : "bg-[#658774]";
+                                                        return (
                                                         <tr key={p.id} className="hover:bg-[#f9fafb] transition-colors">
                                                             <td className={TD}>
                                                                 <div className="flex items-center gap-3">
@@ -1143,6 +1177,28 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                 </div>
                                                             </td>
                                                             <td className={cn(TD, "text-[#475467]")}>{p.planTypeLabel}</td>
+                                                            <td className={TD}>
+                                                                {(() => {
+                                                                    const bal = planBalances.get(p.id) ?? { isUnlimited: false, left: 0, total: 0 };
+                                                                    if (bal.isUnlimited) {
+                                                                        return (
+                                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                                <div className={cn("flex-1 h-1.5 rounded-full", barFill)} />
+                                                                                <span className={cn("text-[14px] font-medium whitespace-nowrap", creditTextCls)}>Unlimited</span>
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    const pct = bal.total > 0 ? Math.min(100, Math.round((bal.left / bal.total) * 100)) : 0;
+                                                                    return (
+                                                                        <div className="flex items-center gap-3 min-w-0">
+                                                                            <div className="flex-1 h-1.5 rounded-full bg-[#f2f4f7] overflow-hidden">
+                                                                                <div className={cn("h-full rounded-full", barFill)} style={{ width: `${pct}%` }} />
+                                                                            </div>
+                                                                            <span className={cn("text-[14px] font-medium whitespace-nowrap", creditTextCls)}>{bal.left}/{bal.total}</span>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </td>
                                                             <td className={TD}><PlanStatusBadge status={p.status} /></td>
                                                             <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(p.expiryISO)}</td>
                                                             <td className={TD}>
@@ -1150,7 +1206,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                     onAction={kind => setPlanModal({ kind, plan: p })} />
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>

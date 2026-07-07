@@ -20,9 +20,12 @@ import {
     PhoneCall01,
     Share07,
     Ticket01,
+    User01,
     Users01,
 } from "@untitledui/icons";
+import { useAppStore } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
+import { logoutCustomer } from "@/lib/customer/auth";
 import { longDate } from "@/lib/customer/profile-format";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { SheetToolbar } from "@/components/customer/shell/SheetToolbar";
@@ -63,6 +66,7 @@ function CardArcs() {
 export default function ProfilePage() {
     const router = useRouter();
     const member = useCurrentCustomer();
+    const showToast = useAppStore((st) => st.showToast);
     const [logoutOpen, setLogoutOpen] = useState(false);
 
     const name = member ? `${member.firstName} ${member.lastName}` : "";
@@ -92,6 +96,42 @@ export default function ProfilePage() {
                         </button>
                     );
                 })}
+            </div>
+        );
+    }
+
+    // Guest (not authenticated) — a minimal "Hi guest" state with a single
+    // Log in / sign up entry. No menu, no plan, no logout (nothing personal).
+    if (!member) {
+        return (
+            <div className="flex min-h-full flex-col gap-4 px-4 pt-8">
+                <div className={`flex items-center gap-4 p-4 ${CARD}`}>
+                    <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7]">
+                        <User01 className="size-7 text-[#667085]" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-lg font-semibold leading-7 text-[#101828]">Hi guest</p>
+                        <p className="truncate text-base leading-6 text-[#667085]">You&apos;re browsing as a guest</p>
+                    </div>
+                </div>
+
+                <div className={`relative overflow-hidden p-4 ${CARD}`}>
+                    <CardArcs />
+                    <div className="relative flex flex-col gap-3">
+                        <p className="text-base font-semibold leading-6 text-[#101828]">Hey there!</p>
+                        <p className="text-sm leading-5 text-[#475467]">
+                            Log in or sign up to access your profile, bookings, and memberships.
+                        </p>
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            className="mt-1 w-full rounded-full"
+                            onClick={() => router.push("/customer/auth")}
+                        >
+                            Log in or sign up
+                        </Button>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -191,22 +231,19 @@ export default function ProfilePage() {
                             You&apos;ll need to sign in again to access your bookings.
                         </p>
                     </div>
-                    <div className="flex w-full gap-3 pt-1">
-                        <Button variant="secondary-gray" size="lg" className="flex-1 rounded-full" onClick={() => setLogoutOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive-secondary"
-                            size="lg"
-                            className="flex-1 rounded-full"
-                            onClick={() => {
-                                setLogoutOpen(false);
-                                router.push("/customer");
-                            }}
-                        >
-                            Logout
-                        </Button>
-                    </div>
+                    <Button
+                        variant="destructive-secondary"
+                        size="xl"
+                        className="mt-1 w-full rounded-full"
+                        onClick={() => {
+                            setLogoutOpen(false);
+                            logoutCustomer();
+                            showToast("You've been logged out", "See you soon!", "success");
+                            router.push("/customer");
+                        }}
+                    >
+                        Log out
+                    </Button>
                 </div>
             </CustomerSheet>
         </div>

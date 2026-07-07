@@ -84,11 +84,13 @@ const buttonVariants = cva(
                 ],
 
                 // ── Figma DS: Destructive Secondary ───────────────────────
-                // bg: white | border: #fca19b | fg: #b32218 | hover bg: #fef2f1
+                // Error-50 tinted fill (matches the Cancel-booking action) — the
+                // single main destructive button used across the customer app.
+                // bg: #fef3f2 | border: #fda29b | fg: #b42318 | hover bg: #fee4e2
                 "destructive-secondary": [
-                    "bg-white border-1 border-[#fca19b] text-[#b32218]",
+                    "bg-[#fef3f2] border-1 border-[#fda29b] text-[#b42318]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#fef2f1] hover:text-[#901f17] active:bg-[#fee3e1]",
+                    "hover:bg-[#fee4e2] hover:text-[#912018] active:bg-[#fee4e2] active:text-[#912018]",
                 ],
 
                 // ── Figma DS: Destructive Tertiary ────────────────────────

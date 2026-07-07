@@ -51,21 +51,20 @@ function effectiveStatus(m: MarketingItem): EffectiveStatus {
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
-const MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-];
-
-/** ISO → "20 March 2026, 12:00 AM" (UTC) for the "Valid until" row. */
+/** ISO → "31/12/2026, 12:00 AM" (DD/MM/YYYY + time, UTC) for the
+ *  "Valid until" row. Compact date so 4 cards per row don't wrap
+ *  (client-flagged Jul 2026); time is preserved. */
 function formatValidUntil(iso?: string): string {
     if (!iso) return "No expiry";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
     let h = d.getUTCHours();
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
     const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
+    return `${dd}/${mo}/${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
 }
 
 const TYPE_LABEL: Record<MarketingItem["type"], string> = {
@@ -412,7 +411,7 @@ export default function MarketingListPage() {
                     />
                 </div>
             ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                     {visible.map(m => (
                         <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
                             onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />

@@ -51,18 +51,49 @@ type FlowState =
 
 const LOADING_MS = 1500;
 
-export function AppsTab() {
+/** Search + Filter toolbar for the Apps tab. Exported so the parent page can
+ *  render it inline with the SegmentedTabs row (Figma feedback Jul 2026). */
+export function AppsToolbar({
+    search, setSearch, categoryFilter, setCategoryFilter, filterOpen, setFilterOpen,
+}: {
+    search: string;
+    setSearch: (v: string) => void;
+    categoryFilter: IntegrationCategory | null;
+    setCategoryFilter: (v: IntegrationCategory | null) => void;
+    filterOpen: boolean;
+    setFilterOpen: (v: boolean) => void;
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className="relative w-[280px]">
+                <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Search..."
+                    className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                />
+            </div>
+            <FilterDropdown
+                open={filterOpen}
+                onOpenChange={setFilterOpen}
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+            />
+        </div>
+    );
+}
+
+export interface AppsTabProps {
+    search: string;
+    categoryFilter: IntegrationCategory | null;
+}
+
+export function AppsTab({ search, categoryFilter }: AppsTabProps) {
     const integrations = useAppStore(s => s.integrations);
     const connectIntegration = useAppStore(s => s.connectIntegration);
     const disconnectIntegration = useAppStore(s => s.disconnectIntegration);
     const showToast = useAppStore(s => s.showToast);
 
     const [flow, setFlow] = useState<FlowState>({ kind: "idle" });
-
-    // Toolbar state — search + category filter.
-    const [search, setSearch] = useState("");
-    const [categoryFilter, setCategoryFilter] = useState<IntegrationCategory | null>(null);
-    const [filterOpen, setFilterOpen] = useState(false);
 
     // Loading modal auto-resolves after LOADING_MS (same flow as the
     // previous /admin/settings/integrations page).
@@ -138,22 +169,8 @@ export function AppsTab() {
 
     return (
         <div className="flex flex-col gap-6">
-            {/* ── Toolbar: search + category filter dropdown ─────────── */}
-            <div className="flex items-center justify-end gap-3">
-                <div className="relative w-[280px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
-                <FilterDropdown
-                    open={filterOpen}
-                    onOpenChange={setFilterOpen}
-                    value={categoryFilter}
-                    onChange={setCategoryFilter}
-                />
-            </div>
+            {/* Toolbar (search + category filter) is rendered by the page,
+                inline with the SegmentedTabs row — see integrations/page.tsx. */}
 
             {/* ── Empty state ─────────────────────────────────────────── */}
             {/* When the filter / search yields zero results, render a small

@@ -191,7 +191,9 @@ export function useMemberBookings(): { upcoming: BookingListItemVM[]; past: Book
 }
 
 export interface BookingFilters {
-    classType: "Group" | "Private" | null;
+    /** Group = class bookings · Appointment = appointment bookings (mirrors the
+     *  admin schedule module's Group/Appointment filter). */
+    classType: "Group" | "Appointment" | null;
     instructorIds: string[];
     categories: string[];
 }
@@ -213,9 +215,11 @@ export function bookingFilterCount(f: BookingFilters): number {
 }
 
 export function applyBookingFilters(list: BookingListItemVM[], f: BookingFilters): BookingListItemVM[] {
+    // Class bookings ARE the "Group" kind — selecting "Appointment" hides them all
+    // (appointment bookings are filtered separately on the Bookings page).
+    if (f.classType === "Appointment") return [];
     return list.filter(
         (b) =>
-            (f.classType === null || b.classType === f.classType) &&
             (f.instructorIds.length === 0 || f.instructorIds.includes(b.instructorId)) &&
             (f.categories.length === 0 || f.categories.includes(b.category)),
     );

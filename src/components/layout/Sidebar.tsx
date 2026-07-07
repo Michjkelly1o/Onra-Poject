@@ -62,20 +62,20 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Class templates", href: "/admin/class-types" },
             { label: "Schedule",        href: "/admin/schedule"    },
-            { label: "Categories",      href: "/admin/categories"  },
-            // Services moved OUT to the new "Services & pricing" group
-            // below — per Figma it sits with Memberships & packages
-            // under the Studio section divider.
+            // Categories moved DOWN to "Services & pricing" per client Jul
+            // 2026 — sits next to Memberships & packages + Services under
+            // the Studio section divider. Route unchanged.
+            // Services also lives in "Services & pricing" (moved earlier).
         ],
     },
     { label: "Customers", href: "/admin/customers", icon: User01, permission: "manage_members" },
     {
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
         children: [
-            { label: "Insights", href: "/admin/insights" },
-            // KPI hidden from the sidebar per client Jul 2026 (also
-            // 404'd via feature-flags.ts). Restore by uncommenting.
-            // { label: "KPI",      href: "/admin/kpi"      },
+            // Client Jul 2026: legacy Insights module archived. The KPI page
+            // now carries the "Insights" label — same route (/admin/kpi),
+            // just relabeled. Legacy /admin/insights is 404'd via feature-flags.
+            { label: "Insights", href: "/admin/kpi"      },
             { label: "Reports",  href: "/admin/reports"  },
         ],
     },
@@ -102,8 +102,9 @@ const NAV_ITEMS: NavItemDef[] = [
         label: "Services & pricing", icon: ShoppingBag01, permission: "manage_products",
         sectionLabel: "Studio",
         children: [
-            { label: "Memberships & packages", href: "/admin/products" },
-            { label: "Services",                href: "/admin/services" },
+            { label: "Memberships & packages", href: "/admin/products"   },
+            { label: "Services",                href: "/admin/services"   },
+            { label: "Categories",              href: "/admin/categories" },
         ],
     },
     { label: "Gift cards", href: "/admin/products/gift-cards", icon: Gift01, permission: "manage_products" },

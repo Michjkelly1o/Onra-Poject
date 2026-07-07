@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-The **Search** module is the customer app's discovery + booking engine — tab 2 of the five-tab bottom nav (Home · **Search** · Bookings · Products · Profile). It has **two tabs**: **Classes** (group sessions) and **Appointments** (bookable services — Private 1:1 or Open sessions). The **Classes** tab is a **date-driven schedule browser**: a horizontally-scrollable week/date selector drives which day's classes render for the active branch, with a month picker + display-timezone selector. Each class row carries its live availability state (spots left / waitlist / full) and opens the **Class Details** screen → the full **booking flow**. The **Appointments** tab (§Phase 1b) lists services with a `Book` action (UI-only for now). Each tab has its own filter (Classes = Time + Instructor + Categories; Appointments = Categories only).
+The **Search** module is the customer app's discovery + booking engine — tab 2 of the five-tab bottom nav (Home · **Search** · Bookings · Products · Profile). It has **two tabs**: **Classes** (group sessions) and **Appointments** (bookable services — Private 1:1 or Open sessions). The **Classes** tab is a **date-driven schedule browser**: a horizontally-scrollable week/date selector drives which day's classes render for the active branch, with a month picker + display-timezone selector. Each class row carries its live availability state (spots left / waitlist / full) and opens the **Class Details** screen → the full **booking flow**. The **Appointments** tab (§Phase 1b) lists the active branch's appointment services (from the admin `services` catalog) with a `Book` action. Each tab has its own filter (Classes = Time + Instructor + Categories; Appointments = Categories only).
 
 The booking flow is the heart of the module and the only part that **writes**: it confirms a booking (with spot selection, guests, and an eligible membership/credit-package), gates first-time bookers behind a **Waiver Agreement**, plays a **processing** sequence, and lands on a **Success** screen. A full **Join Waitlist** variant reuses the same confirmation layout for full classes. Every write must propagate to the admin roster, the customer profile, and the dashboard in the **same render cycle** (shared Zustand store).
 
@@ -130,16 +130,17 @@ Tapping the **card body** or its **CTA** both open Class Details (the CTA pre-se
 
 ### Phase 1b — Appointments tab (`/member/search`, tab 2) — NEW · BUILT (UI)
 
-Figma `4188-40452`. Search now has **two tabs under the header** (Classes · Appointments; underline-active, equal width). **Appointments** are bookable **services** (vs Classes = group sessions) — built **UI-only** for now (admin appointment data isn't ready; a typed mock list lives behind `useAppointments()` in `src/lib/member/appointments-data.ts`, ready to swap for the real slice).
+Figma `4188-40452`. Search has **two tabs under the header** (Classes · Appointments; underline-active, equal width). **Appointments** are bookable **services** from the **admin catalog** (the `services` store slice, exposed to the customer via `useAppointments()` in `src/lib/customer/appointments-data.ts`). The list is **branch-scoped by branch kind** (see below), and each service maps to a customer-facing session type by its `openSession` flag.
 
 - **No date axis on the tab** — the Appointments tab shows the service list directly (no month/week/timezone bar). Date/instructor are chosen later in the booking flow (§Booking, future).
 - **`AppointmentCard`** (`src/components/customer/appointments/AppointmentCard.tsx`, Figma `4279-58757`) — reusable for **both** session types: a 48px cover thumb, the name + **price** (`AED [N]`), a **session badge** (Private → `user-01` "1 on 1"; Open → `users` "Up to [capacity]"), then a **location** row (branch) and a **duration** row (`clock` + `[N] mins`), and a full-width primary **`Book now`** button.
-- **Two session types** (structure only — no availability/booking logic yet):
-  - **Private** (default) — always 1:1, **requires an instructor**, scheduled on instructor availability.
-  - **Open session** (per-service) — **no instructor**, multiple participants (capacity badge), scheduled on branch hours.
+- **Branch scope by kind (admin rule)** — the list shows only the active branch's **Active** services: **Club branches** (`branchKind !== "spa"`) host **only private** appointments — non-recovery, 1-on-1 with an instructor (e.g. Private Reformer, Private Mat Pilates); **Spa branches** host **both private** (recovery, e.g. Massage, IV therapy) **and open-session** services (e.g. Sauna, Breathwork). "All branches" shows every active service.
+- **Two session types** (mapped from the service's `openSession`):
+  - **Private** (`openSession=false`) — a **1-on-1** session; the booking flow picks an **instructor first**, then the time slot.
+  - **Open session** (`openSession=true`) — **no instructor**, a set **capacity** (badge "Up to [capacity]"); time slots follow the **branch's working hours**.
 - **Filter = Categories only** — the same full-screen filter modal (§5.4) reused with **Time + Instructor sections hidden** (`showTime`/`showInstructor` props), sourced from the admin Class Categories. It has its **own filter state** (separate from the Classes filter), persisted in `searchUi`.
 - **Empty state** — the shared **"No appointment found"** (§11) when no service matches the active branch + categories.
-- **`Book` (current)** → toasts (the booking flow is the next phase). **Future booking flow:** Private = Book → **Select Instructor** (`4189-86847`) → **Time Slot** (`4212-39347`, reuses month/week/timezone selectors) → **Booking Confirmation** (`4212-39421`, reuses the Class booking-confirmation UI). Open = Book → **Time Slot** (no instructor step) → Confirmation. Build flexible for data integration; no business logic yet.
+- **`Book` → booking flow** (the `/customer/appointments/*` routes are flag-gated until the flow ships). **Private** = Book → **Select Instructor** (`4189-86847`) → **Time Slot** (`4212-39347`, reuses the month/week/timezone selectors) → **Booking Confirmation** (`4212-39421`, reuses the Class booking-confirmation UI). **Open session** = Book → **Time Slot** on the branch's working hours (no instructor step) → Confirmation. All sourced from the admin `services` catalog.
 
 ---
 

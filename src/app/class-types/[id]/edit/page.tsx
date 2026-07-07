@@ -7,8 +7,9 @@ import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAppStore, type Membership, type Package } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
+import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import {
-    XClose, UploadCloud02, Grid01,
+    XClose, Grid01,
     ClockFastForward, Users01,
     ChevronDown, ChevronUp, Check, Lightbulb02, FilterLines,
 } from "@untitledui/icons";
@@ -136,38 +137,7 @@ function FormField({ label, hint, children }: { label: string; hint?: string; ch
     );
 }
 
-// ─── Image upload ─────────────────────────────────────────────────────────────
-
-function ImageUploadArea({ preview, onChange }: {
-    preview: string | null;
-    onChange: (url: string | null, file: File | null) => void;
-}) {
-    const ref = useRef<HTMLInputElement>(null);
-    function handleFile(file: File) { onChange(URL.createObjectURL(file), file); }
-    return (
-        <div onClick={() => ref.current?.click()}
-            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith("image/")) handleFile(f); }}
-            onDragOver={e => e.preventDefault()}
-            className={cn("h-[200px] w-full border border-[#e4e7ec] rounded-[12px] flex flex-col items-center justify-center cursor-pointer transition-colors",
-                preview ? "p-0 overflow-hidden" : "bg-white hover:bg-[#f9fafb]")}>
-            {preview ? (
-                <img src={preview} alt="Banner" className="w-full h-full object-cover" />
-            ) : (
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#f1f2ed] border border-[#e4e7ec] flex items-center justify-center">
-                        <UploadCloud02 className="w-6 h-6 text-[#475467]" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <span className="text-[14px] font-semibold text-[#4f6e5d]">Upload image</span>
-                        <span className="text-[12px] text-[#475467]">PNG or JPG (max. 800×400px)</span>
-                    </div>
-                </div>
-            )}
-            <input ref={ref} type="file" accept="image/png,image/jpeg" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-        </div>
-    );
-}
+// Image upload lives in `src/components/ui/ImageBannerUpload.tsx`.
 
 // ─── Template preview ─────────────────────────────────────────────────────────
 
@@ -240,9 +210,7 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions }: {
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
                 <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Class template detail</h2>
                 <div className="flex flex-col gap-4">
-                    <FormField label="Image banner">
-                        <ImageUploadArea preview={data.coverPreview} onChange={(url, file) => onChange({ coverPreview: url, coverFile: file })} />
-                    </FormField>
+                    <ImageBannerUpload preview={data.coverPreview} onChange={(url, file) => onChange({ coverPreview: url, coverFile: file })} />
                     <FormField label="Class name">
                         <input type="text" value={data.name} onChange={e => onChange({ name: e.target.value })} placeholder="Enter class name" className={inputCls} />
                     </FormField>

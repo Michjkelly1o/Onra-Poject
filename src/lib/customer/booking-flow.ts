@@ -55,3 +55,13 @@ export function ensureAppointmentDraft(appointmentId: string): void {
         appointmentDraft.slotTime = null;
     }
 }
+
+/** Clear every appointment selection. Called when the flow is abandoned back to
+ *  Search (and on a fresh entry) so re-opening the same appointment starts clean —
+ *  no stale instructor/slot carried over. */
+export function resetAppointmentDraft(): void {
+    appointmentDraft.appointmentId = null;
+    appointmentDraft.instructorId = null;
+    appointmentDraft.slotISO = null;
+    appointmentDraft.slotTime = null;
+}

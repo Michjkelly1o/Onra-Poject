@@ -10,7 +10,7 @@
 // (Class type · Instructor · Categories) narrows the active tab. Tab + filters
 // persist across detail round-trips via a module cache.
 
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterLines } from "@untitledui/icons";
 import {
@@ -28,8 +28,9 @@ import { BookingCard } from "@/components/customer/bookings/BookingCard";
 import { BookingsFilterModal } from "@/components/customer/bookings/BookingsFilterModal";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
-import { to12h } from "@/lib/customer/dates";
+import { REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
+import { useIsAuthenticated } from "@/lib/customer/auth";
 
 function fmtShortDate(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -37,10 +38,25 @@ function fmtShortDate(iso: string): string {
 
 export default function BookingsPage() {
     const router = useRouter();
+    // Bookings is auth-only — a guest (tab hidden, but reachable by deep link) is
+    // redirected to the login front door.
+    const isAuth = useIsAuthenticated();
+    useEffect(() => {
+        if (!isAuth) router.replace("/customer/auth");
+    }, [isAuth, router]);
     const { upcoming, past } = useMemberBookings();
-    // Booked appointments (UI-only store) show in Upcoming alongside class bookings.
+    // Booked appointments (UI-only store) show alongside class bookings: active
+    // future ones under Upcoming, cancelled/past ones under Past.
     const apptBookings = useAppointmentBookings();
-    const showAppts = bookingsUi.tab === "upcoming" ? apptBookings : [];
+    const apptSplit = useMemo(() => {
+        // Date-based (like classes: today still counts as upcoming). Any non-cancelled
+        // record — including legacy rows written before `status` existed — is bookable.
+        return {
+            upcoming: apptBookings.filter((a) => a.status !== "cancelled" && a.slotISO >= REAL_TODAY_ISO),
+            past: apptBookings.filter((a) => a.status === "cancelled" || a.slotISO < REAL_TODAY_ISO),
+        };
+    }, [apptBookings]);
+    const showAppts = bookingsUi.tab === "upcoming" ? apptSplit.upcoming : apptSplit.past;
     const [, force] = useReducer((x) => x + 1, 0);
     // Draft + filterOpen persist in bookingsUi so they survive the "See all"
     // instructor screen round-trip (mirrors the Search filter).
@@ -66,14 +82,77 @@ export default function BookingsPage() {
     const list = applyBookingFilters(baseList, applied);
     const fcount = bookingFilterCount(applied);
 
+    // Appointment bookings honour the SAME filter: "Group" hides them (they're the
+    // Appointment kind); instructor + category narrow them just like class rows.
+    const filteredAppts = showAppts.filter(
+        (a) =>
+            applied.classType !== "Group" &&
+            (applied.instructorIds.length === 0 ||
+                (a.instructorId != null && applied.instructorIds.includes(a.instructorId))) &&
+            (applied.categories.length === 0 || applied.categories.includes(a.category)),
+    );
+
+    // Merge appointments + class bookings into ONE list sorted by date/time —
+    // Upcoming = soonest first, Past = most recent first — so the two kinds
+    // interleave chronologically instead of appointments always sitting on top.
+    const mergedRows: { sortKey: string; el: React.ReactNode }[] = [
+        ...filteredAppts.map((a) => ({
+            sortKey: `${a.slotISO}T${a.slotTime}`,
+            el: (
+                <BookingCard
+                    key={`appt-${a.id}`}
+                    name={a.name}
+                    date={fmtShortDate(a.slotISO)}
+                    time={to12h(a.slotTime)}
+                    location={a.branchName}
+                    status={
+                        a.status === "cancelled"
+                            ? { label: "Cancelled", tone: "error" as const }
+                            : tab === "past"
+                              ? { label: "Completed", tone: "success" as const }
+                              : { label: "Booked", tone: "success" as const }
+                    }
+                    mutedCover={a.status === "cancelled"}
+                    image={a.coverImage}
+                    imageColor={a.coverColor}
+                    onClick={() => router.push(`/customer/bookings/appointment/${a.id}`)}
+                />
+            ),
+        })),
+        ...list.map((b) => ({
+            sortKey: b.sortKey,
+            el: (
+                <BookingCard
+                    key={b.bookingId}
+                    name={b.name}
+                    date={b.dateShort}
+                    time={b.time}
+                    location={b.location}
+                    status={BOOKING_STATUS[b.viewStatus].card}
+                    mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
+                    image={b.coverImage}
+                    imageColor={b.coverColor}
+                    onClick={() => router.push(`/customer/bookings/${b.bookingId}`)}
+                />
+            ),
+        })),
+    ].sort((x, y) =>
+        tab === "upcoming" ? x.sortKey.localeCompare(y.sortKey) : y.sortKey.localeCompare(x.sortKey),
+    );
+
     // Instructors — the SAME shared, branch-scoped list as the Search filter.
     const instructors = useFilterInstructors();
-    // Categories present across the member's bookings.
+    // Categories present across the member's bookings — class AND appointment — so
+    // an appointment-only category is still selectable in the filter.
     const categories = useMemo(() => {
         const cats = new Set<string>();
         for (const b of [...upcoming, ...past]) cats.add(b.category);
+        for (const a of apptBookings) if (a.category) cats.add(a.category);
         return Array.from(cats);
-    }, [upcoming, past]);
+    }, [upcoming, past, apptBookings]);
+
+    // Guest — nothing personal renders while the redirect effect runs.
+    if (!isAuth) return null;
 
     return (
         <div className="flex min-h-full flex-col">
@@ -144,35 +223,7 @@ export default function BookingsPage() {
                         />
                     )
                 ) : (
-                    <div className="flex flex-col gap-3">
-                        {showAppts.map((a) => (
-                            <BookingCard
-                                key={a.id}
-                                name={a.name}
-                                date={fmtShortDate(a.slotISO)}
-                                time={to12h(a.slotTime)}
-                                location={a.branchName}
-                                status={{ label: "Booked", tone: "success" }}
-                                image={a.coverImage}
-                                imageColor={a.coverColor}
-                                onClick={() => router.push(`/customer/bookings/appointment/${a.id}`)}
-                            />
-                        ))}
-                        {list.map((b) => (
-                            <BookingCard
-                                key={b.bookingId}
-                                name={b.name}
-                                date={b.dateShort}
-                                time={b.time}
-                                location={b.location}
-                                status={BOOKING_STATUS[b.viewStatus].card}
-                                mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
-                                image={b.coverImage}
-                                imageColor={b.coverColor}
-                                onClick={() => router.push(`/customer/bookings/${b.bookingId}`)}
-                            />
-                        ))}
-                    </div>
+                    <div className="flex flex-col gap-3">{mergedRows.map((r) => r.el)}</div>
                 )}
             </div>
 

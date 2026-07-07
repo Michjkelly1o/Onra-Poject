@@ -32,7 +32,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { useAppStore } from "@/lib/store";
 import { PaymentsTab } from "@/components/settings/integrations/PaymentsTab";
-import { AppsTab } from "@/components/settings/integrations/AppsTab";
+import { AppsTab, AppsToolbar } from "@/components/settings/integrations/AppsTab";
+import type { IntegrationCategory } from "@/components/settings/integrations/categories";
 
 type TabKey = "payments" | "apps";
 
@@ -65,22 +66,38 @@ function IntegrationsPageInner() {
     const connectedPaymentCount = paymentProviders.filter(p => p.status === "connected").length;
     const appsCount = integrations.length;
 
+    // Apps-tab toolbar state lives here so the Search + Filter can render
+    // on the SAME row as the SegmentedTabs (Figma feedback Jul 2026).
+    const [appsSearch, setAppsSearch] = useState("");
+    const [appsCategoryFilter, setAppsCategoryFilter] = useState<IntegrationCategory | null>(null);
+    const [appsFilterOpen, setAppsFilterOpen] = useState(false);
+
     return (
         <div className="flex flex-col gap-6">
-            {/* Tabs hug their content — each label sits beside a circular
-                count badge rendered by SegmentedTabs (per Figma 7564:188282).
-                "Payments 2" reflects connected providers; "Apps 8" reflects
-                total tools. */}
-            <SegmentedTabs
-                tabs={[
-                    { key: "payments", label: "Payments", count: connectedPaymentCount },
-                    { key: "apps",     label: "Apps",     count: appsCount             },
-                ]}
-                activeKey={activeTab}
-                onChange={k => setActiveTab(k as TabKey)}
-            />
+            {/* Tabs + (Apps-tab only) Search + Filter share one row so the
+                toolbar sits inline with the tab strip instead of stacking
+                below. Payments tab keeps the right side empty. */}
+            <div className="flex items-center justify-between gap-4">
+                <SegmentedTabs
+                    tabs={[
+                        { key: "payments", label: "Payments", count: connectedPaymentCount },
+                        { key: "apps",     label: "Apps",     count: appsCount             },
+                    ]}
+                    activeKey={activeTab}
+                    onChange={k => setActiveTab(k as TabKey)}
+                />
+                {activeTab === "apps" && (
+                    <AppsToolbar
+                        search={appsSearch}                setSearch={setAppsSearch}
+                        categoryFilter={appsCategoryFilter} setCategoryFilter={setAppsCategoryFilter}
+                        filterOpen={appsFilterOpen}         setFilterOpen={setAppsFilterOpen}
+                    />
+                )}
+            </div>
 
-            {activeTab === "payments" ? <PaymentsTab /> : <AppsTab />}
+            {activeTab === "payments"
+                ? <PaymentsTab />
+                : <AppsTab search={appsSearch} categoryFilter={appsCategoryFilter} />}
         </div>
     );
 }

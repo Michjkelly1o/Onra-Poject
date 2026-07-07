@@ -4,15 +4,48 @@
 // Customer — Appointment booking detail (`/customer/bookings/appointment/[apptId]`)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Read-only detail for a booked appointment (UI-only store). Mirrors the class
-// Booking Detail anatomy: hero cover + "Booked" badge, name, slot date/time,
-// duration · instructor, and a location section.
+// Reuses the shared <ClassDetailLayout> (same hero + status card + sections +
+// sticky action as the class Booking Detail), reworded for appointments: an
+// "Appointment details" description, an appointment info grid (Duration ·
+// Session type · Instructor/Capacity), a Booked/Cancelled status card, and a
+// Cancel-appointment action for upcoming bookings. Backed by the UI-only
+// appointment-bookings store.
 
 import { useParams, useRouter } from "next/navigation";
-import { CheckCircle, ChevronLeft, Clock, MarkerPin01 } from "@untitledui/icons";
+import { CheckCircle, ChevronLeft, Clock, SlashCircle01, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
 import { to12h } from "@/lib/customer/dates";
 import { useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
+import type { ClassDetailVM } from "@/lib/customer/search-data";
+import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
+import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
+
+// Destructive secondary (matches the class Cancel-booking button).
+const CANCEL_BTN =
+    "border-[#fda29b] bg-[#fef3f2] text-[#b42318] hover:bg-[#fee4e2] hover:text-[#912018] active:bg-[#fee4e2] active:text-[#912018]";
+
+/** One cell of the appointment info grid — mirrors ClassDetailLayout's InfoCell. */
+function InfoCell({
+    icon: Icon,
+    label,
+    children,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex flex-1 items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
+                <Icon className="size-5 text-[#344054]" aria-hidden />
+            </span>
+            <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-xs leading-[18px] text-[#667085]">{label}</span>
+                {children}
+            </div>
+        </div>
+    );
+}
 
 export default function AppointmentBookingDetailPage() {
     const router = useRouter();
@@ -21,103 +54,203 @@ export default function AppointmentBookingDetailPage() {
 
     if (!booking) {
         return (
-            <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[#101828]">Booking not found</p>
-                <Button variant="secondary-gray" size="sm" className="rounded-full" onClick={() => router.push("/customer/bookings")}>
-                    Back to bookings
-                </Button>
+            <div className="flex min-h-full flex-col">
+                <CustomerHeader>
+                    <button
+                        type="button"
+                        onClick={() => router.push("/customer/bookings")}
+                        aria-label="Go back"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
+                    >
+                        <ChevronLeft className="size-5 text-white" aria-hidden />
+                    </button>
+                    <div className="flex-1" />
+                </CustomerHeader>
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+                    <p className="text-base font-semibold text-[#101828]">This booking is no longer available</p>
+                    <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/bookings")}>
+                        Back to Bookings
+                    </Button>
+                </div>
             </div>
         );
     }
 
     const isPrivate = booking.type === "private";
-    const fullDate = new Date(`${booking.slotISO}T00:00:00`).toLocaleDateString("en-GB", {
-        weekday: "long",
+    const isCancelled = booking.status === "cancelled";
+    const startMs = new Date(`${booking.slotISO}T${booking.slotTime}:00`).getTime();
+    const isUpcoming = !isCancelled && startMs > Date.now();
+
+    const heroSubtitle = `${new Date(`${booking.slotISO}T00:00:00`).toLocaleDateString("en-GB", {
+        weekday: "short",
         day: "numeric",
         month: "short",
-        year: "numeric",
-    });
+    })} at ${to12h(booking.slotTime)}`;
 
-    return (
-        <div className="flex min-h-full flex-col">
-            <header className="sticky top-0 z-20 flex w-full items-center gap-3 px-4 py-3">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
-                    aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
-                >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
-                </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
-                    Booking detail
+    // Map the appointment booking onto the class detail view-model. Fields the
+    // appointment grid/location don't use are given safe placeholders; equipment
+    // is empty so that section auto-hides.
+    const detail: ClassDetailVM = {
+        id: booking.appointmentId,
+        name: booking.name,
+        category: booking.category,
+        coverImage: booking.coverImage,
+        coverColor: booking.coverColor,
+        instructorId: booking.instructorId ?? "",
+        instructorName: booking.instructorName ?? "",
+        instructorInitials: booking.instructorInitials ?? "",
+        instructorColor: "#f2f4f7",
+        instructorImageUrl: booking.instructorImageUrl,
+        room: "",
+        branchId: "",
+        branchName: booking.branchName,
+        dateISO: booking.slotISO,
+        startTime: booking.slotTime,
+        endTime: "",
+        durationMins: booking.durationMins,
+        booked: 0,
+        capacity: booking.capacity ?? 0,
+        spotsLeft: 0,
+        waitlistEnabled: false,
+        waitlistSpotsLeft: null,
+        state: "booked",
+        description: booking.description,
+        equipment: [],
+        classType: isPrivate ? "Private" : "Group",
+        rating: 0,
+        ratingCount: 0,
+        branchAddress: booking.branchAddress ?? "",
+        spotSelectionEnabled: false,
+    };
+
+    const heroBadge = isCancelled ? (
+        <span className="flex shrink-0 items-center gap-1 rounded-full border border-[#fecdca] bg-[#fef3f2] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#b42318]">
+            <SlashCircle01 className="size-3" aria-hidden />
+            Cancelled
+        </span>
+    ) : (
+        <span className="flex shrink-0 items-center gap-1 rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
+            <CheckCircle className="size-3" aria-hidden />
+            Booked
+        </span>
+    );
+
+    const statusBlock = (
+        <div
+            className={`relative flex items-start gap-4 overflow-hidden rounded-2xl border p-4 ${
+                isCancelled ? "border-[#e4e7ec] bg-[#f9fafb]" : "border-[#7ba08c] bg-[#e9fff3]"
+            }`}
+        >
+            <div aria-hidden className="pointer-events-none absolute right-0 top-0" style={{ opacity: 0.5 }}>
+                {[96, 168, 240, 312].map((d) => (
+                    <span
+                        key={d}
+                        className="absolute rounded-full border"
+                        style={{
+                            width: d,
+                            height: d,
+                            right: -14 - d / 2,
+                            top: -14 - d / 2,
+                            borderColor: isCancelled ? "#e4e7ec" : "#c9e4d5",
+                        }}
+                    />
+                ))}
+            </div>
+            <div className="relative flex min-w-0 flex-1 flex-col gap-1">
+                <p className="text-sm font-semibold leading-5 text-[#101828]">
+                    {isCancelled ? "Appointment cancelled" : "Appointment confirmed"}
                 </p>
-                <span aria-hidden className="size-10 shrink-0" />
-            </header>
+                <p className="text-xs font-normal leading-[18px] text-[#344054]">
+                    {isCancelled
+                        ? booking.lateCancel
+                            ? "This appointment was cancelled within 24 hours — no refund was issued."
+                            : "This appointment was cancelled and your refund has been processed."
+                        : "Your appointment is confirmed. Please arrive a few minutes before your scheduled time."}
+                </p>
+            </div>
+            {isCancelled ? (
+                <SlashCircle01 className="relative size-5 shrink-0 text-[#d92d20]" aria-hidden />
+            ) : (
+                <CheckCircle className="relative size-5 shrink-0 text-[#067647]" aria-hidden />
+            )}
+        </div>
+    );
 
-            <div className="flex flex-1 flex-col gap-6 px-4 pb-6 pt-2">
-                <div
-                    className="relative h-[200px] w-full overflow-hidden rounded-2xl border border-[#e4e7ec]"
-                    style={!booking.coverImage ? { backgroundColor: booking.coverColor } : undefined}
-                >
-                    {booking.coverImage && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={booking.coverImage} alt="" className="absolute inset-0 size-full object-cover" />
-                    )}
-                    <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
-                        <CheckCircle className="size-3 shrink-0" aria-hidden />
-                        Booked
+    const infoGrid = (
+        <div className="flex flex-col gap-4">
+            <div className="flex gap-4">
+                <InfoCell icon={Clock} label="Duration">
+                    <span className="text-sm font-medium leading-5 text-[#101828]">{booking.durationMins} minutes</span>
+                </InfoCell>
+                <InfoCell icon={Tag01} label="Session type">
+                    <span className="text-sm font-medium leading-5 text-[#101828]">
+                        {isPrivate ? "Private" : "Open session"}
                     </span>
-                </div>
-
-                <div className="flex w-full flex-col gap-1">
-                    <p className="text-xl font-semibold leading-[30px] text-[#101828]">{booking.name}</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">
-                        {fullDate} at {to12h(booking.slotTime)}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
-                        <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[#475467]">
-                            <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
-                            {booking.durationMins} mins
+                </InfoCell>
+            </div>
+            <div className="flex gap-4">
+                {isPrivate && booking.instructorName ? (
+                    <button
+                        type="button"
+                        onClick={() => booking.instructorId && router.push(`/customer/instructors/${booking.instructorId}`)}
+                        className="flex flex-1 items-center gap-3 text-left"
+                    >
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
+                            <UserCheck01 className="size-5 text-[#344054]" aria-hidden />
                         </span>
-                        {isPrivate && booking.instructorName && (
-                            <>
-                                <span className="text-sm leading-5 text-[#475467]" aria-hidden>
-                                    •
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                            <span className="text-xs leading-[18px] text-[#667085]">Instructor</span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                    {booking.instructorImageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={booking.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
+                                    ) : (
+                                        <span className="text-[8px] font-semibold leading-none text-[#667085]">
+                                            {booking.instructorInitials}
+                                        </span>
+                                    )}
                                 </span>
-                                <span className="flex items-center gap-1.5 text-sm font-normal leading-5 text-[#475467]">
-                                    <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
-                                        {booking.instructorImageUrl ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img src={booking.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
-                                        ) : (
-                                            <span className="text-[9px] font-semibold leading-none text-[#667085]">
-                                                {booking.instructorInitials}
-                                            </span>
-                                        )}
-                                    </span>
+                                <span className="truncate text-sm font-medium leading-5 text-[#101828]">
                                     {booking.instructorName}
                                 </span>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div className="h-px w-full bg-[#e4e7ec]" />
-
-                <section className="flex w-full flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">Location</p>
-                    <div className="flex w-full items-start gap-2">
-                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <p className="text-sm font-medium leading-5 text-[#101828]">{booking.branchName}</p>
-                            {booking.branchAddress && (
-                                <p className="text-sm font-normal leading-5 text-[#475467]">{booking.branchAddress}</p>
-                            )}
+                            </span>
                         </div>
-                    </div>
-                </section>
+                    </button>
+                ) : (
+                    <InfoCell icon={Users01} label="Capacity">
+                        <span className="text-sm font-medium leading-5 text-[#101828]">
+                            {booking.capacity ? `${booking.capacity} participants` : "Group session"}
+                        </span>
+                    </InfoCell>
+                )}
+                <div className="flex-1" />
             </div>
         </div>
+    );
+
+    const actionZone = isUpcoming ? (
+        <Button
+            variant="secondary"
+            size="xl"
+            className={`w-full rounded-full ${CANCEL_BTN}`}
+            onClick={() => router.push(`/customer/bookings/appointment/${apptId}/cancel`)}
+        >
+            Cancel appointment
+        </Button>
+    ) : undefined;
+
+    return (
+        <ClassDetailLayout
+            detail={detail}
+            heroSubtitle={heroSubtitle}
+            mutedCover={isCancelled}
+            detailsHeading="Appointment details"
+            infoGrid={infoGrid}
+            statusBlock={statusBlock}
+            heroBadge={heroBadge}
+            onBack={() => router.push("/customer/bookings")}
+            actionZone={actionZone}
+        />
     );
 }

@@ -15,8 +15,9 @@
 import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarPlus02, HomeSmile, SearchMd, ShoppingBag03 } from "@untitledui/icons";
+import { CalendarPlus02, HomeSmile, SearchMd, ShoppingBag03, UserCircle } from "@untitledui/icons";
 import { useCurrentCustomer } from "@/lib/customer/context";
+import { useIsAuthenticated } from "@/lib/customer/auth";
 
 const ACTIVE = "#658774"; // colors/foreground/fg-brand-primary-(600) — active stroke + label
 const ACTIVE_FILL = "#d7ffe9"; // Brand/100 — light mint fill inside the active icon (Figma 4056-36820)
@@ -30,6 +31,8 @@ interface NavItem {
     icon?: ComponentType<SVGProps<SVGSVGElement>>;
     /** Profile renders the member avatar instead of an icon. */
     avatar?: boolean;
+    /** Hidden from guests (e.g. Bookings) — shown only when authenticated. */
+    authOnly?: boolean;
 }
 
 // Products → /customer/packages re-homes the existing route (PRD 13 §18.1); rename
@@ -37,7 +40,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { label: "Home", href: "/customer", exact: true, icon: HomeSmile },
     { label: "Search", href: "/customer/search", icon: SearchMd },
-    { label: "Bookings", href: "/customer/bookings", icon: CalendarPlus02 },
+    { label: "Bookings", href: "/customer/bookings", icon: CalendarPlus02, authOnly: true },
     { label: "Products", href: "/customer/products", icon: ShoppingBag03 },
     { label: "Profile", href: "/customer/profile", avatar: true },
 ];
@@ -58,6 +61,9 @@ function NavAvatar({ imageUrl, initials }: { imageUrl?: string; initials?: strin
 export function CustomerBottomNav() {
     const pathname = usePathname() ?? "";
     const member = useCurrentCustomer();
+    const isAuth = useIsAuthenticated();
+    // Guests get 4 tabs (Bookings hidden); authenticated members get all 5.
+    const items = NAV_ITEMS.filter((item) => !item.authOnly || isAuth);
 
     return (
         <nav
@@ -65,7 +71,7 @@ export function CustomerBottomNav() {
             className="relative z-10 w-full shrink-0 bg-white drop-shadow-[0px_-8px_11px_rgba(100,116,139,0.08)]"
         >
             <ul className="flex items-start gap-5 px-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-                {NAV_ITEMS.map((item) => {
+                {items.map((item) => {
                     const isActive = item.exact
                         ? pathname === item.href
                         : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -87,7 +93,18 @@ export function CustomerBottomNav() {
                                 />
                                 <span className="flex flex-col items-center gap-1">
                                     {item.avatar ? (
-                                        <NavAvatar imageUrl={member?.imageUrl} initials={member?.initials} />
+                                        isAuth ? (
+                                            <NavAvatar imageUrl={member?.imageUrl} initials={member?.initials} />
+                                        ) : (
+                                            // Guest has no avatar → a user-in-circle glyph, styled like the
+                                            // other nav icons (active = light-mint fill + brand stroke).
+                                            <UserCircle
+                                                className="size-6"
+                                                style={{ color }}
+                                                fill={isActive ? ACTIVE_FILL : "none"}
+                                                aria-hidden
+                                            />
+                                        )
                                     ) : (
                                         Icon && (
                                             <Icon

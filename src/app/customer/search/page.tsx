@@ -12,7 +12,7 @@
 // the `searchUi` cache. The Classes filter = Time + Instructor + Categories; the
 // Appointments filter = Categories only (same modal, sections hidden).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell01, ChevronDown, FilterLines, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
@@ -28,11 +28,14 @@ import {
     type SearchFilters,
 } from "@/lib/customer/search-data";
 import { useAppointments } from "@/lib/customer/appointments-data";
+import { useUnreadNotifCount } from "@/lib/customer/notifications-feed";
+import { useIsAuthenticated } from "@/lib/customer/auth";
 import { useFilterInstructors } from "@/lib/customer/instructors";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ScheduleDateBar } from "@/components/customer/classes/ScheduleDateBar";
 import { ClassScheduleCard } from "@/components/customer/classes/ClassScheduleCard";
 import { AppointmentCard } from "@/components/customer/appointments/AppointmentCard";
+import { resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassesFilterModal } from "@/components/customer/home/ClassesFilterModal";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
@@ -47,8 +50,13 @@ export default function SearchPage() {
     const showToast = useAppStore((s) => s.showToast);
     const bookingOpenDays = useAppStore((s) => s.classesSettings.booking_open_value);
 
-    // State seeded from the module cache so it survives navigation within Search.
-    const [tab, setTabState] = useState<Tab>(() => searchUi.tab);
+    // Search always opens on the Classes tab (Home "Book class" + the Search nav
+    // both land here) — the Appointments tab is a deliberate switch, never the
+    // default. The rest of the Search state still persists across round-trips.
+    const [tab, setTabState] = useState<Tab>("classes");
+    useEffect(() => {
+        searchUi.tab = "classes";
+    }, []);
     const [selectedISO, setSelectedISOState] = useState<string>(() => searchUi.selectedISO ?? REAL_TODAY_ISO);
     const [applied, setAppliedState] = useState<SearchFilters>(() => searchUi.applied);
     const [draft, setDraftState] = useState<SearchFilters>(() => searchUi.draft);
@@ -101,6 +109,8 @@ export default function SearchPage() {
 
     const dayClasses = applyFilters(useDayClasses(selectedISO), applied);
     const appointments = useAppointments(apptApplied);
+    const unreadNotifs = useUnreadNotifCount();
+    const isAuth = useIsAuthenticated();
     const fcount = filterCount(activeApplied);
     const { month, year } = monthYearOf(selectedISO);
     const todayYear = monthYearOf(REAL_TODAY_ISO).year;
@@ -161,14 +171,21 @@ export default function SearchPage() {
                     )}
                 </button>
 
-                <button
-                    type="button"
-                    onClick={() => showToast("Notifications", "Notification center panel is coming next.", "success")}
-                    aria-label="Notifications"
-                    className="flex shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white p-2.5 transition-colors active:bg-gray-50"
-                >
-                    <Bell01 className="size-5 text-[#344054]" aria-hidden />
-                </button>
+                {isAuth && (
+                    <button
+                        type="button"
+                        onClick={() => router.push("/customer/notifications")}
+                        aria-label={unreadNotifs > 0 ? `Notifications, ${unreadNotifs} unread` : "Notifications"}
+                        className="relative flex shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white p-2.5 transition-colors active:bg-gray-50"
+                    >
+                        <Bell01 className="size-5 text-[#344054]" aria-hidden />
+                        {unreadNotifs > 0 && (
+                            <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#658774] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                                {unreadNotifs > 9 ? "9+" : unreadNotifs}
+                            </span>
+                        )}
+                    </button>
+                )}
             </CustomerHeader>
 
             <div className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-[116px]">
@@ -208,7 +225,7 @@ export default function SearchPage() {
                                 })}
                             </div>
                         ) : (
-                            <div className="flex flex-1 items-center justify-center">
+                            <div className="flex min-h-[calc(100dvh-260px)] flex-1 items-center justify-center">
                                 <SearchEmptyState />
                             </div>
                         )}
@@ -226,19 +243,30 @@ export default function SearchPage() {
                                 coverImage={a.coverImage}
                                 coverColor={a.coverColor}
                                 capacity={a.capacity}
-                                onBook={() =>
+                                ctaLabel={isAuth ? "Book now" : "Log in to book"}
+                                onBook={() => {
+                                    // Guests must log in before starting a booking flow.
+                                    if (!isAuth) {
+                                        router.push("/customer/auth");
+                                        return;
+                                    }
+                                    // Fresh entry — clear any abandoned instructor/slot pick.
+                                    resetAppointmentDraft();
                                     router.push(
                                         a.type === "private"
                                             ? `/customer/appointments/${a.id}/instructor`
                                             : `/customer/appointments/${a.id}/slot`,
-                                    )
-                                }
+                                    );
+                                }}
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-1 items-center justify-center">
-                        <SearchEmptyState />
+                    <div className="flex min-h-[calc(100dvh-260px)] flex-1 items-center justify-center">
+                        <SearchEmptyState
+                            title="No appointment found"
+                            description="Try selecting another branch to find available appointments."
+                        />
                     </div>
                 )}
             </div>

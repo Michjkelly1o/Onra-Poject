@@ -38,6 +38,7 @@
 
 import type { AppState, Customer, CustomerTransaction } from "@/lib/store";
 import { resolveLedger, signedAmount, type ResolvedLedgerRow } from "./refunds";
+import { derivePlanBalances } from "@/lib/plan-credits";
 import type { IssuedGiftCard, GiftCardDesign } from "@/data/mock";
 
 // ─── Row shapes ────────────────────────────────────────────────────────────
@@ -491,9 +492,19 @@ export function selectMemberships(state: AppState): CustomerPlanRow[] {
     for (const arr of Array.from(byCustomer.values())) {
         const hasChanges = arr.length > 1;
 
+        // Derive per-plan balances from the customer's live creditsRemaining so
+        // the "Credits used / remaining" columns match the customer profile.
+        // (Fixes drift bug: plan.creditsUsed is a boot-time snapshot that never
+        // updates, while customer.creditsRemaining is mutated on every booking.)
+        const derived = (() => {
+            const c = cust(arr[0].customerId);
+            return derivePlanBalances(arr, c?.creditsRemaining);
+        })();
+
         arr.forEach((p, idx) => {
             const c = cust(p.customerId);
             const price = p.priceAed ?? 0;
+            const bal = derived.get(p.id);
 
             // Compute freezeDays: 0 unless plan is frozen; capped at
             // the freeze window boundaries.
@@ -544,10 +555,11 @@ export function selectMemberships(state: AppState): CustomerPlanRow[] {
                 changeVsPrev,
                 priceDeltaAed,
                 hasChanges,
-                // Reports v33 pass-through
-                totalCredits:         p.totalCredits ?? 0,
-                creditsUsed:          p.creditsUsed  ?? 0,
-                creditsRemaining:     Math.max(0, (p.totalCredits ?? 0) - (p.creditsUsed ?? 0)),
+                // Reports v33 — reconciled with customer.creditsRemaining via
+                // derivePlanBalances (see comment above).
+                totalCredits:         bal?.total ?? p.totalCredits ?? 0,
+                creditsUsed:          bal?.used  ?? p.creditsUsed  ?? 0,
+                creditsRemaining:     bal?.left  ?? Math.max(0, (p.totalCredits ?? 0) - (p.creditsUsed ?? 0)),
                 autoRenew:            p.autoRenew ?? false,
                 nextBillingAmountAed: p.nextBillingAmountAed ?? 0,
                 allowance:            p.allowance ?? "",

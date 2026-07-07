@@ -21,7 +21,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, ChevronDown, ChevronUp, UploadCloud02,
+    XClose, Check, ChevronDown, ChevronUp,
     CheckCircleBroken, Ticket01, Link01, SlashCircle01, FilterLines,
     MarkerPin01, CursorBox,
 } from "@untitledui/icons";
@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { useAppStore, type MarketingItem, type Branch } from "@/lib/store";
 
 /** Current local time as "HH:MM" — used to bar past start-time slots today. */
@@ -507,49 +508,7 @@ function BranchSingleSelect({ value, onChange, branches }: {
     );
 }
 
-// ─── Banner upload box (light scheme — matches class template) ───────────────
-
-function BannerUpload({ preview, onChange }: { preview: string; onChange: (url: string) => void }) {
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    function handleFile(file: File) {
-        onChange(URL.createObjectURL(file));
-    }
-    function handleDrop(e: React.DragEvent) {
-        e.preventDefault();
-        const f = e.dataTransfer.files[0];
-        if (f && f.type.startsWith("image/")) handleFile(f);
-    }
-
-    return (
-        <div
-            onClick={() => inputRef.current?.click()}
-            onDrop={handleDrop}
-            onDragOver={e => e.preventDefault()}
-            className={cn(
-                "h-[180px] w-full rounded-[12px] border-1 border-[#e4e7ec] overflow-hidden flex flex-col items-center justify-center cursor-pointer transition-colors",
-                preview ? "p-0" : "bg-white hover:bg-[#f9fafb]",
-            )}
-        >
-            {preview ? (
-                <img src={preview} alt="Banner" className="w-full h-full object-cover" />
-            ) : (
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#f1f2ed] border-1 border-[#e4e7ec] flex items-center justify-center">
-                        <UploadCloud02 className="w-6 h-6 text-[#475467]" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <span className="text-[14px] font-semibold text-[#4f6e5d]">Upload image</span>
-                        <span className="text-[12px] text-[#475467]">PNG or JPG (max. 800×400px)</span>
-                    </div>
-                </div>
-            )}
-            <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-            />
-        </div>
-    );
-}
+// Banner upload lives in `src/components/ui/ImageBannerUpload.tsx`.
 
 // ─── Shared page component ───────────────────────────────────────────────────
 
@@ -722,9 +681,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                         }>
                             {/* ── Marketing details ── */}
                             <Section title="Campaign details">
-                                <FormField label="Image banner">
-                                    <BannerUpload preview={form.bannerPreview} onChange={v => patch({ bannerPreview: v })} />
-                                </FormField>
+                                <ImageBannerUpload preview={form.bannerPreview || null} onChange={url => patch({ bannerPreview: url ?? "" })} />
                                 <div className="flex gap-4 items-start w-full">
                                     <div className="flex-1 min-w-0">
                                         <FormField label="Display name">

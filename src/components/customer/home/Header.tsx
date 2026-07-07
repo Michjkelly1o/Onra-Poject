@@ -24,6 +24,8 @@ export interface CustomerHomeHeaderProps {
     onOpenStudioSwitcher?: () => void;
     /** Open the notification center panel. */
     onOpenNotifications?: () => void;
+    /** Show the notification bell — hidden for guests (no notification module). */
+    showBell?: boolean;
 }
 
 /** Pin + studio label — shared between the tappable and static chip variants. */
@@ -44,6 +46,7 @@ export function CustomerHomeHeader({
     unreadCount = 0,
     onOpenStudioSwitcher,
     onOpenNotifications,
+    showBell = true,
 }: CustomerHomeHeaderProps) {
     const badge = unreadCount > 9 ? "9+" : String(unreadCount);
 
@@ -66,20 +69,22 @@ export function CustomerHomeHeader({
                 </div>
             )}
 
-            {/* Notification bell */}
-            <button
-                type="button"
-                onClick={onOpenNotifications}
-                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-                className="relative flex shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary,#e4e7ec)] bg-[var(--colors-bg-primary,#fff)] p-2.5 transition-colors active:bg-gray-50"
-            >
-                <Bell01 className="size-5 text-[#344054]" aria-hidden />
-                {unreadCount > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#f04438] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
-                        {badge}
-                    </span>
-                )}
-            </button>
+            {/* Notification bell — hidden for guests (no notification module) */}
+            {showBell && (
+                <button
+                    type="button"
+                    onClick={onOpenNotifications}
+                    aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+                    className="relative flex shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary,#e4e7ec)] bg-[var(--colors-bg-primary,#fff)] p-2.5 transition-colors active:bg-gray-50"
+                >
+                    <Bell01 className="size-5 text-[#344054]" aria-hidden />
+                    {unreadCount > 0 && (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#f04438] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                            {badge}
+                        </span>
+                    )}
+                </button>
+            )}
         </CustomerHeader>
     );
 }
