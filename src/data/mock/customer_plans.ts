@@ -25,7 +25,7 @@
 // FK: `customer_id` → customers.id, `product_id` → memberships.id / packages.id
 
 import type { CustomerPlan } from "./_types";
-import { DEMO_NOW_PLANS } from "./prototype_demo_data";
+import { DEMO_NOW_PLANS, DEMO_NOW_RENEWAL_PLANS } from "./prototype_demo_data";
 
 // Relative-time helpers — used by the notification-backing rows below so
 // the demo's Plan tab always shows a "Member since yesterday" / today row
@@ -40,6 +40,10 @@ const daysFromNow = (n: number) => isoFull(new Date(NOW_MS + n * 24 * 60 * 60_00
 
 export const customer_plans: CustomerPlan[] = [
     ...DEMO_NOW_PLANS,
+    // Dashboard Renewal-due modal fixtures — active + expired
+    // memberships anchored on NOW so the modal always renders
+    // populated regardless of when the demo is opened.
+    ...DEMO_NOW_RENEWAL_PLANS,
     // ── Ahmed Zayn — unlimited membership ────────────────────────────────────
     {
         id: "cp_ahmed_1",

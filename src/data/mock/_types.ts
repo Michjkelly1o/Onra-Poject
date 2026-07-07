@@ -209,12 +209,24 @@ export interface CancellationPolicy {
     credit_within_outcome: CancellationOutcome;
 
     // ── Membership members (no credit to forfeit) ────────────────────
-    /** Charge a late-cancel fee for unlimited-plan members? When ON,
-     *  the AED amount below applies. */
+    /** Gate for the two membership-fee toggles below. When OFF, the
+     *  late-cancel + no-show fee toggles are locked OFF (disabled in
+     *  the UI, ignored at dispatch time) — unlimited members can
+     *  cancel freely without a fee. When ON, the studio charges a
+     *  penalty only AFTER the customer's LIFETIME late-cancel +
+     *  no-show count crosses the threshold below. Client feedback
+     *  Jul 2026 — see Figma 7631:454486 (off) + 7790:27893 (on). */
+    membership_penalty_after_cancellations_enabled: boolean;
+    /** Lifetime late-cancel + no-show count that must be crossed
+     *  before the penalty starts charging. Figma default: 3. */
+    membership_penalty_after_cancellations_count: number;
+    /** Charge a late-cancel fee for unlimited-plan members? Gated by
+     *  `membership_penalty_after_cancellations_enabled` — the toggle
+     *  can only be flipped ON while the penalty gate is ON. */
     membership_late_cancel_fee_enabled: boolean;
     membership_late_cancel_fee_aed: number;         // 50
-    /** Charge a no-show fee for unlimited-plan members? Can differ
-     *  from the late-cancel fee. */
+    /** Charge a no-show fee for unlimited-plan members? Same gate
+     *  as the late-cancel fee above. Can differ in AED. */
     membership_no_show_fee_enabled: boolean;
     membership_no_show_fee_aed: number;             // 70
 
@@ -337,6 +349,21 @@ export interface Customer {
     emergency_contact_relation?: string;
     /** Personal referral code the customer shares — shown on the Referrals tab. */
     referral_code?: string;
+    // ── Reports v33 fields (Customer Data report) ────────────────────────
+    //
+    // Populated on the seed so the Customer Data report renders complete
+    // per Excel spec. Optional so legacy rows without them keep working —
+    // the report renders "—" via the shared formatCell() when missing.
+    /** Date of the customer's FIRST-ever visit. Distinct from `last_visit_iso`.
+     *  Drives the Customer Data report's "First visit date" column. */
+    first_visit_iso?: string;
+    /** How the customer was originally acquired (e.g. "Instagram", "Referral",
+     *  "Walk-in", "Website"). Drives Customer Data "Marketing source" +
+     *  Acquisition Efficiency attribution. */
+    marketing_source?: string;
+    /** What entry path converted them into a paying member: "first-visit",
+     *  "intro-offer", "trial-class". Drives Customer Data "Converted from". */
+    converted_from?: "first-visit" | "intro-offer" | "trial-class" | "referral";
     // +later (Module 07): notes, deleted_at, churn_risk_score,
     //                     customer_memberships[], customer_packages[]
 }
@@ -379,6 +406,21 @@ export interface CustomerReferral {
      *  Optional so legacy seeds without a captured branch still
      *  load; the gate helper treats undefined as "no restriction". */
     origin_branch_id?: string;
+    // ── Reports v33 fields (Referral Report + Win-back) ──────────────────
+    /** Win-back campaign that targeted the referrer / lapsed member. Used
+     *  for both the Referral Report's revenue-attribution column and the
+     *  Win-back report's "Campaign" column. */
+    campaign?: string;
+    /** Y/N — whether the lapsed customer came back. When Y, the row also
+     *  populates reactivation_date + new_plan_id + revenue_recovered.
+     *  Used ONLY by the Win-back report. */
+    reactivated?: boolean;
+    /** ISO 8601 — when the lapsed member reactivated (Win-back report). */
+    reactivation_date?: string;
+    /** Plan id the reactivation purchase was for (Win-back). */
+    new_plan_id?: string;
+    /** Revenue booked at reactivation (Win-back's "Revenue recovered" col). */
+    revenue_recovered_aed?: number;
 }
 
 /**
@@ -470,6 +512,25 @@ export interface CustomerPlan {
     removed_by?: string;
     removed_by_role?: string;
     removed_at?: string;
+    // ── Reports v33 fields (Memberships & Packages + Intro Offers + Revenue Recognition) ──
+    /** Total credits included in the plan (packages + intro offers).
+     *  Memberships with unlimited access → 0. Excel spec's "Total credits"
+     *  column. */
+    total_credits?: number;
+    /** Credits consumed to date. `total_credits - credits_used` produces
+     *  the Memberships & Packages "Credits remaining" column + Intro
+     *  Offers "Sessions used" column + Revenue Recognition "Used this
+     *  period" for packages. */
+    credits_used?: number;
+    /** Whether the plan auto-renews at term end. Memberships default Y,
+     *  packages default N. Feeds Memberships & Packages "Auto-renew". */
+    auto_renew?: boolean;
+    /** Amount due at next renewal. For memberships this equals `price_aed`;
+     *  for expired/cancelled it's 0. Feeds "Next billing amount". */
+    next_billing_amount_aed?: number;
+    /** Display "Allowance" string — "Unlimited", "10 credits", "5 sessions".
+     *  Feeds the Memberships & Packages "Allowance" column. */
+    allowance?: string;
 }
 
 /**
@@ -491,9 +552,16 @@ export interface CustomerTransaction {
     id: string;
     customer_id: string;   // → customers.id
     branch_id: string;     // → branches.id
-    /** Product type bought — drives the "Plan type" column + filter. */
-    kind: "membership" | "package";
-    /** FK → memberships.id / packages.id (depending on `kind`). */
+    /** Product type bought — drives the "Plan type" column + filter.
+     *  `cancellation_penalty` was added Jul 2026 for the unlimited-
+     *  membership cancellation-penalty flow (Figma 7790:27893). It
+     *  represents a fee CHARGED (not a purchase); such rows are
+     *  always flagged `is_refundable: false` per client spec. */
+    kind: "membership" | "package" | "cancellation_penalty";
+    /** FK → memberships.id / packages.id (depending on `kind`). For
+     *  `cancellation_penalty` rows this instead references the
+     *  cancelled `class_bookings.id` so Payment history rows can
+     *  deep-link back to the booking that triggered the fee. */
     product_id: string;
     /** Denormalized product name shown in the table + refund modal. */
     name: string;
@@ -528,6 +596,78 @@ export interface CustomerTransaction {
     refunded_at?: string;
     /** Method the refund was issued through (chosen in the Refund modal). */
     refund_method?: "cash" | "card";
+    // ── Reports v30 ledger fields (2026-07-04 rewrite — all optional so
+    //     historical seeds keep loading; existing readers unaffected) ──
+    //
+    // The reports module treats `customer_transactions` as an honest
+    // ledger. Every row's LEDGER KIND is described by `transaction_type`
+    // (default = "sale" when omitted, preserving legacy read semantics).
+    // Refunds + voids + write-offs live as SEPARATE rows linked back to
+    // the original sale via `original_transaction_id`. The refund model
+    // is documented in `new-prd/reports-implementation-plan.md` §2.7.
+    //
+    // Void vs Refund rule:
+    //   • Cancel on the SAME date as the sale AND settlement not yet
+    //     reached → transaction_type = "void". The reports helper
+    //     `resolveLedger` erases BOTH rows from every report — the
+    //     original sale is treated as if it never happened.
+    //   • Later cancel → transaction_type = "refund". The original sale
+    //     stays in its own period; the refund lands as a negative row in
+    //     the refund's own date's period. Past months never restate.
+    //
+    /** Ledger kind — sale / refund / void / write-off. Default (omitted)
+     *  is "sale" to preserve legacy row semantics. */
+    transaction_type?: "sale" | "refund" | "void" | "write_off";
+    /** For refund / void / write_off rows: the id of the sale being
+     *  reversed. Blank on regular sales. */
+    original_transaction_id?: string;
+    /** ISO 8601 — when the payment cleared with the processor. Drives
+     *  the void-vs-refund rule (unset OR equal to sale date + same day =
+     *  eligible for void). */
+    settlement_iso?: string;
+    /** Free-text reason recorded on refund (e.g. "membership relocation",
+     *  "duplicate charge"). */
+    refund_reason?: string;
+    /** VAT treatment for tax export report. Default (omitted) = "standard". */
+    tax_treatment?: "standard" | "zero_rated" | "exempt" | "out_of_scope";
+    /** Staff member who processed the transaction. Blank on self-service
+     *  online purchases. */
+    staff_id?: string;
+    /** Card scheme — Visa / Mastercard / Amex. Only set on card payments. */
+    card_type?: "visa" | "mastercard" | "amex";
+    /** One-off charge vs recurring subscription charge. Default = "one_off". */
+    payment_type?: "one_off" | "recurring";
+    /** Why a charge failed (Payments report). */
+    failure_reason?: string;
+    /** Retry attempt # on a failed recurring charge. */
+    retry_attempt?: number;
+    /** Whether a failed charge was later recovered on retry. */
+    recovered?: boolean;
+    /** ISO — when a failed charge recovered. */
+    recovered_iso?: string;
+    /** Processor payout batch this payment settled in. */
+    payout_id?: string;
+    /** Processor fee deducted from the payment. */
+    processor_fee?: number;
+    // ── Reports v33 fields (Discounts + Promo Redemptions) ────────────────
+    /** Promo code applied at POS. Feeds Discounts + Promo Redemptions
+     *  reports. Blank on transactions without a code. */
+    discount_code?: string;
+    /** Discount amount in AED (positive number). `amount_aed` is the NET
+     *  after discount. Excel spec column "Discount value". */
+    discount_value?: number;
+    // ── Cancellation-penalty flow (Jul 2026) ──────────────────────────────
+    /** Refundability guard on the Payment history table's "Refund
+     *  payment" row action. Undefined (legacy default) = refundable.
+     *  Explicit `false` = the Refund action is hidden and the store's
+     *  `refundTransaction` guard rejects the call. Set to `false` on
+     *  every `kind: "cancellation_penalty"` row per client spec:
+     *  cancellation penalties are non-refundable. */
+    is_refundable?: boolean;
+    /** For `kind: "cancellation_penalty"` rows only — which scenario
+     *  triggered the fee. Drives the row's display copy on Payment
+     *  history ("Late cancellation penalty" vs "No-show penalty"). */
+    cancellation_scenario?: "late_cancel" | "no_show";
 }
 
 // ─── Products: Memberships & Packages ───────────────────────────────────────
@@ -733,7 +873,13 @@ export interface IssuedGiftCard {
     sender_name?: string;
     /** Personal gift message printed on the card. */
     message?: string;
-    // +later: branch_id, transaction_id
+    // ── Reports v33 fields (Gift Card report) ────────────────────────────
+    /** FK → customer_transactions.id — the sale that purchased this card.
+     *  Feeds Gift Card report's "Transaction #" column. */
+    transaction_id?: string;
+    /** ISO — most recent redemption date. Feeds "Last redeemed date". */
+    last_redeemed_at?: string;
+    // +later: branch_id
 }
 
 /**
@@ -1705,6 +1851,18 @@ export interface NotificationSettingSeed {
      *  fire on a per-customer trigger, they piggy-back the campaign
      *  send. Read-only for the demo (admin can't toggle it). */
     sent_during_campaigns?: boolean;
+
+    // ── Recipient targeting (Jul 2026 — gift-card purchase) ───────────
+    /** Who receives the notification when this event fires.
+     *  `"customer"` (default when omitted) = the customer tied to
+     *  the source event, e.g. the buyer on a payment confirmation.
+     *  `"gift_card_recipient"` = the RECIPIENT stored on the
+     *  IssuedGiftCard row (`recipient_name` + `recipient_email`),
+     *  used only by the "Gift card purchase" event so the person
+     *  receiving the gift card gets the redemption code, not the
+     *  buyer. Consumers (future dispatch layer) branch on this
+     *  field to resolve `to_email` / `to_phone`. */
+    recipient_source?: "customer" | "gift_card_recipient";
 }
 
 // ─── Notification records (in-app feed — PRD 12 §6.1) ────────────────────────
@@ -2262,3 +2420,113 @@ export interface PaymentProviderSeed {
      *  for Stripe, the Apple ID email for Apple Pay. Cleared on disconnect. */
     account_label?: string;
 }
+
+// ─── Reports v33 — new tables for demo data completeness ────────────────────
+//
+// Four new slices seeded so every report renders complete for the client
+// demo. Each is a plain seed array; the Reports selectors read them
+// directly. No admin CRUD lands with these — that's a separate marketing
+// module. Every field is snake_case for Supabase parity, mirroring the
+// convention documented in CLAUDE.md §"Mock Data Convention".
+
+/**
+ * Lead — a prospect captured in the funnel BEFORE they become a paying
+ * customer. Feeds Lead Data + Lead Conversion + Acquisition Efficiency.
+ *
+ * FK: `assigned_to_staff_id` → staff_profiles.id.
+ *     `first_purchase_transaction_id` → customer_transactions.id (set
+ *     once the lead converts).
+ */
+export interface Lead {
+    /** e.g. "lead_ahmed_1" */
+    id: string;
+    /** ISO — when the lead was captured. */
+    added_at: string;
+    contact_name: string;
+    contact_email: string;
+    phone?: string;
+    gender?: "Male" | "Female";
+    /** Acquisition channel — Instagram · Referral · Walk-in · Website · Google. */
+    source: "Instagram" | "Referral" | "Walk-in" | "Website" | "Google" | "WhatsApp";
+    /** Funnel stage. */
+    stage: "new" | "contacted" | "trial-booked" | "trial-attended" | "paid" | "lost";
+    /** Staff member who owns the lead. */
+    assigned_to_staff_id?: string;
+    engagement_status: "cold" | "warm" | "hot" | "converted" | "lost";
+    /** Trial / intro plan they booked, if any. */
+    first_purchase_name?: string;
+    /** ISO — first purchase date once converted. */
+    first_purchase_at?: string;
+    /** AED value of the first purchase. */
+    first_purchase_amount_aed?: number;
+    /** ISO — first staff-touch (for Avg time to first contact). */
+    first_contact_at?: string;
+    /** Home branch the lead is scoped to. */
+    branch_id: string;
+}
+
+/**
+ * Marketing campaign engagement rollup — one row per campaign send.
+ * Feeds Campaign Performance. Marketing campaigns themselves live on
+ * the existing `marketing_items` slice; this rollup is the engagement
+ * ledger the tracking pixel + email sends would populate.
+ *
+ * FK: `campaign_id` → marketing_items.id.
+ */
+export interface MarketingCampaignStat {
+    id: string;
+    campaign_id: string;
+    /** Denorm — kept on the row so the report doesn't need a join. */
+    campaign_name: string;
+    /** Channel used for THIS send (a campaign may fan out across channels). */
+    channel: "email" | "whatsapp" | "sms" | "push";
+    /** ISO — when the campaign was sent. */
+    sent_at: string;
+    sends: number;
+    opens_reads: number;
+    clicks_taps: number;
+    attributed_bookings: number;
+    attributed_revenue_aed: number;
+    /** Text describing the attribution window ("7 days", "14 days", "30 days"). */
+    attribution_window: string;
+    branch_id: string;
+}
+
+/**
+ * Marketing spend — one row per (channel × month × branch). Feeds
+ * Acquisition Efficiency's CPL / CAC / ROAS / CAC:LTV columns.
+ * Manually entered by the admin in a later module; seeded here for the demo.
+ */
+export interface MarketingSpend {
+    id: string;
+    /** YYYY-MM — the calendar month the spend applies to. */
+    month: string;
+    channel: "Instagram" | "Referral" | "Walk-in" | "Website" | "Google" | "WhatsApp";
+    spend_aed: number;
+    branch_id: string;
+}
+
+/**
+ * Staff attendance log — one row per (staff × scheduled class) recording
+ * whether they taught, substituted, or no-showed + their clock-in/out
+ * times. Feeds Staff Attendance report's "Actual hours" / "Late start" /
+ * "Hours variance" columns.
+ *
+ * FK: `staff_id` → staff_profiles.id; `class_schedule_id` → class_schedule.id.
+ */
+export interface StaffAttendanceLog {
+    id: string;
+    staff_id: string;
+    class_schedule_id: string;
+    /** Attendance outcome. */
+    attendance_status: "taught" | "substituted" | "no-show";
+    /** When substituted, the staff id who covered. */
+    covered_by_staff_id?: string;
+    /** Minutes late to class (0 = on time). */
+    late_start_minutes: number;
+    /** Scheduled hours for the shift (from class duration). */
+    scheduled_hours: number;
+    /** Actual hours worked (clock-in to clock-out). */
+    actual_hours: number;
+}
+

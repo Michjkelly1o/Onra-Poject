@@ -4,42 +4,28 @@
 // Onra Studio — Reports landing (/admin/reports)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma 6755:314471 — Reports module landing. Five category cards stacked
-// vertically; each card lists the individual reports inside that category.
-// Clicking a report item navigates to its detail page (Phase 2 — built one
-// at a time).
+// Six categories per the Excel spec's Sheet 1:
+//   Financial · Membership & Package · Client / Customer ·
+//   Activity / Class · Staff / Instructor · Marketing
 //
-// Layout per Figma:
-//   • Page chrome ("Reports" title + bell) comes from <Header /> (admin layout)
-//   • Body: vertical stack of 5 cards, 24px gap, full content width
-//   • Card: left = featured icon + title + description · right = menu list
-//   • Menu items separated by 1px dividers (#e4e7ec), each row clickable
-//
-// Phase 1 (this file): the landing view. Every report item shows a "coming
-// soon" toast on click — the slug is already wired so swapping to a real
-// router.push() per detail page is a one-line change when each detail
-// page lands.
+// Every item is a plain link. Clicking navigates to /reports/{slug}.
+// Built reports render on the shell. Unbuilt slugs 404 naturally —
+// the client sees the full catalogue that's coming (matches the Excel
+// scope) and knows what's still queued.
 
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
-    BankNote01, CreditCard02, Activity, User01, CoinsSwap02,
+    BankNote01, CreditCard02, Activity, User01, Users01, Announcement01,
 } from "@untitledui/icons";
+import { isReportCategoryDisabled, isReportSlugDisabled } from "@/config/feature-flags";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-import { useAppStore } from "@/lib/store";
-
-// ─── Category model ────────────────────────────────────────────────────────
-//
-// `slug` is the URL fragment we'll eventually mount detail pages under
-// (e.g. `/admin/reports/total-sales`). `ready` flips to true once the
-// corresponding detail page is built — at that point the row navigates
-// instead of toasting.
 
 interface ReportItem {
     slug: string;
     label: string;
-    ready?: boolean;
 }
 
 interface ReportCategory {
@@ -50,70 +36,96 @@ interface ReportCategory {
     items: ReportItem[];
 }
 
+// Category structure + item labels mirror new-prd/Onra_Reporting.xlsx
+// Sheet 1 "Reports" VERBATIM (rows B5-B45). Order preserved. Retail's
+// 2 reports are skipped per plan (see new-prd/reports-implementation-plan.md
+// §1). Any label change here must land in the corresponding registry
+// entry's `title` field too so the report page + landing agree.
 const CATEGORIES: ReportCategory[] = [
     {
         id: "financial",
-        title: "Financial reports",
+        title: "Financial",
         description:
-            "Track your studio's financial performance, including total sales, payments, refunds, and revenue breakdown across different services and products.",
+            "Track studio performance — sales, refunds, discounts, gift cards, tax, revenue recognition, MRR, ARPM, and per-visit economics.",
         icon: BankNote01,
         items: [
-            { slug: "total-sales",       label: "Total sales (orders)", ready: true },
-            { slug: "sales-by-category", label: "Sales by category",    ready: true },
-            { slug: "payments",          label: "Payments",             ready: true },
-            { slug: "gift-cards",        label: "Gift card",            ready: true },
+            { slug: "total-sales",         label: "Total Sales (orders)"         },
+            { slug: "sales-by-category",   label: "Sales by Category (stream)"   },
+            { slug: "sales-by-item",       label: "Sales by Item"                },
+            { slug: "payments",            label: "Payments"                     },
+            { slug: "refunds",             label: "Refunds"                      },
+            { slug: "discounts",           label: "Discounts"                    },
+            { slug: "tax-vat-export",      label: "Tax / VAT Export"             },
+            { slug: "gift-cards",          label: "Gift Card"                    },
+            { slug: "revenue-recognition", label: "Revenue Recognition"          },
+            { slug: "revenue-per-class",   label: "Revenue per Class / Visit"    },
+            { slug: "arpm",                label: "Revenue per Member (ARPM)"    },
+            { slug: "mrr",                 label: "Recurring Revenue (MRR)"      },
         ],
     },
     {
-        id: "memberships",
-        title: "Membership & package reports",
+        id: "membership_package",
+        title: "Membership & Package",
         description:
-            "Monitor the status of memberships, subscriptions, and packages. Track active plans, remaining credits, and expiration details.",
+            "Active plans, frozen packages, intro offers, and plan changes.",
         icon: CreditCard02,
         items: [
-            { slug: "memberships",   label: "Memberships",   ready: true },
-            { slug: "subscriptions", label: "Subscriptions", ready: true },
-            { slug: "packages",      label: "Packages",      ready: true },
-        ],
-    },
-    {
-        id: "activity",
-        title: "Activity reports",
-        description:
-            "Gain insights into booking activity across your studio. Analyze class attendance, cancellations, no shows, and overall service performance.",
-        icon: Activity,
-        items: [
-            { slug: "bookings-by-class-events", label: "Bookings by class events", ready: true },
-            { slug: "bookings-by-customer",     label: "Bookings by customer",     ready: true },
-            { slug: "all-cancellations",        label: "All cancellations",        ready: true },
-            { slug: "all-no-shows",             label: "All no shows",             ready: true },
-            { slug: "all-bookings",             label: "All bookings",             ready: true },
-            { slug: "instructor-attendance",    label: "Instructor attendance",    ready: true },
+            { slug: "memberships-packages", label: "Memberships & Packages"           },
+            { slug: "frozen",               label: "Frozen Memberships / Packages"    },
+            { slug: "intro-offers",         label: "Intro Offers"                     },
+            { slug: "upgrades-downgrades",  label: "Upgrades / Downgrades"            },
         ],
     },
     {
         id: "customer",
-        title: "Customer reports",
+        title: "Client / Customer",
         description:
-            "Understand how customers interact with your studio. Analyze attendance patterns, retention trends, active users, and popular services.",
+            "How customers interact with the studio — active vs inactive, sign-ups, churn, retention, win-back.",
         icon: User01,
         items: [
-            { slug: "attendance-frequency",  label: "Attendance frequency",    ready: true },
-            { slug: "retention",             label: "Retention",               ready: true },
-            { slug: "active-vs-inactive",    label: "Active vs inactive users",ready: true },
-            { slug: "top-services-used",     label: "Top services used",       ready: true },
-            { slug: "referral",              label: "Referral",                ready: true },
+            { slug: "customer-data",       label: "Customer Data (Active vs Inactive)"      },
+            { slug: "member-movement",     label: "Member Movement (Sign-ups & Net Change)" },
+            { slug: "retention-churn",     label: "Retention & Churn"                       },
+            { slug: "win-back",            label: "Win-back"                                },
         ],
     },
     {
-        id: "frozen",
-        title: "Frozen package",
+        id: "class",
+        title: "Activity / Class",
         description:
-            "Track memberships and packages that are currently frozen and analyze how freezes impact usage, attendance, and revenue.",
-        icon: CoinsSwap02,
+            "Bookings, class performance, cancellations, no-shows, and the top classes and services.",
+        icon: Activity,
         items: [
-            { slug: "all-frozen-packages", label: "All frozen packages", ready: true },
-            { slug: "freeze-impact",       label: "Freeze impact",       ready: true },
+            { slug: "bookings",              label: "Bookings"                 },
+            { slug: "class-performance",     label: "Class Performance"        },
+            { slug: "cancellations-noshows", label: "Cancellations & No-shows" },
+            { slug: "top-classes-services",  label: "Top Classes & Services"   },
+        ],
+    },
+    {
+        id: "staff",
+        title: "Staff / Instructor",
+        description:
+            "Instructor performance and staff attendance. Owner / manager / payroll access only.",
+        icon: Users01,
+        items: [
+            { slug: "instructor-performance", label: "Instructor Performance" },
+            { slug: "staff-attendance",       label: "Staff Attendance"       },
+        ],
+    },
+    {
+        id: "marketing",
+        title: "Marketing",
+        description:
+            "Leads, campaigns, promos, referrals, and acquisition efficiency.",
+        icon: Announcement01,
+        items: [
+            { slug: "lead-data",              label: "Lead Data"              },
+            { slug: "lead-conversion",        label: "Lead Conversion"        },
+            { slug: "campaign-performance",   label: "Campaign Performance"   },
+            { slug: "promo-redemptions",      label: "Promo Redemptions"      },
+            { slug: "referrals",              label: "Referral Report"        },
+            { slug: "acquisition-efficiency", label: "Acquisition Efficiency" },
         ],
     },
 ];
@@ -122,33 +134,34 @@ const CATEGORIES: ReportCategory[] = [
 
 export default function ReportsPage() {
     const router = useRouter();
-    const showToast = useAppStore(s => s.showToast);
 
-    function handleSelect(category: ReportCategory, item: ReportItem) {
-        if (item.ready) {
-            // Report detail pages live at the root `/reports/<slug>` so they
-            // render full-bleed (no admin sidebar / header), matching the
-            // Figma "X close" chrome.
-            router.push(`/reports/${item.slug}`);
-            return;
-        }
-        // Detail page not built yet — surface a clear "in progress" toast so
-        // the admin knows the link is real, just unfinished, instead of
-        // bouncing to a 404 mid-demo.
-        showToast(
-            "Report coming soon",
-            `${item.label} (${category.title}) is being built.`,
-            "success",
-        );
+    function handleSelect(item: ReportItem) {
+        // Every item routes to /reports/{slug}. Built ones render on the
+        // shell; unbuilt slugs 404 naturally — the client sees the full
+        // Excel catalogue on the landing.
+        router.push(`/reports/${item.slug}`);
     }
+
+    // Filter categories + items via feature-flags so QA can hide whole
+    // categories (uncomment all its slugs in DISABLED_ROUTE_PREFIXES) or
+    // individual reports. Categories with no enabled items drop entirely.
+    const visibleCategories = useMemo(() =>
+        CATEGORIES
+            .filter(cat => !isReportCategoryDisabled(cat.id))
+            .map(cat => ({
+                ...cat,
+                items: cat.items.filter(item => !isReportSlugDisabled(item.slug)),
+            }))
+            .filter(cat => cat.items.length > 0),
+    []);
 
     return (
         <div className="flex flex-col gap-6 w-full">
-            {CATEGORIES.map(category => (
+            {visibleCategories.map(category => (
                 <CategoryCard
                     key={category.id}
                     category={category}
-                    onSelect={item => handleSelect(category, item)}
+                    onSelect={handleSelect}
                 />
             ))}
         </div>

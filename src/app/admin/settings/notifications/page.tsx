@@ -76,6 +76,10 @@ const TEMPLATE_VARIABLES = [
     "{member_name}", "{class_name}", "{class_date}", "{class_time}",
     "{instructor_name}", "{branch_name}", "{credits_remaining}",
     "{expiry_date}", "{package_name}", "{booking_id}", "{studio_name}",
+    // Jul 2026 — Gift card purchase event (dispatched to the
+    // recipient, not the buyer). See `ns_gift_card_purchase` seed.
+    "{gift_card_code}", "{gift_card_amount}", "{sender_name}",
+    "{recipient_name}", "{gift_message}",
 ];
 
 const OFFSET_UNIT_OPTIONS = [
@@ -920,6 +924,13 @@ function renderSample(subject: string, body: string, _channel: "email" | "whatsa
         "{package_name}":    "10-Class Pack",
         "{booking_id}":      "BKG-3421",
         "{studio_name}":     "Forma Studio",
+        // Gift card purchase event — sample values match a realistic
+        // recipient email preview (Priya being gifted a card by Aliah).
+        "{gift_card_code}":   "GC-2026-8QHXKM",
+        "{gift_card_amount}": "500",
+        "{sender_name}":      "Aliah Lane",
+        "{recipient_name}":   "Priya Ramesh",
+        "{gift_message}":     "Happy birthday! Enjoy the classes 🎁",
     };
     let out = [subject, body].filter(Boolean).join("\n\n");
     for (const [token, val] of Object.entries(dict)) {

@@ -24,23 +24,15 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, InfoCircle, SearchMd } from "@untitledui/icons";
+import { SearchMd } from "@untitledui/icons";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
+import { InsightMetricCard, type Metric } from "@/components/insights/InsightMetricCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TabKey = "finance" | "memberships" | "classes";
-
-interface Metric {
-    label: string;
-    value: string;
-    /** Change %, signed. Undefined → no badge (just "vs last week"). */
-    change?: number;
-    /** Default "vs last week". */
-    period?: string;
-}
 
 interface TabConfig {
     key: TabKey;
@@ -96,42 +88,6 @@ const TABS: TabConfig[] = [
     { key: "memberships", label: "Memberships", widgetCategory: "Memberships", metrics: MEMBERSHIP_METRICS },
     { key: "classes",     label: "Classes",     widgetCategory: "Classes",     metrics: CLASSES_METRICS },
 ];
-
-// ─── Insight metric card ──────────────────────────────────────────────────────
-
-function InsightMetricCard({ metric }: { metric: Metric }) {
-    const hasChange = typeof metric.change === "number";
-    const positive = (metric.change ?? 0) >= 0;
-    const periodLabel = metric.period ?? "vs last week";
-    return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
-            {/* Label + info */}
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-[14px] text-[#667085]">{metric.label}</p>
-                <InfoCircle className="w-5 h-5 text-[#98a2b3] shrink-0" />
-            </div>
-            {/* Value */}
-            <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{metric.value}</p>
-            {/* Change row */}
-            <div className="flex items-center gap-1">
-                {hasChange && (
-                    <span className={cn(
-                        "inline-flex items-center gap-0.5 pl-1.5 pr-2 py-0.5 rounded-full text-[12px] font-medium border-1",
-                        positive
-                            ? "bg-[#ecfdf3] border-[#abefc6] text-[#067647]"
-                            : "bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
-                    )}>
-                        {positive
-                            ? <ArrowUp className="w-3 h-3" />
-                            : <ArrowDown className="w-3 h-3" />}
-                        {Math.abs(metric.change!)}%
-                    </span>
-                )}
-                <p className="text-[14px] text-[#667085]">{periodLabel}</p>
-            </div>
-        </div>
-    );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 

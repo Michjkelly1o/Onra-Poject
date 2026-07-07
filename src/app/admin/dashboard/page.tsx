@@ -12,6 +12,16 @@ import {
     BarChartSquare01,
     Plus,
     DownloadCloud01,
+    // Metrics + Needs-attention icons (client dashboard update Jul 2026)
+    CoinsStacked01,
+    UserPlus01,
+    Calendar,
+    TrendUp01,
+    RefreshCw01,
+    Bell01,
+    CreditCard01,
+    UserX01,
+    UserCheck01,
 } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -24,6 +34,12 @@ import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
+import {
+    RenewalDueModal,
+    FailedPaymentsModal,
+    AtRiskClientsModal,
+    UnderFilledModal,
+} from "@/components/dashboard/NeedsAttentionModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
@@ -50,6 +66,9 @@ interface ScheduleClass {
     booked: number;
     capacity: number;
     color: { bg: string; border: string; text: string };
+    /** Lifecycle status — drives the Ongoing pill + progress bar on
+     *  the LG variant of ScheduleClassCard (Figma 7798:80399). */
+    status: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 }
 
 interface TimeSlot {
@@ -149,6 +168,7 @@ function PerformanceTab({
     onRemoveWidget,
     onReorderWidgets,
     onOpenModal,
+    allWidgetsActive,
 }: {
     activeWidgets: string[];
     period: DateFilter;
@@ -158,6 +178,10 @@ function PerformanceTab({
      *  external dnd library required. */
     onReorderWidgets: (fromIndex: number, toIndex: number) => void;
     onOpenModal: () => void;
+    /** When every widget in the catalogue is already on the
+     *  dashboard, hide the dashed "Add widget" tile — clicking it
+     *  would open an empty picker. Client review Jul 2026. */
+    allWidgetsActive: boolean;
 }) {
     // Track which widget is being dragged (by its position) so the drop
     // handler knows what to move. Reset on dragend / drop so a fresh
@@ -238,20 +262,23 @@ function PerformanceTab({
                 </div>
             ))}
 
-            {/* Add widget entry point */}
-            <button
-                type="button"
-                onClick={onOpenModal}
-                className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
-            >
-                <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                    <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
-                </div>
-                <div className="text-center">
-                    <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                    <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
-                </div>
-            </button>
+            {/* Add widget entry point — hidden once every catalogue
+                widget is already active (would open an empty picker). */}
+            {!allWidgetsActive && (
+                <button
+                    type="button"
+                    onClick={onOpenModal}
+                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                    </div>
+                </button>
+            )}
         </div>
     );
 }
@@ -261,18 +288,68 @@ function PerformanceTab({
 // src/components/schedule/ScheduleClassCard.tsx. The dashboard-local card was
 // removed when the DS variants landed.
 
+// ─── Needs attention row (Figma 7798:80427) ───────────────────────────────
+// One row of the Needs-attention card. Icon square + title + subtitle +
+// View button. Uses `border-b` between rows (dropped on the last row via
+// `isLast`) so the container's `p-6` breathes correctly.
+interface NeedsAttentionRowProps {
+    icon: DashboardMetric["icon"];
+    /** Tailwind bg-* class for the icon square background tint. */
+    iconBg: string;
+    /** Tailwind text-* class for the icon foreground colour. */
+    iconFg: string;
+    title: string;
+    subtitle: string;
+    onView: () => void;
+    isLast?: boolean;
+}
+function NeedsAttentionRow({
+    icon: Icon,
+    iconBg,
+    iconFg,
+    title,
+    subtitle,
+    onView,
+    isLast,
+}: NeedsAttentionRowProps) {
+    return (
+        <div className={cn(
+            "flex items-center gap-4 py-4",
+            !isLast && "border-b border-[#e4e7ec]",
+        )}>
+            <div className={cn(
+                "shrink-0 w-10 h-10 rounded-[8px] flex items-center justify-center",
+                iconBg,
+            )}>
+                <Icon className={cn("w-5 h-5", iconFg)} />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col">
+                <p className="text-sm font-semibold text-[#101828] leading-5">{title}</p>
+                <p className="text-sm text-[#667085] leading-5">{subtitle}</p>
+            </div>
+            <Button variant="secondary-gray" size="sm" onClick={onView}>
+                View
+            </Button>
+        </div>
+    );
+}
+
 function MetricCard({ metric }: { metric: DashboardMetric }) {
     const Icon = metric.icon;
     return (
-        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-6 items-start justify-end min-w-0 p-6 relative rounded-2xl">
-            <div className="flex flex-1 flex-col gap-2 items-start min-w-0 relative">
+        // Padding / value size shrunk Jul 2026 so 5 cards on one row
+        // don't force the value+icon combo to wrap. Value drops from
+        // text-2xl (24px) → text-xl (20px); label + change/comparison
+        // stay text-sm.
+        <div className="bg-white border border-[#e4e7ec] flex flex-1 gap-4 items-start justify-end min-w-0 p-4 relative rounded-2xl">
+            <div className="flex flex-1 flex-col gap-1.5 items-start min-w-0 relative">
                 <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
                     {metric.label}
                 </p>
-                <p className="font-semibold text-2xl text-[#101828]">
+                <p className="font-semibold text-xl text-[#101828] leading-[28px] whitespace-nowrap">
                     {metric.value}
                 </p>
-                <div className="flex gap-1 items-center">
+                <div className="flex gap-1 items-center whitespace-nowrap">
                     {/* Badge */}
                     <div className={cn(
                         "flex gap-1 items-center py-0.5 rounded-full",
@@ -284,20 +361,20 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
                             <ArrowDown size={12} className="text-[#b42318]" />
                         )}
                         <span className={cn(
-                            "font-medium text-sm",
+                            "font-medium text-xs",
                             metric.positive ? "text-[#067647]" : "text-[#b42318]"
                         )}>
                             {metric.change}%
                         </span>
                     </div>
-                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
+                    <p className="font-normal text-xs text-[#667085]">
                         {metric.comparison}
                     </p>
                 </div>
             </div>
-            {/* Featured icon */}
-            <div className="bg-[#f1f2ed] overflow-hidden relative rounded-full flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                <Icon size={20} className="text-[#475467]" />
+            {/* Featured icon — shrunk to 32px to match the smaller card. */}
+            <div className="bg-[#f1f2ed] overflow-hidden relative rounded-full flex-shrink-0 w-8 h-8 flex items-center justify-center">
+                <Icon size={16} className="text-[#475467]" />
             </div>
         </div>
     );
@@ -378,6 +455,11 @@ export default function AdminDashboard() {
     const [location, setLocation] = useState<string>("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
     const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+    // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
+    // 245665 / 246710). Renewal + Expire cards share the Renewal-due
+    // modal per client Jul 2026.
+    type NeedsAttentionModal = "renewal" | "failed" | "atrisk" | "underfilled" | null;
+    const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
 
@@ -387,6 +469,11 @@ export default function AdminDashboard() {
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const branches = useAppStore(s => s.branches);
     const showToast = useAppStore(s => s.showToast);
+    // Extra slices used by the Needs-attention section below —
+    // customerPlans powers "renew today" + "expire today" + "client at risk"
+    // buckets, while `today.classes` come from `classBookings` /
+    // `classSchedules` already scoped.
+    const customerPlans = useAppStore(s => s.customerPlans);
 
     // Live "Recent activity" feed — derived from bookings, transactions,
     // and customer signups across every surface (customer portal / POS /
@@ -439,66 +526,138 @@ export default function AdminDashboard() {
         () => branchScopeId ? customerTransactions.filter(t => t.branchId === branchScopeId) : customerTransactions,
         [customerTransactions, branchScopeId],
     );
+    // customer_plans has no branch column — filter via the plan's customer's
+    // branch. Same "" = All locations sentinel.
+    const scopedCustomerPlans = useMemo(() => {
+        if (!branchScopeId) return customerPlans;
+        const inScope = new Set(scopedCustomers.map(c => c.id));
+        return customerPlans.filter(p => inScope.has(p.customerId));
+    }, [customerPlans, scopedCustomers, branchScopeId]);
 
-    // KPI aggregates — recompute whenever scope or underlying slices change.
-    const metrics = useMemo<DashboardMetric[]>(() => {
-        // Today's revenue = sum of completed transactions created today within scope.
-        const todayRevenue = scopedTransactions
-            .filter(t => t.status === "complete" && t.createdAtISO.startsWith(todayISO))
-            .reduce((sum, t) => sum + t.amountAed, 0);
-
-        // Active members = customers in scope with status === "active".
-        const activeMembers = scopedCustomers.filter(c => c.status === "active").length;
-
-        // Classes today = schedules in scope whose dateISO matches today.
-        const classesToday = scopedSchedules.filter(s => s.dateISO === todayISO).length;
-
-        // Bookings today = bookings whose class_schedule is scheduled today.
-        // `class_bookings` already carries `branchId` (mirror of its schedule's
-        // branch), so the same scope filter applies. We still need the date —
-        // pull it from the schedule via class_schedule_id.
-        const todayScheduleIds = new Set(
-            scopedSchedules.filter(s => s.dateISO === todayISO).map(s => s.id),
+    // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
+    // for Today, 7799:109180 for Performance). Each tab surfaces its own
+    // metric strip:
+    //   • Today at a glance  (5 cards): Total sales / Total revenue /
+    //                        New customers / Bookings today / Avg occupancy
+    //   • Performance        (4 cards): Today's revenue / Active members /
+    //                        Classes today / Bookings today
+    // Every value reads live from the scoped slices so branch pick + all-
+    // locations aggregate stay in sync.
+    const { todayMetrics, performanceMetrics } = useMemo(() => {
+        // Today's completed sale transactions — used by both Total sales
+        // (count) and Total revenue (sum of amounts). Filter out refund /
+        // void / write-off rows so the two totals stay honest.
+        const todaySales = scopedTransactions.filter(t =>
+            t.status === "complete"
+            && t.createdAtISO.startsWith(todayISO)
+            && (t.transactionType === undefined || t.transactionType === "sale")
+            && t.kind !== "cancellation_penalty"
         );
-        const bookingsToday = scopedBookings.filter(
-            b => b.status === "booked" && todayScheduleIds.has(b.classScheduleId),
+        const totalSalesCount = todaySales.length;
+        const totalRevenueAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);
+
+        // New customers today — count of customer.createdAt on today's date.
+        const newCustomers = scopedCustomers.filter(c =>
+            (c.createdAt ?? "").startsWith(todayISO),
         ).length;
 
-        return [
+        // Active members — all-time count of customers with status "active"
+        // in scope. Performance-tab only.
+        const activeMembers = scopedCustomers.filter(c => c.status === "active").length;
+
+        // Classes scheduled today — kept for the Avg occupancy calc
+        // below. Cancelled classes still take a slot the front desk saw
+        // arriving, so they count for scheduling density.
+        const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
+        const classesTodayCount = todaySchedules.length;
+        // Bookings today — count of `booked` rows whose schedule is
+        // today's. Waitlist + cancelled bookings excluded so the number
+        // reads as "committed activity on the floor today".
+        const todayScheduleIdSet = new Set(todaySchedules.map(s => s.id));
+        const bookingsToday = scopedBookings.filter(b =>
+            b.status === "booked" && todayScheduleIdSet.has(b.classScheduleId),
+        ).length;
+
+        // Average occupancy across today's classes with a real capacity.
+        // Uncapped classes (capacity 0) drop out so a stray seed row can't
+        // divide-by-zero the aggregate. Value shown as a percentage.
+        const capped = todaySchedules.filter(s => s.capacity > 0);
+        const avgOccupancyPct = capped.length === 0
+            ? 0
+            : Math.round(
+                capped.reduce((sum, s) => sum + (s.booked / s.capacity) * 100, 0)
+                / capped.length,
+            );
+
+        const today: DashboardMetric[] = [
+            {
+                label: "Total sales",
+                value: totalSalesCount.toLocaleString("en-US"),
+                change: 3, positive: true, comparison: "vs yesterday",
+                icon: CurrencyDollar,
+            },
+            {
+                label: "Total revenue",
+                value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
+                change: 3, positive: true, comparison: "vs yesterday",
+                icon: CoinsStacked01,
+            },
+            {
+                label: "New customers",
+                value: newCustomers.toLocaleString("en-US"),
+                change: 2, positive: false, comparison: "vs yesterday",
+                icon: UserPlus01,
+            },
+            {
+                label: "Bookings today",
+                value: bookingsToday.toLocaleString("en-US"),
+                change: 1, positive: false, comparison: "vs yesterday",
+                icon: TrendUp01,
+            },
+            {
+                label: "Avg occupancy",
+                value: `${avgOccupancyPct}%`,
+                change: 1, positive: false, comparison: "vs yesterday",
+                icon: Calendar,
+            },
+        ];
+
+        // Performance-tab metrics — 4 cards per Figma 7799:109180.
+        const performance: DashboardMetric[] = [
             {
                 label: "Today's revenue",
-                value: `AED ${todayRevenue.toLocaleString("en-US")}`,
-                change: 3,
-                positive: true,
-                comparison: "vs yesterday",
+                value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
+                change: 3, positive: true, comparison: "vs yesterday",
                 icon: CurrencyDollar,
             },
             {
                 label: "Active members",
                 value: activeMembers.toLocaleString("en-US"),
-                change: 3,
-                positive: true,
-                comparison: "vs yesterday",
-                icon: Users01,
+                change: 3, positive: true, comparison: "vs yesterday",
+                icon: UserCheck01,
             },
             {
                 label: "Classes today",
-                value: classesToday.toLocaleString("en-US"),
-                change: 2,
-                positive: true,
-                comparison: "vs yesterday",
+                value: classesTodayCount.toLocaleString("en-US"),
+                change: 2, positive: false, comparison: "vs yesterday",
                 icon: CalendarCheck01,
             },
             {
                 label: "Bookings today",
                 value: bookingsToday.toLocaleString("en-US"),
-                change: 1,
-                positive: true,
-                comparison: "vs yesterday",
-                icon: ShoppingBag01,
+                change: 1, positive: false, comparison: "vs yesterday",
+                icon: TrendUp01,
             },
         ];
+
+        return { todayMetrics: today, performanceMetrics: performance };
     }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
+
+    // Pick the strip that matches the active tab. `metrics` stays the
+    // stable public name (used by CSV export + a couple of downstream
+    // references) so the CSV etc. keep exporting the metrics the admin
+    // is currently looking at.
+    const metrics = activeTab === "performance" ? performanceMetrics : todayMetrics;
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
@@ -525,6 +684,7 @@ export default function AdminDashboard() {
                     booked: ci.booked,
                     capacity: ci.capacity,
                     color: palette,
+                    status: ci.status,
                 };
             });
     }, [scopedSchedules]);
@@ -546,6 +706,68 @@ export default function AdminDashboard() {
                 classes,
             }));
     }, [todayClasses]);
+
+    // ── "Needs attention today" — derived operational buckets ───────
+    // Client dashboard update Jul 2026 (Figma 7798:80427). One card
+    // with 5 rows the front desk / manager should action first thing
+    // in the morning. All values compute from live slices so branch
+    // scope + all-locations aggregate stay in sync. Each row exposes
+    // a `viewHref` route the "View" button navigates to.
+    const needsAttention = useMemo(() => {
+        // Membership plans whose expiry ISO date === today. `expiryISO`
+        // may include a time component (`YYYY-MM-DDT…`) so we compare
+        // by date prefix. Held = active OR frozen (unfrozen tomorrow
+        // still expires today).
+        const heldMemberships = scopedCustomerPlans.filter(p =>
+            p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
+        );
+        const renewToday = heldMemberships.filter(p =>
+            (p.expiryISO ?? "").slice(0, 10) === todayISO && (p.autoRenew ?? false),
+        );
+        const expireToday = heldMemberships.filter(p =>
+            (p.expiryISO ?? "").slice(0, 10) === todayISO && !(p.autoRenew ?? false),
+        );
+        const renewTotalAed = renewToday.reduce((sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0);
+
+        // Failed / pending transactions from today — the front desk
+        // needs to chase these before the billing window closes.
+        const failedTxns = scopedTransactions.filter(t =>
+            (t.status === "failed" || t.status === "pending")
+            && t.createdAtISO.startsWith(todayISO),
+        );
+        const failedTotalAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
+
+        // Clients at risk: last visit was 14-30 days ago (inclusive)
+        // — matches the Excel spec's Win-back window. Customers who
+        // have NEVER visited (undefined `lastVisitISO`) are dropped
+        // since we don't have a signup-vs-visit gap yet.
+        const now = Date.now();
+        const DAY = 24 * 60 * 60 * 1000;
+        const clientsAtRisk = scopedCustomers.filter(c => {
+            if (c.status !== "active") return false;
+            if (!c.lastVisitISO) return false;
+            const d = new Date(c.lastVisitISO).getTime();
+            if (Number.isNaN(d)) return false;
+            const daysAgo = Math.floor((now - d) / DAY);
+            return daysAgo >= 14 && daysAgo <= 30;
+        }).length;
+
+        // Under-filled classes: today's schedules < 50% capacity.
+        const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
+        const underFilled = todaySchedules.filter(s =>
+            s.capacity > 0 && (s.booked / s.capacity) < 0.5,
+        ).length;
+
+        return {
+            renewTodayCount:  renewToday.length,
+            renewTotalAed,
+            expireTodayCount: expireToday.length,
+            failedCount:      failedTxns.length,
+            failedTotalAed,
+            clientsAtRisk,
+            underFilled,
+        };
+    }, [scopedCustomerPlans, scopedTransactions, scopedCustomers, scopedSchedules, todayISO]);
 
     function handleAddWidget(id: string) {
         if (activeWidgets.includes(id)) return;
@@ -671,6 +893,22 @@ export default function AdminDashboard() {
                         );
                     }}
                     onOpenModal={() => setWidgetModalOpen(true)}
+                    allWidgetsActive={
+                        // Only compare against categories the dashboard's
+                        // AddWidgetModal actually surfaces (Finance +
+                        // Memberships + Classes). KPI-only widgets
+                        // (Financial / Client / Class / Marketing) are
+                        // reachable ONLY from /admin/kpi and don't count
+                        // toward the dashboard's "all widgets added" state.
+                        (() => {
+                            const eligible = WIDGET_CATALOG.filter(w =>
+                                w.category === "Finance"
+                                || w.category === "Memberships"
+                                || w.category === "Classes"
+                            ).map(w => w.id);
+                            return eligible.every(id => activeWidgets.includes(id));
+                        })()
+                    }
                 />
             )}
 
@@ -741,6 +979,7 @@ export default function AdminDashboard() {
                                                     room: c.room,
                                                     booked: c.booked,
                                                     capacity: c.capacity,
+                                                    status: c.status,
                                                 }}
                                             />
                                         ))}
@@ -790,12 +1029,95 @@ export default function AdminDashboard() {
                 </div>
             </div>}
 
+            {/* Needs attention today — client dashboard update Jul 2026
+                (Figma 7798:80427). Sits BELOW the Today's classes +
+                Recent activity row so the front desk works top-down:
+                metrics → schedule + feed → outstanding actions. Each
+                row's "View" button links to the module that owns the
+                fix (renewals → customers list, expiring → notification
+                composer, failed payment → refunds report, at-risk →
+                win-back report, under-filled → schedule). Rows with a
+                zero count still render so admins learn the shape of
+                the surface even on a quiet day. */}
+            {activeTab === "today" && (
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
+                    <p className="font-semibold text-lg text-[#101828]">Needs attention today</p>
+                    <div className="flex flex-col">
+                        <NeedsAttentionRow
+                            icon={RefreshCw01}
+                            iconBg="bg-[#eff8ff]"
+                            iconFg="text-[#175cd3]"
+                            title={`${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`}
+                            subtitle={`AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`}
+                            onView={() => setAttentionModal("renewal")}
+                        />
+                        <NeedsAttentionRow
+                            icon={Bell01}
+                            iconBg="bg-[#fff6ed]"
+                            iconFg="text-[#c4320a]"
+                            title={`${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`}
+                            subtitle="Send a reminder before membership expire"
+                            onView={() => setAttentionModal("renewal")}
+                        />
+                        <NeedsAttentionRow
+                            icon={CreditCard01}
+                            iconBg="bg-[#fef3f2]"
+                            iconFg="text-[#b42318]"
+                            title={`${needsAttention.failedCount} failed ${needsAttention.failedCount === 1 ? "payment" : "payments"}`}
+                            subtitle={`Payment failed · AED ${needsAttention.failedTotalAed.toLocaleString("en-US")}`}
+                            onView={() => setAttentionModal("failed")}
+                        />
+                        <NeedsAttentionRow
+                            icon={UserX01}
+                            iconBg="bg-[#fefbe8]"
+                            iconFg="text-[#a15c07]"
+                            title={`${needsAttention.clientsAtRisk} ${needsAttention.clientsAtRisk === 1 ? "client" : "clients"} at risk`}
+                            subtitle="No visit in 14-30 days · win them back"
+                            onView={() => setAttentionModal("atrisk")}
+                        />
+                        <NeedsAttentionRow
+                            icon={CalendarCheck01}
+                            iconBg="bg-[#ecfdf3]"
+                            iconFg="text-[#079455]"
+                            title="Under filled classes"
+                            subtitle={`${needsAttention.underFilled} ${needsAttention.underFilled === 1 ? "class" : "classes"} below 50% capacity`}
+                            onView={() => setAttentionModal("underfilled")}
+                            isLast
+                        />
+                    </div>
+                </div>
+            )}
+
             <AddWidgetModal
                 open={widgetModalOpen}
                 onClose={() => setWidgetModalOpen(false)}
                 activeWidgetIds={activeWidgets}
                 onAdd={handleAddWidget}
                 onRemove={handleRemoveWidget}
+            />
+
+            {/* Needs-attention drill-down modals — all four share the same
+                branch-scope filter (empty string = all locations, matches
+                the rest of the dashboard). */}
+            <RenewalDueModal
+                open={attentionModal === "renewal"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <FailedPaymentsModal
+                open={attentionModal === "failed"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <AtRiskClientsModal
+                open={attentionModal === "atrisk"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <UnderFilledModal
+                open={attentionModal === "underfilled"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
             />
 
             <Toast />

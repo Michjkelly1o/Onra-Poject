@@ -789,6 +789,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
         name: "Recovery",
         initials: "RS",
         color: "#c4edd6",
+        branchId: null,
     };
     const columns: Instructor[] = hasRecovery
         ? [...allInstructors, ...missingInstructors, recoveryColumn]

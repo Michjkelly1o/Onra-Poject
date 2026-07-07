@@ -31,6 +31,11 @@ export const cancellation_policy: CancellationPolicy = {
     credit_within_outcome: "credit_forfeited",
 
     // ── Membership members (no credit to forfeit) ───────────────────
+    // Penalty gate ON with a lifetime threshold of 3 late-cancels /
+    // no-shows so the demo can showcase both states of the gated
+    // toggles below out of the box (Figma 7790:27893).
+    membership_penalty_after_cancellations_enabled: true,
+    membership_penalty_after_cancellations_count: 3,
     membership_late_cancel_fee_enabled: true,
     membership_late_cancel_fee_aed: 50,
     membership_no_show_fee_enabled: true,

@@ -26,6 +26,7 @@ import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
+    SlashCircle01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,14 @@ interface PaymentFilter {
 }
 const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", statuses: [], kinds: [] };
 
-const KIND_LABEL: Record<TxnKind, string> = {
+// Filter-chip / column labels. Only the two purchase kinds get a chip
+// or a column value — a `cancellation_penalty` row's Plan type column
+// is derived from the CUSTOMER'S plan (see `planTypeLabel` below) so a
+// penalty on a membership-plan customer reads "Membership" and on a
+// package-plan customer reads "Credit package". The row is identified
+// as a penalty via its icon + transaction name, NOT its plan-type text
+// (client feedback Jul 2026).
+const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package">, string> = {
     membership: "Membership",
     package: "Credit package",
 };
@@ -125,13 +133,33 @@ function TxnStatusBadge({ status }: { status: TxnStatus }) {
 // ─── Transaction kind icon ────────────────────────────────────────────────────
 
 function TxnIcon({ kind }: { kind: TxnKind }) {
-    const Icon = kind === "membership" ? CreditCard02 : Package;
+    // Membership → card · package → package · penalty → slash-circle
+    // (block glyph — per client spec Jul 2026). Same neutral colour
+    // stack as the other two so the row doesn't shout — the icon is
+    // just there to identify the row shape at a glance.
+    const Icon = kind === "membership"
+        ? CreditCard02
+        : kind === "cancellation_penalty"
+            ? SlashCircle01
+            : Package;
     return (
         <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
             <Icon className="w-5 h-5 text-[#475467]" />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );
+}
+
+// Plan-type column resolver — for the two purchase kinds we render the
+// kind's label; for a cancellation-penalty row we ALWAYS return
+// "Membership" because the cancellation-penalty flow is scoped to
+// UNLIMITED-membership customers ONLY (`computeCancellationPenalty`
+// gates on `membership.credits === "unlimited"`) — credit-package
+// customers can never receive one, so there's no "Credit package"
+// case here. Client requirement Jul 2026.
+function planTypeLabel(t: CustomerTransaction): string {
+    if (t.kind === "cancellation_penalty") return "Membership";
+    return KIND_LABEL[t.kind];
 }
 
 // ─── Card-brand mark (Payment method section) ─────────────────────────────────
@@ -245,7 +273,10 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
         pending.dateStart !== "" || pending.dateEnd !== "";
 
     const STATUSES: FilterStatus[] = ["complete", "pending", "failed"];
-    const KINDS: TxnKind[] = ["membership", "package"];
+    // Plan-type filter chips — only the two purchase kinds. Penalty
+    // rows are surfaced via icon + transaction name, not via a plan-
+    // type chip (client spec Jul 2026).
+    const KINDS: Extract<TxnKind, "membership" | "package">[] = ["membership", "package"];
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
@@ -673,13 +704,19 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                         <span className="text-[14px] font-medium text-[#101828]">{t.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{KIND_LABEL[t.kind]}</td>
+                                                <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t)}</td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtAed(t.amountAed)}</td>
                                                 <td className={TD}><TxnStatusBadge status={t.status} /></td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
                                                 <td className={TD}>
-                                                    {/* Only completed payments can be refunded. */}
-                                                    {t.status === "complete" && (
+                                                    {/* Only completed AND refundable payments can be
+                                                        refunded. `isRefundable === false` is set on
+                                                        every `cancellation_penalty` row per client
+                                                        spec — those rows never expose the Refund
+                                                        action. Legacy rows without the flag stay
+                                                        refundable (undefined → falsy check misses,
+                                                        explicit false gates). */}
+                                                    {t.status === "complete" && t.isRefundable !== false && (
                                                         <RowActions
                                                             items={[{
                                                                 label: "Refund payment",

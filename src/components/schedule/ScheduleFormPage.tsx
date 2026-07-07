@@ -1216,13 +1216,16 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Needed by the slot-availability useMemos below — the branch picks the
     // business-hours window the form uses for open/close + block. Hoisted
     // above the useMemos so the block-time lookup doesn't reference a
-    // not-yet-declared variable. Local BRANCH_ROOMS is the form's room
-    // dropdown source; the East branch is the only non-South one in seeds
-    // today.
+    // not-yet-declared variable.
+    //
+    // The BranchRoomGroup already carries `branchId` — read it directly
+    // rather than heuristically inferring from the branch's display name.
+    // The old `branch.includes("East")` shortcut silently collapsed West
+    // + Spa branches onto South's business hours, which is a bug the moment
+    // more than two branches exist. Falls back to the South branch id when
+    // no room is picked yet, matching the pre-heuristic default.
     const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
-    const selectedBranchId = selectedBranchGroup?.branch.includes("East")
-        ? "branch_forma_east"
-        : "branch_forma_south";
+    const selectedBranchId = selectedBranchGroup?.branchId ?? "branch_forma_south";
 
     // ─── Conflict scan ─────────────────────────────────────────────────────
     // Given a list of dates, return every start-time slot that would
@@ -1611,9 +1614,31 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         setCsBlocked(new Set()); setCsCustomized(false); setCsSelected(null);
     }
     const selectedInstructor = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
+    // Branch-scope guard: a class booked into branch X can only be taught
+    // by an instructor of branch X (or a null-branch "all locations"
+    // staff row, e.g. an Owner covering a class). Applied BEFORE the name
+    // search so the search still returns branch-relevant matches. When
+    // no room is picked yet, the picker stays permissive so the admin
+    // can eyeball the roster before committing to a room.
+    const branchScopedInstructors = useMemo(() => {
+        if (!selectedBranchGroup) return SCHEDULE_INSTRUCTORS;
+        return SCHEDULE_INSTRUCTORS.filter(i =>
+            i.branchId === null || i.branchId === selectedBranchGroup.branchId,
+        );
+    }, [selectedBranchGroup]);
     const filteredInstructors = instrSearch
-        ? SCHEDULE_INSTRUCTORS.filter(i => i.name.toLowerCase().includes(instrSearch.toLowerCase()))
-        : SCHEDULE_INSTRUCTORS;
+        ? branchScopedInstructors.filter(i => i.name.toLowerCase().includes(instrSearch.toLowerCase()))
+        : branchScopedInstructors;
+
+    // If the branch changes and the currently-picked instructor no longer
+    // belongs there, silently clear the selection so the form can't submit
+    // a mismatched pair. `useEffect` (not derived state) because the fix
+    // needs to write back into `instructorId` — the stateful source of truth.
+    useEffect(() => {
+        if (!instructorId || !selectedBranchGroup) return;
+        const stillValid = branchScopedInstructors.some(i => i.id === instructorId);
+        if (!stillValid) setInstructorId("");
+    }, [instructorId, selectedBranchGroup, branchScopedInstructors]);
 
     // Derived end time from start + duration
     const endTime = calcEndTime(startTime, duration);

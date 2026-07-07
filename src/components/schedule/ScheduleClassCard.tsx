@@ -41,6 +41,12 @@ export interface ScheduleCardClass {
     room?: string;
     booked: number;
     capacity: number;
+    /** Optional lifecycle status — LG uses it to render an "Ongoing"
+     *  pill in the top-right + a green capacity progress bar at the
+     *  bottom of the card (Figma 7798:80399, Jul 2026). Absent value
+     *  falls back to the pre-existing card layout so non-dashboard
+     *  callers keep their current look. */
+    status?: "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 }
 
 export type ScheduleCardSize = "xs" | "sm" | "md" | "lg";
@@ -133,34 +139,78 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
 
     // ── LG ───────────────────────────────────────────────────────────────────
     if (size === "lg") {
+        // Client dashboard polish Jul 2026 (Figma 7798:80399). Every
+        // class card now shows the capacity progress bar pinned to
+        // the bottom edge — Ongoing rows also get a "Ongoing" pill in
+        // the top-right. Badge palette matches the shared
+        // `/admin/schedule` blue variant (StatusBadge blue: bg #eff8ff
+        // border #b2ddff text #175cd3) instead of the sage green the
+        // earlier draft used — client asked for parity across every
+        // schedule surface.
+        const isOngoing = cls.status === "Ongoing";
+        const fillPct = cls.capacity > 0
+            ? Math.min(100, Math.round((cls.booked / cls.capacity) * 100))
+            : 0;
         return (
             <button type="button" onClick={onClick}
                 style={{ backgroundColor: cls.color.bg, borderLeft: `4px solid ${cls.color.border}`, ...baseStyle }}
                 className={cn(
-                    "w-full rounded-[10px] pl-4 pr-4 py-3 flex flex-col gap-1 text-left cursor-pointer hover:brightness-95 transition-all",
+                    // Progress bar sits INSIDE the card body now (Figma
+                    // 7798:80399 review Jul 2026) — the previous version
+                    // pinned it to the bottom edge which looked like a
+                    // hairline rule instead of a filled indicator. Card
+                    // is a plain flex column with rounded corners honoured
+                    // by all children.
+                    "relative w-full rounded-[10px] px-4 py-3 flex flex-col gap-2 text-left cursor-pointer hover:brightness-95 transition-all min-h-[96px]",
                     className,
                 )}>
-                <span className="block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
-                <p className="text-[14px] text-[#667085]">{rangeLabel}</p>
-                <div className="flex items-center gap-2 min-w-0">
+                {/* Title row + Ongoing pill / participant glyph. */}
+                <div className="flex items-start gap-2 w-full">
+                    <span className="flex-1 min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {isOngoing && (
+                        <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3] shrink-0">
+                            Ongoing
+                        </span>
+                    )}
+                    <Users01 className="w-4 h-4 text-[#667085] shrink-0 mt-0.5" />
+                </div>
+                {/* Meta row — time · instructor · room · count. Single
+                    line separated by bullets so the card matches Figma
+                    7798:80399's compact density. */}
+                <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#667085]">
+                    <span className="shrink-0">{rangeLabel}</span>
+                    <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
                     <div className="flex items-center gap-1.5 min-w-0">
                         <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
-                        <span className="text-[14px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
+                        <span className="truncate">{instructorShortName(cls.instructorName)}</span>
                     </div>
                     {cls.room && (
                         <>
                             <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
                             <div className="flex items-center gap-1 min-w-0">
                                 <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                <span className="text-[14px] text-[#667085] truncate">{cls.room}</span>
+                                <span className="truncate">{cls.room}</span>
                             </div>
                         </>
                     )}
                     <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
-                    <div className="flex items-center gap-1 shrink-0">
-                        <Users01 className="w-4 h-4 text-[#667085]" />
-                        <span className="text-[14px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
-                    </div>
+                    <span className="shrink-0">
+                        {cls.booked}/{cls.capacity}
+                        {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
+                    </span>
+                </div>
+                {/* Capacity progress bar — inline at the bottom of the
+                    card body with the same horizontal padding as the
+                    meta row above. Track is a neutral gray rounded
+                    pill; fill uses the card's category border colour
+                    so it reads as an extension of the left accent
+                    stripe. mt-auto pushes it to the bottom so short
+                    cards still align their bars. */}
+                <div className="mt-auto w-full h-1.5 bg-white/70 rounded-full overflow-hidden">
+                    <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
+                    />
                 </div>
             </button>
         );

@@ -500,7 +500,18 @@ function StaffListTab({ role, onChangeRoleFor }: {
     const [bulkPending, setBulkPending] = useState<BulkKind | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const scoped = useMemo(() => allStaff.filter(s => s.roleId === role.id), [allStaff, role.id]);
+    // Defensive: a branch-scoped role must only surface staff whose
+    // branch matches. Owner-type roles (`branchId === null`) apply to
+    // all locations. This guards against future seed drift that would
+    // otherwise put another branch's staff under this role — the class
+    // of bug the client flagged.
+    const scoped = useMemo(
+        () => allStaff.filter(s =>
+            s.roleId === role.id
+            && (role.branchId === null || s.branchId === role.branchId)
+        ),
+        [allStaff, role.id, role.branchId],
+    );
     const searched = useMemo(() => {
         const q = search.trim().toLowerCase();
         return scoped.filter(s => {
@@ -881,7 +892,17 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
         }
     }, [role, roles.length, router, returnTo, showToast]);
 
-    const staffOnRole = useMemo(() => role ? staff.filter(s => s.roleId === role.id) : [], [staff, role]);
+    // Same branch-scope guard as the tab content above — keeps the
+    // sidebar counter honest even if the store transiently holds a
+    // mismatched pair.
+    const staffOnRole = useMemo(
+        () => role
+            ? staff.filter(s =>
+                s.roleId === role.id
+                && (role.branchId === null || s.branchId === role.branchId))
+            : [],
+        [staff, role],
+    );
 
     if (!role) {
         return (

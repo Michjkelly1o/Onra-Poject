@@ -166,3 +166,10 @@ export { account_profile } from "./account_profile";
 // Read by the Branding landing + Customize design / portal sub-pages, and
 // (when it ships) by the customer-facing portal itself for theming.
 export { branding_settings } from "./branding_settings";
+
+// Reports v33 — 4 new tables added so every Reports page renders complete
+// for the client demo. Selectors read these directly.
+export { leads } from "./leads";
+export { marketing_campaign_stats } from "./marketing_campaign_stats";
+export { marketing_spend } from "./marketing_spend";
+export { staff_attendance_log } from "./staff_attendance_log";

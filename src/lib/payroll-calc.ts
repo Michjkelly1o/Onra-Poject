@@ -295,6 +295,16 @@ export function payrollBreakdownFor(
         totalEarningsAed: number;
         completedClasses: number;
         totalAttendees:   number;
+        /** Actual studio revenue for the period, AED (the "Class revenue
+         *  base" column). Used AS-IS as the base for Revenue share rows
+         *  so the exported row math reconciles to the real payroll
+         *  entry — matches the formula the seed uses to compute
+         *  `total_earnings`. Optional so legacy callers can still pass
+         *  only stats; falls back to `totalAttendees × 150` (the same
+         *  `earningsForClass` approximation used elsewhere) when
+         *  omitted. Always prefer to pass the real value from the
+         *  payroll entry. */
+        revenueBaseAed?: number;
     },
 ): PayrollBreakdown {
     const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -344,9 +354,12 @@ export function payrollBreakdownFor(
             };
         }
         case "revenue": {
-            // Revenue base = the studio-side revenue proxy the split
-            // percentage applies against (attendees × AED 150 per class).
-            const revenueBase       = stats.totalAttendees * 150;
+            // Revenue base = the studio's real "Class revenue base"
+            // figure for the period (`payroll_entries.gross_revenue`).
+            // Passed by the exporter so the row math reconciles with
+            // the entry's `total_earnings`. Falls back to
+            // `attendees × 150` only when a caller doesn't supply it.
+            const revenueBase        = stats.revenueBaseAed ?? stats.totalAttendees * 150;
             const revenueShareAmount = revenueBase * (payRate.splitPercent / 100);
             const perCustomer        = payRate.payPerCustomer ?? 0;
             const perCustomerAmount  = perCustomer * stats.totalAttendees;
@@ -374,7 +387,21 @@ export function payrollBreakdownFor(
             const baseAmount = base * stats.completedClasses;
             if (payRate.condition.kind === "bonus_attendance") {
                 const bonusPerCustomer = payRate.condition.bonusPerCustomer;
-                const bonusAmount      = bonusPerCustomer * stats.totalAttendees;
+                const threshold        = payRate.condition.bonusThreshold;
+                // Bonus is per-class conditional: `earningsForClass` only
+                // pays the bonus on classes whose attendance actually hit
+                // the threshold. The row's `basis` must therefore be the
+                // count of qualifying attendees (attendees in classes
+                // that hit the threshold), NOT `stats.totalAttendees`
+                // (which counts EVERY attendee). Derive it exactly from
+                // the already-computed period total — subtract the base
+                // portion from the period earnings and divide by the
+                // per-customer bonus. Guards against divide-by-zero when
+                // the seed misconfigures a 0-AED bonus.
+                const bonusAmount = Math.max(stats.totalEarningsAed - baseAmount, 0);
+                const qualifyingAttendees = bonusPerCustomer > 0
+                    ? Math.round(bonusAmount / bonusPerCustomer)
+                    : 0;
                 return {
                     payModel,
                     components: [
@@ -385,8 +412,14 @@ export function payrollBreakdownFor(
                             amount: fmt(baseAmount),
                         },
                         {
-                            component: `Attendance bonus (≥${payRate.condition.bonusThreshold})`,
-                            basis:  fmt(stats.totalAttendees),
+                            // Client feedback (Jul 2026): the old
+                            // "(≥8)" shorthand was unreadable in the
+                            // CSV — no one knew if 8 meant classes,
+                            // customers, or something else. Long-form
+                            // label spells it out so the export tells
+                            // its own story.
+                            component: `Attendance bonus (classes with ${threshold}+ attendees)`,
+                            basis:  fmt(qualifyingAttendees),
                             rate:   fmt(bonusPerCustomer),
                             amount: fmt(bonusAmount),
                         },
@@ -394,8 +427,9 @@ export function payrollBreakdownFor(
                     total,
                 };
             }
-            // Revenue-split hybrid.
-            const revenueBase = stats.totalAttendees * 150;
+            // Revenue-split hybrid — same real-revenue-base logic as
+            // the pure `revenue` type above.
+            const revenueBase = stats.revenueBaseAed ?? stats.totalAttendees * 150;
             const shareAmount = revenueBase * (payRate.condition.splitPercent / 100);
             return {
                 payModel,
@@ -417,12 +451,19 @@ export function payrollBreakdownFor(
             };
         }
         case "monthly": {
+            // Client feedback (Jul 2026): the old row read
+            // "basis: 2, rate: 8,000 / mo, amount: 8,000" — 2 was the
+            // completed-classes count, but next to a "/mo" rate it
+            // scanned as "2 months" and made the total look off by
+            // half. Basis is now "1" (one month of salary) so basis
+            // × rate = amount, and the rate drops the "/mo" suffix
+            // since the basis IS the month unit.
             return {
                 payModel,
                 components: [{
                     component: "Monthly salary",
-                    basis:  fmt(stats.completedClasses),
-                    rate:   `${fmt(payRate.fixedSalary)} / mo`,
+                    basis:  "1",
+                    rate:   fmt(payRate.fixedSalary),
                     amount: total,
                 }],
                 total,

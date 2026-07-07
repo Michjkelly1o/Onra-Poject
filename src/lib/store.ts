@@ -141,6 +141,14 @@ import {
     customer_transactions as SEED_CUSTOMER_TRANSACTIONS,
     customer_agreements as SEED_CUSTOMER_AGREEMENTS,
     customer_referrals as SEED_CUSTOMER_REFERRALS,
+    // Reports v33 — new tables for demo data completeness
+    leads as SEED_LEADS,
+    marketing_campaign_stats as SEED_MARKETING_CAMPAIGN_STATS,
+    marketing_spend as SEED_MARKETING_SPEND,
+    type Lead,
+    type MarketingCampaignStat,
+    type MarketingSpend,
+    type StaffAttendanceLog,
     type Customer as SeedCustomer,
     type CustomerPlan as SeedCustomerPlan,
     type CustomerTransaction as SeedCustomerTransaction,
@@ -229,6 +237,8 @@ import {
 export type {
     ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
+    // Reports v33 — new seed types the selectors reach into
+    Lead, MarketingCampaignStat, MarketingSpend, StaffAttendanceLog,
 };
 
 // Also re-export the raw arrays for screens that filter against the entire table.
@@ -678,6 +688,11 @@ export interface ScheduleInstructor {
     initials: string;
     color: string;
     imageUrl?: string;
+    /** Branch the instructor belongs to (mirrors staff.branch_id). `null`
+     *  for Owner-type staff who span all locations. Consumers filter the
+     *  instructor picker by this so a class scheduled at Branch X can
+     *  only pick instructors whose branch is X (or is null). */
+    branchId: string | null;
 }
 
 /** Status for a directory instructor. Mirrors the customer/staff status model:
@@ -1058,6 +1073,10 @@ export interface Customer {
     emergencyContactPhone?: string;
     emergencyContactRelation?: string;
     referralCode?: string;
+    // ── Reports v33 fields (Customer Data report) ────────────────────────
+    firstVisitISO?: string;
+    marketingSource?: string;
+    convertedFrom?: "first-visit" | "intro-offer" | "trial-class" | "referral";
 }
 
 /** Customer agreement record — store shape (camelCase) of a
@@ -1114,6 +1133,12 @@ export interface CustomerReferral {
      *  seed rows — treated as "unrestricted" by the helper so
      *  historical data doesn't get inadvertently locked out. */
     originBranchId?: string;
+    // ── Reports v33 fields (Referral Report + Win-back) ──────────────────
+    campaign?: string;
+    reactivated?: boolean;
+    reactivationDateISO?: string;
+    newPlanId?: string;
+    revenueRecoveredAed?: number;
 }
 
 // ─── Customer notification settings (PRD 11 §12) ───────────────────────────
@@ -1180,6 +1205,13 @@ export interface NotificationSetting {
     /** Marketing-only flag — landing renders "Sent during campaigns"
      *  pill in place of the send-time summary. */
     sentDuringCampaigns?: boolean;
+
+    /** Who receives this event's notification. Omitted = "customer"
+     *  (the customer tied to the source event, e.g. buyer on a
+     *  payment). `"gift_card_recipient"` = the recipient stored on
+     *  the IssuedGiftCard row so the person BEING GIFTED the card
+     *  gets the redemption code, not the buyer. */
+    recipientSource?: "customer" | "gift_card_recipient";
 }
 
 // ─── Tax module (PRD 11 §10) ───────────────────────────────────────────────
@@ -1647,6 +1679,12 @@ export interface CustomerPlan {
     removedBy?: string;
     removedByRole?: string;
     removedAtISO?: string;
+    // ── Reports v33 fields ───────────────────────────────────────────────
+    totalCredits?: number;
+    creditsUsed?: number;
+    autoRenew?: boolean;
+    nextBillingAmountAed?: number;
+    allowance?: string;
 }
 
 /** Customer transaction record — store shape (camelCase) of a
@@ -1656,7 +1694,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package";
+    kind: "membership" | "package" | "cancellation_penalty";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -1679,6 +1717,34 @@ export interface CustomerTransaction {
     createdAtISO: string;
     refundedAtISO?: string;
     refundMethod?: "cash" | "card";
+    // ── Reports v30 ledger fields (all optional — see _types.ts for
+    //     the full refund/void model documentation) ──
+    transactionType?: "sale" | "refund" | "void" | "write_off";
+    originalTransactionId?: string;
+    settlementISO?: string;
+    refundReason?: string;
+    taxTreatment?: "standard" | "zero_rated" | "exempt" | "out_of_scope";
+    staffId?: string;
+    cardType?: "visa" | "mastercard" | "amex";
+    paymentType?: "one_off" | "recurring";
+    failureReason?: string;
+    retryAttempt?: number;
+    recovered?: boolean;
+    recoveredISO?: string;
+    payoutId?: string;
+    processorFee?: number;
+    // ── Reports v33 fields (Discounts + Promo Redemptions) ──────────────
+    discountCode?: string;
+    discountValue?: number;
+    // ── Cancellation-penalty flow (Jul 2026) ────────────────────────────
+    /** Refundability guard. Undefined = refundable (legacy default);
+     *  explicit `false` = the Refund action is hidden on Payment
+     *  history and `refundTransaction` rejects the call. Always
+     *  `false` on `kind: "cancellation_penalty"` rows. */
+    isRefundable?: boolean;
+    /** For `kind: "cancellation_penalty"` rows only — which scenario
+     *  triggered the fee. Drives display copy on Payment history. */
+    cancellationScenario?: "late_cancel" | "no_show";
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -1792,6 +1858,7 @@ export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF_PROFILES.ma
     initials: s.initials,
     color: s.color_hex,
     imageUrl: s.image_url,
+    branchId: s.branch_id,
 }));
 
 // ─── Adapters (snake_case seed → camelCase store shape) ─────────────────────
@@ -2026,6 +2093,38 @@ function bookingFromSeed(b: SeedClassBooking): ClassBooking {
     };
 }
 
+// Reports v33 — deterministic derivation of first_visit / marketing_source
+// / converted_from from customer id + existing seed fields. Runs at
+// customerFromSeed() so every customer picks up the fields without
+// editing 1500+ seed rows. Same inputs → same outputs, so persist doesn't
+// churn.
+const MARKETING_SOURCES = ["Instagram", "Google", "Website", "Referral", "Walk-in", "WhatsApp"] as const;
+function hashString(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+function deriveMarketingSource(customerId: string): string {
+    return MARKETING_SOURCES[hashString(customerId) % MARKETING_SOURCES.length];
+}
+function deriveConvertedFrom(customerId: string, planKind: "membership" | "package" | null): "first-visit" | "intro-offer" | "trial-class" | "referral" {
+    if (!planKind) return "trial-class";
+    const options = ["first-visit", "intro-offer", "trial-class", "referral"] as const;
+    return options[hashString(customerId + "conv") % options.length];
+}
+function deriveFirstVisitISO(createdAt: string, lastVisitISO?: string): string | undefined {
+    // Prefer 3 days after creation as "first visit" — realistic for a
+    // studio (customer creates account → attends first class within days).
+    if (!createdAt) return lastVisitISO;
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return lastVisitISO;
+    d.setDate(d.getDate() + 3);
+    const iso = d.toISOString().slice(0, 10);
+    // Clamp: first_visit can't be after last_visit.
+    if (lastVisitISO && iso > lastVisitISO) return lastVisitISO;
+    return iso;
+}
+
 function customerFromSeed(c: SeedCustomer): Customer {
     return {
         id: c.id,
@@ -2065,10 +2164,43 @@ function customerFromSeed(c: SeedCustomer): Customer {
         emergencyContactPhone: c.emergency_contact_phone,
         emergencyContactRelation: c.emergency_contact_relation,
         referralCode: c.referral_code,
+        // Reports v33 — derived if seed doesn't declare explicitly.
+        firstVisitISO: c.first_visit_iso ?? deriveFirstVisitISO(c.created_at, c.last_visit_iso),
+        marketingSource: c.marketing_source ?? deriveMarketingSource(c.id),
+        convertedFrom: c.converted_from ?? deriveConvertedFrom(c.id, c.plan_kind),
     };
 }
 
+// Reports v33 — deterministic derivation for referral rows so the Referral
+// Report + Win-back columns render with realistic values without editing
+// the seed.
+const WINBACK_CAMPAIGNS = ["Spring Come-Back", "Summer Free Week", "New Year Restart", "Loyalty Reactivate"] as const;
+function derivedReferralCampaign(id: string): string {
+    return WINBACK_CAMPAIGNS[hashString(id) % WINBACK_CAMPAIGNS.length];
+}
+
 function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
+    const referredAt = r.referred_at;
+    // 60% of referrals reactivate — deterministic on id hash.
+    const reactivated = r.reactivated ?? (hashString(r.id + "react") % 10 < 6);
+    // Reactivation date = referred_at + 3-14 days.
+    let reactivationDateISO: string | undefined = r.reactivation_date;
+    if (!reactivationDateISO && reactivated && referredAt) {
+        const d = new Date(referredAt);
+        d.setDate(d.getDate() + 3 + (hashString(r.id) % 12));
+        reactivationDateISO = d.toISOString().slice(0, 10);
+    }
+    // New plan id = one of the seeded plans (Beginner / Advanced / 10-Class).
+    const planPool = ["mem_beginner_monthly", "mem_advanced_monthly", "pkg_10_class_month"];
+    const newPlanId = r.new_plan_id ?? (reactivated ? planPool[hashString(r.id + "plan") % planPool.length] : undefined);
+    // Revenue recovered based on new_plan_id pricing.
+    const planPrice: Record<string, number> = {
+        mem_beginner_monthly: 1200,
+        mem_advanced_monthly: 1500,
+        pkg_10_class_month:   1390,
+    };
+    const revenueRecoveredAed = r.revenue_recovered_aed ?? (reactivated && newPlanId ? planPrice[newPlanId] : undefined);
+
     return {
         id: r.id,
         referrerCustomerId: r.referrer_customer_id,
@@ -2078,6 +2210,12 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
         referredAtISO: r.referred_at,
         expiresAtISO:   r.expires_at,
         originBranchId: r.origin_branch_id,
+        // Reports v33 derivations
+        campaign: r.campaign ?? derivedReferralCampaign(r.id),
+        reactivated,
+        reactivationDateISO,
+        newPlanId,
+        revenueRecoveredAed,
     };
 }
 
@@ -2095,7 +2233,31 @@ function customerAgreementFromSeed(a: SeedCustomerAgreement): CustomerAgreement 
     };
 }
 
+// Reports v33 — derive Memberships & Packages report fields from the
+// existing seed. Parses total credits from `credits_label`, assigns
+// used-count via id hash (0-90% used), sets auto_renew per kind.
+function parseCredits(creditsLabel: string): number {
+    if (!creditsLabel) return 0;
+    if (/unlimited/i.test(creditsLabel)) return 0;
+    const m = /(\d+)/.exec(creditsLabel);
+    return m ? Number(m[1]) : 0;
+}
+
 function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
+    // Derive Reports v33 fields.
+    const totalCredits = p.total_credits ?? parseCredits(p.credits_label);
+    // Deterministic used-count between 0 and totalCredits × 0.9.
+    const usedRatio = (hashString(p.id) % 91) / 100; // 0-0.90
+    const derivedUsed = totalCredits > 0 ? Math.floor(totalCredits * usedRatio) : 0;
+    const creditsUsed = p.credits_used ?? derivedUsed;
+    const autoRenew = p.auto_renew ?? (p.kind === "membership" && p.status === "active");
+    const nextBilling = p.next_billing_amount_aed ?? (autoRenew && p.status === "active" ? (p.price_aed ?? 0) : 0);
+    const allowance = p.allowance ?? (
+        p.kind === "membership" && /unlimited/i.test(p.credits_label) ? "Unlimited"
+        : totalCredits > 0 ? `${totalCredits} credits`
+        : p.credits_label || "—"
+    );
+
     return {
         id: p.id,
         customerId: p.customer_id,
@@ -2122,6 +2284,76 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
         removedBy: p.removed_by,
         removedByRole: p.removed_by_role,
         removedAtISO: p.removed_at,
+        // Reports v33 derivations
+        totalCredits,
+        creditsUsed,
+        autoRenew,
+        nextBillingAmountAed: nextBilling,
+        allowance,
+    };
+}
+
+/** Recompute the denormalized "current plan" fields on a `Customer` row
+ *  (`planKind`, `planName`, `membershipId`, `packageIds`, `planExpiryISO`)
+ *  from the authoritative `customerPlans[]` array. Used by every store
+ *  action that changes plan status (cancel / reactivate / freeze) so
+ *  the flat fields stay in lock-step with the plan list — otherwise
+ *  Customer badges, Reports v33, and the customer-portal Plan page all
+ *  read stale data. Complimentary plans are exempt (free credits, not
+ *  the customer's active plan).
+ *
+ *  Preserves `creditsRemaining` — that's clamped by the caller
+ *  (`cancelCustomerPlan`) which has the credits math already.
+ *
+ *  Client Jul 2026: a customer holds either ONE active membership OR
+ *  one+ active packages, never both — this helper is the single point
+ *  the invariant is projected onto the flat fields. */
+function derivedFlatPlanFields(
+    plans: CustomerPlan[],
+    customerId: string,
+): Pick<Customer, "planKind" | "planName" | "membershipId" | "packageIds" | "planExpiryISO"> {
+    const heldMemberships = plans.filter(p =>
+        p.customerId === customerId
+        && p.kind === "membership"
+        && (p.status === "active" || p.status === "frozen"));
+    const heldPackages = plans.filter(p =>
+        p.customerId === customerId
+        && p.kind === "package"
+        && (p.status === "active" || p.status === "frozen"));
+    // Membership wins over package if both are present — matches
+    // `applyPurchase`'s cascade-cancel bias and reads correctly on the
+    // rare interim state before the cascade has run.
+    if (heldMemberships.length > 0) {
+        const m = heldMemberships[0];
+        return {
+            planKind: "membership",
+            planName: m.name,
+            membershipId: m.productId,
+            packageIds: undefined,
+            planExpiryISO: m.expiryISO,
+        };
+    }
+    if (heldPackages.length > 0) {
+        // Latest expiry drives `planExpiryISO`; every held package id
+        // is aggregated into `packageIds`.
+        const sorted = [...heldPackages].sort((a, b) =>
+            (b.expiryISO ?? "").localeCompare(a.expiryISO ?? ""));
+        return {
+            planKind: "package",
+            planName: sorted.length === 1
+                ? sorted[0].name
+                : `${sorted.length} credit packages`,
+            membershipId: undefined,
+            packageIds: sorted.map(p => p.productId).filter((id): id is string => typeof id === "string"),
+            planExpiryISO: sorted[0].expiryISO,
+        };
+    }
+    return {
+        planKind: null,
+        planName: undefined,
+        membershipId: undefined,
+        packageIds: undefined,
+        planExpiryISO: undefined,
     };
 }
 
@@ -2144,7 +2376,72 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         createdAtISO: t.created_at,
         refundedAtISO: t.refunded_at,
         refundMethod: t.refund_method,
+        // ── Reports v30 ledger fields ───────────────────────────────
+        transactionType:       t.transaction_type,
+        originalTransactionId: t.original_transaction_id,
+        settlementISO:         t.settlement_iso,
+        refundReason:          t.refund_reason,
+        taxTreatment:          t.tax_treatment,
+        staffId:               t.staff_id,
+        cardType:              t.card_type,
+        paymentType:           t.payment_type,
+        failureReason:         t.failure_reason,
+        retryAttempt:          t.retry_attempt,
+        recovered:             t.recovered,
+        recoveredISO:          t.recovered_iso,
+        payoutId:              t.payout_id,
+        processorFee:          t.processor_fee,
+        // Reports v33 — Discounts + Promo Redemptions. Apply a promo
+        // code to ~25% of sale transactions deterministically.
+        discountCode:          t.discount_code  ?? deriveDiscountCode(t.id, t.transaction_type),
+        discountValue:         t.discount_value ?? deriveDiscountValue(t.id, t.transaction_type, t.amount_aed),
+        // ── Cancellation-penalty flow (Jul 2026) ────────────────────
+        isRefundable:          t.is_refundable,
+        cancellationScenario:  t.cancellation_scenario,
     };
+}
+
+// Reports v33 — deterministic promo assignment. 25% of sale rows get a
+// promo, distributed across 4 codes matching `promo_codes.ts` seed.
+const PROMO_CODES = ["WELCOME20", "FRIEND10", "SUMMER15", "LOYAL5"] as const;
+const PROMO_PCT: Record<string, number> = { WELCOME20: 0.20, FRIEND10: 0.10, SUMMER15: 0.15, LOYAL5: 0.05 };
+function deriveDiscountCode(id: string, txnType?: string): string | undefined {
+    if (txnType && txnType !== "sale") return undefined;
+    if (hashString(id + "promo") % 4 !== 0) return undefined; // ~25%
+    return PROMO_CODES[hashString(id) % PROMO_CODES.length];
+}
+function deriveDiscountValue(id: string, txnType: string | undefined, amount: number): number | undefined {
+    const code = deriveDiscountCode(id, txnType);
+    if (!code) return undefined;
+    return Math.round(amount * (PROMO_PCT[code] ?? 0));
+}
+
+// Reports v33 — one StaffAttendanceLog row per scheduled class. Deterministic
+// derivation: non-cancelled → taught (with ~15% getting late-start minutes);
+// cancelled → no-show. actual_hours matches scheduled_hours until real
+// clock-in/out data lands post-demo.
+function deriveStaffAttendanceLog(schedules: ClassSchedule[]): StaffAttendanceLog[] {
+    return schedules.map(s => {
+        const [sh, sm] = s.startTime.split(":").map(Number);
+        const [eh, em] = s.endTime.split(":").map(Number);
+        const durationMin = Math.max(0, (eh || 0) * 60 + (em || 0) - ((sh || 0) * 60 + (sm || 0)));
+        const scheduled = durationMin / 60;
+        const isCancelled = s.status === "Cancelled";
+        const cancelledIdHash = hashString(s.id);
+        const lateStart = !isCancelled && cancelledIdHash % 7 === 0
+            ? 1 + (cancelledIdHash % 10)      // 1-10 min late on ~15% of classes
+            : 0;
+        return {
+            id: `sat_${s.id}`,
+            staff_id: s.instructorId,
+            class_schedule_id: s.id,
+            attendance_status: isCancelled ? "no-show" : "taught",
+            covered_by_staff_id: undefined,
+            late_start_minutes: lateStart,
+            scheduled_hours: scheduled,
+            actual_hours: isCancelled ? 0 : scheduled - (lateStart / 60),
+        };
+    });
 }
 
 function ratingFromSeed(r: SeedClassRating): ClassRating {
@@ -2424,6 +2721,7 @@ function notificationSettingFromSeed(n: NotificationSettingSeed): NotificationSe
         sendOffsets: n.send_offsets.map(o => ({ ...o })),
 
         sentDuringCampaigns: n.sent_during_campaigns,
+        recipientSource:     n.recipient_source,
     };
 }
 
@@ -2733,7 +3031,10 @@ const INITIAL_BRANDING_SETTINGS: BrandingSettings = {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-interface AppState {
+// Exported (v30 reports rewrite) so `src/lib/reports/selectors.ts` can type
+// its function signatures against the full store shape. Pure additive:
+// existing consumers using implicit inference are unaffected.
+export interface AppState {
     currentRole: UserRole;
     currentUser: User;
     sidebarCollapsed: boolean;
@@ -2779,6 +3080,22 @@ interface AppState {
     promoCodes: PromoCode[];
     /** Live marketing items — powers the Marketing module list/detail (PRD 08). */
     marketingItems: MarketingItem[];
+    // ── Reports v33 slices ─────────────────────────────────────────────
+    /** Leads captured by the funnel — feeds Lead Data + Lead Conversion +
+     *  Acquisition Efficiency reports. Read-only for the demo; add-lead
+     *  actions land when the leads module ships. */
+    leads: Lead[];
+    /** Marketing campaign engagement rollups — one row per (campaign ×
+     *  channel × send). Feeds Campaign Performance. */
+    marketingCampaignStats: MarketingCampaignStat[];
+    /** Monthly ad spend per (channel × branch). Feeds Acquisition
+     *  Efficiency's CPL / CAC / ROAS / CAC:LTV columns. */
+    marketingSpend: MarketingSpend[];
+    /** Staff attendance log — one row per (staff × scheduled class).
+     *  Feeds Staff Attendance report's Actual hours / Late start / Hours
+     *  variance columns. Derived from `classSchedules` at store-init time
+     *  since clock-in/out data doesn't have a source module yet. */
+    staffAttendanceLog: StaffAttendanceLog[];
     /** Live pay rates — powers /admin/staff/pay-rate list/detail/payroll (PRD 10 §6). */
     payRates: PayRate[];
     /** Live instructors — the pay rate detail page's "Assigned instructor" tab
@@ -2968,6 +3285,34 @@ interface AppState {
     removeClassBooking: (id: string) => void;
     removeClassBookings: (ids: string[]) => void;
     cancelClassBookings: (ids: string[], reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
+    /** Customer-portal cancel that ALSO charges the cancellation-penalty
+     *  fee when applicable (Jul 2026 client feedback, Figma 7790:27893).
+     *  Delegates the booking mutation to `cancelClassBooking` with
+     *  `source: "customer_portal"` so the existing admin cancel path
+     *  stays untouched, then — if the customer's plan is an unlimited
+     *  membership AND the studio's cancellation policy has the penalty
+     *  gate ON AND the customer's LIFETIME late-cancel + no-show count
+     *  has ALREADY crossed the threshold — emits a non-refundable
+     *  `customer_transactions` row of `kind: "cancellation_penalty"`.
+     *  Returns `{ bookingCancelled: true, penaltyTransactionId?: string,
+     *  penaltyAedCharged?: number }` so the caller UI can show the
+     *  "You were charged AED X" confirmation. */
+    cancelClassBookingByCustomer: (
+        bookingId: string,
+        scenario: "late_cancel" | "no_show",
+        reason?: string,
+    ) => { bookingCancelled: boolean; penaltyTransactionId?: string; penaltyAedCharged?: number };
+    /** Pure selector — how much penalty would the customer owe if they
+     *  cancelled this booking now with the given scenario? Callers
+     *  (customer UI) use it to render the confirmation modal BEFORE
+     *  calling `cancelClassBookingByCustomer`. `amountAed` is 0 (and
+     *  `applies` is `false`) when the gate is off, the plan isn't
+     *  unlimited, the fee toggle for this scenario is off, or the
+     *  customer hasn't yet crossed the threshold. */
+    computeCancellationPenalty: (
+        customerId: string,
+        scenario: "late_cancel" | "no_show",
+    ) => { applies: boolean; amountAed: number; scenario: "late_cancel" | "no_show" };
     updateAttendance: (bookingId: string, status: ClassBooking["attendanceStatus"]) => void;
     /** Member-portal booking. Adds a booked/waitlisted ClassBooking, bumps the
      *  schedule's booked count + spends one class credit (booked only, package
@@ -3464,6 +3809,11 @@ export const useAppStore = create<AppState>()(persist(
     issuedGiftCards: [...SEED_ISSUED_GIFT_CARDS],
     promoCodes: [...SEED_PROMO_CODES],
     marketingItems: [...SEED_MARKETING_ITEMS],
+    // Reports v33 slices
+    leads: [...SEED_LEADS],
+    marketingCampaignStats: [...SEED_MARKETING_CAMPAIGN_STATS],
+    marketingSpend: [...SEED_MARKETING_SPEND],
+    staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
     payRates: [...INITIAL_PAY_RATES],
     instructors: [...INITIAL_INSTRUCTORS],
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
@@ -4569,6 +4919,121 @@ export const useAppStore = create<AppState>()(persist(
             }
         }
     },
+    // ── Customer-portal cancel-with-penalty flow (Jul 2026) ────────────────
+    // Kept as a SEPARATE action from `cancelClassBooking` so the existing
+    // admin cancel path is unchanged. This delegates the booking-side
+    // mutation back to `cancelClassBooking` (source: "customer_portal")
+    // then, if the policy dictates, appends a non-refundable penalty
+    // transaction. Any surface (the friend's customer UI, a future admin
+    // "cancel on behalf of customer" flow, etc.) can call this without
+    // duplicating the penalty math.
+    computeCancellationPenalty: (customerId, scenario) => {
+        const state = get();
+        const policy = state.cancellationPolicy;
+        // Gate 1: master penalty toggle must be ON.
+        if (!policy.membership_penalty_after_cancellations_enabled) {
+            return { applies: false, amountAed: 0, scenario };
+        }
+        // Gate 2: this scenario's fee toggle must be ON.
+        const feeOn = scenario === "late_cancel"
+            ? policy.membership_late_cancel_fee_enabled
+            : policy.membership_no_show_fee_enabled;
+        if (!feeOn) {
+            return { applies: false, amountAed: 0, scenario };
+        }
+        // Gate 3: customer's active plan must be an UNLIMITED membership.
+        // Same detection pattern used elsewhere (memberships.credits ===
+        // "unlimited" is canonical — see `schedule/[classId]/page.tsx:607`).
+        const customer = state.customers.find(c => c.id === customerId);
+        if (!customer) return { applies: false, amountAed: 0, scenario };
+        const isUnlimited = customer.planKind === "membership"
+            && state.memberships.find(m => m.name === customer.planName)?.credits === "unlimited";
+        if (!isUnlimited) return { applies: false, amountAed: 0, scenario };
+        // Gate 4: the customer's LIFETIME late-cancel + no-show count
+        // (including the pending cancellation the caller is about to
+        // commit) must be STRICTLY GREATER than the threshold. Design
+        // reads "Charge penalty AFTER X cancellations" — X freebies,
+        // penalty starts on cancel #(X+1). This one counts too.
+        const priorCancels = state.classBookings.filter(b =>
+            b.customerId === customerId
+            && b.status === "cancelled"
+            // Same-day no-shows also live under `attendanceStatus: "no_show"`
+            // on rows that were never explicitly cancelled — include both
+            // to match "late cancellations OR no-shows" in the policy copy.
+        ).length;
+        const priorNoShows = state.classBookings.filter(b =>
+            b.customerId === customerId
+            && b.status !== "cancelled"
+            && b.attendanceStatus === "no_show"
+        ).length;
+        const lifetimeCount = priorCancels + priorNoShows + 1;
+        if (lifetimeCount <= policy.membership_penalty_after_cancellations_count) {
+            return { applies: false, amountAed: 0, scenario };
+        }
+        const amountAed = scenario === "late_cancel"
+            ? policy.membership_late_cancel_fee_aed
+            : policy.membership_no_show_fee_aed;
+        return { applies: true, amountAed, scenario };
+    },
+    cancelClassBookingByCustomer: (bookingId, scenario, reason) => {
+        const stateBefore = get();
+        const booking = stateBefore.classBookings.find(b => b.id === bookingId);
+        if (!booking) return { bookingCancelled: false };
+        const customer = stateBefore.customers.find(c => c.id === booking.customerId);
+        // Compute penalty BEFORE the cancel — the helper counts this
+        // booking's cancellation as part of the lifetime tally already,
+        // so we can't call it after `cancelClassBooking` mutates state.
+        const penalty = get().computeCancellationPenalty(booking.customerId, scenario);
+        // Delegate booking mutation to the existing admin action so BOTH
+        // paths keep identical booking-side behaviour (status, roster
+        // decrement, notifications). Source flag distinguishes them.
+        const scenarioLabel = scenario === "late_cancel" ? "Late cancellation" : "No-show";
+        const cancelReason = reason ?? scenarioLabel;
+        // Never refund credit on an unlimited membership — there's no
+        // credit to return. Matches the current admin behaviour when
+        // cancelling an unlimited-plan booking.
+        get().cancelClassBooking(bookingId, cancelReason, false, "customer_portal");
+
+        if (!penalty.applies || !customer) {
+            return { bookingCancelled: true };
+        }
+        // Emit the non-refundable penalty row. `productId` points to the
+        // cancelled booking so Payment history can deep-link back to it.
+        const now = new Date().toISOString();
+        const txnId = `txn_${customer.id}_penalty_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const displayName = scenario === "late_cancel"
+            ? "Late cancellation penalty"
+            : "No-show penalty";
+        const penaltyTxn: CustomerTransaction = {
+            id: txnId,
+            customerId: customer.id,
+            branchId: booking.branchId,
+            kind: "cancellation_penalty",
+            productId: bookingId,
+            name: displayName,
+            amountAed: penalty.amountAed,
+            status: "complete",
+            // Studio-side operational fee — most demos charge this to
+            // the card on file. UI can override via a future param.
+            paymentMethod: "card",
+            paymentSource: "customer_portal",
+            createdAtISO: now,
+            // Ledger classification: penalties are their own sub-kind of
+            // sale for accounting purposes (money-in). Not a refund/void.
+            transactionType: "sale",
+            // The core rule: cancellation penalties CAN'T be refunded.
+            isRefundable: false,
+            cancellationScenario: scenario,
+        };
+        set(state => ({
+            customerTransactions: [...state.customerTransactions, penaltyTxn],
+        }));
+        return {
+            bookingCancelled: true,
+            penaltyTransactionId: txnId,
+            penaltyAedCharged: penalty.amountAed,
+        };
+    },
     removeClassBooking: (id) =>
         set((state) => {
             const target = state.classBookings.find(b => b.id === id);
@@ -4704,6 +5169,7 @@ export const useAppStore = create<AppState>()(persist(
     addCustomer: (input) => {
         const id = `cu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         const initials = input.initials ?? `${input.firstName.charAt(0)}${input.lastName.charAt(0)}`.toUpperCase();
+        const createdAt = new Date().toISOString();
         const customer: Customer = {
             ...input,
             id,
@@ -4716,7 +5182,14 @@ export const useAppStore = create<AppState>()(persist(
             // Newly-created customers are Active by default — a brand-new
             // account is never seeded inactive/archived.
             status: input.status ?? "active",
-            createdAt: new Date().toISOString(),
+            createdAt,
+            // Reports v33 — mirror customerFromSeed's derivations so
+            // Customer Data + Acquisition Efficiency reports stay
+            // populated even for customers created via the admin form
+            // during the demo.
+            firstVisitISO:   input.firstVisitISO   ?? deriveFirstVisitISO(createdAt, input.lastVisitISO),
+            marketingSource: input.marketingSource ?? deriveMarketingSource(id),
+            convertedFrom:   input.convertedFrom   ?? deriveConvertedFrom(id, input.planKind),
         };
         set((state) => ({ customers: [customer, ...state.customers] }));
         return id;
@@ -4835,20 +5308,37 @@ export const useAppStore = create<AppState>()(persist(
             // allotment ceiling so a cancelled plan visibly removes credits
             // from the side-panel widget (and anywhere else reading the
             // balance). Unlimited plans keep credits uncapped.
+            //
+            // ALSO recompute the flat plan fields (`planKind` / `planName`
+            // / `membershipId` / `packageIds` / `planExpiryISO`) from the
+            // remaining held plans — cancelling the only active
+            // membership must flip `planKind` to null (or to "package"
+            // if the customer still holds packages), otherwise the
+            // Customer badge + Reports v33 keep reading the cancelled
+            // plan's kind (bug the audit surfaced Jul 2026).
             const customers = !target ? state.customers : state.customers.map(c => {
                 if (c.id !== target.customerId) return c;
                 const stillCounted = customerPlans.filter(p =>
                     p.customerId === c.id
                     && (p.status === "active" || p.status === "frozen"));
                 let cap = 0;
+                let hasUnlimited = false;
                 for (const p of stillCounted) {
                     if (p.creditsLabel.toLowerCase().includes("unlimited")) {
-                        return c; // any remaining unlimited plan → no clamp
+                        hasUnlimited = true;
+                        continue;
                     }
                     const m = p.creditsLabel.match(/\d+/);
                     cap += p.freeCredits ?? (m ? Number(m[0]) : 0);
                 }
-                return { ...c, creditsRemaining: Math.min(c.creditsRemaining ?? 0, cap) };
+                const flat = derivedFlatPlanFields(customerPlans, c.id);
+                return {
+                    ...c,
+                    ...flat,
+                    creditsRemaining: hasUnlimited
+                        ? c.creditsRemaining
+                        : Math.min(c.creditsRemaining ?? 0, cap),
+                };
             });
             return { customerPlans, customers };
         });
@@ -4859,13 +5349,40 @@ export const useAppStore = create<AppState>()(persist(
 
     reactivateCustomerPlan: (planId) => {
         const target = get().customerPlans.find(p => p.id === planId);
-        set(state => ({
-            customerPlans: state.customerPlans.map(p =>
-                p.id === planId
-                    ? { ...p, status: "active" as const, cancelMode: undefined, cancelReason: undefined, cancelledAtISO: undefined }
-                    : p,
-            ),
-        }));
+        set(state => {
+            const t = state.customerPlans.find(p => p.id === planId);
+            if (!t) return {};
+            // Reactivating a plan mustn't recreate the mem+pkg violation
+            // — if the customer currently holds a plan of the OTHER
+            // kind, cascade-cancel it first (mirrors `applyPurchase`'s
+            // rule). Complimentary plans stay untouched.
+            const nowISO = new Date().toISOString();
+            const reactivatingKind = t.kind;
+            const displacedKind = reactivatingKind === "membership" ? "package" : "membership";
+            const customerPlans = state.customerPlans.map(p => {
+                if (p.id === planId) {
+                    return { ...p, status: "active" as const, cancelMode: undefined, cancelReason: undefined, cancelledAtISO: undefined };
+                }
+                if (p.customerId !== t.customerId) return p;
+                if (p.kind !== displacedKind) return p;
+                if (p.status !== "active" && p.status !== "frozen") return p;
+                return {
+                    ...p,
+                    status: "cancelled" as const,
+                    cancelReason: reactivatingKind === "membership"
+                        ? "Switched to membership"
+                        : "Switched to credit package",
+                    cancelledAtISO: nowISO,
+                };
+            });
+            // Recompute flat fields from the new plan list.
+            const customers = state.customers.map(c =>
+                c.id === t.customerId
+                    ? { ...c, ...derivedFlatPlanFields(customerPlans, c.id) }
+                    : c,
+            );
+            return { customerPlans, customers };
+        });
         if (target) {
             const customer = get().customers.find(c => c.id === target.customerId);
             const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
@@ -4926,9 +5443,13 @@ export const useAppStore = create<AppState>()(persist(
 
     refundTransaction: (id, method) => {
         const target = get().customerTransactions.find(t => t.id === id);
+        // Belt-and-braces guard — even if a future UI surface skips
+        // its own `isRefundable` check, the store rejects the refund
+        // on non-refundable rows (e.g. cancellation-penalty fees).
+        if (target && target.isRefundable === false) return;
         set(state => ({
             customerTransactions: state.customerTransactions.map(t =>
-                t.id === id && t.status === "complete"
+                t.id === id && t.status === "complete" && t.isRefundable !== false
                     ? {
                         ...t,
                         status: "refunded" as const,
@@ -4978,9 +5499,17 @@ export const useAppStore = create<AppState>()(persist(
     deleteMembership: (id) => {
         // Block deletion if any customer currently holds this membership.
         // Returns false so the UI can show "X customers still hold this — archive instead".
-        const holders = get().customers.some(c => c.planKind === "membership" && c.membershipId === id);
-        if (holders) return false;
-        set(state => ({ memberships: state.memberships.filter(m => m.id !== id) }));
+        // Checks BOTH the denormalized flat field on Customer AND the
+        // authoritative `customerPlans[]` array (in case the flat field
+        // is stale — belt-and-braces for the invariant audit Jul 2026).
+        const state = get();
+        const heldByCustomer = state.customers.some(c => c.planKind === "membership" && c.membershipId === id);
+        const heldInPlans    = state.customerPlans.some(p =>
+            p.productId === id
+            && p.kind === "membership"
+            && (p.status === "active" || p.status === "frozen"));
+        if (heldByCustomer || heldInPlans) return false;
+        set(s => ({ memberships: s.memberships.filter(m => m.id !== id) }));
         return true;
     },
     deleteMemberships: (ids) => {
@@ -4988,8 +5517,12 @@ export const useAppStore = create<AppState>()(persist(
         const deleted: string[] = [];
         const blocked: string[] = [];
         for (const id of ids) {
-            const holders = state.customers.some(c => c.planKind === "membership" && c.membershipId === id);
-            if (holders) blocked.push(id);
+            const heldByCustomer = state.customers.some(c => c.planKind === "membership" && c.membershipId === id);
+            const heldInPlans    = state.customerPlans.some(p =>
+                p.productId === id
+                && p.kind === "membership"
+                && (p.status === "active" || p.status === "frozen"));
+            if (heldByCustomer || heldInPlans) blocked.push(id);
             else deleted.push(id);
         }
         if (deleted.length > 0) {
@@ -5025,9 +5558,17 @@ export const useAppStore = create<AppState>()(persist(
         targets.forEach(t => get().recordAudit(`${verb} class package`, "package", t.id, t.name, { status }));
     },
     deletePackage: (id) => {
-        const holders = get().customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
-        if (holders) return false;
-        set(state => ({ packages: state.packages.filter(p => p.id !== id) }));
+        // Same defensive check as deleteMembership — Customer.packageIds
+        // (denormalized) OR customerPlans[] (authoritative) either
+        // holding this package id blocks the delete.
+        const state = get();
+        const heldByCustomer = state.customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
+        const heldInPlans    = state.customerPlans.some(p =>
+            p.productId === id
+            && p.kind === "package"
+            && (p.status === "active" || p.status === "frozen"));
+        if (heldByCustomer || heldInPlans) return false;
+        set(s => ({ packages: s.packages.filter(p => p.id !== id) }));
         return true;
     },
     deletePackages: (ids) => {
@@ -5035,8 +5576,12 @@ export const useAppStore = create<AppState>()(persist(
         const deleted: string[] = [];
         const blocked: string[] = [];
         for (const id of ids) {
-            const holders = state.customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
-            if (holders) blocked.push(id);
+            const heldByCustomer = state.customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
+            const heldInPlans    = state.customerPlans.some(p =>
+                p.productId === id
+                && p.kind === "package"
+                && (p.status === "active" || p.status === "frozen"));
+            if (heldByCustomer || heldInPlans) blocked.push(id);
             else deleted.push(id);
         }
         if (deleted.length > 0) {
@@ -5929,13 +6474,33 @@ export const useAppStore = create<AppState>()(persist(
         return id;
     },
     updateRole: (id, patch) =>
-        set(state => ({
+        set(state => {
             // Locked rows (Owner) ignore patches except status flips coming
             // from setRolesStatus (which uses a separate code path below).
-            roles: state.roles.map(r =>
-                r.id === id && !r.locked ? { ...r, ...patch } : r,
-            ),
-        })),
+            const before = state.roles.find(r => r.id === id);
+            if (!before || before.locked) return {};
+            const nextRole = { ...before, ...patch };
+            const nextRoles = state.roles.map(r => r.id === id ? nextRole : r);
+            // Branch-scope cascade: when a role's `branchId` changes to a
+            // non-null value, every staffer currently on this role must
+            // move with it — otherwise the role would silently hold
+            // cross-branch staff (the exact bug the client flagged).
+            // Owner-type roles (`null` branchId) skip the cascade because
+            // they legitimately span all locations. No-op when the branch
+            // wasn't touched.
+            const branchChanged =
+                patch.branchId !== undefined && patch.branchId !== before.branchId;
+            const shouldCascade =
+                branchChanged && nextRole.branchId !== null;
+            const nextStaff = shouldCascade
+                ? state.staff.map(s =>
+                    s.roleId === id && s.branchId !== nextRole.branchId
+                        ? { ...s, branchId: nextRole.branchId }
+                        : s,
+                )
+                : state.staff;
+            return { roles: nextRoles, staff: nextStaff };
+        }),
     setRolesStatus: (ids, status) =>
         set(state => ({
             roles: state.roles.map(r =>
@@ -6156,9 +6721,22 @@ export const useAppStore = create<AppState>()(persist(
     // reflect Staff & Permissions changes immediately.
     addStaff: (input) => {
         const id = input.id ?? `staff_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        // Branch-scope invariant: a staff's `branchId` MUST equal their
+        // role's `branchId` (unless the role is an Owner-type null-branch
+        // "all locations" role, in which case the caller's branch stands).
+        // Callers today all derive the staff's branch from the picked role
+        // (StaffFormPage.tsx:523, ChangeRoleModal.tsx:106) so this snap
+        // is a defensive no-op on the happy path — its only job is to
+        // stop future callers from ever inserting a mismatched pair.
+        const role = get().roles.find(r => r.id === input.roleId);
+        const coercedBranchId =
+            role && role.branchId !== null
+                ? role.branchId
+                : input.branchId;
         const next: Staff = {
             ...input,
             id,
+            branchId: coercedBranchId,
             // New staff start Pending unless the caller overrides.
             status: input.status,
             inviteSentAt: input.inviteSentAt ?? new Date().toISOString(),
@@ -6195,7 +6773,21 @@ export const useAppStore = create<AppState>()(persist(
         // Together with the forward cascade on `updateAccountProfile`,
         // edits flow bi-directionally and the two views never drift.
         set(state => {
-            const nextStaff = state.staff.map(s => s.id === id ? { ...s, ...patch } : s);
+            // Branch-scope invariant, applied on every patch. When the
+            // patch touches `roleId` and the new role is branch-scoped,
+            // snap `branchId` to the role's branch — same guarantee as
+            // `addStaff` above. Never leaves a mismatched pair in the
+            // store even if a future caller forgets to include the
+            // branch patch alongside the role patch.
+            const nextStaff = state.staff.map(s => {
+                if (s.id !== id) return s;
+                const merged = { ...s, ...patch };
+                const roleAfter = state.roles.find(r => r.id === merged.roleId);
+                if (roleAfter && roleAfter.branchId !== null) {
+                    merged.branchId = roleAfter.branchId;
+                }
+                return merged;
+            });
             const nextInstructors = syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]);
 
             const currentStaffId = (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
@@ -6559,14 +7151,59 @@ export const useAppStore = create<AppState>()(persist(
                 });
             });
 
+            // ─── Plan-exclusivity cascade (Jul 2026 client feedback) ──────
+            // The customer either holds ONE active membership OR one or
+            // more active credit packages — never both. Buying a
+            // membership must therefore cancel any previously-held
+            // packages, and buying a package must cancel any
+            // previously-held membership. `complimentary` plans are
+            // exempt (free credits, not a membership/package). Only
+            // active + frozen rows count as "held"; historical
+            // (cancelled/expired/removed) rows are untouched. Ignored
+            // when the current purchase is gift-card-only (planKind ===
+            // null) — that path never displaces the current plan.
+            const cascadeReason = planKind === "membership"
+                ? "Switched to membership"
+                : "Switched to credit package";
+            const shouldCascade = planKind !== null && (
+                planKind === "membership"
+                    ? state.customerPlans.some(p =>
+                        p.customerId === customerId
+                        && p.kind === "package"
+                        && (p.status === "active" || p.status === "frozen"))
+                    : state.customerPlans.some(p =>
+                        p.customerId === customerId
+                        && p.kind === "membership"
+                        && (p.status === "active" || p.status === "frozen"))
+            );
+            const cascadedPlans: CustomerPlan[] = shouldCascade
+                ? state.customerPlans.map(p => {
+                    if (p.customerId !== customerId) return p;
+                    if (p.kind === "complimentary") return p;
+                    if (p.status !== "active" && p.status !== "frozen") return p;
+                    const displaced = planKind === "membership"
+                        ? p.kind === "package"
+                        : p.kind === "membership";
+                    if (!displaced) return p;
+                    return {
+                        ...p,
+                        status: "cancelled" as const,
+                        cancelReason: cascadeReason,
+                        cancelledAtISO: nowISO,
+                    };
+                })
+                : state.customerPlans;
+
             return {
                 customers,
                 ...(newIssued.length > 0
                     ? { issuedGiftCards: [...state.issuedGiftCards, ...newIssued] }
                     : {}),
                 ...(newPlans.length > 0
-                    ? { customerPlans: [...newPlans, ...state.customerPlans] }
-                    : {}),
+                    ? { customerPlans: [...newPlans, ...cascadedPlans] }
+                    : shouldCascade
+                        ? { customerPlans: cascadedPlans }
+                        : {}),
                 ...(newTransactions.length > 0
                     ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
                     : {}),
@@ -6733,7 +7370,105 @@ export const useAppStore = create<AppState>()(persist(
         //     tax-rate types). Dispatch-time enforcement (POS/product/
         //     payroll picking the ACTIVE rate for a transaction date)
         //     lands in Phase 4 — for now the fields are stored/displayed.
-        version: 30,
+        //
+        // v30 (new-prd/reports-implementation-plan.md — Reports Phase 1) —
+        // Extended `customer_transactions` with 14 optional ledger fields
+        // to support the reports module rewrite. Every new field is
+        // additive; every existing row continues to load without change.
+        // The seed also gained a Jan-Jun 2026 ledger block (44 new rows)
+        // with 22 sales, 8 refunds (all in a LATER month than their
+        // sale), 3 same-day void pairs (6 rows), 3 write-off pairs
+        // (6 rows), and 2 failed→recovered rows — providing the demo
+        // data every Financial report reads through `resolveLedger()`.
+        //
+        // Legacy `status: "refunded"` rows still load and render on the
+        // customer-detail Payments tab unchanged. The new ledger fields
+        // (transaction_type, original_transaction_id, settlement_iso,
+        // refund_reason, tax_treatment, staff_id, card_type, payment_type,
+        // failure_reason, retry_attempt, recovered, recovered_iso,
+        // payout_id, processor_fee) feed the report registry + selectors.
+        //
+        // Bump reason: material change to the demo dataset. Every user
+        // gets the Jan-Jun 2026 ledger on next reload — the earlier
+        // localStorage payload is discarded.
+        //
+        // v37: At-risk fixture bug fix + Performance-tab metrics.
+        //   • customers.ts now applies the at-risk `last_visit_iso`
+        //     patch to BOTH hand-authored + synthetic customers (was
+        //     only hand-authored so the fixture — keyed by synthetic
+        //     ids — never landed). Modal now populates.
+        //   • Performance tab gets its own 4-metric strip per Figma
+        //     7799:109180 (Today's revenue / Active members / Classes
+        //     today / Bookings today) — the Today tab keeps the 5.
+        //
+        // v36: Dashboard Needs-attention demo fixtures (Jul 2026) —
+        //   • DEMO_NOW_RENEWAL_PLANS: 8 memberships expiring in next 30
+        //     days (active + expired) on synthetic customers.
+        //   • DEMO_NOW_FAILED_TRANSACTIONS: 6 failed/pending txns on
+        //     synthetic customers.
+        //   • DEMO_NOW_AT_RISK_LAST_VISITS: 12 last_visit_iso overrides
+        //     on synthetic customers so the At-risk modal always
+        //     renders 12 rows.
+        //   • 12 additional Upcoming schedules with < 50% capacity so
+        //     the Under-filled modal is guaranteed populated.
+        //   Bumped so testers pull fresh seed data.
+        //
+        // v35: Gift card purchase notification event (Jul 2026 client
+        // request). New seed row `ns_gift_card_purchase` under the
+        // Payment category with the new
+        // `NotificationSetting.recipientSource` field set to
+        // `"gift_card_recipient"` so the future dispatch layer targets
+        // IssuedGiftCard.recipient_email instead of the buyer.
+        // Template introduces `{gift_card_code}`, `{gift_card_amount}`,
+        // `{sender_name}`, `{recipient_name}`, `{gift_message}` tokens.
+        //
+        // v34: Plan-exclusivity invariant (Jul 2026 client audit).
+        //   • Seed fix — DEMO_NOW_PLANS no longer piles active/frozen
+        //     rows on top of the same 10 hand-authored customers.
+        //     Only cancelled/expired history rows survive there.
+        //   • `applyPurchase` cascade-cancels any pre-existing plan of
+        //     the OTHER kind (mem → cancel active pkgs, and vice versa)
+        //     so the customerPlans[] array can never hold both.
+        //   • `cancelCustomerPlan` + `reactivateCustomerPlan` re-derive
+        //     the flat `Customer.planKind/planName/membershipId/
+        //     packageIds/planExpiryISO` fields from the plan list so
+        //     Customer badges, Reports v33, and the customer-portal
+        //     Plan page can't drift from the authoritative array.
+        //   • `deleteMembership/deletePackage` gates now check
+        //     customerPlans[] too, not just the flat fields.
+        //   • Bumped so testers rehydrate against the corrected seed.
+        //
+        // v33: Cancellation-penalty flow (Jul 2026 client feedback,
+        // Figma 7631:454486 / 7790:27893).
+        //   • `CancellationPolicy` gained
+        //     `membership_penalty_after_cancellations_enabled` +
+        //     `membership_penalty_after_cancellations_count` — the
+        //     master gate + threshold for the existing membership
+        //     late-cancel + no-show fee toggles.
+        //   • `CustomerTransaction` gained kind
+        //     `"cancellation_penalty"` + `isRefundable` +
+        //     `cancellationScenario` — non-refundable fee row emitted
+        //     when a customer's cancel-with-penalty flow triggers.
+        //   • New store action `cancelClassBookingByCustomer` +
+        //     selector `computeCancellationPenalty` — the customer-
+        //     portal cancel path. Admin cancel path unchanged.
+        //   • Seed adds Mia's 4 cancels + linked penalty transaction
+        //     so the demo boots with a live example.
+        //
+        // v32: Role-branch alignment fix — added 3 branch-scoped
+        // instructor roles (East/West/Spa), corrected 4 East-branch
+        // instructors that were mistakenly assigned to South's
+        // instructor role, and seeded 2 instructors each for West
+        // and Spa branches so every branch ships with staff. No AppState
+        // shape change, but bumping so testers with a persisted v31
+        // payload rehydrate against the corrected seed.
+        //
+        // v31: Reports v33 — 4 new AppState slices (leads,
+        // marketingCampaignStats, marketingSpend, staffAttendanceLog) +
+        // new fields on Customer, CustomerPlan, CustomerTransaction,
+        // CustomerReferral. Backfills via deterministic derivation on
+        // rehydrate.
+        version: 37,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

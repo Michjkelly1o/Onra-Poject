@@ -352,4 +352,59 @@ export const class_bookings: ClassBooking[] = [
         booked_at: "2026-05-14T18:00:00Z",
         plan_kind_used: "package", plan_id_used: "pkg_10_class",
     },
+
+    // ─── Mia's cancel-with-penalty demo arc (Jul 2026 client feedback) ──
+    //   4 cancelled bookings against completed past classes so the demo
+    //   shows the "Charge penalty after 3 cancellations" rule in action:
+    //     • Cancels #1, #2, #3 → within the freebie window, no penalty
+    //     • Cancel #4          → crosses the threshold → triggers the
+    //                            AED 50 late-cancel penalty transaction
+    //   The 4th cancel is what backs `txn_mia_penalty_1` in
+    //   `customer_transactions.ts` — that transaction is
+    //   `is_refundable: false`, so its Refund action stays hidden on
+    //   the Payment history table. Cancelled rows don't count toward
+    //   the schedule's `booked` field, so no class_schedule seed edit
+    //   is needed.
+    {
+        id: "bk_mia_cancel_1", class_schedule_id: "class_sched_2026_05_08_0900",
+        customer_id: "cust_mia_anderson", branch_id: "branch_forma_south",
+        status: "cancelled", attendance_status: "late_cancel",
+        booked_at: "2026-04-30T09:00:00Z",
+        cancelled_at: "2026-05-08T08:15:00Z",
+        cancelled_source: "customer_portal",
+        cancellation_reason: "Late cancellation by customer",
+        plan_kind_used: "membership", plan_id_used: "mem_unlimited_monthly",
+    },
+    {
+        id: "bk_mia_cancel_2", class_schedule_id: "class_sched_2026_05_09_1030",
+        customer_id: "cust_mia_anderson", branch_id: "branch_forma_south",
+        status: "cancelled", attendance_status: "late_cancel",
+        booked_at: "2026-05-01T14:00:00Z",
+        cancelled_at: "2026-05-09T10:00:00Z",
+        cancelled_source: "customer_portal",
+        cancellation_reason: "Late cancellation by customer",
+        plan_kind_used: "membership", plan_id_used: "mem_unlimited_monthly",
+    },
+    {
+        id: "bk_mia_cancel_3", class_schedule_id: "class_sched_2026_05_11_0700",
+        customer_id: "cust_mia_anderson", branch_id: "branch_forma_south",
+        status: "cancelled", attendance_status: "late_cancel",
+        booked_at: "2026-05-04T18:00:00Z",
+        cancelled_at: "2026-05-11T06:30:00Z",
+        cancelled_source: "customer_portal",
+        cancellation_reason: "Late cancellation by customer",
+        plan_kind_used: "membership", plan_id_used: "mem_unlimited_monthly",
+    },
+    {
+        // #4 — crosses the threshold, penalty charged. Referenced by
+        // `txn_mia_penalty_1.product_id` for the deep-link back.
+        id: "bk_mia_cancel_4_penalty", class_schedule_id: "class_sched_2026_05_15_1000",
+        customer_id: "cust_mia_anderson", branch_id: "branch_forma_south",
+        status: "cancelled", attendance_status: "late_cancel",
+        booked_at: "2026-05-13T09:30:00Z",
+        cancelled_at: "2026-05-15T09:20:00Z",
+        cancelled_source: "customer_portal",
+        cancellation_reason: "Late cancellation — cancellation-penalty threshold crossed",
+        plan_kind_used: "membership", plan_id_used: "mem_unlimited_monthly",
+    },
 ];

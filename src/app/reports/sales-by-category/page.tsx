@@ -1,254 +1,174 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Sales by category report (/reports/sales-by-category)
+// Onra Studio — Sales by Category report (/admin/reports/sales-by-category)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma 4232:119348 (table) + 4232:123398 (Select column).
+// Phase 4A. Aggregates the resolved ledger into ONE ROW per (revenue
+// category × branch × period bucket). Each row carries the 11 metrics
+// from the Excel spec: Transactions count, Gross sales, Discount, Refund,
+// Write-off, Net before tax, Tax collected, Net after tax, Refund rate,
+// % of total net.
 //
-// **Phase 2 wired.** Rows aggregate `customerTransactions` per
-// product (`branchId × productId`) so a single line lists a product's
-// total gross, refunds, tax collected, etc. — joined with `memberships`
-// / `packages` for category + name. The Tax module's active rule
-// supplies the tax breakdown for transactions that pre-date the
-// post-tax POS persistence.
+// Period bucketing is done AT THE PAGE (not the shell) so each mapped
+// row already carries a `periodKey` display string. The registry entry's
+// `periodField: "periodKey"` drives pivot bucketing.
 
-import { useMemo, useState } from "react";
-import { MarkerPin01 } from "@untitledui/icons";
-import { ReportShell, type ReportColumn } from "@/components/reports/ReportShell";
-import { SelectColumnDropdown } from "@/components/reports/SelectColumnDropdown";
-import { MultiSelectFilterDropdown } from "@/components/reports/MultiSelectFilterDropdown";
-import { ExportDropdown } from "@/components/reports/ExportDropdown";
-import { useDefaultBranchFilter } from "@/components/reports/use-default-branch-filter";
-import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
-import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
-import { findActiveTaxRuleFor } from "@/lib/tax-calc";
+import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
-import { PlanBadge, type PlanKind } from "@/components/reports/badges";
+import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
+import { getReportById, resolveSelector } from "@/config/reports-registry";
+import type { LedgerRow } from "@/lib/reports/selectors";
 
-type ProductCategory = PlanKind;
-
-interface SalesByCategoryRow {
-    aggKey: string;
-    branchId: string;
-    branchName: string;
-    productName: string;
-    category: ProductCategory;
-    grossSales: number;
-    discountValue: number;
-    taxCollected: number;
-    netSales: number;
-    refundAmount: number;
-    netPaymentAmountDue: number;
+interface CategoryRow {
+    [k: string]: unknown;
+    periodKey:       string; // "YYYY-MM" bucket (default month grouping)
+    period:          string; // display label
+    revenueCategory: string;
+    transactions:    number;
+    grossSales:      number;
+    discountAmount:  number;
+    refundAmount:    number;
+    writeOffAmount:  number;
+    netBeforeTax:    number;
+    taxCollected:    number;
+    netAfterTax:     number;
+    refundRatePct:   number;
+    pctOfTotalNet:   number;
+    branchId:        string;
+    location:        string;
 }
 
-function aed(n: number): string {
-    return `AED ${Math.round(n).toLocaleString("en-US")}`;
-}
-function aedSigned(n: number): string {
-    if (n === 0) return "—";
-    const abs = Math.abs(n);
-    const formatted = `AED ${Math.round(abs).toLocaleString("en-US")}`;
-    return n < 0 ? `-${formatted}` : formatted;
-}
-
-const CATEGORY_LABEL = {
+const REVENUE_CATEGORY_LABEL: Record<string, string> = {
     membership: "Membership",
-    credit_package: "Credit package",
-    gift_card: "Gift card",
-    drop_in: "Drop in",
-} as const satisfies Record<ProductCategory, string>;
-
-const COLUMNS: ReportColumn<SalesByCategoryRow>[] = [
-    { key: "location",      label: "Branch location", minWidth: 200, fixed: true, render: r => r.branchName,           sort: { getValue: r => r.branchName } },
-    { key: "productName",   label: "Product name",    minWidth: 280, fixed: true, render: r => r.productName,          sort: { getValue: r => r.productName } },
-    { key: "category",      label: "Category",        minWidth: 160, fixed: true, render: r => <PlanBadge kind={r.category} />, sort: { getValue: r => CATEGORY_LABEL[r.category] } },
-    { key: "grossSales",    label: "Gross sales",     minWidth: 140, fixed: true, render: r => aed(r.grossSales),      sort: { getValue: r => r.grossSales } },
-    { key: "discountValue", label: "Discount value",  minWidth: 160,
-        render: r => (
-            <span className={r.discountValue < 0 ? "text-[#d92d20]" : undefined}>
-                {aedSigned(r.discountValue)}
-            </span>
-        ),
-        sort: { getValue: r => r.discountValue } },
-    { key: "taxCollected",  label: "Tax collected",   minWidth: 140,              render: r => aed(r.taxCollected),    sort: { getValue: r => r.taxCollected } },
-    { key: "netSales",      label: "Net sales",       minWidth: 140, fixed: true, render: r => aed(r.netSales),        sort: { getValue: r => r.netSales } },
-    { key: "refundAmount",  label: "Refund amount",   minWidth: 160,
-        render: r => (
-            <span className={r.refundAmount > 0 ? "text-[#d92d20]" : undefined}>
-                {r.refundAmount > 0 ? aedSigned(-r.refundAmount) : aed(0)}
-            </span>
-        ),
-        sort: { getValue: r => r.refundAmount } },
-    { key: "netPaymentAmountDue", label: "Net payment amount due", minWidth: 220, fixed: true, render: r => aed(r.netPaymentAmountDue), sort: { getValue: r => r.netPaymentAmountDue } },
-];
-
-const DEFAULT_PERIOD: DateFilter = { type: "day", label: "Last 30 days" };
-const DEFAULT_VISIBLE = new Set(COLUMNS.filter(c => !c.fixed).map(c => c.key));
+    package:    "Package / Credits",
+};
 
 export default function SalesByCategoryReportPage() {
-    const branches     = useAppStore(s => s.branches);
     const transactions = useAppStore(s => s.customerTransactions);
-    const taxRules     = useAppStore(s => s.taxRules);
-    const taxRates     = useAppStore(s => s.taxRates);
-    const showToast    = useAppStore(s => s.showToast);
+    const customers    = useAppStore(s => s.customers);
+    const branches     = useAppStore(s => s.branches);
+    const staff        = useAppStore(s => s.staff);
 
-    const [visibleKeys, setVisibleKeys] = useState<Set<string>>(DEFAULT_VISIBLE);
-    const [branchFilter, setBranchFilter] = useDefaultBranchFilter();
-    const [period, setPeriod] = useState<DateFilter>(DEFAULT_PERIOD);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const report = getReportById("sales-by-category");
 
-    const range = useMemo(() => dateFilterToRange(period), [period]);
+    const rawLedger = useMemo<LedgerRow[]>(() => {
+        if (!report) return [];
+        const fn = resolveSelector(report) as unknown as (state: unknown) => LedgerRow[];
+        return fn({ customerTransactions: transactions, customers, branches, staff, classBookings: [] });
+    }, [report, transactions, customers, branches, staff]);
 
-    // Aggregate inside the same memo so the period filter happens
-    // BEFORE the rollup — a row reflects only transactions that fall
-    // inside the selected window.
-    const rows = useMemo<SalesByCategoryRow[]>(() => {
-        const branchById = new Map(branches.map(b => [b.id, b]));
-        type Bucket = {
-            branchId: string;
-            productName: string;
-            category: ProductCategory;
-            gross: number;
-            tax: number;
-            refund: number;
-            due: number;
-        };
-        const acc = new Map<string, Bucket>();
+    // Aggregate: group by (branch, category, month) → one row.
+    const rows = useMemo<CategoryRow[]>(() => {
+        // Bucket ISO date to a mid-month anchor date (YYYY-MM-15). Full
+        // ISO shape is required so the shell's row-level date filter
+        // treats it like any other date column; mid-month means any
+        // date range that overlaps the month at all will capture the
+        // row (start-of-month / end-of-month anchors miss ranges that
+        // land in the middle of a month).
+        const monthKey = (iso: string) => `${iso.slice(0, 7)}-15`;
 
-        for (const t of transactions) {
-            if (!isoInRange(t.createdAtISO, range)) continue;
-            if (!branchFilter.has(t.branchId)) continue;
-
-            const category: ProductCategory =
-                t.kind === "membership" ? "membership" : "credit_package";
-            const key = `${t.branchId}::${t.productId}`;
-            const bucket = acc.get(key) ?? {
-                branchId: t.branchId,
-                productName: t.name,
-                category,
-                gross: 0,
-                tax: 0,
-                refund: 0,
-                due: 0,
-            };
-
-            const gross = t.amountAed;
-            let tax = t.taxAed ?? 0;
-            if (t.taxAed === undefined) {
-                const match = findActiveTaxRuleFor(
-                    { taxRules, taxRates },
-                    category,
-                    t.branchId,
-                );
-                if (match) {
-                    const rate = match.rate.ratePercentage / 100;
-                    tax = gross - gross / (1 + rate);
-                }
-            }
-
-            bucket.gross  += gross;
-            bucket.tax    += tax;
-            if (t.status === "refunded") bucket.refund += gross;
-            if (t.status === "pending" || t.status === "failed") bucket.due += gross;
-
-            acc.set(key, bucket);
+        interface Agg {
+            transactions: number;
+            grossSales:   number;
+            refundAmount: number;
+            writeOffAmount: number;
+            discountAmount: number;
+            taxCollected: number;
         }
 
-        return Array.from(acc.entries()).map(([key, b]) => ({
-            aggKey: key,
-            branchId: b.branchId,
-            branchName: branchById.get(b.branchId)?.name ?? "—",
-            productName: b.productName,
-            category: b.category,
-            grossSales: b.gross,
-            discountValue: 0,                     // +wire: promo discounts roll up here when POS writes them
-            taxCollected: b.tax,
-            netSales: b.gross - b.refund,
-            refundAmount: b.refund,
-            netPaymentAmountDue: b.due,
-        }));
-    }, [transactions, branches, branchFilter, range, taxRules, taxRates]);
+        const buckets = new Map<string, Agg & { branchId: string; location: string; revenueCategory: string; periodKey: string }>();
 
-    const summaryText = useMemo(() => {
-        const count = rows.length;
-        return `${count} record${count === 1 ? "" : "s"} · ${period.label}`;
-    }, [rows, period]);
+        for (const r of rawLedger) {
+            const cat = REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind;
+            const key = `${r.branchId}|${cat}|${monthKey(r.createdAtISO)}`;
+            const bucket = buckets.get(key) ?? {
+                transactions: 0, grossSales: 0, refundAmount: 0, writeOffAmount: 0, discountAmount: 0, taxCollected: 0,
+                branchId: r.branchId, location: r.location, revenueCategory: cat, periodKey: monthKey(r.createdAtISO),
+            };
 
-    const branchOptions = useMemo(
-        () => branches.filter(b => b.status !== "archive").map(b => ({ value: b.id, label: b.name })),
+            const signed = r.signedAmount;
+
+            if (r.transactionType === "sale") {
+                bucket.transactions += 1;
+                bucket.grossSales   += signed;
+                bucket.taxCollected += Number(r.taxAed ?? 0);
+            } else if (r.transactionType === "refund") {
+                bucket.transactions += 1;
+                bucket.refundAmount += Math.abs(signed);
+                bucket.taxCollected += -Math.abs(Number(r.taxAed ?? 0));
+            } else if (r.transactionType === "write_off") {
+                bucket.transactions += 1;
+                bucket.writeOffAmount += Math.abs(signed);
+            }
+
+            buckets.set(key, bucket);
+        }
+
+        // Compute totals for % of total net.
+        const totalsByPeriod = new Map<string, number>();
+        const bucketList = Array.from(buckets.values());
+        for (const b of bucketList) {
+            const net = b.grossSales - b.discountAmount - b.refundAmount - b.writeOffAmount;
+            const netAfterTax = net + b.taxCollected;
+            totalsByPeriod.set(b.periodKey, (totalsByPeriod.get(b.periodKey) ?? 0) + netAfterTax);
+        }
+
+        const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        // periodKey is "YYYY-MM-15"; strip the day for the human label.
+        const periodLabel = (k: string) => {
+            const [y, m] = k.split("-");
+            return `${MONTH[Number(m) - 1] ?? m} ${y}`;
+        };
+
+        return bucketList.map(b => {
+            const netBeforeTax  = b.grossSales - b.discountAmount - b.refundAmount - b.writeOffAmount;
+            const netAfterTax   = netBeforeTax + b.taxCollected;
+            const refundRatePct = b.grossSales > 0 ? (b.refundAmount / b.grossSales) * 100 : 0;
+            const periodTotal   = totalsByPeriod.get(b.periodKey) ?? 0;
+            const pctOfTotalNet = periodTotal > 0 ? (netAfterTax / periodTotal) * 100 : 0;
+
+            return {
+                periodKey:       b.periodKey,
+                period:          periodLabel(b.periodKey),
+                revenueCategory: b.revenueCategory,
+                transactions:    b.transactions,
+                grossSales:      b.grossSales,
+                discountAmount:  b.discountAmount,
+                refundAmount:    b.refundAmount,
+                writeOffAmount:  b.writeOffAmount,
+                netBeforeTax,
+                taxCollected:    b.taxCollected,
+                netAfterTax,
+                refundRatePct,
+                pctOfTotalNet,
+                branchId:        b.branchId,
+                location:        b.location,
+            } satisfies CategoryRow;
+        });
+    }, [rawLedger]);
+
+    const branchOptions = useMemo<BranchOption[]>(
+        () => branches
+            .filter(b => b.status !== "archive")
+            .map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 
-    function exportCsv() {
-        if (rows.length === 0) {
-            showToast("Nothing to export", "No rows in the current view.", "error");
-            return;
-        }
-        const exportCols = COLUMNS.filter(c => c.fixed || visibleKeys.has(c.key));
-        const header = exportCols.map(c => c.label);
-        const body = rows.map(r => exportCols.map(c => csvValue(r, c.key)));
-        const csv = buildCsv(header, body);
-        downloadCsv(`sales-by-category-${todayISO()}.csv`, csv);
-        showToast("Sales by category exported", "CSV downloaded successfully.", "success", "check");
+    if (!report) {
+        return (
+            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+                Sales by Category report definition is missing from the registry.
+            </div>
+        );
     }
-
-    const toolbar = (
-        <>
-            <SelectColumnDropdown
-                options={COLUMNS.filter(c => !c.fixed).map(c => ({ key: c.key, label: c.label }))}
-                value={visibleKeys}
-                onChange={setVisibleKeys}
-            />
-            <MultiSelectFilterDropdown
-                icon={MarkerPin01}
-                placeholder="Select location"
-                value={branchFilter}
-                options={branchOptions}
-                onChange={setBranchFilter}
-            />
-            <DateRangeFilter value={period} onChange={setPeriod} />
-            <ExportDropdown
-                label="Export"
-                variant="export"
-                disabled={rows.length === 0}
-                onExportCsv={exportCsv}
-            />
-        </>
-    );
 
     return (
-        <ReportShell<SalesByCategoryRow>
-            title="Sales by category"
-            totalLabel="Total"
-            summaryText={summaryText}
-            toolbar={toolbar}
-            columns={COLUMNS}
-            visibleKeys={visibleKeys}
+        <PivotableReportShell
+            report={report}
             rows={rows}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            page={page}
-            onPageChange={setPage}
-            emptyTitle="No sales found"
-            emptyMessage="Try a different location or period to see results."
+            branches={branchOptions}
+            backHref="/admin/reports"
         />
     );
-}
-
-function csvValue(r: SalesByCategoryRow, key: string): string {
-    switch (key) {
-        case "location":            return r.branchName;
-        case "productName":         return r.productName;
-        case "category":            return CATEGORY_LABEL[r.category];
-        case "grossSales":          return aed(r.grossSales);
-        case "discountValue":       return r.discountValue === 0 ? "—" : aedSigned(r.discountValue);
-        case "taxCollected":        return aed(r.taxCollected);
-        case "netSales":            return aed(r.netSales);
-        case "refundAmount":        return r.refundAmount > 0 ? aedSigned(-r.refundAmount) : aed(0);
-        case "netPaymentAmountDue": return aed(r.netPaymentAmountDue);
-        default:                    return "";
-    }
 }

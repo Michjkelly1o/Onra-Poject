@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onra · Total Sales — interactive mockup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.14.0/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#f5f4ef; --primary:#ffffff; --secondary:#f1efe8;
+  --text:#2b2b2b; --text-2:#6b6b6b; --text-3:#9a988f;
+  --border:rgba(0,0,0,.12); --border-2:rgba(0,0,0,.22);
+  --info-bg:#e7efea; --info-text:#0f6e56; --info-border:#1d9e75;
+  --danger:#a32d2d; --green:#1d9e75; --up:#0f6e56; --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding:28px 18px}
+.wrap{max-width:1100px;margin:0 auto}
+.intro{font-size:13px;color:var(--text-2);margin:0 0 16px;line-height:1.6}
+.intro b{color:var(--text);font-weight:600}
+.os-screen{border:0.5px solid var(--border);border-radius:var(--radius-lg);background:var(--primary)}
+.os-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:0.5px solid var(--border)}
+.os-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;background:var(--secondary);border-bottom:0.5px solid var(--border)}
+.dd{position:relative}
+.os-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:7px 11px;border:0.5px solid var(--border-2);border-radius:var(--radius);background:var(--primary);color:var(--text-2);white-space:nowrap;cursor:pointer;user-select:none}
+.os-pill:hover{border-color:var(--text-3)}
+.os-pill .ti{font-size:15px}
+.os-pill b{color:var(--text);font-weight:600;background:var(--secondary);padding:0 5px;border-radius:5px}
+.os-green{background:var(--green);color:#fff;border-color:var(--green)}
+.os-green b{color:#fff;background:rgba(255,255,255,.2)}
+.os-time{border:2px solid var(--info-border);color:var(--info-text);background:var(--info-bg);font-weight:600}
+.os-spacer{flex:1}
+.panel{position:absolute;top:calc(100% + 6px);left:0;z-index:20;background:var(--primary);border:0.5px solid var(--border-2);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;min-width:190px;display:none}
+.panel.right{left:auto;right:0}
+.panel.open{display:block}
+.opt{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text);padding:8px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.opt:hover{background:var(--secondary)}
+.opt input{accent-color:var(--green);width:15px;height:15px;margin:0}
+.opt .ti{font-size:16px;color:var(--text-2)}
+.phead{font-size:11px;color:var(--text-3);padding:6px 10px 4px;text-transform:uppercase;letter-spacing:.04em}
+.os-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.os-tbl th{text-align:left;font-weight:600;color:var(--text-2);padding:8px 12px;border-bottom:0.5px solid var(--border-2);white-space:nowrap}
+.os-tbl td{padding:8px 12px;border-bottom:0.5px solid var(--border);white-space:nowrap}
+.os-num{text-align:right;font-variant-numeric:tabular-nums}
+.os-rowlbl{font-weight:600}
+.os-ghead td{background:var(--secondary);font-weight:600}
+.os-gcount{color:var(--text-2);font-weight:400;font-size:11px}
+.os-grand td{border-top:0.5px solid var(--border-2);border-bottom:none;font-weight:600;background:var(--primary)}
+.os-totcol{background:var(--secondary);font-weight:600}
+.os-disc{color:var(--text-2)}
+.zero{color:var(--text-3)}
+.delta{font-size:11px;font-weight:600;margin-left:8px}
+.up{color:var(--up)} .down{color:var(--danger)}
+.os-note{font-size:11px;color:var(--text-3);padding:10px 16px;border-top:0.5px solid var(--border);background:var(--secondary);border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="intro"><b>Interactive mockup</b> — set <b>Period</b> to Week / Month / Quarter to put time <b>across the top as columns</b>, and <b>Break down by</b> to choose the rows (category, location, channel). The date pill sets the window (it really filters). Measure switches Net/Gross (Net = Gross − discount). Export downloads the matrix. Demo data spans Jan–Jun 2026; today = 28 Jun 2026.</p>
+
+<div class="os-screen">
+  <div class="os-head">
+    <i class="ti ti-x" aria-hidden="true" style="font-size:18px;color:var(--text-2)"></i>
+    <span style="font-size:15px;font-weight:600">Total sales (orders)</span>
+    <span class="os-spacer"></span>
+    <span id="os-meta" style="font-size:11px;color:var(--text-2)"></span>
+  </div>
+
+  <div class="os-bar">
+    <div class="dd">
+      <span class="os-pill os-time" data-dd="per"><i class="ti ti-calendar-stats" aria-hidden="true"></i>Period: <span id="per-lbl">None</span> <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel" id="pnl-per">
+        <div class="phead">Columns across top</div>
+        <label class="opt"><input type="radio" name="per" value="none" checked> None</label>
+        <label class="opt"><input type="radio" name="per" value="week"> Week</label>
+        <label class="opt"><input type="radio" name="per" value="month"> Month</label>
+        <label class="opt"><input type="radio" name="per" value="quarter"> Quarter</label>
+      </div>
+    </div>
+    <div class="dd">
+      <span class="os-pill" data-dd="row"><i class="ti ti-layout-rows" aria-hidden="true"></i>Break down by: <span id="row-lbl">None</span> <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel" id="pnl-row">
+        <div class="phead">Rows</div>
+        <label class="opt"><input type="radio" name="row" value="none" checked> None (total)</label>
+        <label class="opt"><input type="radio" name="row" value="category"> Category</label>
+        <label class="opt"><input type="radio" name="row" value="location"> Location</label>
+        <label class="opt"><input type="radio" name="row" value="channel"> Channel</label>
+      </div>
+    </div>
+    <div class="dd">
+      <span class="os-pill" data-dd="meas"><i class="ti ti-coin" aria-hidden="true"></i><span id="meas-lbl">Net</span> <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel" id="pnl-meas">
+        <div class="phead">Measure</div>
+        <label class="opt"><input type="radio" name="meas" value="net" checked> Net (after discount)</label>
+        <label class="opt"><input type="radio" name="meas" value="gross"> Gross</label>
+      </div>
+    </div>
+    <div class="dd" id="dd-col">
+      <span class="os-pill" data-dd="col"><i class="ti ti-columns" aria-hidden="true"></i>Select column <b id="col-badge">9</b> <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel" id="pnl-col"><div class="phead">Show columns</div><div id="col-opts"></div></div>
+    </div>
+    <div class="dd">
+      <span class="os-pill" data-dd="loc"><i class="ti ti-map-pin" aria-hidden="true"></i>Select location <b id="loc-badge">2</b> <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel" id="pnl-loc"><div class="phead">Branches</div><div id="loc-opts"></div></div>
+    </div>
+    <div class="dd">
+      <span class="os-pill" data-dd="date"><i class="ti ti-calendar" aria-hidden="true"></i><span id="date-lbl">This year</span> <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel" id="pnl-date">
+        <div class="phead">Window</div>
+        <label class="opt"><input type="radio" name="date" value="Last 30 days"> Last 30 days</label>
+        <label class="opt"><input type="radio" name="date" value="Last 90 days"> Last 90 days</label>
+        <label class="opt"><input type="radio" name="date" value="This quarter"> This quarter</label>
+        <label class="opt"><input type="radio" name="date" value="This year" checked> This year</label>
+      </div>
+    </div>
+    <span class="os-spacer"></span>
+    <div class="dd">
+      <span class="os-pill os-green" data-dd="exp"><i class="ti ti-download" aria-hidden="true"></i>Export <i class="ti ti-chevron-down" aria-hidden="true"></i></span>
+      <div class="panel right" id="pnl-exp">
+        <div class="opt" id="exp-csv"><i class="ti ti-file-spreadsheet"></i> Download CSV (current view)</div>
+        <div class="opt" id="exp-xlsx"><i class="ti ti-file-type-xls"></i> Export to Excel</div>
+        <div class="opt" id="exp-inv"><i class="ti ti-file-invoice"></i> Export invoice</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table class="os-tbl">
+      <thead><tr id="os-head"></tr></thead>
+      <tbody id="os-body"></tbody>
+    </table>
+  </div>
+
+  <div class="os-note" id="os-foot"></div>
+</div>
+</div>
+
+<script>
+(function(){
+  var D=[
+    {date:"2026-01-08",loc:"Forma Studio (South)",name:"Omar Haddad",item:"10-Class Package",cat:"Packages",ch:"Online",g:1390,disc:0},
+    {date:"2026-01-15",loc:"Forma Studio (East)",name:"Lina Saeed",item:"Beginner Monthly",cat:"Memberships",ch:"Front desk",g:1200,disc:0},
+    {date:"2026-01-27",loc:"Forma Studio (South)",name:"Karim Nasr",item:"5-Class Package",cat:"Packages",ch:"Online",g:750,disc:0},
+    {date:"2026-02-05",loc:"Forma Studio (South)",name:"Dana Fadel",item:"Yoga Focused Monthly",cat:"Memberships",ch:"Online",g:1800,disc:180},
+    {date:"2026-02-14",loc:"Forma Studio (East)",name:"Sami Rahman",item:"20-Class Package",cat:"Packages",ch:"Online",g:2400,disc:0},
+    {date:"2026-02-22",loc:"Forma Studio (South)",name:"Noor Aziz",item:"3-Class Trial",cat:"Intro / Trial",ch:"Online",g:450,disc:0},
+    {date:"2026-03-03",loc:"Forma Studio (South)",name:"Hana Yusuf",item:"Advanced Monthly",cat:"Memberships",ch:"Front desk",g:1500,disc:0},
+    {date:"2026-03-18",loc:"Forma Studio (East)",name:"Tariq Bilal",item:"10-Class Package",cat:"Packages",ch:"Online",g:1390,disc:0},
+    {date:"2026-03-29",loc:"Forma Studio (South)",name:"Leila Mansour",item:"5-Class Package",cat:"Packages",ch:"Online",g:750,disc:200},
+    {date:"2026-04-10",loc:"Forma Studio (South)",name:"Yousef Amin",item:"1-Class Intro",cat:"Intro / Trial",ch:"Online",g:170,disc:0},
+    {date:"2026-04-21",loc:"Forma Studio (East)",name:"Maya Khoury",item:"Yoga Focused Monthly",cat:"Memberships",ch:"Online",g:1800,disc:0},
+    {date:"2026-05-12",loc:"Forma Studio (South)",name:"Rana Sleiman",item:"10-Class Package",cat:"Packages",ch:"Online",g:1390,disc:0},
+    {date:"2026-05-26",loc:"Forma Studio (East)",name:"Bosa Ahmed",item:"10-Class Package",cat:"Packages",ch:"Online",g:1390,disc:140},
+    {date:"2026-05-28",loc:"Forma Studio (South)",name:"Fatima Al-Sayed",item:"Beginner Monthly",cat:"Memberships",ch:"Online",g:1200,disc:0},
+    {date:"2026-05-29",loc:"Forma Studio (East)",name:"James Taylor",item:"5-Class Package",cat:"Packages",ch:"Online",g:750,disc:0},
+    {date:"2026-05-31",loc:"Forma Studio (South)",name:"Lucas Brown",item:"1-Class Intro",cat:"Intro / Trial",ch:"Online",g:170,disc:0},
+    {date:"2026-06-02",loc:"Forma Studio (South)",name:"Mia Anderson",item:"Yoga Focused Monthly",cat:"Memberships",ch:"Online",g:1800,disc:0},
+    {date:"2026-06-04",loc:"Forma Studio (East)",name:"Rosale Martin",item:"20-Class Package",cat:"Packages",ch:"Online",g:2400,disc:0},
+    {date:"2026-06-05",loc:"Forma Studio (South)",name:"Sophia Lee",item:"Advanced Monthly",cat:"Memberships",ch:"Online",g:1500,disc:0},
+    {date:"2026-06-06",loc:"Forma Studio (South)",name:"Zahra Mahen",item:"5-Class Package",cat:"Packages",ch:"Online",g:750,disc:0},
+    {date:"2026-06-07",loc:"Forma Studio (South)",name:"Ahmed Zayn",item:"3-Class Trial",cat:"Intro / Trial",ch:"Online",g:450,disc:0},
+    {date:"2026-06-19",loc:"Forma Studio (South)",name:"simon comina",item:"10-Class Package",cat:"Packages",ch:"Online",g:1390,disc:0}
+  ];
+  D.forEach(function(d){d.net=d.g-d.disc;});
+  var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var COLS=[
+    {k:'date',label:'Order date'},{k:'loc',label:'Location'},{k:'name',label:'Name'},{k:'item',label:'Sale item'},
+    {k:'cat',label:'Category'},{k:'ch',label:'Channel'},
+    {k:'g',label:'Gross',num:true},{k:'disc',label:'Discount',num:true},{k:'net',label:'Net',num:true}
+  ];
+  var TODAY=new Date('2026-06-28T00:00:00');
+  var state={per:'none',row:'none',meas:'net',cols:{},loc:{},date:'This year'};
+  COLS.forEach(function(c){state.cols[c.k]=true;});
+  var LOCS=D.map(function(d){return d.loc;}).filter(function(v,i,a){return a.indexOf(v)===i;});
+  LOCS.forEach(function(l){state.loc[l]=true;});
+  var dimkey={category:"cat",location:"loc",channel:"ch"};
+  var labelmap={category:"Category",location:"Location",channel:"Channel",week:"Week",month:"Month",quarter:"Quarter"};
+  var nf=function(n){return "AED "+Math.round(n).toLocaleString();};
+  var val=function(d){return state.meas==='gross'?d.g:d.net;};
+
+  function mondayOf(s){var dt=new Date(s+'T00:00:00');var off=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-off);return dt;}
+  function iso(dt){return dt.getFullYear()+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+('0'+dt.getDate()).slice(-2);}
+  function perKey(d){if(state.per==='week')return iso(mondayOf(d.date));if(state.per==='month')return d.date.slice(0,7);if(state.per==='quarter'){var m=+d.date.slice(5,7);return d.date.slice(0,4)+'-Q'+(Math.floor((m-1)/3)+1);}return '';}
+  function perLabel(k){if(state.per==='week'){var p=k.split('-');return +p[2]+' '+MON[+p[1]-1];}if(state.per==='month'){var q=k.split('-');return MON[+q[1]-1];}if(state.per==='quarter'){return k.split('-')[1];}return k;}
+  function dimVal(d){return state.row==='location'?d.loc.replace('Forma Studio ',''):d[dimkey[state.row]];}
+
+  function inWindow(d){var dt=new Date(d.date+'T00:00:00');var ms=24*3600*1000;
+    if(state.date==='This year')return dt.getFullYear()===2026;
+    if(state.date==='This quarter'){var m=dt.getMonth();return dt.getFullYear()===2026&&m>=3&&m<=5;}
+    if(state.date==='Last 90 days')return (TODAY-dt)/ms<=90&&dt<=TODAY;
+    if(state.date==='Last 30 days')return (TODAY-dt)/ms<=30&&dt<=TODAY;
+    return true;}
+
+  var colOpts=document.getElementById('col-opts');
+  COLS.forEach(function(c){var l=document.createElement('label');l.className='opt';l.innerHTML='<input type="checkbox" data-col="'+c.k+'" checked> '+c.label;colOpts.appendChild(l);});
+  var locOpts=document.getElementById('loc-opts');
+  LOCS.forEach(function(l){var el=document.createElement('label');el.className='opt';el.innerHTML='<input type="checkbox" data-loc="'+l+'" checked> '+l.replace('Forma Studio ','').replace(/[()]/g,'');locOpts.appendChild(el);});
+
+  function visCols(){return COLS.filter(function(c){return state.cols[c.k];});}
+  function rows(){return D.filter(function(d){return state.loc[d.loc]&&inWindow(d);});}
+
+  function renderList(data){
+    var vc=visCols();
+    document.getElementById('os-head').innerHTML=vc.map(function(c){return '<th class="'+(c.num?'os-num':'')+'">'+c.label+'</th>';}).join('');
+    var leadSpan=vc.filter(function(c){return !c.num;}).length||1, html='',gG=0,gN=0,gDi=0;
+    function fmt(d,c){if(c.k==='loc')return d.loc.replace('Forma Studio ','');if(c.num){if(c.k==='disc')return d.disc?'-'+nf(d.disc):'—';return nf(d[c.k]);}return d[c.k];}
+    data.forEach(function(d){gG+=d.g;gN+=d.net;gDi+=d.disc;html+='<tr>'+vc.map(function(c){return '<td class="'+(c.num?'os-num':'')+(c.k==='disc'&&d.disc?' os-disc':'')+'">'+fmt(d,c)+'</td>';}).join('')+'</tr>';});
+    var cells='<td colspan="'+leadSpan+'">Total</td>';
+    vc.filter(function(c){return c.num;}).forEach(function(c){cells+='<td class="os-num'+(c.k==='disc'&&gDi?' os-disc':'')+'">'+(c.k==='g'?nf(gG):c.k==='disc'?(gDi?'-'+nf(gDi):'—'):nf(gN))+'</td>';});
+    html+='<tr class="os-grand">'+cells+'</tr>';
+    document.getElementById('os-body').innerHTML=html;
+    document.getElementById('os-foot').textContent='All orders in the window, ungrouped. Set Period to put time across the top, or Break down by for category rows.';
+  }
+
+  function renderPivot(data){
+    var pers=[];data.forEach(function(d){var k=perKey(d);if(pers.indexOf(k)<0)pers.push(k);});pers.sort();
+    var rdim=state.row!=='none';
+    var rkeys=[];if(rdim){data.forEach(function(d){var v=dimVal(d);if(rkeys.indexOf(v)<0)rkeys.push(v);});}else rkeys=['All sales'];
+    var M={};rkeys.forEach(function(rk){M[rk]={};pers.forEach(function(p){M[rk][p]=0;});});
+    var colT={};pers.forEach(function(p){colT[p]=0;});var grand=0,rowT={};rkeys.forEach(function(rk){rowT[rk]=0;});
+    data.forEach(function(d){var rk=rdim?dimVal(d):'All sales';var p=perKey(d);var v=val(d);M[rk][p]+=v;colT[p]+=v;rowT[rk]+=v;grand+=v;});
+    if(rdim)rkeys.sort(function(a,b){return rowT[b]-rowT[a];});
+    var rowHdr=rdim?labelmap[state.row]:'Sales';
+    var head='<th>'+rowHdr+'</th>'+pers.map(function(p){return '<th class="os-num">'+perLabel(p)+'</th>';}).join('')+'<th class="os-num os-totcol">Total</th>';
+    document.getElementById('os-head').innerHTML=head;
+    function cell(v){return v?nf(v):'<span class="zero">—</span>';}
+    var html='';
+    rkeys.forEach(function(rk){
+      html+='<tr><td class="os-rowlbl">'+rk+'</td>'+pers.map(function(p){return '<td class="os-num">'+cell(M[rk][p])+'</td>';}).join('')+'<td class="os-num os-totcol">'+nf(rowT[rk])+'</td></tr>';
+    });
+    var prev=null,dRow='';
+    dRow='<tr class="os-ghead"><td>Period change</td>'+pers.map(function(p){var d='';if(prev!==null&&prev!==0){var pc=Math.round((colT[p]-prev)/prev*100);d='<span class="delta '+(pc>=0?'up':'down')+'">'+(pc>=0?'▲':'▼')+' '+Math.abs(pc)+'%</span>';}else d='<span class="zero">—</span>';prev=colT[p];return '<td class="os-num">'+d+'</td>';}).join('')+'<td class="os-totcol"></td></tr>';
+    html+='<tr class="os-grand"><td>Total</td>'+pers.map(function(p){return '<td class="os-num">'+nf(colT[p])+'</td>';}).join('')+'<td class="os-num os-totcol">'+nf(grand)+'</td></tr>'+dRow;
+    document.getElementById('os-body').innerHTML=html;
+    var per=labelmap[state.per].toLowerCase();
+    document.getElementById('os-foot').textContent=per.charAt(0).toUpperCase()+per.slice(1)+'s across the top'+(rdim?', '+labelmap[state.row].toLowerCase()+' down the side':'')+'. Values = '+(state.meas==='gross'?'gross':'net (after discount)')+'. The bottom row totals each '+per+' with change vs the previous one.';
+  }
+
+  function render(){
+    var data=rows(), pivot=state.per!=='none';
+    document.getElementById('dd-col').classList.toggle('hidden',pivot);
+    if(pivot)renderPivot(data);else renderList(data);
+    document.getElementById('col-badge').textContent=visCols().length;
+    document.getElementById('loc-badge').textContent=Object.keys(state.loc).filter(function(l){return state.loc[l];}).length;
+    document.getElementById('os-meta').textContent=data.length+' records · '+state.date.toLowerCase()+(pivot?' · by '+labelmap[state.per].toLowerCase():'');
+  }
+
+  function closeAll(){document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('open');});}
+  document.querySelectorAll('[data-dd]').forEach(function(t){t.addEventListener('click',function(e){e.stopPropagation();var p=document.getElementById('pnl-'+t.getAttribute('data-dd'));var o=p.classList.contains('open');closeAll();if(!o)p.classList.add('open');});});
+  document.addEventListener('click',closeAll);
+  document.querySelectorAll('.panel').forEach(function(p){p.addEventListener('click',function(e){e.stopPropagation();});});
+
+  document.querySelectorAll('input[name="per"]').forEach(function(r){r.addEventListener('change',function(){state.per=r.value;document.getElementById('per-lbl').textContent=r.value==='none'?'None':labelmap[r.value];render();});});
+  document.querySelectorAll('input[name="row"]').forEach(function(r){r.addEventListener('change',function(){state.row=r.value;document.getElementById('row-lbl').textContent=r.value==='none'?'None':labelmap[r.value];render();});});
+  document.querySelectorAll('input[name="meas"]').forEach(function(r){r.addEventListener('change',function(){state.meas=r.value;document.getElementById('meas-lbl').textContent=r.value==='gross'?'Gross':'Net';render();});});
+  document.querySelectorAll('input[name="date"]').forEach(function(r){r.addEventListener('change',function(){state.date=r.value;document.getElementById('date-lbl').textContent=r.value;render();});});
+  document.querySelectorAll('[data-col]').forEach(function(c){c.addEventListener('change',function(){var on=document.querySelectorAll('[data-col]:checked').length;if(!c.checked&&on===0){c.checked=true;return;}state.cols[c.getAttribute('data-col')]=c.checked;render();});});
+  document.querySelectorAll('[data-loc]').forEach(function(c){c.addEventListener('change',function(){var on=document.querySelectorAll('[data-loc]:checked').length;if(!c.checked&&on===0){c.checked=true;return;}state.loc[c.getAttribute('data-loc')]=c.checked;render();});});
+
+  function exportCSV(){
+    var data=rows(),lines=[];
+    if(state.per!=='none'){
+      var pers=[];data.forEach(function(d){var k=perKey(d);if(pers.indexOf(k)<0)pers.push(k);});pers.sort();
+      var rdim=state.row!=='none',rkeys=[];if(rdim){data.forEach(function(d){var v=dimVal(d);if(rkeys.indexOf(v)<0)rkeys.push(v);});}else rkeys=['All sales'];
+      var M={};rkeys.forEach(function(rk){M[rk]={};});data.forEach(function(d){var rk=rdim?dimVal(d):'All sales';var p=perKey(d);M[rk][p]=(M[rk][p]||0)+val(d);});
+      lines.push([(rdim?labelmap[state.row]:'Sales')].concat(pers.map(perLabel)).concat(['Total']).join(','));
+      rkeys.forEach(function(rk){var rt=0;var row=['"'+rk+'"'].concat(pers.map(function(p){var v=M[rk][p]||0;rt+=v;return v;}));row.push(rt);lines.push(row.join(','));});
+      var tline=['Total'];var g=0;pers.forEach(function(p){var s=0;rkeys.forEach(function(rk){s+=M[rk][p]||0;});g+=s;tline.push(s);});tline.push(g);lines.push(tline.join(','));
+    } else {
+      var vc=visCols();lines.push(vc.map(function(c){return c.label;}).join(','));
+      data.forEach(function(d){lines.push(vc.map(function(c){var v=c.num?(c.k==='disc'?-d.disc:d[c.k]):(c.k==='loc'?d.loc:d[c.k]);return '"'+String(v).replace(/"/g,'""')+'"';}).join(','));});
+    }
+    var blob=new Blob([lines.join('\n')],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='total_sales'+(state.per!=='none'?'_by_'+state.per:'')+(state.row!=='none'?'_x_'+state.row:'')+'.csv';a.click();
+  }
+  document.getElementById('exp-csv').addEventListener('click',function(){closeAll();exportCSV();});
+  document.getElementById('exp-xlsx').addEventListener('click',function(){closeAll();exportCSV();});
+  document.getElementById('exp-inv').addEventListener('click',function(){closeAll();alert('Invoice export — connects to billing in the real app.');});
+
+  render();
+})();
+</script>
+</body>
+</html>
