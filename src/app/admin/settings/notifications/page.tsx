@@ -1093,7 +1093,7 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                     <div className="flex-1 flex flex-col gap-1">
                         <h3 className="text-[18px] font-semibold text-[#101828] leading-[28px]">Delivery hours</h3>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
-                            Set a quiet window so members aren't messaged at unsociable hours.
+                            Set quiet hours
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
@@ -1106,9 +1106,6 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                     <div className="flex items-start gap-4">
                         <div className="flex-1 flex flex-col gap-1 min-w-0">
                             <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Only send during set hours</p>
-                            <p className="text-[13px] text-[#667085] leading-[18px]">
-                                Outside this window, non-urgent notifications wait until the window reopens.
-                            </p>
                         </div>
                         <Toggle on={onlyDuringHours} onChange={setOnlyDuringHours} ariaLabel="Only send during set hours" />
                     </div>
@@ -1119,8 +1116,7 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                         <div className="flex-1 flex flex-col gap-1 min-w-0">
                             <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Quiet hours</p>
                             <p className="text-[13px] text-[#667085] leading-[18px]">
-                                Messages pause between these times. If the end time is earlier
-                                than the start (like 21:00 → 07:00), the window wraps overnight.
+                                Messages pause between these times.
                             </p>
                         </div>
                         <div className={cn("flex items-center gap-2", !onlyDuringHours && "opacity-40 pointer-events-none")}>
@@ -1135,9 +1131,6 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                     <div className="flex items-start gap-4">
                         <div className="flex-1 flex flex-col gap-1 min-w-0">
                             <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Critical notifications ignore quiet hours</p>
-                            <p className="text-[13px] text-[#667085] leading-[18px]">
-                                Payment failures, confirmations and refunds send straight away, day or night.
-                            </p>
                         </div>
                         <Toggle on={criticalBypass} onChange={setCriticalBypass} ariaLabel="Critical bypass" />
                     </div>
