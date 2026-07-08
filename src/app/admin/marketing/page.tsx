@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus, XClose, MarkerPin01, CursorBox,
+    Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,46 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type MarketingItem } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+
+// Card-embedded kebab menu actions — mirrors the detail-page action set so
+// the list can drive Archive / Deactivate / Delete / Recover / Reactivate
+// without navigating away first (client Jul 2026).
+type CampaignCardAction = "archive" | "deactivate" | "recover" | "reactivate" | "delete";
+const CAMPAIGN_DESTRUCTIVE = new Set<CampaignCardAction>(["deactivate", "delete"]);
+const CAMPAIGN_MODAL_CFG: Record<CampaignCardAction, { IconComp: React.ElementType; title: string; description: string; confirmLabel: string }> = {
+    archive: {
+        IconComp: Archive,
+        title: "Archive this campaign?",
+        description: "Are you sure you want to archive this campaign? It will no longer be sent to customers.",
+        confirmLabel: "Archive",
+    },
+    deactivate: {
+        IconComp: SlashCircle01,
+        title: "Deactivate this campaign?",
+        description: "Are you sure you want to deactivate this campaign? It will pause and can be reactivated later.",
+        confirmLabel: "Deactivate",
+    },
+    recover: {
+        IconComp: RefreshCcw01,
+        title: "Recover this campaign?",
+        description: "Are you sure you want to recover this campaign from archive?",
+        confirmLabel: "Recover",
+    },
+    reactivate: {
+        IconComp: Check,
+        title: "Reactivate this campaign?",
+        description: "Are you sure you want to reactivate this campaign? It will resume sending to customers.",
+        confirmLabel: "Reactivate",
+    },
+    delete: {
+        IconComp: Trash02,
+        title: "Delete this campaign?",
+        description: "Are you sure you want to delete this campaign? This action cannot be undone.",
+        confirmLabel: "Delete",
+    },
+};
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -110,14 +151,73 @@ function MarketingAttribute({ icon, label }: { icon: React.ReactNode; label: str
 }
 
 function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingItem; onOpen: () => void; totalBranches: number }) {
+    const router = useRouter();
     const status = effectiveStatus(item);
     // Active items get the deep-slate gradient fallback; inactive / archived /
     // expired items render the muted gray gradient (Figma grayscale state).
     const bannerClass = status === "active"
         ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
         : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
+    // ── Kebab menu wiring ────────────────────────────────────────────────
+    const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
+    const deleteMarketingItem = useAppStore(s => s.deleteMarketingItem);
+    const showToast           = useAppStore(s => s.showToast);
+    const [confirmAction, setConfirmAction] = useState<CampaignCardAction | null>(null);
+    const canDelete = (item.view_count ?? 0) === 0;
+    const editHref  = `/marketing/${item.id}/edit?returnTo=${encodeURIComponent("/admin/marketing")}`;
+    const items: RowActionItem[] = (() => {
+        const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: onOpen }];
+        if (item.status === "archived") {
+            base.push({ label: "Recover campaign", icon: RefreshCcw01, onClick: () => setConfirmAction("recover") });
+            return base;
+        }
+        if (item.status === "inactive") {
+            base.push({ label: "Reactivate campaign", icon: RefreshCcw01, onClick: () => setConfirmAction("reactivate") });
+            base.push({ label: "Archive campaign", icon: Archive, onClick: () => setConfirmAction("archive") });
+            return base;
+        }
+        // Active
+        base.push({ label: "Edit campaign", icon: Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Archive campaign", icon: Archive, onClick: () => setConfirmAction("archive") });
+        if (canDelete) {
+            base.push({ label: "Delete campaign", icon: Trash02, danger: true, onClick: () => setConfirmAction("delete") });
+        } else {
+            base.push({ label: "Deactivate campaign", icon: SlashCircle01, danger: true, onClick: () => setConfirmAction("deactivate") });
+        }
+        return base;
+    })();
+
+    function handleConfirm() {
+        if (!confirmAction) return;
+        const name = item.title;
+        switch (confirmAction) {
+            case "delete":
+                if (deleteMarketingItem(item.id)) {
+                    showToast("Campaign deleted", `${name} has been deleted.`, "success", "trash");
+                }
+                break;
+            case "archive":
+                updateMarketingItem(item.id, { status: "archived" });
+                showToast("Campaign archived", `${name} has been archived.`, "success", "archive");
+                break;
+            case "deactivate":
+                updateMarketingItem(item.id, { status: "inactive" });
+                showToast("Campaign deactivated", `${name} is no longer active.`, "error", "slash");
+                break;
+            case "recover":
+                updateMarketingItem(item.id, { status: "active" });
+                showToast("Campaign recovered", `${name} is active again.`, "success", "check");
+                break;
+            case "reactivate":
+                updateMarketingItem(item.id, { status: "active" });
+                showToast("Campaign reactivated", `${name} is active again.`, "success", "check");
+                break;
+        }
+        setConfirmAction(null);
+    }
 
     return (
+        <>
         <div
             onClick={onOpen}
             className={cn(
@@ -151,13 +251,19 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
 
             {/* Content */}
             <div className="flex flex-col gap-4 px-4 py-5">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[18px] font-medium text-[#101828] leading-7 truncate">
-                        {item.title}
-                    </p>
-                    <p className="text-[14px] text-[#667085] leading-5 line-clamp-2">
-                        {item.short_description || "—"}
-                    </p>
+                <div className="flex flex-row items-start gap-2">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <p className="text-[18px] font-medium text-[#101828] leading-7 truncate">
+                            {item.title}
+                        </p>
+                        <p className="text-[14px] text-[#667085] leading-5 line-clamp-2">
+                            {item.short_description || "—"}
+                        </p>
+                    </div>
+                    {/* Kebab — stop propagation so the card's own onClick doesn't fire alongside. */}
+                    <div className="shrink-0 -mr-2 -mt-1" onClick={e => e.stopPropagation()}>
+                        <RowActions items={items} minWidth={220} triggerLabel="Campaign actions" />
+                    </div>
                 </div>
 
                 {/* Attribute row — action · branches */}
@@ -182,6 +288,23 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
                 </div>
             </div>
         </div>
+        {confirmAction && (() => {
+            const cfg = CAMPAIGN_MODAL_CFG[confirmAction];
+            const tone = CAMPAIGN_DESTRUCTIVE.has(confirmAction) ? "danger" : "success";
+            return (
+                <ConfirmModal
+                    open
+                    onClose={() => setConfirmAction(null)}
+                    icon={cfg.IconComp}
+                    tone={tone}
+                    title={cfg.title}
+                    description={cfg.description}
+                    confirmLabel={cfg.confirmLabel}
+                    onConfirm={handleConfirm}
+                />
+            );
+        })()}
+        </>
     );
 }
 

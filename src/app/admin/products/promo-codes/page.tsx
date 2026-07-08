@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus, XClose, MarkerPin01,
     CursorBox, Sale03, Ticket01,
+    Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,46 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type PromoCode } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+
+// Card-embedded kebab menu actions — mirrors the detail-page action set so
+// the list can drive Archive / Deactivate / Delete / Recover / Reactivate
+// without navigating away first (client Jul 2026).
+type PromoCardAction = "archive" | "deactivate" | "recover" | "reactivate" | "delete";
+const PROMO_DESTRUCTIVE = new Set<PromoCardAction>(["deactivate", "delete"]);
+const PROMO_MODAL_CFG: Record<PromoCardAction, { IconComp: React.ElementType; title: string; description: string; confirmLabel: string }> = {
+    archive: {
+        IconComp: Archive,
+        title: "Archive this promotion?",
+        description: "Are you sure you want to archive this promotion? It will no longer be applied at checkout.",
+        confirmLabel: "Archive",
+    },
+    deactivate: {
+        IconComp: SlashCircle01,
+        title: "Deactivate this promotion?",
+        description: "Are you sure you want to deactivate this promotion? Customers will no longer be able to redeem it.",
+        confirmLabel: "Deactivate",
+    },
+    recover: {
+        IconComp: RefreshCcw01,
+        title: "Recover this promotion?",
+        description: "Are you sure you want to recover this promotion from archive?",
+        confirmLabel: "Recover",
+    },
+    reactivate: {
+        IconComp: Check,
+        title: "Reactivate this promotion?",
+        description: "Are you sure you want to reactivate this promotion? It will be available at checkout again.",
+        confirmLabel: "Reactivate",
+    },
+    delete: {
+        IconComp: Trash02,
+        title: "Delete this promotion?",
+        description: "Are you sure you want to delete this promotion? This action cannot be undone.",
+        confirmLabel: "Delete",
+    },
+};
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -99,14 +140,75 @@ function PromoAttribute({ icon, label }: { icon: React.ReactNode; label: string 
 }
 
 function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onOpen: () => void; totalBranches: number }) {
+    const router = useRouter();
     const status = effectiveStatus(promo);
     // Active promos get the deep-slate banner; inactive / archived / expired
     // promos render a muted gray banner (matches the Figma grayscale state).
     const bannerClass = status === "active"
         ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
         : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
+    // ── Kebab menu wiring ────────────────────────────────────────────────
+    const updatePromoCode = useAppStore(s => s.updatePromoCode);
+    const deletePromoCode = useAppStore(s => s.deletePromoCode);
+    const showToast       = useAppStore(s => s.showToast);
+    const [confirmAction, setConfirmAction] = useState<PromoCardAction | null>(null);
+    const canDelete = (promo.usage_count ?? 0) === 0;
+    const editHref  = `/products/promo-codes/${promo.id}/edit?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`;
+    // Items conditional on stored status (expired promos live in one of the
+    // three stored states, so we key off `promo.status`, not `status`).
+    const items: RowActionItem[] = (() => {
+        const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: onOpen }];
+        if (promo.status === "archived") {
+            base.push({ label: "Recover promo code", icon: RefreshCcw01, onClick: () => setConfirmAction("recover") });
+            return base;
+        }
+        if (promo.status === "inactive") {
+            base.push({ label: "Reactivate promo code", icon: RefreshCcw01, onClick: () => setConfirmAction("reactivate") });
+            base.push({ label: "Archive promo code", icon: Archive, onClick: () => setConfirmAction("archive") });
+            return base;
+        }
+        // Active
+        base.push({ label: "Edit promo code", icon: Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Archive promo code", icon: Archive, onClick: () => setConfirmAction("archive") });
+        if (canDelete) {
+            base.push({ label: "Delete promo code", icon: Trash02, danger: true, onClick: () => setConfirmAction("delete") });
+        } else {
+            base.push({ label: "Deactivate promo code", icon: SlashCircle01, danger: true, onClick: () => setConfirmAction("deactivate") });
+        }
+        return base;
+    })();
+
+    function handleConfirm() {
+        if (!confirmAction) return;
+        const name = promo.name ?? promo.code;
+        switch (confirmAction) {
+            case "delete":
+                if (deletePromoCode(promo.id)) {
+                    showToast("Promotion deleted", `${name} has been deleted.`, "success", "trash");
+                }
+                break;
+            case "archive":
+                updatePromoCode(promo.id, { status: "archived" });
+                showToast("Promotion archived", `${name} has been archived.`, "success", "archive");
+                break;
+            case "deactivate":
+                updatePromoCode(promo.id, { status: "inactive" });
+                showToast("Promotion deactivated", `${name} is no longer active.`, "error", "slash");
+                break;
+            case "recover":
+                updatePromoCode(promo.id, { status: "active" });
+                showToast("Promotion recovered", `${name} is active again.`, "success", "check");
+                break;
+            case "reactivate":
+                updatePromoCode(promo.id, { status: "active" });
+                showToast("Promotion reactivated", `${name} is active again.`, "success", "check");
+                break;
+        }
+        setConfirmAction(null);
+    }
 
     return (
+        <>
         <div
             onClick={onOpen}
             className={cn(
@@ -137,13 +239,19 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
 
             {/* Content */}
             <div className="flex flex-col gap-4 px-4 py-5">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[18px] font-medium text-[#101828] leading-7 truncate">
-                        {promo.name ?? promo.code}
-                    </p>
-                    <p className="text-[14px] text-[#667085] leading-5 line-clamp-2">
-                        {promo.description ?? "—"}
-                    </p>
+                <div className="flex flex-row items-start gap-2">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <p className="text-[18px] font-medium text-[#101828] leading-7 truncate">
+                            {promo.name ?? promo.code}
+                        </p>
+                        <p className="text-[14px] text-[#667085] leading-5 line-clamp-2">
+                            {promo.description ?? "—"}
+                        </p>
+                    </div>
+                    {/* Kebab — stop propagation so the card's own onClick doesn't fire alongside. */}
+                    <div className="shrink-0 -mr-2 -mt-1" onClick={e => e.stopPropagation()}>
+                        <RowActions items={items} minWidth={220} triggerLabel="Promotion actions" />
+                    </div>
                 </div>
 
                 {/* Attribute grid — action · offer type · code · branches */}
@@ -176,6 +284,23 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
                 </div>
             </div>
         </div>
+        {confirmAction && (() => {
+            const cfg = PROMO_MODAL_CFG[confirmAction];
+            const tone = PROMO_DESTRUCTIVE.has(confirmAction) ? "danger" : "success";
+            return (
+                <ConfirmModal
+                    open
+                    onClose={() => setConfirmAction(null)}
+                    icon={cfg.IconComp}
+                    tone={tone}
+                    title={cfg.title}
+                    description={cfg.description}
+                    confirmLabel={cfg.confirmLabel}
+                    onConfirm={handleConfirm}
+                />
+            );
+        })()}
+        </>
     );
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus, Grid01,
     ClockFastForward, Users01, User01, XClose, AlignLeft,
+    Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,47 @@ import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { Toast } from "@/components/ui/Toast";
+
+// Card-embedded kebab menu actions — mirrors the detail-page action set so
+// the list can drive Archive / Deactivate / Delete / Recover / Reactivate
+// without navigating away first (client Jul 2026).
+type CardAction = "archive" | "deactivate" | "recover" | "reactivate" | "delete";
+const CARD_DESTRUCTIVE = new Set<CardAction>(["deactivate", "delete"]);
+const CARD_MODAL_CFG: Record<CardAction, { IconComp: React.ElementType; title: string; description: string; confirmLabel: string }> = {
+    archive: {
+        IconComp: Archive,
+        title: "Archive this class template?",
+        description: "Are you sure you want to archive this class template? This will archive all of class template access.",
+        confirmLabel: "Archive",
+    },
+    deactivate: {
+        IconComp: SlashCircle01,
+        title: "Deactivate this class template?",
+        description: "Are you sure you want to deactivate this class template? This will deactivate access to all classes associated with it.",
+        confirmLabel: "Deactivate",
+    },
+    recover: {
+        IconComp: RefreshCcw01,
+        title: "Recover this class template?",
+        description: "Are you sure you want to recover this class template from archive? This will enable all of class template access.",
+        confirmLabel: "Recover",
+    },
+    reactivate: {
+        IconComp: Check,
+        title: "Reactivate this class template?",
+        description: "Are you sure you want to reactivate this class template? This will restore access to all classes associated with it.",
+        confirmLabel: "Reactivate",
+    },
+    delete: {
+        IconComp: Trash02,
+        title: "Delete this class template?",
+        description: "Are you sure you want to delete this class template? This action cannot be undone.",
+        confirmLabel: "Delete",
+    },
+};
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -34,9 +76,73 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
     // image (Phase 4 sync), else nothing.
     const classCategories = useAppStore(s => s.classCategories);
     const effectiveCover  = resolveTemplateCoverImage(template, classCategories);
+    // ── Kebab menu wiring ────────────────────────────────────────────────
+    const classSchedules       = useAppStore(s => s.classSchedules);
+    const updateClassTemplate  = useAppStore(s => s.updateClassTemplate);
+    const deleteClassTemplate  = useAppStore(s => s.deleteClassTemplate);
+    const showToast            = useAppStore(s => s.showToast);
+    const [confirmAction, setConfirmAction] = useState<CardAction | null>(null);
+    const hasData    = classSchedules.some(s => s.templateId === template.id);
+    const detailHref = `/class-types/${template.id}?returnTo=${encodeURIComponent("/admin/class-types")}`;
+    const editHref   = `/class-types/${template.id}/edit?returnTo=${encodeURIComponent("/admin/class-types")}`;
+    // Items conditional on status. Rules mirror the detail-page LeftPanel
+    // per module convention: Archived → Recover only; Inactive → Archive +
+    // Reactivate; Active → Edit + Archive + (Delete if unused else
+    // Deactivate). "View details" leads every list so the client's ask
+    // "list down all the actions" holds regardless of status.
+    const items: RowActionItem[] = (() => {
+        const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: () => router.push(detailHref) }];
+        if (template.status === "Archived") {
+            base.push({ label: "Recover class template", icon: RefreshCcw01, onClick: () => setConfirmAction("recover") });
+            return base;
+        }
+        if (template.status === "Inactive") {
+            base.push({ label: "Archive class template", icon: Archive, onClick: () => setConfirmAction("archive") });
+            base.push({ label: "Reactivate class template", icon: RefreshCcw01, onClick: () => setConfirmAction("reactivate") });
+            return base;
+        }
+        // Active
+        base.push({ label: "Edit class template", icon: Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Archive class template", icon: Archive, onClick: () => setConfirmAction("archive") });
+        if (hasData) {
+            base.push({ label: "Deactivate class template", icon: SlashCircle01, danger: true, onClick: () => setConfirmAction("deactivate") });
+        } else {
+            base.push({ label: "Delete class template", icon: Trash02, danger: true, onClick: () => setConfirmAction("delete") });
+        }
+        return base;
+    })();
+
+    function handleConfirm() {
+        if (!confirmAction) return;
+        const name = template.name;
+        switch (confirmAction) {
+            case "delete":
+                deleteClassTemplate(template.id);
+                showToast("Class template deleted successfully", `"${name}" class template is no longer available for new classes.`, "error", "trash");
+                break;
+            case "archive":
+                updateClassTemplate(template.id, { status: "Archived" });
+                showToast("Class template is now archived", "The class template has been archived and is no longer in use.", "success", "archive");
+                break;
+            case "deactivate":
+                updateClassTemplate(template.id, { status: "Inactive" });
+                showToast("Class template is now inactive", "The class template has been deactivate and is no longer in use.", "error", "slash");
+                break;
+            case "recover":
+                updateClassTemplate(template.id, { status: "Active" });
+                showToast("Class template is now recover", "The class template has been recover and now it can be use.", "success", "check");
+                break;
+            case "reactivate":
+                updateClassTemplate(template.id, { status: "Active" });
+                showToast("Class template is now active", "The class template has been reactivate and now it can be use.", "success", "check");
+                break;
+        }
+        setConfirmAction(null);
+    }
     return (
+        <>
         <div
-            onClick={() => router.push(`/class-types/${template.id}?returnTo=${encodeURIComponent("/admin/class-types")}`)}
+            onClick={() => router.push(detailHref)}
             className={cn(
                 "bg-white border border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
                 "transition-all duration-150",
@@ -59,9 +165,16 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
 
             {/* Content */}
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
-                <div className="flex flex-col gap-1">
-                    <h3 className="font-medium text-[18px] leading-[28px] text-[#101828]">{template.name}</h3>
-                    <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2">{template.description}</p>
+                <div className="flex flex-row items-start gap-2">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <h3 className="font-medium text-[18px] leading-[28px] text-[#101828]">{template.name}</h3>
+                        <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2">{template.description}</p>
+                    </div>
+                    {/* Kebab — stop click propagation so the card's own onClick
+                        (view details) doesn't fire alongside a menu open. */}
+                    <div className="shrink-0 -mr-2 -mt-1" onClick={e => e.stopPropagation()}>
+                        <RowActions items={items} minWidth={220} triggerLabel="Class template actions" />
+                    </div>
                 </div>
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
@@ -87,6 +200,24 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
                 </div>
             </div>
         </div>
+        {confirmAction && (() => {
+            const cfg = CARD_MODAL_CFG[confirmAction];
+            const tone = CARD_DESTRUCTIVE.has(confirmAction) ? "danger" : "success";
+            return (
+                <ConfirmModal
+                    open
+                    onClose={() => setConfirmAction(null)}
+                    icon={cfg.IconComp}
+                    tone={tone}
+                    title={cfg.title}
+                    description={cfg.description}
+                    confirmLabel={cfg.confirmLabel}
+                    onConfirm={handleConfirm}
+                />
+            );
+        })()}
+        <Toast />
+        </>
     );
 }
 
