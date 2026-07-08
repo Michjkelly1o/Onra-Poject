@@ -1154,7 +1154,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                         // Terminal statuses mute ONLY the Credit-left column (bar +
                                                         // count). Transaction name / Plan type / Expiry date stay at
                                                         // normal color — status is already conveyed by the badge.
-                                                        const isDisabled = p.status === "expired" || p.status === "removed";
+                                                        const isDisabled = p.status === "expired" || p.status === "removed" || p.status === "cancelled";
                                                         const creditTextCls = isDisabled ? "text-[#98a2b3]" : "text-[#101828]";
                                                         const barFill       = isDisabled ? "bg-[#d0d5dd]" : "bg-[#658774]";
                                                         return (
