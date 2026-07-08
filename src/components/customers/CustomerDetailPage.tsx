@@ -1185,7 +1185,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                         return (
                                                                             <div className="flex items-center gap-3 min-w-0">
                                                                                 <div className={cn("flex-1 h-1.5 rounded-full", barFill)} />
-                                                                                <span className={cn("text-[14px] font-medium whitespace-nowrap", creditTextCls)}>Unlimited</span>
+                                                                                <span className={cn("w-[72px] text-right shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>Unlimited</span>
                                                                             </div>
                                                                         );
                                                                     }
@@ -1195,7 +1195,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                             <div className="flex-1 h-1.5 rounded-full bg-[#f2f4f7] overflow-hidden">
                                                                                 <div className={cn("h-full rounded-full", barFill)} style={{ width: `${pct}%` }} />
                                                                             </div>
-                                                                            <span className={cn("text-[14px] font-medium whitespace-nowrap", creditTextCls)}>{bal.left}/{bal.total}</span>
+                                                                            <span className={cn("w-[72px] text-right shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>{bal.left}/{bal.total}</span>
                                                                         </div>
                                                                     );
                                                                 })()}
