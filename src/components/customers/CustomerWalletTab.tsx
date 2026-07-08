@@ -89,7 +89,7 @@ export function CustomerWalletTab({ customerId }: { customerId: string }) {
                 ))}
             </div>
 
-            {/* Transaction history */}
+            {/* Transaction history — scroll area (table only) */}
             <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                 {txns.length === 0 ? (
                     <EmptyState
@@ -97,7 +97,7 @@ export function CustomerWalletTab({ customerId }: { customerId: string }) {
                         subtitle="This customer has no account credit yet."
                     />
                 ) : (
-                    <div className="px-6 pb-6">
+                    <div className="px-6">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
@@ -128,13 +128,18 @@ export function CustomerWalletTab({ customerId }: { customerId: string }) {
                                 ))}
                             </tbody>
                         </table>
-                        <div className="pt-3">
-                            <Pagination page={clampedPage} total={sorted.length} pageSize={pageSize}
-                                onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
-                        </div>
                     </div>
                 )}
             </div>
+
+            {/* Pagination pinned to the bottom (outside the scroll area),
+                matching the Plan tab. */}
+            {txns.length > 0 && (
+                <div className="px-6 shrink-0">
+                    <Pagination page={clampedPage} total={sorted.length} pageSize={pageSize}
+                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
+                </div>
+            )}
         </div>
     );
 }
