@@ -4220,12 +4220,15 @@ export const useAppStore = create<AppState>()(persist(
                         }
                         : s,
                 ),
-                // instructors[] — drives pay-rate + payroll + class roster
+                // instructors[] — drives pay-rate + payroll + class roster.
+                // The Instructor display field is `name` (not `fullName`), so
+                // an instructor self-rename must patch `name` for it to reach
+                // the admin pay-rate / compensation / earnings surfaces.
                 instructors: state.instructors.map(i =>
                     i.id === staffId
                         ? {
                             ...i,
-                            fullName,
+                            name: fullName,
                             email,
                             phone,
                             imageUrl: imageUrl ?? i.imageUrl,
