@@ -195,90 +195,85 @@ function PerformanceTab({
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
+    // Render each widget as its own drop-target cell. Extracted into a helper
+    // so the map + the "Add widget" inline CTA can share it without cloning
+    // the DnD boilerplate.
+    const renderWidgetCell = (id: string, idx: number) => (
+        <div
+            key={id}
+            onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (hoverIndex !== idx) setHoverIndex(idx);
+            }}
+            onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                if (hoverIndex === idx) setHoverIndex(null);
+            }}
+            onDrop={(e) => {
+                e.preventDefault();
+                if (dragIndex !== null && dragIndex !== idx) {
+                    onReorderWidgets(dragIndex, idx);
+                }
+                setDragIndex(null);
+                setHoverIndex(null);
+            }}
+            onDragEnd={() => {
+                setDragIndex(null);
+                setHoverIndex(null);
+            }}
+            className={cn(
+                "transition-all",
+                dragIndex === idx && "opacity-40",
+                hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
+                    "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
+            )}
+        >
+            <DashboardWidgetCard
+                widgetId={id}
+                period={period}
+                action="kebab"
+                dragHandle
+                onDragStart={(e) => {
+                    setDragIndex(idx);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", id);
+                    const handle = e.currentTarget as HTMLElement;
+                    const card = handle.closest("[data-widget-card]") as HTMLElement | null;
+                    if (card) {
+                        const rect = card.getBoundingClientRect();
+                        e.dataTransfer.setDragImage(
+                            card,
+                            e.clientX - rect.left,
+                            e.clientY - rect.top,
+                        );
+                    }
+                }}
+                onRemove={() => onRemoveWidget(id)}
+            />
+        </div>
+    );
+
+    // Split the widget list around the midpoint so the "Add widget" CTA can
+    // render BETWEEN the two halves — visually in the middle of the grid,
+    // not tucked at the bottom (client Jul 2026).
+    const midpoint = Math.ceil(activeWidgets.length / 2);
+    const firstHalf  = activeWidgets.slice(0, midpoint);
+    const secondHalf = activeWidgets.slice(midpoint);
+
     return (
         <div className="grid grid-cols-2 gap-6">
-            {activeWidgets.map((id, idx) => (
-                <div
-                    key={id}
-                    // Drop target only — `draggable` lives on the DotsGrid
-                    // icon inside the card so dragging is ONLY initiated
-                    // from the handle. Clicks anywhere else (title, chart,
-                    // kebab) don't start a drag.
-                    onDragOver={(e) => {
-                        // Allow drop + signal the visual hover target.
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                        if (hoverIndex !== idx) setHoverIndex(idx);
-                    }}
-                    onDragLeave={(e) => {
-                        // Only clear when leaving the actual card boundary,
-                        // not when the cursor crosses child elements.
-                        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-                        if (hoverIndex === idx) setHoverIndex(null);
-                    }}
-                    onDrop={(e) => {
-                        e.preventDefault();
-                        if (dragIndex !== null && dragIndex !== idx) {
-                            onReorderWidgets(dragIndex, idx);
-                        }
-                        setDragIndex(null);
-                        setHoverIndex(null);
-                    }}
-                    onDragEnd={() => {
-                        setDragIndex(null);
-                        setHoverIndex(null);
-                    }}
-                    className={cn(
-                        "transition-all",
-                        dragIndex === idx && "opacity-40",
-                        hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
-                            "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
-                    )}
-                >
-                    <DashboardWidgetCard
-                        widgetId={id}
-                        period={period}
-                        action="kebab"
-                        dragHandle
-                        onDragStart={(e) => {
-                            setDragIndex(idx);
-                            // Some browsers require dataTransfer to be set
-                            // for a drag to actually start.
-                            e.dataTransfer.effectAllowed = "move";
-                            e.dataTransfer.setData("text/plain", id);
-                            // Drag image = the WHOLE card, not just the
-                            // icon. The card shell is tagged with
-                            // `data-widget-card` so we can walk up the DOM
-                            // from the icon to find it. Offset positions
-                            // the ghost so the cursor stays roughly where
-                            // it grabbed the handle.
-                            const handle = e.currentTarget as HTMLElement;
-                            const card = handle.closest("[data-widget-card]") as HTMLElement | null;
-                            if (card) {
-                                const rect = card.getBoundingClientRect();
-                                e.dataTransfer.setDragImage(
-                                    card,
-                                    e.clientX - rect.left,
-                                    e.clientY - rect.top,
-                                );
-                            }
-                        }}
-                        onRemove={() => onRemoveWidget(id)}
-                    />
-                </div>
-            ))}
+            {firstHalf.map((id, i) => renderWidgetCell(id, i))}
 
-            {/* Add widget entry point — centered horizontally (client Jul
-                2026). Spans both columns and caps at max-w-md so it reads as
-                a middle-aligned CTA below the widget grid instead of a
-                grid-cell-sized tile tucked to one side. Hidden once every
-                catalogue widget is already active (would open an empty
-                picker). */}
+            {/* Add widget entry point — sits in the MIDDLE of the widget
+                grid, spanning both columns so it reads as a full-width
+                divider CTA between the top and bottom halves. Hidden once
+                every catalogue widget is already active. */}
             {!allWidgetsActive && (
                 <button
                     type="button"
                     onClick={onOpenModal}
-                    className="col-span-2 mx-auto w-full max-w-md border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                    className="col-span-2 border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
                 >
                     <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
                         <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
@@ -289,6 +284,8 @@ function PerformanceTab({
                     </div>
                 </button>
             )}
+
+            {secondHalf.map((id, i) => renderWidgetCell(id, midpoint + i))}
         </div>
     );
 }
@@ -943,11 +940,10 @@ export default function AdminDashboard() {
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
 
-            {/* Tab Navigation — sticky when scrolling (client Jul 2026). The
-                -mx-6 + px-6 + -mt-6 + pt-6 combo lets the sticky strip fill
-                the parent <main>'s p-6 padding so the white background
-                covers content passing underneath. */}
-            <div className="sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 pb-0 bg-white border-b border-[#e4e7ec]">
+            {/* Tab Navigation — sticky when scrolling. No position offset:
+                the strip stays exactly where it renders on first paint,
+                only "sticks" once the scroll passes it. */}
+            <div className="sticky top-0 z-20 bg-white border-b border-[#e4e7ec]">
                 <div className="flex gap-3 items-start">
                     <button
                         onClick={() => setActiveTab("today")}
