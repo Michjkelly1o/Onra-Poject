@@ -268,13 +268,17 @@ function PerformanceTab({
                 </div>
             ))}
 
-            {/* Add widget entry point — hidden once every catalogue
-                widget is already active (would open an empty picker). */}
+            {/* Add widget entry point — centered horizontally (client Jul
+                2026). Spans both columns and caps at max-w-md so it reads as
+                a middle-aligned CTA below the widget grid instead of a
+                grid-cell-sized tile tucked to one side. Hidden once every
+                catalogue widget is already active (would open an empty
+                picker). */}
             {!allWidgetsActive && (
                 <button
                     type="button"
                     onClick={onOpenModal}
-                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                    className="col-span-2 mx-auto w-full max-w-md border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
                 >
                     <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
                         <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
@@ -939,8 +943,11 @@ export default function AdminDashboard() {
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
 
-            {/* Tab Navigation */}
-            <div className="border-b border-[#e4e7ec]">
+            {/* Tab Navigation — sticky when scrolling (client Jul 2026). The
+                -mx-6 + px-6 + -mt-6 + pt-6 combo lets the sticky strip fill
+                the parent <main>'s p-6 padding so the white background
+                covers content passing underneath. */}
+            <div className="sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 pb-0 bg-white border-b border-[#e4e7ec]">
                 <div className="flex gap-3 items-start">
                     <button
                         onClick={() => setActiveTab("today")}
@@ -951,7 +958,7 @@ export default function AdminDashboard() {
                                 : "text-[#667085] font-semibold hover:text-[#344054]"
                         )}
                     >
-                        <span className="text-sm">Today at glance</span>
+                        <span className="text-sm">Today</span>
                     </button>
                     <button
                         onClick={() => setActiveTab("coming")}
@@ -962,7 +969,7 @@ export default function AdminDashboard() {
                                 : "text-[#667085] font-semibold hover:text-[#344054]"
                         )}
                     >
-                        <span className="text-sm">Coming up</span>
+                        <span className="text-sm">Coming Up</span>
                     </button>
                     <button
                         onClick={() => setActiveTab("performance")}
@@ -1223,11 +1230,57 @@ export default function AdminDashboard() {
                 </div>
             </div>}
 
-            {/* "Needs attention today" section was removed per client Jul
-                2026 — the four drill-down modals are now triggered from
-                the Coming-up tab KPI cards instead. Modal markup + the
-                `needsAttention` derivation are kept below since the
-                Coming-up metric card click handlers still consume them. */}
+            {/* Needs attention today — re-added Jul 2026 (client) below
+                the Today's-classes + Recent-activity row. Row buttons open
+                the same four drill-down modals the Coming-up tab uses. */}
+            {activeTab === "today" && (
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
+                    <p className="font-semibold text-lg text-[#101828]">Needs attention today</p>
+                    <div className="flex flex-col">
+                        <NeedsAttentionRow
+                            icon={RefreshCw01}
+                            iconBg="bg-[#eff8ff]"
+                            iconFg="text-[#175cd3]"
+                            title={`${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`}
+                            subtitle={`AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`}
+                            onView={() => setAttentionModal("renewal")}
+                        />
+                        <NeedsAttentionRow
+                            icon={Bell01}
+                            iconBg="bg-[#fff6ed]"
+                            iconFg="text-[#c4320a]"
+                            title={`${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`}
+                            subtitle="Send a reminder before membership expire"
+                            onView={() => setAttentionModal("renewal")}
+                        />
+                        <NeedsAttentionRow
+                            icon={CreditCard01}
+                            iconBg="bg-[#fef3f2]"
+                            iconFg="text-[#b42318]"
+                            title={`${needsAttention.failedCount} failed ${needsAttention.failedCount === 1 ? "payment" : "payments"}`}
+                            subtitle={`Payment failed · AED ${needsAttention.failedTotalAed.toLocaleString("en-US")}`}
+                            onView={() => setAttentionModal("failed")}
+                        />
+                        <NeedsAttentionRow
+                            icon={UserX01}
+                            iconBg="bg-[#fefbe8]"
+                            iconFg="text-[#a15c07]"
+                            title={`${needsAttention.clientsAtRisk} ${needsAttention.clientsAtRisk === 1 ? "client" : "clients"} at risk`}
+                            subtitle="No visit in 14-30 days · win them back"
+                            onView={() => setAttentionModal("atrisk")}
+                        />
+                        <NeedsAttentionRow
+                            icon={CalendarCheck01}
+                            iconBg="bg-[#ecfdf3]"
+                            iconFg="text-[#079455]"
+                            title="Under filled classes"
+                            subtitle={`${needsAttention.underFilled} ${needsAttention.underFilled === 1 ? "class" : "classes"} below 50% capacity`}
+                            onView={() => setAttentionModal("underfilled")}
+                            isLast
+                        />
+                    </div>
+                </div>
+            )}
 
             <AddWidgetModal
                 open={widgetModalOpen}

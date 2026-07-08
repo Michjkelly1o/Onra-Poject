@@ -34,7 +34,11 @@ export function SettingsGroupHeader({ className }: { className?: string } = {}) 
         ?? group.tabs[0].href;
 
     return (
-        <div className="border-b border-[#e4e7ec] px-1">
+        // Sticky when scrolling (client Jul 2026). Matches the dashboard tab
+        // strip pattern: -mx-6 + px-6 + -mt-6 + pt-6 lets the sticky strip
+        // fill the parent <main>'s p-6 padding so the white background
+        // covers content passing underneath.
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 pb-0 bg-white border-b border-[#e4e7ec]">
             <DetailPageTabs
                 tabs={group.tabs.map(t => ({ key: t.href, label: t.label }))}
                 activeKey={activeKey}
