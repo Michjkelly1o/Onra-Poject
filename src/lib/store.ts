@@ -6307,7 +6307,7 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             referralSettings: { ...state.referralSettings, ...patch },
         }));
-        get().recordAudit("Updated referral eligibility", "settings", "referral_eligibility", "Eligibility & fraud controls");
+        get().recordAudit("Updated referral eligibility", "settings", "referral_eligibility", "Eligibility & safeguards");
     },
     updateReferralInformation: (patch) => {
         set(state => ({

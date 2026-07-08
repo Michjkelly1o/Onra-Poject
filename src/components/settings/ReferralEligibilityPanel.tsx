@@ -1,12 +1,12 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — "Eligibility & fraud controls" side-panel modal
+// Onra Studio — "Eligibility & safeguards" side-panel modal
 // (Figma 7661:85303)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Slide-in panel opened from the Referral landing card's "Edit" button on
-// the Eligibility & fraud controls tab. Same chrome as the Reward rules
+// the Eligibility & safeguards tab. Same chrome as the Reward rules
 // & limits panel + PosNewCustomerModal.
 //
 // Body shows 4 cards:
@@ -130,7 +130,7 @@ export function ReferralEligibilityPanel({ open, onClose }: {
             creditsRedeemableAllBranches: allBranches,
         });
         showToast(
-            "Eligibility & fraud controls updated",
+            "Eligibility & safeguards updated",
             "Referral eligibility rules now apply to new redemptions.",
             "success", "check",
         );
