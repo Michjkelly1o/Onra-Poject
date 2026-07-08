@@ -36,11 +36,14 @@
 //   plan_id_used      → memberships.id | packages.id (matches plan_kind_used)
 
 import type { ClassBooking } from "./_types";
-import { DEMO_NOW_BOOKINGS, DEMO_NOW_LIAM_BOOKINGS } from "./prototype_demo_data";
+import { DEMO_NOW_BOOKINGS, DEMO_NOW_LIAM_BOOKINGS, DEMO_NOW_WAITLIST_BOOKINGS } from "./prototype_demo_data";
 
 export const class_bookings: ClassBooking[] = [
     ...DEMO_NOW_BOOKINGS,
     ...DEMO_NOW_LIAM_BOOKINGS,
+    // Dashboard "Waitlist spots opened today" — waitlisted members on the
+    // DEMO_NOW_WAITLIST_SCHEDULES awaiting confirmation.
+    ...DEMO_NOW_WAITLIST_BOOKINGS,
     // ─── Row 1: Reformer Pilates 2026-05-08 (Completed) — 3 booked, all present, 3 ratings ──
     {
         id: "bk_001", class_schedule_id: "class_sched_2026_05_08_0900",

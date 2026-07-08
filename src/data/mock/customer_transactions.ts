@@ -25,7 +25,7 @@
 //     `product_id` → memberships.id / packages.id
 
 import type { CustomerTransaction } from "./_types";
-import { DEMO_NOW_TRANSACTIONS, DEMO_NOW_FAILED_TRANSACTIONS } from "./prototype_demo_data";
+import { DEMO_NOW_TRANSACTIONS, DEMO_NOW_FAILED_TRANSACTIONS, DEMO_NOW_REFUND_REQUESTS } from "./prototype_demo_data";
 
 const SOUTH = "branch_forma_south";
 
@@ -42,6 +42,9 @@ export const customer_transactions: CustomerTransaction[] = [
     // rows anchored on NOW so the modal always has something to
     // recover.
     ...DEMO_NOW_FAILED_TRANSACTIONS,
+    // Dashboard Refund-requests approval queue — `complete` rows with a
+    // `refund_requested_at` marker awaiting an admin decision.
+    ...DEMO_NOW_REFUND_REQUESTS,
     // ── Ahmed Zayn ───────────────────────────────────────────────────────────
     {
         id: "txn_ahmed_1",

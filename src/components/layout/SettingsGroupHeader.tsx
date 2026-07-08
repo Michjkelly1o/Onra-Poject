@@ -34,15 +34,18 @@ export function SettingsGroupHeader({ className }: { className?: string } = {}) 
         ?? group.tabs[0].href;
 
     return (
-        // Sticky when scrolling. Plain sticky top-0 with a full-width
-        // opaque bg-white so scrolled content is fully covered. NO
-        // position shift.
-        <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] px-1">
+        // Sticky when scrolling. `bg-white` covers directly behind the
+        // tabs; the white box-shadow extends that white 24px UPWARD to
+        // fill main's p-6 top padding gap (where content bled through
+        // above the tabs). box-shadow is purely visual — no layout
+        // impact, so the tab strip does NOT move.
+        <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] shadow-[0_-24px_0_0_#ffffff]">
             <DetailPageTabs
                 tabs={group.tabs.map(t => ({ key: t.href, label: t.label }))}
                 activeKey={activeKey}
                 onChange={href => router.push(href)}
                 className={className}
+                compact
             />
         </div>
     );

@@ -1745,6 +1745,17 @@ export interface CustomerTransaction {
     /** For `kind: "cancellation_penalty"` rows only — which scenario
      *  triggered the fee. Drives display copy on Payment history. */
     cancellationScenario?: "late_cancel" | "no_show";
+    // ── Refund-request approval queue (dashboard Needs-attention, Jul 2026) ──
+    /** Set when a member has requested a refund on this (still `complete`)
+     *  transaction and it's awaiting an admin decision. A transaction is
+     *  "awaiting decision" when this is set AND `status === "complete"`.
+     *  Approve → `refundTransaction` flips status to "refunded" (drops from
+     *  the queue). Deny → this field is cleared (stays complete, drops from
+     *  the queue). Additive, so no existing status-switch consumer changes. */
+    refundRequestedAtISO?: string;
+    /** Member's stated reason for the refund request — shown in the
+     *  Refund-requests modal. */
+    refundRequestReason?: string;
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -2398,6 +2409,9 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         // ── Cancellation-penalty flow (Jul 2026) ────────────────────
         isRefundable:          t.is_refundable,
         cancellationScenario:  t.cancellation_scenario,
+        // ── Refund-request approval queue (Jul 2026) ────────────────
+        refundRequestedAtISO:  t.refund_requested_at,
+        refundRequestReason:   t.refund_request_reason,
     };
 }
 
@@ -3397,6 +3411,15 @@ export interface AppState {
     /** Refund a completed transaction — status → refunded, with the refund
      *  method + timestamp recorded. Only `complete` transactions are eligible. */
     refundTransaction: (id: string, method: "cash" | "card") => void;
+    /** Approve a pending refund request (dashboard Needs-attention). Refunds
+     *  the transaction (status → refunded) so it drops from the queue. */
+    approveRefundRequest: (id: string) => void;
+    /** Deny a pending refund request — clears `refundRequestedAtISO` so the
+     *  row stays `complete` and drops from the queue. */
+    denyRefundRequest: (id: string) => void;
+    /** Promote a waitlisted booking to booked (dashboard Needs-attention
+     *  "Waitlist spots opened today"). Bumps the schedule's booked count. */
+    confirmWaitlistBooking: (bookingId: string) => void;
 
     // ── Memberships ────────────────────────────────────────────────────────
     /** Append a new membership to the store. Generates an id if one is not
@@ -5504,6 +5527,50 @@ export const useAppStore = create<AppState>()(persist(
         }
     },
 
+    approveRefundRequest: (id) => {
+        const target = get().customerTransactions.find(t => t.id === id);
+        if (!target) return;
+        // Reuse the refund path so status → refunded + refundedAtISO recorded.
+        // Original payment method drives the refund method (falls back to card).
+        get().refundTransaction(id, target.paymentMethod === "cash" ? "cash" : "card");
+    },
+
+    denyRefundRequest: (id) => {
+        const target = get().customerTransactions.find(t => t.id === id);
+        set(state => ({
+            customerTransactions: state.customerTransactions.map(t =>
+                t.id === id ? { ...t, refundRequestedAtISO: undefined, refundRequestReason: undefined } : t,
+            ),
+        }));
+        if (target) {
+            const c = get().customers.find(cx => cx.id === target.customerId);
+            const name = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "a customer";
+            get().recordAudit(`Denied ${name}'s refund request`, "customer", target.customerId, target.name, { amount: target.amountAed });
+        }
+    },
+
+    confirmWaitlistBooking: (bookingId) => {
+        const booking = get().classBookings.find(b => b.id === bookingId);
+        if (!booking || booking.status !== "waitlisted") return;
+        set(state => ({
+            // Promote the booking: waitlisted → booked, drop its position.
+            classBookings: state.classBookings.map(b =>
+                b.id === bookingId
+                    ? { ...b, status: "booked" as const, waitlistPosition: undefined }
+                    : b,
+            ),
+            // Bump the schedule's booked count so capacity stays truthful
+            // across the schedule list + class detail roster.
+            classSchedules: state.classSchedules.map(s =>
+                s.id === booking.classScheduleId ? { ...s, booked: s.booked + 1 } : s,
+            ),
+        }));
+        const c = get().customers.find(cx => cx.id === booking.customerId);
+        const name = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "a customer";
+        const sched = get().classSchedules.find(s => s.id === booking.classScheduleId);
+        get().recordAudit(`Confirmed ${name}'s waitlist spot`, "class_schedule", booking.classScheduleId, sched?.name ?? "class");
+    },
+
     // ── Memberships / Packages ─────────────────────────────────────────────
 
     addMembership: (input) => {
@@ -7566,7 +7633,12 @@ export const useAppStore = create<AppState>()(persist(
         // customer-side auth + notification-center updates. Data-
         // integrity fixes above (v39-v41) preserved. Bumped one
         // notch so friend's persisted state also refreshes cleanly.
-        version: 42,
+        //
+        // v43: dashboard "Needs attention today" reshape — new
+        // refund-request fields on CustomerTransaction + NOW-anchored
+        // fixtures (refund requests, waitlist confirmations, new
+        // sign-ups). Bumped so testers get the fresh fixtures.
+        version: 43,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

@@ -43,7 +43,7 @@
 // customers when those branches are exercised by a screen.
 
 import type { Customer } from "./_types";
-import { DEMO_NOW_AT_RISK_LAST_VISITS } from "./prototype_demo_data";
+import { DEMO_NOW_AT_RISK_LAST_VISITS, DEMO_NOW_NEW_SIGNUP_CREATED_AT } from "./prototype_demo_data";
 
 // ─── Hand-authored customers ─────────────────────────────────────────────
 //
@@ -598,7 +598,16 @@ function applyAtRiskPatch(row: Customer): Customer {
     return override ? { ...row, last_visit_iso: override } : row;
 }
 
+// Dashboard "New sign-ups today with no first booking" fixture — overrides
+// `created_at` to today for a handful of synthetic customers (which carry
+// `plan_kind: null` + no bookings), so the modal always has fresh drop-ins
+// to nudge. Same patch-at-export pattern as the at-risk override above.
+function applyNewSignupPatch(row: Customer): Customer {
+    const override = DEMO_NOW_NEW_SIGNUP_CREATED_AT[row.id];
+    return override ? { ...row, created_at: override } : row;
+}
+
 export const customers: Customer[] = [
-    ...handAuthoredCustomers.map(applyAtRiskPatch),
-    ...generateSyntheticCustomers(1520).map(applyAtRiskPatch),
+    ...handAuthoredCustomers.map(applyAtRiskPatch).map(applyNewSignupPatch),
+    ...generateSyntheticCustomers(1520).map(applyAtRiskPatch).map(applyNewSignupPatch),
 ];

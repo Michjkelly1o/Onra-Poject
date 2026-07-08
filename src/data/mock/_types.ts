@@ -668,6 +668,11 @@ export interface CustomerTransaction {
      *  triggered the fee. Drives the row's display copy on Payment
      *  history ("Late cancellation penalty" vs "No-show penalty"). */
     cancellation_scenario?: "late_cancel" | "no_show";
+    /** +later: refund-request approval queue (dashboard Needs-attention).
+     *  Set on a still-`complete` row when a member requested a refund that's
+     *  awaiting an admin decision. */
+    refund_requested_at?: string;
+    refund_request_reason?: string;
 }
 
 // ─── Products: Memberships & Packages ───────────────────────────────────────

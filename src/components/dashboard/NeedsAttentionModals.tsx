@@ -1167,7 +1167,381 @@ function CancelClassConfirmModal({
     );
 }
 
-// Re-exports (deliberately empty) — the four named exports above are the
+// ─── 5. Refund requests modal (approval queue) ─────────────────────────────
+//
+// Every `complete` transaction with a `refundRequestedAtISO` marker — a
+// member has asked for a refund and it's awaiting an admin decision. Row
+// actions: Approve (→ refundTransaction, drops from queue) / Deny (clears
+// the marker, stays complete). Both emit a toast + audit entry via the
+// store. Clicking a row deep-links to the customer's Payment history.
+
+export interface RefundRequestsModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchId?: string | null;
+}
+
+export function RefundRequestsModal({ open, onClose, branchId }: RefundRequestsModalProps) {
+    const router = useRouter();
+    const customers = useAppStore(s => s.customers);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const approveRefundRequest = useAppStore(s => s.approveRefundRequest);
+    const denyRefundRequest = useAppStore(s => s.denyRefundRequest);
+    const showToast = useAppStore(s => s.showToast);
+
+    const [page, setPage]         = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    useEffect(() => { if (open) setPage(1); }, [open]);
+
+    function openCustomerPayments(id: string) {
+        onClose();
+        router.push(`/customers/${id}?tab=Payments&returnTo=${encodeURIComponent("/admin/dashboard")}`);
+    }
+
+    const rows = useMemo(() => {
+        return customerTransactions
+            .filter(t => t.status === "complete" && !!t.refundRequestedAtISO)
+            .filter(t => !branchId || t.branchId === branchId)
+            .map(t => {
+                const c = customers.find(cx => cx.id === t.customerId);
+                return c ? { txn: t, customer: c } : null;
+            })
+            .filter((r): r is NonNullable<typeof r> => !!r);
+    }, [customerTransactions, customers, branchId]);
+
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer:  (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            product:   (a, b) => a.txn.name.localeCompare(b.txn.name),
+            reason:    (a, b) => (a.txn.refundRequestReason ?? "").localeCompare(b.txn.refundRequestReason ?? ""),
+            requested: (a, b) => (a.txn.refundRequestedAtISO ?? "").localeCompare(b.txn.refundRequestedAtISO ?? ""),
+        });
+
+    const atStakeAed = useMemo(() => rows.reduce((s, r) => s + Math.abs(r.txn.amountAed), 0), [rows]);
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+
+    function approve(txnId: string, name: string) {
+        approveRefundRequest(txnId);
+        showToast("Refund approved", `${name}'s refund has been processed.`, "success", "check");
+    }
+    function deny(txnId: string, name: string) {
+        denyRefundRequest(txnId);
+        showToast("Refund request denied", `${name}'s refund request has been declined.`, "error", "slash");
+    }
+
+    return (
+        <ModalShell
+            open={open}
+            onClose={onClose}
+            title="Refund requests"
+            subtitle={
+                <>
+                    <span className="font-semibold text-[#101828]">
+                        {totalRows} request{totalRows === 1 ? "" : "s"}
+                    </span>{" "}
+                    awaiting your decision · AED{" "}
+                    <span className="font-semibold text-[#101828]">{atStakeAed.toLocaleString("en-US")}</span>{" "}
+                    at stake
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
+        >
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products or service</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Reason</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="requested" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Requested</SortableHeader></th>
+                            <th className={cn(TH, "w-14")} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.txn.id}
+                                onClick={() => openCustomerPayments(r.customer.id)}
+                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                <td className={TD}><CustomerCell c={r.customer} /></td>
+                                <td className={TD}>
+                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.txn.name}</p>
+                                    <p className="text-[14px] text-[#667085] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
+                                </td>
+                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.txn.refundRequestReason ?? "—"}</td>
+                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.txn.refundRequestedAtISO)}</td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions
+                                        items={[
+                                            { label: "Approve refund", icon: Check, success: true, onClick: () => approve(r.txn.id, `${r.customer.firstName} ${r.customer.lastName}`.trim()) },
+                                            { label: "Deny request", icon: SlashCircle01, danger: true, onClick: () => deny(r.txn.id, `${r.customer.firstName} ${r.customer.lastName}`.trim()) },
+                                        ]}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No refund requests awaiting a decision.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </ModalShell>
+    );
+}
+
+// ─── 6. Waitlist confirmations modal ───────────────────────────────────────
+//
+// Every waitlisted booking on a today-dated class that has a free spot
+// (booked < capacity). Confirming promotes the booking (waitlisted →
+// booked) via the store and bumps the schedule count. Row click deep-links
+// to the class detail.
+
+export interface WaitlistConfirmModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchId?: string | null;
+}
+
+export function WaitlistConfirmModal({ open, onClose, branchId }: WaitlistConfirmModalProps) {
+    const router = useRouter();
+    const customers = useAppStore(s => s.customers);
+    const classBookings = useAppStore(s => s.classBookings);
+    const classSchedules = useAppStore(s => s.classSchedules);
+    const confirmWaitlistBooking = useAppStore(s => s.confirmWaitlistBooking);
+    const showToast = useAppStore(s => s.showToast);
+
+    const [page, setPage]         = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    useEffect(() => { if (open) setPage(1); }, [open]);
+
+    const todayISO = new Date().toISOString().slice(0, 10);
+
+    function openClass(id: string) {
+        onClose();
+        router.push(`/schedule/${id}?returnTo=${encodeURIComponent("/admin/dashboard")}`);
+    }
+
+    const rows = useMemo(() => {
+        // Today-dated schedules with an open spot.
+        const openTodaySchedIds = new Set(
+            classSchedules
+                .filter(s => s.dateISO === todayISO && s.capacity > 0 && s.booked < s.capacity)
+                .filter(s => !branchId || s.branchId === branchId)
+                .map(s => s.id),
+        );
+        return classBookings
+            .filter(b => b.status === "waitlisted" && openTodaySchedIds.has(b.classScheduleId))
+            .map(b => {
+                const c = customers.find(cx => cx.id === b.customerId);
+                const sched = classSchedules.find(s => s.id === b.classScheduleId);
+                return c && sched ? { booking: b, customer: c, sched } : null;
+            })
+            .filter((r): r is NonNullable<typeof r> => !!r);
+    }, [classBookings, classSchedules, customers, branchId, todayISO]);
+
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer: (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            klass:    (a, b) => a.sched.name.localeCompare(b.sched.name),
+            position: (a, b) => (a.booking.waitlistPosition ?? 99) - (b.booking.waitlistPosition ?? 99),
+        });
+
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+
+    function confirm(bookingId: string, name: string, klass: string) {
+        confirmWaitlistBooking(bookingId);
+        showToast("Waitlist spot confirmed", `${name} is now booked into ${klass}.`, "success", "check");
+    }
+
+    return (
+        <ModalShell
+            open={open}
+            onClose={onClose}
+            title="Waitlist confirmations"
+            subtitle={
+                <>
+                    <span className="font-semibold text-[#101828]">
+                        {totalRows} spot{totalRows === 1 ? "" : "s"}
+                    </span>{" "}
+                    opened on today&apos;s classes need confirmation
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
+        >
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="klass" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="position" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Waitlist position</SortableHeader></th>
+                            <th className={cn(TH, "w-14")} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.booking.id}
+                                onClick={() => openClass(r.sched.id)}
+                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                <td className={TD}><CustomerCell c={r.customer} /></td>
+                                <td className={TD}>
+                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.sched.name}</p>
+                                    <p className="text-[14px] text-[#667085] leading-[20px]">{r.sched.displayTime} · {r.sched.booked}/{r.sched.capacity} booked</p>
+                                </td>
+                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>#{r.booking.waitlistPosition ?? 1}</td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions
+                                        items={[
+                                            { label: "Confirm spot", icon: Check, success: true, onClick: () => confirm(r.booking.id, `${r.customer.firstName} ${r.customer.lastName}`.trim(), r.sched.name) },
+                                            { label: "View class", icon: Eye, onClick: () => openClass(r.sched.id) },
+                                        ]}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No waitlist spots need confirming today.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </ModalShell>
+    );
+}
+
+// ─── 7. New sign-ups modal ─────────────────────────────────────────────────
+//
+// Active customers who signed up today and haven't made a first booking
+// yet. Row click / View → customer detail. Nudge → a toast (stand-in for
+// the eventual reminder-send integration).
+
+export interface NewSignupsModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchId?: string | null;
+}
+
+export function NewSignupsModal({ open, onClose, branchId }: NewSignupsModalProps) {
+    const router = useRouter();
+    const customers = useAppStore(s => s.customers);
+    const classBookings = useAppStore(s => s.classBookings);
+    const showToast = useAppStore(s => s.showToast);
+
+    const [page, setPage]         = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    useEffect(() => { if (open) setPage(1); }, [open]);
+
+    const todayISO = new Date().toISOString().slice(0, 10);
+
+    function viewCustomer(id: string) {
+        onClose();
+        router.push(`/customers/${id}?returnTo=${encodeURIComponent("/admin/dashboard")}`);
+    }
+
+    const rows = useMemo(() => {
+        const bookedCustomerIds = new Set(classBookings.map(b => b.customerId));
+        return customers
+            .filter(c => c.status === "active")
+            .filter(c => !branchId || c.branchId === branchId)
+            .filter(c => (c.createdAt ?? "").slice(0, 10) === todayISO)
+            .filter(c => !bookedCustomerIds.has(c.id))
+            .map(c => ({ customer: c }));
+    }, [customers, classBookings, branchId, todayISO]);
+
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer: (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            signedUp: (a, b) => (a.customer.createdAt ?? "").localeCompare(b.customer.createdAt ?? ""),
+        });
+
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+
+    function nudge(name: string) {
+        showToast("Reminder sent", `A "book your first class" nudge was sent to ${name}.`, "success", "check");
+    }
+
+    return (
+        <ModalShell
+            open={open}
+            onClose={onClose}
+            title="New sign-ups today"
+            subtitle={
+                <>
+                    <span className="font-semibold text-[#101828]">
+                        {totalRows} member{totalRows === 1 ? "" : "s"}
+                    </span>{" "}
+                    signed up today with no first booking yet
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
+        >
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="signedUp" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Signed up</SortableHeader></th>
+                            <th className={cn(TH, "w-14")} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.customer.id}
+                                onClick={() => viewCustomer(r.customer.id)}
+                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                <td className={TD}><CustomerCell c={r.customer} /></td>
+                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.customer.createdAt)}</td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions
+                                        items={[
+                                            { label: "Nudge to book", icon: Bell01, onClick: () => nudge(`${r.customer.firstName} ${r.customer.lastName}`.trim()) },
+                                            { label: "View", icon: Eye, onClick: () => viewCustomer(r.customer.id) },
+                                        ]}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No new sign-ups without a first booking today.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </ModalShell>
+    );
+}
+
+// Re-exports (deliberately empty) — the named exports above are the
 // public API. `Customer`, `CustomerPlan`, `CustomerTransaction`,
 // `ClassSchedule` come through the shared imports; this module only
 // contributes UI.

@@ -41,7 +41,12 @@ export default function AdminLayout({
                 <div className="flex-1 min-w-0 p-[12px]">
                     <div className="bg-white border border-[#dcded5] rounded-[20px] h-full flex flex-col overflow-hidden">
                         <Header />
-                        <main className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col">{children}</main>
+                        {/* pt-4 (16px) instead of the p-6's 24px top so the
+                            page content sits a touch closer to the Header
+                            (client Jul 2026). Sides + bottom stay 24px. The
+                            sticky tab box-shadows are -24px so they still
+                            over-cover this smaller gap. */}
+                        <main className="flex-1 min-h-0 overflow-y-auto p-6 pt-4 flex flex-col">{children}</main>
                     </div>
                 </div>
             </div>

@@ -1423,3 +1423,136 @@ export const DEMO_NOW_AT_RISK_LAST_VISITS: Record<string, string> =
     Object.fromEntries(
         AT_RISK_INDICES.map((idx, i) => [synthCustomerId(idx), isoDay(daysAgo(AT_RISK_DAYS[i]))]),
     );
+
+// ── 4. Refund requests awaiting decision (Jul 2026) ────────────────────
+//
+// Dashboard "Needs attention today" — an approval queue. Each row is a
+// `complete` transaction the member has since asked to refund; it sits
+// pending until admin approves (→ refunded) or denies (→ stays complete).
+// Anchored to real synth customers with `refund_requested_at` = today.
+
+interface RefundReqSpec {
+    synthIdx: number;
+    productLabel: string;
+    amountAed: number;
+    hoursAgo: number;      // when the refund was requested
+    kind: "membership" | "package";
+    productId: string;
+    reason: string;
+}
+const REFUND_REQ_SPECS: RefundReqSpec[] = [
+    { synthIdx: 10, productLabel: "10-Class Package for One Month", amountAed: 1390, hoursAgo:  1, kind: "package",    productId: "pkg_10_class",         reason: "Bought the wrong package" },
+    { synthIdx: 11, productLabel: "Advanced Monthly Membership",    amountAed: 1500, hoursAgo:  3, kind: "membership", productId: "mem_advanced_monthly", reason: "Moving away from the city" },
+    { synthIdx: 12, productLabel: "5-Class Package for One Month",  amountAed:  750, hoursAgo:  5, kind: "package",    productId: "pkg_5_class",          reason: "Charged twice by mistake" },
+];
+
+export const DEMO_NOW_REFUND_REQUESTS: CustomerTransaction[] = REFUND_REQ_SPECS.map((r, idx) => {
+    // The original sale landed a few days ago; the refund request is today.
+    const soldAt = daysAgo(3 + idx);
+    const requestedAt = new Date(NOW.getTime() - r.hoursAgo * 60 * 60 * 1000);
+    return {
+        id: `txn_refundreq_demo_${String(idx + 1).padStart(3, "0")}`,
+        customer_id: synthCustomerId(r.synthIdx),
+        branch_id: SOUTH,
+        kind: r.kind,
+        product_id: r.productId,
+        name: r.productLabel,
+        amount_aed: r.amountAed,
+        status: "complete",
+        payment_method: "card",
+        payment_source: "customer_portal",
+        payment_type: "one_off",
+        transaction_type: "sale",
+        tax_treatment: "standard",
+        created_at: isoStamp(soldAt),
+        settlement_iso: isoStamp(daysAhead(0)),
+        refund_requested_at: isoStamp(requestedAt),
+        refund_request_reason: r.reason,
+    };
+});
+
+// ── 5. Waitlist spots opened on today's classes (Jul 2026) ─────────────
+//
+// Dashboard "Needs attention today" — today-dated classes that have a free
+// spot (booked < capacity) AND a waitlisted member awaiting confirmation.
+// Self-contained: dedicated today schedules + their waitlisted bookings so
+// the derivation (today + booked<capacity + status=waitlisted) always has
+// rows. Confirming a row promotes the booking (waitlisted → booked).
+
+interface WaitlistSchedSpec {
+    slotIdx: number;
+    templateIdx: number;
+    capacity: number;
+    booked: number;        // < capacity so a spot is "open"
+    waitCustomerIdx: number; // synth customer waiting
+    waitHoursAgo: number;
+}
+const WAITLIST_SPECS: WaitlistSchedSpec[] = [
+    { slotIdx: 0, templateIdx: 0, capacity: 8,  booked: 7,  waitCustomerIdx: 13, waitHoursAgo: 2 },
+    { slotIdx: 1, templateIdx: 2, capacity: 12, booked: 10, waitCustomerIdx: 14, waitHoursAgo: 4 },
+    { slotIdx: 2, templateIdx: 1, capacity: 10, booked: 9,  waitCustomerIdx: 15, waitHoursAgo: 6 },
+];
+
+export const DEMO_NOW_WAITLIST_SCHEDULES: ClassSchedule[] = WAITLIST_SPECS.map((w, idx) => {
+    const today = daysAhead(0);
+    const slot = SLOT_TIMES[w.slotIdx];
+    const template = TEMPLATES[w.templateIdx];
+    const instructors = INSTRUCTORS_BY_BRANCH[SOUTH];
+    const rooms       = ROOMS_BY_BRANCH[SOUTH];
+    return {
+        id: `class_sched_wl_demo_${String(idx + 1).padStart(3, "0")}`,
+        template_id: template.id,
+        branch_id: SOUTH,
+        room_id: rooms[idx % rooms.length],
+        instructor_id: instructors[idx % instructors.length],
+        date_iso: isoDay(today),
+        start_time: slot.start,
+        end_time: slot.end,
+        display_time: `${slot.start} – ${slot.end}`,
+        capacity: w.capacity,
+        booked: w.booked,
+        rating: 0,
+        rating_count: 0,
+        status: "Upcoming",
+        gender_access: "all",
+        class_type: "Group",
+        waitlist_enabled: true,
+    };
+});
+
+export const DEMO_NOW_WAITLIST_BOOKINGS: ClassBooking[] = WAITLIST_SPECS.map((w, idx) => {
+    const requestedAt = new Date(NOW.getTime() - w.waitHoursAgo * 60 * 60 * 1000);
+    return {
+        id: `bk_wl_demo_${String(idx + 1).padStart(3, "0")}`,
+        class_schedule_id: `class_sched_wl_demo_${String(idx + 1).padStart(3, "0")}`,
+        customer_id: synthCustomerId(w.waitCustomerIdx),
+        branch_id: SOUTH,
+        status: "waitlisted",
+        attendance_status: "pending",
+        booked_at: isoStamp(requestedAt),
+        waitlist_position: 1,
+        plan_kind_used: idx % 2 === 0 ? "package" : "membership",
+        booking_source: "customer_portal",
+    };
+});
+
+// ── 6. New sign-ups today with no first booking (Jul 2026) ─────────────
+//
+// Dashboard "Needs attention today" — synthetic customers whose `created_at`
+// is overridden to today. They carry `plan_kind: null` and NO bookings (no
+// DEMO_NOW booking references a synth id), so they qualify as "signed up
+// today, hasn't booked yet". Applied in customers.ts like the at-risk patch.
+
+// All-active synth indices (avoid 18/19 which the SYNTH_STATUSES cycle
+// marks inactive/archived — the New-signups modal filters status=active).
+const NEW_SIGNUP_INDICES = [16, 17, 20, 21];
+
+export const DEMO_NOW_NEW_SIGNUP_CREATED_AT: Record<string, string> =
+    Object.fromEntries(
+        NEW_SIGNUP_INDICES.map((idx, i) => [
+            synthCustomerId(idx),
+            // Stagger the sign-up times across today so the modal reads
+            // like real drop-ins rather than one batch import.
+            isoStamp(new Date(NOW.getTime() - (i + 1) * 90 * 60 * 1000)),
+        ]),
+    );

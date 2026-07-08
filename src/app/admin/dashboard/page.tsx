@@ -39,6 +39,9 @@ import {
     FailedPaymentsModal,
     AtRiskClientsModal,
     UnderFilledModal,
+    RefundRequestsModal,
+    WaitlistConfirmModal,
+    NewSignupsModal,
 } from "@/components/dashboard/NeedsAttentionModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
@@ -81,8 +84,8 @@ interface TimeSlot {
 // CATEGORY_COLORS (Pilates / Barre / Yoga).
 const CATEGORY_PALETTE: Record<string, { bg: string; border: string; text: string }> = {
     Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
-    Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
-    Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
+    Barre: { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
+    Yoga: { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
 };
 const FALLBACK_PALETTE = { bg: "#f7f3f7", border: "#b892ba", text: "#4a1fb8" };
 
@@ -232,7 +235,7 @@ function PerformanceTab({
                         "transition-all",
                         dragIndex === idx && "opacity-40",
                         hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
-                            "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
+                        "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
                     )}
                 >
                     <DashboardWidgetCard
@@ -484,7 +487,7 @@ export default function AdminDashboard() {
     // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
     // 245665 / 246710). Renewal + Expire cards share the Renewal-due
     // modal per client Jul 2026.
-    type NeedsAttentionModal = "renewal" | "failed" | "atrisk" | "underfilled" | null;
+    type NeedsAttentionModal = "renewal" | "failed" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -695,15 +698,6 @@ export default function AdminDashboard() {
             if (Number.isNaN(t)) return false;
             return t >= now && t <= horizonMs;
         };
-        // Backward window — past events that are still open (failed
-        // payments). Same window size as the pill so the card still
-        // reacts to Next 7 / Next 30, but looks the correct direction.
-        const pastStartMs = now - comingRange * DAY;
-        const inPastRange = (iso: string) => {
-            const t = new Date(iso).getTime();
-            if (Number.isNaN(t)) return false;
-            return t >= pastStartMs && t <= now;
-        };
 
         const heldMemberships = scopedCustomerPlans.filter(p =>
             p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
@@ -731,17 +725,10 @@ export default function AdminDashboard() {
             (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
         );
 
-        // 4. Failed payments — truly failed transactions in the past N
-        //    days (window flipped from forward → backward Jul 2026 because
-        //    failed transactions are historical; the "next 7/30 days"
-        //    pill acts as a rolling window over recent failures instead).
-        //    Modal receives the same window prop so the count + list agree.
-        const failedTxns = scopedTransactions.filter(t =>
-            t.status === "failed" && inPastRange(t.createdAtISO),
-        );
-        const failedAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
+        // Failed payments no longer surfaces on Coming-up (moved to the
+        // Today tab's Needs-attention card, client Jul 2026).
 
-        // 5. At-risk clients — same 14-30 day silent-window as Needs-attention.
+        // At-risk clients — same 14-30 day silent-window as Needs-attention.
         //    Range-independent (it's a bucket, not a horizon).
         const clientsAtRisk = scopedCustomers.filter(c => {
             if (c.status !== "active") return false;
@@ -782,13 +769,9 @@ export default function AdminDashboard() {
                 icon: RefreshCw01,
                 onClick: () => setAttentionModal("renewal"),
             },
-            {
-                label: "Failed payments",
-                value: `${failedTxns.length} · AED ${failedAed.toLocaleString("en-US")}`,
-                comparison: "Recoverable now",
-                icon: CreditCard01,
-                onClick: () => setAttentionModal("failed"),
-            },
+            // Failed payments removed from Coming-up (client Jul 2026) — it's
+            // a LIVE "recoverable now" item that lives exclusively in the
+            // Today tab's "Needs attention today" card. One home only.
             {
                 label: "At-risk clients",
                 value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
@@ -811,8 +794,8 @@ export default function AdminDashboard() {
     // references) so the CSV etc. keep exporting the metrics the admin
     // is currently looking at.
     const metrics = activeTab === "performance" ? performanceMetrics
-                  : activeTab === "coming"      ? comingMetrics
-                  :                                todayMetrics;
+        : activeTab === "coming" ? comingMetrics
+            : todayMetrics;
 
     // Derive today's classes. The seed data centres around end-Feb 2025, so for a
     // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
@@ -884,46 +867,61 @@ export default function AdminDashboard() {
         );
         const renewTotalAed = renewToday.reduce((sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0);
 
-        // Truly failed transactions from today — the front desk chases
-        // these before the retry window closes. Pending rows are excluded
-        // so this count matches the FailedPayments modal + the customer's
-        // Payments tab (which shows the true "Pending" / "Failed" status).
-        const failedTxns = scopedTransactions.filter(t =>
-            t.status === "failed" && t.createdAtISO.startsWith(todayISO),
-        );
+        // Failed transactions recoverable now — status "failed" in the last
+        // 24h (retry today while the card is likely still valid). Rolling
+        // 24h so the count exactly matches the FailedPayments modal opened
+        // with `pastRangeDays={1}` — same predicate, no count-vs-list drift.
+        const nowMs = Date.now();
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        const failedTxns = scopedTransactions.filter(t => {
+            if (t.status !== "failed") return false;
+            const ts = new Date(t.createdAtISO).getTime();
+            return !Number.isNaN(ts) && ts >= nowMs - DAY_MS && ts <= nowMs;
+        });
         const failedTotalAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
 
-        // Clients at risk: last visit was 14-30 days ago (inclusive)
-        // — matches the Excel spec's Win-back window. Customers who
-        // have NEVER visited (undefined `lastVisitISO`) are dropped
-        // since we don't have a signup-vs-visit gap yet.
-        const now = Date.now();
-        const DAY = 24 * 60 * 60 * 1000;
-        const clientsAtRisk = scopedCustomers.filter(c => {
-            if (c.status !== "active") return false;
-            if (!c.lastVisitISO) return false;
-            const d = new Date(c.lastVisitISO).getTime();
-            if (Number.isNaN(d)) return false;
-            const daysAgo = Math.floor((now - d) / DAY);
-            return daysAgo >= 14 && daysAgo <= 30;
-        }).length;
+        // Refund requests awaiting a decision — still-`complete` transactions
+        // carrying a `refundRequestedAtISO` marker. A member is waiting on
+        // the owner to approve or deny. (Matches the RefundRequestsModal.)
+        const refundReqTxns = scopedTransactions.filter(t =>
+            t.status === "complete" && !!t.refundRequestedAtISO,
+        );
+        const refundReqTotalAed = refundReqTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
 
-        // Under-filled classes: today's schedules < 50% capacity.
-        const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
-        const underFilled = todaySchedules.filter(s =>
-            s.capacity > 0 && (s.booked / s.capacity) < 0.5,
+        // Waitlist spots opened on today's classes — today-dated schedules
+        // with a free spot (booked < capacity) that carry ≥1 waitlisted
+        // member awaiting confirmation. Count = those waitlisted members.
+        const openTodaySchedIds = new Set(
+            scopedSchedules
+                .filter(s => s.dateISO === todayISO && s.capacity > 0 && s.booked < s.capacity)
+                .map(s => s.id),
+        );
+        const waitlistConfirmCount = scopedBookings.filter(b =>
+            b.status === "waitlisted" && openTodaySchedIds.has(b.classScheduleId),
+        ).length;
+
+        // New sign-ups today with no first booking — active customers whose
+        // createdAt is today and who have zero bookings. Nudge while intent
+        // is warm. (Matches the NewSignupsModal.)
+        const bookedCustomerIds = new Set(scopedBookings.map(b => b.customerId));
+        const newSignupsNoBooking = scopedCustomers.filter(c =>
+            c.status === "active"
+            && (c.createdAt ?? "").slice(0, 10) === todayISO
+            && !bookedCustomerIds.has(c.id),
         ).length;
 
         return {
-            renewTodayCount:  renewToday.length,
+            renewTodayCount: renewToday.length,
             renewTotalAed,
             expireTodayCount: expireToday.length,
-            failedCount:      failedTxns.length,
+            failedCount: failedTxns.length,
             failedTotalAed,
-            clientsAtRisk,
-            underFilled,
+            refundReqCount: refundReqTxns.length,
+            refundReqTotalAed,
+            waitlistConfirmCount,
+            newSignupsNoBooking,
         };
-    }, [scopedCustomerPlans, scopedTransactions, scopedCustomers, scopedSchedules, todayISO]);
+    }, [scopedCustomerPlans, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
 
     function handleAddWidget(id: string) {
         if (activeWidgets.includes(id)) return;
@@ -941,11 +939,13 @@ export default function AdminDashboard() {
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
 
-            {/* Tab Navigation — sticky when scrolling. Plain sticky
-                top-0 with a full-width opaque bg-white so nothing bleeds
-                through when content scrolls behind. NO position shift:
-                the tab strip renders exactly where it always did. */}
-            <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec]">
+            {/* Tab Navigation — sticky when scrolling. The `bg-white`
+                covers directly behind the tabs; the white box-shadow
+                extends that white 24px UPWARD to fill main's p-6 top
+                padding gap (where content used to bleed through above
+                the tabs). box-shadow is purely visual — it does NOT
+                affect layout, so the tab strip does NOT move a pixel. */}
+            <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] shadow-[0_-24px_0_0_#ffffff]">
                 <div className="flex gap-3 items-start">
                     <button
                         onClick={() => setActiveTab("today")}
@@ -1228,49 +1228,90 @@ export default function AdminDashboard() {
                 </div>
             </div>}
 
-            {/* Needs attention today — re-added Jul 2026 (client) below
-                the Today's-classes + Recent-activity row. Row buttons open
-                the same four drill-down modals the Coming-up tab uses. */}
-            {activeTab === "today" && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                    <p className="font-semibold text-lg text-[#101828]">Needs attention today</p>
-                    <div className="flex flex-col">
-                        <NeedsAttentionRow
-                            icon={RefreshCw01}
-                            iconBg="bg-[#eff8ff]"
-                            iconFg="text-[#175cd3]"
-                            title={`${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`}
-                            subtitle={`AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`}
-                            onView={() => setAttentionModal("renewal")}
-                        />
-                        <NeedsAttentionRow
-                            icon={Bell01}
-                            iconBg="bg-[#fff6ed]"
-                            iconFg="text-[#c4320a]"
-                            title={`${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`}
-                            subtitle="Send a reminder before membership expire"
-                            onView={() => setAttentionModal("renewal")}
-                        />
-                        <NeedsAttentionRow
-                            icon={CreditCard01}
-                            iconBg="bg-[#fef3f2]"
-                            iconFg="text-[#b42318]"
-                            title={`${needsAttention.failedCount} failed ${needsAttention.failedCount === 1 ? "payment" : "payments"}`}
-                            subtitle={`Payment failed · AED ${needsAttention.failedTotalAed.toLocaleString("en-US")}`}
-                            onView={() => setAttentionModal("failed")}
-                        />
-                        <NeedsAttentionRow
-                            icon={UserX01}
-                            iconBg="bg-[#fefbe8]"
-                            iconFg="text-[#a15c07]"
-                            title={`${needsAttention.clientsAtRisk} ${needsAttention.clientsAtRisk === 1 ? "client" : "clients"} at risk`}
-                            subtitle="No visit in 14-30 days · win them back"
-                            onView={() => setAttentionModal("atrisk")}
-                            isLast
-                        />
+            {/* Needs attention today — strictly TODAY-scoped rows (client
+                Jul 2026). Each row renders ONLY when its count > 0, so a
+                quiet day shows just the relevant items (no "0 renewals"
+                noise). At-risk clients moved OUT — it's a 14-30 day window,
+                not "today," so it lives on the Coming-up tab only. Failed
+                payments lives here exclusively (removed from Coming-up). */}
+            {activeTab === "today" && (() => {
+                // Build the candidate rows, then filter to count > 0. The
+                // last surviving row gets `isLast` so the trailing divider
+                // stops there.
+                const rows = [
+                    {
+                        key: "failed",
+                        show: needsAttention.failedCount > 0,
+                        icon: CreditCard01, iconBg: "bg-[#fef3f2]", iconFg: "text-[#b42318]",
+                        title: `${needsAttention.failedCount} failed ${needsAttention.failedCount === 1 ? "payment" : "payments"} recoverable now`,
+                        subtitle: `Retry today while the card is likely still valid · AED ${needsAttention.failedTotalAed.toLocaleString("en-US")}`,
+                        onView: () => setAttentionModal("failed"),
+                    },
+                    {
+                        key: "refund",
+                        show: needsAttention.refundReqCount > 0,
+                        icon: CoinsStacked01, iconBg: "bg-[#fff6ed]", iconFg: "text-[#c4320a]",
+                        title: `${needsAttention.refundReqCount} refund ${needsAttention.refundReqCount === 1 ? "request" : "requests"} awaiting your decision`,
+                        subtitle: `A member is waiting on you · AED ${needsAttention.refundReqTotalAed.toLocaleString("en-US")} at stake`,
+                        onView: () => setAttentionModal("refund"),
+                    },
+                    {
+                        key: "waitlist",
+                        show: needsAttention.waitlistConfirmCount > 0,
+                        icon: CalendarCheck01, iconBg: "bg-[#ecfdf3]", iconFg: "text-[#079455]",
+                        title: `${needsAttention.waitlistConfirmCount} waitlist ${needsAttention.waitlistConfirmCount === 1 ? "spot" : "spots"} need confirmation`,
+                        subtitle: "Spots opened on today's classes — confirm the next in line",
+                        onView: () => setAttentionModal("waitlist"),
+                    },
+                    {
+                        key: "renew",
+                        show: needsAttention.renewTodayCount > 0,
+                        icon: RefreshCw01, iconBg: "bg-[#eff8ff]", iconFg: "text-[#175cd3]",
+                        title: `${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`,
+                        subtitle: `AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`,
+                        onView: () => setAttentionModal("renewal"),
+                    },
+                    {
+                        key: "expire",
+                        show: needsAttention.expireTodayCount > 0,
+                        icon: Bell01, iconBg: "bg-[#fff6ed]", iconFg: "text-[#c4320a]",
+                        title: `${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`,
+                        subtitle: "Send a reminder before the membership lapses",
+                        onView: () => setAttentionModal("renewal"),
+                    },
+                    {
+                        key: "signups",
+                        show: needsAttention.newSignupsNoBooking > 0,
+                        icon: UserPlus01, iconBg: "bg-[#eefaf6]", iconFg: "text-[#0e9384]",
+                        title: `${needsAttention.newSignupsNoBooking} new ${needsAttention.newSignupsNoBooking === 1 ? "sign-up" : "sign-ups"} with no first booking`,
+                        subtitle: "Nudge them while intent is warm",
+                        onView: () => setAttentionModal("signups"),
+                    },
+                ].filter(r => r.show);
+
+                // Nothing relevant today → hide the whole card.
+                if (rows.length === 0) return null;
+
+                return (
+                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
+                        <p className="font-semibold text-lg text-[#101828]">Needs attention today</p>
+                        <div className="flex flex-col">
+                            {rows.map((r, i) => (
+                                <NeedsAttentionRow
+                                    key={r.key}
+                                    icon={r.icon}
+                                    iconBg={r.iconBg}
+                                    iconFg={r.iconFg}
+                                    title={r.title}
+                                    subtitle={r.subtitle}
+                                    onView={r.onView}
+                                    isLast={i === rows.length - 1}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             <AddWidgetModal
                 open={widgetModalOpen}
@@ -1295,9 +1336,9 @@ export default function AdminDashboard() {
                 open={attentionModal === "failed"}
                 onClose={() => setAttentionModal(null)}
                 branchId={branchScopeId}
-                /* Past-N-day window — matches the Coming-up "Failed payments"
-                   metric so count + list agree at both pill settings. */
-                pastRangeDays={comingRange}
+                /* Last-24h window — matches the Needs-attention "Failed
+                   payments recoverable now" row's rolling 24h count. */
+                pastRangeDays={1}
             />
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}
@@ -1312,6 +1353,23 @@ export default function AdminDashboard() {
                    filled classes" metric so count + list agree at both
                    pill settings. */
                 forwardRangeDays={comingRange}
+            />
+
+            {/* New today-scoped Needs-attention drill-downs (Jul 2026). */}
+            <RefundRequestsModal
+                open={attentionModal === "refund"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <WaitlistConfirmModal
+                open={attentionModal === "waitlist"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+            />
+            <NewSignupsModal
+                open={attentionModal === "signups"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
             />
 
             <Toast />
