@@ -28,7 +28,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Eye, RefreshCcw01, Bell01, Users02, Pencil02, Announcement01,
+    XClose, Eye, RefreshCcw01, Bell01, Users02, Pencil02,
     SlashCircle01, Star01, Trash01, Check,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -860,8 +860,8 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
 // under 50%. Row action:
 //   • View details → routes to /schedule/[id]
 //   • Edit class   → routes to the class detail edit view
-//   • Promote class → 404 (client hasn't decided destination yet)
 //   • Cancel class → calls store.cancelClassSchedule with an audit reason
+//   ("Promote class" removed Jul 2026 — destination not built yet.)
 
 export interface UnderFilledModalProps {
     open: boolean;
@@ -926,9 +926,6 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
         // edit form instead of the read-only detail view.
         router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent("/admin/dashboard")}`);
         onClose();
-    }
-    function promoteClass() {
-        router.push("/admin/promote-not-implemented");
     }
     function confirmCancelClass() {
         if (!pendingCancel) return;
@@ -1075,7 +1072,9 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
                                             items={[
                                                 { label: "View details",  icon: Eye,             onClick: () => viewDetails(s.id) },
                                                 { label: "Edit class",    icon: Pencil02,        onClick: () => editClass(s.id) },
-                                                { label: "Promote class", icon: Announcement01,  onClick: promoteClass },
+                                                // "Promote class" hidden per client Jul 2026 — its
+                                                // destination isn't built yet, so it 404'd. Re-add
+                                                // when the promote flow ships.
                                                 { label: "Cancel class",  icon: SlashCircle01,   onClick: () => setPendingCancel(s), danger: true },
                                             ]}
                                         />
