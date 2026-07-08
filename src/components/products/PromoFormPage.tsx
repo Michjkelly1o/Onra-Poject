@@ -41,7 +41,7 @@ function nowHHMM(): string {
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
 const STEPS = [
-    { n: 1, label: "Promo details" },
+    { n: 1, label: "Promotion details" },
     { n: 2, label: "Visibility settings" },
 ];
 
@@ -631,8 +631,8 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                                 </Button>
                             </div>
                         }>
-                            {/* ── Promo details ── */}
-                            <Section title="Promo details">
+                            {/* ── Promotion details ── */}
+                            <Section title="Promotion details">
                                 <ImageBannerUpload
                                     preview={form.bannerPreview || null}
                                     onChange={url => patch({ bannerPreview: url ?? "" })}
@@ -732,8 +732,8 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                                 />
                             </Section>
 
-                            {/* ── Promo configuration ── */}
-                            <Section title="Promo configuration">
+                            {/* ── Promotion configuration ── */}
+                            <Section title="Promotion configuration">
                                 {form.action === "buy_package" && (
                                     <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1 flex gap-1">
                                         {([["percentage", "Percentage off (%)"], ["fixed_amount", "Fixed amount off (AED)"]] as const).map(([v, label]) => (
@@ -773,8 +773,8 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                                         </div>
                                     )}
                                 </FormField>
-                                <FormField label="Promo code"
-                                    hint="This is the promo code that the customer will use in the checkout.">
+                                <FormField label="Promotion"
+                                    hint="This is the promotion that the customer will use in the checkout.">
                                     <TextInput value={form.code} onChange={v => patch({ code: v.toUpperCase() })}
                                         placeholder="e.g. WORKOUT10" />
                                 </FormField>
@@ -960,8 +960,8 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             {/* Header */}
             <div className="pt-6 px-6 pb-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Promo preview</p>
-                <p className="text-[14px] text-[#6e776f] leading-5">This is how your promo card will look like.</p>
+                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Promotion preview</p>
+                <p className="text-[14px] text-[#6e776f] leading-5">This is how your promotion card will look like.</p>
             </div>
             {/* Stage */}
             <div className="bg-[#f6f6f3] px-6 py-10">
@@ -979,7 +979,7 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
                         </div>
                         <div className="relative z-10 flex flex-col">
                             <p className="text-[20px] font-semibold text-white leading-[30px] break-words">
-                                {name || "Promo name"}
+                                {name || "Promotion name"}
                             </p>
                         </div>
                         <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
@@ -988,10 +988,10 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
                     <div className="flex flex-col gap-4 px-4 py-5">
                         <div className="flex flex-col gap-1">
                             <p className={cn("text-[18px] font-medium leading-7 truncate", name ? "text-[#101828]" : "text-[#98a2b3]")}>
-                                {name || "Promo name"}
+                                {name || "Promotion name"}
                             </p>
                             <p className={cn("text-[14px] leading-5 line-clamp-2", description ? "text-[#667085]" : "text-[#98a2b3]")}>
-                                {description || "Your promo description will appear here."}
+                                {description || "Your promotion description will appear here."}
                             </p>
                         </div>
                         {/* Attribute grid — action · offer type · code · branches */}
@@ -1003,7 +1003,7 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
                                 label={offerType ? PREVIEW_OFFER_LABEL[offerType] : "Discount type"}
                                 muted={!offerType} />
                             <PreviewAttr icon={<Ticket01 className="w-4 h-4" />}
-                                label={code || "Promo code"}
+                                label={code || "Promotion"}
                                 muted={!code} />
                             <PreviewAttr icon={<MarkerPin01 className="w-4 h-4" />}
                                 label={branchLabel ?? "Applicable branch"}

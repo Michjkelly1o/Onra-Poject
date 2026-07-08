@@ -28,7 +28,7 @@ function EditPromoRouteInner() {
     if (!promo) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Promo not found</p>
+                <p className="text-[18px] font-semibold text-[#101828]">Promotion not found</p>
             </div>
         );
     }

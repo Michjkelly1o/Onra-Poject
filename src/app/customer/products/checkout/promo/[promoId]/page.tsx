@@ -38,7 +38,7 @@ export default function ProductsPromoDetailPage() {
     function apply() {
         if (!promo) return;
         purchaseCart.promoId = promo.id;
-        showToast("Promo applied", `${promo.label} has been applied.`, "success");
+        showToast("Promotion applied", `${promo.label} has been applied.`, "success");
         router.replace(CHECKOUT);
     }
 
@@ -93,7 +93,7 @@ export default function ProductsPromoDetailPage() {
                                     : `${promo.discountValue}% off`}
                             </TermRow>
                             <div className="h-px w-full bg-[#e4e7ec]" />
-                            <TermRow icon={Ticket01}>Promo code: {promo.code}</TermRow>
+                            <TermRow icon={Ticket01}>Promotion: {promo.code}</TermRow>
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <TermRow icon={MarkerPin01}>Applicable for {promo.locations}</TermRow>
                             <div className="h-px w-full bg-[#e4e7ec]" />

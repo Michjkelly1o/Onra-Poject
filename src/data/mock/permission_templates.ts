@@ -67,7 +67,7 @@ export const STAFF_PERMISSION_SECTIONS: PermissionSectionSpec[] = [
     ] },
     { key: "pos", label: "Point of Sale", modules: [
         { key: "sales_transaction",  label: "Sales transaction" },
-        { key: "promo_codes",        label: "Promo codes" },
+        { key: "promo_codes",        label: "Promotions" },
         { key: "custom_discount",    label: "Custom discount" },
         { key: "gift_cards_issue",   label: "Gift cards – issue" },
     ] },

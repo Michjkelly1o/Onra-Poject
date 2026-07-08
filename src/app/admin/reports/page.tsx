@@ -123,7 +123,7 @@ const CATEGORIES: ReportCategory[] = [
             { slug: "lead-data",              label: "Lead Data"              },
             { slug: "lead-conversion",        label: "Lead Conversion"        },
             { slug: "campaign-performance",   label: "Campaign Performance"   },
-            { slug: "promo-redemptions",      label: "Promo Redemptions"      },
+            { slug: "promo-redemptions",      label: "Promotion Redemptions"  },
             { slug: "referrals",              label: "Referral Report"        },
             { slug: "acquisition-efficiency", label: "Acquisition Efficiency" },
         ],

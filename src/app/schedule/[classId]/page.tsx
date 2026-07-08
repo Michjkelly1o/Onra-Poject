@@ -1243,12 +1243,12 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                             <>
                                 <div className="flex items-end gap-3">
                                     <div className="flex flex-col gap-1.5 flex-1">
-                                        <label className="text-[14px] font-medium text-[#344054]">Promo code</label>
+                                        <label className="text-[14px] font-medium text-[#344054]">Promotion</label>
                                         <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                             <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
                                             <input type="text" value={promoCode}
                                                 onChange={e => setPromoCode(e.target.value)}
-                                                placeholder="Enter promo code"
+                                                placeholder="Enter promotion"
                                                 className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
                                         </div>
                                     </div>
@@ -1294,7 +1294,7 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                                 <p className="text-[14px] text-[#667085]">
                                     {appliedCustomDiscount !== null
                                         ? <>Discount (<span className="font-medium text-[#101828]">{discountPercent}%</span>)</>
-                                        : <>Promo code (<span className="font-medium text-[#101828]">{appliedPromo}</span>)</>
+                                        : <>Promotion (<span className="font-medium text-[#101828]">{appliedPromo}</span>)</>
                                     }
                                 </p>
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {discountAmount.toLocaleString()}</p>

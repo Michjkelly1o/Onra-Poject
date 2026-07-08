@@ -24,12 +24,12 @@ export default function AppointmentPromoListPage() {
 
     function apply(p: PromoVM) {
         purchaseCart.promoId = p.id;
-        showToast("Promo applied", `${p.label} has been applied.`, "success");
+        showToast("Promotion applied", `${p.label} has been applied.`, "success");
         router.replace(CHECKOUT);
     }
     function remove() {
         purchaseCart.promoId = null;
-        showToast("Promo removed", "The promo has been removed.", "success");
+        showToast("Promotion removed", "The promotion has been removed.", "success");
         router.replace(CHECKOUT);
     }
     function applyCode() {
@@ -40,7 +40,7 @@ export default function AppointmentPromoListPage() {
             apply(match);
             return;
         }
-        setError(match ? "This code doesn't apply to appointments" : "Promo not found");
+        setError(match ? "This code doesn't apply to appointments" : "Promotion not found");
     }
 
     const promoField = (
@@ -58,7 +58,7 @@ export default function AppointmentPromoListPage() {
                         setError(null);
                     }}
                     onKeyDown={(e) => e.key === "Enter" && applyCode()}
-                    placeholder="Enter promo code"
+                    placeholder="Enter promotion"
                     className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
                 />
                 {error ? (

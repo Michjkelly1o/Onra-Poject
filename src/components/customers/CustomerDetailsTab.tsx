@@ -153,7 +153,7 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                     {/* Row 4 — content topics (special offers + promo code offers) */}
                     <DetailField label="Special offers"
                         value={<StatusValue ok={!!customer.marketingTopicSpecialOffers} onLabel="Subscribed" offLabel="Unsubscribed" />} />
-                    <DetailField label="Promo code offers"
+                    <DetailField label="Promotion offers"
                         value={<StatusValue ok={!!customer.marketingTopicPromoCodeOffers} onLabel="Subscribed" offLabel="Unsubscribed" />} />
                 </div>
             </div>

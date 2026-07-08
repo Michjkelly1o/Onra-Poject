@@ -383,9 +383,9 @@ function FilterPanel({ open, applied, onClose, onApply }: {
 
                     <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
-                    {/* Promo date range — filters by the promo's valid-until date */}
+                    {/* Promotion date range — filters by the promotion's valid-until date */}
                     <div className="flex flex-col gap-1.5">
-                        <p className="text-[14px] font-medium text-[#344054]">Promo date range</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Promotion date range</p>
                         <div className="flex gap-4 items-start">
                             <div className="flex-1 min-w-0">
                                 <DatePicker

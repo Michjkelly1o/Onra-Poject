@@ -32,18 +32,18 @@ export const PROMO_REDEMPTIONS_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
-        { key: K.promoCode,        label: "Promo code",         kind: "id",       minWidth: 160 },
-        { key: K.promoName,        label: "Promo name",         kind: "text",     minWidth: 220 },
+        { key: K.promoCode,        label: "Promotion",          kind: "id",       minWidth: 160 },
+        { key: K.promoName,        label: "Promotion name",     kind: "text",     minWidth: 220 },
         { key: K.redemptions,      label: "Redemptions",        kind: "number",   minWidth: 140 },
         { key: K.discountGiven,    label: "Discount given",     kind: "currency", minWidth: 160 },
-        { key: K.revenueFromPromo, label: "Revenue from promo", kind: "currency", minWidth: 180 },
+        { key: K.revenueFromPromo, label: "Revenue from promotion", kind: "currency", minWidth: 180 },
         { key: K.revenueCategory,  label: "Revenue category",   kind: "text",     minWidth: 160 },
         { key: K.newVsExisting,    label: "New vs existing",    kind: "text",     minWidth: 160 },
     ],
 
-    // Sheet 1 default: promo code.
+    // Sheet 1 default: promotion.
     dimensions: [
-        { key: "promo_code",       label: "Promo code",       extract: r => String(r[K.promoCode]       ?? "—") },
+        { key: "promo_code",       label: "Promotion",        extract: r => String(r[K.promoCode]       ?? "—") },
         { key: "revenue_category", label: "Revenue category", extract: r => String(r[K.revenueCategory] ?? "—") },
         { key: "location",         label: "Location",         extract: r => String(r[K.location]        ?? "—") },
     ],

@@ -915,12 +915,12 @@ function PosCartPanel(props: {
                         <>
                             <div className="flex items-end gap-3">
                                 <div className="flex flex-col gap-1.5 flex-1">
-                                    <label className="text-[14px] font-medium text-[#344054]">Promo code</label>
+                                    <label className="text-[14px] font-medium text-[#344054]">Promotion</label>
                                     <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
                                         <input type="text" value={props.promoInput}
                                             onChange={e => props.onPromoInput(e.target.value)}
-                                            placeholder="Enter promo code"
+                                            placeholder="Enter promotion"
                                             className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
                                     </div>
                                 </div>
@@ -928,7 +928,7 @@ function PosCartPanel(props: {
                             </div>
                             {props.appliedPromo && (
                                 <div className="flex flex-col gap-1.5">
-                                    <p className="text-[14px] text-[#667085]">Applied promo</p>
+                                    <p className="text-[14px] text-[#667085]">Applied promotion</p>
                                     <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
                                         <span className="flex-1 text-[14px] font-medium text-[#344054]">{props.appliedPromo.code}</span>
                                         <button type="button" onClick={props.onRemovePromo} className="text-[#667085] hover:text-[#101828]">
@@ -963,7 +963,7 @@ function PosCartPanel(props: {
                     <p className="text-[14px] font-medium text-[#101828]">Detail payment</p>
                     <Row label="Subtotal" value={props.subtotal} />
                     {props.appliedPromo && (
-                        <Row label={`Promo code (${props.appliedPromo.code})`} value={-props.promoDiscount} />
+                        <Row label={`Promotion (${props.appliedPromo.code})`} value={-props.promoDiscount} />
                     )}
                     {props.customDiscount > 0 && props.appliedCustomDiscount != null && (
                         <Row label={`Custom discount (${props.appliedCustomDiscount}%)`} value={-props.customDiscount} />

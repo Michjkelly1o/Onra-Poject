@@ -86,7 +86,7 @@ const PAGES: PageEntry[] = [
     // + Promo keep their own glyphs since those are universally recognised.
     { title: "Memberships & Packages", href: "/admin/products",                   icon: ShoppingBag01 },
     { title: "Gift Cards",             href: "/admin/products/gift-cards",        icon: Tag01 },
-    { title: "Promo codes",            href: "/admin/products/promo-codes",       icon: Percent01 },
+    { title: "Promotions",             href: "/admin/products/promo-codes",       icon: Percent01 },
     // Analytics group — Sidebar parent is BarChartSquare01. Client Jul 2026:
     // "Insights" now points to the KPI page (legacy /admin/insights archived).
     { title: "Insights",               href: "/admin/kpi",                        icon: BarChartSquare01 },
@@ -320,7 +320,7 @@ export function useSearchIndex(
                     id: `pro-${pr.id}`,
                     category: "Products",
                     title: pr.code,
-                    sublabel: pr.name || "Promo code",
+                    sublabel: pr.name || "Promotion",
                     icon: Percent01,
                     href,
                     score: s,
@@ -525,7 +525,7 @@ export function useDefaultSuggestions(
                     id: `pro-${pr.id}`,
                     category: "Products",
                     title: pr.code,
-                    sublabel: pr.name || "Promo code",
+                    sublabel: pr.name || "Promotion",
                     icon: Percent01,
                     href,
                     score: 0,

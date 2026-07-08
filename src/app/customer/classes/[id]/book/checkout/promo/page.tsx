@@ -30,18 +30,18 @@ export default function PromoListPage() {
 
     function apply(p: PromoVM) {
         purchaseCart.promoId = p.id;
-        showToast("Promo applied", `${p.label} has been applied.`, "success");
+        showToast("Promotion applied", `${p.label} has been applied.`, "success");
         router.replace(checkout);
     }
     function remove() {
         purchaseCart.promoId = null;
-        showToast("Promo removed", "The promo has been removed.", "success");
+        showToast("Promotion removed", "The promotion has been removed.", "success");
         router.replace(checkout);
     }
     function applyCode() {
         const match = promos.find((p) => p.applicable && p.code.toLowerCase() === code.trim().toLowerCase());
         if (match) apply(match);
-        else showToast("Invalid code", "That promo code isn't valid.", "error");
+        else showToast("Invalid code", "That promotion isn't valid.", "error");
     }
 
     return (
@@ -60,7 +60,7 @@ export default function PromoListPage() {
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
-                    Promo
+                    Promotion
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
             </header>
@@ -73,7 +73,7 @@ export default function PromoListPage() {
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && applyCode()}
-                        placeholder="Enter promo code"
+                        placeholder="Enter promotion"
                         className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
                     />
                     {code.trim() && (

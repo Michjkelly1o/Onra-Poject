@@ -250,7 +250,7 @@ function LeftSidebar({ vm, onAction, branches }: {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        <SidebarField label="Promo action" value={vm.actionLabel} />
+                        <SidebarField label="Promotion action" value={vm.actionLabel} />
                         <SidebarField label="Start date & time" value={formatDateTime(vm.validFrom)} />
                         <SidebarField label="End date & time" value={formatDateTime(vm.validUntil)} />
                         <SidebarField label="Discount type" value={vm.offerLabel} />
@@ -383,7 +383,7 @@ function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] })
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
                 {/* ── Promo configuration ── */}
-                <SectionHeading>Promo configuration</SectionHeading>
+                <SectionHeading>Promotion configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                     <InlineStat icon={<LetterSpacing01 className="w-4 h-4" />} label="Display name" value={vm.name} />
                     <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Link or action" value={vm.actionLabel} />
@@ -391,7 +391,7 @@ function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] })
                     <InlineStat icon={<Calendar className="w-4 h-4" />} label="End date & time" value={formatDateTime(vm.validUntil)} />
                     <InlineStat icon={<Sale03 className="w-4 h-4" />} label="Discount type" value={vm.offerLabel} />
                     <InlineStat icon={<Sale03 className="w-4 h-4" />} label="Discount value" value={vm.discountValueLabel} />
-                    <InlineStat icon={<Ticket01 className="w-4 h-4" />} label="Promo code" value={vm.code} />
+                    <InlineStat icon={<Ticket01 className="w-4 h-4" />} label="Promotion" value={vm.code} />
                     <InlineStat
                         icon={<User01 className="w-4 h-4" />}
                         label="First time user only"
