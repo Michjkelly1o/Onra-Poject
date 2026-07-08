@@ -1205,16 +1205,21 @@ function WinBackModal({
     onClose: () => void;
     onSent: (channel: WinBackChannel) => void;
 }) {
+    // WhatsApp channel is gated on the WhatsApp Business integration being
+    // connected — SAME check the customer-notifications module uses. When
+    // it's disconnected, the pill is disabled and can't be selected/sent.
+    const integrations = useAppStore(s => s.integrations);
+    const waConnected = integrations.find(i => i.slug === "whatsapp_business")?.status === "connected";
+
     // Default channel = the customer's first opted-in marketing channel
-    // (WhatsApp → Email → Push), else WhatsApp.
+    // (WhatsApp → Email → Push), but never WhatsApp when it's not connected.
     const defaultChannel: WinBackChannel =
-        customer?.marketingChannelWhatsapp ? "whatsapp"
+        (customer?.marketingChannelWhatsapp && waConnected) ? "whatsapp"
         : customer?.marketingChannelEmail ? "email"
         : customer?.marketingChannelPush ? "push"
-        : "whatsapp";
+        : waConnected ? "whatsapp" : "email";
 
     const [channel, setChannel] = useState<WinBackChannel>(defaultChannel);
-    const [variant, setVariant] = useState(0);
     const [message, setMessage] = useState("");
     const [edited, setEdited] = useState(false);
 
@@ -1230,19 +1235,11 @@ function WinBackModal({
     useEffect(() => {
         if (open) {
             setChannel(defaultChannel);
-            setVariant(0);
             setMessage(messages[0]);
             setEdited(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, customer?.id]);
-
-    function regenerate() {
-        const next = (variant + 1) % messages.length;
-        setVariant(next);
-        setMessage(messages[next]);
-        setEdited(false);
-    }
 
     if (!open || !customer) return null;
     if (typeof document === "undefined") return null;
@@ -1250,8 +1247,8 @@ function WinBackModal({
     const initials = customer.initials || `${(customer.firstName?.[0] ?? "").toUpperCase()}${(customer.lastName?.[0] ?? "").toUpperCase()}`;
     const name = `${customer.firstName} ${customer.lastName}`.trim();
 
-    const CHANNELS: { key: WinBackChannel; label: string; icon: React.ReactNode }[] = [
-        { key: "whatsapp", label: "WhatsApp", icon: <WhatsAppMark className="w-4 h-4" /> },
+    const CHANNELS: { key: WinBackChannel; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
+        { key: "whatsapp", label: "WhatsApp", icon: <WhatsAppMark className="w-4 h-4" />, disabled: !waConnected },
         { key: "email",    label: "Email",    icon: <Mail01 className="w-4 h-4" /> },
         { key: "push",     label: "Push",     icon: <Bell01 className="w-4 h-4" /> },
     ];
@@ -1292,23 +1289,37 @@ function WinBackModal({
                     </div>
 
                     {/* Channel selector — brand selection color (same as the
-                        filter badge pills across the admin modules). */}
-                    <div className="flex items-center gap-2">
-                        {CHANNELS.map(ch => {
-                            const active = channel === ch.key;
-                            return (
-                                <button key={ch.key} type="button" onClick={() => setChannel(ch.key)}
-                                    className={cn(
-                                        "inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[14px] font-medium transition-colors border-1",
-                                        active
-                                            ? "bg-[#f5fffa] border-[#7ba08c] text-[#3b5446]"
-                                            : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-                                    )}>
-                                    {ch.icon}
-                                    {ch.label}
-                                </button>
-                            );
-                        })}
+                        filter badge pills across the admin modules). WhatsApp
+                        is disabled until the WhatsApp Business integration is
+                        connected (Settings → Integrations → Apps). */}
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                            {CHANNELS.map(ch => {
+                                const active = channel === ch.key;
+                                return (
+                                    <button key={ch.key} type="button"
+                                        disabled={ch.disabled}
+                                        onClick={() => !ch.disabled && setChannel(ch.key)}
+                                        title={ch.disabled ? "Connect WhatsApp Business in Settings → Integrations to use this channel" : undefined}
+                                        className={cn(
+                                            "inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[14px] font-medium transition-colors border-1",
+                                            ch.disabled
+                                                ? "bg-[#f9fafb] border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed"
+                                                : active
+                                                    ? "bg-[#f5fffa] border-[#7ba08c] text-[#3b5446]"
+                                                    : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                        )}>
+                                        {ch.icon}
+                                        {ch.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {!waConnected && (
+                            <p className="text-[12px] text-[#667085]">
+                                WhatsApp is unavailable — connect WhatsApp Business in Settings → Integrations to enable it.
+                            </p>
+                        )}
                     </div>
 
                     {/* Editable message */}
@@ -1323,11 +1334,8 @@ function WinBackModal({
                     </div>
                 </div>
 
-                {/* Footer — Regenerate / Send */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end gap-3">
-                    <Button variant="secondary-gray" size="md" rightIcon={<RefreshCcw01 className="w-4 h-4" />} onClick={regenerate}>
-                        Regenerate
-                    </Button>
+                {/* Footer — Send */}
+                <div className="shrink-0 px-6 py-4 flex items-center justify-end gap-3">
                     <Button variant="primary" size="md" leftIcon={<Send01 className="w-4 h-4" />}
                         disabled={message.trim().length === 0}
                         onClick={() => onSent(channel)}>
