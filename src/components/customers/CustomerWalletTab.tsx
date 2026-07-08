@@ -9,13 +9,13 @@
 // `walletTransactions` slice — credits come from referral "Account Credit"
 // rewards + manual grants; debits from POS "Member Wallet" payments. The
 // balance is DERIVED (`walletBalanceAed`), never stored, so it always agrees
-// with the ledger below. Reuses the Payments-tab metric-card + table chrome
-// so it scans identically to the rest of the customer detail.
+// with the ledger below.
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore, walletBalanceAed, type WalletTransaction } from "@/lib/store";
 
@@ -67,9 +67,9 @@ export function CustomerWalletTab({ customerId }: { customerId: string }) {
     ];
 
     const { sorted, sortKey, sortDir, toggle } = useSort<WalletTransaction>(txns, {
+        reason: (a, b) => a.reason.localeCompare(b.reason),
         type:   (a, b) => a.type.localeCompare(b.type),
         amount: (a, b) => a.amountAed - b.amountAed,
-        reason: (a, b) => a.reason.localeCompare(b.reason),
         date:   (a, b) => a.createdAtISO.localeCompare(b.createdAtISO),
     });
 
@@ -79,64 +79,61 @@ export function CustomerWalletTab({ customerId }: { customerId: string }) {
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pt-5 pb-6 flex flex-col gap-6">
-                {/* Balance + totals */}
-                <div className="flex gap-4">
-                    {metrics.map(m => (
-                        <div key={m.label} className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
-                            <p className="text-[14px] text-[#667085]">{m.label}</p>
-                            <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{fmtAed(m.value)}</p>
-                        </div>
-                    ))}
-                </div>
+            {/* Balance + totals */}
+            <div className="shrink-0 px-6 pt-5 pb-4 flex gap-4">
+                {metrics.map(m => (
+                    <div key={m.label} className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
+                        <p className="text-[14px] text-[#667085]">{m.label}</p>
+                        <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{fmtAed(m.value)}</p>
+                    </div>
+                ))}
+            </div>
 
-                {/* Transaction history */}
-                <div className="flex flex-col gap-3">
-                    <p className="text-[16px] font-semibold text-[#101828]">Transaction history</p>
-                    {txns.length === 0 ? (
-                        <div className="border-1 border-dashed border-[#e4e7ec] rounded-[16px] py-10 flex flex-col items-center gap-1">
-                            <p className="text-[14px] font-medium text-[#344054]">No wallet activity</p>
-                            <p className="text-[13px] text-[#667085]">This customer has no account credit yet.</p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className={TH}><SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Type</SortableHeader></th>
-                                            <th className={TH}><SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggle}>Reason</SortableHeader></th>
-                                            <th className={TH}>Source</th>
-                                            <th className={TH}><SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={toggle}>Amount</SortableHeader></th>
-                                            <th className={TH}><SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Date &amp; Time</SortableHeader></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {paged.map(t => (
-                                            <tr key={t.id} className="hover:bg-[#f9fafb]/50 transition-colors">
-                                                <td className={TD}>
-                                                    {t.type === "credit" ? (
-                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">Credit</span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">Debit</span>
-                                                    )}
-                                                </td>
-                                                <td className={cn(TD, "text-[14px] text-[#101828]")}>{t.reason}</td>
-                                                <td className={cn(TD, "text-[14px] text-[#667085]")}>{t.referenceType ? REFERENCE_LABEL[t.referenceType] : "—"}</td>
-                                                <td className={cn(TD, "text-[14px] font-medium whitespace-nowrap", t.type === "credit" ? "text-[#067647]" : "text-[#101828]")}>
-                                                    {t.type === "credit" ? "+" : "−"} {fmtAed(t.amountAed)}
-                                                </td>
-                                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+            {/* Transaction history */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                {txns.length === 0 ? (
+                    <EmptyState
+                        title="No wallet activity"
+                        subtitle="This customer has no account credit yet."
+                    />
+                ) : (
+                    <div className="px-6 pb-6">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className={TH}><SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggle}>Reason</SortableHeader></th>
+                                    <th className={TH}><SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Type</SortableHeader></th>
+                                    <th className={TH}>Source</th>
+                                    <th className={TH}><SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={toggle}>Amount</SortableHeader></th>
+                                    <th className={TH}><SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Date &amp; Time</SortableHeader></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paged.map(t => (
+                                    <tr key={t.id} className="hover:bg-[#f9fafb] transition-colors">
+                                        <td className={cn(TD, "text-[14px] text-[#101828]")}>{t.reason}</td>
+                                        <td className={TD}>
+                                            {t.type === "credit" ? (
+                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">Credit</span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">Debit</span>
+                                            )}
+                                        </td>
+                                        <td className={cn(TD, "text-[14px] text-[#667085]")}>{t.referenceType ? REFERENCE_LABEL[t.referenceType] : "—"}</td>
+                                        <td className={cn(TD, "text-[14px] font-medium whitespace-nowrap", t.type === "credit" ? "text-[#067647]" : "text-[#101828]")}>
+                                            {t.type === "credit" ? "+" : "−"} {fmtAed(t.amountAed)}
+                                        </td>
+                                        <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div className="pt-3">
                             <Pagination page={clampedPage} total={sorted.length} pageSize={pageSize}
                                 onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
-                        </>
-                    )}
-                </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -21,6 +21,7 @@
 // the same render cycle. See `deriveReferralOverview` in referral-helpers.
 
 import { useMemo, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Share07 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,8 @@ interface ReferrerRow {
 }
 
 export function ReferralOverviewTab() {
+    const router = useRouter();
+    const pathname = usePathname();
     const customerReferrals = useAppStore(s => s.customerReferrals);
     const customers         = useAppStore(s => s.customers);
     const branches          = useAppStore(s => s.branches);
@@ -129,6 +132,13 @@ export function ReferralOverviewTab() {
     const paged = ranked.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     const resetDays = daysToMonthEnd();
+
+    // Row click → open that member's customer detail. `returnTo` is the
+    // current pathname so the detail page's close acts as a one-step back
+    // to this Overview tab (per the returnTo convention).
+    function openCustomer(customerId: string) {
+        router.push(`/customers/${customerId}?returnTo=${encodeURIComponent(pathname)}`);
+    }
 
     function shareLink() {
         const link = "https://onra.studio/r/FITLAB";
@@ -239,7 +249,8 @@ export function ReferralOverviewTab() {
                             </thead>
                             <tbody>
                                 {paged.map((r, i) => (
-                                    <tr key={r.customerId} className="hover:bg-[#f9fafb] transition-colors">
+                                    <tr key={r.customerId} onClick={() => openCustomer(r.customerId)}
+                                        className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                                         <td className={cn(TD, "text-center text-[14px] text-[#667085]")}>{(clampedPage - 1) * pageSize + i + 1}</td>
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
