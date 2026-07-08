@@ -99,16 +99,22 @@ export default function ReferralSettingsPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            {/* Page-level tabs — Overview (KPIs) / Setup (configuration). */}
-            <DetailPageTabs
-                tabs={[
-                    { key: "overview", label: "Overview" },
-                    { key: "setup",    label: "Setup" },
-                ]}
-                activeKey={pageTab}
-                onChange={k => setPageTab(k as PageTab)}
-                className="border-b border-[#e4e7ec]"
-            />
+            {/* Page-level tabs — Overview (KPIs) / Setup (configuration).
+                Sticky while scrolling, matching the dashboard + settings
+                group header: `bg-white` covers behind the tabs and the white
+                box-shadow extends 24px UPWARD to fill main's top padding so
+                content doesn't bleed above the strip. */}
+            <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] shadow-[0_-24px_0_0_#ffffff]">
+                <DetailPageTabs
+                    tabs={[
+                        { key: "overview", label: "Overview" },
+                        { key: "setup",    label: "Setup" },
+                    ]}
+                    activeKey={pageTab}
+                    onChange={k => setPageTab(k as PageTab)}
+                    compact
+                />
+            </div>
 
             {pageTab === "overview" ? (
                 <ReferralOverviewTab />
