@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, Eye, RefreshCcw01, Bell01, Users02, Pencil02,
     SlashCircle01, Star01, Trash01, Check,
+    Mail01, Stars02, Send01, Gift01, Sliders02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -708,9 +709,17 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
     const memberships  = useAppStore(s => s.memberships);
     const packages     = useAppStore(s => s.packages);
     const classBookings = useAppStore(s => s.classBookings);
+    const showToast    = useAppStore(s => s.showToast);
+    const recordAudit  = useAppStore(s => s.recordAudit);
 
     const [page, setPage]         = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    // Win-back composer — the row picked for re-engagement (with its derived
+    // context) or null when closed.
+    const [winBackRow, setWinBackRow] = useState<{
+        customer: Customer; lastVisitLabel: string; daysAgo: number;
+        pattern: string; credits: number; expiryLabel: string | null;
+    } | null>(null);
     useEffect(() => { if (open) setPage(1); }, [open]);
 
     const rows = useMemo(() => {
@@ -744,7 +753,7 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                     const perWeek = Math.min(5, Math.max(1, Math.round(custBookings.length / weeks)));
                     pattern = `${perWeek} booking${perWeek === 1 ? "" : "s"}/week`;
                 }
-                return { customer: c, planLabel, pattern };
+                return { customer: c, planLabel, pattern, daysAgo };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
     }, [customers, memberships, packages, classBookings, branchId]);
@@ -764,10 +773,33 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
         router.push(`/customers/${id}?returnTo=${encodeURIComponent("/admin/dashboard")}`);
         onClose();
     }
-    function winBack() {
-        // Client hasn't decided where Win back lands yet — route to the
-        // 404 so the placeholder is honest until the destination ships.
-        router.push("/admin/win-back-not-implemented");
+    /** Open the win-back composer for a row — derives the live credit
+     *  balance + expiry so the message + banner reference real data. */
+    function openWinBack(row: (typeof rows)[number]) {
+        const c = row.customer;
+        const credits = c.creditsRemaining ?? 0;
+        const expiryLabel = c.planExpiryISO
+            ? new Date(c.planExpiryISO).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            : null;
+        setWinBackRow({
+            customer: c,
+            lastVisitLabel: fmtDate(c.lastVisitISO),
+            daysAgo: row.daysAgo,
+            pattern: row.pattern,
+            credits,
+            expiryLabel,
+        });
+    }
+    /** Win-back "Send message" — emits a toast + audit so the action flows
+     *  into the team-activity feed, then closes the composer. */
+    function sendWinBack(channel: WinBackChannel) {
+        if (!winBackRow) return;
+        const c = winBackRow.customer;
+        const name = `${c.firstName} ${c.lastName}`.trim();
+        const channelLabel = channel === "whatsapp" ? "WhatsApp" : channel === "email" ? "Email" : "Push";
+        recordAudit(`Sent ${name} a win-back message`, "customer", c.id, name, { channel: channelLabel });
+        showToast("Win-back message sent", `Your ${channelLabel} message to ${name} is on its way.`, "success", "check");
+        setWinBackRow(null);
     }
 
     return (
@@ -833,7 +865,7 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                                             {
                                                 label: "Win back",
                                                 icon: Users02,
-                                                onClick: winBack,
+                                                onClick: () => openWinBack(r),
                                             },
                                         ]}
                                     />
@@ -850,6 +882,19 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                     </tbody>
                 </table>
             </div>
+
+            {/* Win-back composer — stacks above this modal via its own portal. */}
+            <WinBackModal
+                open={!!winBackRow}
+                customer={winBackRow?.customer ?? null}
+                lastVisitLabel={winBackRow?.lastVisitLabel ?? ""}
+                daysAgo={winBackRow?.daysAgo ?? 0}
+                pattern={winBackRow?.pattern ?? ""}
+                credits={winBackRow?.credits ?? 0}
+                expiryLabel={winBackRow?.expiryLabel ?? null}
+                onClose={() => setWinBackRow(null)}
+                onSent={sendWinBack}
+            />
         </ModalShell>
     );
 }
@@ -1105,6 +1150,199 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
                 onConfirm={confirmCancelClass}
             />
         </ModalShell>
+    );
+}
+
+// ─── Win-back message modal ────────────────────────────────────────────────
+//
+// Opens from the At-risk clients modal's "Win back" row action. A message
+// composer for re-engaging a lapsed member: customer context + a "why
+// flagged" reason banner, a channel selector (WhatsApp / Email / Push,
+// mirroring the customer-notifications channels), an editable pre-filled
+// message templated from the customer's LIVE data (name, credits, expiry,
+// last visit), a tone + offer meta row, and Regenerate / Send actions.
+// Send emits a toast + audit (flows to the team-activity feed). Own portal
+// so it stacks above the parent At-risk ModalShell.
+
+type WinBackChannel = "whatsapp" | "email" | "push";
+
+/** Small WhatsApp glyph — same mark the branding + notifications modules use. */
+function WhatsAppMark({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor">
+            <path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4C7.7 4 4.16 7.53 4.16 11.88a7.84 7.84 0 0 0 1.05 3.94L4.1 20l4.31-1.13a7.9 7.9 0 0 0 3.64.93h.01c4.35 0 7.89-3.54 7.89-7.89a7.83 7.83 0 0 0-2.34-5.59zm-5.55 12.13h-.01a6.5 6.5 0 0 1-3.32-.91l-.24-.14-2.56.67.68-2.5-.16-.26a6.5 6.5 0 0 1-1-3.47c0-3.6 2.94-6.53 6.55-6.53a6.54 6.54 0 0 1 6.54 6.55c0 3.6-2.93 6.59-6.48 6.59zm3.59-4.9c-.2-.1-1.16-.57-1.35-.64-.18-.06-.31-.1-.44.1-.13.2-.51.64-.62.77-.12.13-.23.15-.42.05-.2-.1-.83-.3-1.58-.97a5.95 5.95 0 0 1-1.1-1.36c-.11-.2-.01-.3.09-.4.09-.09.2-.23.3-.34.1-.12.13-.2.2-.33.07-.13.03-.25-.02-.35-.05-.1-.44-1.06-.6-1.45-.16-.38-.32-.33-.44-.34h-.38a.73.73 0 0 0-.53.25c-.18.2-.7.68-.7 1.66 0 .98.71 1.92.82 2.06.1.13 1.4 2.14 3.4 3.01a11.7 11.7 0 0 0 1.13.42c.48.15.91.13 1.25.08.38-.06 1.16-.47 1.32-.93.17-.46.17-.85.12-.93-.06-.09-.18-.13-.38-.23z" />
+        </svg>
+    );
+}
+
+/** Deterministic message variants — templated from live customer data so
+ *  the copy always references the real name / credits / expiry. Regenerate
+ *  cycles the index; no Math.random (keeps hydration + re-renders stable). */
+function buildWinBackMessages(opts: {
+    firstName: string; studio: string; credits: number; expiryLabel: string | null;
+}): string[] {
+    const { firstName, studio, credits, expiryLabel } = opts;
+    const creditLine = credits > 0
+        ? `You've still got ${credits} class credit${credits === 1 ? "" : "s"} on your account${expiryLabel ? `, and they expire ${expiryLabel}` : ""}.`
+        : "";
+    return [
+        `Hi ${firstName} — we've missed you at ${studio} the last couple of weeks. ${creditLine} Want me to save you a spot this week? First one's on us.`.replace(/\s+/g, " ").trim(),
+        `${firstName}, it's been a while! ${creditLine} Come back and pick up where you left off — reply here and I'll book you into your favourite class, on the house.`.replace(/\s+/g, " ").trim(),
+        `Hey ${firstName} — your spot at ${studio} is waiting. ${creditLine} Let's get you back on the mat this week with a complimentary class. Just say the word.`.replace(/\s+/g, " ").trim(),
+    ];
+}
+
+function WinBackModal({
+    open, customer, lastVisitLabel, daysAgo, pattern, credits, expiryLabel, onClose, onSent,
+}: {
+    open: boolean;
+    customer: Customer | null;
+    lastVisitLabel: string;
+    daysAgo: number;
+    pattern: string;
+    credits: number;
+    expiryLabel: string | null;
+    onClose: () => void;
+    onSent: (channel: WinBackChannel) => void;
+}) {
+    // Default channel = the customer's first opted-in marketing channel
+    // (WhatsApp → Email → Push), else WhatsApp.
+    const defaultChannel: WinBackChannel =
+        customer?.marketingChannelWhatsapp ? "whatsapp"
+        : customer?.marketingChannelEmail ? "email"
+        : customer?.marketingChannelPush ? "push"
+        : "whatsapp";
+
+    const [channel, setChannel] = useState<WinBackChannel>(defaultChannel);
+    const [variant, setVariant] = useState(0);
+    const [message, setMessage] = useState("");
+    const [edited, setEdited] = useState(false);
+
+    const firstName = customer?.firstName ?? "there";
+    const studio = useAppStore(s => s.brandingSettings.displayName) || "the studio";
+
+    const messages = useMemo(
+        () => buildWinBackMessages({ firstName, studio, credits, expiryLabel }),
+        [firstName, studio, credits, expiryLabel],
+    );
+
+    // Reset composer each time it opens on a new customer.
+    useEffect(() => {
+        if (open) {
+            setChannel(defaultChannel);
+            setVariant(0);
+            setMessage(messages[0]);
+            setEdited(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, customer?.id]);
+
+    function regenerate() {
+        const next = (variant + 1) % messages.length;
+        setVariant(next);
+        setMessage(messages[next]);
+        setEdited(false);
+    }
+
+    if (!open || !customer) return null;
+    if (typeof document === "undefined") return null;
+
+    const initials = customer.initials || `${(customer.firstName?.[0] ?? "").toUpperCase()}${(customer.lastName?.[0] ?? "").toUpperCase()}`;
+    const name = `${customer.firstName} ${customer.lastName}`.trim();
+
+    const CHANNELS: { key: WinBackChannel; label: string; icon: React.ReactNode }[] = [
+        { key: "whatsapp", label: "WhatsApp", icon: <WhatsAppMark className="w-4 h-4" /> },
+        { key: "email",    label: "Email",    icon: <Mail01 className="w-4 h-4" /> },
+        { key: "push",     label: "Push",     icon: <Bell01 className="w-4 h-4" /> },
+    ];
+
+    return createPortal(
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6" onClick={onClose}>
+            <div className="absolute inset-0 bg-[#0c111d]/50" aria-hidden="true" />
+            <div
+                onClick={e => e.stopPropagation()}
+                className="relative bg-white rounded-[16px] w-[520px] max-w-full max-h-[calc(100vh-48px)] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+            >
+                {/* Header — avatar + name + last visit + close */}
+                <div className="flex items-start gap-3 px-6 pt-6 pb-4 shrink-0">
+                    <Avatar imageUrl={customer.imageUrl} initials={initials} name={name} size={48} />
+                    <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">Win back — {name}</p>
+                        <p className="text-[14px] text-[#667085] leading-[20px]">Last visit {lastVisitLabel} · {daysAgo} days ago</p>
+                    </div>
+                    <button type="button" onClick={onClose} aria-label="Close"
+                        className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+
+                {/* Body — scrolls if needed */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-2 flex flex-col gap-4">
+                    {/* Why flagged banner */}
+                    <div className="flex gap-2 rounded-[10px] bg-[#eff8ff] border-1 border-[#b2ddff] p-3">
+                        <Stars02 className="w-4 h-4 text-[#175cd3] shrink-0 mt-0.5" />
+                        <p className="text-[14px] text-[#175cd3] leading-[20px]">
+                            <span className="font-semibold">Why they&apos;re flagged:</span>{" "}
+                            {pattern.startsWith("0") ? "no recent bookings" : `booked ${pattern}`}, then stopped after {lastVisitLabel}.
+                            {credits > 0 && (
+                                <> Holds {credits} unused credit{credits === 1 ? "" : "s"}{expiryLabel ? ` expiring ${expiryLabel}` : ""}.</>
+                            )}
+                        </p>
+                    </div>
+
+                    {/* Channel selector */}
+                    <div className="flex items-center gap-2">
+                        {CHANNELS.map(ch => {
+                            const active = channel === ch.key;
+                            return (
+                                <button key={ch.key} type="button" onClick={() => setChannel(ch.key)}
+                                    className={cn(
+                                        "inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[14px] font-semibold transition-colors border-1",
+                                        active
+                                            ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]"
+                                            : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
+                                    )}>
+                                    {ch.icon}
+                                    {ch.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Editable message */}
+                    <div className="flex flex-col gap-1.5">
+                        <p className="text-[13px] text-[#667085]">Message · editable{edited ? " (edited)" : ""}</p>
+                        <textarea
+                            value={message}
+                            onChange={e => { setMessage(e.target.value); setEdited(true); }}
+                            rows={5}
+                            className="w-full resize-none rounded-[10px] border-1 border-[#d0d5dd] bg-white px-3.5 py-3 text-[15px] leading-[24px] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all"
+                        />
+                        <div className="flex items-center gap-4 pt-0.5">
+                            <span className="inline-flex items-center gap-1.5 text-[13px] text-[#667085]">
+                                <Sliders02 className="w-4 h-4 text-[#98a2b3]" /> Tone: warm
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-[13px] text-[#667085]">
+                                <Gift01 className="w-4 h-4 text-[#98a2b3]" /> Offer: free class
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer — Regenerate / Send */}
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end gap-3">
+                    <Button variant="secondary-gray" size="md" rightIcon={<RefreshCcw01 className="w-4 h-4" />} onClick={regenerate}>
+                        Regenerate
+                    </Button>
+                    <Button variant="primary" size="md" leftIcon={<Send01 className="w-4 h-4" />}
+                        disabled={message.trim().length === 0}
+                        onClick={() => onSent(channel)}>
+                        Send message
+                    </Button>
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }
 
