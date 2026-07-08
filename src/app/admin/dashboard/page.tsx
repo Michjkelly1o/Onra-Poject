@@ -487,7 +487,7 @@ export default function AdminDashboard() {
     // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
     // 245665 / 246710). Renewal + Expire cards share the Renewal-due
     // modal per client Jul 2026.
-    type NeedsAttentionModal = "renewal" | "failed" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
+    type NeedsAttentionModal = "renewal" | "failed" | "failedComing" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -698,6 +698,14 @@ export default function AdminDashboard() {
             if (Number.isNaN(t)) return false;
             return t >= now && t <= horizonMs;
         };
+        // Backward window — past events still open (failed payments). Same
+        // window size as the pill so the Failed card reacts to Next 7 / 30.
+        const pastStartMs = now - comingRange * DAY;
+        const inPastRange = (iso: string) => {
+            const t = new Date(iso).getTime();
+            if (Number.isNaN(t)) return false;
+            return t >= pastStartMs && t <= now;
+        };
 
         const heldMemberships = scopedCustomerPlans.filter(p =>
             p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
@@ -725,8 +733,14 @@ export default function AdminDashboard() {
             (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
         );
 
-        // Failed payments no longer surfaces on Coming-up (moved to the
-        // Today tab's Needs-attention card, client Jul 2026).
+        // 4. Failed payments — failed transactions in the past N-day window
+        //    (rolling with the pill). Opens its own "failedComing" modal so
+        //    the Coming-up window (comingRange) stays independent of the
+        //    Today tab's Needs-attention 24h failed row.
+        const failedTxns = scopedTransactions.filter(t =>
+            t.status === "failed" && inPastRange(t.createdAtISO),
+        );
+        const failedAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
 
         // At-risk clients — same 14-30 day silent-window as Needs-attention.
         //    Range-independent (it's a bucket, not a horizon).
@@ -769,9 +783,13 @@ export default function AdminDashboard() {
                 icon: RefreshCw01,
                 onClick: () => setAttentionModal("renewal"),
             },
-            // Failed payments removed from Coming-up (client Jul 2026) — it's
-            // a LIVE "recoverable now" item that lives exclusively in the
-            // Today tab's "Needs attention today" card. One home only.
+            {
+                label: "Failed payments",
+                value: `${failedTxns.length} · AED ${failedAed.toLocaleString("en-US")}`,
+                comparison: "Recoverable now",
+                icon: CreditCard01,
+                onClick: () => setAttentionModal("failedComing"),
+            },
             {
                 label: "At-risk clients",
                 value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
@@ -1339,6 +1357,14 @@ export default function AdminDashboard() {
                 /* Last-24h window — matches the Needs-attention "Failed
                    payments recoverable now" row's rolling 24h count. */
                 pastRangeDays={1}
+            />
+            <FailedPaymentsModal
+                open={attentionModal === "failedComing"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+                /* Coming-up window — matches the Coming-up "Failed payments"
+                   card's rolling Next 7 / 30 day count. */
+                pastRangeDays={comingRange}
             />
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}

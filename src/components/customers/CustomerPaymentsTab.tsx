@@ -706,7 +706,21 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t)}</td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtAed(t.amountAed)}</td>
-                                                <td className={TD}><TxnStatusBadge status={t.status} /></td>
+                                                <td className={TD}>
+                                                    {/* A still-`complete` payment with a pending refund
+                                                        request (raised from the dashboard) reads as
+                                                        "Refund requested" here so the customer module
+                                                        reflects the dashboard queue. Once approved it
+                                                        flips to "Refunded"; denial clears the marker
+                                                        back to "Complete". */}
+                                                    {t.status === "complete" && t.refundRequestedAtISO ? (
+                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
+                                                            Refund requested
+                                                        </span>
+                                                    ) : (
+                                                        <TxnStatusBadge status={t.status} />
+                                                    )}
+                                                </td>
                                                 <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
                                                 <td className={TD}>
                                                     {/* Only completed AND refundable payments can be
