@@ -25,13 +25,12 @@
 //   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
 //   Membership & Package, Gift Cards, Promo codes, Campaigns, Customer,
 //   Services (incl. appointments), Insights, Pay rate, Payroll, Staff
-//   & Permissions (full), Agreements, Booking rules, Referral, Tax,
-//   Branding, Reports, Notifications, Customer notifications, Account
-//   settings, Business & Locations, Integrations (Payments + Apps).
+//   & Permissions (full), Agreements, Booking rules, Tax, Branding,
+//   Reports, Notifications, Customer notifications, Account settings,
+//   Business & Locations, Integrations (Payments + Apps).
 //
-//   DISABLED (admin): none currently — all admin modules are live for
-//   this demo push. If a module needs to be hidden again, add its
-//   route prefix(es) back to the array below.
+//   DISABLED (admin): Referral (Overview + Setup) — hidden until the
+//   client signs off. Re-enable by re-commenting its prefixes below.
 //
 //   ENABLED (instructor): Dashboard, Schedule, the upcoming/ongoing
 //   class takeover detail page (`/class/[id]`), the completed/cancelled
@@ -148,16 +147,16 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/reports/mrr",
 
     // ── Reports · Membership & Package (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
-    "/reports/memberships-packages",
-    "/reports/frozen",
-    "/reports/intro-offers",
-    "/reports/upgrades-downgrades",
+    //"/reports/memberships-packages",
+    //"/reports/frozen",
+    //"/reports/intro-offers",
+    //"/reports/upgrades-downgrades",
 
     // ── Reports · Client / Customer (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
-    "/reports/customer-data",
-    "/reports/member-movement",
-    "/reports/retention-churn",
-    "/reports/win-back",
+    //"/reports/customer-data",
+    //"/reports/member-movement",
+    //"/reports/retention-churn",
+    //"/reports/win-back",
 
     // ── Reports · Activity / Class (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/bookings",
@@ -192,9 +191,12 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Customer notifications module ── (ENABLED — admin)
     //"/admin/settings/notifications", // per-event channel + template config
 
-    // ── Referral module ── (ENABLED — pushing today)
-    //"/admin/settings/referral",      // landing (3 cards: master toggle + rules/eligibility tabs + customize info)
-    //"/settings/referral",            // edit-information full-page editor
+    // ── Referral module ── (DISABLED — client review pending)
+    // Overview + Setup tabs, reward config, and edit-information editor are
+    // hidden until the client signs off. Sidebar/settings link stays visible
+    // per the file convention; clicking it 404s. Re-enable by re-commenting.
+    "/admin/settings/referral",      // landing (Overview + Setup tabs)
+    "/settings/referral",            // edit-information full-page editor
 
     // ── Agreements module ── (ENABLED — pushing today)
     //"/admin/settings/agreements",    // list view
@@ -294,7 +296,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // login/signup/OTP/emergency/loading. Customer surface starts on
     // the guest state directly. Any write action that pushes to
     // `/customer/auth` will 404 — accepted for this demo.)
-    "/customer/auth",                // login + signup + otp + emergency + loading (covers all sub-routes)
+    //"/customer/auth",                // login + signup + otp + emergency + loading (covers all sub-routes)
 
     // ── Customer → Home / landing ──
     //"=/customer",                    // home landing page (exact match — keeps sub-routes reachable)
