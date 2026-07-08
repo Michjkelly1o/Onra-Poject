@@ -1266,14 +1266,6 @@ export default function AdminDashboard() {
                             title={`${needsAttention.clientsAtRisk} ${needsAttention.clientsAtRisk === 1 ? "client" : "clients"} at risk`}
                             subtitle="No visit in 14-30 days · win them back"
                             onView={() => setAttentionModal("atrisk")}
-                        />
-                        <NeedsAttentionRow
-                            icon={CalendarCheck01}
-                            iconBg="bg-[#ecfdf3]"
-                            iconFg="text-[#079455]"
-                            title="Under filled classes"
-                            subtitle={`${needsAttention.underFilled} ${needsAttention.underFilled === 1 ? "class" : "classes"} below 50% capacity`}
-                            onView={() => setAttentionModal("underfilled")}
                             isLast
                         />
                     </div>
