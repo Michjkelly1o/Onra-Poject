@@ -34,12 +34,10 @@ export function SettingsGroupHeader({ className }: { className?: string } = {}) 
         ?? group.tabs[0].href;
 
     return (
-        // Sticky when scrolling. Tab position is unchanged — the
-        // compensating `-mt-6 / pt-6` cancels out visually. The
-        // invisible bg-white extends up 24px to cover main's p-6
-        // padding-top zone so scrolled content doesn't bleed through
-        // the gap between the page header and the tabs.
-        <div className="sticky top-0 z-30 -mx-6 -mt-6 px-6 pt-6 bg-white border-b border-[#e4e7ec]">
+        // Sticky when scrolling. Plain sticky top-0 with a full-width
+        // opaque bg-white so scrolled content is fully covered. NO
+        // position shift.
+        <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] px-1">
             <DetailPageTabs
                 tabs={group.tabs.map(t => ({ key: t.href, label: t.label }))}
                 activeKey={activeKey}
