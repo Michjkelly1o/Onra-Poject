@@ -1168,12 +1168,17 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     only `px-4` — no per-cell pl-6/pr-6 trick. */}
                 {(forceTab !== "staff" || staffSubTab === "staff") && tab === "roles" && (
                     rolePageRows.length === 0 ? (
-                        <EmptyState
-                            title={roles.length === 0 ? "No roles yet" : "No roles found"}
-                            subtitle={roles.length === 0
-                                ? "Add your first role to start assigning staff."
-                                : "Try adjusting your search or filters."}
-                        />
+                        // Give the absolute EmptyState a real box to fill so it
+                        // doesn't collapse to 0-height and let the pagination row
+                        // overlap it (the roles route has no flex-1 scroll wrapper).
+                        <div className="relative min-h-[420px]">
+                            <EmptyState
+                                title={roles.length === 0 ? "No roles yet" : "No roles found"}
+                                subtitle={roles.length === 0
+                                    ? "Add your first role to start assigning staff."
+                                    : "Try adjusting your search or filters."}
+                            />
+                        </div>
                     ) : (
                     // Table wrapper padding — flush on the Role &
                     // permissions route, 24px L/R inside the card chrome
