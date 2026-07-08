@@ -27,8 +27,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
 import { ReferralRewardsPanel } from "@/components/settings/ReferralRewardsPanel";
 import { ReferralEligibilityPanel } from "@/components/settings/ReferralEligibilityPanel";
+import { ReferralOverviewTab } from "@/components/settings/ReferralOverviewTab";
 import {
     rewardSummary,
     triggerLabel,
@@ -59,6 +61,7 @@ function Toggle({ on, onChange, ariaLabel }: {
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 type RulesTab = "rewards" | "eligibility";
+type PageTab = "overview" | "setup";
 
 export default function ReferralSettingsPage() {
     const router = useRouter();
@@ -68,6 +71,9 @@ export default function ReferralSettingsPage() {
 
     // Confirm-before-flip master toggle.
     const [pendingToggle, setPendingToggle] = useState<{ next: boolean } | null>(null);
+
+    // Page-level tab — Overview (program KPIs) vs Setup (configuration).
+    const [pageTab, setPageTab] = useState<PageTab>("overview");
 
     // Active sub-tab on the rules card.
     const [rulesTab, setRulesTab] = useState<RulesTab>("rewards");
@@ -92,7 +98,22 @@ export default function ReferralSettingsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-4 max-w-[1100px]">
+        <div className="flex flex-col gap-6">
+            {/* Page-level tabs — Overview (KPIs) / Setup (configuration). */}
+            <DetailPageTabs
+                tabs={[
+                    { key: "overview", label: "Overview" },
+                    { key: "setup",    label: "Setup" },
+                ]}
+                activeKey={pageTab}
+                onChange={k => setPageTab(k as PageTab)}
+                className="border-b border-[#e4e7ec]"
+            />
+
+            {pageTab === "overview" ? (
+                <ReferralOverviewTab />
+            ) : (
+            <div className="flex flex-col gap-4 max-w-[1100px]">
             {/* ── Card 1: Referral settings (master toggle) ────────────── */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex flex-col gap-1">
@@ -231,6 +252,8 @@ export default function ReferralSettingsPage() {
                     </div>
                 </div>
             </div>
+            </div>
+            )}
 
             {pendingToggle && (
                 <ReferralToggleConfirmModal

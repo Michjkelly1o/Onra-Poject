@@ -83,6 +83,52 @@ export function substituteReferralVariables(
         .replaceAll("{{cap}}",      String(settings.maxReferralsPerMember));
 }
 
+/** Program-performance KPIs for the Settings → Referral → Overview tab.
+ *  Every figure is DERIVED from the live `customerReferrals` slice + the
+ *  current `referralSettings` + centralized product averages, so the
+ *  Overview reflects real data and re-renders whenever a referral lands
+ *  or the admin retunes the reward config. */
+export interface ReferralOverviewMetrics {
+    /** Total tracked referrals (every friend who signed up via a link). */
+    referralsSent: number;
+    /** Friends whose reward has unlocked (converted) — `benefitCredits > 0`. */
+    newMembers: number;
+    /** Sum of credits granted across all referrals. */
+    creditsIssued: number;
+    /** Estimated revenue attributed to converted referrals — new members ×
+     *  the studio's average membership price. Labelled "Est." in the UI. */
+    estRevenueAed: number;
+    /** AED value of the rewards granted so far this program — credits issued
+     *  valued at the average AED-per-credit across packages. Numerator of
+     *  the monthly-budget progress bar. */
+    rewardsSpentAed: number;
+    /** Configured monthly program budget cap (AED). */
+    budgetAed: number;
+    /** `rewardsSpentAed / budgetAed`, clamped to 0–100. 0 when no budget set. */
+    budgetPct: number;
+}
+
+/** Derive the Overview KPIs. Pure — averages are passed in (computed from
+ *  the memberships / packages stores by the caller) so this stays free of
+ *  mock-data imports and trivially testable. */
+export function deriveReferralOverview(
+    referrals: CustomerReferral[],
+    settings: { monthlyProgramBudgetAed: number },
+    avgMembershipPriceAed: number,
+    avgAedPerCredit: number,
+): ReferralOverviewMetrics {
+    const referralsSent = referrals.length;
+    const newMembers    = referrals.filter(r => r.benefitCredits > 0).length;
+    const creditsIssued = referrals.reduce((s, r) => s + r.benefitCredits, 0);
+    const estRevenueAed = Math.round(newMembers * avgMembershipPriceAed);
+    const rewardsSpentAed = Math.round(creditsIssued * avgAedPerCredit);
+    const budgetAed = settings.monthlyProgramBudgetAed;
+    const budgetPct = budgetAed > 0
+        ? Math.min(100, Math.round((rewardsSpentAed / budgetAed) * 100))
+        : 0;
+    return { referralsSent, newMembers, creditsIssued, estRevenueAed, rewardsSpentAed, budgetAed, budgetPct };
+}
+
 /** Gate result returned by `canRedeemReferralCreditsAt`. When `allowed`
  *  is false, `reason` carries a short human-readable string suitable
  *  for a toast body. */
