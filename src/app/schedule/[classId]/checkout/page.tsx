@@ -18,7 +18,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, walletBalanceAed } from "@/lib/store";
 import {
     CheckoutShell, PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
     describePayment, computeTotals, enabledMethodsFromProviders,
@@ -44,6 +44,9 @@ function ScheduleCheckoutInner() {
     const customers = useAppStore(s => s.customers);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
+    // Member Wallet payment path — mirrors /admin/pos/checkout.
+    const walletTransactions = useAppStore(s => s.walletTransactions);
+    const debitWallet = useAppStore(s => s.debitWallet);
     // Tax module wiring (Phase 4) — same shape as /admin/pos so the
     // schedule-flow checkout honours archived rates + the global toggle.
     const taxRules = useAppStore(s => s.taxRules);
@@ -113,6 +116,7 @@ function ScheduleCheckoutInner() {
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
+    const walletBalance = walletBalanceAed(walletTransactions, customer.id);
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
@@ -121,6 +125,8 @@ function ScheduleCheckoutInner() {
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
         if (paymentMethod === "googlepay") return true;
+        // Member Wallet can only cover the sale in full (no split payment).
+        if (paymentMethod === "wallet") return walletBalance >= total;
         return false;
     }
 
@@ -138,6 +144,20 @@ function ScheduleCheckoutInner() {
      *  paymentSuccess handler clears pendingPurchase after the modal re-opens. */
     function handleComplete() {
         if (!customer || !pendingPurchase) return;
+        // Member Wallet — debit the account credit for the sale total before
+        // recording the purchase (silent: the schedule page fires its own
+        // success flow). The ledger + balance reflect on the same cycle.
+        if (paymentMethod === "wallet") {
+            debitWallet({
+                customerId: customer.id,
+                amountAed: total,
+                reason: "POS purchase",
+                referenceType: "pos_sale",
+                referenceId: transactionId,
+                createdBy: "POS",
+                silent: true,
+            });
+        }
         applyPurchase(customer.id, pendingPurchase.items, "pos");
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }
@@ -171,6 +191,7 @@ function ScheduleCheckoutInner() {
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
+                walletBalance={walletBalance}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}

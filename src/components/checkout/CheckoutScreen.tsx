@@ -24,13 +24,13 @@
 import { useMemo } from "react";
 import {
     XClose, Check, CreditCard02, CreditCard01, BankNote01, Package,
-    Lightbulb02, CheckCircle, Gift01, CreditCardCheck,
+    Lightbulb02, CheckCircle, Gift01, CreditCardCheck, Wallet01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
 
-export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktransfer";
+export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktransfer" | "wallet";
 
 /** Every method the POS UI knows how to render. Both checkout entry points
  *  pass an `enabledMethods` subset of this list to `PaymentConfirmationStep`
@@ -134,6 +134,12 @@ export interface PaymentConfirmationStepProps {
      *  store-derived subset so disconnecting Stripe in Settings hides
      *  Card / Apple / Google Pay from the POS in the same render. */
     enabledMethods?: PaymentMethod[];
+    /** Customer's account-credit (AED) balance. When > 0, the Member Wallet
+     *  method appears in the picker (independent of `payment_providers` —
+     *  the wallet is an internal balance, not a gateway). Charging it debits
+     *  the ledger for `total` on Complete. Omit / 0 → the wallet card is
+     *  hidden entirely. */
+    walletBalance?: number;
 }
 export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     const enabled = p.enabledMethods ?? ALL_PAYMENT_METHODS;
@@ -197,10 +203,21 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                                 icon={<CreditCardCheck className="w-4 h-4 text-[#475467]" />}
                             />
                         )}
+                        {/* Member Wallet — internal account credit, gated on a
+                            positive balance rather than a payment provider. */}
+                        {(p.walletBalance ?? 0) > 0 && (
+                            <PaymentMethodCard
+                                selected={p.paymentMethod === "wallet"}
+                                onSelect={() => p.setPaymentMethod("wallet")}
+                                title="Member Wallet"
+                                subtitle={`Balance: AED ${(p.walletBalance ?? 0).toLocaleString()}`}
+                                icon={<Wallet01 className="w-4 h-4 text-[#475467]" />}
+                            />
+                        )}
                     </div>
                 </div>
 
-                {p.paymentMethod !== null && show(p.paymentMethod) && (
+                {p.paymentMethod !== null && (show(p.paymentMethod) || p.paymentMethod === "wallet") && (
                     <div className="flex flex-col gap-4">
                         <p className="text-[18px] font-semibold text-[#101828]">Payment confirmation</p>
                         {p.paymentMethod === "cash" && (
@@ -217,6 +234,9 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                         )}
                         {p.paymentMethod === "banktransfer" && (
                             <BankTransferConfirmation total={p.total} />
+                        )}
+                        {p.paymentMethod === "wallet" && (
+                            <WalletConfirmation total={p.total} balance={p.walletBalance ?? 0} />
                         )}
                     </div>
                 )}
@@ -493,6 +513,47 @@ function BankTransferConfirmation({ total }: { total: number }) {
     );
 }
 
+function WalletConfirmation({ total, balance }: { total: number; balance: number }) {
+    const remaining = balance - total;
+    const insufficient = remaining < 0;
+    return (
+        <div className="flex flex-col gap-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-6">
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-[12px] bg-[#f2f7f4] flex items-center justify-center">
+                    <Wallet01 className="w-5 h-5 text-[#658774]" />
+                </div>
+                <p className="text-[16px] font-semibold text-[#101828]">Charge Member Wallet</p>
+            </div>
+            {/* Balance → charge → remaining breakdown so the cashier sees the
+                post-charge balance before confirming. */}
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-[14px]">
+                    <span className="text-[#475467]">Current balance</span>
+                    <span className="font-medium text-[#101828]">AED {balance.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-[14px]">
+                    <span className="text-[#475467]">Amount to charge</span>
+                    <span className="font-medium text-[#101828]">AED {total.toLocaleString()}</span>
+                </div>
+                <div className="h-px bg-[#e4e7ec]" />
+                <div className="flex items-center justify-between text-[14px]">
+                    <span className="text-[#475467]">Remaining after</span>
+                    <span className={cn("font-semibold", insufficient ? "text-[#d92d20]" : "text-[#101828]")}>
+                        AED {Math.max(0, remaining).toLocaleString()}
+                    </span>
+                </div>
+            </div>
+            {insufficient && (
+                <div className="flex gap-2 items-start bg-[#fffbfa] border-1 border-[#fecdca] rounded-[8px] px-3 py-2">
+                    <p className="text-[13px] text-[#b42318] leading-[18px]">
+                        Wallet balance is short by AED {Math.abs(remaining).toLocaleString()}. Choose another method or top up the wallet first.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Loading state — Figma 6891:75669 ─────────────────────────────────────────
 export function ProcessingPaymentCard({ method, chargedTo }: { method: PaymentMethod; chargedTo: string }) {
     return (
@@ -525,6 +586,7 @@ function PaymentMethodLogo({ method }: { method: PaymentMethod }) {
     if (method === "applepay") return <div className="w-6 h-6 rounded-md bg-[#101828] flex items-center justify-center"><AppleLogo /></div>;
     if (method === "googlepay") return <div className="w-6 h-6 rounded-md bg-white border-1 border-[#e4e7ec] flex items-center justify-center"><GoogleLogo /></div>;
     if (method === "banktransfer") return <CreditCardCheck className="w-6 h-6 text-[#475467]" />;
+    if (method === "wallet") return <Wallet01 className="w-6 h-6 text-[#658774]" />;
     return <MasterCardLogo />;
 }
 
@@ -725,7 +787,8 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
                 : paymentMethod === "applepay" ? "Apple Pay"
                     : paymentMethod === "googlepay" ? "Google Pay"
                         : paymentMethod === "banktransfer" ? "Bank transfer"
-                            : "—";
+                            : paymentMethod === "wallet" ? "Member Wallet"
+                                : "—";
     const chargedTo =
         paymentMethod === "card" && selectedCardId
             ? (() => {
@@ -736,7 +799,8 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
                 : paymentMethod === "applepay" ? "Apple Pay"
                     : paymentMethod === "googlepay" ? "Google Pay"
                         : paymentMethod === "banktransfer" ? "Bank transfer"
-                            : "—";
+                            : paymentMethod === "wallet" ? "Member Wallet"
+                                : "—";
     return { label, chargedTo };
 }
 

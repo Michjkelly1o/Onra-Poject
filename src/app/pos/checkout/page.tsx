@@ -22,7 +22,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, walletBalanceAed } from "@/lib/store";
 import {
     CheckoutShell, PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
     describePayment, computeTotals, enabledMethodsFromProviders,
@@ -46,6 +46,10 @@ function POSCheckoutInner() {
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
     const showToast = useAppStore(s => s.showToast);
+    // Member Wallet payment path — the customer's account-credit balance +
+    // the debit action. A wallet charge deducts `total` from the ledger.
+    const walletTransactions = useAppStore(s => s.walletTransactions);
+    const debitWallet = useAppStore(s => s.debitWallet);
     // Phase 3 — POS subscribes to the live Payments-Settings store so that
     // toggling Stripe / Apple Pay / Google Pay (or disconnecting Stripe and
     // cascading the wallets off) hides their cards from the picker grid in
@@ -93,6 +97,7 @@ function POSCheckoutInner() {
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
+    const walletBalance = walletBalanceAed(walletTransactions, customer.id);
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
@@ -101,6 +106,8 @@ function POSCheckoutInner() {
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
         if (paymentMethod === "googlepay") return true;
+        // Member Wallet can only cover the sale in full (no split payment).
+        if (paymentMethod === "wallet") return walletBalance >= total;
         return false;
     }
 
@@ -119,6 +126,21 @@ function POSCheckoutInner() {
      *  to reset its local cart state — but the toast itself is already up. */
     function handleComplete() {
         if (!customer || !pendingPurchase) return;
+        // Member Wallet — debit the customer's account credit for the sale
+        // total before recording the purchase. Silent so only the single
+        // "Transaction complete" toast surfaces (the ledger row + audit are
+        // still written). The Wallet tab + balance reflect on the same cycle.
+        if (paymentMethod === "wallet") {
+            debitWallet({
+                customerId: customer.id,
+                amountAed: total,
+                reason: "POS purchase",
+                referenceType: "pos_sale",
+                referenceId: transactionId,
+                createdBy: "POS",
+                silent: true,
+            });
+        }
         applyPurchase(customer.id, pendingPurchase.items, "pos");
         setPendingPurchase(null);
         showToast(
@@ -157,6 +179,7 @@ function POSCheckoutInner() {
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
+                walletBalance={walletBalance}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}
