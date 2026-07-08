@@ -941,14 +941,11 @@ export default function AdminDashboard() {
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
 
-            {/* Tab Navigation — sticky when scrolling. The `-mx-6 -mt-6
-                px-6 pt-6` combo lets the sticky element bleed into the
-                parent <main>'s p-6 padding so bg-white covers scrolled
-                content 100% (no bleed-through around the tabs). The
-                compensating `-m / p` pairs cancel out visually, so the
-                tab BUTTONS render at exactly the same y-position they
-                did before — only the invisible background extends. */}
-            <div className="sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 bg-white border-b border-[#e4e7ec]">
+            {/* Tab Navigation — sticky when scrolling. Plain sticky
+                top-0 with a full-width opaque bg-white so nothing bleeds
+                through when content scrolls behind. NO position shift:
+                the tab strip renders exactly where it always did. */}
+            <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec]">
                 <div className="flex gap-3 items-start">
                     <button
                         onClick={() => setActiveTab("today")}
