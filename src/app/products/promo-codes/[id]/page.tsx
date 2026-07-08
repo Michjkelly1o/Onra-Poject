@@ -132,32 +132,32 @@ const MODAL_CONFIG: Record<ModalAction, {
 }> = {
     archive: {
         iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
-        title: "Archive this promo code?",
-        description: "This promo code will be hidden from the promo codes list and stop being redeemable. You can recover archived promo codes at any time.",
+        title: "Archive this promotion?",
+        description: "This promotion will be hidden from the promotions list and stop being redeemable. You can recover archived promotions at any time.",
         confirmLabel: "Archive",
     },
     deactivate: {
         iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
-        title: "Deactivate this promo code?",
-        description: "This promo code will stop being redeemable at checkout. You can reactivate it again later.",
+        title: "Deactivate this promotion?",
+        description: "This promotion will stop being redeemable at checkout. You can reactivate it again later.",
         confirmLabel: "Deactivate",
     },
     recover: {
         iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
-        title: "Recover this promo code?",
-        description: "This promo code will be restored to Active status and become redeemable again.",
+        title: "Recover this promotion?",
+        description: "This promotion will be restored to Active status and become redeemable again.",
         confirmLabel: "Recover",
     },
     reactivate: {
         iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
-        title: "Reactivate this promo code?",
-        description: "This promo code will become redeemable at checkout again.",
+        title: "Reactivate this promotion?",
+        description: "This promotion will become redeemable at checkout again.",
         confirmLabel: "Reactivate",
     },
     delete: {
         iconBg: "bg-[#fee4e2]", IconComp: Trash01, iconColor: "text-[#d92d20]",
-        title: "Delete this promo code?",
-        description: "This promo code will be permanently removed. This action cannot be undone.",
+        title: "Delete this promotion?",
+        description: "This promotion will be permanently removed. This action cannot be undone.",
         confirmLabel: "Delete",
     },
 };
@@ -211,26 +211,26 @@ function LeftSidebar({ vm, onAction, branches }: {
         // deleted; Inactive promos must be Reactivated first.
         if (vm.status === "archived") {
             return (
-                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover promo code" onClick={() => onAction("recover")} />
+                <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover promotion" onClick={() => onAction("recover")} />
             );
         }
         if (vm.status === "inactive") {
             return (
                 <>
-                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate promo code" onClick={() => onAction("reactivate")} />
-                    <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promo code" onClick={() => onAction("archive")} />
+                    <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Reactivate promotion" onClick={() => onAction("reactivate")} />
+                    <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promotion" onClick={() => onAction("archive")} />
                 </>
             );
         }
         // active (incl. expired — stored status is still "active")
         return (
             <>
-                <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit promo code" onClick={() => onAction("edit")} />
-                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promo code" onClick={() => onAction("archive")} />
+                <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit promotion" onClick={() => onAction("edit")} />
+                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive promotion" onClick={() => onAction("archive")} />
                 {canDelete ? (
-                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete promo code" danger onClick={() => onAction("delete")} />
+                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete promotion" danger onClick={() => onAction("delete")} />
                 ) : (
-                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate promo code" danger onClick={() => onAction("deactivate")} />
+                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate promotion" danger onClick={() => onAction("deactivate")} />
                 )}
             </>
         );

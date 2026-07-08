@@ -159,21 +159,21 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
     const items: RowActionItem[] = (() => {
         const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: onOpen }];
         if (promo.status === "archived") {
-            base.push({ label: "Recover promo code", icon: RefreshCcw01, onClick: () => setConfirmAction("recover") });
+            base.push({ label: "Recover promotion", icon:RefreshCcw01, onClick: () => setConfirmAction("recover") });
             return base;
         }
         if (promo.status === "inactive") {
-            base.push({ label: "Reactivate promo code", icon: RefreshCcw01, onClick: () => setConfirmAction("reactivate") });
-            base.push({ label: "Archive promo code", icon: Archive, onClick: () => setConfirmAction("archive") });
+            base.push({ label: "Reactivate promotion", icon:RefreshCcw01, onClick: () => setConfirmAction("reactivate") });
+            base.push({ label: "Archive promotion", icon:Archive, onClick: () => setConfirmAction("archive") });
             return base;
         }
         // Active
-        base.push({ label: "Edit promo code", icon: Edit02, onClick: () => router.push(editHref) });
-        base.push({ label: "Archive promo code", icon: Archive, onClick: () => setConfirmAction("archive") });
+        base.push({ label: "Edit promotion", icon:Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Archive promotion", icon:Archive, onClick: () => setConfirmAction("archive") });
         if (canDelete) {
-            base.push({ label: "Delete promo code", icon: Trash02, danger: true, onClick: () => setConfirmAction("delete") });
+            base.push({ label: "Delete promotion", icon:Trash02, danger: true, onClick: () => setConfirmAction("delete") });
         } else {
-            base.push({ label: "Deactivate promo code", icon: SlashCircle01, danger: true, onClick: () => setConfirmAction("deactivate") });
+            base.push({ label: "Deactivate promotion", icon:SlashCircle01, danger: true, onClick: () => setConfirmAction("deactivate") });
         }
         return base;
     })();

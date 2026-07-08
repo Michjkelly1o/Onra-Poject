@@ -22,7 +22,7 @@ const MARKETING: NotifRow[] = [
     { key: "studioAnnouncements", title: "Studio announcements", sub: "Receive studio announcements." },
     { key: "newClassLaunch", title: "New class launch", sub: "Be notified about new classes." },
     { key: "specialOffers", title: "Special offers", sub: "Receive exclusive promotions and offers." },
-    { key: "promoCodeOffers", title: "Promo code offers", sub: "Get notified about new promo codes." },
+    { key: "promoCodeOffers", title: "Promotion offers", sub: "Get notified about new promotions." },
 ];
 
 export default function NotificationSettingsPage() {

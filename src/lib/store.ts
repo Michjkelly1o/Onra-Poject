@@ -392,10 +392,10 @@ export function validatePromoCode(
     promos: PromoCode[] = SEED_PROMO_CODES,
 ): PromoValidationResult {
     const code = rawCode.trim().toUpperCase();
-    if (!code) return { ok: false, reason: "Enter a promo code." };
+    if (!code) return { ok: false, reason: "Enter a promotion." };
     const promo = promos.find(p => p.code.toUpperCase() === code);
-    if (!promo) return { ok: false, reason: "This promo code doesn't exist. Check the code and try again." };
-    if (promo.status !== "active") return { ok: false, reason: "This promo code is no longer active." };
+    if (!promo) return { ok: false, reason: "This promotion doesn't exist. Check the code and try again." };
+    if (promo.status !== "active") return { ok: false, reason: "This promotion is no longer active." };
     if (promo.valid_until) {
         // `valid_until` may be a full ISO datetime ("2025-12-31T00:00:00Z")
         // from the seed OR a bare date ("2025-12-31") from the create form —
@@ -405,17 +405,17 @@ export function validatePromoCode(
         if (!Number.isNaN(expiry.getTime()) && Date.now() > expiry.getTime()) {
             const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
             const label = `${expiry.getUTCDate()} ${MONTHS[expiry.getUTCMonth()]} ${expiry.getUTCFullYear()}`;
-            return { ok: false, reason: `This promo code expired on ${label}.` };
+            return { ok: false, reason: `This promotion expired on ${label}.` };
         }
     }
     if (promo.usage_limit != null && promo.usage_count >= promo.usage_limit) {
-        return { ok: false, reason: "This promo code has reached its usage limit." };
+        return { ok: false, reason: "This promotion has reached its usage limit." };
     }
     // Branch scope — empty `branch_ids` means "all branches". Only enforce
     // when the sale carries a specific branch (POS "All locations" = skip).
     if (promo.branch_ids && promo.branch_ids.length > 0 && cart.branchId
         && !promo.branch_ids.includes(cart.branchId)) {
-        return { ok: false, reason: "This promo code isn't available at the selected branch." };
+        return { ok: false, reason: "This promotion isn't available at the selected branch." };
     }
 
     // Eligibility — a line qualifies when it passes BOTH the product-type
@@ -446,11 +446,11 @@ export function validatePromoCode(
         eligibleSubtotal = (typeOk && allowedProductIds.length === 0) ? cart.subtotalAed : 0;
     }
     if (eligibleSubtotal <= 0) {
-        return { ok: false, reason: "This promo code doesn't apply to the items in your cart." };
+        return { ok: false, reason: "This promotion doesn't apply to the items in your cart." };
     }
 
     if (promo.min_purchase_aed != null && cart.subtotalAed < promo.min_purchase_aed) {
-        return { ok: false, reason: `This promo code requires a minimum purchase of AED ${promo.min_purchase_aed}.` };
+        return { ok: false, reason: `This promotion requires a minimum purchase of AED ${promo.min_purchase_aed}.` };
     }
     // Discount comes off the ELIGIBLE subtotal only — so a promo targeting
     // one membership never discounts the rest of the cart.
@@ -5702,13 +5702,13 @@ export const useAppStore = create<AppState>()(persist(
             created_at: input.created_at ?? new Date().toISOString(),
         };
         set(state => ({ promoCodes: [...state.promoCodes, next] }));
-        get().recordAudit("Created promo code", "promo_code", id, next.code);
+        get().recordAudit("Created promotion", "promo_code", id, next.code);
         return id;
     },
     updatePromoCode: (id, patch) => {
         const target = get().promoCodes.find(p => p.id === id);
         set(state => ({ promoCodes: state.promoCodes.map(p => p.id === id ? { ...p, ...patch } : p) }));
-        if (target) get().recordAudit("Edited promo code", "promo_code", id, target.code);
+        if (target) get().recordAudit("Edited promotion", "promo_code", id, target.code);
     },
     deletePromoCode: (id) => {
         // Block deletion once the code has been redeemed — archive instead so

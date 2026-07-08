@@ -23,8 +23,8 @@ const K = {
 export const PROMO_REDEMPTIONS_REPORT: ReportDefinition = {
     id:          "promo-redemptions",
     category:    "marketing",
-    title:       "Promo Redemptions",
-    description: "Promo codes redeemed + revenue.",
+    title:       "Promotion Redemptions",
+    description: "Promotions redeemed + revenue.",
     type:        "lookback",
     route:       "/reports/promo-redemptions",
     selector:    "selectTransactionLedger",   // uses ledger + promoCodes joined at the page

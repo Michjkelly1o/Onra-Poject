@@ -284,7 +284,7 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                     <div className="flex items-center justify-between">
                         <p className="text-[14px] text-[#667085]">
                             {promoCode
-                                ? <>Promo code (<span className="font-medium text-[#101828]">{promoCode}</span>)</>
+                                ? <>Promotion (<span className="font-medium text-[#101828]">{promoCode}</span>)</>
                                 : <>Discount (<span className="font-medium text-[#101828]">{discountPercent}%</span>)</>
                             }
                         </p>
@@ -617,7 +617,7 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <div className="flex items-center justify-between">
                                 <p className="text-[14px] text-[#667085]">
                                     {p.promoCode
-                                        ? <>Promo code (<span className="font-medium text-[#101828]">{p.promoCode}</span>)</>
+                                        ? <>Promotion (<span className="font-medium text-[#101828]">{p.promoCode}</span>)</>
                                         : <>Discount (<span className="font-medium text-[#101828]">{p.discountPercent}%</span>)</>
                                     }
                                 </p>
