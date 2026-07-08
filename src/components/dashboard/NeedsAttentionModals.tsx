@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, Eye, RefreshCcw01, Bell01, Users02, Pencil02,
     SlashCircle01, Star01, Trash01, Check,
-    Mail01, Stars02, Send01, Gift01, Sliders02,
+    Mail01, Send01, AlertCircle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -1278,11 +1278,12 @@ function WinBackModal({
 
                 {/* Body — scrolls if needed */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-2 flex flex-col gap-4">
-                    {/* Why flagged banner */}
-                    <div className="flex gap-2 rounded-[10px] bg-[#eff8ff] border-1 border-[#b2ddff] p-3">
-                        <Stars02 className="w-4 h-4 text-[#175cd3] shrink-0 mt-0.5" />
-                        <p className="text-[14px] text-[#175cd3] leading-[20px]">
-                            <span className="font-semibold">Why they&apos;re flagged:</span>{" "}
+                    {/* Why flagged — standard neutral info alert (matches the
+                        app's info-banner pattern used across forms). */}
+                    <div className="flex items-start gap-3 p-3 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec]">
+                        <AlertCircle className="w-4 h-4 text-[#667085] shrink-0 mt-[2px]" />
+                        <p className="text-[13px] text-[#475467] leading-[18px]">
+                            <span className="font-semibold text-[#344054]">Why they&apos;re flagged:</span>{" "}
                             {pattern.startsWith("0") ? "no recent bookings" : `booked ${pattern}`}, then stopped after {lastVisitLabel}.
                             {credits > 0 && (
                                 <> Holds {credits} unused credit{credits === 1 ? "" : "s"}{expiryLabel ? ` expiring ${expiryLabel}` : ""}.</>
@@ -1290,17 +1291,18 @@ function WinBackModal({
                         </p>
                     </div>
 
-                    {/* Channel selector */}
+                    {/* Channel selector — brand selection color (same as the
+                        filter badge pills across the admin modules). */}
                     <div className="flex items-center gap-2">
                         {CHANNELS.map(ch => {
                             const active = channel === ch.key;
                             return (
                                 <button key={ch.key} type="button" onClick={() => setChannel(ch.key)}
                                     className={cn(
-                                        "inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[14px] font-semibold transition-colors border-1",
+                                        "inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[14px] font-medium transition-colors border-1",
                                         active
-                                            ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]"
-                                            : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
+                                            ? "bg-[#f5fffa] border-[#7ba08c] text-[#3b5446]"
+                                            : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
                                     )}>
                                     {ch.icon}
                                     {ch.label}
@@ -1318,14 +1320,6 @@ function WinBackModal({
                             rows={5}
                             className="w-full resize-none rounded-[10px] border-1 border-[#d0d5dd] bg-white px-3.5 py-3 text-[15px] leading-[24px] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all"
                         />
-                        <div className="flex items-center gap-4 pt-0.5">
-                            <span className="inline-flex items-center gap-1.5 text-[13px] text-[#667085]">
-                                <Sliders02 className="w-4 h-4 text-[#98a2b3]" /> Tone: warm
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 text-[13px] text-[#667085]">
-                                <Gift01 className="w-4 h-4 text-[#98a2b3]" /> Offer: free class
-                            </span>
-                        </div>
                     </div>
                 </div>
 
