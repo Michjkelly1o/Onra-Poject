@@ -141,6 +141,8 @@ import {
     customer_transactions as SEED_CUSTOMER_TRANSACTIONS,
     customer_agreements as SEED_CUSTOMER_AGREEMENTS,
     customer_referrals as SEED_CUSTOMER_REFERRALS,
+    wallet_transactions as SEED_WALLET_TRANSACTIONS,
+    type WalletTransactionSeed,
     // Reports v33 — new tables for demo data completeness
     leads as SEED_LEADS,
     marketing_campaign_stats as SEED_MARKETING_CAMPAIGN_STATS,
@@ -1139,6 +1141,32 @@ export interface CustomerReferral {
     reactivationDateISO?: string;
     newPlanId?: string;
     revenueRecoveredAed?: number;
+}
+
+/** Wallet transaction — store shape (camelCase) of a `wallet_transactions`
+ *  row. One credit / debit against a customer's account-credit (AED) balance.
+ *  The balance is DERIVED (`walletBalanceAed(customerId)`), never stored. */
+export interface WalletTransaction {
+    id: string;
+    customerId: string;
+    branchId: string;
+    type: "credit" | "debit";
+    /** Positive AED amount; `type` carries the sign. */
+    amountAed: number;
+    reason: string;
+    referenceType?: "referral" | "pos_sale" | "refund" | "manual";
+    referenceId?: string;
+    createdAtISO: string;
+    createdBy?: string;
+}
+
+/** Derive a customer's account-credit (AED) balance from the wallet ledger:
+ *  sum of credits − sum of debits. Single source of truth for every surface
+ *  (Wallet tab, POS Member Wallet availability, referral rewards). */
+export function walletBalanceAed(transactions: WalletTransaction[], customerId: string): number {
+    return transactions
+        .filter(t => t.customerId === customerId)
+        .reduce((sum, t) => sum + (t.type === "credit" ? t.amountAed : -t.amountAed), 0);
 }
 
 // ─── Customer notification settings (PRD 11 §12) ───────────────────────────
@@ -2230,6 +2258,21 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
     };
 }
 
+function walletTransactionFromSeed(w: WalletTransactionSeed): WalletTransaction {
+    return {
+        id: w.id,
+        customerId: w.customer_id,
+        branchId: w.branch_id,
+        type: w.type,
+        amountAed: w.amount_aed,
+        reason: w.reason,
+        referenceType: w.reference_type,
+        referenceId: w.reference_id,
+        createdAtISO: w.created_at,
+        createdBy: w.created_by,
+    };
+}
+
 function customerAgreementFromSeed(a: SeedCustomerAgreement): CustomerAgreement {
     return {
         id: a.id,
@@ -3064,6 +3107,7 @@ const INITIAL_CUSTOMERS: Customer[] = reconcileCreditsRemaining(
 const INITIAL_CUSTOMER_TRANSACTIONS: CustomerTransaction[] = SEED_CUSTOMER_TRANSACTIONS.map(customerTransactionFromSeed);
 const INITIAL_CUSTOMER_AGREEMENTS: CustomerAgreement[] = SEED_CUSTOMER_AGREEMENTS.map(customerAgreementFromSeed);
 const INITIAL_CUSTOMER_REFERRALS: CustomerReferral[] = SEED_CUSTOMER_REFERRALS.map(customerReferralFromSeed);
+const INITIAL_WALLET_TRANSACTIONS: WalletTransaction[] = SEED_WALLET_TRANSACTIONS.map(walletTransactionFromSeed);
 
 /** Phase 3 — initial branding now derives from the centralized seed at
  *  `src/data/mock/branding_settings.ts`. The deep-copy below ensures runtime
@@ -3108,6 +3152,10 @@ export interface AppState {
     customerAgreements: CustomerAgreement[];
     /** Customer referral records — the customer-detail Referrals tab reads these. */
     customerReferrals: CustomerReferral[];
+    /** Wallet (account-credit AED) ledger — customer-detail Wallet tab,
+     *  referral Account-Credit rewards + POS Member Wallet payments read this.
+     *  Balance is derived via `walletBalanceAed`, never stored. */
+    walletTransactions: WalletTransaction[];
     /** Live memberships/packages — admins mutate these from /admin/products
      *  and every consumer (POS catalog, class-types Applicable Plans tab,
      *  etc.) reads the updated state. Seeded from `memberships.ts` /
@@ -3420,6 +3468,24 @@ export interface AppState {
     /** Promote a waitlisted booking to booked (dashboard Needs-attention
      *  "Waitlist spots opened today"). Bumps the schedule's booked count. */
     confirmWaitlistBooking: (bookingId: string) => void;
+
+    // ── Wallet (account-credit AED) ────────────────────────────────────────
+    /** Add an account-credit (AED) credit to a customer's wallet ledger.
+     *  Used by referral Account-Credit rewards + manual grants. Returns the
+     *  new transaction id. Emits a toast + audit. */
+    creditWallet: (input: {
+        customerId: string; amountAed: number; reason: string;
+        referenceType?: WalletTransaction["referenceType"]; referenceId?: string;
+        createdBy?: string; silent?: boolean;
+    }) => string;
+    /** Debit a customer's wallet (POS Member Wallet payment / adjustment).
+     *  Rejects (returns false) when the balance can't cover the amount so
+     *  the wallet never goes negative. Emits a toast + audit unless silent. */
+    debitWallet: (input: {
+        customerId: string; amountAed: number; reason: string;
+        referenceType?: WalletTransaction["referenceType"]; referenceId?: string;
+        createdBy?: string; silent?: boolean;
+    }) => boolean;
 
     // ── Memberships ────────────────────────────────────────────────────────
     /** Append a new membership to the store. Generates an id if one is not
@@ -3864,6 +3930,7 @@ export const useAppStore = create<AppState>()(persist(
     customerTransactions: INITIAL_CUSTOMER_TRANSACTIONS,
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
+    walletTransactions: INITIAL_WALLET_TRANSACTIONS,
     memberships: [...SEED_MEMBERSHIPS],
     packages: [...SEED_PACKAGES],
     giftCardDesigns: [...SEED_GIFT_CARD_DESIGNS],
@@ -5569,6 +5636,49 @@ export const useAppStore = create<AppState>()(persist(
         const name = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "a customer";
         const sched = get().classSchedules.find(s => s.id === booking.classScheduleId);
         get().recordAudit(`Confirmed ${name}'s waitlist spot`, "class_schedule", booking.classScheduleId, sched?.name ?? "class");
+    },
+
+    // ── Wallet (account-credit AED) ────────────────────────────────────────
+
+    creditWallet: ({ customerId, amountAed, reason, referenceType, referenceId, createdBy, silent }) => {
+        const id = `wtxn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const txn: WalletTransaction = {
+            id, customerId, branchId: get().customers.find(c => c.id === customerId)?.branchId ?? DEFAULT_BRANCH_ID,
+            type: "credit", amountAed, reason,
+            referenceType, referenceId,
+            createdAtISO: new Date().toISOString(),
+            createdBy: createdBy ?? "System",
+        };
+        set(state => ({ walletTransactions: [txn, ...state.walletTransactions] }));
+        const c = get().customers.find(cx => cx.id === customerId);
+        const name = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "a customer";
+        get().recordAudit(`Added AED ${amountAed} account credit to ${name}`, "customer", customerId, name, { amount: amountAed, reason });
+        if (!silent) {
+            get().showToast("Account credit added", `AED ${amountAed} credited to ${name}'s wallet.`, "success", "check");
+        }
+        return id;
+    },
+
+    debitWallet: ({ customerId, amountAed, reason, referenceType, referenceId, createdBy, silent }) => {
+        // Never let the balance go negative — reject if it can't cover it.
+        const balance = walletBalanceAed(get().walletTransactions, customerId);
+        if (amountAed > balance) return false;
+        const id = `wtxn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const txn: WalletTransaction = {
+            id, customerId, branchId: get().customers.find(c => c.id === customerId)?.branchId ?? DEFAULT_BRANCH_ID,
+            type: "debit", amountAed, reason,
+            referenceType, referenceId,
+            createdAtISO: new Date().toISOString(),
+            createdBy: createdBy ?? "System",
+        };
+        set(state => ({ walletTransactions: [txn, ...state.walletTransactions] }));
+        const c = get().customers.find(cx => cx.id === customerId);
+        const name = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "a customer";
+        get().recordAudit(`Debited AED ${amountAed} from ${name}'s wallet`, "customer", customerId, name, { amount: amountAed, reason });
+        if (!silent) {
+            get().showToast("Wallet debited", `AED ${amountAed} used from ${name}'s account credit.`, "success", "check");
+        }
+        return true;
     },
 
     // ── Memberships / Packages ─────────────────────────────────────────────
@@ -7638,7 +7748,12 @@ export const useAppStore = create<AppState>()(persist(
         // refund-request fields on CustomerTransaction + NOW-anchored
         // fixtures (refund requests, waitlist confirmations, new
         // sign-ups). Bumped so testers get the fresh fixtures.
-        version: 43,
+        //
+        // v44: wallet (account-credit AED) subsystem — new
+        // `walletTransactions` slice + seed. Backs the referral
+        // Account-Credit reward, the customer Wallet tab, and POS
+        // Member Wallet payments. Bumped so testers get the seed.
+        version: 44,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

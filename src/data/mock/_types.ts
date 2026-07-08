@@ -675,6 +675,34 @@ export interface CustomerTransaction {
     refund_request_reason?: string;
 }
 
+// ─── Wallet transactions (PRD 07 §Wallet — account credit ledger) ───────────
+//
+// One row per credit / debit against a customer's account-credit (AED)
+// balance. The balance is DERIVED (sum of credits − debits) — never stored —
+// so it can't drift. Credits come from referral rewards (Account Credit type)
+// + manual grants; debits come from POS "Member Wallet" payments + refunds
+// to original method. FK: `customer_id` → customers.id.
+export interface WalletTransactionSeed {
+    /** e.g. "wtxn_ahmed_1" */
+    id: string;
+    customer_id: string;  // → customers.id
+    branch_id: string;    // → branches.id (where the credit/debit originated)
+    /** `credit` adds to the balance, `debit` subtracts. */
+    type: "credit" | "debit";
+    /** Always a positive AED amount; `type` carries the sign. */
+    amount_aed: number;
+    /** Human-readable reason ("Referral reward", "POS purchase", …). */
+    reason: string;
+    /** What the entry references, for deep-linking + reconciliation. */
+    reference_type?: "referral" | "pos_sale" | "refund" | "manual";
+    /** Id of the referenced record (referral id / transaction id / …). */
+    reference_id?: string;
+    /** ISO 8601 timestamp. */
+    created_at: string;
+    /** Display name of who created it (staff member / "System"). */
+    created_by?: string;
+}
+
 // ─── Products: Memberships & Packages ───────────────────────────────────────
 
 /** Time unit used by the duration step + several purchase-rule fields. */

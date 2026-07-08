@@ -63,6 +63,8 @@ export { customer_transactions } from "./customer_transactions";
 export { customer_agreements } from "./customer_agreements";
 // Customer referrals (FK → customers)
 export { customer_referrals } from "./customer_referrals";
+// Wallet transactions (FK → customers, branches) — account-credit ledger
+export { wallet_transactions } from "./wallet_transactions";
 
 // Products & Payments (no FK deps for now — payment_methods adds customer_id later)
 export { memberships } from "./memberships";
