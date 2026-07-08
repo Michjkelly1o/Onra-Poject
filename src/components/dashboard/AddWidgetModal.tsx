@@ -53,12 +53,14 @@ export function AddWidgetModal({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
             {/* Dark overlay */}
             <div className="absolute inset-0 bg-[#0c111d]/70" onClick={onClose} />
 
-            {/* Modal — bottom sheet, no gap at bottom */}
-            <div className="relative w-[80vw] h-[600px] bg-white rounded-tl-[16px] rounded-tr-[16px] border border-[#e4e7ec] shadow-[0px_-8px_24px_-4px_rgba(16,24,40,0.08),0px_-4px_8px_-2px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+            {/* Modal — centered on screen (client Jul 2026, previously
+                rendered as a bottom sheet). Rounded on all corners; drop
+                shadow centered rather than bottom-anchored. */}
+            <div className="relative w-[80vw] max-w-[1080px] h-[600px] max-h-[calc(100vh-48px)] bg-white rounded-[16px] border border-[#e4e7ec] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="flex items-center gap-2 px-6 py-4 border-b border-[#e4e7ec] shrink-0">

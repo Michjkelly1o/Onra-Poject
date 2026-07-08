@@ -34,10 +34,12 @@ export function SettingsGroupHeader({ className }: { className?: string } = {}) 
         ?? group.tabs[0].href;
 
     return (
-        // Sticky when scrolling. No position offset — the strip stays
-        // exactly where it renders on first paint, only "sticks" once
-        // the scroll passes it.
-        <div className="sticky top-0 z-20 bg-white border-b border-[#e4e7ec] px-1">
+        // Sticky when scrolling. The `-mx-6 -mt-6 px-6 pt-6` combo lets
+        // the sticky element bleed into the parent <main>'s p-6 padding
+        // so bg-white covers 100% of the scrolled content. Content
+        // position doesn't shift because the compensating -m / p pairs
+        // cancel out visually.
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 px-7 pt-6 bg-white border-b border-[#e4e7ec]">
             <DetailPageTabs
                 tabs={group.tabs.map(t => ({ key: t.href, label: t.label }))}
                 activeKey={activeKey}
