@@ -9,8 +9,11 @@
 // Hours mix is intentional:
 //   • South (main):   7:00–22:00 weekdays, 8:00–20:00 weekends
 //   • East:           6:00–21:00 Mon–Fri, 7:00–19:00 Sat, CLOSED Sun
-//   • West (inactive branch): closed every day — exercises the "no slots
-//                             available" empty state in the form.
+//   • West:           7:00–21:00 Mon–Fri, 8:00–19:00 Sat, 8:00–18:00 Sun —
+//                     open every day. (Branch status is inactive, but it
+//                     still carries working hours so the branch detail /
+//                     locations views never render it as a red "no hours"
+//                     row.)
 //   • Spa:            9:00–21:00 Mon–Fri, 10:00–20:00 weekends — recovery
 //                     branch keeps shorter, later hours than the Club
 //                     branches but is open every day so customers can
@@ -70,8 +73,14 @@ export const business_hours: BusinessHours[] = [
         null,                                // Sun closed
     ),
 
-    // Forma West — inactive branch, closed every day
-    ...makeWeek("branch_forma_west", null, null, null),
+    // Forma West — inactive branch, but still carries full working hours so
+    // it never shows as a red "no hours" row in the branch/locations views.
+    ...makeWeek(
+        "branch_forma_west",
+        { open: "07:00", close: "21:00" },   // Mon–Fri
+        { open: "08:00", close: "19:00" },   // Sat
+        { open: "08:00", close: "18:00" },   // Sun
+    ),
 
     // Forma Spa — recovery branch, open all week with shorter spa hours.
     // Without this entry the Spa branch detail page would render every

@@ -7727,7 +7727,11 @@ export const useAppStore = create<AppState>()(persist(
         // per-branch role duplicates collapsed to one row per role (canonical
         // ids), and staff re-pointed to them. Branch is chosen at assignment.
         // Bumped so old persisted state (branch-scoped roles) is discarded.
-        version: 45,
+        //
+        // v46: Forma West branch now carries full working hours (was closed
+        // every day) so no branch renders as a red "no hours" row. Bumped so
+        // testers re-seed the updated business_hours.
+        version: 46,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
