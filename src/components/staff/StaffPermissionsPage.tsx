@@ -1039,22 +1039,24 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 {forceTab !== "roles" && (
                     <ExportDropdown disabled={totalCount === 0} onExportCsv={handleExport} />
                 )}
-                {/* Role & permissions route puts Filter in the main toolbar
-                    (between Add role and the tab title) per Figma 7413:239946.
-                    The legacy combined view + Staff & shift route keep
-                    Filter inside the tab row so it sits next to the
-                    sub-tabs. */}
+                {/* Role & permissions route: the only role filter left is
+                    Status (roles are branch-agnostic), so it's a direct
+                    dropdown in the toolbar rather than a slide-in Filter
+                    panel. Drives the same `roleFilter.statuses` state (0 or
+                    1 entry) the table reads. */}
                 {forceTab === "roles" && (
-                    <Button variant="secondary-gray" size="md"
-                        leftIcon={
-                            <div className="relative">
-                                <FilterLines className="w-4 h-4" />
-                                {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                            </div>
-                        }
-                        onClick={() => setFilterOpen(true)}>
-                        Filter
-                    </Button>
+                    <SelectInput
+                        placeholder="All statuses"
+                        options={[
+                            { value: "", label: "All statuses" },
+                            { value: "active",   label: ROLE_STATUS_LABEL.active },
+                            { value: "inactive", label: ROLE_STATUS_LABEL.inactive },
+                            { value: "archive",  label: ROLE_STATUS_LABEL.archive },
+                        ]}
+                        value={roleFilter.statuses[0] ?? ""}
+                        onChange={v => setRoleFilter(v ? { statuses: [v as RoleStatus] } : { statuses: [] })}
+                        width="w-[180px]"
+                    />
                 )}
                 <AddNewMenu
                     variant={forceTab === "roles" ? "role-only" : forceTab === "staff" ? "staff-only" : "combined"}
