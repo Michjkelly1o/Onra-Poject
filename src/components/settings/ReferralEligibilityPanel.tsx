@@ -162,7 +162,7 @@ export function ReferralEligibilityPanel({ open, onClose }: {
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[#101828]">Eligibility &amp; fraud controls</p>
+                        <p className="font-semibold text-[18px] text-[#101828]">Eligibility &amp; safeguards</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
                             Decide who qualifies &amp; block the common ways referral programs get gamed.
                         </p>
@@ -176,11 +176,11 @@ export function ReferralEligibilityPanel({ open, onClose }: {
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-4">
                     <ToggleCard
-                        title="Prevent self referral"
-                        description="Block matching email / phone /payment method between referrer and friend."
+                        title="Prevent self-referral"
+                        description="Block matching email, phone, or payment method between referrer and friend."
                         on={preventSelf}
                         onChange={setPreventSelf}
-                        ariaLabel="Prevent self referral"
+                        ariaLabel="Prevent self-referral"
                     />
                     <ToggleCard
                         title="New customers only"
@@ -191,7 +191,7 @@ export function ReferralEligibilityPanel({ open, onClose }: {
                     />
                     <ToggleCard
                         title="Require minimum first spend"
-                        description="Friend must spend at least this before the reward releases."
+                        description="Friend must spend at least this amount before the reward is released."
                         on={minSpendOn}
                         onChange={setMinSpendOn}
                         ariaLabel="Require minimum first spend"
@@ -222,7 +222,7 @@ export function ReferralEligibilityPanel({ open, onClose }: {
                     </ToggleCard>
                     <ToggleCard
                         title="Credits redeemable across all branches"
-                        description="Off + rewards can only be used at the location they were earned."
+                        description="Off — rewards can only be used at the location they were earned."
                         on={allBranches}
                         onChange={setAllBranches}
                         ariaLabel="Credits redeemable across all branches"

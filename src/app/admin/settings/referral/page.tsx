@@ -117,7 +117,7 @@ export default function ReferralSettingsPage() {
                 <SegmentedTabs
                     tabs={[
                         { key: "rewards",      label: "Reward rules & limits"     },
-                        { key: "eligibility",  label: "Eligibility & fraud controls" },
+                        { key: "eligibility",  label: "Eligibility & safeguards" },
                     ]}
                     activeKey={rulesTab}
                     onChange={k => setRulesTab(k as RulesTab)}
@@ -161,7 +161,7 @@ export default function ReferralSettingsPage() {
                     <>
                         <div className="flex items-start gap-4">
                             <div className="flex-1 flex flex-col gap-1">
-                                <p className="text-[16px] font-semibold text-[#101828]">Eligibility &amp; fraud controls</p>
+                                <p className="text-[16px] font-semibold text-[#101828]">Eligibility &amp; safeguards</p>
                                 <p className="text-[14px] text-[#667085] leading-[20px]">
                                     Decide who qualifies &amp; block the common ways referral programs get gamed.
                                 </p>
@@ -178,8 +178,8 @@ export default function ReferralSettingsPage() {
                             is the toggle's on/off state or the AED amount. */}
                         <div className="flex flex-col">
                             <EligibilityRow
-                                title="Prevent self referral"
-                                description="Block matching email / phone /payment method between referrer and friend."
+                                title="Prevent self-referral"
+                                description="Block matching email, phone, or payment method between referrer and friend."
                                 value={settings.preventSelfReferral ? "Active" : "Inactive"}
                             />
                             <EligibilityRow
@@ -189,12 +189,12 @@ export default function ReferralSettingsPage() {
                             />
                             <EligibilityRow
                                 title="Require minimum first spend"
-                                description="Friend must spend at least this before the reward releases."
+                                description="Friend must spend at least this amount before the reward is released."
                                 value={settings.minFirstSpendAed > 0 ? `AED ${settings.minFirstSpendAed}` : "Disabled"}
                             />
                             <EligibilityRow
                                 title="Credits redeemable across all branches"
-                                description="Off + rewards can only be used at the location they were earned."
+                                description="Off — rewards can only be used at the location they were earned."
                                 value={settings.creditsRedeemableAllBranches ? "Active" : "Inactive"}
                                 last
                             />

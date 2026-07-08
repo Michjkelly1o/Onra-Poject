@@ -330,7 +330,7 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                         </td>
                                         <td className={cn(TD, "text-[#667085]")}>
                                             <div className="flex flex-col gap-0.5">
-                                                <span>{r.benefitCredits} free {r.benefitCredits === 1 ? "credit" : "credits"}</span>
+                                                <span>{r.benefitCredits} {r.benefitCredits === 1 ? "credit" : "credits"}</span>
                                                 {/* v25 — Branch-lock subtitle only surfaces when
                                                     (a) the global toggle is OFF, and (b) the row
                                                     has an origin branch captured. Amber tint

@@ -37,8 +37,12 @@ import {
 
 const labelCls = "text-[14px] font-medium text-[#344054]";
 
+// Two shipped reward types — a class credit or an AED account-credit top-up.
+// The Amount field's unit suffix (see `amountUnitLabel`) flips to "credit(s)"
+// or "AED" to match the selection.
 const REWARD_TYPE_OPTIONS = [
-    { value: "free_credits", label: "Free credits" },
+    { value: "free_credits",  label: "Class Credit" },
+    { value: "wallet_credit", label: "Account Credit (AED)" },
 ];
 
 /** Numeric input that mirrors the project-wide convention:
@@ -90,26 +94,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     );
 }
 
+// Trigger labels only — the explanatory subtitles were dropped per client
+// review; the three cards read simply "Sign up" / "First purchase" /
+// "First class".
 const TRIGGER_OPTIONS: Array<{
     value: ReferralUnlockTrigger;
     title: string;
-    subtitle: string;
 }> = [
-        {
-            value: "friend_signup",
-            title: "Friend signs up",
-            subtitle: "Fastest, but pays out before any spend, higher abuse risk.",
-        },
-        {
-            value: "friend_first_purchase",
-            title: "Friend first purchase",
-            subtitle: "Recommended, reward only releases on real revenue.",
-        },
-        {
-            value: "friend_first_class",
-            title: "Friend attends first class",
-            subtitle: "Strongest quality signal; slowest to reward.",
-        },
+        { value: "friend_signup",         title: "Sign up" },
+        { value: "friend_first_purchase", title: "First purchase" },
+        { value: "friend_first_class",    title: "First class" },
     ];
 
 export function ReferralRewardsPanel({ open, onClose }: {
@@ -306,7 +300,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                     <Section title="Rewards unlock when">
                         <div className="flex flex-col gap-1">
                             <p className={labelCls}>Trigger</p>
-                            <div className="grid grid-cols-2 gap-3 mt-1">
+                            <div className="grid grid-cols-3 gap-3 mt-1">
                                 {TRIGGER_OPTIONS.map(opt => {
                                     const selected = trigger === opt.value;
                                     return (
@@ -315,19 +309,16 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                             type="button"
                                             onClick={() => setTrigger(opt.value)}
                                             className={cn(
-                                                "text-left rounded-[12px] border-1 p-4 flex items-start gap-3 transition-colors",
+                                                "text-left rounded-[12px] border-1 px-4 py-3 flex items-center gap-3 transition-colors",
                                                 selected
                                                     ? "border-[#7ba08c] bg-white"
                                                     : "border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
                                             )}
                                         >
-                                            <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{opt.title}</p>
-                                                <p className="text-[14px] text-[#667085] leading-[20px]">{opt.subtitle}</p>
-                                            </div>
+                                            <p className="flex-1 min-w-0 text-[14px] font-semibold text-[#101828] leading-[20px]">{opt.title}</p>
                                             {/* Radio dot — outer ring + inner sage circle when selected. */}
                                             <div className={cn(
-                                                "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0 mt-0.5",
+                                                "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0",
                                                 selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
                                             )}>
                                                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -415,7 +406,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
 
 function amountUnitLabel(type: ReferralRewardType): string {
     switch (type) {
-        case "free_credits": return "credit";
+        case "free_credits": return "credit(s)";
         case "wallet_credit": return "AED";
         case "discount": return "%";
     }

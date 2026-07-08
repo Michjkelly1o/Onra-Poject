@@ -14,22 +14,24 @@
 
 import type { CustomerReferral, ReferralRewardType, ReferralUnlockTrigger } from "@/lib/store";
 
-/** Pretty label for a reward type — matches Figma 7661:54592 dropdown copy. */
+/** Pretty label for a reward type — the two shipped options are
+ *  "Class Credit" (class credits) and "Account Credit (AED)" (wallet AED).
+ *  `discount` keeps a fallback label for any legacy rows. */
 export function rewardTypeLabel(t: ReferralRewardType): string {
     switch (t) {
-        case "free_credits":  return "Free credits";
-        case "wallet_credit": return "Wallet credit";
+        case "free_credits":  return "Class Credit";
+        case "wallet_credit": return "Account Credit (AED)";
         case "discount":      return "Discount";
     }
 }
 
-/** Inline summary like "2 credits" / "AED 5 wallet credit" / "5% discount".
+/** Inline summary like "2 credits" / "AED 100" / "5% discount".
  *  Used in landing summary, customer detail Benefit column, and as the
  *  `{{referrer}}` / `{{friend}}` substitution value. */
 export function rewardSummary(type: ReferralRewardType, amount: number): string {
     switch (type) {
         case "free_credits":  return `${amount} ${amount === 1 ? "credit" : "credits"}`;
-        case "wallet_credit": return `AED ${amount} wallet credit`;
+        case "wallet_credit": return `AED ${amount}`;
         case "discount":      return `${amount}% discount`;
     }
 }
@@ -39,12 +41,13 @@ export function friendEarnsBadge(amount: number): string {
     return amount > 0 ? "Yes" : "No";
 }
 
-/** Title-cased label for the unlock trigger — landing summary copy. */
+/** Short label for the unlock trigger — landing summary + trigger cards.
+ *  Client copy: "Sign up" / "First purchase" / "First class". */
 export function triggerLabel(t: ReferralUnlockTrigger): string {
     switch (t) {
-        case "friend_signup":         return "Friend signs up";
-        case "friend_first_purchase": return "Friend makes first purchase";
-        case "friend_first_class":    return "Friend attends first class";
+        case "friend_signup":         return "Sign up";
+        case "friend_first_purchase": return "First purchase";
+        case "friend_first_class":    return "First class";
     }
 }
 
