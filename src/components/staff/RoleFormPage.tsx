@@ -17,10 +17,10 @@
 // Layout matches PayRateFormPage chrome: header + left progress steps (when
 // applicable) + center content card + right preview card + footer.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, User01, MarkerPin01, Lightbulb02,
+    XClose, Check, User01, Lightbulb02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,10 @@ import { Toast } from "@/components/ui/Toast";
 import { FieldLabel } from "@/components/patterns/FieldLabel";
 import { SectionHeader } from "@/components/patterns/SectionHeader";
 import {
-    useAppStore, DEFAULT_BRANCH_ID,
+    useAppStore,
     DEFAULT_PERMISSIONS_BY_TYPE, DEFAULT_GRANT_LIMITS,
     permissionSectionsFor, type PermissionSectionSpec,
-    type Role, type RoleType, type GrantLimits, type PermissionsMap, type PermissionCell, type Branch,
+    type Role, type RoleType, type GrantLimits, type PermissionsMap, type PermissionCell,
 } from "@/lib/store";
 
 // ─── Mode + form shape ─────────────────────────────────────────────────────
@@ -42,7 +42,6 @@ export type RoleFormMode = "create" | "edit_details" | "edit_permissions";
 interface FormValue {
     name: string;
     description: string;
-    branchId: string | null;
     type: RoleType;
     grantLimits: GrantLimits;
     permissions: PermissionsMap;
@@ -50,11 +49,10 @@ interface FormValue {
 
 function emptyForm(): FormValue {
     // New roles default to Branch admin (most common admin role type — Owner
-    // is locked and only auto-created at signup).
+    // is locked and only auto-created at signup). Roles are branch-agnostic.
     return {
         name: "",
         description: "",
-        branchId: DEFAULT_BRANCH_ID,
         type: "branch_admin",
         grantLimits: { ...DEFAULT_GRANT_LIMITS },
         permissions: DEFAULT_PERMISSIONS_BY_TYPE.branch_admin,
@@ -65,7 +63,6 @@ function formFromRole(r: Role): FormValue {
     return {
         name: r.name,
         description: r.description,
-        branchId: r.branchId,
         type: r.type,
         grantLimits: { ...r.grantLimits },
         permissions: r.permissions,
@@ -196,12 +193,11 @@ function Checkbox({ checked, onChange, disabled, ariaLabel }: {
 
 // ─── Right-rail preview ────────────────────────────────────────────────────
 
-function RolePreview({ form, branches }: { form: FormValue; branches: Branch[] }) {
+function RolePreview({ form }: { form: FormValue }) {
     // Mirrors Figma 6223-387561 — avatar top-left, left-aligned text. The
     // bg-#f6f6f3 outer band frames a white inner card (no max-height — the
-    // card grows with description length).
-    const branch = form.branchId ? branches.find(b => b.id === form.branchId) : null;
-    const branchLabel = form.branchId === null ? "All locations" : branch?.name ?? "Branch location";
+    // card grows with description length). Roles are branch-agnostic, so the
+    // preview no longer shows a branch line.
     return (
         <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
@@ -222,10 +218,6 @@ function RolePreview({ form, branches }: { form: FormValue; branches: Branch[] }
                             {form.description.trim() || "Role description"}
                         </p>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[14px] text-[#667085]">
-                        <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span>{branchLabel}</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -234,19 +226,14 @@ function RolePreview({ form, branches }: { form: FormValue; branches: Branch[] }
 
 // ─── Step 1 — Role details ─────────────────────────────────────────────────
 
-function Step1Details({ form, set, branches, locked }: {
+function Step1Details({ form, set, locked, nameError }: {
     form: FormValue;
     set: (patch: Partial<FormValue>) => void;
-    branches: Branch[];
     locked: boolean;
+    /** Inline error shown under the name field when the name duplicates an
+     *  existing role (roles must be uniquely named). */
+    nameError?: string;
 }) {
-    const branchOptions = useMemo(
-        () => branches.filter(b => b.status === "active").map(b => ({
-            value: b.id, label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
-        })),
-        [branches],
-    );
     return (
         <div className="flex flex-col gap-5 w-full">
             <SectionHeader title="Role details" />
@@ -254,32 +241,18 @@ function Step1Details({ form, set, branches, locked }: {
                 <div className="flex gap-3 items-start bg-[#fff8e6] border-1 border-[#fde6a4] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <Lightbulb02 className="w-5 h-5 text-[#b54708] shrink-0 mt-[2px]" />
                     <p className="text-[14px] text-[#b54708] leading-[20px]">
-                        The Owner role is system-managed and read-only. Name, description and branch scope can&apos;t be changed.
+                        The Owner role is system-managed and read-only. Name and description can&apos;t be changed.
                     </p>
                 </div>
             )}
             <div className="flex flex-col gap-[6px] w-full">
                 <FieldLabel label="Role name" />
                 <TextInput value={form.name} onChange={v => set({ name: v })} placeholder="Enter role name" disabled={locked} />
+                {nameError && <p className="text-[13px] text-[#d92d20] leading-[18px]">{nameError}</p>}
             </div>
             <div className="flex flex-col gap-[6px] w-full">
                 <FieldLabel label="Role description" />
                 <TextArea value={form.description} onChange={v => set({ description: v })} placeholder="Enter role description..." disabled={locked} />
-            </div>
-            <div className="flex flex-col gap-[6px] w-full">
-                <FieldLabel label="Branch location" />
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
-                    placeholder="Select location"
-                    options={[
-                        { value: "__all__", label: "All locations" },
-                        ...branchOptions,
-                    ]}
-                    value={form.branchId === null ? "__all__" : form.branchId}
-                    onChange={v => set({ branchId: v === "__all__" ? null : v })}
-                    width="w-full"
-                    disabled={locked}
-                />
             </div>
         </div>
     );
@@ -636,7 +609,6 @@ export interface RoleFormPageProps {
 export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }: RoleFormPageProps) {
     const router = useRouter();
     const roles       = useAppStore(s => s.roles);
-    const branches    = useAppStore(s => s.branches);
     const addRole     = useAppStore(s => s.addRole);
     const updateRole  = useAppStore(s => s.updateRole);
     const showToast   = useAppStore(s => s.showToast);
@@ -660,7 +632,20 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
     }, [mode, existing, hydrated]);
 
     function set(patch: Partial<FormValue>) { setForm(prev => ({ ...prev, ...patch })); }
-    const step1Valid = isStep1Valid(form);
+
+    // Unique-name rule: every role must be tellable apart in the list, so a
+    // new/edited name can't duplicate any existing role (case-insensitive,
+    // trimmed, excluding the row being edited). Checked against ALL roles
+    // regardless of status so an archived name can't be silently reused.
+    const trimmedName = form.name.trim();
+    const nameDuplicate = !!trimmedName && roles.some(
+        r => r.id !== roleId && r.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+    );
+    const nameError = nameDuplicate
+        ? "A role with this name already exists. Give it a distinct name."
+        : undefined;
+
+    const step1Valid = isStep1Valid(form) && !nameDuplicate;
     const step2Valid = isStep2Valid(form);
 
     // Edit-mode guard.
@@ -672,12 +657,16 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
     }, [mode, roleId, roles, existing, router, returnTo, showToast]);
 
     function handleSave() {
+        // Block duplicate names on any path where the name is editable.
+        if (mode !== "edit_permissions" && nameDuplicate) {
+            showToast("Name already in use", "Give this role a distinct name.", "error");
+            return;
+        }
         if (mode === "create") {
             if (!step1Valid || !step2Valid) return;
             addRole({
                 name: form.name.trim(),
                 description: form.description.trim(),
-                branchId: form.branchId,
                 type: form.type,
                 status: "active",
                 grantLimits: form.grantLimits,
@@ -693,7 +682,6 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
             updateRole(roleId, {
                 name: form.name.trim(),
                 description: form.description.trim(),
-                branchId: form.branchId,
             });
             showToast("Role updated", `Role details saved.`, "success", "check");
             router.push(returnTo);
@@ -764,7 +752,7 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                 <div className="flex-1 min-w-0 max-w-[760px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         {step === 1
-                            ? <Step1Details form={form} set={set} branches={branches} locked={locked} />
+                            ? <Step1Details form={form} set={set} locked={locked} nameError={nameError} />
                             : <Step2Permissions form={form} set={set} mode={mode} locked={locked} />
                         }
                     </div>
@@ -787,7 +775,7 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                 {/* Right preview — visible on all modes including edit
                     permissions so the admin still sees the role identity
                     they're editing. */}
-                <RolePreview form={form} branches={branches} />
+                <RolePreview form={form} />
             </div>
 
             <Toast />

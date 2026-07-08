@@ -1595,8 +1595,6 @@ export interface RoleSeed {
     description: string;
     /** Predefined type — constrains the inherited permission shape. */
     type: RoleTypeSeed;
-    /** FK → branches.id. Null for Owner (all branches). */
-    branch_id: string | null;
     status: RoleStatusSeed;
     /** Optional Grant Limits override. */
     grant_limits: GrantLimitsSeed;

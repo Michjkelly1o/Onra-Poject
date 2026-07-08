@@ -280,10 +280,11 @@ function ExportDropdown({ disabled, onExportCsv }: { disabled: boolean; onExport
 
 // ─── Filter side panel — handles both tabs ─────────────────────────────────
 
-interface RoleFilter   { branchId: string; statuses: RoleStatus[]; }
+// Roles are branch-agnostic — the Roles filter no longer has a branch field.
+interface RoleFilter   { statuses: RoleStatus[]; }
 interface StaffFilter  { roleId: string; branchId: string; statuses: StaffStatus[]; }
 
-const EMPTY_ROLE_FILTER:  RoleFilter  = { branchId: "", statuses: [] };
+const EMPTY_ROLE_FILTER:  RoleFilter  = { statuses: [] };
 const EMPTY_STAFF_FILTER: StaffFilter = { roleId: "", branchId: "", statuses: [] };
 
 function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRole, onApplyStaff, roles, branches }: {
@@ -327,7 +328,7 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
 
     const isRoleTab = tab === "roles";
     const hasAny = isRoleTab
-        ? pendingRole.branchId !== "" || pendingRole.statuses.length > 0
+        ? pendingRole.statuses.length > 0
         : pendingStaff.branchId !== "" || pendingStaff.statuses.length > 0 || pendingStaff.roleId !== "";
 
     const branchOptions = branches.filter(b => b.status === "active").map(b => ({
@@ -376,21 +377,25 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                         </>
                     )}
 
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
-                        <SelectInput
-                            triggerIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
-                            placeholder="Select location"
-                            options={[{ value: "", label: "All locations" }, ...branchOptions]}
-                            value={isRoleTab ? pendingRole.branchId : pendingStaff.branchId}
-                            onChange={v => isRoleTab
-                                ? setPendingRole(p => ({ ...p, branchId: v }))
-                                : setPendingStaff(p => ({ ...p, branchId: v }))}
-                            width="w-full"
-                        />
-                    </div>
+                    {/* Branch filter — Staffs tab only. Roles are
+                        branch-agnostic, so there's no branch to filter on. */}
+                    {!isRoleTab && (
+                        <>
+                            <div className="flex flex-col gap-2">
+                                <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
+                                <SelectInput
+                                    triggerIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
+                                    placeholder="Select location"
+                                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                                    value={pendingStaff.branchId}
+                                    onChange={v => setPendingStaff(p => ({ ...p, branchId: v }))}
+                                    width="w-full"
+                                />
+                            </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                        </>
+                    )}
 
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
@@ -540,14 +545,14 @@ function StaffRowActions({ staff, hasHistory, onAction }: {
 
 // ─── CSV export helper ─────────────────────────────────────────────────────
 
-function exportRolesCsv(rows: Role[], staffByRole: Map<string, number>, branches: Branch[]) {
-    const header = ["Role name", "Description", "Type", "Branch location", "Staff", "Status"];
+function exportRolesCsv(rows: Role[], staffByRole: Map<string, number>) {
+    const header = ["Role name", "Description", "Type", "Staff", "Status"];
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const lines = rows.map(r => [
-        r.name, r.description, r.type, branchName(r.branchId, branches),
+        r.name, r.description, r.type,
         staffByRole.get(r.id) ?? 0, ROLE_STATUS_LABEL[r.status],
     ].map(escape).join(","));
     const csv = [header.join(","), ...lines].join("\n");
@@ -652,16 +657,12 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     }, [tab]);
 
     const rolesById = useMemo(() => new Map(roles.map(r => [r.id, r] as const)), [roles]);
-    // Defensive branch-scope guard: a branch-scoped role counts only
-    // staff whose branch actually matches. Prevents the "staffs" column
-    // + delete-gate from over-counting if the store transiently holds a
-    // mismatched pair (mirrors the guard on RoleDetailPage).
+    // Roles are branch-agnostic — the "staffs" column + delete-gate count
+    // every staffer on a role, across all branches.
     const staffByRole = useMemo(() => {
         const m = new Map<string, number>();
         for (const s of staff) {
-            const r = rolesById.get(s.roleId);
-            if (!r) continue;
-            if (r.branchId !== null && s.branchId !== r.branchId) continue;
+            if (!rolesById.has(s.roleId)) continue;
             m.set(s.roleId, (m.get(s.roleId) ?? 0) + 1);
         }
         return m;
@@ -671,13 +672,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const filteredRoles = useMemo(() => {
         const q = search.trim().toLowerCase();
         return roles.filter(r => {
-            if (branchId && r.branchId !== null && r.branchId !== branchId) return false;
-            if (roleFilter.branchId && r.branchId !== null && r.branchId !== roleFilter.branchId) return false;
             if (roleFilter.statuses.length > 0 && !roleFilter.statuses.includes(r.status)) return false;
             if (q && !r.name.toLowerCase().includes(q) && !r.description.toLowerCase().includes(q)) return false;
             return true;
         });
-    }, [roles, branchId, search, roleFilter]);
+    }, [roles, search, roleFilter]);
 
     // ─── Filtered staff ────────────────────────────────────────────────────
     const filteredStaff = useMemo(() => {
@@ -702,7 +701,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const { sorted: sortedRoles, sortKey: roleSortKey, sortDir: roleSortDir, toggle: toggleRoleSort } = useSort<Role>(filteredRoles, {
         name:    (a, b) => a.name.localeCompare(b.name),
         staffs:  (a, b) => (staffByRole.get(a.id) ?? 0) - (staffByRole.get(b.id) ?? 0),
-        branch:  (a, b) => branchSortName(a.branchId).localeCompare(branchSortName(b.branchId)),
         status:  (a, b) => ROLE_STATUS_ORDER[a.status] - ROLE_STATUS_ORDER[b.status],
     });
     const { sorted: sortedStaff, sortKey: staffSortKey, sortDir: staffSortDir, toggle: toggleStaffSort } = useSort<Staff>(filteredStaff, {
@@ -768,7 +766,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     function handleExport() {
         if (tab === "roles") {
             if (filteredRoles.length === 0) return;
-            exportRolesCsv(filteredRoles, staffByRole, branches);
+            exportRolesCsv(filteredRoles, staffByRole);
             showToast("Roles exported", `${filteredRoles.length} role${filteredRoles.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
         } else {
             if (filteredStaff.length === 0) return;
@@ -994,7 +992,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const hasActiveFilter = forceTab === "staff" && staffSubTab === "shift-management"
         ? shiftFilterActive
         : tab === "roles"
-            ? roleFilter.branchId !== "" || roleFilter.statuses.length > 0
+            ? roleFilter.statuses.length > 0
             : staffFilter.branchId !== "" || staffFilter.statuses.length > 0 || staffFilter.roleId !== "";
 
     return (
@@ -1015,14 +1013,18 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         {totalCount} {totalNoun}
                     </p>
                 </div>
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                    placeholder="Select location"
-                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
-                    value={branchId}
-                    onChange={setBranchId}
-                    width="w-[220px]"
-                />
+                {/* Location filter — hidden on the Roles tab (roles are
+                    branch-agnostic). Still drives Staff / Shifts / Blocked-time. */}
+                {tab !== "roles" && (
+                    <SelectInput
+                        triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                        placeholder="Select location"
+                        options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                        value={branchId}
+                        onChange={setBranchId}
+                        width="w-[220px]"
+                    />
+                )}
                 <div className="relative w-[240px]">
                     <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -1193,9 +1195,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         <th className={cn(TH, "w-[100px]")}>
                                             <SortableHeader sortKey="staffs" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort}>Staff</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[220px]")}>
-                                            <SortableHeader sortKey="branch" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort}>Branch location</SortableHeader>
-                                        </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort}>Status</SortableHeader>
                                         </th>
@@ -1229,7 +1228,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 </div>
                                             </td>
                                             <td className={TD}>{staffCount}</td>
-                                            <td className={cn(TD, "text-[#475467]")}>{branchName(r.branchId, branches)}</td>
                                             <td className={TD}>
                                                 <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", ROLE_STATUS_BADGE[r.status])}>
                                                     {ROLE_STATUS_LABEL[r.status]}

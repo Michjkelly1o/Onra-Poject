@@ -101,9 +101,10 @@ export default function ChangeRoleModal({ staff, onCancel, onConfirmed }: {
 
     function handleConfirm() {
         if (!canSave || !newRole) return;
-        // Changing role also re-anchors the staff's branch scope to the
-        // role's branch so the inheritance contract holds end-to-end.
-        updateStaff(staff.id, { roleId: newRole.id, branchId: newRole.branchId });
+        // Roles are branch-agnostic — changing a role only swaps the
+        // permission set. The staff member's branch is unaffected (it's set
+        // independently on the staff record via the staff form).
+        updateStaff(staff.id, { roleId: newRole.id });
         onConfirmed(newRole.name);
     }
 

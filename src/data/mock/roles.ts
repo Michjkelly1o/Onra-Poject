@@ -2,22 +2,28 @@
 // Onra Studio — `roles` seed (PRD 10 §5 + Brief — Staff & Permissions)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// 7 named role instances spread across the 5 predefined types, matching the
-// Figma demo layout (Figma 6223-328106):
+// Roles are BRANCH-AGNOSTIC — a role is just a named permission set and
+// exists exactly ONCE (no per-branch copies). Branch is chosen when a person
+// is assigned to a role (see staff / user_role_assignments), never on the
+// role itself. Client directive (2026-07): "Remove the Branch location
+// column — a role is just a permission set and should exist once."
 //
-//   • Owner                — 1 row · All locations · Active · Locked
-//   • Branch admin 1       — Forma Studio (South) · Active
-//   • Branch admin 2       — Forma Studio (East)  · Active
-//   • Instructor           — Forma Studio (South) · Active
-//   • Front desk           — Forma Studio (South) · Inactive
-//   • Operator             — Forma Studio (South) · Inactive
-//   • Operator (legacy)    — Forma Studio (East)  · Archive — demo of
-//                            archived-row gating (Edit hidden, Recover only)
+// 6 rows across the 5 predefined types:
 //
-// FK: branch_id → branches.id · null for Owner (all-locations scope).
+//   • Owner             — Active · Locked
+//   • Branch admin      — Active
+//   • Instructor        — Active
+//   • Front desk        — Active
+//   • Operator          — Active
+//   • Operator (legacy) — Archive — demo of archived-row gating
+//                         (Edit hidden, Recover only)
+//
+// Ids are the canonical branch-agnostic form (role_branch_admin, not
+// role_branch_admin_south) — these match what user_role_assignments already
+// reference, so the demo persona ↔ role wiring reconciles.
 //
 // Permissions live in module-level templates (DEFAULT_PERMISSIONS_BY_TYPE)
-// and get COPIED onto each role instance at seed time so future edits don't
+// and get COPIED onto each role at seed time so future edits don't
 // retroactively change other rows.
 
 import type {
@@ -79,116 +85,56 @@ export const roles: RoleSeed[] = [
         name: "Owner",
         description: "Manages everything within the platform",
         type: "owner",
-        branch_id: null,
         status: "active",
         grant_limits: OWNER_GRANT_LIMITS,
         permissions: PERM_OWNER,
         locked: true,
     },
     {
-        id: "role_branch_admin_south",
-        name: "Branch admin 1",
+        id: "role_branch_admin",
+        name: "Branch admin",
         description: "Manages branch operations, including staff, schedules, and customer activities for the assigned branch",
         type: "branch_admin",
-        branch_id: "branch_forma_south",
         status: "active",
         grant_limits: BRANCH_ADMIN_GRANT_LIMITS,
         permissions: PERM_BRANCH_ADMIN,
         locked: false,
     },
     {
-        id: "role_branch_admin_east",
-        name: "Branch admin 2",
-        description: "Manages branch operations, including staff, schedules, and customer activities for the assigned branch",
-        type: "branch_admin",
-        branch_id: "branch_forma_east",
-        status: "active",
-        grant_limits: BRANCH_ADMIN_GRANT_LIMITS,
-        permissions: PERM_BRANCH_ADMIN,
-        locked: false,
-    },
-    {
-        id: "role_instructor_south",
+        id: "role_instructor",
         name: "Instructor",
         description: "Delivers classes and manages attendance and session-related activities",
         type: "instructor",
-        branch_id: "branch_forma_south",
-        status: "active",
-        grant_limits: DEFAULT_GRANT_LIMITS,
-        permissions: PERM_INSTRUCTOR,
-        locked: false,
-    },
-    // Bug fix — before this row, only `role_instructor_south` existed, so
-    // instructors physically working at East / West / Spa were being
-    // shoe-horned onto the South role. That violated the branch-scope
-    // invariant (a branch-scoped role must only hold staff from that
-    // same branch). One instructor role per branch, mirroring the
-    // branch-admin pattern.
-    {
-        id: "role_instructor_east",
-        name: "Instructor",
-        description: "Delivers classes and manages attendance and session-related activities",
-        type: "instructor",
-        branch_id: "branch_forma_east",
         status: "active",
         grant_limits: DEFAULT_GRANT_LIMITS,
         permissions: PERM_INSTRUCTOR,
         locked: false,
     },
     {
-        id: "role_instructor_west",
-        name: "Instructor",
-        description: "Delivers classes and manages attendance and session-related activities",
-        type: "instructor",
-        branch_id: "branch_forma_west",
-        status: "active",
-        grant_limits: DEFAULT_GRANT_LIMITS,
-        permissions: PERM_INSTRUCTOR,
-        locked: false,
-    },
-    {
-        id: "role_instructor_spa",
-        name: "Instructor",
-        description: "Delivers classes and manages attendance and session-related activities. Spa-specific — routes to /admin/services for appointments.",
-        type: "instructor",
-        branch_id: "branch_forma_spa",
-        status: "active",
-        grant_limits: DEFAULT_GRANT_LIMITS,
-        permissions: PERM_INSTRUCTOR,
-        locked: false,
-    },
-    {
-        id: "role_front_desk_south",
+        id: "role_front_desk",
         name: "Front desk",
         description: "Assists customers with check-ins, bookings, and general front-of-house enquiries",
         type: "front_desk",
-        branch_id: "branch_forma_south",
-        // Active — Casey Desk + Candice Wu are seeded onto this role.
         status: "active",
         grant_limits: DEFAULT_GRANT_LIMITS,
         permissions: PERM_FRONT_DESK,
         locked: false,
     },
     {
-        id: "role_operator_south",
+        id: "role_operator",
         name: "Operator",
         description: "Handles daily system operations, including bookings and customer support",
         type: "operator",
-        branch_id: "branch_forma_south",
-        // Active — Jordan Ops + Natali Craig are seeded onto this role, so
-        // it stays assignable. Use the legacy "Operator (legacy)" row to
-        // demo the archived state.
         status: "active",
         grant_limits: OPERATOR_GRANT_LIMITS,
         permissions: PERM_OPERATOR,
         locked: false,
     },
     {
-        id: "role_operator_east_legacy",
+        id: "role_operator_legacy",
         name: "Operator (legacy)",
         description: "Retired role kept for historical permission reference",
         type: "operator",
-        branch_id: "branch_forma_east",
         status: "archive",
         grant_limits: OPERATOR_GRANT_LIMITS,
         permissions: PERM_OPERATOR,

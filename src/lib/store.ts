@@ -744,8 +744,6 @@ export interface Role {
     name: string;
     description: string;
     type: RoleType;
-    /** Branch FK — null for Owner (all-locations scope). */
-    branchId: string | null;
     status: RoleStatus;
     grantLimits: GrantLimits;
     permissions: PermissionsMap;
@@ -2693,7 +2691,6 @@ function roleFromSeed(r: RoleSeed): Role {
         name: r.name,
         description: r.description,
         type: r.type,
-        branchId: r.branch_id,
         status: r.status,
         grantLimits: r.grant_limits,
         permissions: r.permissions,
@@ -6724,25 +6721,10 @@ export const useAppStore = create<AppState>()(persist(
             if (!before || before.locked) return {};
             const nextRole = { ...before, ...patch };
             const nextRoles = state.roles.map(r => r.id === id ? nextRole : r);
-            // Branch-scope cascade: when a role's `branchId` changes to a
-            // non-null value, every staffer currently on this role must
-            // move with it — otherwise the role would silently hold
-            // cross-branch staff (the exact bug the client flagged).
-            // Owner-type roles (`null` branchId) skip the cascade because
-            // they legitimately span all locations. No-op when the branch
-            // wasn't touched.
-            const branchChanged =
-                patch.branchId !== undefined && patch.branchId !== before.branchId;
-            const shouldCascade =
-                branchChanged && nextRole.branchId !== null;
-            const nextStaff = shouldCascade
-                ? state.staff.map(s =>
-                    s.roleId === id && s.branchId !== nextRole.branchId
-                        ? { ...s, branchId: nextRole.branchId }
-                        : s,
-                )
-                : state.staff;
-            return { roles: nextRoles, staff: nextStaff };
+            // Roles are branch-agnostic — editing a role never touches any
+            // staffer's branch (branch lives on the person, set at
+            // assignment time).
+            return { roles: nextRoles };
         }),
     setRolesStatus: (ids, status) =>
         set(state => ({
@@ -6964,22 +6946,14 @@ export const useAppStore = create<AppState>()(persist(
     // reflect Staff & Permissions changes immediately.
     addStaff: (input) => {
         const id = input.id ?? `staff_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        // Branch-scope invariant: a staff's `branchId` MUST equal their
-        // role's `branchId` (unless the role is an Owner-type null-branch
-        // "all locations" role, in which case the caller's branch stands).
-        // Callers today all derive the staff's branch from the picked role
-        // (StaffFormPage.tsx:523, ChangeRoleModal.tsx:106) so this snap
-        // is a defensive no-op on the happy path — its only job is to
-        // stop future callers from ever inserting a mismatched pair.
-        const role = get().roles.find(r => r.id === input.roleId);
-        const coercedBranchId =
-            role && role.branchId !== null
-                ? role.branchId
-                : input.branchId;
+        // Roles are branch-agnostic — the person's branch is chosen at
+        // assignment time (the staff form's Branch picker) and stands on
+        // its own. It's stored verbatim from the caller, never derived
+        // from the role.
         const next: Staff = {
             ...input,
             id,
-            branchId: coercedBranchId,
+            branchId: input.branchId,
             // New staff start Pending unless the caller overrides.
             status: input.status,
             inviteSentAt: input.inviteSentAt ?? new Date().toISOString(),
@@ -7016,20 +6990,12 @@ export const useAppStore = create<AppState>()(persist(
         // Together with the forward cascade on `updateAccountProfile`,
         // edits flow bi-directionally and the two views never drift.
         set(state => {
-            // Branch-scope invariant, applied on every patch. When the
-            // patch touches `roleId` and the new role is branch-scoped,
-            // snap `branchId` to the role's branch — same guarantee as
-            // `addStaff` above. Never leaves a mismatched pair in the
-            // store even if a future caller forgets to include the
-            // branch patch alongside the role patch.
             const nextStaff = state.staff.map(s => {
                 if (s.id !== id) return s;
-                const merged = { ...s, ...patch };
-                const roleAfter = state.roles.find(r => r.id === merged.roleId);
-                if (roleAfter && roleAfter.branchId !== null) {
-                    merged.branchId = roleAfter.branchId;
-                }
-                return merged;
+                // Roles are branch-agnostic — changing a staff's role never
+                // moves their branch. Branch is edited independently via the
+                // staff form's Branch picker.
+                return { ...s, ...patch };
             });
             const nextInstructors = syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]);
 
@@ -7753,7 +7719,12 @@ export const useAppStore = create<AppState>()(persist(
         // `walletTransactions` slice + seed. Backs the referral
         // Account-Credit reward, the customer Wallet tab, and POS
         // Member Wallet payments. Bumped so testers get the seed.
-        version: 44,
+        //
+        // v45: roles are now BRANCH-AGNOSTIC — `Role.branchId` removed, the
+        // per-branch role duplicates collapsed to one row per role (canonical
+        // ids), and staff re-pointed to them. Branch is chosen at assignment.
+        // Bumped so old persisted state (branch-scoped roles) is discarded.
+        version: 45,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

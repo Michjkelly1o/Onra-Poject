@@ -145,20 +145,16 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 
-function Sidebar({ role, totalStaffs, onAction, branches }: {
+function Sidebar({ role, totalStaffs, onAction }: {
     role: Role;
     totalStaffs: number;
     onAction: (kind: "add_staff" | "edit_details" | "edit_permissions" | ConfirmKind) => void;
-    branches: Branch[];
 }) {
     const isActive  = role.status === "active";
     const isInactive = role.status === "inactive";
     const isArchive = role.status === "archive";
     const isLocked  = role.locked;
     const canDelete = !isLocked && !isArchive && totalStaffs === 0;
-    const branchLabel = role.branchId === null
-        ? "All locations"
-        : branches.find(b => b.id === role.branchId)?.name ?? "—";
 
     return (
         <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
@@ -183,10 +179,6 @@ function Sidebar({ role, totalStaffs, onAction, branches }: {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Total staffs</p>
                             <p className="text-[16px] font-medium text-[#101828]">{totalStaffs} {totalStaffs === 1 ? "staff" : "staffs"}</p>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Branch location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{branchLabel}</p>
                         </div>
                         {isLocked && (
                             <div className="flex flex-col gap-1">
@@ -500,17 +492,11 @@ function StaffListTab({ role, onChangeRoleFor }: {
     const [bulkPending, setBulkPending] = useState<BulkKind | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    // Defensive: a branch-scoped role must only surface staff whose
-    // branch matches. Owner-type roles (`branchId === null`) apply to
-    // all locations. This guards against future seed drift that would
-    // otherwise put another branch's staff under this role — the class
-    // of bug the client flagged.
+    // Roles are branch-agnostic — this role's staff span every branch (each
+    // row shows its own branch in the table). Filter purely by role.
     const scoped = useMemo(
-        () => allStaff.filter(s =>
-            s.roleId === role.id
-            && (role.branchId === null || s.branchId === role.branchId)
-        ),
-        [allStaff, role.id, role.branchId],
+        () => allStaff.filter(s => s.roleId === role.id),
+        [allStaff, role.id],
     );
     const searched = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -892,15 +878,10 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
         }
     }, [role, roles.length, router, returnTo, showToast]);
 
-    // Same branch-scope guard as the tab content above — keeps the
-    // sidebar counter honest even if the store transiently holds a
-    // mismatched pair.
+    // Roles are branch-agnostic — count every staffer on this role (across
+    // all branches) for the sidebar total + delete-gate.
     const staffOnRole = useMemo(
-        () => role
-            ? staff.filter(s =>
-                s.roleId === role.id
-                && (role.branchId === null || s.branchId === role.branchId))
-            : [],
+        () => role ? staff.filter(s => s.roleId === role.id) : [],
         [staff, role],
     );
 
@@ -978,7 +959,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
                 h-[832px] two-column frame. Content card chrome is per-page
                 and stays inline here. */}
             <DetailPageShell
-                sidebar={<Sidebar role={role} totalStaffs={staffOnRole.length} onAction={handleSidebarAction} branches={branches} />}
+                sidebar={<Sidebar role={role} totalStaffs={staffOnRole.length} onAction={handleSidebarAction} />}
                 main={
                     <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">

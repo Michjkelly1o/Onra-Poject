@@ -46,6 +46,10 @@ interface FormValue {
     phoneCountry: PhoneCountry;
     imageUrl?: string;
     roleId: string;
+    /** The branch this person works at. Chosen at assignment time — roles are
+     *  branch-agnostic, so branch lives on the person, not the role. Empty
+     *  string = not yet picked (or "All locations" for an Owner-type role). */
+    branchId: string;
     payRateId: string;
     // ── Instructor-only (Figma 7471:170327) ─────────────────────────────────
     /** Short introduction paragraph — drives the customer-facing instructor
@@ -67,7 +71,7 @@ function emptyForm(): FormValue {
         firstName: "", lastName: "", email: "", tempPassword: "",
         phone: "", phoneCountry: PHONE_COUNTRIES[0],
         imageUrl: undefined,
-        roleId: "", payRateId: "",
+        roleId: "", branchId: "", payRateId: "",
         shortIntro: "", workingExperienceYears: "",
         shiftId: "", categoryIds: [],
     };
@@ -84,6 +88,7 @@ function formFromStaff(s: Staff): FormValue {
         phoneCountry: split.country,
         imageUrl: s.imageUrl,
         roleId: s.roleId,
+        branchId: s.branchId ?? "",
         payRateId: s.payRateId ?? "",
         shortIntro: s.shortIntro ?? "",
         workingExperienceYears: s.workingExperienceYears != null ? String(s.workingExperienceYears) : "",
@@ -483,15 +488,25 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
         [allPayRates],
     );
 
+    // Active branches for the assignment picker.
+    const branchOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
+        [branches],
+    );
+
     // Resolve selected role + pay rate for the preview + the instructor branch.
     const selectedRole    = allRoles.find(r => r.id === form.roleId);
     const selectedPayRate = allPayRates.find(p => p.id === form.payRateId);
     const isInstructor    = selectedRole?.type === "instructor";
+    // Owner spans every location — its staff carry no single branch.
+    const isOwnerRole     = selectedRole?.type === "owner";
 
-    const branchLabel = selectedRole?.branchId === null
+    // Branch label for the preview — driven by the person's own branch pick
+    // (roles are branch-agnostic). Owner shows "All locations".
+    const branchLabel = isOwnerRole
         ? "All locations"
-        : selectedRole
-            ? branches.find(b => b.id === selectedRole.branchId)?.name ?? "—"
+        : form.branchId
+            ? branches.find(b => b.id === form.branchId)?.name ?? "—"
             : "Branch location";
 
     function handleSave() {
@@ -520,7 +535,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                 initials,
                 color: NEUTRAL_AVATAR_BG,
                 roleId: form.roleId,
-                branchId: selectedRole.branchId,
+                branchId: isOwnerRole ? null : form.branchId,
                 status: "pending" as StaffStatus,
                 tempPassword: form.tempPassword,
                 payRateId: form.payRateId || undefined,
@@ -552,6 +567,9 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             phone: phoneStored,
             imageUrl: form.imageUrl,
             initials,
+            // Branch is editable here — roles are branch-agnostic, so moving a
+            // person between branches is a staff-record edit (Owner = null).
+            branchId: isOwnerRole ? null : form.branchId,
             payRateId: form.payRateId || undefined,
             // Same guard as create — instructor-specific fields only
             // patched when the row is an instructor.
@@ -567,7 +585,9 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
         router.push(returnTo);
     }
 
-    const formValid = isFormValid(form) && (!isInstructor || !!form.payRateId);
+    // A branch must be picked unless the role is Owner (all-locations).
+    const branchValid = isOwnerRole || !!form.branchId;
+    const formValid = isFormValid(form) && (!isInstructor || !!form.payRateId) && branchValid;
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -667,11 +687,32 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                     <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
                                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                                            This staff will inherit all permissions from the selected role and locations.
+                                            This staff will inherit all permissions from the selected role. Their branch is set below.
                                         </p>
                                     </div>
                                 </>
                             )}
+
+                            {/* Branch — roles are branch-agnostic, so the
+                                person's location is chosen here at assignment
+                                time (editable in both create + edit). Owner
+                                spans all locations, so the picker is locked. */}
+                            <div className="flex flex-col gap-[6px]">
+                                <FieldLabel label="Branch" />
+                                {isOwnerRole ? (
+                                    <div className="h-10 w-full px-[14px] flex items-center border-1 border-[#d0d5dd] rounded-[8px] bg-[#f9fafb] text-[14px] text-[#667085] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        All locations
+                                    </div>
+                                ) : (
+                                    <SelectInput
+                                        placeholder="Select branch"
+                                        options={branchOptions}
+                                        value={form.branchId}
+                                        onChange={v => set({ branchId: v })}
+                                        width="w-full"
+                                    />
+                                )}
+                            </div>
 
                             {/* Instructor-only fields (Figma 7471:170327) —
                                 Short introduction, Working experience, Assign
