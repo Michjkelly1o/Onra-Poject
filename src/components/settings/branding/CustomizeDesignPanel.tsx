@@ -1,49 +1,40 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Settings → Branding → Customize design settings (3-step)
+// Onra Studio — Settings → Branding → Customize design settings (SlidePanel)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma: 4468:23149 (shell) + 7624:315609 (Step 1) + 7627:317328 (Step 2)
-//        + 7628:324559 (Step 3) + 7667:16737 / 17041 / 17345 (template
+// Figma: 7824:122617 (slide-panel shell) + 7624:315609 / 7627:317328 /
+//        7628:324559 (step content) + 7667:16737 / 17041 / 17345 (template
 //        preview tabs — Login / Home / Class).
 //
-// Lives under `/settings/` (not `/admin/`) so it escapes the admin layout
-// chrome (Sidebar + Header). Same convention as the other multi-step
-// settings forms (agreements, products, services).
+// Refactored Jul 2026 (client): the multi-step form now opens as a
+// right-anchored slide panel over the Branding landing page instead of a
+// full-page route. Same animation as every other slide panel in the app
+// (see `SlidePanel` — the primitive the POS "Add new customer" panel uses).
+// Internal content, save action, and store integration are UNCHANGED from
+// the previous page implementation — only the outer shell (SlidePanel +
+// breadcrumb stepper + panel footer) is new.
 //
-// Layout — 3-column body inside a full-height white shell:
-//   • Left   (260 px) — stepper sidebar with 3 steps (Identity / Colors &
-//                       typography / Messages & notifications). Past steps
-//                       are clickable so the admin can jump back.
-//   • Center (628 px) — form card whose body swaps per step. Each step has
-//                       its own footer (Back + Continue, or Back + Save).
-//   • Right  (320 px) — Template preview card with 3 tabs (Login / Home /
-//                       Class). All three render the live in-progress
-//                       brand values so the admin can switch tabs without
-//                       losing form state.
-//
-// On Save (Step 3 footer "Save changes"):
-//   (1) `updateBrandingSettings({...all 13 fields...})` — partial-merge into
-//       the store so landing + portal step 1 + customer portal all reflect
-//       immediately.
-//   (2) Success toast "Design settings updated".
-//   (3) router.push back to `/admin/settings/branding`.
+// Panel layout (Figma 7824:122617):
+//   • Header — title "Customize design settings" + close X (top-right)
+//   • Breadcrumb stepper — horizontal, chevron-separated. Any step click
+//                          jumps directly (no linear-only gate)
+//   • Body — 2-column: form (flex-1) + preview panel (320 px, sticky)
+//   • Footer — Cancel (left) + Save changes (right)
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment, useState } from "react";
 import {
-    XClose, Check, ChevronLeft, Share02,
+    XClose, ChevronLeft, ChevronRight, Share02,
     ClockFastForward, Users01, UserCheck01, Grid01,
     CheckCircle, MarkerPin01, UploadCloud02, Image01,
     SearchSm, ShoppingBag03, User01, HomeLine, Mail01, MessageChatCircle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import { useAppStore, type BrandTypeface } from "@/lib/store";
 import { brandTypefaceFontFamily, brandTypefaceLabel, brandTypefaceTagline } from "@/app/branding-fonts";
-
-const RETURN_ROUTE = "/admin/settings/branding";
 
 const NAMED_COLOR_LABELS: Record<string, string> = {
     "#000000": "Black",
@@ -68,10 +59,12 @@ const TYPEFACE_OPTIONS: BrandTypeface[] = [
 
 type PreviewTab = "login" | "home" | "class";
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Panel ──────────────────────────────────────────────────────────────────
 
-export default function CustomizeDesignSettingsPage() {
-    const router = useRouter();
+export function CustomizeDesignPanel({ open, onClose }: {
+    open: boolean;
+    onClose: () => void;
+}) {
     const stored = useAppStore(s => s.brandingSettings);
     const updateBrandingSettings = useAppStore(s => s.updateBrandingSettings);
     const showToast = useAppStore(s => s.showToast);
@@ -98,12 +91,6 @@ export default function CustomizeDesignSettingsPage() {
     const [whatsappOn, setWhatsappOn] = useState(stored.notificationBranding.whatsapp);
     const [smsOn,      setSmsOn]      = useState(stored.notificationBranding.sms);
 
-    const canContinueStep1 = displayName.trim().length > 0;
-
-    function handleClose() {
-        router.push(RETURN_ROUTE);
-    }
-
     function handleSave() {
         updateBrandingSettings({
             displayName: displayName.trim(),
@@ -123,7 +110,7 @@ export default function CustomizeDesignSettingsPage() {
             "Your brand identity has been saved.",
             "success", "check",
         );
-        router.push(RETURN_ROUTE);
+        onClose();
     }
 
     // Live preview data bag — passed to every template preview tab so they
@@ -135,41 +122,51 @@ export default function CustomizeDesignSettingsPage() {
     };
 
     return (
-        <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={handleClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+        <SlidePanel open={open} onClose={onClose} width={960}>
+            {/* Header — title + close X (top-right) per Figma 7824:122617. */}
+            <div className="relative shrink-0 border-b border-[#e4e7ec] px-6 py-4">
+                <div className="pr-10">
+                    <p className="text-[18px] font-medium leading-[28px] text-[#101828]">
+                        Customize design settings
+                    </p>
+                    <p className="text-[14px] text-[#475467] leading-5 mt-1">
+                        Set your brand identity, colors, and messaging across every touchpoint.
+                    </p>
+                </div>
+                <button type="button" onClick={onClose} aria-label="Close"
+                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                    Customize design settings
-                </h1>
             </div>
 
-            {/* 3-column body */}
-            <div className="flex-1 overflow-hidden">
-                <div className="flex gap-8 px-6 pb-6 h-full items-stretch">
-                    {/* Left: stepper */}
-                    <div className="w-[260px] shrink-0 flex flex-col pt-2">
-                        {STEPS.map(s => (
-                            <StepItem
-                                key={s.n}
-                                n={s.n}
-                                label={s.label}
-                                current={step}
-                                isLast={s.n === STEPS.length}
-                                onClick={() => {
-                                    // Can jump to any step that's <= the current step
-                                    // (past steps stay accessible). Forward jumps are
-                                    // gated by the per-step Continue button.
-                                    if (s.n <= step) setStep(s.n as 1 | 2 | 3);
-                                }}
-                            />
-                        ))}
-                    </div>
+            {/* Breadcrumb stepper — horizontal, chevron-separated. Any step
+                click jumps directly (per Figma). */}
+            <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+                {STEPS.map((s, i) => (
+                    <Fragment key={s.n}>
+                        <button
+                            type="button"
+                            onClick={() => setStep(s.n as 1 | 2 | 3)}
+                            className={cn(
+                                "text-[14px] font-semibold py-1 px-1 transition-colors",
+                                step === s.n
+                                    ? "text-[#4f6e5d]"
+                                    : "text-[#475467] hover:text-[#344054]",
+                            )}
+                        >
+                            {s.label}
+                        </button>
+                        {i < STEPS.length - 1 && (
+                            <ChevronRight className="w-4 h-4 text-[#98a2b3]" />
+                        )}
+                    </Fragment>
+                ))}
+            </div>
 
-                    {/* Middle: form */}
+            {/* Body — 2-column: form + preview. Scrolls inside. */}
+            <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
+                <div className="flex gap-6 h-full items-stretch">
+                    {/* Form (flex-1) */}
                     <div className="flex-1 min-w-0 flex flex-col">
                         {step === 1 && (
                             <IdentityStep
@@ -177,8 +174,6 @@ export default function CustomizeDesignSettingsPage() {
                                 logoUrl={logoUrl} setLogoUrl={setLogoUrl}
                                 appIconUrl={appIconUrl} setAppIconUrl={setAppIconUrl}
                                 favIconUrl={favIconUrl} setFavIconUrl={setFavIconUrl}
-                                canContinue={canContinueStep1}
-                                onContinue={() => setStep(2)}
                             />
                         )}
                         {step === 2 && (
@@ -188,8 +183,6 @@ export default function CustomizeDesignSettingsPage() {
                                 tertiaryColor={tertiaryColor} setTertiaryColor={setTertiaryColor}
                                 textColor={textColor} setTextColor={setTextColor}
                                 typeface={typeface} setTypeface={setTypeface}
-                                onBack={() => setStep(1)}
-                                onContinue={() => setStep(3)}
                             />
                         )}
                         {step === 3 && (
@@ -197,26 +190,20 @@ export default function CustomizeDesignSettingsPage() {
                                 emailOn={emailOn} setEmailOn={setEmailOn}
                                 whatsappOn={whatsappOn} setWhatsappOn={setWhatsappOn}
                                 smsOn={smsOn} setSmsOn={setSmsOn}
-                                onBack={() => setStep(2)}
-                                onSave={handleSave}
                             />
                         )}
                     </div>
 
-                    {/* Right: template preview. Fills the full body height so
-                        the phone gets as much vertical room as possible; the
-                        inner phone content scrolls inside the device frame
-                        for the Home + Class tabs where the figma shows more
-                        content than fits in one viewport. */}
-                    <div className="w-[360px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden flex flex-col h-full">
-                        <div className="px-6 pt-6 pb-3 shrink-0 border-b border-[#e4e7ec]">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
-                            <p className="text-[14px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
+                    {/* Preview panel — 320 px per Figma. */}
+                    <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden flex flex-col">
+                        <div className="px-5 pt-5 pb-3 shrink-0 border-b border-[#e4e7ec]">
+                            <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">Template preview</p>
+                            <p className="text-[13px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
                         </div>
-                        <div className="px-6 pt-4 pb-3 shrink-0">
+                        <div className="px-5 pt-3 pb-3 shrink-0">
                             <PreviewTabs current={previewTab} onChange={setPreviewTab} />
                         </div>
-                        <div className="flex-1 min-h-0 bg-[#f6f6f3] overflow-y-auto scrollbar-hide flex justify-center items-start py-4 px-3">
+                        <div className="flex-1 min-h-0 bg-[#f8f8f6] overflow-y-auto scrollbar-hide flex justify-center items-start py-4 px-2">
                             <PhoneMock>
                                 {previewTab === "login" && <LoginPreview brand={previewBrand} />}
                                 {previewTab === "home"  && <HomePreview  brand={previewBrand} />}
@@ -226,56 +213,13 @@ export default function CustomizeDesignSettingsPage() {
                     </div>
                 </div>
             </div>
-        </div>
-    );
-}
 
-// ─── Stepper sidebar ────────────────────────────────────────────────────────
-
-function StepItem({ n, label, current, isLast, onClick }: {
-    n: number;
-    label: string;
-    current: number;
-    isLast: boolean;
-    onClick: () => void;
-}) {
-    const active   = n === current;
-    const complete = n < current;
-    const clickable = n <= current;
-    return (
-        <button
-            type="button"
-            onClick={clickable ? onClick : undefined}
-            disabled={!clickable}
-            className={cn(
-                "flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full text-left",
-                active && "bg-[#f5fffa]",
-                clickable && !active && "hover:bg-[#f9fafb]",
-                !clickable && "cursor-not-allowed opacity-50",
-            )}
-        >
-            <div className="relative flex flex-col items-center shrink-0">
-                <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                        : complete
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]",
-                )}>
-                    {complete ? <Check className="w-3 h-3" /> : n}
-                </div>
-                {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
-                )}
+            {/* Footer — Cancel left / Save right per Figma. */}
+            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between">
+                <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
+                <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
             </div>
-            <span className={cn(
-                "text-[14px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]",
-            )}>
-                {label}
-            </span>
-        </button>
+        </SlidePanel>
     );
 }
 
@@ -284,25 +228,14 @@ function StepItem({ n, label, current, isLast, onClick }: {
 function IdentityStep({
     displayName, setDisplayName, logoUrl, setLogoUrl,
     appIconUrl, setAppIconUrl, favIconUrl, setFavIconUrl,
-    canContinue, onContinue,
 }: {
     displayName: string; setDisplayName: (v: string) => void;
     logoUrl: string; setLogoUrl: (v: string) => void;
     appIconUrl: string; setAppIconUrl: (v: string) => void;
     favIconUrl: string; setFavIconUrl: (v: string) => void;
-    canContinue: boolean;
-    onContinue: () => void;
 }) {
     return (
-        <FormCard
-            footer={
-                <div className="flex items-center justify-end">
-                    <Button variant="primary" size="md" disabled={!canContinue} onClick={onContinue}>
-                        Continue
-                    </Button>
-                </div>
-            }
-        >
+        <FormCard>
             <Section title="Brand name">
                 <FormField label="Display name">
                     <TextInput value={displayName} onChange={setDisplayName} placeholder="Enter display name" />
@@ -375,25 +308,16 @@ function UploadRow({ label, hint, url, onChange }: {
 function ColorsTypographyStep({
     primaryColor, setPrimaryColor, backgroundColor, setBackgroundColor,
     tertiaryColor, setTertiaryColor, textColor, setTextColor,
-    typeface, setTypeface, onBack, onContinue,
+    typeface, setTypeface,
 }: {
     primaryColor: string; setPrimaryColor: (v: string) => void;
     backgroundColor: string; setBackgroundColor: (v: string) => void;
     tertiaryColor: string; setTertiaryColor: (v: string) => void;
     textColor: string; setTextColor: (v: string) => void;
     typeface: BrandTypeface; setTypeface: (v: BrandTypeface) => void;
-    onBack: () => void;
-    onContinue: () => void;
 }) {
     return (
-        <FormCard
-            footer={
-                <div className="flex items-center justify-between">
-                    <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
-                    <Button variant="primary" size="md" onClick={onContinue}>Continue</Button>
-                </div>
-            }
-        >
+        <FormCard>
             <Section title="Brand colors">
                 <div className="grid grid-cols-2 gap-4">
                     <FormField label="Primary color">
@@ -494,23 +418,13 @@ function TypefaceCard({ typeface, selected, onClick }: {
 
 function NotificationsStep({
     emailOn, setEmailOn, whatsappOn, setWhatsappOn, smsOn, setSmsOn,
-    onBack, onSave,
 }: {
     emailOn: boolean; setEmailOn: (v: boolean) => void;
     whatsappOn: boolean; setWhatsappOn: (v: boolean) => void;
     smsOn: boolean; setSmsOn: (v: boolean) => void;
-    onBack: () => void;
-    onSave: () => void;
 }) {
     return (
-        <FormCard
-            footer={
-                <div className="flex items-center justify-between">
-                    <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
-                    <Button variant="primary" size="md" onClick={onSave}>Save changes</Button>
-                </div>
-            }
-        >
+        <FormCard>
             <Section
                 title="Notification channels"
                 subtitle="Each channel carries your logo, colors, and display name. Toggle which ones use your branding."
@@ -597,14 +511,13 @@ function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: () => void
 
 // ─── Shared form chrome ─────────────────────────────────────────────────────
 
-function FormCard({ children, footer }: { children: React.ReactNode; footer: React.ReactNode }) {
+function FormCard({ children }: { children: React.ReactNode }) {
+    // Footer removed Jul 2026 — Cancel + Save moved up to the panel-level
+    // sticky footer per Figma 7824:122617.
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {children}
-            </div>
-            <div className="shrink-0 px-6 pb-6">
-                {footer}
             </div>
         </div>
     );

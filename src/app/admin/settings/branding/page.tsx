@@ -36,11 +36,13 @@
 // NB — page chrome (admin layout + Header) is owned by `app/admin/layout.tsx`
 // already. We render just the inner card stack here.
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit02, Share04, Image01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type BrandingNotificationChannels } from "@/lib/store";
 import { brandTypefaceLabel } from "@/app/branding-fonts";
+import { CustomizeDesignPanel } from "@/components/settings/branding/CustomizeDesignPanel";
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
@@ -48,9 +50,12 @@ export default function BrandingPage() {
     const router = useRouter();
     const b = useAppStore(s => s.brandingSettings);
     const showToast = useAppStore(s => s.showToast);
+    // Client Jul 2026: Customize design settings now opens as a slide panel
+    // over this landing page instead of a route push.
+    const [designPanelOpen, setDesignPanelOpen] = useState(false);
 
     function customizeDesign() {
-        router.push("/settings/branding/design");
+        setDesignPanelOpen(true);
     }
 
     function customizePortal() {
@@ -168,6 +173,9 @@ export default function BrandingPage() {
                     </div>
                 </div>
             </SectionCard>
+
+            {/* Customize design settings — slide panel (Figma 7824:122617). */}
+            <CustomizeDesignPanel open={designPanelOpen} onClose={() => setDesignPanelOpen(false)} />
         </div>
     );
 }
