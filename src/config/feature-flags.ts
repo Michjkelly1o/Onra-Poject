@@ -274,7 +274,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)
     // The sidebar menu item stays visible per the file convention; the
     // route 404s when clicked. Re-enable by commenting the line below.
-    "/instructor/notifications",     // instructor notification feed
+    //"/instructor/notifications",     // instructor notification feed
 
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
