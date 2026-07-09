@@ -42,25 +42,48 @@ export default function MyPlanPage() {
     // therefore trusts `planKind` as the single source of truth for
     // WHICH kind to show; we further filter to non-complimentary
     // rows because free credits are surfaced elsewhere in the portal.
-    const planKind = member?.planKind ?? null;
+    // Show the FULL plan history — every membership + credit package the customer
+    // has held (active / frozen / cancelled / expired), newest-active first.
+    // Complimentary free-credit grants are surfaced elsewhere.
+    const statusOrder: Record<string, number> = { active: 0, frozen: 1, cancelled: 2, expired: 3 };
     const rawPlans = useAppStore((s) => s.customerPlans).filter(
         (p) =>
             p.customerId === member?.id &&
             p.kind !== "complimentary" &&
-            p.kind === planKind &&
-            (p.status === "active" || p.status === "frozen" || p.status === "cancelled"),
+            (p.status === "active" || p.status === "frozen" || p.status === "cancelled" || p.status === "expired"),
     );
-    const statusOrder: Record<string, number> = { active: 0, frozen: 1, cancelled: 2 };
-    let plans: CustomerPlan[];
-    if (planKind === "membership") {
-        const one =
-            rawPlans.find((p) => p.productId === member?.membershipId) ??
-            [...rawPlans].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9))[0] ??
-            null;
-        plans = one ? [one] : [];
-    } else {
-        plans = rawPlans;
-    }
+    // Invariant projection (belt-and-suspenders with the layout self-heal): a
+    // customer can hold only ONE active plan type. If corrupt state has both a
+    // membership AND package active, keep the most-recently-purchased kind active
+    // and render the other as cancelled — so the first paint is already valid.
+    const activeRaw = rawPlans.filter((p) => p.status === "active" || p.status === "frozen");
+    const bothActive = activeRaw.some((p) => p.kind === "membership") && activeRaw.some((p) => p.kind === "package");
+    const winnerKind = bothActive
+        ? [...activeRaw].sort((a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""))[0].kind
+        : null;
+    const plans = rawPlans
+        .map((p) =>
+            bothActive && (p.status === "active" || p.status === "frozen") && p.kind !== winnerKind
+                ? { ...p, status: "cancelled" as const }
+                : p,
+        )
+        .sort((a, b) => {
+            const byStatus = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+            return byStatus !== 0 ? byStatus : (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? "");
+        });
+    // Reactivation is offered on the SINGLE most-recently-purchased plan only —
+    // and only if it's a cancelled membership with no active plan held. Once the
+    // customer moved on to a newer plan (even a since-cancelled package), all older
+    // plans are history-only. Packages never reactivate.
+    const holdsActivePlan = plans.some((p) => p.status === "active" || p.status === "frozen");
+    const newestPlanId = [...rawPlans].sort(
+        (a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""),
+    )[0]?.id;
+    const canReactivate = (p: CustomerPlan) =>
+        !holdsActivePlan &&
+        p.id === newestPlanId &&
+        p.kind === "membership" &&
+        p.status === "cancelled";
 
     const [freezePlan, setFreezePlan] = useState<CustomerPlan | null>(null);
     const [cancelPlan, setCancelPlan] = useState<CustomerPlan | null>(null);
@@ -104,7 +127,7 @@ export default function MyPlanPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.back()}
+                    onClick={() => router.push("/customer/profile")}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
@@ -121,6 +144,7 @@ export default function MyPlanPage() {
                             key={p.id}
                             plan={p}
                             creditsRemaining={member?.creditsRemaining}
+                            canReactivate={canReactivate(p)}
                             onFreeze={() => setFreezePlan(p)}
                             onUnfreeze={() => doUnfreeze(p)}
                             onCancel={() => setCancelPlan(p)}

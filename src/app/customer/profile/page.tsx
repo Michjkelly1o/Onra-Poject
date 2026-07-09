@@ -27,6 +27,7 @@ import { useAppStore } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { logoutCustomer } from "@/lib/customer/auth";
 import { longDate } from "@/lib/customer/profile-format";
+import { useCreditBalance } from "@/lib/customer/products-catalog";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { SheetToolbar } from "@/components/customer/shell/SheetToolbar";
 import { Button } from "@/components/ui/button";
@@ -70,11 +71,22 @@ export default function ProfilePage() {
     const [logoutOpen, setLogoutOpen] = useState(false);
 
     const name = member ? `${member.firstName} ${member.lastName}` : "";
-    const hasPlan = !!member?.planKind;
-    const creditLabel =
-        member?.creditsRemaining === undefined ? "Unlimited credits" : `${member.creditsRemaining} credits left`;
-    const membershipValue = member?.planName ?? "—";
-    const expiresValue = member?.planExpiryISO ? longDate(member.planExpiryISO) : "—";
+    const bal = useCreditBalance();
+    const hasPlan = bal !== null;
+    const creditLabel = bal
+        ? bal.unlimited
+            ? "Unlimited credits"
+            : `${bal.remaining} credit${bal.remaining === 1 ? "" : "s"} left`
+        : "";
+    const progressPct = bal
+        ? bal.unlimited || bal.total === 0
+            ? 100
+            : Math.min(100, Math.max(0, Math.round((bal.remaining / bal.total) * 100)))
+        : 0;
+    // Column 1: plan TYPE (Membership / Credit package) + the total credits held.
+    const planTypeLabel = bal?.typeLabel ?? "Membership";
+    const totalCreditsValue = bal ? (bal.unlimited ? "Unlimited" : `${bal.total} credits`) : "—";
+    const expiresValue = bal?.expiryISO ? longDate(bal.expiryISO) : "—";
 
     function MenuGroup({ rows }: { rows: Row[] }) {
         return (
@@ -172,13 +184,13 @@ export default function ProfilePage() {
                         <div className="flex flex-col gap-2">
                             <p className="text-base font-semibold leading-6 text-[#101828]">{creditLabel}</p>
                             <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
-                                <div className="h-full rounded-full bg-[#658774]" style={{ width: "100%" }} />
+                                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${progressPct}%` }} />
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="flex min-w-0 flex-1 flex-col">
-                                <p className="text-xs font-normal leading-[18px] text-[#667085]">Membership</p>
-                                <p className="truncate text-xs font-medium leading-[18px] text-[#101828]">{membershipValue}</p>
+                                <p className="text-xs font-normal leading-[18px] text-[#667085]">{planTypeLabel}</p>
+                                <p className="truncate text-xs font-medium leading-[18px] text-[#101828]">{totalCreditsValue}</p>
                             </div>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <p className="text-xs font-normal leading-[18px] text-[#667085]">Expires on</p>
@@ -188,7 +200,19 @@ export default function ProfilePage() {
                     </div>
                 </button>
             ) : (
-                <div className={`relative overflow-hidden p-4 ${CARD}`}>
+                // Tapping the card opens My plan (history); the only action is Browse plan.
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push("/customer/profile/plan")}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push("/customer/profile/plan");
+                        }
+                    }}
+                    className={`relative cursor-pointer overflow-hidden p-4 text-left transition-colors active:bg-gray-50 ${CARD}`}
+                >
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
                         <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
@@ -198,7 +222,10 @@ export default function ProfilePage() {
                             variant="primary"
                             size="lg"
                             className="mt-1 w-full rounded-full"
-                            onClick={() => router.push("/customer/products")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push("/customer/products");
+                            }}
                         >
                             Browse plan
                         </Button>

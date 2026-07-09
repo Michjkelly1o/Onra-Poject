@@ -20,16 +20,16 @@ import {
     cartTotal,
     ensurePurchaseCart,
     purchaseCart,
-    removeFromCart,
     type PlanRow,
 } from "@/lib/customer/purchase";
-import { useActivePlan, useCatalogProducts } from "@/lib/customer/products-catalog";
+import { useCatalogProducts, useCreditBalance, formatCreditBalanceSub } from "@/lib/customer/products-catalog";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { BranchSelector } from "@/components/customer/branch/BranchSelector";
 import { ProductCard } from "@/components/customer/products/ProductCard";
 import { ActivePlanCard } from "@/components/customer/products/ActivePlanCard";
 import { FloatingCartCard } from "@/components/customer/products/FloatingCartCard";
 import { ProductDetailsSheet } from "@/components/customer/products/ProductDetailsSheet";
+import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { ShoppingBag03 } from "@untitledui/icons";
 
@@ -48,10 +48,11 @@ export default function ProductsPage() {
     const customerPlans = useAppStore((s) => s.customerPlans);
     const showToast = useAppStore((s) => s.showToast);
     const { plans, giftCards } = useCatalogProducts();
-    const activePlan = useActivePlan();
+    const creditBalance = useCreditBalance();
 
     const [tab, setTab] = useState<Tab>("all");
     const [sheetPlan, setSheetPlan] = useState<PlanRow | null>(null);
+    const [branchSheet, setBranchSheet] = useState(false);
     const [, bump] = useReducer((x) => x + 1, 0);
 
     ensurePurchaseCart("products");
@@ -79,6 +80,33 @@ export default function ProductsPage() {
               )
             : undefined;
     const heldMembership = !!activeMembershipPlan;
+    // Re-buying a MEMBERSHIP the customer previously cancelled reactivates the
+    // existing plan (one active membership only) instead of creating a duplicate
+    // — but ONLY while no other active/frozen plan is held. Once a package is
+    // bought, the cancelled membership is history and a fresh purchase applies.
+    const holdsActivePlan =
+        member != null &&
+        customerPlans.some(
+            (p) =>
+                p.customerId === member.id &&
+                p.kind !== "complimentary" &&
+                (p.status === "active" || p.status === "frozen"),
+        );
+    // Only the customer's MOST RECENTLY purchased plan is reactivatable — and only
+    // if it's a cancelled membership with no active plan held. Re-buying an OLDER
+    // cancelled membership is a fresh purchase, not a reactivation.
+    const reactivatableMembershipIds = new Set<string>();
+    if (member != null && !holdsActivePlan) {
+        const mine = customerPlans.filter(
+            (p) => p.customerId === member.id && p.kind !== "complimentary",
+        );
+        const newest = [...mine].sort(
+            (a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""),
+        )[0];
+        if (newest && newest.kind === "membership" && newest.status === "cancelled" && newest.productId) {
+            reactivatableMembershipIds.add(newest.productId);
+        }
+    }
     const currentMembership = activeMembershipPlan?.productId
         ? memberships.find((m) => m.id === activeMembershipPlan.productId) ?? null
         : null;
@@ -93,8 +121,15 @@ export default function ProductsPage() {
     }
 
     function openProduct(p: PlanRow) {
-        // Every product type (incl. gift cards) opens the detail sheet first.
-        setSheetPlan(p);
+        // Re-buying a previously-cancelled membership → the reactivate flow on the
+        // My plan page (reuses the existing plan; never a duplicate membership).
+        if (p.kind === "membership" && reactivatableMembershipIds.has(p.id)) {
+            router.push("/customer/profile/plan");
+            return;
+        }
+        // Guests can view the full detail page (read-only) — the CTA there gates.
+        // Product Details is now a full-page screen (the sheet is kept as a backup).
+        router.push(`/customer/products/${p.id}`);
     }
 
     function onAdd(plan: PlanRow, qty: number) {
@@ -130,11 +165,21 @@ export default function ProductsPage() {
     // One membership OR many packages may be in the cart (gift cards are separate).
     // Owning an active membership disables package purchases entirely.
     const hasPackageInCart = purchaseCart.items.some((i) => i.kind === "package");
+    // A membership in the cart blocks packages (and vice-versa) — a customer may
+    // hold ONE membership OR one-or-more packages, never both (admin invariant).
+    const hasMembershipInCart = purchaseCart.items.some((i) => i.kind === "membership");
     const ownsMembership = heldMembership;
     const ownedMembershipId = activeMembershipPlan?.productId;
-    // Unlimited memberships carry no `creditsRemaining` → treated as "has credits".
-    const ownedHasCredits =
-        ownsMembership && (member?.creditsRemaining === undefined || (member?.creditsRemaining ?? 0) > 0);
+    // A customer holds ONE active membership OR one-or-more active packages — never
+    // both. Adding either kind hides the OTHER kind's "+" everywhere (list + sheet).
+    const holdsActivePackage =
+        member != null &&
+        customerPlans.some(
+            (p) =>
+                p.customerId === member.id &&
+                p.kind === "package" &&
+                (p.status === "active" || p.status === "frozen"),
+        );
 
     function cartQtyFor(p: PlanRow): number {
         // Gift cards = number of configured lines for this design; others = summed qty.
@@ -142,29 +187,19 @@ export default function ProductsPage() {
             return purchaseCart.items.filter((i) => i.id === p.id && i.kind === "gift_card").length;
         return purchaseCart.items.filter((i) => i.id === p.id).reduce((n, i) => n + i.quantity, 0);
     }
-    function incPackage(p: PlanRow) {
-        addToCart(p, 1);
-        bump();
-    }
-    function decPackage(p: PlanRow) {
-        const line = purchaseCart.items.find((i) => i.id === p.id && i.kind === "package");
-        if (!line) return;
-        if (line.quantity > 1) {
-            line.quantity -= 1;
-        } else {
-            removeFromCart(line.lineId);
-            showToast("Removed from cart", `${p.name} was removed from your cart.`, "success");
-        }
-        bump();
-    }
     // Membership: hidden while a package is in the cart, and the owned membership
     // can't be re-bought while it still has credits — but renewing is allowed once
     // it hits 0 credits. Package: disabled only while the member owns a membership
     // that still has credits (a 0-credit membership counts as no active plan, so
     // packages become purchasable again).
     function addDisabledFor(p: PlanRow): boolean {
-        if (p.kind === "membership") return hasPackageInCart || (p.id === ownedMembershipId && ownedHasCredits);
-        if (p.kind === "package") return ownedHasCredits;
+        // Membership: blocked while a package is held / in the cart; the active
+        // membership itself can't be re-bought (a DIFFERENT one still upgrades via
+        // the detail sheet).
+        if (p.kind === "membership") return holdsActivePackage || hasPackageInCart || p.id === ownedMembershipId;
+        // Package: blocked while a membership is held / in the cart (packages
+        // themselves stay multi-buy).
+        if (p.kind === "package") return ownsMembership || hasMembershipInCart;
         return false;
     }
     function cardProps(p: PlanRow) {
@@ -172,8 +207,6 @@ export default function ProductsPage() {
             cartQty: cartQtyFor(p),
             addDisabled: addDisabledFor(p),
             onAdd: () => openProduct(p),
-            onIncrement: () => incPackage(p),
-            onDecrement: () => decPackage(p),
         };
     }
 
@@ -208,12 +241,17 @@ export default function ProductsPage() {
                     </div>
                 }
             >
-                <BranchSelector branchName={studioName} onClick={() => router.push("/customer/select-branch")} />
+                <BranchSelector branchName={studioName} onClick={() => setBranchSheet(true)} />
             </CustomerHeader>
 
             <div className={`flex flex-1 flex-col gap-3 px-4 pt-[116px] ${showFloatingCart ? "pb-[96px]" : "pb-4"}`}>
                 {/* Active plan */}
-                {activePlan && <ActivePlanCard name={activePlan.name} sub={activePlan.sub} />}
+                {creditBalance && (
+                    <ActivePlanCard
+                        name={creditBalance.typeLabel}
+                        sub={formatCreditBalanceSub(creditBalance)}
+                    />
+                )}
 
                 {isEmpty ? (
                     <div className="flex flex-1 items-center justify-center">
@@ -248,6 +286,8 @@ export default function ProductsPage() {
                     onCheckout={() => router.push("/customer/products/checkout")}
                 />
             )}
+
+            <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
 
             <ProductDetailsSheet
                 open={!!sheetPlan}

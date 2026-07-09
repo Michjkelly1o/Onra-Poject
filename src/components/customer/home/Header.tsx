@@ -10,8 +10,9 @@
 // screen. Built from scratch for the member surface (not the admin DS). Figma:
 // 9ByGNc4N7Vw3BLMHyaWJ1j node 3307-69492. Icons from `@untitledui/icons`.
 
-import { Bell01, ChevronDown, MarkerPin01 } from "@untitledui/icons";
+import { ChevronDown, MarkerPin01 } from "@untitledui/icons";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
+import { NotificationBell } from "@/components/customer/shell/NotificationBell";
 
 export interface CustomerHomeHeaderProps {
     /** Active studio label, e.g. "Forma Studio (South)". */
@@ -48,8 +49,6 @@ export function CustomerHomeHeader({
     onOpenNotifications,
     showBell = true,
 }: CustomerHomeHeaderProps) {
-    const badge = unreadCount > 9 ? "9+" : String(unreadCount);
-
     return (
         <CustomerHeader>
             {/* Studio selector */}
@@ -70,21 +69,7 @@ export function CustomerHomeHeader({
             )}
 
             {/* Notification bell — hidden for guests (no notification module) */}
-            {showBell && (
-                <button
-                    type="button"
-                    onClick={onOpenNotifications}
-                    aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-                    className="relative flex shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary,#e4e7ec)] bg-[var(--colors-bg-primary,#fff)] p-2.5 transition-colors active:bg-gray-50"
-                >
-                    <Bell01 className="size-5 text-[#344054]" aria-hidden />
-                    {unreadCount > 0 && (
-                        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#f04438] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
-                            {badge}
-                        </span>
-                    )}
-                </button>
-            )}
+            {showBell && <NotificationBell count={unreadCount} onClick={onOpenNotifications ?? (() => {})} />}
         </CustomerHeader>
     );
 }

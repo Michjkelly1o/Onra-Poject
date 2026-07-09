@@ -60,7 +60,18 @@ export function ClassScheduleCard({
     const [timeStart, ...timeRestParts] = timeLabel.split(" • ");
     const timeRest = timeRestParts.join(" • ");
     return (
-        <div className="flex w-full flex-col gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4">
+        <div
+            role="button"
+            tabIndex={0}
+            onClick={onAction}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onAction?.();
+                }
+            }}
+            className="flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
+        >
             <div className="flex w-full items-center gap-3">
                 <div
                     className="size-12 shrink-0 overflow-hidden rounded-md"
@@ -108,7 +119,10 @@ export function ClassScheduleCard({
                 size="sm"
                 disabled={ctaDisabled}
                 className="w-full rounded-full"
-                onClick={onAction}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onAction?.();
+                }}
             >
                 {ctaLabel}
             </Button>

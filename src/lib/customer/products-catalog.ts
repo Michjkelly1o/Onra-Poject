@@ -10,7 +10,7 @@
 // (one membership OR packages) drives the Active Plan card + hides its "+" in the
 // list (you can't re-buy what you already hold).
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
 import type { PlanRow } from "@/lib/customer/purchase";
@@ -62,6 +62,7 @@ export function useCatalogProducts(): CatalogProducts {
                 name: m.name,
                 sub: `${m.credits === "unlimited" ? "Unlimited" : `${m.credits} credit${m.credits === 1 ? "" : "s"}`} • ${m.duration_months} month${m.duration_months === 1 ? "" : "s"}`,
                 price: m.price_aed,
+                creditBadge: { big: m.credits === "unlimited" ? "∞" : String(m.credits), small: "credits" },
             }));
 
         const packageRows: PlanRow[] = packages
@@ -72,6 +73,7 @@ export function useCatalogProducts(): CatalogProducts {
                 name: p.name,
                 sub: `${p.credits} credit${p.credits === 1 ? "" : "s"} • ${fmtValidity(p.validity_days)}`,
                 price: p.price_aed,
+                creditBadge: { big: String(p.credits), small: p.credits === 1 ? "credit" : "credits" },
             }));
 
         const giftCards: PlanRow[] = giftCardDesigns
@@ -87,6 +89,7 @@ export function useCatalogProducts(): CatalogProducts {
                     sub: validLabel,
                     price: base,
                     priceLabel: isCustom ? `Start from AED ${g.min_value_aed ?? 0}` : `AED ${base}`,
+                    creditBadge: { big: String(base), small: "AED" },
                     giftCard: {
                         valueType: g.value_type,
                         fixedValue: g.fixed_value_aed,
@@ -136,4 +139,106 @@ export function useOwnedProductIds(): Set<string> {
         for (const id of member?.packageIds ?? []) ids.add(id);
         return ids;
     }, [member]);
+}
+
+export interface CreditBalanceVM {
+    kind: "membership" | "package";
+    /** "Membership" or "Credit package" — the active plan type. */
+    typeLabel: string;
+    /** Unlimited membership → show "Unlimited credits" + a full progress bar. */
+    unlimited: boolean;
+    /** Credits left across the active plan(s) — the canonical member balance. */
+    remaining: number;
+    /** Total credits the active plan(s) grant (summed across packages). */
+    total: number;
+    /** Active plan expiry (latest across packages) — drives "Expires on". */
+    expiryISO?: string;
+}
+
+/** Credit-balance summary for the profile card: type + credits-left + total +
+ *  expiry, derived from the member's ACTIVE plan(s). A customer holds one
+ *  membership OR one-or-more packages, so `total` sums the held packages. */
+export function useCreditBalance(): CreditBalanceVM | null {
+    const { member } = useCurrentCustomerContext();
+    const customerPlans = useAppStore((s) => s.customerPlans);
+    return useMemo(() => {
+        if (!member || !member.planKind) return null;
+        const kind = member.planKind; // "membership" | "package"
+        const held = customerPlans.filter(
+            (p) =>
+                p.customerId === member.id &&
+                p.kind === kind &&
+                (p.status === "active" || p.status === "frozen"),
+        );
+        if (held.length === 0) return null;
+        // Unlimited memberships carry no numeric credit balance.
+        const unlimited = kind === "membership" && member.creditsRemaining === undefined;
+        const remaining = member.creditsRemaining ?? 0;
+        const total = held.reduce((n, p) => n + (p.totalCredits ?? 0), 0);
+        // Expiry = the latest expiry across the held plan(s), read straight from the
+        // plan rows (the flat member.planExpiryISO can be stale / unset in the seed).
+        const expiryISO = held
+            .map((p) => p.expiryISO)
+            .filter((iso): iso is string => !!iso)
+            .sort()
+            .at(-1);
+        return {
+            kind,
+            typeLabel: kind === "membership" ? "Membership" : "Credit package",
+            unlimited,
+            remaining,
+            // Never let the summed total read below the live remaining (keeps the
+            // progress bar within 0–100%).
+            total: Math.max(total, remaining),
+            expiryISO,
+        };
+    }, [member, customerPlans]);
+}
+
+/**
+ * Invariant self-heal: a customer holds ONE active membership OR one-or-more
+ * active credit packages — never both. If legacy / corrupt persisted state has
+ * BOTH kinds active at once, cancel the losing kind (keeping the most recently
+ * purchased kind active) so every customer surface — My plan, the credit-balance
+ * card, the Products gating — reads a valid single-active-type state. Fires only
+ * when the violation exists (a no-op for clean data), and converges in one pass
+ * because cancelling the loser removes the both-active condition. Uses the same
+ * `cancelCustomerPlan` action the manual flows use (no store changes).
+ */
+export function useReconcileMemberPlans(): void {
+    const { member } = useCurrentCustomerContext();
+    const customerPlans = useAppStore((s) => s.customerPlans);
+    const cancelCustomerPlan = useAppStore((s) => s.cancelCustomerPlan);
+    useEffect(() => {
+        if (!member) return;
+        const active = customerPlans.filter(
+            (p) =>
+                p.customerId === member.id &&
+                p.kind !== "complimentary" &&
+                (p.status === "active" || p.status === "frozen"),
+        );
+        const hasMembership = active.some((p) => p.kind === "membership");
+        const hasPackage = active.some((p) => p.kind === "package");
+        if (!hasMembership || !hasPackage) return; // no violation
+        // Winner = the most recently purchased active kind (mirrors applyPurchase's
+        // "latest purchase wins" cascade). Cancel every active plan of the other kind.
+        const winnerKind = [...active].sort((a, b) =>
+            (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""),
+        )[0].kind;
+        for (const p of active) {
+            if (p.kind !== winnerKind) {
+                cancelCustomerPlan(p.id, "period_end", "Switched plan — only one plan type can be active");
+            }
+        }
+    }, [member, customerPlans, cancelCustomerPlan]);
+}
+
+/** Subtitle for the Products "Active plan" card + anywhere the credit balance is
+ *  summarised: "6/10 credits left • expires Apr 20" (membership / packages), or
+ *  "Unlimited credits • expires …" for an unlimited membership. Expiry is the
+ *  newest across held packages (already resolved in the VM). */
+export function formatCreditBalanceSub(bal: CreditBalanceVM): string {
+    const credits = bal.unlimited ? "Unlimited credits" : `${bal.remaining}/${bal.total} credits left`;
+    const expiry = bal.expiryISO ? ` • expires ${fmtMonthDay(bal.expiryISO)}` : "";
+    return `${credits}${expiry}`;
 }

@@ -258,14 +258,16 @@ export function hasActiveFilters(f: SearchFilters): boolean {
 }
 
 export function filterCount(f: SearchFilters): number {
-    return (f.startTime ? 1 : 0) + (f.endTime ? 1 : 0) + f.instructorIds.length + f.categories.length;
+    return (f.startTime || f.endTime ? 1 : 0) + f.instructorIds.length + f.categories.length;
 }
 
 /** AND across dimensions, OR within instructors + categories. Times compare lexically ("HH:MM"). */
 export function applyFilters(list: SearchClassVM[], f: SearchFilters): SearchClassVM[] {
     return list.filter((c) => {
+        // Time-of-day slots window by the class START time: a class belongs to the
+        // slot its start falls in (Morning / Afternoon / Evening).
         if (f.startTime && c.startTime < f.startTime) return false;
-        if (f.endTime && c.endTime > f.endTime) return false;
+        if (f.endTime && c.startTime >= f.endTime) return false;
         if (f.instructorIds.length && !f.instructorIds.includes(c.instructorId)) return false;
         if (f.categories.length && !f.categories.includes(c.category)) return false;
         return true;

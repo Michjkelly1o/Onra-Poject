@@ -29,6 +29,9 @@ export interface PlanRow {
     name: string;
     /** "10 credits • 1 month" / "Unlimited • 1 month" / "1 credit • 7 days" / gift-card "Valid until …". */
     sub: string;
+    /** Credit-count badge for the product tile ("10" / "credits", "∞" / "credits").
+     *  Present for memberships + packages; absent for gift cards. */
+    creditBadge?: { big: string; small: string };
     price: number;
     /** Card price-label override — gift-card custom "Start from AED 50". */
     priceLabel?: string;

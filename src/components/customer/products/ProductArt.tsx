@@ -18,9 +18,11 @@ const THEME: Record<
     PlanKind,
     { Icon: ComponentType<SVGProps<SVGSVGElement>>; tileBg: string; iconColor: string; ring: string; ringOpacity: number }
 > = {
+    // Unified brand-green theme for every product type (membership / package /
+    // gift card) — only the icon differs. Client Jul 2026.
     membership: { Icon: CreditCard02, tileBg: "#e9fff3", iconColor: "#658774", ring: "#aad4bd", ringOpacity: 0.6 },
-    package: { Icon: Package, tileBg: "#f8f4f8", iconColor: "#7a5891", ring: "#ebc4ed", ringOpacity: 0.48 },
-    gift_card: { Icon: Gift01, tileBg: "#ffebec", iconColor: "#876567", ring: "#edc4c7", ringOpacity: 0.48 },
+    package: { Icon: Package, tileBg: "#e9fff3", iconColor: "#658774", ring: "#aad4bd", ringOpacity: 0.6 },
+    gift_card: { Icon: Gift01, tileBg: "#e9fff3", iconColor: "#658774", ring: "#aad4bd", ringOpacity: 0.6 },
 };
 
 // DS ring sizes (px @ the 64px banner) — concentric rounded squares.
@@ -32,7 +34,7 @@ const TILE_SHADOW =
 // DS "Background mask" — radial, opaque at centre → transparent at the edge.
 const RING_MASK = "radial-gradient(50% 50% at 50% 50%, #000 0%, transparent 100%)";
 
-function Rings({ color, opacity, scale }: { color: string; opacity: number; scale: number }) {
+export function Rings({ color, opacity, scale }: { color: string; opacity: number; scale: number }) {
     return (
         <div
             aria-hidden

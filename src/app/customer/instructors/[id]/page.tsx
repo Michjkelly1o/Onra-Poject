@@ -192,8 +192,9 @@ export default function InstructorDetailPage() {
                 </button>
             </CustomerHeader>
 
-            {/* Hero — instructor photo + name + email over a dark gradient. */}
-            <div className="relative h-[240px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
+            {/* Hero — instructor photo + name + email over a dark gradient. Responsive
+                4:3 banner (height follows device width, matching class/appointment). */}
+            <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
                 {instructor.imageUrl ? (
                     // Instructor assets are circular avatars (transparent corners); scaling up
                     // crops the circle so the photo fills the hero as a full rectangle.

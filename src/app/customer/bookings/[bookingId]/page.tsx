@@ -16,6 +16,7 @@ import { BOOKING_STATUS, useBookingDetail, useClassReviews, useHasRated } from "
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { BookingStatusCard } from "@/components/customer/bookings/BookingStatusCard";
 import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
+import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
 
@@ -54,6 +55,27 @@ export default function BookingDetailPage() {
     const p = BOOKING_STATUS[viewStatus];
     const HeroIcon = p.heroIcon;
     const isAttended = viewStatus === "attended";
+    // Classes are credit-based — the view status already encodes the outcome:
+    // cancelled_free → 1 credit returned; cancelled_late / no_show → forfeited.
+    const refundLines: RefundLine[] | null =
+        viewStatus === "cancelled_free"
+            ? [
+                  { label: "Credit returned", value: "1 credit", tone: "success" },
+                  { label: "Status", value: "Returned to your account", tone: "success" },
+              ]
+            : viewStatus === "cancelled_late" || viewStatus === "no_show"
+              ? [
+                    { label: "Credit returned", value: "0 credit", tone: "muted" },
+                    {
+                        label: "Status",
+                        value:
+                            viewStatus === "no_show"
+                                ? "Forfeited — no show"
+                                : "Not returned — cancelled within 24 hours",
+                        tone: "muted",
+                    },
+                ]
+              : null;
 
     const actionZone =
         tab === "upcoming" ? (
@@ -97,6 +119,8 @@ export default function BookingDetailPage() {
                         reviews={reviews}
                         onMoreReviews={() => router.push(`/customer/bookings/${bookingId}/reviews`)}
                     />
+                ) : refundLines ? (
+                    <RefundDetailsSection lines={refundLines} />
                 ) : undefined
             }
             actionZone={actionZone}
