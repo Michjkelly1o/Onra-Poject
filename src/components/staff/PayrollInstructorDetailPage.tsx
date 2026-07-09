@@ -510,6 +510,7 @@ export default function PayrollInstructorDetailPage({
     // page from the compensation list, we synthesize an instructor-shaped
     // record from their `staff` row so the page renders correctly.
     const staff                  = useAppStore(s => s.staff);
+    const roles                  = useAppStore(s => s.roles);
     const payRates               = useAppStore(s => s.payRates);
     const classSchedules         = useAppStore(s => s.classSchedules);
     const payrollEntries         = useAppStore(s => s.payrollEntries);
@@ -575,6 +576,15 @@ export default function PayrollInstructorDetailPage({
     const ins: Instructor = instructor;
 
     const branch = branches.find(b => b.id === ins.branchId);
+    // Role name for the sidebar — resolved via the staff record (which
+    // holds `roleId`). Non-instructor staff who land on this page still get
+    // their role labelled correctly (Owner / Branch admin / Operator /
+    // Front desk / Instructor).
+    const roleName = (() => {
+        const staffRow = staff.find(s => s.id === instructorId);
+        if (!staffRow) return "—";
+        return roles.find(r => r.id === staffRow.roleId)?.name ?? "—";
+    })();
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
     // ─── Class rows: filter schedules by instructor + period + status ─────
@@ -756,7 +766,7 @@ export default function PayrollInstructorDetailPage({
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Instructor details</h1>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
             </div>
 
             {/* Body — canonical DetailPageShell wraps the 832px frame. */}
@@ -791,6 +801,7 @@ export default function PayrollInstructorDetailPage({
                                     <SidebarRow label="Joined" value={instructor.joinedDate} />
                                     <SidebarRow label="Email" value={instructor.email} />
                                     <SidebarRow label="Phone" value={instructor.phone} />
+                                    <SidebarRow label="Role" value={roleName} />
                                     <SidebarRow label="Branch location" value={branch?.name ?? "—"} />
                                     <SidebarRow label="Default pay rate" value={payRate?.name ?? "—"} />
                                 </div>

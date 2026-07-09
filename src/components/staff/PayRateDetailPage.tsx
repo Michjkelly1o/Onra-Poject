@@ -89,33 +89,6 @@ function TypeBadge({ type }: { type: PayRateType }) {
 const INSTRUCTOR_STATUS_LABEL: Record<InstructorStatus, string> = {
     active: "Active", inactive: "Inactive", archive: "Archive",
 };
-
-// ─── Role badge (tinted pill next to the staff name) ─────────────────────
-//
-// Assigned-staff table now includes non-instructor staff on the same pay
-// rate, so each row surfaces its role type so admins can tell them apart
-// at a glance. Palette mirrors the compensation list badges.
-const ROLE_BADGE_LABEL: Record<string, string> = {
-    owner: "Owner", branch_admin: "Branch admin", operator: "Operator",
-    front_desk: "Front desk", instructor: "Instructor",
-};
-const ROLE_BADGE_STYLE: Record<string, string> = {
-    owner:        "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    branch_admin: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-    operator:     "bg-[#fef0c7] border-1 border-[#fedf89] text-[#b54708]",
-    front_desk:   "bg-[#fdf2fa] border-1 border-[#fcceee] text-[#c11574]",
-    instructor:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-};
-function RoleBadge({ type }: { type?: string }) {
-    if (!type) return null;
-    const label = ROLE_BADGE_LABEL[type] ?? type;
-    const cls   = ROLE_BADGE_STYLE[type] ?? "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]";
-    return (
-        <span className={cn("inline-flex items-center px-[8px] py-[1px] rounded-full text-[11px] font-medium whitespace-nowrap", cls)}>
-            {label}
-        </span>
-    );
-}
 function InstructorStatusBadge({ status }: { status: InstructorStatus }) {
     const styles: Record<InstructorStatus, string> = {
         active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
@@ -467,7 +440,6 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     // / Owner) get synthesised into the same Instructor-shaped row so the
     // rest of the tab's rendering stays untouched.
     const staff              = useAppStore(s => s.staff);
-    const roles              = useAppStore(s => s.roles);
     const branches           = useAppStore(s => s.branches);
     const setInstructorStatus = useAppStore(s => s.setInstructorStatus);
     const showToast          = useAppStore(s => s.showToast);
@@ -485,18 +457,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     // Every staff member (any role) whose pay rate matches. Instructors
     // come from the instructors slice as-is; non-instructor staff are
     // synthesised into the same `Instructor` shape so the downstream
-    // rendering/sort/filter code doesn't have to branch. We also stash the
-    // role type on a side-channel map so the row can badge Front Desk vs
-    // Instructor etc. without widening the Instructor type here.
-    const rolesById = useMemo(() => new Map(roles.map(r => [r.id, r])), [roles]);
-    const roleTypeByRowId = useMemo(() => {
-        const m = new Map<string, string>();
-        for (const s of staff) {
-            const type = rolesById.get(s.roleId)?.type;
-            if (type) m.set(s.id, type);
-        }
-        return m;
-    }, [staff, rolesById]);
+    // rendering/sort/filter code doesn't have to branch.
     const assigned = useMemo<Instructor[]>(() => {
         // Instructor projections first (canonical order + fields).
         const fromInstructors = instructors.filter(i => i.payRateId === payRateId);
@@ -696,11 +657,8 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <InstructorAvatar instructor={r} />
-                                                <div className="flex flex-col gap-0.5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                        <RoleBadge type={roleTypeByRowId.get(r.id)} />
-                                                    </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                                     <span className="text-[13px] text-[#667085]">Joined {r.joinedDate}</span>
                                                 </div>
                                             </div>
