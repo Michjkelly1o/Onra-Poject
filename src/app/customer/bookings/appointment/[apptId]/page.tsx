@@ -19,6 +19,7 @@ import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
+import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
 
 // Destructive secondary (matches the class Cancel-booking button).
 const CANCEL_BTN =
@@ -229,6 +230,22 @@ export default function AppointmentBookingDetailPage() {
         </div>
     );
 
+    // Refund breakdown for a cancelled appointment (paid in AED, not credit).
+    const refundLines: RefundLine[] | null = isCancelled
+        ? booking.lateCancel
+            ? [
+                  { label: "You've paid", value: `AED ${booking.price}` },
+                  { label: "Refund amount", value: "AED 0", tone: "muted" },
+                  { label: "Status", value: "Not refunded — cancelled within 24 hours", tone: "muted" },
+              ]
+            : [
+                  { label: "You've paid", value: `AED ${booking.price}` },
+                  { label: "Refund amount", value: `AED ${booking.price}`, tone: "success" },
+                  { label: "Refund via", value: booking.paymentMethod ?? "Original payment method" },
+                  { label: "Status", value: "Refunded", tone: "success" },
+              ]
+        : null;
+
     const actionZone = isUpcoming ? (
         <Button
             variant="secondary"
@@ -249,6 +266,7 @@ export default function AppointmentBookingDetailPage() {
             infoGrid={infoGrid}
             statusBlock={statusBlock}
             heroBadge={heroBadge}
+            afterLocation={refundLines ? <RefundDetailsSection lines={refundLines} /> : undefined}
             onBack={() => router.push("/customer/bookings")}
             actionZone={actionZone}
         />

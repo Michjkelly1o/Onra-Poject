@@ -9,16 +9,17 @@
 // Product Detail sheet (onAdd), where quantity can be reviewed / adjusted — even
 // for a product already in the cart. The right-hand control reflects cart state:
 //   • gift card           → always a "+" (each is its own line; multiples allowed)
-//   • membership in cart  → a static "1" badge (only one membership; max qty 1)
-//   • package in cart     → a − / qty / + stepper (quick adjust; multiples allowed)
+//   • membership/package in cart → a count badge (the cart qty); tapping the
+//     card re-opens the detail sheet to adjust quantity (matches membership)
 //   • addDisabled         → no control, card otherwise looks normal (membership
 //                           while a package is in cart; package while the member
 //                           owns an active membership with credits)
 // Inner controls stopPropagation so they don't also fire the card's open action.
 
-import { Minus, Plus } from "@untitledui/icons";
+import { Plus } from "@untitledui/icons";
 import type { PlanRow } from "@/lib/customer/purchase";
 import { ProductArt } from "@/components/customer/products/ProductArt";
+import { ProductCreditTile } from "@/components/customer/products/ProductCreditTile";
 
 function AddButton({ label, onClick }: { label: string; onClick?: () => void }) {
     return (
@@ -40,36 +41,16 @@ function AddButton({ label, onClick }: { label: string; onClick?: () => void }) 
     );
 }
 
-function StepBtn({ label, onClick, children }: { label: string; onClick?: () => void; children: React.ReactNode }) {
-    return (
-        <button
-            type="button"
-            onClick={(e) => {
-                e.stopPropagation();
-                onClick?.();
-            }}
-            aria-label={label}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50"
-        >
-            {children}
-        </button>
-    );
-}
-
 export function ProductCard({
     product,
     cartQty = 0,
     addDisabled = false,
     onAdd,
-    onIncrement,
-    onDecrement,
 }: {
     product: PlanRow;
     cartQty?: number;
     addDisabled?: boolean;
     onAdd?: () => void;
-    onIncrement?: () => void;
-    onDecrement?: () => void;
 }) {
     const inCart = cartQty > 0;
 
@@ -86,7 +67,11 @@ export function ProductCard({
             }}
             className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
         >
-            <ProductArt kind={product.kind} variant="card" />
+            {product.creditBadge ? (
+                <ProductCreditTile kind={product.kind} big={product.creditBadge.big} small={product.creditBadge.small} />
+            ) : (
+                <ProductArt kind={product.kind} variant="card" />
+            )}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex min-w-0 flex-col">
                     <p className="truncate text-sm font-medium leading-5 text-[#101828]">{product.name}</p>
@@ -98,21 +83,11 @@ export function ProductCard({
             </div>
 
             {inCart ? (
-                product.kind === "package" ? (
-                    <div className="flex shrink-0 items-center gap-2">
-                        <StepBtn label={`Decrease ${product.name}`} onClick={onDecrement}>
-                            <Minus className="size-4 text-[#344054]" aria-hidden />
-                        </StepBtn>
-                        <span className="min-w-4 text-center text-sm font-semibold leading-5 text-[#101828]">{cartQty}</span>
-                        <StepBtn label={`Increase ${product.name}`} onClick={onIncrement}>
-                            <Plus className="size-4 text-[#344054]" aria-hidden />
-                        </StepBtn>
-                    </div>
-                ) : (
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#658774] text-sm font-semibold leading-5 text-[#101828]">
-                        {cartQty}
-                    </span>
-                )
+                // Count badge (cart qty) for BOTH memberships and packages — tapping
+                // the card re-opens the detail sheet to adjust the quantity.
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#658774] text-sm font-semibold leading-5 text-[#101828]">
+                    {cartQty}
+                </span>
             ) : addDisabled ? null : (
                 <AddButton label={`Add ${product.name}`} onClick={onAdd} />
             )}

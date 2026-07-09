@@ -42,6 +42,10 @@ export default function AppointmentProcessingPage() {
 
     useEffect(() => {
         let bookingId = "";
+        // The checkout passes the chosen method as `?method=<label>` — capture it on
+        // the booking so the cancel/refund flow can show "Refund via <method>".
+        const paymentMethod =
+            new URLSearchParams(window.location.search).get("method") ?? undefined;
         // Record the booking once (synchronous), then sequence the steps over it.
         if (!wroteRef.current && appointment && appointmentDraft.slotISO && appointmentDraft.slotTime) {
             wroteRef.current = true;
@@ -68,6 +72,7 @@ export default function AppointmentProcessingPage() {
                 instructorName: inst?.name,
                 instructorImageUrl: inst?.imageUrl,
                 instructorInitials: inst?.initials,
+                paymentMethod,
             });
             const when = `${new Date(`${appointmentDraft.slotISO}T00:00:00`).toLocaleDateString("en-GB", {
                 weekday: "short",

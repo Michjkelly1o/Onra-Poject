@@ -25,7 +25,7 @@ export default function ProductsSuccessPage() {
                             variant="primary"
                             size="xl"
                             className="w-full rounded-full"
-                            onClick={() => router.replace("/customer/profile")}
+                            onClick={() => router.replace("/customer/profile/plan")}
                         >
                             View plan
                         </Button>
@@ -35,7 +35,7 @@ export default function ProductsSuccessPage() {
                             variant={hasPlan ? "secondary" : "primary"}
                             size="xl"
                             className="w-full rounded-full"
-                            onClick={() => router.replace("/customer/profile")}
+                            onClick={() => router.replace("/customer/profile/gift-cards")}
                         >
                             View gift card
                         </Button>

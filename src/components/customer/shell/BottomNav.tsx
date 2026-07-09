@@ -15,9 +15,10 @@
 import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarPlus02, HomeSmile, SearchMd, ShoppingBag03, UserCircle } from "@untitledui/icons";
+import { Calendar, CalendarPlus02, HomeSmile, ShoppingBag03, UserCircle } from "@untitledui/icons";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useIsAuthenticated } from "@/lib/customer/auth";
+import { useMainScrollable } from "@/lib/customer/use-scrollable";
 
 const ACTIVE = "#658774"; // colors/foreground/fg-brand-primary-(600) — active stroke + label
 const ACTIVE_FILL = "#d7ffe9"; // Brand/100 — light mint fill inside the active icon (Figma 4056-36820)
@@ -39,7 +40,7 @@ interface NavItem {
 // to /customer/products when that module ships. Search → /customer/search (built).
 const NAV_ITEMS: NavItem[] = [
     { label: "Home", href: "/customer", exact: true, icon: HomeSmile },
-    { label: "Search", href: "/customer/search", icon: SearchMd },
+    { label: "Search", href: "/customer/search", icon: Calendar },
     { label: "Bookings", href: "/customer/bookings", icon: CalendarPlus02, authOnly: true },
     { label: "Products", href: "/customer/products", icon: ShoppingBag03 },
     { label: "Profile", href: "/customer/profile", avatar: true },
@@ -64,13 +65,19 @@ export function CustomerBottomNav() {
     const isAuth = useIsAuthenticated();
     // Guests get 4 tabs (Bookings hidden); authenticated members get all 5.
     const items = NAV_ITEMS.filter((item) => !item.authOnly || isAuth);
+    // The tab bar floats transparently when the page fits; once the content
+    // scrolls under it, a white background + top shadow separate the two.
+    const scrollable = useMainScrollable();
 
     return (
         <nav
             aria-label="Primary"
-            className="relative z-10 w-full shrink-0 bg-white drop-shadow-[0px_-8px_11px_rgba(100,116,139,0.08)]"
+            className={`relative z-10 w-full shrink-0 transition-colors ${
+                scrollable ? "bg-white drop-shadow-[0px_-8px_11px_rgba(100,116,139,0.08)]" : "bg-transparent"
+            }`}
         >
-            <ul className="flex items-start gap-5 px-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+            {/* Item 4: a taller, comfortable tab-bar height (icons-only). */}
+            <ul className="flex items-start gap-5 px-4 pt-1 pb-[max(26px,env(safe-area-inset-bottom))]">
                 {items.map((item) => {
                     const isActive = item.exact
                         ? pathname === item.href
@@ -82,8 +89,9 @@ export function CustomerBottomNav() {
                         <li key={item.href} className="flex-1">
                             <Link
                                 href={item.href}
+                                aria-label={item.label}
                                 aria-current={isActive ? "page" : undefined}
-                                className="flex flex-col items-center gap-3 outline-none focus-visible:opacity-70"
+                                className="flex flex-col items-center gap-3.5 outline-none focus-visible:opacity-70"
                             >
                                 {/* top active-indicator bar */}
                                 <span
@@ -115,12 +123,6 @@ export function CustomerBottomNav() {
                                             />
                                         )
                                     )}
-                                    <span
-                                        className="whitespace-nowrap text-xs leading-[18px]"
-                                        style={{ color, fontWeight: isActive ? 600 : 500 }}
-                                    >
-                                        {item.label}
-                                    </span>
                                 </span>
                             </Link>
                         </li>

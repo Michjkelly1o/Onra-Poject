@@ -4,18 +4,11 @@
 // Active = coloured tile + green status/price + green progress.
 // Frozen / Cancelled = disabled grey tile + quaternary (#667085) status, muted price.
 
-import { AlertCircle, CreditCard02, Package } from "@untitledui/icons";
+import { AlertCircle } from "@untitledui/icons";
 import type { CustomerPlan } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { ProductCreditTile } from "@/components/customer/products/ProductCreditTile";
 import { aed, dayMonthYear, shortDate } from "@/lib/customer/profile-format";
-
-// Same icon + colours as the Products module THEME.
-const TILE = {
-    membership: { Icon: CreditCard02, bg: "#e9fff3", color: "#658774" },
-    package: { Icon: Package, bg: "#f8f4f8", color: "#7a5891" },
-} as const;
-const TILE_SHADOW =
-    "0px 1.551px 1.551px 0px rgba(0,0,0,0.04), -3.102px 4.654px 9.307px 0px rgba(224,248,164,0.08), 4.654px 4.654px 9.307px 0px rgba(224,248,164,0.06), 0px 1.551px 9.307px 0px rgba(224,248,164,0.12)";
 
 function totalCredits(label: string): number | null {
     if (/unlimited/i.test(label)) return null;
@@ -38,6 +31,7 @@ export function PlanCard({
     onUnfreeze,
     onCancel,
     onReactivate,
+    canReactivate = false,
 }: {
     plan: CustomerPlan;
     creditsRemaining?: number;
@@ -45,13 +39,16 @@ export function PlanCard({
     onUnfreeze: () => void;
     onCancel: () => void;
     onReactivate: () => void;
+    /** Reactivate is offered only for a cancelled MEMBERSHIP while the customer
+     *  holds no other active plan (packages never reactivate). */
+    canReactivate?: boolean;
 }) {
     const isMembership = plan.kind === "membership";
-    const { Icon, bg, color } = isMembership ? TILE.membership : TILE.package;
     // Frozen + cancelled render as a "disabled" card (grey tile, quaternary text).
     const disabled = plan.status === "frozen" || plan.status === "cancelled";
 
     const total = totalCredits(plan.creditsLabel);
+    const bigCredits = total === null ? "∞" : String(total);
     const remaining = isMembership ? (creditsRemaining ?? total ?? 0) : (total ?? 0);
     const creditLine = total === null ? "Unlimited credits" : `${remaining} credits left`;
     const pct = total === null ? 100 : total > 0 ? Math.min(100, Math.max(0, (remaining / total) * 100)) : 0;
@@ -67,12 +64,13 @@ export function PlanCard({
     return (
         <div className="flex flex-col gap-4 rounded-2xl border border-[#eaecf0] bg-white p-4">
             <div className="flex items-center gap-3">
-                <span
-                    className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.12]"
-                    style={{ backgroundColor: disabled ? "#f2f4f7" : bg, boxShadow: disabled ? undefined : TILE_SHADOW }}
-                >
-                    <Icon className="size-5" style={{ color: disabled ? "#98a2b3" : color }} aria-hidden />
-                </span>
+                <ProductCreditTile
+                    kind={isMembership ? "membership" : "package"}
+                    big={bigCredits}
+                    small="credits"
+                    size={48}
+                    disabled={disabled}
+                />
                 <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium leading-5 text-[#101828]">{plan.name}</p>
                     <p className={`text-sm font-normal leading-5 ${disabled ? "text-[#667085]" : "text-[#067647]"}`}>
@@ -127,9 +125,11 @@ export function PlanCard({
             )}
 
             {plan.status === "cancelled" ? (
-                <Button variant="primary" size="md" className="w-full rounded-full" onClick={onReactivate}>
-                    Reactivate plan
-                </Button>
+                canReactivate ? (
+                    <Button variant="primary" size="md" className="w-full rounded-full" onClick={onReactivate}>
+                        Reactivate plan
+                    </Button>
+                ) : null
             ) : (
                 <div className="flex gap-3">
                     <Button

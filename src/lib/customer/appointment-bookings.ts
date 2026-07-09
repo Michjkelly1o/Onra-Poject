@@ -45,6 +45,8 @@ export interface AppointmentBooking {
     cancelledAt?: string;
     /** True when cancelled <24h before the slot (no refund). */
     lateCancel?: boolean;
+    /** Payment method label used at checkout (drives the refund "Refund via" line). */
+    paymentMethod?: string;
 }
 
 const KEY = "onra-customer-appointment-bookings";

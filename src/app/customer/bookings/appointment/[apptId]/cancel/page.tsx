@@ -207,6 +207,14 @@ export default function CancelAppointmentPage() {
                             <span className="font-normal text-[#475467]">Your refund</span>
                             <span className="font-medium text-[#101828]">AED {isLate ? 0 : booking.price}</span>
                         </div>
+                        {!isLate && (
+                            <div className="flex items-center justify-between">
+                                <span className="font-normal text-[#475467]">Refund via</span>
+                                <span className="font-medium text-[#101828]">
+                                    {booking.paymentMethod ?? "Original payment method"}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </section>
             </div>

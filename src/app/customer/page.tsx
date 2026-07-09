@@ -12,19 +12,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { useHomeData, type HomeCategoryVM } from "@/lib/customer/home-data";
+import { useHomeData } from "@/lib/customer/home-data";
 import { useUnreadNotifCount } from "@/lib/customer/notifications-feed";
 import { hasOnboarded, useIsAuthenticated } from "@/lib/customer/auth";
 import { useMemberBookings } from "@/lib/customer/bookings-data";
-import { EMPTY_FILTERS, searchUi } from "@/lib/customer/search-data";
 import { CUSTOMER_HEADER_CONTENT_OFFSET } from "@/components/customer/shell/CustomerHeader";
 import { CustomerHomeHeader } from "@/components/customer/home/Header";
-import { AchievementHighlight } from "@/components/customer/home/AchievementHighlight";
+import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
 import { Metrics } from "@/components/customer/home/Metrics";
 import { UpcomingBookings } from "@/components/customer/home/UpcomingBookings";
 import { WhatsOn } from "@/components/customer/home/WhatsOn";
-import { InstructorOverview } from "@/components/customer/home/InstructorOverview";
-import { Categories } from "@/components/customer/home/Categories";
 
 export default function CustomerHomePage() {
     const home = useHomeData();
@@ -34,6 +31,7 @@ export default function CustomerHomePage() {
     const showToast = useAppStore((s) => s.showToast);
 
     const isAuth = useIsAuthenticated();
+    const [branchSheet, setBranchSheet] = useState(false);
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         // First-ever launch (never onboarded) → the splash + onboarding intro.
@@ -43,15 +41,6 @@ export default function CustomerHomePage() {
         }
         setMounted(true);
     }, [router]);
-
-    // Tapping a category opens Search (Classes) pre-filtered to that category.
-    function openCategory(cat: HomeCategoryVM) {
-        const f = { ...EMPTY_FILTERS, categories: [cat.name] };
-        searchUi.tab = "classes";
-        searchUi.applied = f;
-        searchUi.draft = f;
-        router.push("/customer/search");
-    }
 
     const { metrics } = home;
     const studioName = home.studio?.name ?? "Select studio";
@@ -67,24 +56,24 @@ export default function CustomerHomePage() {
                 canSwitchStudio={canSwitchStudio}
                 unreadCount={mounted ? unreadNotifs : 0}
                 showBell={isAuth}
-                onOpenStudioSwitcher={() => router.push("/customer/select-branch")}
+                onOpenStudioSwitcher={() => setBranchSheet(true)}
                 onOpenNotifications={() => router.push("/customer/notifications")}
             />
 
             <div className={`flex flex-col gap-6 px-4 ${CUSTOMER_HEADER_CONTENT_OFFSET}`}>
                 {mounted && (
                     <>
-                        {/* Personal overview (metrics + next booking) — authenticated only.
-                            A guest starts straight from "What's on" (no personal data). */}
+                        {/* Personal overview (welcome + metrics + next booking) — authenticated
+                            only. A guest starts straight from "What's on" (no personal data). */}
                         {isAuth && (
                             <>
-                                {/* Stats group: Achievement Highlight + Metrics (12px internal, per Figma). */}
-                                <div className="flex flex-col gap-3">
-                                    {metrics.mostClassesInMonth && (
-                                        <AchievementHighlight
-                                            count={metrics.mostClassesInMonth.count}
-                                            monthLabel={metrics.mostClassesInMonth.monthLabel}
-                                        />
+                                {/* Welcome + quick stats grouped like a section (header → content
+                                    gap-3, matching Upcoming bookings / What's on). */}
+                                <div className="flex w-full flex-col gap-3">
+                                    {home.member && (
+                                        <h1 className="text-base font-semibold leading-6 text-[#101828]">
+                                            Welcome back, {home.member.firstName}!
+                                        </h1>
                                     )}
                                     <Metrics
                                         totalClasses={metrics.totalClasses}
@@ -104,15 +93,11 @@ export default function CustomerHomePage() {
 
                         {/* Up to 3 active marketing campaigns (the carousel). */}
                         <WhatsOn items={home.whatsOn.slice(0, 3)} />
-
-                        {/* Instructors at the active branch — max 5, horizontally scrollable. */}
-                        <InstructorOverview instructors={home.instructors.slice(0, 5)} />
-
-                        {/* Class categories (from admin Booking Rules) available at the studio. */}
-                        <Categories categories={home.categories} onSelect={openCategory} />
                     </>
                 )}
             </div>
+
+            <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
         </div>
     );
 }

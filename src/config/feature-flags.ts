@@ -146,29 +146,29 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/reports/arpm",
     //"/reports/mrr",
 
-    // ── Reports · Membership & Package (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
+    // ── Reports · Membership & Package (4 reports) ──
     //"/reports/memberships-packages",
     //"/reports/frozen",
     //"/reports/intro-offers",
     //"/reports/upgrades-downgrades",
 
-    // ── Reports · Client / Customer (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
+    // ── Reports · Client / Customer (4 reports) ──
     //"/reports/customer-data",
     //"/reports/member-movement",
     //"/reports/retention-churn",
     //"/reports/win-back",
 
-    // ── Reports · Activity / Class (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
-    //"/reports/bookings",
-    //"/reports/class-performance",
-    //"/reports/cancellations-noshows",
-    //"/reports/top-classes-services",
+    // ── Reports · Activity / Class (4 reports) ── (DISABLED — client demo Jul 2026)
+    "/reports/bookings",
+    "/reports/class-performance",
+    "/reports/cancellations-noshows",
+    "/reports/top-classes-services",
 
-    // ── Reports · Staff / Instructor (2 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
-    //"/reports/instructor-performance",
-    //"/reports/staff-attendance",
+    // ── Reports · Staff / Instructor (2 reports) ── (DISABLED — client demo Jul 2026)
+    "/reports/instructor-performance",
+    "/reports/staff-attendance",
 
-    // ── Reports · Marketing (6 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
+    // ── Reports · Marketing (6 reports) ── (DISABLED — client demo Jul 2026)
     "/reports/lead-data",
     "/reports/lead-conversion",
     "/reports/campaign-performance",
@@ -278,7 +278,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
 
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
-    "/instructor/account",           // instructor account / profile page
+    // "/instructor/account",           // instructor account / profile page   // [enabled: feature flag lifted]
 
     // ──────────────────────────────────────────────────────────────────
     // Customer experience — mobile-only surface (max-width 400px) with

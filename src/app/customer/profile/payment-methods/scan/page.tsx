@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { XClose, Zap } from "@untitledui/icons";
 import { markScanned } from "@/lib/customer/payment-methods";
+import { ProcessingLoader } from "@/components/customer/shell/ProcessingLoader";
 
 export default function ScanCardPage() {
     const router = useRouter();
@@ -18,23 +19,7 @@ export default function ScanCardPage() {
     }
 
     if (scanning) {
-        return (
-            <div className="flex min-h-full flex-col items-center justify-center gap-12 bg-white px-4">
-                <div className="flex items-center gap-1.5" aria-label="Scanning">
-                    {[0, 1, 2].map((i) => (
-                        <span
-                            key={i}
-                            className="size-2 animate-bounce rounded-full bg-[#658774]"
-                            style={{ animationDelay: `${i * 0.15}s` }}
-                        />
-                    ))}
-                </div>
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-xl font-semibold leading-[30px] text-[#4f6e5d]">Scanning card</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">Getting card details</p>
-                </div>
-            </div>
-        );
+        return <ProcessingLoader label="Scanning card" fill />;
     }
 
     return (

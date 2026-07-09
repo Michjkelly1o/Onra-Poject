@@ -19,6 +19,7 @@
 
 import { usePathname } from "next/navigation";
 import { CurrentCustomerProvider } from "@/lib/customer/context";
+import { useReconcileMemberPlans } from "@/lib/customer/products-catalog";
 import { CustomerBottomNav } from "@/components/customer/shell/BottomNav";
 import { CustomerBackground } from "@/components/customer/shell/Background";
 import { CustomerToastHost } from "@/components/customer/shell/CustomerToast";
@@ -47,6 +48,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
     return (
         <CurrentCustomerProvider>
+            <PlanInvariantGuard />
             <div className="flex h-[100dvh] w-full justify-center overflow-hidden bg-[#f2f4f7]">
                 <div className="relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden bg-white">
                     {/* Shared decorative background — once, behind everything (§3). */}
@@ -81,4 +83,11 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             </div>
         </CurrentCustomerProvider>
     );
+}
+
+/** Runs the one-membership-OR-packages self-heal for the current member on every
+ *  customer page (renders nothing). Inside the provider so it sees the member. */
+function PlanInvariantGuard() {
+    useReconcileMemberPlans();
+    return null;
 }

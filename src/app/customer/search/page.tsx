@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell01, ChevronDown, FilterLines, MarkerPin01 } from "@untitledui/icons";
+import { ChevronDown, FilterLines, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
 import { addDaysISO, firstOfMonthISO, monthYearOf, REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
@@ -32,12 +32,14 @@ import { useUnreadNotifCount } from "@/lib/customer/notifications-feed";
 import { useIsAuthenticated } from "@/lib/customer/auth";
 import { useFilterInstructors } from "@/lib/customer/instructors";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
+import { NotificationBell } from "@/components/customer/shell/NotificationBell";
 import { ScheduleDateBar } from "@/components/customer/classes/ScheduleDateBar";
 import { ClassScheduleCard } from "@/components/customer/classes/ClassScheduleCard";
 import { AppointmentCard } from "@/components/customer/appointments/AppointmentCard";
 import { resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassesFilterModal } from "@/components/customer/home/ClassesFilterModal";
+import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
 type Tab = "classes" | "appointments";
@@ -64,6 +66,7 @@ export default function SearchPage() {
     const [apptDraft, setApptDraftState] = useState<SearchFilters>(() => searchUi.apptDraft);
     const [filterOpen, setFilterOpenState] = useState<boolean>(() => searchUi.filterOpen);
     const [monthOpen, setMonthOpen] = useState(false);
+    const [branchSheet, setBranchSheet] = useState(false);
 
     function setTab(t: Tab) {
         searchUi.tab = t;
@@ -143,7 +146,7 @@ export default function SearchPage() {
             >
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/select-branch")}
+                    onClick={() => setBranchSheet(true)}
                     aria-label={`Current studio: ${studioName}. Tap to switch.`}
                     className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[#e4e7ec] bg-white px-3 py-2 text-left transition-colors active:bg-gray-50"
                 >
@@ -172,19 +175,7 @@ export default function SearchPage() {
                 </button>
 
                 {isAuth && (
-                    <button
-                        type="button"
-                        onClick={() => router.push("/customer/notifications")}
-                        aria-label={unreadNotifs > 0 ? `Notifications, ${unreadNotifs} unread` : "Notifications"}
-                        className="relative flex shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white p-2.5 transition-colors active:bg-gray-50"
-                    >
-                        <Bell01 className="size-5 text-[#344054]" aria-hidden />
-                        {unreadNotifs > 0 && (
-                            <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#658774] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
-                                {unreadNotifs > 9 ? "9+" : unreadNotifs}
-                            </span>
-                        )}
-                    </button>
+                    <NotificationBell count={unreadNotifs} onClick={() => router.push("/customer/notifications")} />
                 )}
             </CustomerHeader>
 
@@ -270,6 +261,8 @@ export default function SearchPage() {
                     </div>
                 )}
             </div>
+
+            <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
 
             <MonthPickerSheet
                 open={monthOpen}

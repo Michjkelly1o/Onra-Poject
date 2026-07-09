@@ -100,7 +100,7 @@ export function ClassDetailLayout({
             </CustomerHeader>
 
             {/* Hero */}
-            <div className="relative h-[240px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
+            <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
                 {detail.coverImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

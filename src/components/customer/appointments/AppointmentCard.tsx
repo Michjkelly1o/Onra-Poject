@@ -44,7 +44,18 @@ export function AppointmentCard({
     const badgeLabel = isPrivate ? "1 on 1" : `Up to ${capacity ?? 0}`;
 
     return (
-        <div className="flex w-full flex-col gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4">
+        <div
+            role="button"
+            tabIndex={0}
+            onClick={onBook}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onBook();
+                }
+            }}
+            className="flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
+        >
             {/* Top row: thumb + name/price + session badge */}
             <div className="flex w-full items-center gap-3">
                 <div
@@ -81,7 +92,15 @@ export function AppointmentCard({
             </div>
 
             {/* Book now */}
-            <Button variant="primary" size="sm" className="w-full rounded-full" onClick={onBook}>
+            <Button
+                variant="primary"
+                size="sm"
+                className="w-full rounded-full"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onBook();
+                }}
+            >
                 {ctaLabel}
             </Button>
         </div>
