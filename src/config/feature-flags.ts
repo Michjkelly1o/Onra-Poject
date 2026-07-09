@@ -159,14 +159,14 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/reports/win-back",
 
     // ── Reports · Activity / Class (4 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
-    "/reports/bookings",
-    "/reports/class-performance",
-    "/reports/cancellations-noshows",
-    "/reports/top-classes-services",
+    //"/reports/bookings",
+    //"/reports/class-performance",
+    //"/reports/cancellations-noshows",
+    //"/reports/top-classes-services",
 
     // ── Reports · Staff / Instructor (2 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
-    "/reports/instructor-performance",
-    "/reports/staff-attendance",
+    //"/reports/instructor-performance",
+    //"/reports/staff-attendance",
 
     // ── Reports · Marketing (6 reports) ── (DISABLED — client demo Jul 2026: only Financial visible)
     "/reports/lead-data",
@@ -195,8 +195,8 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // Overview + Setup tabs, reward config, and edit-information editor are
     // hidden until the client signs off. Sidebar/settings link stays visible
     // per the file convention; clicking it 404s. Re-enable by re-commenting.
-    "/admin/settings/referral",      // landing (Overview + Setup tabs)
-    "/settings/referral",            // edit-information full-page editor
+    //"/admin/settings/referral",      // landing (Overview + Setup tabs)
+    //"/settings/referral",            // edit-information full-page editor
 
     // ── Agreements module ── (ENABLED — pushing today)
     //"/admin/settings/agreements",    // list view
