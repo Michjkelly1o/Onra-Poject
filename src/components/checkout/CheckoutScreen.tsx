@@ -28,7 +28,6 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SelectInput } from "@/components/ui/select-input";
 import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
 
 export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktransfer" | "wallet";
@@ -141,15 +140,6 @@ export interface PaymentConfirmationStepProps {
      *  the ledger for `total` on Complete. Omit / 0 → the wallet card is
      *  hidden entirely. */
     walletBalance?: number;
-    // ── Sales-commission attribution ────────────────────────────────────────
-    /** Currently-attributed seller. Defaults to the logged-in cashier's
-     *  `staff_profile_id` — the caller is responsible for the default. */
-    sellerStaffId?: string;
-    /** Change the attributed seller. When present a "Sold by" row shows in
-     *  the payment info with a picker; otherwise the row is hidden entirely. */
-    setSellerStaffId?: (id: string) => void;
-    /** Options for the picker (id + display name). Typically active staff. */
-    sellerOptions?: { id: string; name: string; roleLabel?: string }[];
 }
 export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     const enabled = p.enabledMethods ?? ALL_PAYMENT_METHODS;
@@ -168,9 +158,6 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     taxAmount={p.taxAmount}
                     taxIncluded={p.taxIncluded}
                     total={p.total}
-                    sellerStaffId={p.sellerStaffId}
-                    setSellerStaffId={p.setSellerStaffId}
-                    sellerOptions={p.sellerOptions}
                 />
 
                 <div className="flex flex-col gap-4">
@@ -264,7 +251,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     );
 }
 
-function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, total, sellerStaffId, setSellerStaffId, sellerOptions }: {
+function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, total }: {
     customer: Customer;
     items: PurchaseLineItem[];
     subtotal: number; discountPercent: number; discountAmount: number; promoCode?: string;
@@ -274,12 +261,10 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
      *  `total`. The label flips to "Tax (X% included)". */
     taxIncluded?: boolean;
     total: number;
-    /** Sales-commission attribution — see PaymentConfirmationStepProps. */
-    sellerStaffId?: string;
-    setSellerStaffId?: (id: string) => void;
-    sellerOptions?: { id: string; name: string; roleLabel?: string }[];
 }) {
-    const currentSeller = sellerOptions?.find(s => s.id === sellerStaffId);
+    // Sales-commission attribution is fully automatic — whoever is logged
+    // in when POS completes the sale gets credited via `applyPurchase`
+    // reading `currentUser.staff_profile_id`. No picker in the UI.
     return (
         <div className="flex flex-col gap-4">
             <p className="text-[18px] font-semibold text-[#101828]">Payment information</p>
@@ -293,43 +278,6 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                     <p className="text-[16px] font-medium text-[#101828]">{customer.firstName} {customer.lastName}</p>
                 </div>
             </div>
-
-            {/* Sold by — visible when the caller wires attribution. Defaults
-                to the logged-in cashier; the picker lets a manager credit
-                the sale to a different staff member (e.g. Front Desk closed
-                the deal but a manager rang it up). Drives the payroll
-                commission for that staffer. Uses the canonical `SelectInput`
-                so it inherits the DS styling + searchable + fixed-position
-                menu (escapes checkout scroll containers). */}
-            {setSellerStaffId && sellerOptions && sellerOptions.length > 0 && (
-                <div className="flex items-center justify-between gap-3">
-                    <p className="text-[14px] text-[#667085]">Sold by</p>
-                    <SelectInput
-                        value={sellerStaffId}
-                        onChange={v => setSellerStaffId(v)}
-                        placeholder="Select staff"
-                        options={sellerOptions.map(o => ({
-                            value: o.id,
-                            label: o.name,
-                            secondary: o.roleLabel,
-                        }))}
-                        searchable
-                        searchPlaceholder="Search staff..."
-                        // Fixed 280 px — wide enough to comfortably show the
-                        // longest staff name + role label without truncation
-                        // ("Pierre Bennett" + "Branch admin" secondary).
-                        width="w-[280px]"
-                    />
-                </div>
-            )}
-            {/* Read-only Sold-by chip when the caller passes a seller but no
-                setter (auto-attribution only, no override). */}
-            {!setSellerStaffId && currentSeller && (
-                <div className="flex items-center justify-between">
-                    <p className="text-[14px] text-[#667085]">Sold by</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{currentSeller.name}</p>
-                </div>
-            )}
 
             <div className="h-px w-full bg-[#e4e7ec]" />
 

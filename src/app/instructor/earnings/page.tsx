@@ -39,7 +39,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
+import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -112,7 +112,6 @@ export default function InstructorEarningsPage() {
     const classSchedules = useAppStore(s => s.classSchedules);
     const instructors    = useAppStore(s => s.instructors);
     const payRates       = useAppStore(s => s.payRates);
-    const customerTransactions = useAppStore(s => s.customerTransactions);
     // Live category list — drives the Filter panel's Categories pills.
     const classCategories = useAppStore(s => s.classCategories);
     const categoryNames = useMemo(
@@ -156,24 +155,8 @@ export default function InstructorEarningsPage() {
         const currClasses = myClasses.filter(c => isoInRange(c.dateISO, currentRange));
         const prevClasses = myClasses.filter(c => isoInRange(c.dateISO, prevRange));
 
-        const currClassEarnings = currClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
-        const prevClassEarnings = prevClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
-
-        // Sales commission — Monthly rate only, over the same period as the
-        // KPIs. Live from customerTransactions credited to this staff.
-        const currCommission = commissionForPeriod(
-            staffId, payRate, customerTransactions,
-            currentRange.from.toISOString().slice(0, 10),
-            currentRange.to.toISOString().slice(0, 10),
-        );
-        const prevCommission = commissionForPeriod(
-            staffId, payRate, customerTransactions,
-            prevRange.from.toISOString().slice(0, 10),
-            prevRange.to.toISOString().slice(0, 10),
-        );
-
-        const currEarnings = currClassEarnings + currCommission.totalCommission;
-        const prevEarnings = prevClassEarnings + prevCommission.totalCommission;
+        const currEarnings = currClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
+        const prevEarnings = prevClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
 
         const currCompleted = currClasses.filter(c => c.status === "Completed").length;
         const prevCompleted = prevClasses.filter(c => c.status === "Completed").length;
@@ -188,11 +171,8 @@ export default function InstructorEarningsPage() {
             earningsDelta: delta(currEarnings, prevEarnings),
             classesTaught: currCompleted,
             classesDelta:  delta(currCompleted, prevCompleted),
-            commission: currCommission,
-            showCommission: payRate?.type === "monthly" &&
-                (currCommission.packagesPercent > 0 || currCommission.membershipsPercent > 0),
         };
-    }, [myClasses, currentRange, prevRange, payRate, staffId, customerTransactions]);
+    }, [myClasses, currentRange, prevRange, payRate]);
 
     // ── Row pipeline: filter → search → sort → paginate ───────────────────
     const filteredRows = useMemo(() => {
@@ -288,50 +268,6 @@ export default function InstructorEarningsPage() {
                     deltaPercent={kpis.classesDelta}
                 />
             </div>
-
-            {/* Sales commission (Monthly rate only) — same period as the KPIs. */}
-            {kpis.showCommission && (
-                <div className="border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4 bg-white">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex flex-col gap-1">
-                            <p className="text-[14px] font-semibold text-[#101828]">Sales commission</p>
-                            <p className="text-[13px] text-[#667085] leading-[18px]">
-                                Earned on POS sales credited to you in the selected period.
-                            </p>
-                        </div>
-                        <p className="text-[20px] font-semibold text-[#101828] leading-[28px]">{fmtAed(kpis.commission.totalCommission)}</p>
-                    </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
-                    <div className="grid grid-cols-2 gap-4">
-                        {kpis.commission.packagesPercent > 0 && (
-                            <div className="flex flex-col gap-1">
-                                <p className="text-[13px] text-[#667085]">Packages</p>
-                                <p className="text-[15px] font-medium text-[#101828] leading-[22px]">
-                                    {fmtAed(kpis.commission.packagesSalesAed)}{" "}
-                                    <span className="text-[13px] text-[#667085]">net sales</span>
-                                </p>
-                                <p className="text-[13px] text-[#475467]">
-                                    {kpis.commission.packagesPercent}% × {fmtAed(kpis.commission.packagesSalesAed)} ={" "}
-                                    <span className="font-medium text-[#101828]">{fmtAed(kpis.commission.packagesCommission)}</span>
-                                </p>
-                            </div>
-                        )}
-                        {kpis.commission.membershipsPercent > 0 && (
-                            <div className="flex flex-col gap-1">
-                                <p className="text-[13px] text-[#667085]">Memberships</p>
-                                <p className="text-[15px] font-medium text-[#101828] leading-[22px]">
-                                    {fmtAed(kpis.commission.membershipsSalesAed)}{" "}
-                                    <span className="text-[13px] text-[#667085]">net sales</span>
-                                </p>
-                                <p className="text-[13px] text-[#475467]">
-                                    {kpis.commission.membershipsPercent}% × {fmtAed(kpis.commission.membershipsSalesAed)} ={" "}
-                                    <span className="font-medium text-[#101828]">{fmtAed(kpis.commission.membershipsCommission)}</span>
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
 
             {/* ── Toolbar + table — VERBATIM admin PayrollInstructorDetailPage
                 pattern. Real `<table>` + admin's TH/TD constants.

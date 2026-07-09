@@ -40,6 +40,8 @@ import {
     PerformanceLineChart, AttendanceBarChart,
     type LinePoint, type AttendancePoint,
 } from "@/components/staff/InstructorCharts";
+import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
+import { commissionForPeriod } from "@/lib/payroll-calc";
 import {
     useAppStore,
     permissionSectionsFor,
@@ -654,6 +656,80 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
     );
 }
 
+// ─── Overview tab (non-instructor) ────────────────────────────────────────
+//
+// Front Desk / Operator / Branch admin / Owner get their own Overview that
+// mirrors the instructor "Personal information" section (minus the
+// instructor-only fields) and — when their pay rate is Monthly with a
+// non-zero commission % — a Sales commission section derived LIVE from
+// POS transactions credited to them via `staffId`.
+//
+// The commission derivation reuses the same pure `commissionForPeriod`
+// helper the payroll module used before this reshuffle, so the math is
+// consistent even though the surface moved.
+
+function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
+    const payRates = useAppStore(s => s.payRates);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const shifts = useAppStore(s => s.shifts);
+
+    const payRate = staff.payRateId ? payRates.find(p => p.id === staff.payRateId) : undefined;
+    const assignedShift = staff.shiftId ? shifts.find(sh => sh.id === staff.shiftId) : undefined;
+
+    // 12-hour formatter (same as InstructorOverviewTab).
+    function fmtShiftTime(t: string): string {
+        const [h, m] = t.split(":").map(Number);
+        const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+        const ampm = h < 12 ? "AM" : "PM";
+        return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
+    }
+
+    // Commission scoped to the current calendar month — the natural
+    // "how am I doing this month" cadence for a salaried non-instructor.
+    const commission = useMemo(() => {
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const monthEnd = `${monthEndDate.getFullYear()}-${String(monthEndDate.getMonth() + 1).padStart(2, "0")}-${String(monthEndDate.getDate()).padStart(2, "0")}`;
+        return commissionForPeriod(staff.id, payRate, customerTransactions, monthStart, monthEnd);
+    }, [staff.id, payRate, customerTransactions]);
+
+    const showCommission = payRate?.type === "monthly" &&
+        (commission.packagesPercent > 0 || commission.membershipsPercent > 0);
+
+    return (
+        <div className="px-6 pb-6 flex flex-col gap-6">
+            {/* Personal information — flush 2-col grid, mirrors the
+                instructor overview above. */}
+            <div className="flex flex-col gap-3">
+                <p className="text-[14px] text-[#667085]">Personal information</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                    <InfoField label="Full name"   value={staff.fullName} />
+                    <InfoField label="Joined date" value={staff.joinedDate} />
+                    <InfoField label="Email"       value={staff.email} />
+                    <InfoField label="Phone"       value={staff.phone} />
+                    <InfoField label="Working days"
+                        value={assignedShift ? <WorkingDaysStrip workingDays={assignedShift.working_days} /> : "—"} />
+                    <InfoField label="Shift hours"
+                        value={assignedShift
+                            ? `${assignedShift.name} (${fmtShiftTime(assignedShift.start_time)} – ${fmtShiftTime(assignedShift.end_time)})`
+                            : "—"} />
+                </div>
+            </div>
+
+            {/* Sales commission (this month) — only when the pay rate is
+                Monthly with a non-zero commission % set. Live from POS
+                transactions credited to this staff via `staffId`. */}
+            {showCommission && (
+                <div className="flex flex-col gap-3">
+                    <p className="text-[14px] text-[#667085]">Sales commission</p>
+                    <SalesCommissionCard commission={commission} />
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Top-level page ───────────────────────────────────────────────────────
 
 export interface StaffDetailPageProps {
@@ -692,8 +768,10 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
     }, [staff, allStaff.length, router, returnTo, showToast]);
 
     useEffect(() => {
-        if (isInstructor) setTab("overview");
-        else              setTab("permissions");
+        // Overview tab is available to every role now — instructors see class
+        // metrics, non-instructors see a Sales commission section (when their
+        // pay rate is Monthly with commission %).
+        setTab("overview");
     }, [isInstructor]);
 
     if (!staff) {
@@ -789,7 +867,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                             <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
                                 <DetailPageTabs
                                     tabs={[
-                                        { key: "overview", label: "Overview", hidden: !isInstructor },
+                                        { key: "overview", label: "Overview" },
                                         { key: "permissions", label: "Permissions" },
                                     ]}
                                     activeKey={tab}
@@ -803,6 +881,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                                     </div>
                                 ) : tab === "overview" && isInstructor ? (
                                     <InstructorOverviewTab staff={staff} />
+                                ) : tab === "overview" ? (
+                                    <NonInstructorOverviewTab staff={staff} />
                                 ) : (
                                     <PermissionsTab role={role} />
                                 )}

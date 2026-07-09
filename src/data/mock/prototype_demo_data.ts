@@ -301,11 +301,10 @@ const PAYMENT_SOURCE_DIST: CustomerTransaction["payment_source"][] = [
     "admin",                               // 10% manual entry
 ];
 /** Sales-commission attribution rotation for POS/admin sales in the demo
- *  window. Every staff on the Monthly rate (Owner + admins + operators +
- *  front desk + Candice) gets a slice so the Compensation list, payroll
- *  detail, and Run Payroll ALL render populated commission for every one
- *  of them — no "AED 0 sales commission" rows in the demo. Portal sales
- *  stay unattributed (self-service, no seller). */
+ *  window. Instructors NEVER earn commission (payroll module is
+ *  instructor-only, class-based); the sellers are the non-instructor
+ *  staff on the Monthly rate — Front Desk + Branch admins + Operator.
+ *  Portal sales stay unattributed (self-service, no seller). */
 const SELLER_STAFF_DIST: string[] = [
     // Front Desk — the natural sellers of packages/memberships
     "user_casey_desk",       "user_casey_desk",
@@ -315,10 +314,10 @@ const SELLER_STAFF_DIST: string[] = [
     "user_phoenix_baker_admin",
     // Operator — retention / renewals
     "user_jordan_ops",
-    // Instructor on Monthly rate (post-class upsells)
-    "staff_candice_wu",
-    // A couple of instructor sellers who don't have commission — proves
-    // attribution stamps a seller even when the rate is Flat/Hybrid.
+    // A couple of instructor sellers on class-based rates — proves
+    // attribution stamps a seller even when the rate has NO commission,
+    // so the transaction record stays complete (staff_id captured, but
+    // payroll won't credit them because their rate has 0% commission).
     "staff_maya_johnson",
     "staff_lucy_hale",
 ];

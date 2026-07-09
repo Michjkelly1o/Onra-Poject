@@ -41,7 +41,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, type DateRange } from "@/lib/period-filter";
-import { earningsForClass, aed, commissionForPeriod, type CommissionBreakdown } from "@/lib/payroll-calc";
+import { earningsForClass, aed } from "@/lib/payroll-calc";
 import { Toast } from "@/components/ui/Toast";
 import {
     useAppStore, computePayRateDisplay,
@@ -421,61 +421,6 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateNa
     );
 }
 
-// ─── Sales commission card (Monthly rate only) ────────────────────────────
-
-function SalesCommissionCard({ commission }: { commission: CommissionBreakdown }) {
-    const hasPackages    = commission.packagesPercent > 0;
-    const hasMemberships = commission.membershipsPercent > 0;
-    return (
-        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[14px] font-semibold text-[#101828]">Sales commission</p>
-                    <p className="text-[13px] text-[#667085] leading-[18px]">
-                        Earned on POS sales credited to this staff in the selected period.
-                    </p>
-                </div>
-                <p className="text-[20px] font-semibold text-[#101828] leading-[28px]">{aed(commission.totalCommission)}</p>
-            </div>
-            <div className="h-px w-full bg-[#e4e7ec]" />
-            <div className="grid grid-cols-2 gap-4">
-                {hasPackages && (
-                    <CommissionLine
-                        label="Packages"
-                        salesAed={commission.packagesSalesAed}
-                        percent={commission.packagesPercent}
-                        commissionAed={commission.packagesCommission}
-                    />
-                )}
-                {hasMemberships && (
-                    <CommissionLine
-                        label="Memberships"
-                        salesAed={commission.membershipsSalesAed}
-                        percent={commission.membershipsPercent}
-                        commissionAed={commission.membershipsCommission}
-                    />
-                )}
-            </div>
-            {commission.refundTransactionIds.length > 0 && (
-                <p className="text-[12px] text-[#667085] leading-[16px]">
-                    Refunds &amp; voids in the period reduce the net sales figure before commission is applied.
-                </p>
-            )}
-        </div>
-    );
-}
-
-function CommissionLine({ label, salesAed, percent, commissionAed }: {
-    label: string; salesAed: number; percent: number; commissionAed: number;
-}) {
-    return (
-        <div className="flex flex-col gap-1">
-            <p className="text-[13px] text-[#667085]">{label}</p>
-            <p className="text-[15px] font-medium text-[#101828] leading-[22px]">{aed(salesAed)} <span className="text-[13px] text-[#667085]">net sales</span></p>
-            <p className="text-[13px] text-[#475467]">{percent}% × {aed(salesAed)} = <span className="font-medium text-[#101828]">{aed(commissionAed)}</span></p>
-        </div>
-    );
-}
 
 function SidebarRow({ label, value }: { label: string; value: string }) {
     return (
@@ -505,16 +450,9 @@ export default function PayrollInstructorDetailPage({
 }: PayrollInstructorDetailPageProps) {
     const router = useRouter();
     const instructors            = useAppStore(s => s.instructors);
-    // Fallback identity source: non-instructor staff (Front Desk, Operator,
-    // etc.) on a Monthly rate can now earn commission. When they land on this
-    // page from the compensation list, we synthesize an instructor-shaped
-    // record from their `staff` row so the page renders correctly.
-    const staff                  = useAppStore(s => s.staff);
-    const roles                  = useAppStore(s => s.roles);
     const payRates               = useAppStore(s => s.payRates);
     const classSchedules         = useAppStore(s => s.classSchedules);
     const payrollEntries         = useAppStore(s => s.payrollEntries);
-    const customerTransactions   = useAppStore(s => s.customerTransactions);
     const branches               = useAppStore(s => s.branches);
     const assignInstructorPayRate = useAppStore(s => s.assignInstructorPayRate);
     const showToast              = useAppStore(s => s.showToast);
@@ -525,28 +463,10 @@ export default function PayrollInstructorDetailPage({
     const businessCountry        = useAppStore(s => s.businessProfile.country);
     const showPayrollTax         = payrollTaxAppliesForCountry(businessCountry);
 
-    const instructor = useMemo<Instructor | undefined>(() => {
-        const inList = instructors.find(i => i.id === instructorId);
-        if (inList) return inList;
-        // Non-instructor staff fallback — synthesize enough of the Instructor
-        // shape for the page's read paths. Class-based fields default to 0
-        // (they don't teach classes), commission-related surfaces still work.
-        const staffRow = staff.find(s => s.id === instructorId);
-        if (!staffRow) return undefined;
-        return {
-            id: staffRow.id,
-            name: staffRow.fullName,
-            initials: staffRow.initials,
-            color: staffRow.color,
-            imageUrl: staffRow.imageUrl,
-            email: staffRow.email,
-            phone: staffRow.phone,
-            joinedDate: staffRow.joinedDate,
-            branchId: staffRow.branchId ?? "",
-            payRateId: staffRow.payRateId,
-            status: staffRow.status === "active" ? "active" : "inactive",
-        } satisfies Instructor;
-    }, [instructors, staff, instructorId]);
+    const instructor = useMemo(
+        () => instructors.find(i => i.id === instructorId),
+        [instructors, instructorId],
+    );
     const payRate = useMemo(
         () => instructor?.payRateId ? payRates.find(p => p.id === instructor.payRateId) : undefined,
         [instructor, payRates],
@@ -561,14 +481,13 @@ export default function PayrollInstructorDetailPage({
 
     useEffect(() => { setPage(1); }, [search, period, statusFilter, instructorId]);
 
-    // Missing identity → bounce back. Checks both slices — the id may be a
-    // non-instructor staffer landing here for their sales-commission view.
+    // Missing instructor → bounce back.
     useEffect(() => {
-        if ((instructors.length > 0 || staff.length > 0) && !instructor) {
-            showToast("Staff not found", "Returned to the compensation list.", "error");
+        if (instructors.length > 0 && !instructor) {
+            showToast("Instructor not found", "Returned to the compensation list.", "error");
             router.push(returnTo);
         }
-    }, [instructor, instructors, staff, router, returnTo, showToast]);
+    }, [instructor, instructors, router, returnTo, showToast]);
 
     if (!instructor) return null;
     // Alias to a definitely-non-null const so closures below narrow cleanly
@@ -576,15 +495,6 @@ export default function PayrollInstructorDetailPage({
     const ins: Instructor = instructor;
 
     const branch = branches.find(b => b.id === ins.branchId);
-    // Role name for the sidebar — resolved via the staff record (which
-    // holds `roleId`). Non-instructor staff who land on this page still get
-    // their role labelled correctly (Owner / Branch admin / Operator /
-    // Front desk / Instructor).
-    const roleName = (() => {
-        const staffRow = staff.find(s => s.id === instructorId);
-        if (!staffRow) return "—";
-        return roles.find(r => r.id === staffRow.roleId)?.name ?? "—";
-    })();
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
     // ─── Class rows: filter schedules by instructor + period + status ─────
@@ -637,33 +547,6 @@ export default function PayrollInstructorDetailPage({
         [filteredRows],
     );
 
-    // ─── Sales commission (Monthly rate only) ────────────────────────────
-    // Live derivation from `customerTransactions` — every POS sale
-    // credited to this staff via `staffId` is aggregated for the current
-    // period. Returns an empty breakdown when the rate isn't Monthly or
-    // has no commission % set, so we can render conditionally without
-    // null-checks.
-    const commissionRangeISO = useMemo(() => {
-        // The date filter's `range` gives us JS Dates; slice to yyyy-mm-dd
-        // so `commissionForPeriod` can string-compare against transaction
-        // `createdAtISO`.
-        return {
-            start: range.from.toISOString().slice(0, 10),
-            end:   range.to.toISOString().slice(0, 10),
-        };
-    }, [range]);
-    const commission = useMemo(
-        () => commissionForPeriod(
-            instructorId, payRate, customerTransactions,
-            commissionRangeISO.start, commissionRangeISO.end,
-        ),
-        [instructorId, payRate, customerTransactions, commissionRangeISO],
-    );
-    const showCommission = payRate?.type === "monthly" &&
-        (commission.packagesPercent > 0 || commission.membershipsPercent > 0);
-    // Total including commission — surfaces in the "Total earnings" metric.
-    const periodEarningsWithCommission = periodEarnings + commission.totalCommission;
-
     // Sidebar "Total earnings this month" + classes-this-month — both pull
     // from `payrollEntries` (the canonical month rollup) so they always
     // reflect the real per-instructor month-to-date data. We can't lean on
@@ -681,23 +564,11 @@ export default function PayrollInstructorDetailPage({
                 const t = new Date(e.periodStart + "T00:00:00").getTime();
                 return t >= mFrom.getTime() && t <= mTo.getTime();
             });
-        // Paid entries already include commission in `totalEarnings`
-        // (snapshotted at run confirm). Pending entries need a LIVE
-        // commission estimate added on top so the sidebar reflects the
-        // real month-to-date total the staff would earn if run today.
-        const earnings = inMonth.reduce((s, e) => {
-            if (e.status === "paid") return s + e.totalEarnings;
-            const liveCommission = commissionForPeriod(
-                instructorId, payRate, customerTransactions,
-                e.periodStart, e.periodEnd,
-            ).totalCommission;
-            return s + e.totalEarnings + liveCommission;
-        }, 0);
         return {
-            earnings,
-            classes: inMonth.reduce((s, e) => s + e.classesCount, 0),
+            earnings: inMonth.reduce((s, e) => s + e.totalEarnings, 0),
+            classes:  inMonth.reduce((s, e) => s + e.classesCount,  0),
         };
-    }, [payrollEntries, instructorId, payRate, customerTransactions]);
+    }, [payrollEntries, instructorId]);
     const sidebarMonthly       = sidebarThisMonth.earnings;
     const sidebarClassesCount  = sidebarThisMonth.classes;
 
@@ -766,7 +637,7 @@ export default function PayrollInstructorDetailPage({
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Instructor details</h1>
             </div>
 
             {/* Body — canonical DetailPageShell wraps the 832px frame. */}
@@ -801,7 +672,6 @@ export default function PayrollInstructorDetailPage({
                                     <SidebarRow label="Joined" value={instructor.joinedDate} />
                                     <SidebarRow label="Email" value={instructor.email} />
                                     <SidebarRow label="Phone" value={instructor.phone} />
-                                    <SidebarRow label="Role" value={roleName} />
                                     <SidebarRow label="Branch location" value={branch?.name ?? "—"} />
                                     <SidebarRow label="Default pay rate" value={payRate?.name ?? "—"} />
                                 </div>
@@ -836,10 +706,8 @@ export default function PayrollInstructorDetailPage({
                                 <PayRateSnapshotCard payRate={payRate} />
                                 <MetricCard
                                     label="Total earnings"
-                                    value={aed(periodEarningsWithCommission)}
-                                    hint={showCommission
-                                        ? `Includes ${aed(commission.totalCommission)} sales commission`
-                                        : "↑ 30% vs last week"}
+                                    value={aed(periodEarnings)}
+                                    hint="↑ 30% vs last week"
                                     Icon={CheckCircle}
                                 />
                                 <MetricCard
@@ -849,20 +717,6 @@ export default function PayrollInstructorDetailPage({
                                     Icon={Users01}
                                 />
                             </div>
-
-                            {/* Sales commission — visible only for Monthly-
-                                rate staff with commission % set. Data is
-                                LIVE (from customerTransactions) — sales
-                                credited to this staff via `staffId` are
-                                aggregated over the selected period. Refund
-                                /void rows in the same period subtract. */}
-                            {showCommission && (
-                                <div className="px-6 pt-6">
-                                    <SalesCommissionCard
-                                        commission={commission}
-                                    />
-                                </div>
-                            )}
 
                             {/* Toolbar */}
                             <div className="px-6 pt-6 flex items-center gap-3">

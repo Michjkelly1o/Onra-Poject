@@ -50,11 +50,6 @@ function POSCheckoutInner() {
     // the debit action. A wallet charge deducts `total` from the ledger.
     const walletTransactions = useAppStore(s => s.walletTransactions);
     const debitWallet = useAppStore(s => s.debitWallet);
-    // "Sold by" attribution — picker options + default from the logged-in
-    // cashier. Drives sales-commission on the payroll module.
-    const currentUser = useAppStore(s => s.currentUser);
-    const staff = useAppStore(s => s.staff);
-    const roles = useAppStore(s => s.roles);
     // Phase 3 — POS subscribes to the live Payments-Settings store so that
     // toggling Stripe / Apple Pay / Google Pay (or disconnecting Stripe and
     // cascading the wallets off) hides their cards from the picker grid in
@@ -79,29 +74,6 @@ function POSCheckoutInner() {
     const [loading, setLoading] = useState(false);
     const [receiptNumber] = useState(() => `R-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0")}`);
     const [transactionId] = useState(() => Math.random().toString(36).slice(2, 10));
-
-    // Sold-by state — defaults to logged-in cashier's staff_profile_id;
-    // the picker in the payment info block lets a manager credit the sale
-    // to a different active staffer.
-    const defaultSellerStaffId = (currentUser as typeof currentUser & { staff_profile_id?: string }).staff_profile_id;
-    const [sellerStaffId, setSellerStaffId] = useState<string | undefined>(defaultSellerStaffId);
-    // Options are every active staff member — grouped by role so the picker
-    // shows "Casey Desk — Front Desk" etc.
-    const sellerOptions = useMemo(() => {
-        const roleTypeById = new Map(roles.map(r => [r.id, r.type]));
-        const roleLabel: Record<string, string> = {
-            owner: "Owner", branch_admin: "Branch admin", operator: "Operator",
-            front_desk: "Front desk", instructor: "Instructor",
-        };
-        return staff
-            .filter(s => s.status === "active")
-            .map(s => ({
-                id: s.id,
-                name: s.fullName,
-                roleLabel: roleLabel[roleTypeById.get(s.roleId) ?? ""] ?? "",
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }, [staff, roles]);
 
     // Direct-hit guard — bounce back to /admin/pos if there's no pending sale.
     useEffect(() => {
@@ -169,7 +141,7 @@ function POSCheckoutInner() {
                 silent: true,
             });
         }
-        applyPurchase(customer.id, pendingPurchase.items, "pos", sellerStaffId);
+        applyPurchase(customer.id, pendingPurchase.items, "pos");
         setPendingPurchase(null);
         showToast(
             "Transaction complete",
@@ -208,9 +180,6 @@ function POSCheckoutInner() {
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
                 walletBalance={walletBalance}
-                sellerStaffId={sellerStaffId}
-                setSellerStaffId={setSellerStaffId}
-                sellerOptions={sellerOptions}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}

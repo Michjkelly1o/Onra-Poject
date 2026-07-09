@@ -3839,11 +3839,6 @@ export interface AppState {
         customerId: string,
         items: PurchaseLineItem[],
         paymentSource?: CustomerTransaction["paymentSource"],
-        /** Sales-commission attribution override. When present it takes
-         *  precedence over the logged-in cashier default. Ignored when
-         *  `paymentSource === "customer_portal"` (self-service sales never
-         *  attribute to a seller). */
-        sellerStaffId?: string,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -7215,7 +7210,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId) => {
+    applyPurchase: (customerId, items, paymentSource) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -7411,18 +7406,15 @@ export const useAppStore = create<AppState>()(persist(
                         taxInclusive: pricesInclude,
                     };
                 }
-                // Sales-commission attribution:
-                //   1. Explicit `sellerStaffId` override (POS "Sold by"
-                //      picker) — wins over everything.
-                //   2. Logged-in cashier fallback (`currentUser.staff_profile_id`).
-                //   3. Portal (self-service) sales stay unattributed —
-                //      no seller, no commission.
+                // Sales-commission attribution — fully automatic.
+                // The logged-in cashier (`currentUser.staff_profile_id`)
+                // gets credit for every POS/admin sale. Portal (self-service)
+                // sales stay unattributed — no seller, no commission.
                 const source = paymentSource ?? "pos";
                 const cashierStaffId =
                     source === "customer_portal"
                         ? undefined
-                        : sellerStaffId
-                            ?? (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
+                        : (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
@@ -7816,8 +7808,23 @@ export const useAppStore = create<AppState>()(persist(
         //   • POS + schedule checkout gain a "Sold by" picker so testers
         //     can SEE the attribution and change it before completing the
         //     sale. `applyPurchase` gained a `sellerStaffId` override.
-        // Bumped so testers re-seed with the new coverage.
-        version: 48,
+        //
+        // v49: Payroll ↔ Sales commission split.
+        //   • Payroll module is now INSTRUCTOR-ONLY again — compensation
+        //     list, Run Payroll, and payroll detail all revert to sourcing
+        //     from the `instructors` slice. Sales commission section
+        //     removed from payroll surfaces.
+        //   • Sales commission moves to the Staff Detail page's Overview
+        //     tab for non-instructor staff on a Monthly rate with a
+        //     non-zero commission %. Same math, new surface.
+        //   • POS "Sold by" picker removed — attribution is fully
+        //     automatic from the logged-in cashier's `staff_profile_id`.
+        //   • Instructor role can NOT be assigned to a pay rate with a
+        //     non-zero sales commission %. Filter enforced in
+        //     StaffFormPage. Seed rebalanced: Candice Wu moved off
+        //     pr_monthly onto pr_standard.
+        //   • Persist bumped so testers re-seed with the new alignment.
+        version: 49,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

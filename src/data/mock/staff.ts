@@ -304,7 +304,9 @@ export const staff: StaffSeed[] = [
         // consistent now that the studio only offers Pilates / Barre /
         // Yoga (no "Strength" category exists).
         specialties: ["Barre"],
-        pay_rate_id: "pr_monthly",
+        // Instructors can NOT be on a commission-bearing rate. Moved off
+        // pr_monthly onto the standard flat rate to match that rule.
+        pay_rate_id: "pr_standard",
         shift_id: "shift_east_day",
         category_ids: ["cat_barre"],
     },

@@ -481,11 +481,25 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             .map(r => ({ value: r.id, label: r.name })),
         [allRoles],
     );
+    // Pay rate options depend on the selected role: instructors can pick any
+    // pay rate EXCEPT ones with a non-zero sales commission % (Monthly rate
+    // variants that award commission on POS sales are reserved for non-
+    // instructor staff). Non-instructors see every active rate.
+    const isInstructorRole = allRoles.find(r => r.id === form.roleId)?.type === "instructor";
     const payRateOptions = useMemo(
         () => allPayRates
             .filter(p => p.status === "active")
+            .filter(p => {
+                if (!isInstructorRole) return true;
+                if (p.type !== "monthly") return true;
+                // Monthly rates only pass if BOTH commission fields are zero /
+                // undefined — otherwise they'd credit commission to an
+                // instructor, which the client explicitly rules out.
+                return !((p.salesCommissionPackagesPercent ?? 0) > 0
+                     || (p.salesCommissionMembershipsPercent ?? 0) > 0);
+            })
             .map(p => ({ value: p.id, label: p.name })),
-        [allPayRates],
+        [allPayRates, isInstructorRole],
     );
 
     // Active branches for the assignment picker.
