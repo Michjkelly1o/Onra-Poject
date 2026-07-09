@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { useDataStore } from "@/lib/data-store";
 import { cn } from "@/lib/utils";
 import {
     BarChartSquare02,
@@ -252,7 +251,11 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     // Editing the display name through Settings → Branding → Customize
     // design settings flips this immediately.
     const brandingSettings = useAppStore(s => s.brandingSettings);
-    const { studio } = useDataStore();
+    // Studio identity — logo + display name from the centralised main store.
+    const businessProfile = useAppStore(s => s.businessProfile);
+    // Local shim to keep the JSX below readable — `logo_url` field name
+    // preserved so the diff stays small.
+    const studio = { logo_url: brandingSettings.logoUrl || businessProfile.logoUrl, name: businessProfile.name };
 
     // All open groups tracked here — no sub-component state.
     // Initial open state uses the same global-winner resolver as the active

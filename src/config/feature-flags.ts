@@ -304,9 +304,6 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // ── Customer → Select branch (onboarding gate) ──
     //"/customer/select-branch",       // pick-your-branch screen
 
-    // ── Customer → Browse classes ──
-    //"/customer/browse",              // browse all classes
-
     // ── Customer → Search ──
     //"/customer/search",              // search page + instructor sub-tab + timezone picker
 
@@ -321,9 +318,6 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
 
     // ── Customer → My bookings ──
     //"/customer/bookings",            // bookings list + per-booking detail + cancel/rate/reviews
-
-    // ── Customer → Packages ──
-    //"/customer/packages",            // my packages + credit balance
 
     // ── Customer → Products (memberships, packages, gift cards catalog) ──
     //"/customer/products",            // catalog + checkout/promo/processing/success + gift-card design picker

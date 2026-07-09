@@ -16,7 +16,7 @@
 //   • /admin/products/gift-cards list
 //   • /products/[id]         (membership/package detail)
 //   • /products/gift-cards/[id]
-//   • /customer/packages       (customer-facing portal)
+//   • /customer/products       (customer-facing portal)
 //   • payroll views (pay-rate category)
 
 import { useAppStore, type TaxRuleCategory } from "@/lib/store";

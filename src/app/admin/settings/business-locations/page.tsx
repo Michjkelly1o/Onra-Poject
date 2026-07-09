@@ -36,7 +36,7 @@
 //   • Branches      — `useAppStore(s => s.branches)`        (seed-loaded)
 //   • Rooms         — `useAppStore(s => s.rooms)`           (seed-loaded)
 //   • BusinessHours — `useAppStore(s => s.businessHours)`   (seed-loaded)
-//   • Studio info   — `useDataStore(s => s.studio)`         (legacy)
+//   • Studio info   — `useAppStore(s => s.businessProfile)` (seed-loaded)
 //
 // NB — this REPLACES the legacy /admin/settings/page.tsx (the original
 // prototype's Studio + Rooms + Admins form). The legacy mutations

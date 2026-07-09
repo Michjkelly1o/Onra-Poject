@@ -77,7 +77,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
-import { adminUser } from "./mock-data";
+import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
 import { commissionForPeriod } from "./payroll-calc";
 
