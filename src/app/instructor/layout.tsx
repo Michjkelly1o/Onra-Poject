@@ -32,15 +32,33 @@ export default function InstructorLayout({
     const { sidebarCollapsed } = useAppStore();
     const currentRole = useAppStore(s => s.currentRole);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
+    // Live staff row for the instructor persona. If admin has edited Liam's
+    // name / email / phone / avatar / bio via /admin/staff/[id]/edit, the
+    // updated values live here — not on the frozen `instructor_profile`
+    // seed. Hydrating from this row is what makes admin → instructor sync.
+    const staffRow = useAppStore(s => s.staff.find(x => x.id === instructor_profile.staff_profile_id));
 
     // URL-driven role switch — landing on any `/instructor/*` route flips the
-    // active persona to the instructor demo user. Flipping back to admin is
-    // automatic on the way out (the admin layout below resets it). No login
-    // screen, no manual switcher needed; matches the demo flow described in
-    // the conversation that preceded this build.
+    // active persona to the instructor demo user. Instead of resetting to
+    // the frozen seed we compose the persona from the LIVE staff row (name
+    // / email / phone / avatar / bio) so admin edits reflect immediately.
+    // Structural fields the seed provides (studio_id, password, staff_profile_id,
+    // permissions, notification prefs, etc.) stay from the seed defaults.
     useEffect(() => {
-        if (currentRole !== "instructor") setCurrentUser(instructor_profile);
-    }, [currentRole, setCurrentUser]);
+        if (currentRole === "instructor") return;
+        const hydrated = staffRow
+            ? {
+                ...instructor_profile,
+                first_name: staffRow.firstName,
+                last_name:  staffRow.lastName,
+                email:      staffRow.email,
+                phone:      staffRow.phone,
+                avatar_url: staffRow.imageUrl ?? instructor_profile.avatar_url,
+                introduction: staffRow.bio ?? instructor_profile.introduction,
+            }
+            : instructor_profile;
+        setCurrentUser(hydrated);
+    }, [currentRole, setCurrentUser, staffRow]);
 
     return (
         <>
