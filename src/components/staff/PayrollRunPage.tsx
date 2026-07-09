@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { payrollBreakdownFor } from "@/lib/payroll-calc";
+import { payrollBreakdownFor, commissionForPeriod } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -339,10 +339,24 @@ function PayrollSubmittedModal({ open, total, instructorCount, periodLabel, onCl
 
 // ─── Row view-model + period helpers ───────────────────────────────────────
 
+/** Row identity — works for any staff (instructor, front desk, operator).
+ *  Widened from the previous `Instructor` type so non-instructor Monthly-
+ *  rate staff (who earn sales commission) can appear in the payroll run. */
+interface RunRowIdentity {
+    id: string;
+    name: string;
+    email: string;
+    initials: string;
+    color?: string;
+    imageUrl?: string;
+    branchId: string | null;
+    payRateId?: string;
+}
+
 interface RunRow {
     entryId: string;        // synthetic when no entry exists
     actualEntryId?: string; // real id when an entry is present
-    instructor: Instructor;
+    instructor: RunRowIdentity;
     branchId: string;
     payRateName: string;
     /** Full pay-rate record — carried through so the CSV exporter can
@@ -360,7 +374,13 @@ interface RunRow {
      *  silently divides by an approximate per-customer price and
      *  breaks reconciliation on Split-Rate + hybrid revenue rows. */
     totalAttendees: number;
+    /** Total payout AED. For paid entries this includes snapshotted
+     *  commission; for pending entries it includes a LIVE commission
+     *  preview so the admin sees what will actually be paid on confirm. */
     payout: number;
+    /** Live/snapshot commission portion of `payout`. Undefined when the
+     *  rate isn't Monthly or has no commission % configured. */
+    commissionAed?: number;
     status: PayrollEntryStatus;
 }
 
@@ -462,7 +482,12 @@ export interface PayrollRunPageProps { returnTo?: string }
 export default function PayrollRunPage({ returnTo = "/admin/compensation" }: PayrollRunPageProps) {
     const router = useRouter();
     const payrollEntries        = useAppStore(s => s.payrollEntries);
-    const instructors           = useAppStore(s => s.instructors);
+    // Broadened from `instructors` to `staff` — any staff on a pay rate can
+    // now be part of a payroll run (client feedback: "payroll can list all
+    // staff too not just instructor"). Non-instructor Monthly-rate staff
+    // (Front Desk, Operator) earn sales commission on POS attributions.
+    const staff                 = useAppStore(s => s.staff);
+    const customerTransactions  = useAppStore(s => s.customerTransactions);
     const payRates              = useAppStore(s => s.payRates);
     const branches              = useAppStore(s => s.branches);
     // v27 client-feedback fix — Process Payroll modal reads the
@@ -500,14 +525,14 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
 
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
-    // ─── Build rows: instructor-first (same logic as the comp list page) ───
+    // ─── Build rows: staff-first (broadened from instructors) ─────────────
     const allRows = useMemo<RunRow[]>(() => {
-        const byInstructor = new Map<string, PayrollEntry>();
+        const byStaff = new Map<string, PayrollEntry>();
         for (const e of payrollEntries) {
             if (!spanInRange(e.periodStart, e.periodEnd, range)) continue;
-            const existing = byInstructor.get(e.instructorId);
-            if (!existing) { byInstructor.set(e.instructorId, e); continue; }
-            byInstructor.set(e.instructorId, {
+            const existing = byStaff.get(e.instructorId);
+            if (!existing) { byStaff.set(e.instructorId, e); continue; }
+            byStaff.set(e.instructorId, {
                 ...existing,
                 classesCount:   existing.classesCount   + e.classesCount,
                 totalAttendees: existing.totalAttendees + e.totalAttendees,
@@ -516,33 +541,77 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                 baseEarnings:   existing.baseEarnings   + e.baseEarnings,
                 adjustmentAmount: existing.adjustmentAmount + e.adjustmentAmount,
                 totalEarnings:  existing.totalEarnings  + e.totalEarnings,
+                commissionAmount: (existing.commissionAmount ?? 0) + (e.commissionAmount ?? 0),
                 status: existing.status === "pending" || e.status === "pending" ? "pending" : "paid",
             });
         }
 
-        return instructors
-            .filter(i => i.status === "active")
-            .map(instructor => {
-                const entry = byInstructor.get(instructor.id);
-                const livePayRate = instructor.payRateId
-                    ? payRates.find(p => p.id === instructor.payRateId)
+        const startISO = range.from.toISOString().slice(0, 10);
+        const endISO   = range.to.toISOString().slice(0, 10);
+
+        return staff
+            .filter(s => s.status === "active" && !!s.payRateId)
+            .map(staffRow => {
+                const entry = byStaff.get(staffRow.id);
+                const livePayRate = staffRow.payRateId
+                    ? payRates.find(p => p.id === staffRow.payRateId)
                     : undefined;
+                // Commission handling:
+                //   • Paid entry → `totalEarnings` already includes snapshot
+                //     commission (frozen at run confirm).
+                //   • Pending entry → compute live commission preview so the
+                //     admin sees what will actually be paid on confirm.
+                //   • No entry (e.g. Front Desk on Monthly rate) → synthesize
+                //     the row with fixed_salary + live commission preview.
+                const isPaid = entry?.status === "paid";
+                const liveCommission = !isPaid
+                    ? commissionForPeriod(
+                        staffRow.id, livePayRate, customerTransactions,
+                        startISO, endISO,
+                    ).totalCommission
+                    : 0;
+                const snapshotCommission = isPaid ? (entry?.commissionAmount ?? 0) : 0;
+                let payout: number;
+                let commissionAed: number | undefined;
+                if (entry) {
+                    payout = isPaid
+                        ? entry.totalEarnings
+                        : entry.totalEarnings + liveCommission;
+                    commissionAed = isPaid ? snapshotCommission : liveCommission;
+                } else {
+                    // Salaried staff with no per-class entry — payout = fixed
+                    // salary + live commission (both zero for non-Monthly rates).
+                    const salary = livePayRate?.type === "monthly" ? livePayRate.fixedSalary : 0;
+                    payout = salary + liveCommission;
+                    commissionAed = liveCommission > 0 ? liveCommission : undefined;
+                }
+                const identity: RunRowIdentity = {
+                    id: staffRow.id,
+                    name: staffRow.fullName,
+                    email: staffRow.email,
+                    initials: staffRow.initials,
+                    color: staffRow.color,
+                    imageUrl: staffRow.imageUrl,
+                    branchId: staffRow.branchId,
+                    payRateId: staffRow.payRateId,
+                };
                 return {
-                    entryId: entry?.id ?? `noentry_${instructor.id}`,
+                    entryId: entry?.id ?? `noentry_${staffRow.id}`,
                     actualEntryId: entry?.id,
-                    instructor,
-                    branchId: instructor.branchId,
+                    instructor: identity,
+                    branchId: staffRow.branchId ?? "",
                     payRateName: entry?.payRateName ?? livePayRate?.name ?? "—",
                     payRate:     livePayRate,
                     classesCount:   entry?.classesCount   ?? 0,
                     totalHours:     entry?.totalHours     ?? 0,
                     grossRevenue:   entry?.grossRevenue   ?? 0,
                     totalAttendees: entry?.totalAttendees ?? 0,
-                    payout:         entry?.totalEarnings  ?? 0,
+                    payout,
+                    commissionAed,
                     status:         entry?.status         ?? "pending",
                 } satisfies RunRow;
             });
-    }, [payrollEntries, instructors, payRates, range]);
+    }, [payrollEntries, staff, payRates, customerTransactions, range]);
 
     // ─── Filter chain (branch + status + nothing-to-search-by here) ───────
     const filteredRows = useMemo(() => {
