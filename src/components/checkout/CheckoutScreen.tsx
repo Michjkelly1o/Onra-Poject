@@ -315,10 +315,10 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                         }))}
                         searchable
                         searchPlaceholder="Search staff..."
-                        // `w-auto` = fit trigger to the widest current label
-                        // instead of a fixed 220 px — client asked for a
-                        // fit-width dropdown next to the customer row.
-                        width="w-auto"
+                        // Fixed 280 px — wide enough to comfortably show the
+                        // longest staff name + role label without truncation
+                        // ("Pierre Bennett" + "Branch admin" secondary).
+                        width="w-[280px]"
                     />
                 </div>
             )}

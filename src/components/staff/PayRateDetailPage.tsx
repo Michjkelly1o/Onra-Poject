@@ -831,7 +831,11 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
         // staff id (both modules key off the same `staff_profiles.id`).
         // Carry `returnTo` so the X-close on the staff detail page lands
         // the admin back here on this pay rate's detail tab.
-        const returnTo = `/admin/staff/pay-rate/${payRate?.id ?? ""}`;
+        //
+        // ⚠️ The pay-rate DETAIL route is `/staff/pay-rate/[id]`, NOT
+        // `/admin/staff/pay-rate/[id]` (that's the LIST). Prefixing with
+        // `/admin` produced a 404 when closing the staff detail modal.
+        const returnTo = `/staff/pay-rate/${payRate?.id ?? ""}`;
         const base = `/staff/members/${instructor.id}`;
         const href = kind === "view"
             ? `${base}?returnTo=${encodeURIComponent(returnTo)}`
