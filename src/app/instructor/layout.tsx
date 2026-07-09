@@ -30,7 +30,7 @@ export default function InstructorLayout({
     children: React.ReactNode;
 }) {
     const { sidebarCollapsed } = useAppStore();
-    const currentRole = useAppStore(s => s.currentRole);
+    const currentUser = useAppStore(s => s.currentUser);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
     // Live staff row for the instructor persona. If admin has edited Liam's
     // name / email / phone / avatar / bio via /admin/staff/[id]/edit, the
@@ -38,15 +38,18 @@ export default function InstructorLayout({
     // seed. Hydrating from this row is what makes admin → instructor sync.
     const staffRow = useAppStore(s => s.staff.find(x => x.id === instructor_profile.staff_profile_id));
 
-    // URL-driven role switch — landing on any `/instructor/*` route flips the
-    // active persona to the instructor demo user. Instead of resetting to
-    // the frozen seed we compose the persona from the LIVE staff row (name
-    // / email / phone / avatar / bio) so admin edits reflect immediately.
-    // Structural fields the seed provides (studio_id, password, staff_profile_id,
-    // permissions, notification prefs, etc.) stay from the seed defaults.
+    // URL-driven role switch — landing on any `/instructor/*` route composes
+    // the active persona from the LIVE staff row (identity fields) + the
+    // frozen `instructor_profile` seed (structural fields: studio_id,
+    // password, staff_profile_id, permissions, notification prefs).
+    //
+    // Runs on EVERY change to the staff row (not just on first mount) so
+    // that admin edits in the same session — or cross-tab syncs — reflect
+    // immediately on the welcome message, sidebar chip, and avatar. Skips
+    // the write when `currentUser` already matches the desired identity so
+    // it never causes an infinite render loop.
     useEffect(() => {
-        if (currentRole === "instructor") return;
-        const hydrated = staffRow
+        const target = staffRow
             ? {
                 ...instructor_profile,
                 first_name: staffRow.firstName,
@@ -57,8 +60,16 @@ export default function InstructorLayout({
                 introduction: staffRow.bio ?? instructor_profile.introduction,
             }
             : instructor_profile;
-        setCurrentUser(hydrated);
-    }, [currentRole, setCurrentUser, staffRow]);
+        const already =
+            currentUser.role       === "instructor" &&
+            currentUser.first_name === target.first_name &&
+            currentUser.last_name  === target.last_name &&
+            currentUser.email      === target.email &&
+            currentUser.phone      === target.phone &&
+            currentUser.avatar_url === target.avatar_url;
+        if (already) return;
+        setCurrentUser(target);
+    }, [setCurrentUser, staffRow, currentUser.role, currentUser.first_name, currentUser.last_name, currentUser.email, currentUser.phone, currentUser.avatar_url]);
 
     return (
         <>
