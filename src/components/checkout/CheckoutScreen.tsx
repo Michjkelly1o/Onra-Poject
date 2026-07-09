@@ -28,6 +28,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SelectInput } from "@/components/ui/select-input";
 import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
 
 export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktransfer" | "wallet";
@@ -297,22 +298,28 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                 to the logged-in cashier; the picker lets a manager credit
                 the sale to a different staff member (e.g. Front Desk closed
                 the deal but a manager rang it up). Drives the payroll
-                commission for that staffer. */}
+                commission for that staffer. Uses the canonical `SelectInput`
+                so it inherits the DS styling + searchable + fixed-position
+                menu (escapes checkout scroll containers). */}
             {setSellerStaffId && sellerOptions && sellerOptions.length > 0 && (
                 <div className="flex items-center justify-between gap-3">
                     <p className="text-[14px] text-[#667085]">Sold by</p>
-                    <select
-                        value={sellerStaffId ?? ""}
-                        onChange={e => setSellerStaffId(e.target.value)}
-                        aria-label="Sold by"
-                        className="h-9 min-w-[220px] px-3 pr-8 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-medium text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] cursor-pointer"
-                    >
-                        {sellerOptions.map(opt => (
-                            <option key={opt.id} value={opt.id}>
-                                {opt.name}{opt.roleLabel ? ` — ${opt.roleLabel}` : ""}
-                            </option>
-                        ))}
-                    </select>
+                    <SelectInput
+                        value={sellerStaffId}
+                        onChange={v => setSellerStaffId(v)}
+                        placeholder="Select staff"
+                        options={sellerOptions.map(o => ({
+                            value: o.id,
+                            label: o.name,
+                            secondary: o.roleLabel,
+                        }))}
+                        searchable
+                        searchPlaceholder="Search staff..."
+                        // `w-auto` = fit trigger to the widest current label
+                        // instead of a fixed 220 px — client asked for a
+                        // fit-width dropdown next to the customer row.
+                        width="w-auto"
+                    />
                 </div>
             )}
             {/* Read-only Sold-by chip when the caller passes a seller but no
