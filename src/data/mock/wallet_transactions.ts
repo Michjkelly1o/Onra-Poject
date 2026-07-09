@@ -25,9 +25,8 @@ export const wallet_transactions: WalletTransactionSeed[] = [
     { id: "wtxn_ahmed_2", customer_id: "cust_ahmed_zayn", branch_id: SOUTH, type: "credit", amount_aed: 100, reason: "Referral reward", reference_type: "referral", reference_id: "ref_ahmed_2", created_at: "2026-05-03T14:20:00Z", created_by: "System" },
     { id: "wtxn_ahmed_3", customer_id: "cust_ahmed_zayn", branch_id: SOUTH, type: "debit",  amount_aed:  80, reason: "POS purchase — 5-Class Package", reference_type: "pos_sale", reference_id: "txn_ahmed_pos_1", created_at: "2026-05-20T09:15:00Z", created_by: "Casey Desk" },
 
-    // ── Ava Wright — referral rewards (balance: 150) ─────────────────────────
+    // ── Ava Wright — referral reward (balance: 100) ──────────────────────────
     { id: "wtxn_ava_1", customer_id: "cust_ava_wright", branch_id: SOUTH, type: "credit", amount_aed: 100, reason: "Referral reward", reference_type: "referral", reference_id: "ref_ava_1", created_at: "2026-04-28T11:30:00Z", created_by: "System" },
-    { id: "wtxn_ava_2", customer_id: "cust_ava_wright", branch_id: SOUTH, type: "credit", amount_aed:  50, reason: "Goodwill credit", reference_type: "manual", reference_id: undefined, created_at: "2026-06-01T16:00:00Z", created_by: "Alex Owen" },
 
     // ── Sophia Lee — referral reward + POS spend (balance: 100 − 100 = 0) ─────
     { id: "wtxn_sophia_1", customer_id: "cust_sophia_lee", branch_id: SOUTH, type: "credit", amount_aed: 100, reason: "Referral reward", reference_type: "referral", reference_id: "ref_sophia_1", created_at: "2026-05-10T08:45:00Z", created_by: "System" },

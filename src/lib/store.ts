@@ -7824,7 +7824,14 @@ export const useAppStore = create<AppState>()(persist(
         //     StaffFormPage. Seed rebalanced: Candice Wu moved off
         //     pr_monthly onto pr_standard.
         //   • Persist bumped so testers re-seed with the new alignment.
-        version: 49,
+        //
+        // v50: Removed the "Goodwill credit" wallet-transaction seed row
+        //   (Ava Wright · +AED 50). Was a stray demo row with no matching
+        //   admin flow — client would flag it as a bug. Wallet now cleanly
+        //   surfaces only Referral rewards (credits) and POS spends
+        //   (debits). Persist bumped so old localStorage payloads drop the
+        //   phantom row.
+        version: 50,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
