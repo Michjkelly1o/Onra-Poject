@@ -79,6 +79,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { adminUser } from "./mock-data";
 import { capitalizeName } from "./format-name";
+import { commissionForPeriod } from "./payroll-calc";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
 //
@@ -847,7 +848,19 @@ export interface PayrollEntry {
     baseEarnings: number;
     adjustmentAmount: number;
     adjustmentReason?: string;
+    /** Final take-home: baseEarnings + adjustmentAmount + commissionAmount. */
     totalEarnings: number;
+    // ── Sales commission (Monthly rate) — snapshotted at run confirm ────────
+    /** Net package sales (AED) attributed to this staff in the period. */
+    commissionPackagesSalesAed?: number;
+    /** Net membership sales (AED) attributed to this staff in the period. */
+    commissionMembershipsSalesAed?: number;
+    /** Package commission % applied. */
+    commissionPackagesPercent?: number;
+    /** Membership commission % applied. */
+    commissionMembershipsPercent?: number;
+    /** AED commission portion of `totalEarnings`. */
+    commissionAmount?: number;
     status: PayrollEntryStatus;
     /** Set once a payroll run confirms this entry. */
     payrollRunId?: string;
@@ -2745,6 +2758,11 @@ function payrollEntryFromSeed(e: PayrollEntrySeed): PayrollEntry {
         adjustmentAmount: e.adjustment_amount,
         adjustmentReason: e.adjustment_reason,
         totalEarnings: e.total_earnings,
+        commissionPackagesSalesAed:     e.commission_packages_sales_aed,
+        commissionMembershipsSalesAed:  e.commission_memberships_sales_aed,
+        commissionPackagesPercent:      e.commission_packages_percent,
+        commissionMembershipsPercent:   e.commission_memberships_percent,
+        commissionAmount:               e.commission_amount,
         status: e.status,
         payrollRunId: e.payroll_run_id,
         createdAt: e.created_at,
@@ -6093,11 +6111,35 @@ export const useAppStore = create<AppState>()(persist(
 
     setPayrollEntriesStatus: (ids, status, payrollRunId) => {
         set(state => ({
-            payrollEntries: state.payrollEntries.map(e =>
-                ids.includes(e.id)
-                    ? { ...e, status, ...(payrollRunId ? { payrollRunId } : {}) }
-                    : e,
-            ),
+            payrollEntries: state.payrollEntries.map(e => {
+                if (!ids.includes(e.id)) return e;
+                // Snapshot commission at run-confirm ("paid") — past runs
+                // stay frozen even if the rate's commission % changes later.
+                // Non-Monthly rates + zero-percent rates get an empty snapshot
+                // so the field shape is uniform across entries.
+                if (status === "paid") {
+                    const rate = state.payRates.find(r => r.id === e.payRateId);
+                    const c = commissionForPeriod(
+                        e.instructorId,
+                        rate,
+                        state.customerTransactions,
+                        e.periodStart,
+                        e.periodEnd,
+                    );
+                    return {
+                        ...e,
+                        status,
+                        ...(payrollRunId ? { payrollRunId } : {}),
+                        commissionPackagesSalesAed:    c.packagesSalesAed,
+                        commissionMembershipsSalesAed: c.membershipsSalesAed,
+                        commissionPackagesPercent:     c.packagesPercent,
+                        commissionMembershipsPercent:  c.membershipsPercent,
+                        commissionAmount:              c.totalCommission,
+                        totalEarnings: e.baseEarnings + e.adjustmentAmount + c.totalCommission,
+                    };
+                }
+                return { ...e, status, ...(payrollRunId ? { payrollRunId } : {}) };
+            }),
         }));
         if (status === "paid") {
             get().recordAudit("Ran payroll", "payroll", payrollRunId ?? "run", `${ids.length} entries`, { entries: ids.length });
@@ -6107,7 +6149,7 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             payrollEntries: state.payrollEntries.map(e =>
                 e.id === id
-                    ? { ...e, adjustmentAmount: amount, adjustmentReason: reason, totalEarnings: e.baseEarnings + amount }
+                    ? { ...e, adjustmentAmount: amount, adjustmentReason: reason, totalEarnings: e.baseEarnings + amount + (e.commissionAmount ?? 0) }
                     : e,
             ),
         }));
@@ -7360,6 +7402,16 @@ export const useAppStore = create<AppState>()(persist(
                         taxInclusive: pricesInclude,
                     };
                 }
+                // Sales-commission attribution: POS + admin-back-office
+                // sales are credited to the logged-in cashier via their
+                // `staff_profile_id`. Customer-portal (self-service) sales
+                // stay unattributed — no seller, no commission. This is
+                // what payroll's `commissionForPeriod` reads.
+                const source = paymentSource ?? "pos";
+                const cashierStaffId =
+                    source !== "customer_portal"
+                        ? (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id
+                        : undefined;
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
@@ -7373,7 +7425,9 @@ export const useAppStore = create<AppState>()(persist(
                     paymentMethod: "card",
                     // Default origin: a POS checkout. Customer-portal +
                     // admin callers pass their own value via `paymentSource`.
-                    paymentSource: paymentSource ?? "pos" as const,
+                    paymentSource: source,
+                    transactionType: "sale",
+                    staffId: cashierStaffId,
                     createdAtISO: nowISO,
                 });
             });
@@ -7731,7 +7785,16 @@ export const useAppStore = create<AppState>()(persist(
         // v46: Forma West branch now carries full working hours (was closed
         // every day) so no branch renders as a red "no hours" row. Bumped so
         // testers re-seed the updated business_hours.
-        version: 46,
+        //
+        // v47: Sales commission wired to recorded sales.
+        //   • PayrollEntry gains commissionPackages/Memberships {Sales,Percent}
+        //     + commissionAmount snapshot fields (populated at run confirm).
+        //   • POS `applyPurchase` stamps `staffId` from the logged-in cashier
+        //     so payroll can link commission to actual sales.
+        //   • payroll_entries seed carries historical commission for Monthly-
+        //     rate staff so the demo lands populated.
+        // Bumped so testers re-seed with the new payroll shape.
+        version: 47,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

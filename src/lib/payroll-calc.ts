@@ -48,7 +48,7 @@
 // surfaces inherit the new behavior for free. Don't add a parallel
 // "real attendance" helper somewhere else.
 
-import type { ClassSchedule, PayRate } from "@/lib/store";
+import type { ClassSchedule, CustomerTransaction, PayRate } from "@/lib/store";
 
 /** Earnings for a single class.
  *
@@ -484,3 +484,143 @@ function defaultPayModelLabel(type: PayRate["type"]): string {
         case "monthly": return "Monthly salary";
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sales commission (Monthly rate)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Every POS sale carries `staffId` — stamped at checkout by `applyPurchase`
+// from the logged-in cashier's `staff_profile_id`. When a staff member's
+// pay rate is Monthly and has non-zero commission percentages set, we
+// derive their period commission from those transactions.
+//
+// The math (per staff, per period):
+//
+//   net_pkg_sales = sum(kind=package,    type=sale,           in period)
+//                 − sum(kind=package,    type∈{refund,void},  in period)
+//   net_mem_sales = sum(kind=membership, type=sale,           in period)
+//                 − sum(kind=membership, type∈{refund,void},  in period)
+//
+//   commission = net_pkg_sales × packages%  +  net_mem_sales × memberships%
+//
+// Rules the client feedback locks in:
+//   • Only Monthly-rate staff earn commission.
+//   • Only POS-attributed sales count (payment_source ≠ customer_portal
+//     AND staff_id present). Portal self-service sales don't attribute.
+//   • Refunds/voids clawback in the CURRENT period. Past confirmed runs
+//     are frozen (snapshot at run time — see `runPayroll`).
+//   • Cancellation-penalty rows never count toward commission.
+
+/** Per-kind subtotal used by the payroll UI + math. All AED. */
+export interface CommissionBreakdown {
+    /** Net package sales (sales − refunds/voids), AED. */
+    packagesSalesAed: number;
+    /** Net membership sales (sales − refunds/voids), AED. */
+    membershipsSalesAed: number;
+    /** Applied packages % (from pay rate; 0 when unset / non-Monthly). */
+    packagesPercent: number;
+    /** Applied memberships % (from pay rate; 0 when unset / non-Monthly). */
+    membershipsPercent: number;
+    /** AED commission on packages: packagesSalesAed × packagesPercent%. */
+    packagesCommission: number;
+    /** AED commission on memberships: membershipsSalesAed × memberships%. */
+    membershipsCommission: number;
+    /** Total AED commission: packagesCommission + membershipsCommission. */
+    totalCommission: number;
+    /** Ids of the sale transactions that produced the commission (drill-
+     *  through source). Refund/void rows are NOT included in the id list
+     *  — they only affect the numeric net. */
+    saleTransactionIds: string[];
+    /** Ids of the refund/void rows that clawed back commission in the
+     *  period. Surfaced by the drill-through so the admin sees why a
+     *  net is smaller than gross sales. */
+    refundTransactionIds: string[];
+}
+
+const EMPTY_COMMISSION: CommissionBreakdown = {
+    packagesSalesAed: 0,
+    membershipsSalesAed: 0,
+    packagesPercent: 0,
+    membershipsPercent: 0,
+    packagesCommission: 0,
+    membershipsCommission: 0,
+    totalCommission: 0,
+    saleTransactionIds: [],
+    refundTransactionIds: [],
+};
+
+/** Derive commission for one staff member over one period.
+ *
+ *  Pure — no store access. Callers pass the live `customerTransactions`
+ *  slice + the staff's assigned pay rate. Safe to call from render.
+ *
+ *  Returns EMPTY_COMMISSION when the rate isn't Monthly or has no
+ *  commission percentages set — so consumers can call unconditionally
+ *  and read `.totalCommission` without null-checks. */
+export function commissionForPeriod(
+    staffId: string,
+    payRate: PayRate | undefined,
+    transactions: CustomerTransaction[],
+    periodStartISO: string,
+    periodEndISO: string,
+): CommissionBreakdown {
+    if (!payRate || payRate.type !== "monthly") return EMPTY_COMMISSION;
+    const pkgPct = payRate.salesCommissionPackagesPercent    ?? 0;
+    const memPct = payRate.salesCommissionMembershipsPercent ?? 0;
+    if (pkgPct === 0 && memPct === 0) return EMPTY_COMMISSION;
+
+    // Period bounds are inclusive on both ends (ISO date strings). We
+    // compare on the yyyy-mm-dd prefix so the comparison is time-zone
+    // agnostic — matches how `payroll_entries` seeds its periods.
+    const startDay = periodStartISO.slice(0, 10);
+    const endDay   = periodEndISO.slice(0, 10);
+
+    let pkgNet = 0, memNet = 0;
+    const saleIds: string[] = [];
+    const refundIds: string[] = [];
+
+    for (const t of transactions) {
+        if (t.staffId !== staffId) continue;
+        if (t.kind !== "package" && t.kind !== "membership") continue;
+        const day = t.createdAtISO.slice(0, 10);
+        if (day < startDay || day > endDay) continue;
+        const isSale     = (t.transactionType ?? "sale") === "sale";
+        const isClawback = t.transactionType === "refund" || t.transactionType === "void";
+        if (!isSale && !isClawback) continue;
+
+        // Sales use subtotalAed when present (excludes tax) so commission
+        // is on the merchandise line, not the VAT — matches how real
+        // studios pay commission. Fallback to amountAed for legacy rows
+        // without the breakdown.
+        const gross = Math.abs(t.subtotalAed ?? t.amountAed);
+        if (t.kind === "package") {
+            if (isSale) { pkgNet += gross; saleIds.push(t.id); }
+            else        { pkgNet -= gross; refundIds.push(t.id); }
+        } else {
+            if (isSale) { memNet += gross; saleIds.push(t.id); }
+            else        { memNet -= gross; refundIds.push(t.id); }
+        }
+    }
+
+    // Never let a period's commission go negative — if refunds exceed
+    // sales in the same period, the commission zeros out (the excess
+    // clawback isn't carried forward to future periods, per standard
+    // practice). Callers can inspect `refundTransactionIds` to see why.
+    const packagesSalesAed    = Math.max(0, pkgNet);
+    const membershipsSalesAed = Math.max(0, memNet);
+    const packagesCommission    = Math.round(packagesSalesAed    * pkgPct / 100);
+    const membershipsCommission = Math.round(membershipsSalesAed * memPct / 100);
+
+    return {
+        packagesSalesAed,
+        membershipsSalesAed,
+        packagesPercent: pkgPct,
+        membershipsPercent: memPct,
+        packagesCommission,
+        membershipsCommission,
+        totalCommission: packagesCommission + membershipsCommission,
+        saleTransactionIds: saleIds,
+        refundTransactionIds: refundIds,
+    };
+}
+

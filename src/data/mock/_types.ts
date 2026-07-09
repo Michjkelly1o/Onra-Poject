@@ -1517,8 +1517,29 @@ export interface PayrollEntrySeed {
     /** + or - AED amount applied during the Run Payroll review step. */
     adjustment_amount: number;
     adjustment_reason?: string;
-    /** Final amount: base_earnings + adjustment_amount. */
+    /** Final amount: base_earnings + adjustment_amount + commission_amount. */
     total_earnings: number;
+    // ── Sales commission (Monthly rate) ─────────────────────────────────────
+    // Populated for Monthly-rate staff who sold POS memberships/packages in
+    // the period. Snapshotted at payroll-run confirm so historical rows
+    // stay stable even if the pay rate's commission % changes later.
+    // Optional so pre-commission seeds + non-Monthly rows still load.
+    /** AED of package sales attributed to this staff in the period,
+     *  net of refunds/voids. */
+    commission_packages_sales_aed?: number;
+    /** AED of membership sales attributed to this staff in the period,
+     *  net of refunds/voids. */
+    commission_memberships_sales_aed?: number;
+    /** Package commission % applied at run time (snapshot of the rate's
+     *  `sales_commission_packages_percent`). */
+    commission_packages_percent?: number;
+    /** Membership commission % applied at run time (snapshot of the rate's
+     *  `sales_commission_memberships_percent`). */
+    commission_memberships_percent?: number;
+    /** AED commission portion of `total_earnings`. Derived from the four
+     *  fields above; kept as a first-class field so the payroll UI can
+     *  read it without re-deriving. */
+    commission_amount?: number;
     status: PayrollEntryStatusSeed;
     /** Set when a payroll run is confirmed and this entry is marked paid. */
     payroll_run_id?: string;

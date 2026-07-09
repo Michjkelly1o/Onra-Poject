@@ -36,6 +36,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
+import { commissionForPeriod } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
@@ -127,9 +128,28 @@ function MetricCard({ label, value, period, Icon }: {
 
 // ─── Row VM + period helpers ───────────────────────────────────────────────
 
+/** Identity fields the compensation table needs — works for any staff
+ *  (instructor, front desk, operator, etc.). Widening from the previous
+ *  `Instructor` type lets the list include non-instructor staff who earn
+ *  commission on POS sales. */
+interface CompRowIdentity {
+    id: string;
+    name: string;
+    email: string;
+    imageUrl?: string;
+    initials: string;
+    color?: string;
+    branchId: string | null;
+    payRateId?: string;
+    /** `role.type` — used to badge non-instructor rows in the future. */
+    roleType?: string;
+}
+
 interface CompRow {
     entryId: string;
-    instructor: Instructor;
+    /** Field name kept as `instructor` to minimize churn in the render code,
+     *  but it now holds ANY staff member (see CompRowIdentity). */
+    instructor: CompRowIdentity;
     branchId: string;
     payRateName: string;
     classesCount: number;
@@ -137,6 +157,9 @@ interface CompRow {
     status: PayrollEntry["status"];
     periodStart: string;
     periodEnd: string;
+    /** Sales-commission portion of `earnings`, when applicable. Undefined
+     *  for non-Monthly rates + rates with 0% commission. */
+    commissionAed?: number;
 }
 
 /** Convert a `DateFilter` chip into an inclusive [from, to] range. Custom
@@ -185,7 +208,9 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 export default function CompensationPage() {
     const router = useRouter();
     const payrollEntries = useAppStore(s => s.payrollEntries);
-    const instructors    = useAppStore(s => s.instructors);
+    const staff          = useAppStore(s => s.staff);
+    const roles          = useAppStore(s => s.roles);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
     const branches       = useAppStore(s => s.branches);
     const showToast      = useAppStore(s => s.showToast);
 
@@ -212,17 +237,18 @@ export default function CompensationPage() {
     const payRates = useAppStore(s => s.payRates);
 
     const allRows = useMemo<CompRow[]>(() => {
-        const entriesByInstructor = new Map<string, PayrollEntry>();
+        const entriesByStaff = new Map<string, PayrollEntry & { _commissionAed?: number }>();
         for (const e of payrollEntries) {
             if (!spanInRange(e.periodStart, e.periodEnd, range)) continue;
-            // If an instructor has multiple entries in the range (e.g. spans
+            // If a staff member has multiple entries in the range (e.g. spans
             // more than one month) we collapse them into one row by summing
             // — that's the right behaviour for the list summary.
-            const existing = entriesByInstructor.get(e.instructorId);
+            const existing = entriesByStaff.get(e.instructorId);
+            const commissionAed = e.commissionAmount ?? 0;
             if (!existing) {
-                entriesByInstructor.set(e.instructorId, e);
+                entriesByStaff.set(e.instructorId, { ...e, _commissionAed: commissionAed });
             } else {
-                entriesByInstructor.set(e.instructorId, {
+                entriesByStaff.set(e.instructorId, {
                     ...existing,
                     classesCount: existing.classesCount + e.classesCount,
                     totalAttendees: existing.totalAttendees + e.totalAttendees,
@@ -231,6 +257,7 @@ export default function CompensationPage() {
                     baseEarnings: existing.baseEarnings + e.baseEarnings,
                     adjustmentAmount: existing.adjustmentAmount + e.adjustmentAmount,
                     totalEarnings: existing.totalEarnings + e.totalEarnings,
+                    _commissionAed: (existing._commissionAed ?? 0) + commissionAed,
                     // Status precedence: if any entry is still pending the
                     // aggregate row is pending (admin still has work to do).
                     status: existing.status === "pending" || e.status === "pending" ? "pending" : "paid",
@@ -238,30 +265,66 @@ export default function CompensationPage() {
             }
         }
 
-        return instructors
-            .filter(i => i.status === "active")
-            .map(instructor => {
-                const entry = entriesByInstructor.get(instructor.id);
-                // Pay rate name preference: snapshot from the entry (survives
-                // rate renames), else look it up live, else "—".
-                const liveRateName = instructor.payRateId
-                    ? payRates.find(p => p.id === instructor.payRateId)?.name
+        const rolesById = new Map(roles.map(r => [r.id, r]));
+
+        // Source is now the full `staff` slice — every active staffer with a
+        // pay rate assigned is a potential earner (per client feedback: "payroll
+        // can list all staff too not just instructor"). Non-instructor staff
+        // typically earn commission on POS sales rather than per-class fees.
+        return staff
+            .filter(s => s.status === "active" && !!s.payRateId)
+            .map(staffRow => {
+                const entry = entriesByStaff.get(staffRow.id);
+                const liveRateName = staffRow.payRateId
+                    ? payRates.find(p => p.id === staffRow.payRateId)?.name
                     : undefined;
                 const payRateName = entry?.payRateName ?? liveRateName ?? "—";
 
+                // Live commission fallback for staff who don't have a payroll
+                // entry yet in the period (e.g. Front Desk staff on a Monthly
+                // rate with commission set — no per-class rollup exists but
+                // POS sales still credit them).
+                let liveCommission = 0;
+                let baseFromLive = 0;
+                if (!entry && staffRow.payRateId) {
+                    const rate = payRates.find(p => p.id === staffRow.payRateId);
+                    if (rate?.type === "monthly") {
+                        // Fixed salary counts toward the period earnings so the
+                        // row isn't misleadingly "AED 0" for a salaried staff.
+                        baseFromLive = rate.fixedSalary;
+                    }
+                    liveCommission = commissionForPeriod(
+                        staffRow.id, rate, customerTransactions,
+                        range.from.toISOString().slice(0, 10),
+                        range.to.toISOString().slice(0, 10),
+                    ).totalCommission;
+                }
+                const identity: CompRowIdentity = {
+                    id: staffRow.id,
+                    name: staffRow.fullName,
+                    email: staffRow.email,
+                    imageUrl: staffRow.imageUrl,
+                    initials: staffRow.initials,
+                    color: staffRow.color,
+                    branchId: staffRow.branchId,
+                    payRateId: staffRow.payRateId,
+                    roleType: rolesById.get(staffRow.roleId)?.type,
+                };
+
                 return {
-                    entryId: entry?.id ?? `noentry_${instructor.id}`,
-                    instructor,
-                    branchId: instructor.branchId,
+                    entryId: entry?.id ?? `noentry_${staffRow.id}`,
+                    instructor: identity,
+                    branchId: staffRow.branchId ?? "",
                     payRateName,
                     classesCount: entry?.classesCount ?? 0,
-                    earnings: entry?.totalEarnings ?? 0,
+                    earnings: (entry?.totalEarnings ?? 0) + baseFromLive + liveCommission,
+                    commissionAed: entry?._commissionAed ?? (liveCommission > 0 ? liveCommission : undefined),
                     status: entry?.status ?? "pending",
                     periodStart: entry?.periodStart ?? "",
                     periodEnd: entry?.periodEnd ?? "",
                 } satisfies CompRow;
             });
-    }, [payrollEntries, instructors, payRates, range]);
+    }, [payrollEntries, staff, roles, payRates, customerTransactions, range]);
 
     const filteredRows = useMemo(() => {
         const q = search.trim().toLowerCase();

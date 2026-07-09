@@ -146,8 +146,19 @@ export const payroll_entries: PayrollEntrySeed[] = [
         pay_rate_id: "pr_monthly", pay_rate_name: "Monthly Rate",
         period_start: DEMO_PERIOD_START, period_end: DEMO_PERIOD_END,
         classes_count: 2,  total_attendees: 18, total_hours: 2,  gross_revenue: 1620,
-        // monthly: fixed_salary = 8,000 (bonus + commission deferred)
+        // monthly: fixed_salary = 8,000 + sales commission (2% pkg / 2% mem)
         base_earnings: 8000, adjustment_amount: 0, total_earnings: 8000,
+        // Commission snapshot fields sit on the row from creation so the UI
+        // has a stable shape to read. Values remain zero until the payroll
+        // run confirms — the confirm handler fills them from actual sales
+        // credited to this staff in the period. The Compensation detail
+        // page + Instructor earnings page compute a LIVE preview from
+        // `customerTransactions` in the meantime.
+        commission_packages_sales_aed: 0,
+        commission_memberships_sales_aed: 0,
+        commission_packages_percent: 2,
+        commission_memberships_percent: 2,
+        commission_amount: 0,
         status: "pending",
     },
     {

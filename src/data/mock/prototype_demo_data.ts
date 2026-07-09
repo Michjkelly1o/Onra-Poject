@@ -300,6 +300,16 @@ const PAYMENT_SOURCE_DIST: CustomerTransaction["payment_source"][] = [
     "customer_portal", "customer_portal",  // 40% online
     "admin",                               // 10% manual entry
 ];
+/** Sales-commission attribution rotation for POS/admin sales in the demo
+ *  window. Weighted so Candice (the seeded Monthly-rate staff) picks up a
+ *  visible share — otherwise her commission stays 0 on load. Portal sales
+ *  never receive a seller (self-service). */
+const SELLER_STAFF_DIST: string[] = [
+    "staff_candice_wu",   "staff_candice_wu",   // ~40% — headline Monthly-rate seller
+    "staff_lucy_hale",    "staff_lucy_hale",    // ~40% — hybrid-rate, no commission
+    "staff_natali_craig",                        // ~10%
+    "staff_maya_johnson",                        // ~10%
+];
 const FREEZE_SOURCE_DIST: CustomerPlan["freeze_source"][] = [
     "admin",           "admin",            // 40% — admin assistance during freeze flow
     "front_desk",      "front_desk",       // 40%
@@ -1061,6 +1071,12 @@ export const DEMO_NOW_TRANSACTIONS: CustomerTransaction[] = TXN_SPECS.map((t, id
         // Deterministic source rotation — varies the Payments report's
         // "Payment source" column without faking data at render time.
         payment_source: PAYMENT_SOURCE_DIST[idx % PAYMENT_SOURCE_DIST.length],
+        // Sales-commission attribution. Portal (self-service) sales stay
+        // unattributed; POS + admin sales rotate through SELLER_STAFF_DIST
+        // so Monthly-rate staff see live commission on the demo canvas.
+        staff_id: PAYMENT_SOURCE_DIST[idx % PAYMENT_SOURCE_DIST.length] === "customer_portal"
+            ? undefined
+            : SELLER_STAFF_DIST[idx % SELLER_STAFF_DIST.length],
         created_at: createdAt,
         refunded_at: t.status === "refunded" ? isoStamp(daysAgo(Math.max(0, t.daysAgo - 1))) : undefined,
         refund_method: t.status === "refunded" ? t.paymentMethod : undefined,
