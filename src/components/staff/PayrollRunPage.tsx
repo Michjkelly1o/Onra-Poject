@@ -262,7 +262,7 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, showT
                     <div className="flex flex-col gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Process payroll?</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            You&apos;re about to process payroll for {instructorCount} {instructorCount === 1 ? "instructor" : "instructors"}. This action cannot be undone.
+                            You&apos;re about to process payroll for {instructorCount} {instructorCount === 1 ? "staff member" : "staff"}. This action cannot be undone.
                         </p>
                     </div>
                 </div>
@@ -322,7 +322,7 @@ function PayrollSubmittedModal({ open, total, instructorCount, periodLabel, onCl
                     <div className="flex flex-col gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Payroll submitted</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            {aed(total)} processed for {instructorCount} {instructorCount === 1 ? "instructor" : "instructors"} · {periodLabel}
+                            {aed(total)} processed for {instructorCount} {instructorCount === 1 ? "staff member" : "staff"} · {periodLabel}
                         </p>
                     </div>
                 </div>
@@ -405,7 +405,7 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
     // grouping reads naturally in Excel. See `payrollBreakdownFor` for
     // the per-model component shape.
     const header = [
-        "Instructor", "Email", "Branch",
+        "Staff", "Email", "Branch",
         "Pay model", "Component", "Basis", "Rate", "Amount (AED)",
         "Total payout (AED)", "Status", "Period",
     ];
@@ -683,7 +683,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const allPaid = pendingEntryIds.length === 0;
 
     // Subtitle: "7 instructors · Feb 2025" — derived from filteredRows + period.
-    const subtitle = `${filteredRows.length} ${filteredRows.length === 1 ? "instructor" : "instructors"} · ${monthYearLabel(range.from)}`;
+    const subtitle = `${filteredRows.length} ${filteredRows.length === 1 ? "staff member" : "staff"} · ${monthYearLabel(range.from)}`;
 
     // ─── Actions ──────────────────────────────────────────────────────────
     function handleMarkPaid(row: RunRow) {

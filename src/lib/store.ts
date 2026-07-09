@@ -3835,7 +3835,16 @@ export interface AppState {
     deleteStaff: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
     setPendingPurchase: (purchase: PendingPurchase | null) => void;
-    applyPurchase: (customerId: string, items: PurchaseLineItem[], paymentSource?: CustomerTransaction["paymentSource"]) => void;
+    applyPurchase: (
+        customerId: string,
+        items: PurchaseLineItem[],
+        paymentSource?: CustomerTransaction["paymentSource"],
+        /** Sales-commission attribution override. When present it takes
+         *  precedence over the logged-in cashier default. Ignored when
+         *  `paymentSource === "customer_portal"` (self-service sales never
+         *  attribute to a seller). */
+        sellerStaffId?: string,
+    ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
     clearToast: () => void;
@@ -7206,7 +7215,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -7402,16 +7411,18 @@ export const useAppStore = create<AppState>()(persist(
                         taxInclusive: pricesInclude,
                     };
                 }
-                // Sales-commission attribution: POS + admin-back-office
-                // sales are credited to the logged-in cashier via their
-                // `staff_profile_id`. Customer-portal (self-service) sales
-                // stay unattributed — no seller, no commission. This is
-                // what payroll's `commissionForPeriod` reads.
+                // Sales-commission attribution:
+                //   1. Explicit `sellerStaffId` override (POS "Sold by"
+                //      picker) — wins over everything.
+                //   2. Logged-in cashier fallback (`currentUser.staff_profile_id`).
+                //   3. Portal (self-service) sales stay unattributed —
+                //      no seller, no commission.
                 const source = paymentSource ?? "pos";
                 const cashierStaffId =
-                    source !== "customer_portal"
-                        ? (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id
-                        : undefined;
+                    source === "customer_portal"
+                        ? undefined
+                        : sellerStaffId
+                            ?? (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
@@ -7793,8 +7804,20 @@ export const useAppStore = create<AppState>()(persist(
         //     so payroll can link commission to actual sales.
         //   • payroll_entries seed carries historical commission for Monthly-
         //     rate staff so the demo lands populated.
-        // Bumped so testers re-seed with the new payroll shape.
-        version: 47,
+        //
+        // v48: Full staff coverage for the payroll demo.
+        //   • Every staff row now carries a pay_rate_id (23/23) — no more
+        //     empty pay rate on Owner / branch admins / operators / front
+        //     desk. Non-instructor staff default to the Monthly Rate so
+        //     they earn visible sales commission.
+        //   • SELLER_STAFF_DIST widened to distribute the seeded POS sales
+        //     across every Monthly-rate staffer so the demo shows real
+        //     commission on every row (no AED 0 mystery rows).
+        //   • POS + schedule checkout gain a "Sold by" picker so testers
+        //     can SEE the attribution and change it before completing the
+        //     sale. `applyPurchase` gained a `sellerStaffId` override.
+        // Bumped so testers re-seed with the new coverage.
+        version: 48,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

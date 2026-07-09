@@ -35,6 +35,10 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Jan 1, 2024",
+        // Owner draws a Monthly Rate for payroll parity (fixed salary + POS
+        // sales commission). Every staff row now carries a pay rate so the
+        // Compensation list + Run Payroll flow never render an empty state.
+        pay_rate_id: "pr_monthly",
     },
 
     // ── Branch admins ──────────────────────────────────────────────────────
@@ -48,6 +52,7 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Feb 12, 2024",
+        pay_rate_id: "pr_monthly",
     },
     {
         id: "user_aliah_lane",
@@ -61,6 +66,7 @@ export const staff: StaffSeed[] = [
         invite_sent_at: "2026-05-20T10:00:00Z",
         first_login_completed: false,
         joined_date: "May 20, 2026",
+        pay_rate_id: "pr_monthly",
     },
     {
         // Renamed from "Phoenix Baker" — that name collided with the
@@ -76,6 +82,7 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Mar 8, 2025",
+        pay_rate_id: "pr_monthly",
     },
 
     // ── Operator ───────────────────────────────────────────────────────────
@@ -89,6 +96,7 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Feb 14, 2024",
+        pay_rate_id: "pr_monthly",
     },
     {
         // Renamed from "Natali Craig" — that name collided with the
@@ -103,6 +111,7 @@ export const staff: StaffSeed[] = [
         status: "inactive",
         first_login_completed: true,
         joined_date: "Jul 1, 2024",
+        pay_rate_id: "pr_monthly",
     },
 
     // ── Front Desk ─────────────────────────────────────────────────────────
@@ -116,6 +125,7 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Feb 14, 2024",
+        pay_rate_id: "pr_monthly",
     },
     {
         // Renamed from "Candice Wu" — that name collided with the
@@ -130,6 +140,7 @@ export const staff: StaffSeed[] = [
         status: "active",
         first_login_completed: true,
         joined_date: "Jun 14, 2024",
+        pay_rate_id: "pr_monthly",
     },
 
     // ── Instructors — mirror the existing instructors seed 1:1 by id ──────
@@ -413,5 +424,6 @@ export const staff: StaffSeed[] = [
         joined_date: "May 22, 2026",
         specialties: ["Pilates"],
         category_ids: ["cat_pilates"],
+        pay_rate_id: "pr_standard",
     },
 ];

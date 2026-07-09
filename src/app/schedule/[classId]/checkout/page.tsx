@@ -47,6 +47,10 @@ function ScheduleCheckoutInner() {
     // Member Wallet payment path — mirrors /admin/pos/checkout.
     const walletTransactions = useAppStore(s => s.walletTransactions);
     const debitWallet = useAppStore(s => s.debitWallet);
+    // Sold-by attribution — mirrors /pos/checkout.
+    const currentUser = useAppStore(s => s.currentUser);
+    const staff = useAppStore(s => s.staff);
+    const roles = useAppStore(s => s.roles);
     // Tax module wiring (Phase 4) — same shape as /admin/pos so the
     // schedule-flow checkout honours archived rates + the global toggle.
     const taxRules = useAppStore(s => s.taxRules);
@@ -78,6 +82,25 @@ function ScheduleCheckoutInner() {
     const [loading, setLoading] = useState(false);
     const [receiptNumber] = useState(() => `R-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0")}`);
     const [transactionId] = useState(() => Math.random().toString(36).slice(2, 10));
+
+    // Sold-by state — mirrors /pos/checkout.
+    const defaultSellerStaffId = (currentUser as typeof currentUser & { staff_profile_id?: string }).staff_profile_id;
+    const [sellerStaffId, setSellerStaffId] = useState<string | undefined>(defaultSellerStaffId);
+    const sellerOptions = useMemo(() => {
+        const roleTypeById = new Map(roles.map(r => [r.id, r.type]));
+        const roleLabel: Record<string, string> = {
+            owner: "Owner", branch_admin: "Branch admin", operator: "Operator",
+            front_desk: "Front desk", instructor: "Instructor",
+        };
+        return staff
+            .filter(s => s.status === "active")
+            .map(s => ({
+                id: s.id,
+                name: s.fullName,
+                roleLabel: roleLabel[roleTypeById.get(s.roleId) ?? ""] ?? "",
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [staff, roles]);
 
     useEffect(() => {
         if (!pendingPurchase) router.replace(`/schedule/${classId}`);
@@ -158,7 +181,7 @@ function ScheduleCheckoutInner() {
                 silent: true,
             });
         }
-        applyPurchase(customer.id, pendingPurchase.items, "pos");
+        applyPurchase(customer.id, pendingPurchase.items, "pos", sellerStaffId);
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }
 
@@ -192,6 +215,9 @@ function ScheduleCheckoutInner() {
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
                 walletBalance={walletBalance}
+                sellerStaffId={sellerStaffId}
+                setSellerStaffId={setSellerStaffId}
+                sellerOptions={sellerOptions}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}

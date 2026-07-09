@@ -122,6 +122,34 @@ function MetricCard({ label, value, period, Icon }: {
 // Local InstructorAvatar removed — uses canonical `<NeutralAvatar>` from
 // `@/components/patterns/NeutralAvatar`.
 
+// ─── Role badge on the compensation list rows ─────────────────────────────
+//
+// Renders a small tinted pill next to the staff name so admins can tell
+// instructors apart from Front Desk / Operator / Branch Admin / Owner in
+// the same list at a glance. Tokenised palette matches the badge chrome
+// used on the Staff & Permissions list.
+const ROLE_BADGE_LABEL: Record<string, string> = {
+    owner: "Owner", branch_admin: "Branch admin", operator: "Operator",
+    front_desk: "Front desk", instructor: "Instructor",
+};
+const ROLE_BADGE_STYLE: Record<string, string> = {
+    owner:        "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
+    branch_admin: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
+    operator:     "bg-[#fef0c7] border-1 border-[#fedf89] text-[#b54708]",
+    front_desk:   "bg-[#fdf2fa] border-1 border-[#fcceee] text-[#c11574]",
+    instructor:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+};
+function RoleBadge({ type }: { type?: string }) {
+    if (!type) return null;
+    const label = ROLE_BADGE_LABEL[type] ?? type;
+    const cls   = ROLE_BADGE_STYLE[type] ?? "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]";
+    return (
+        <span className={cn("inline-flex items-center px-[8px] py-[1px] rounded-full text-[11px] font-medium whitespace-nowrap", cls)}>
+            {label}
+        </span>
+    );
+}
+
 // Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
@@ -171,7 +199,7 @@ interface CompRow {
 
 function exportCompensationCsv(rows: CompRow[], branches: Branch[]) {
     const header = [
-        "Instructor", "Email", "Branch", "Default pay rate",
+        "Staff", "Email", "Branch", "Default pay rate",
         "Completed classes", "Earnings (AED)", "Status", "Period",
     ];
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
@@ -410,7 +438,7 @@ export default function CompensationPage() {
                 <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
                 <MetricCard label="Total payouts"     value={aed(totalPayouts)}     period={metricPeriodLabel} Icon={CoinsHand} />
                 <MetricCard label="Classes completed" value={totalClasses.toLocaleString("en-US")} period={metricPeriodLabel} Icon={CheckCircle} />
-                <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
+                <MetricCard label="Avg per staff" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
             </div>
 
             {/* Toolbar */}
@@ -418,7 +446,7 @@ export default function CompensationPage() {
                 <div className="flex-1">
                     <p className="text-[16px] text-[#667085]">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
-                        {filteredRows.length} {filteredRows.length === 1 ? "instructor" : "instructors"}
+                        {filteredRows.length} {filteredRows.length === 1 ? "staff" : "staff"}
                     </p>
                 </div>
                 <SelectInput
@@ -443,7 +471,7 @@ export default function CompensationPage() {
                         exportCompensationCsv(filteredRows, branches);
                         showToast(
                             "Compensation exported",
-                            `${filteredRows.length} ${filteredRows.length === 1 ? "instructor" : "instructors"} exported to CSV.`,
+                            `${filteredRows.length} staff exported to CSV.`,
                             "success", "check",
                         );
                     }}
@@ -496,8 +524,11 @@ export default function CompensationPage() {
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <NeutralAvatar initials={r.instructor.initials} imageUrl={r.instructor.imageUrl} />
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{r.instructor.name}</span>
+                                                        <div className="flex flex-col gap-0.5 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[14px] font-medium text-[#101828]">{r.instructor.name}</span>
+                                                                <RoleBadge type={r.instructor.roleType} />
+                                                            </div>
                                                             <span className="text-[13px] text-[#667085]">{r.instructor.email}</span>
                                                         </div>
                                                     </div>

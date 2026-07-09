@@ -301,14 +301,26 @@ const PAYMENT_SOURCE_DIST: CustomerTransaction["payment_source"][] = [
     "admin",                               // 10% manual entry
 ];
 /** Sales-commission attribution rotation for POS/admin sales in the demo
- *  window. Weighted so Candice (the seeded Monthly-rate staff) picks up a
- *  visible share — otherwise her commission stays 0 on load. Portal sales
- *  never receive a seller (self-service). */
+ *  window. Every staff on the Monthly rate (Owner + admins + operators +
+ *  front desk + Candice) gets a slice so the Compensation list, payroll
+ *  detail, and Run Payroll ALL render populated commission for every one
+ *  of them — no "AED 0 sales commission" rows in the demo. Portal sales
+ *  stay unattributed (self-service, no seller). */
 const SELLER_STAFF_DIST: string[] = [
-    "staff_candice_wu",   "staff_candice_wu",   // ~40% — headline Monthly-rate seller
-    "staff_lucy_hale",    "staff_lucy_hale",    // ~40% — hybrid-rate, no commission
-    "staff_natali_craig",                        // ~10%
-    "staff_maya_johnson",                        // ~10%
+    // Front Desk — the natural sellers of packages/memberships
+    "user_casey_desk",       "user_casey_desk",
+    "user_candice_wu_fd",    "user_candice_wu_fd",
+    // Branch admins — occasional larger deals
+    "user_sam_admin",
+    "user_phoenix_baker_admin",
+    // Operator — retention / renewals
+    "user_jordan_ops",
+    // Instructor on Monthly rate (post-class upsells)
+    "staff_candice_wu",
+    // A couple of instructor sellers who don't have commission — proves
+    // attribution stamps a seller even when the rate is Flat/Hybrid.
+    "staff_maya_johnson",
+    "staff_lucy_hale",
 ];
 const FREEZE_SOURCE_DIST: CustomerPlan["freeze_source"][] = [
     "admin",           "admin",            // 40% — admin assistance during freeze flow
