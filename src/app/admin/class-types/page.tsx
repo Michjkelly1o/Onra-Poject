@@ -148,8 +148,9 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
                 "transition-all duration-150",
                 "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
-            {/* Banner */}
-            <div className="relative h-[156px] w-full overflow-hidden shrink-0" style={{ backgroundColor: template.coverColor }}>
+            {/* Banner — fixed 4:3 so the cover image stays the same shape at
+                every screen width instead of stretching wide on large monitors. */}
+            <div className="relative aspect-[4/3] w-full overflow-hidden shrink-0" style={{ backgroundColor: template.coverColor }}>
                 {effectiveCover && (
                     <img
                         src={effectiveCover}

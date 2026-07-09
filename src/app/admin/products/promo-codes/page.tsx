@@ -216,8 +216,9 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
                 "transition-all duration-150",
                 "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
-            {/* Banner */}
-            <div className={cn("relative h-[144px] flex flex-col justify-between pt-10 pb-3 px-3 shrink-0 overflow-hidden", bannerClass)}>
+            {/* Banner — fixed 4:3 so the artwork stays the same shape at
+                every screen width instead of stretching wide on large monitors. */}
+            <div className={cn("relative aspect-[4/3] flex flex-col justify-between pt-10 pb-3 px-3 shrink-0 overflow-hidden", bannerClass)}>
                 {/* Uploaded artwork — inactive / archived / expired promos render
                     it grayscale to match their muted treatment. */}
                 {promo.banner_image_url && (

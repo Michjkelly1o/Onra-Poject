@@ -225,8 +225,9 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
                 "transition-all duration-150",
                 "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
-            {/* Banner */}
-            <div className={cn("relative h-[144px] flex flex-col justify-between p-3 shrink-0 overflow-hidden", bannerClass)}>
+            {/* Banner — fixed 4:3 so the cover art stays the same shape at
+                every screen width instead of stretching wide on large monitors. */}
+            <div className={cn("relative aspect-[4/3] flex flex-col justify-between p-3 shrink-0 overflow-hidden", bannerClass)}>
                 {/* Cover artwork — inactive / archived / expired render grayscale */}
                 {item.cover_image_url && (
                     <img src={item.cover_image_url} alt=""
