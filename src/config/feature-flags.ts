@@ -169,12 +169,12 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/reports/staff-attendance",
 
     // ── Reports · Marketing (6 reports) ── (DISABLED — client demo Jul 2026)
-    "/reports/lead-data",
-    "/reports/lead-conversion",
-    "/reports/campaign-performance",
-    "/reports/promo-redemptions",
-    "/reports/referrals",
-    "/reports/acquisition-efficiency",
+    //"/reports/lead-data",
+    //"/reports/lead-conversion",
+    //"/reports/campaign-performance",
+    //"/reports/promo-redemptions",
+    //"/reports/referrals",
+    //"/reports/acquisition-efficiency",
 
     // ── Staff & Permissions module ── (PARTIALLY ENABLED — Shift create/detail/edit hidden today)
     // Exact-match only on the list — otherwise this prefix would also catch
@@ -278,7 +278,7 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
 
     // ── Instructor → Account / Profile module ── (DISABLED — not for client demo)
     // Same convention: menu item visible, route 404s.
-    "/instructor/account",           // instructor account / profile page
+    //"/instructor/account",           // instructor account / profile page
 
     // ──────────────────────────────────────────────────────────────────
     // Customer experience — mobile-only surface (max-width 400px) with
