@@ -60,12 +60,14 @@ export default function BookingDetailPage() {
     const refundLines: RefundLine[] | null =
         viewStatus === "cancelled_free"
             ? [
-                  { label: "Credit returned", value: "1 credit", tone: "success" },
-                  { label: "Status", value: "Returned to your account", tone: "success" },
+                  { label: "You've paid", value: "1 credit" },
+                  { label: "Your refund", value: "1 credit" },
+                  { label: "Status", value: "Returned to your account" },
               ]
             : viewStatus === "cancelled_late" || viewStatus === "no_show"
               ? [
-                    { label: "Credit returned", value: "0 credit", tone: "muted" },
+                    { label: "You've paid", value: "1 credit" },
+                    { label: "Your refund", value: "0 credit", tone: "muted" },
                     {
                         label: "Status",
                         value:

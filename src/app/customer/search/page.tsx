@@ -55,9 +55,12 @@ export default function SearchPage() {
     // Search always opens on the Classes tab (Home "Book class" + the Search nav
     // both land here) — the Appointments tab is a deliberate switch, never the
     // default. The rest of the Search state still persists across round-trips.
-    const [tab, setTabState] = useState<Tab>("classes");
+    // A Home discover rail can request a specific tab via `searchUi.forceTab`
+    // (one-shot) — honour it once, otherwise Search always opens on Classes.
+    const [tab, setTabState] = useState<Tab>(() => searchUi.forceTab ?? "classes");
     useEffect(() => {
-        searchUi.tab = "classes";
+        searchUi.tab = searchUi.forceTab ?? "classes";
+        searchUi.forceTab = undefined;
     }, []);
     const [selectedISO, setSelectedISOState] = useState<string>(() => searchUi.selectedISO ?? REAL_TODAY_ISO);
     const [applied, setAppliedState] = useState<SearchFilters>(() => searchUi.applied);

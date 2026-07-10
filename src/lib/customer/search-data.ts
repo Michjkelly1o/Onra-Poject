@@ -212,7 +212,7 @@ export function cardPresentation(vm: SearchClassVM): {
     switch (vm.state) {
         case "available":
             return {
-                badgeLabel: `${vm.spotsLeft} spot${vm.spotsLeft === 1 ? "" : "s"} left`,
+                badgeLabel: `${vm.booked}/${vm.capacity}`,
                 badgeTone: "success",
                 ctaLabel: "Book now",
                 ctaVariant: "primary",
@@ -220,7 +220,7 @@ export function cardPresentation(vm: SearchClassVM): {
             };
         case "waitlist":
             return {
-                badgeLabel: `${vm.waitlistSpotsLeft} waitlist spot${vm.waitlistSpotsLeft === 1 ? "" : "s"}`,
+                badgeLabel: `${vm.waitlistSpotsLeft} waitlist`,
                 badgeTone: "neutral",
                 ctaLabel: "Join waitlist",
                 ctaVariant: "primary",
@@ -282,6 +282,8 @@ export function applyFilters(list: SearchClassVM[], f: SearchFilters): SearchCla
  */
 export const searchUi: {
     tab: "classes" | "appointments";
+    /** One-shot: a Home discover rail can request the tab Search opens on. */
+    forceTab?: "classes" | "appointments";
     selectedISO: string | null;
     /** Classes tab filters (Time + Instructor + Categories). */
     applied: SearchFilters;

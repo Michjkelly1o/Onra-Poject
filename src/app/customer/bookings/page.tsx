@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FilterLines } from "@untitledui/icons";
+import { FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
 import {
     applyBookingFilters,
     bookingFilterCount,
@@ -107,7 +107,11 @@ export default function BookingsPage() {
                     location={a.branchName}
                     status={
                         a.status === "cancelled"
-                            ? { label: "Cancelled", tone: "error" as const }
+                            ? {
+                                  label: a.lateCancel ? "Cancelled (late)" : "Cancelled (no charge)",
+                                  tone: "error" as const,
+                                  icon: a.lateCancel ? SlashCircle01 : RefreshCcw01,
+                              }
                             : tab === "past"
                               ? { label: "Completed", tone: "success" as const }
                               : { label: "Booked", tone: "success" as const }

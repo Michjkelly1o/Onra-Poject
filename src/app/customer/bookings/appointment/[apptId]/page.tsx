@@ -12,7 +12,7 @@
 // appointment-bookings store.
 
 import { useParams, useRouter } from "next/navigation";
-import { CheckCircle, ChevronLeft, Clock, SlashCircle01, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { RefreshCcw01, CheckCircle, ChevronLeft, Clock, SlashCircle01, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
 import { to12h } from "@/lib/customer/dates";
 import { useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
@@ -126,8 +126,8 @@ export default function AppointmentBookingDetailPage() {
 
     const heroBadge = isCancelled ? (
         <span className="flex shrink-0 items-center gap-1 rounded-full border border-[#fecdca] bg-[#fef3f2] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#b42318]">
-            <SlashCircle01 className="size-3" aria-hidden />
-            Cancelled
+            {booking.lateCancel ? <SlashCircle01 className="size-3" aria-hidden /> : <RefreshCcw01 className="size-3" aria-hidden />}
+            {booking.lateCancel ? "Cancelled (late)" : "Cancelled (no charge)"}
         </span>
     ) : (
         <span className="flex shrink-0 items-center gap-1 rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
@@ -159,7 +159,11 @@ export default function AppointmentBookingDetailPage() {
             </div>
             <div className="relative flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-sm font-semibold leading-5 text-[#101828]">
-                    {isCancelled ? "Appointment cancelled" : "Appointment confirmed"}
+                    {isCancelled
+                        ? booking.lateCancel
+                            ? "Cancelled (late)"
+                            : "Cancelled (no charge)"
+                        : "Appointment confirmed"}
                 </p>
                 <p className="text-xs font-normal leading-[18px] text-[#344054]">
                     {isCancelled
@@ -170,7 +174,11 @@ export default function AppointmentBookingDetailPage() {
                 </p>
             </div>
             {isCancelled ? (
-                <SlashCircle01 className="relative size-5 shrink-0 text-[#d92d20]" aria-hidden />
+                booking.lateCancel ? (
+                    <SlashCircle01 className="relative size-5 shrink-0 text-[#d92d20]" aria-hidden />
+                ) : (
+                    <RefreshCcw01 className="relative size-5 shrink-0 text-[#d92d20]" aria-hidden />
+                )
             ) : (
                 <CheckCircle className="relative size-5 shrink-0 text-[#067647]" aria-hidden />
             )}
@@ -235,14 +243,14 @@ export default function AppointmentBookingDetailPage() {
         ? booking.lateCancel
             ? [
                   { label: "You've paid", value: `AED ${booking.price}` },
-                  { label: "Refund amount", value: "AED 0", tone: "muted" },
+                  { label: "Your refund", value: "AED 0", tone: "muted" },
                   { label: "Status", value: "Not refunded — cancelled within 24 hours", tone: "muted" },
               ]
             : [
                   { label: "You've paid", value: `AED ${booking.price}` },
-                  { label: "Refund amount", value: `AED ${booking.price}`, tone: "success" },
+                  { label: "Your refund", value: `AED ${booking.price}` },
                   { label: "Refund via", value: booking.paymentMethod ?? "Original payment method" },
-                  { label: "Status", value: "Refunded", tone: "success" },
+                  { label: "Status", value: "Refunded" },
               ]
         : null;
 

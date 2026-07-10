@@ -53,19 +53,28 @@ export default function MyPlanPage() {
             (p.status === "active" || p.status === "frozen" || p.status === "cancelled" || p.status === "expired"),
     );
     // Invariant projection (belt-and-suspenders with the layout self-heal): a
-    // customer can hold only ONE active plan type. If corrupt state has both a
-    // membership AND package active, keep the most-recently-purchased kind active
-    // and render the other as cancelled — so the first paint is already valid.
+    // customer can hold only ONE active membership OR one-or-more packages — never
+    // two memberships and never a membership + package. If corrupt state violates
+    // this, the extras (planIdsToCancel) render as cancelled so the first paint is
+    // already valid, matching what the self-heal writes back to the store.
     const activeRaw = rawPlans.filter((p) => p.status === "active" || p.status === "frozen");
-    const bothActive = activeRaw.some((p) => p.kind === "membership") && activeRaw.some((p) => p.kind === "package");
-    const winnerKind = bothActive
-        ? [...activeRaw].sort((a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""))[0].kind
-        : null;
+    // Decide which active plans stay active — by OBJECT REFERENCE (robust to any
+    // duplicate/edge ids). Newest purchase wins: a membership winner keeps ONLY
+    // itself (one active membership ever); a package winner keeps every active
+    // package and drops all memberships. Everything else projects to "cancelled".
+    const sortedActive = [...activeRaw].sort((a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""));
+    const winnerKind = sortedActive[0]?.kind;
+    const keep = new Set<CustomerPlan>();
+    if (winnerKind === "membership") {
+        if (sortedActive[0]) keep.add(sortedActive[0]); // the single newest membership
+    } else if (winnerKind === "package") {
+        for (const pl of sortedActive) if (pl.kind === "package") keep.add(pl);
+    }
     const plans = rawPlans
-        .map((p) =>
-            bothActive && (p.status === "active" || p.status === "frozen") && p.kind !== winnerKind
-                ? { ...p, status: "cancelled" as const }
-                : p,
+        .map((pl) =>
+            (pl.status === "active" || pl.status === "frozen") && !keep.has(pl)
+                ? { ...pl, status: "cancelled" as const }
+                : pl,
         )
         .sort((a, b) => {
             const byStatus = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);

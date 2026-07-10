@@ -14,7 +14,6 @@ import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Minus, Plus, Ticket01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
-import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import {
     cartTotal,
@@ -31,6 +30,7 @@ import {
 import { ProductArt } from "@/components/customer/products/ProductArt";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
 import { useRedeemedGiftCards } from "@/lib/customer/gift-cards";
+import { usePaymentMethods } from "@/lib/customer/payment-methods";
 import { GiftCardMark } from "@/components/customer/products/GiftCardArt";
 import { Button } from "@/components/ui/button";
 
@@ -41,7 +41,9 @@ interface PayMethod {
     logo?: string;
     /** Tailwind inset utility positioning the logo inside the 46×32 tile. */
     inset?: string;
-    icon?: "gift";
+    icon?: "gift" | "google";
+    /** Label recorded on the order (receipt + appointment "Refund via"). */
+    payLabel: string;
 }
 
 export interface CheckoutCartProps {
@@ -91,7 +93,6 @@ const titleCase = (s: string) => s.trim().toLowerCase().replace(/\b\w/g, (c) => 
 
 export function CheckoutCart({ originId, onBack, promoHref, processingHref, summary, fixedSubtotal, taxRatePct }: CheckoutCartProps) {
     const router = useRouter();
-    const { member } = useCurrentCustomerContext();
     const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
 
@@ -125,20 +126,37 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
     }, [applyGiftSignal, hasGiftCard]);
     // Fall back if a previously-selected gift card is no longer available.
     useEffect(() => {
-        if (method === "gift" && !hasGiftCard) setMethod("apple");
+        if (method === "gift" && !hasGiftCard) setMethod(methods.find((m) => m.id !== "gift")?.id ?? "");
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [method, hasGiftCard]);
 
-    const cardName = member ? `${member.firstName} ${member.lastName}`.trim() : "Card holder";
+    // Payment options mirror the customer's Payment settings exactly: connected
+    // wallets (Apple / Google pay) + their saved cards + a redeemed gift card.
+    const { cards, wallet } = usePaymentMethods();
+    const brandArt = (brand: string) =>
+        brand.toLowerCase().includes("visa")
+            ? { logo: "/images/pay/visa.svg", inset: "inset-[33.75%_17.1%_33.67%_13.91%]" }
+            : { logo: "/images/pay/mastercard.svg", inset: "inset-[20.96%_17.8%_23.21%_17.39%]" };
     const methods: PayMethod[] = [
-        { id: "apple", label: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" },
-        { id: "visa", label: cardName, sub: "**** **** **** 0000", logo: "/images/pay/visa.svg", inset: "inset-[33.75%_17.1%_33.67%_13.91%]" },
-        { id: "master", label: cardName, sub: "**** **** **** 0000", logo: "/images/pay/mastercard.svg", inset: "inset-[20.96%_17.8%_23.21%_17.39%]" },
+        ...(wallet.applePay
+            ? [{ id: "apple", label: "Apple pay", payLabel: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" }]
+            : []),
+        ...(wallet.googlePay
+            ? [{ id: "google", label: "Google pay", payLabel: "Google pay", icon: "google" as const }]
+            : []),
+        ...cards.map((c) => ({
+            id: `card_${c.id}`,
+            label: c.holder,
+            sub: `**** **** **** ${c.last4}`,
+            payLabel: `${c.brand} •••• ${c.last4}`,
+            ...brandArt(c.brand),
+        })),
         ...(hasGiftCard
-            ? [{ id: "gift", label: "Forma gift card", sub: `Current balance: AED ${giftCardBalance}`, icon: "gift" as const }]
+            ? [{ id: "gift", label: "Forma gift card", payLabel: "Forma gift card", sub: `Current balance: AED ${giftCardBalance}`, icon: "gift" as const }]
             : []),
     ];
-    const methodLabel = methods.find((m) => m.id === method)?.label ?? "Apple pay";
+    // Keep the selection valid as the method list changes (settings edits / gift card).
+    const activeMethodId = methods.some((m) => m.id === method) ? method : methods[0]?.id ?? "";
 
     function setQty(lineId: string, next: number) {
         const it = purchaseCart.items.find((i) => i.lineId === lineId);
@@ -166,7 +184,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
         // Appointments pay a fixedSubtotal with no cart line items — only block when
         // there's neither a fixed price nor any cart items.
         if (fixedSubtotal == null && purchaseCart.items.length === 0) return;
-        const label = method === "apple" ? "Apple pay" : method === "gift" ? "Forma gift card" : `${methodLabel} •••• 0000`;
+        const label = methods.find((m) => m.id === activeMethodId)?.payLabel ?? "Apple pay";
         router.push(`${processingHref}?method=${encodeURIComponent(label)}`);
     }
 
@@ -234,7 +252,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                 <section className="flex flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[#101828]">Pay with</p>
                     {methods.map((m) => {
-                        const selected = m.id === method;
+                        const selected = m.id === activeMethodId;
                         const mDisabled = m.id === "gift" && giftDisabled;
                         return (
                             <button
@@ -248,6 +266,10 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                             >
                                 {m.icon === "gift" ? (
                                     <GiftCardMark />
+                                ) : m.icon === "google" ? (
+                                    <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[#e4e7ec] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
+                                        G Pay
+                                    </span>
                                 ) : (
                                     <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[#e4e7ec] bg-white">
                                         <span className={`absolute ${m.inset}`}>

@@ -22,6 +22,8 @@ import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelector
 import { Metrics } from "@/components/customer/home/Metrics";
 import { UpcomingBookings } from "@/components/customer/home/UpcomingBookings";
 import { WhatsOn } from "@/components/customer/home/WhatsOn";
+import { TrendingClasses } from "@/components/customer/home/TrendingClasses";
+import { RecommendedServices } from "@/components/customer/home/RecommendedServices";
 
 export default function CustomerHomePage() {
     const home = useHomeData();
@@ -93,6 +95,11 @@ export default function CustomerHomePage() {
 
                         {/* Up to 3 active marketing campaigns (the carousel). */}
                         <WhatsOn items={home.whatsOn.slice(0, 3)} />
+
+                        {/* Discover rails — real class + service data, so the
+                            (guest) Home never reads empty below "What's on". */}
+                        <TrendingClasses />
+                        <RecommendedServices />
                     </>
                 )}
             </div>
