@@ -6,6 +6,7 @@ import Link from "next/link";
 import { SearchMd, UserCircle, LogOut01, ChevronDown } from "@untitledui/icons";
 import NotificationBell from "@/components/NotificationBell";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -177,10 +178,16 @@ export default function Header() {
 
     return (
         <header className="h-[80px] bg-white flex items-center px-[24px] py-[20px] flex-shrink-0">
-            {/* Left: Page title */}
-            <h1 className="flex-1 text-[24px] font-semibold text-[#101828] leading-tight">
-                {pageTitle}
-            </h1>
+            {/* Left: Page title + breadcrumbs stacked tight (breadcrumbs
+                self-hide on dashboards / plain list pages where the trail
+                would be a single crumb). Same title→breadcrumb spacing the
+                detail-takeover pages use, so every surface reads the same. */}
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <h1 className="text-[24px] font-semibold text-[#101828] leading-tight">
+                    {pageTitle}
+                </h1>
+                <Breadcrumbs className="p-0 text-[12px]" />
+            </div>
 
             {/* Right: Search (admin only, icon-button — matches the bell
                 chrome) + Bell + Profile dropdown. The instructor experience

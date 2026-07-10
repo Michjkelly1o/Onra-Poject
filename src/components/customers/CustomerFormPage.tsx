@@ -26,6 +26,7 @@ import { useAppStore, DEFAULT_BRANCH_ID } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
 import { COUNTRIES, getCountryInfo } from "./country-states";
 import { AlertCircle, ArrowUpRight } from "@untitledui/icons";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -418,9 +419,12 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <p className="text-[20px] font-semibold text-[#101828]">
-                    {isEditing ? "Edit customer" : "Add customer"}
-                </p>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <p className="text-[20px] font-semibold text-[#101828]">
+                        {isEditing ? "Edit customer" : "Add customer"}
+                    </p>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* Body */}

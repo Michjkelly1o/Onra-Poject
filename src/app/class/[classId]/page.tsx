@@ -88,6 +88,7 @@ import { Pagination } from "@/components/ui/Pagination";
 // doesn't inherit the layout's <Toast /> portal — render our own here
 // (same pattern as [/earnings/[classId]](src/app/earnings/[classId]/page.tsx)).
 import { Toast } from "@/components/ui/Toast";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 // ─── Helpers — verbatim admin ───────────────────────────────────────────────
@@ -598,7 +599,10 @@ export default function InstructorClassDetailPage() {
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* Two-column content — canonical DetailPageShell wraps the 832px frame. */}

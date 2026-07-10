@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
@@ -474,11 +475,12 @@ const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 function WorkingDaysStrip({ workingDays }: { workingDays: boolean[] }) {
     // Strip mirrors Figma 7449:161921: 7 single-letter slots [Sun..Sat],
-    // working days in dark ink, off-days red (weekends typically off).
+    // working days in dark ink, off-days in muted grey per client Jul 2026
+    // (red read as an error state on non-working days).
     return (
         <div className="flex items-center gap-3 text-[16px] font-medium">
             {DAY_LETTERS.map((d, i) => (
-                <span key={i} className={workingDays[i] ? "text-[#101828]" : "text-[#b42318]"}>{d}</span>
+                <span key={i} className={workingDays[i] ? "text-[#101828]" : "text-[#98a2b3]"}>{d}</span>
             ))}
         </div>
     );
@@ -847,7 +849,10 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             <DetailPageShell

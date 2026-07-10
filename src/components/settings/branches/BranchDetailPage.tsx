@@ -43,6 +43,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore } from "@/lib/store";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
@@ -249,7 +250,8 @@ function Metadata({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
-/** "M  T  W  T  F  S  S" — closed days are red. Mirrors Figma 6655-193718. */
+/** "M  T  W  T  F  S  S" — closed days render muted grey (#98a2b3) per
+ *  client Jul 2026: red read as an error state on non-working days. */
 function WorkingDays({ hours }: { hours: BusinessHours[] }) {
     return (
         <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">
@@ -261,7 +263,7 @@ function WorkingDays({ hours }: { hours: BusinessHours[] }) {
                         key={dow}
                         className={cn(
                             "mr-[10px] last:mr-0",
-                            closed ? "text-[#b42318]" : "text-[#101828]",
+                            closed ? "text-[#98a2b3]" : "text-[#101828]",
                         )}
                     >
                         {DAY_SHORT[i]}
@@ -327,7 +329,7 @@ function DetailsTab({
                                                 <p className="font-medium text-[16px] text-[#101828] leading-6 w-[100px]">{DAY_LABELS[i]}</p>
                                                 <p className={cn(
                                                     "text-[14px] leading-5",
-                                                    closed ? "text-[#b42318]" : "text-[#667085]",
+                                                    closed ? "text-[#98a2b3]" : "text-[#667085]",
                                                 )}>
                                                     {closed ? "(Closed)" : `(${to12h(h!.open_time)} - ${to12h(h!.close_time)})`}
                                                 </p>
@@ -602,7 +604,10 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Branch details</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Branch details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* Body — canonical DetailPageShell wraps the 832px frame. */}

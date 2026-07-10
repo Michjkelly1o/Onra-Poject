@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { pivotRows, periodLabelFor } from "@/lib/reports/pivot";
 import {
     buildListCsv, buildPivotCsv, triggerCsvDownload,
@@ -342,7 +343,10 @@ export function PivotableReportShell({
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{report.title}</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{report.title}</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* ── Body ─────────────────────────────────────────────── */}
@@ -363,6 +367,7 @@ export function PivotableReportShell({
                             <SingleSelectDropdown
                                 icon={CalendarPlus01}
                                 label=""
+                                caption="Group by period"
                                 active={period !== "none"}
                                 options={report.periods.map(p => ({ value: p, label: PERIOD_LABEL[p] }))}
                                 value={period}
@@ -375,6 +380,7 @@ export function PivotableReportShell({
                             <SingleSelectDropdown
                                 icon={Grid01}
                                 label=""
+                                caption="Break down by"
                                 active={dimIdx >= 0}
                                 options={[
                                     { value: "-1", label: "None" },
@@ -390,6 +396,7 @@ export function PivotableReportShell({
                             <SingleSelectDropdown
                                 icon={CurrencyDollar}
                                 label=""
+                                caption="Measure"
                                 active={false}
                                 options={report.measures.map((m, i) => ({ value: String(i), label: m.label }))}
                                 value={String(meaIdx)}
@@ -402,6 +409,7 @@ export function PivotableReportShell({
                             <CheckListDropdown
                                 icon={Columns01}
                                 label="Column"
+                                caption="Columns"
                                 options={report.columns.map(c => ({ value: c.key, label: c.label }))}
                                 value={visibleCols}
                                 onToggle={toggleCol}
@@ -413,6 +421,7 @@ export function PivotableReportShell({
                             <CheckListDropdown
                                 icon={MarkerPin01}
                                 label="Location"
+                                caption="Locations"
                                 options={branches.map(b => ({ value: b.id, label: b.name }))}
                                 value={visibleBranchIds}
                                 onToggle={toggleBranch}
@@ -469,10 +478,13 @@ export function PivotableReportShell({
 type IconCmp = ComponentType<SVGProps<SVGSVGElement>>;
 
 function SingleSelectDropdown({
-    icon: Icon, label, options, value, onChange, active,
+    icon: Icon, label, caption, options, value, onChange, active,
 }: {
     icon: IconCmp;
     label: string;
+    /** Small uppercase caption shown at the top of the popover — describes
+     *  what the dropdown controls (e.g. "GROUP BY PERIOD"). */
+    caption?: string;
     options: { value: string; label: string }[];
     value: string;
     onChange: (next: string) => void;
@@ -504,6 +516,9 @@ function SingleSelectDropdown({
             </button>
             {open && (
                 <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px] max-h-[360px] overflow-y-auto">
+                    {caption && (
+                        <p className="px-3.5 pt-2 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">{caption}</p>
+                    )}
                     {options.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(opt.value); setOpen(false); }}
@@ -528,10 +543,13 @@ function SingleSelectDropdown({
 // ═════════════════════════════════════════════════════════════════════════
 
 function CheckListDropdown({
-    icon: Icon, label, options, value, onToggle,
+    icon: Icon, label, caption, options, value, onToggle,
 }: {
     icon: IconCmp;
     label: string;
+    /** Small uppercase caption shown at the top of the popover — describes
+     *  what the dropdown controls (e.g. "COLUMNS"). */
+    caption?: string;
     options: { value: string; label: string }[];
     value: Set<string>;
     onToggle: (v: string) => void;
@@ -561,6 +579,9 @@ function CheckListDropdown({
             </button>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[240px] max-h-[400px] overflow-y-auto">
+                    {caption && (
+                        <p className="px-3.5 pt-2 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">{caption}</p>
+                    )}
                     {options.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => onToggle(opt.value)}

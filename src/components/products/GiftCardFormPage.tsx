@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { DecorativeBanner, BANNER_TINTS } from "./DecorativeBanner";
 import { useAppStore, type GiftCardDesign } from "@/lib/store";
 
@@ -701,9 +702,12 @@ export function GiftCardFormPage({ mode, designId, initial, returnTo = "/admin/p
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                    {isEdit ? "Edit gift card" : "Create new gift card"}
-                </h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        {isEdit ? "Edit gift card" : "Create new gift card"}
+                    </h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* 3-column shell */}

@@ -27,6 +27,7 @@ import { XClose, Image01, UploadCloud02, Globe01, MarkerPin01, Coins01, Phone } 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore } from "@/lib/store";
 import { SectionHeader } from "@/components/patterns/SectionHeader";
 import {
@@ -301,9 +302,12 @@ export function FormHeader({ title, onClose }: { title: string; onClose: () => v
             >
                 <XClose className="w-5 h-5 text-[#667085]" />
             </button>
-            <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                {title}
-            </h1>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    {title}
+                </h1>
+                <Breadcrumbs className="p-0 text-[12px]" />
+            </div>
         </div>
     );
 }

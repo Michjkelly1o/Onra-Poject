@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ function MembershipFilterDropdown({ active, onChange }: {
             </button>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
+                    <p className="px-3 pt-1.5 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
                     {OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(opt.value); setOpen(false); }}
@@ -429,7 +431,10 @@ function EditClassTemplatePageInner() {
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Edit class template</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Edit class template</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* 3-column content */}

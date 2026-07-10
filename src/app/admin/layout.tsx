@@ -40,6 +40,8 @@ export default function AdminLayout({
                 {/* Content area */}
                 <div className="flex-1 min-w-0 p-[12px]">
                     <div className="bg-white border border-[#dcded5] rounded-[20px] h-full flex flex-col overflow-hidden">
+                        {/* Breadcrumbs render INSIDE Header, tight under the
+                            page title (see components/layout/Header.tsx). */}
                         <Header />
                         {/* pt-4 (16px) instead of the p-6's 24px top so the
                             page content sits a touch closer to the Header

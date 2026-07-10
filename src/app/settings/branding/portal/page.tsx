@@ -40,6 +40,7 @@ import { useRouter } from "next/navigation";
 import { XClose, Share04, Copy03, Trash01, DotsGrid, Check } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore, type PortalMenuItem } from "@/lib/store";
 import { SectionHeader } from "@/components/patterns/SectionHeader";
 
@@ -140,9 +141,12 @@ export default function CustomizePortalPreferencesPage() {
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                    Customize portal preferences
-                </h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        Customize portal preferences
+                    </h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* ── Body ────────────────────────────────────────────────── */}

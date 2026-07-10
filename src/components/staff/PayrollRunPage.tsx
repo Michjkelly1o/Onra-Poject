@@ -49,6 +49,7 @@ import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { payrollBreakdownFor } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { RowActions } from "@/components/patterns/RowActions";
@@ -269,7 +270,7 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, showT
 
                 {/* Detail box */}
                 <div className="mx-6 mt-6 rounded-[12px] border-1 border-[#e4e7ec] bg-[#f9fafb] p-4 flex flex-col gap-3">
-                    <p className="text-[14px] font-semibold text-[#344054] leading-[20px]">Detail payroll</p>
+                    <p className="text-[14px] font-semibold text-[#344054] leading-[20px]">Payroll Details</p>
                     <div className="flex items-center justify-between text-[14px]">
                         <span className="text-[#667085]">Gross wages</span>
                         <span className="font-medium text-[#101828]">{aed(grossWages)}</span>
@@ -697,7 +698,10 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Payroll details</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Payroll details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* Body */}

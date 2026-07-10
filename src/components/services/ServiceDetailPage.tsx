@@ -56,6 +56,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore, type Service, type ServiceStatus, type Appointment, type AppointmentStatus } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
@@ -575,7 +576,13 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                             </td>
                             <td className={TD}>{a.branchName}</td>
                             <td className={TD}><AttendanceBar booked={a.booked} capacity={a.capacity} /></td>
-                            <td className={TD}><RatingCell rating={a.rating} count={a.ratingCount} /></td>
+                            <td className={TD}>
+                                {/* Rating only shown once the appointment has happened —
+                                    Upcoming / Ongoing rows show a dash per client Jul 2026. */}
+                                {a.status === "Upcoming" || a.status === "Ongoing"
+                                    ? <span className="text-[14px] text-[#98a2b3]">—</span>
+                                    : <RatingCell rating={a.rating} count={a.ratingCount} />}
+                            </td>
                             <td className={TD}><StatusBadge type="appointment" status={a.status} /></td>
                             <td className={TD} onClick={e => e.stopPropagation()}>
                                 <RowActions
@@ -986,7 +993,10 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Service details</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Service details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* Body — fills viewport, 2-column */}

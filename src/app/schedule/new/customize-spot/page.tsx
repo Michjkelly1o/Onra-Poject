@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Settings03, ChevronUp, ChevronDown, AlertCircle } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 
 // ─── Row label helper: 0→A, 1→B, ... ─────────────────────────────────────────
 
@@ -228,7 +229,10 @@ function CustomizeSpotInner() {
                         className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                         <ChevronLeft className="w-5 h-5 text-[#667085]" />
                     </button>
-                    <p className="text-[20px] font-semibold text-[#101828]">Customize spot</p>
+                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                        <p className="text-[20px] font-semibold text-[#101828]">Customize spot</p>
+                        <Breadcrumbs className="p-0 text-[12px]" />
+                    </div>
                 </div>
             </div>
 

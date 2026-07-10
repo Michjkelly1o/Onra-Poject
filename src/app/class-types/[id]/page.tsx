@@ -23,6 +23,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { TableAvatar } from "@/components/ui/avatar";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 
@@ -388,7 +389,11 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                                 <AttendanceBar booked={s.booked} capacity={s.capacity} />
                             </td>
                             <td className={TD}>
-                                <StarRating rating={s.rating} count={s.ratingCount} />
+                                {/* Rating only shown once the class has happened —
+                                    Upcoming / Ongoing rows show a dash per client Jul 2026. */}
+                                {s.status === "Upcoming" || s.status === "Ongoing"
+                                    ? <span className="text-[14px] text-[#98a2b3]">—</span>
+                                    : <StarRating rating={s.rating} count={s.ratingCount} />}
                             </td>
                             <td className={TD}>
                                 <StatusBadge type="class" status={s.status} />
@@ -1044,7 +1049,10 @@ function ClassTemplateDetailPageInner() {
                 >
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class template details</h1>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class template details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
             </div>
 
             {/* Two-column content — canonical DetailPageShell wraps the 832px frame. */}
