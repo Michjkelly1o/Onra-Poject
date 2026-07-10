@@ -79,6 +79,13 @@ const MODULE_LABELS: Record<string, string> = {
     "/instructor/account":             "Profile",
 };
 
+/** Paths that sit under `/admin/settings/` by URL only — they belong to a
+ *  DIFFERENT sidebar group, so the breadcrumb must NOT prepend a "Settings"
+ *  crumb. Referral program lives under the Marketing menu. */
+const NON_SETTINGS_ADMIN_PATHS = new Set<string>([
+    "/admin/settings/referral",
+]);
+
 /** URL-prefix → admin-list-route mapping. Standalone routes like
  *  `/customers/[id]` live outside `/admin/` for historical reasons — this
  *  table tells the resolver which admin list page to link back to when
@@ -126,8 +133,9 @@ const MODULE_ROOT: ModuleRoot[] = [
       parent: { label: "Settings", href: "/admin/settings" } },
     { prefix: "/settings/booking-rules", listPath: "/admin/settings/booking-rules", label: "Booking rules",
       parent: { label: "Settings", href: "/admin/settings" } },
-    { prefix: "/settings/referral",   listPath: "/admin/settings/referral",    label: "Referral program",
-      parent: { label: "Settings", href: "/admin/settings" } },
+    // Referral program lives under the Marketing sidebar group, not Settings
+    // — no Settings parent crumb (matches Campaigns / Promotions siblings).
+    { prefix: "/settings/referral",   listPath: "/admin/settings/referral",    label: "Referral program" },
     { prefix: "/staff/members",       listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Staff details" },
     { prefix: "/staff/roles",         listPath: "/admin/staff/roles",       label: "Role & permissions",   detailNoun: "Role details" },
     { prefix: "/staff/pay-rate",      listPath: "/admin/staff/pay-rate",    label: "Pay rate",             detailNoun: "Pay rate details" },
@@ -267,8 +275,16 @@ export function resolveBreadcrumbs(pathname: string, store: AppState): Breadcrum
     if (MODULE_LABELS[path]) {
         // Dashboards render nothing — the page title carries the label.
         if (path === "/admin/dashboard" || path === "/instructor/dashboard") return [];
-        // Settings sub-modules render `Settings > <sub-module>`.
-        if (path.startsWith("/admin/settings/") && path !== "/admin/settings") {
+        // Settings sub-modules render `Settings > <sub-module>` — EXCEPT the
+        // ones that only live under /admin/settings/ by URL but belong to a
+        // different sidebar group. Referral program sits under the Marketing
+        // menu (with Campaigns + Promotions), so it shows no "Settings"
+        // parent — matching its Marketing siblings.
+        if (
+            path.startsWith("/admin/settings/")
+            && path !== "/admin/settings"
+            && !NON_SETTINGS_ADMIN_PATHS.has(path)
+        ) {
             return [
                 { label: "Settings", href: "/admin/settings" },
                 { label: MODULE_LABELS[path] },
