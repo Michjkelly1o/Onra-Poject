@@ -699,7 +699,13 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                             </td>
                             <td className={TD}>{c.location}</td>
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
-                            <td className={TD}><StarRating rating={c.rating} count={c.ratingCount} /></td>
+                            <td className={TD}>
+                                {/* Rating only makes sense once the class has happened —
+                                    Upcoming / Ongoing rows show a dash per client Jul 2026. */}
+                                {c.status === "Upcoming" || c.status === "Ongoing"
+                                    ? <span className="text-[14px] text-[#98a2b3]">—</span>
+                                    : <StarRating rating={c.rating} count={c.ratingCount} />}
+                            </td>
                             <td className={TD}><StatusBadge type="class" status={c.status} /></td>
                             <td className={TD} onClick={e => e.stopPropagation()}><ScheduleRowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
                         </tr>

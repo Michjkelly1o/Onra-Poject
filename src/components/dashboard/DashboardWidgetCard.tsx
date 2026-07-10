@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { DotsVertical, Trash01, Plus, DotsGrid } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG } from "./widget-catalog";
+import { useAppStore } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 import {
     LineChart, Line, BarChart, Bar,
@@ -26,7 +27,9 @@ const SEEDS: Record<string, Record<string, number[]>> = {
     "payments-by-method":  { card: [25, 18, 22, 35, 28, 32, 20], cash: [8, 5, 6, 5, 9, 7, 4], apple: [5, 3, 4, 4, 6, 5, 3] },
     "payments-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
     "revenue-overview":    { revenue: [480, 540, 600, 680, 760, 830, 910], lastWeek: [640, 610, 630, 615, 595, 605, 610] },
-    "sales-by-product":    { membership: [28, 18, 15, 10, 30, 35, 8], package: [8, 12, 5, 8, 10, 42, 5] },
+    // Values are AED sales revenue per day (not unit counts) — client Jul 2026:
+    // tooltip must read as sales, not quantity.
+    "sales-by-product":    { membership: [8400, 5600, 4500, 3200, 9800, 12500, 2400], package: [2400, 3600, 1500, 2400, 3200, 14200, 1500] },
     "active-memberships":  { v: [28, 30, 32, 35, 34, 38, 42] },
     "active-subscriptions":{ v: [32, 33, 35, 34, 37, 40, 44] },
     "active-credits":      { v: [30, 32, 35, 33, 36, 38, 40] },
@@ -214,9 +217,10 @@ function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number;
  *  `null` if the widget id isn't a recognised data source. Period is honoured
  *  exactly the way the chart honours it (same `buildSeries(id, period)` call)
  *  so the exported numbers match what the admin sees on screen. Branch-level
- *  filtering isn't yet wired into the widget seeds — the on-screen chart
- *  doesn't change per branch today, so neither does the exported CSV. KPI
- *  metrics above the widgets already respect branch scope. */
+ *  filtering is applied at render time via `branchScaleFor(...)` and is
+ *  NOT re-applied here — the exported CSV stays at aggregate (studio-wide)
+ *  values regardless of the on-screen picker. Wire a `branchId` param
+ *  through to `scaleRows(...)` if per-branch export is ever needed. */
 export function getWidgetCsvSection(
     id: string,
     period: DateFilter,
@@ -241,7 +245,7 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "payments-by-method":   { headers: ["Date", "Card", "Cash", "Apple pay"],     fields: ["date", "card", "cash", "apple"] },
     "payments-by-source":   { headers: ["Date", "CRM", "Customer App", "Website"], fields: ["date", "crm", "app", "web"] },
     "revenue-overview":     { headers: ["Date", "Revenue", "Last week"],          fields: ["date", "revenue", "lastWeek"] },
-    "sales-by-product":     { headers: ["Date", "Membership", "Class package"],   fields: ["date", "membership", "package"] },
+    "sales-by-product":     { headers: ["Date", "Membership (AED)", "Class package (AED)"], fields: ["date", "membership", "package"] },
     "active-memberships":   { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
     "active-subscriptions": { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
     "active-credits":       { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
@@ -288,6 +292,32 @@ const ChartTooltip = ({ active, payload, label }: any) => {
     );
 };
 
+// AED-formatted variant for money widgets (currently: Sales by product).
+// Values render with thousands separators + AED prefix so the hover state
+// reads as "AED 8,400" instead of the raw quantity-looking "8400".
+const MoneyChartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[160px]">
+            <p className="font-semibold text-[#101828] mb-1.5">{label}</p>
+            {payload.map((p: any) => (
+                <p key={p.dataKey} className="flex items-center gap-1.5 mb-0.5">
+                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
+                    <span className="text-[#475467]">{p.name}:</span>
+                    <span className="font-medium text-[#101828]">AED {Number(p.value).toLocaleString()}</span>
+                </p>
+            ))}
+        </div>
+    );
+};
+
+/** Y-axis tick formatter for AED bar charts — compacts to "8k / 12k" so the
+ *  axis doesn't blow out to "12,500". Used with Sales by product. */
+function aedAxisTick(value: number): string {
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+    return String(value);
+}
+
 // ─── Chart content ────────────────────────────────────────────────────────────
 
 type ChartSize = "mini" | "full";
@@ -305,10 +335,41 @@ function Legend({ items }: { items: { color: string; label: string }[] }) {
     );
 }
 
-function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_PERIOD): React.ReactNode {
+/** Deterministic per-branch share of studio-wide activity — used to scale
+ *  every widget's mock values when the KPI/Insights page picks a branch, so
+ *  the charts feel "location-aware" without wiring each widget's real data
+ *  source individually. Returns 1.0 when no branch is picked (aggregate).
+ *  Front-loaded weights favour the earliest branch (flagship / main). */
+function branchScaleFor(branchId: string | undefined, activeBranchIds: string[]): number {
+    if (!branchId) return 1;
+    const idx = activeBranchIds.indexOf(branchId);
+    if (idx === -1) return 0.5;
+    const n = activeBranchIds.length;
+    if (n <= 1) return 1;
+    if (n === 2) return idx === 0 ? 0.60 : 0.40;
+    // 3+ branches → weights 1/(i+1.4), normalized to sum to 1.
+    const weights = activeBranchIds.map((_, i) => 1 / (i + 1.4));
+    const sum = weights.reduce((a, b) => a + b, 0);
+    return weights[idx] / sum;
+}
+
+/** Scale every numeric field in a chart-ready row by `factor`, leave strings
+ *  (labels, dates, colors) untouched. Returns the same row when factor is 1. */
+function scaleRows(rows: object[], factor: number): object[] {
+    if (factor === 1) return rows;
+    return rows.map(row => {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(row)) {
+            out[k] = typeof v === "number" ? Math.max(0, Math.round(v * factor)) : v;
+        }
+        return out;
+    });
+}
+
+function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_PERIOD, branchScale: number = 1): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
-    const data = STATIC[id] ?? buildSeries(id, period);
+    const data = scaleRows(STATIC[id] ?? buildSeries(id, period), branchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -407,8 +468,8 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
-                            <YAxis {...axisProps} width={28} />
-                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
+                            <YAxis {...axisProps} width={36} tickFormatter={aedAxisTick} />
+                            <Tooltip content={<MoneyChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="membership" name="Membership"   fill="#c4edd6" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="package"    name="Class package" fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
                         </BarChart>
@@ -820,6 +881,10 @@ interface DashboardWidgetCardProps {
     /** Date-range filter driving the chart's data length, labels and scale.
      *  Defaults to "This week" for backward compatibility. */
     period?: DateFilter;
+    /** Branch id to scope the widget's numbers. Empty / undefined = aggregate
+     *  across every active branch (the "All locations" state). Scales every
+     *  numeric field on the chart data via `branchScaleFor(...)`. */
+    branchId?: string;
     /** undefined = no action button; "add" = + button; "kebab" = ··· remove menu */
     action?: "add" | "kebab";
     onAdd?: () => void;
@@ -837,8 +902,15 @@ interface DashboardWidgetCardProps {
     className?: string;
 }
 
-export function DashboardWidgetCard({ widgetId, period, action, onAdd, onRemove, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
+export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd, onRemove, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
     const meta = WIDGET_CATALOG.find(w => w.id === widgetId);
+    // Every active branch's id, in stable seed order — feeds the deterministic
+    // per-branch share used by `branchScaleFor(...)`. Inactive / archived
+    // branches are excluded since they never appear in the location picker.
+    const activeBranchIds = useAppStore(s =>
+        s.branches.filter(b => b.status === "active").map(b => b.id),
+    );
+    const branchScale = branchScaleFor(branchId, activeBranchIds);
     if (!meta) return null;
 
     return (
@@ -885,7 +957,7 @@ export function DashboardWidgetCard({ widgetId, period, action, onAdd, onRemove,
             </div>
             {/* Chart */}
             <div className="min-w-0">
-                {renderChart(widgetId, "full", period)}
+                {renderChart(widgetId, "full", period, branchScale)}
             </div>
         </div>
     );

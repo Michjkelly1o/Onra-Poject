@@ -112,10 +112,6 @@ export default function InsightsPage() {
             w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
         : widgetsInCategory;
 
-    const kpiLabel = activeTab.key === "memberships"
-        ? "memberships KPIs"
-        : `${activeTab.key} KPIs`;
-
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
             {/* Tab strip */}
@@ -137,12 +133,7 @@ export default function InsightsPage() {
 
             {/* Toolbar */}
             <div className="flex items-center gap-3">
-                <div className="flex-1 flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[14px] font-medium text-[#101828]">
-                        {filteredMetrics.length} {kpiLabel}
-                    </p>
-                </div>
+                <div className="flex-1" />
                 <div className="relative w-[220px]">
                     <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}

@@ -411,7 +411,7 @@ function PersonalInformationTab({
                                             key={idx}
                                             className={cn(
                                                 "text-[16px] font-medium leading-6",
-                                                isOn ? "text-[#101828]" : "text-[#f04438]",
+                                                isOn ? "text-[#101828]" : "text-[#98a2b3]",
                                             )}
                                         >
                                             {d.glyph}
@@ -451,7 +451,7 @@ function PersonalInformationTab({
                                             key={idx}
                                             className={cn(
                                                 "text-[16px] font-medium leading-6",
-                                                isOn ? "text-[#101828]" : "text-[#f04438]",
+                                                isOn ? "text-[#101828]" : "text-[#98a2b3]",
                                             )}
                                         >
                                             {d.glyph}

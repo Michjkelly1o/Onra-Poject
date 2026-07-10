@@ -15,7 +15,7 @@
 //     Search input + Filter dropdown (Active / Inactive / Archived,
 //     multi-select) + "Add location" green primary dropdown (Branch / Room).
 //   ✓ Table with expandable branch rows. Each branch row shows the
-//     "M T W T F S S" working-days strip (closed days in red) + working
+//     "M T W T F S S" working-days strip (closed days muted grey) + working
 //     hour string + address + status badge + row-actions menu (View
 //     details / Edit / Add room / Reactivate / Archive / Deactivate).
 //     Enable toggle lives inside the dropdown as Reactivate + Deactivate
@@ -562,6 +562,7 @@ function FilterDropdown({ open, onToggle, onClose, value, onPick }: {
             </Button>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[160px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2">
+                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
                     {STATUS_OPTIONS.map(o => {
                         const active = value === o.value;
                         return (
@@ -936,9 +937,10 @@ function RoomActionMenu({
 
 // ─── Display primitives ────────────────────────────────────────────────────
 
-/** Renders the "M T W T F S S" working-days strip. Closed days render red
- *  (#d92d20). Falls back to all-grey neutral letters if no business_hours
- *  exist for the branch yet. */
+/** Renders the "M T W T F S S" working-days strip. Closed days render as
+ *  muted grey (#98a2b3) — reads as "off" without the alarm-red the client
+ *  flagged in Jul 2026. Falls back to muted-grey letters if no
+ *  business_hours exist for the branch yet. */
 function WorkingDaysStrip({ hours }: { hours: BusinessHours[] }) {
     const byDow = new Map(hours.map(h => [h.day_of_week, h]));
     return (
@@ -952,7 +954,7 @@ function WorkingDaysStrip({ hours }: { hours: BusinessHours[] }) {
                         key={i}
                         className={cn(
                             "text-[14px] font-semibold leading-5",
-                            closed ? "text-[#d92d20]" : "text-[#101828]",
+                            closed ? "text-[#98a2b3]" : "text-[#101828]",
                         )}
                     >
                         {letter}

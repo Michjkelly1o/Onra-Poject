@@ -1004,7 +1004,7 @@ export default function AdminDashboard() {
             {/* Welcome + Location Picker + tab-specific actions */}
             <div className="flex gap-2 items-center">
                 <p className="flex-1 font-semibold text-base text-[#101828]">
-                    {activeTab === "coming" ? "What's ahead" : `Welcome, ${studioDisplayName}`}
+                    {activeTab === "coming" ? "" : `Welcome, ${studioDisplayName}`}
                 </p>
 
                 {/* Location picker — always visible */}

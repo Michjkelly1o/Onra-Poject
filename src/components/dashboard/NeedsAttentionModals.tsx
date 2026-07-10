@@ -889,7 +889,6 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                 customer={winBackRow?.customer ?? null}
                 lastVisitLabel={winBackRow?.lastVisitLabel ?? ""}
                 daysAgo={winBackRow?.daysAgo ?? 0}
-                pattern={winBackRow?.pattern ?? ""}
                 credits={winBackRow?.credits ?? 0}
                 expiryLabel={winBackRow?.expiryLabel ?? null}
                 onClose={() => setWinBackRow(null)}
@@ -948,13 +947,15 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
             .filter(s => !branchId || s.branchId === branchId);
     }, [classSchedules, branchId, forwardRangeDays]);
 
+    // Rating column removed per client Jul 2026: every row here is Upcoming or
+    // Ongoing, so rating is meaningless (class hasn't happened yet). Sort key
+    // dropped in lockstep.
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<ClassSchedule>(rows, {
             datetime:   (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
             className:  (a, b) => a.name.localeCompare(b.name),
             location:   (a, b) => (a.room ?? "").localeCompare(b.room ?? ""),
             attendance: (a, b) => (a.booked / Math.max(1, a.capacity)) - (b.booked / Math.max(1, b.capacity)),
-            rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
             status:     (a, b) => a.status.localeCompare(b.status),
         });
 
@@ -1041,9 +1042,6 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
                                 <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
                             </th>
                             <th className={TH}>
-                                <SortableHeader sortKey="rating" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rating</SortableHeader>
-                            </th>
-                            <th className={TH}>
                                 <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                             </th>
                             <th className={cn(TH, "w-14")} />
@@ -1092,24 +1090,6 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
                                         </div>
                                     </td>
                                     <td className={TD}>
-                                        <div className="flex items-center gap-1">
-                                            {[0, 1, 2, 3, 4].map(i => (
-                                                <Star01
-                                                    key={i}
-                                                    className={cn(
-                                                        "w-4 h-4",
-                                                        i < Math.round(s.rating ?? 0)
-                                                            ? "text-[#f79009] fill-[#f79009]"
-                                                            : "text-[#d0d5dd]",
-                                                    )}
-                                                />
-                                            ))}
-                                            <span className="ml-1 text-[14px] text-[#475467]">
-                                                {(s.rating ?? 0).toFixed(0)} ({s.ratingCount ?? 0} ratings)
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className={TD}>
                                         <StatusBadge type="classLifecycle" status={s.status} />
                                     </td>
                                     <td className={TD}>
@@ -1129,7 +1109,7 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
                         })}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={6} className="py-16 text-center text-[14px] text-[#667085]">
                                     No under-filled classes in the next 30 days.
                                 </td>
                             </tr>
@@ -1193,13 +1173,12 @@ function buildWinBackMessages(opts: {
 }
 
 function WinBackModal({
-    open, customer, lastVisitLabel, daysAgo, pattern, credits, expiryLabel, onClose, onSent,
+    open, customer, lastVisitLabel, daysAgo, credits, expiryLabel, onClose, onSent,
 }: {
     open: boolean;
     customer: Customer | null;
     lastVisitLabel: string;
     daysAgo: number;
-    pattern: string;
     credits: number;
     expiryLabel: string | null;
     onClose: () => void;
@@ -1281,9 +1260,9 @@ function WinBackModal({
                         <AlertCircle className="w-4 h-4 text-[#667085] shrink-0 mt-[2px]" />
                         <p className="text-[13px] text-[#475467] leading-[18px]">
                             <span className="font-semibold text-[#344054]">Why they&apos;re flagged:</span>{" "}
-                            {pattern.startsWith("0") ? "no recent bookings" : `booked ${pattern}`}, then stopped after {lastVisitLabel}.
+                            No bookings since {lastVisitLabel}.
                             {credits > 0 && (
-                                <> Holds {credits} unused credit{credits === 1 ? "" : "s"}{expiryLabel ? ` expiring ${expiryLabel}` : ""}.</>
+                                <> Holds {credits} unused credit{credits === 1 ? "" : "s"}.</>
                             )}
                         </p>
                     </div>

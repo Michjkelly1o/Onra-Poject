@@ -29,7 +29,8 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { SearchMd } from "@untitledui/icons";
+import { SearchMd, MarkerPin01 } from "@untitledui/icons";
+import { SelectInput } from "@/components/ui/select-input";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
@@ -111,6 +112,9 @@ export default function KpiPage() {
     const [tab, setTab] = useState<TabKey>("financial");
     const [search, setSearch] = useState("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
+    // Empty string = "All locations" (aggregate across every branch); any
+    // non-empty value scopes every KPI + widget through `branchFilter` below.
+    const [location, setLocation] = useState<string>("");
 
     // Store slices the KPI compute functions need. Zustand's per-slice
     // subscription means POS / booking / plan writes trigger recompute
@@ -127,10 +131,26 @@ export default function KpiPage() {
     // Date range → concrete current + prior windows.
     const range = useMemo(() => resolveRangePair(period), [period]);
 
-    // Location filter — Phase 2 uses "all branches" for the demo. Phase 6
-    // will wire a location dropdown alongside the date picker matching
-    // the Reports shell UX.
-    const branchFilter: Set<string> | null = null;
+    // Location filter — wired to the toolbar Location dropdown. When the
+    // user picks a specific branch, every KPI + widget on the page recomputes
+    // scoped to that branch's transactions/plans/schedules in the same render
+    // tick. Empty string = "All locations" → null so helpers keep aggregate.
+    const branchFilter: Set<string> | null = useMemo(
+        () => location ? new Set([location]) : null,
+        [location],
+    );
+
+    // Location dropdown options — only active branches can be a valid scope
+    // (inactive/archived are hidden). Mirrors the dashboard picker so users
+    // see one consistent Location control across modules.
+    const locationOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({
+            value: b.id,
+            label: b.name,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        })),
+        [branches],
+    );
 
     // Pack the state slices into a single object for KPI helpers. Every
     // helper reads through the same shape so adding a new tab is a
@@ -197,8 +217,6 @@ export default function KpiPage() {
             w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
         : widgetsForTab;
 
-    const kpiLabel = `${activeTab.label.toLowerCase()} KPIs`;
-
     // Phase 1 empty state — surfaces when a tab has no metrics AND no
     // widgets yet. Removed once each tab gets its cards + widgets.
     const showPhaseEmptyState = !q
@@ -226,12 +244,7 @@ export default function KpiPage() {
 
             {/* Toolbar */}
             <div className="flex items-center gap-3">
-                <div className="flex-1 flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[14px] font-medium text-[#101828]">
-                        {filteredMetrics.length} {kpiLabel}
-                    </p>
-                </div>
+                <div className="flex-1" />
                 <div className="relative w-[220px]">
                     <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -239,6 +252,16 @@ export default function KpiPage() {
                         className="h-10 w-full pl-[44px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
+                {/* Location picker — reused from the dashboard header
+                    (same MarkerPin01 glyph + "All locations" sentinel). */}
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                    value={location}
+                    onChange={setLocation}
+                    width="w-[220px]"
+                />
                 <DateRangeFilter value={period} onChange={setPeriod} />
             </div>
 
@@ -255,7 +278,7 @@ export default function KpiPage() {
             {filteredWidgets.length > 0 && (
                 <div className="grid grid-cols-2 gap-6">
                     {filteredWidgets.map(w => (
-                        <DashboardWidgetCard key={w.id} widgetId={w.id} period={period} />
+                        <DashboardWidgetCard key={w.id} widgetId={w.id} period={period} branchId={location || undefined} />
                     ))}
                 </div>
             )}

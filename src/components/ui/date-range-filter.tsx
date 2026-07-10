@@ -335,6 +335,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                 )}>
                     {/* Left — period type list */}
                     <div className="flex flex-col gap-[4px] px-[16px] py-[12px] border-r border-[#e4e7ec] shrink-0">
+                        <p className="px-[16px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Date range</p>
                         {PERIOD_TYPES.map(pt => (
                             <button
                                 key={pt.value}

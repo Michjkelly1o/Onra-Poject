@@ -1134,13 +1134,6 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                         </div>
                         <Toggle on={criticalBypass} onChange={setCriticalBypass} ariaLabel="Critical bypass" />
                     </div>
-
-                    <div className="bg-[#f5fffa] border-1 border-[#e4e7ec] rounded-[12px] p-4 flex items-start gap-3 mt-2">
-                        <Lightbulb02 className="w-5 h-5 text-[#658774] shrink-0 mt-0.5" />
-                        <p className="text-[13px] text-[#475467] leading-[18px]">
-                            Critical messages bypass quiet hours so customers always hear about payment and booking issues in time.
-                        </p>
-                    </div>
                 </div>
 
                 <div className="border-t border-[#e4e7ec] px-6 py-4 flex justify-between gap-3 shrink-0">
