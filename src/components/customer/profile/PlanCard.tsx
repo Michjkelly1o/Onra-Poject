@@ -44,8 +44,10 @@ export function PlanCard({
     canReactivate?: boolean;
 }) {
     const isMembership = plan.kind === "membership";
-    // Frozen + cancelled render as a "disabled" card (grey tile, quaternary text).
-    const disabled = plan.status === "frozen" || plan.status === "cancelled";
+    // Only an ACTIVE plan is "live" — frozen / cancelled / expired / removed all
+    // render as a disabled (grey) card with a muted status.
+    const isLive = plan.status === "active" || plan.status === "frozen";
+    const disabled = plan.status !== "active";
 
     const total = totalCredits(plan.creditsLabel);
     const bigCredits = total === null ? "∞" : String(total);
@@ -59,7 +61,11 @@ export function PlanCard({
             ? `Frozen until: ${plan.freezeEndISO ? dayMonthYear(plan.freezeEndISO) : "—"}`
             : plan.status === "cancelled"
               ? "Cancelled"
-              : "Active";
+              : plan.status === "expired"
+                ? "Expired"
+                : plan.status === "removed"
+                  ? "Removed"
+                  : "Active";
 
     return (
         <div className="flex flex-col gap-4 rounded-2xl border border-[#eaecf0] bg-white p-4">
@@ -87,11 +93,15 @@ export function PlanCard({
                 </div>
             </div>
 
-            {plan.status === "cancelled" ? (
+            {!isLive ? (
                 <div className="flex items-start gap-2 rounded-xl border border-[#fee4e2] bg-[#fffbfa] p-3">
                     <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#d92d20]" aria-hidden />
                     <p className="text-sm leading-5 text-[#667085]">
-                        Your subscription ends on {shortDate(plan.expiryISO)}. You will keep access until then.
+                        {plan.status === "cancelled"
+                            ? `Your subscription ends on ${shortDate(plan.expiryISO)}. You will keep access until then.`
+                            : plan.status === "expired"
+                              ? `This plan expired on ${shortDate(plan.expiryISO)}.`
+                              : "This plan is no longer available."}
                     </p>
                 </div>
             ) : (
@@ -111,7 +121,7 @@ export function PlanCard({
                 </div>
             )}
 
-            {isMembership && plan.status !== "cancelled" && (
+            {isMembership && isLive && (
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-normal leading-5 text-[#667085]">Next billing date</span>
@@ -130,7 +140,7 @@ export function PlanCard({
                         Reactivate plan
                     </Button>
                 ) : null
-            ) : (
+            ) : isLive ? (
                 <div className="flex gap-3">
                     <Button
                         variant="secondary-gray"
@@ -150,7 +160,7 @@ export function PlanCard({
                         </Button>
                     )}
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }

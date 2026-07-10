@@ -6,18 +6,24 @@
 //
 // Phase 4 gate — shown only to members with an unsigned booking waiver (first-
 // timers). A green hint, the full waiver (Assumption of Risk · Health & Medical ·
-// Release of Liability · Cancellation Policy), and an acknowledgment checkbox.
-// The page scrolls; the "Agree & continue" button sits in-flow at the very end,
-// so it's only reached after reading to the bottom. Enabled once the box is
-// ticked → signs the waiver and forwards (mode/spot params) to Processing.
+// Release of Liability · Guardian Consent · Cancellation Policy), a "Sign here"
+// signature pad, and an acknowledgment checkbox. When the attendee is under 18 a
+// guardian-consent block appears (guardian name + relationship) and the pad
+// captures the PARENT / GUARDIAN signature. The page scrolls; the "Agree &
+// continue" button sits in-flow at the very end, so it's only reached after
+// reading to the bottom. Enabled once the waiver is signed + the box is ticked
+// (+ guardian details, for a minor) → signs the waiver and forwards (mode/spot
+// params) to Processing.
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Lightbulb02 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import { CheckBox } from "@/components/customer/shell/SelectIndicators";
+import { SignaturePad } from "@/components/customer/shell/SignaturePad";
 import { Button } from "@/components/ui/button";
 
 const WAIVER_SECTIONS: { heading: string; body: string; bullets?: string[] }[] = [
@@ -34,6 +40,10 @@ const WAIVER_SECTIONS: { heading: string; body: string; bullets?: string[] }[] =
         body: "I hereby release, waive, and discharge Onra Studio, its owners, employees, instructors, and agents from any and all liability, claims, demands, or causes of action arising out of or related to any loss, damage, or injury, including death, that may be sustained by me while participating in activities or while on the premises.",
     },
     {
+        heading: "PARENT / GUARDIAN CONSENT (UNDER 18)",
+        body: "If the participant is under 18 years of age, a parent or legal guardian must provide consent and sign on their behalf. By signing as guardian, I confirm I have the legal authority to consent to this waiver for the minor and I accept all terms above on their behalf.",
+    },
+    {
         heading: "CANCELLATION POLICY",
         body: "I understand and agree to the studio's cancellation policy:",
         bullets: [
@@ -43,6 +53,23 @@ const WAIVER_SECTIONS: { heading: string; body: string; bullets?: string[] }[] =
         ],
     },
 ];
+
+const RELATIONSHIPS = ["Mother", "Father", "Legal guardian", "Grandparent", "Other"];
+
+const INPUT_CLS =
+    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] placeholder:text-[#667085] focus:border-[#658774] focus:outline-none";
+
+/** Whole-year age from an ISO DOB, measured against the demo "today". */
+function ageFrom(dob: string | undefined, todayISO: string): number | null {
+    if (!dob) return null;
+    const d = new Date(dob.length <= 10 ? `${dob}T00:00:00` : dob);
+    if (Number.isNaN(d.getTime())) return null;
+    const t = new Date(`${todayISO}T00:00:00`);
+    let age = t.getFullYear() - d.getFullYear();
+    const m = t.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--;
+    return age;
+}
 
 export default function WaiverPage() {
     return (
@@ -58,13 +85,33 @@ function Waiver() {
     const search = useSearchParams();
     const { member } = useCurrentCustomerContext();
     const signWaiver = useAppStore((s) => s.signWaiver);
+    const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
 
+    // Auto-flag a minor from the member's DOB when known; the customer can still
+    // toggle it (walk-in / booking on behalf of a child whose DOB isn't on file).
+    const detectedAge = useMemo(() => ageFrom(member?.dateOfBirth, REAL_TODAY_ISO), [member?.dateOfBirth]);
+    const [isMinor, setIsMinor] = useState(detectedAge !== null && detectedAge < 18);
+    const [guardianName, setGuardianName] = useState("");
+    const [relationship, setRelationship] = useState("");
+
+    const [signed, setSigned] = useState(false);
     const [checked, setChecked] = useState(false);
 
+    const guardianReady = !isMinor || (guardianName.trim().length > 0 && relationship.trim().length > 0);
+    const canContinue = checked && signed && guardianReady && !!member;
+
     function agree() {
-        if (!checked || !member) return;
+        if (!canContinue || !member) return;
         signWaiver(member.id);
+        showToast(
+            "Waiver signed",
+            isMinor
+                ? `Guardian consent recorded for ${guardianName.trim()}.`
+                : "Thanks — your waiver is on file.",
+            "success",
+            "check",
+        );
         const params = search.toString();
         router.replace(`/customer/classes/${id}/book/processing${params ? `?${params}` : ""}`);
     }
@@ -121,6 +168,80 @@ function Waiver() {
                     ))}
                 </div>
 
+                {/* Minor / guardian consent — toggling reveals the guardian fields and
+                 *  switches the signature to the parent / guardian's. */}
+                <div className="flex w-full flex-col gap-4 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                    <button
+                        type="button"
+                        onClick={() => setIsMinor((v) => !v)}
+                        className="flex w-full items-start gap-2 text-left"
+                        aria-pressed={isMinor}
+                    >
+                        <span className="pt-0.5">
+                            <CheckBox checked={isMinor} />
+                        </span>
+                        <span className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium leading-5 text-[#344054]">
+                                The attendee is under 18 years old
+                            </span>
+                            <span className="text-xs font-normal leading-[18px] text-[#667085]">
+                                A parent or legal guardian must consent and sign below.
+                            </span>
+                        </span>
+                    </button>
+
+                    {isMinor && (
+                        <div className="flex flex-col gap-3 border-t border-[#eaecf0] pt-4">
+                            <p className="text-sm font-semibold leading-5 text-[#101828]">Parent / guardian consent</p>
+                            <div className="flex flex-col gap-1.5">
+                                <label htmlFor="guardian-name" className="text-sm font-medium leading-5 text-[#344054]">
+                                    Parent / guardian full name
+                                </label>
+                                <input
+                                    id="guardian-name"
+                                    type="text"
+                                    value={guardianName}
+                                    onChange={(e) => setGuardianName(e.target.value)}
+                                    placeholder="e.g. Sara Al-Rashid"
+                                    className={INPUT_CLS}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <label htmlFor="guardian-relation" className="text-sm font-medium leading-5 text-[#344054]">
+                                    Relationship to minor
+                                </label>
+                                <select
+                                    id="guardian-relation"
+                                    value={relationship}
+                                    onChange={(e) => setRelationship(e.target.value)}
+                                    className={`${INPUT_CLS} ${relationship ? "" : "text-[#667085]"}`}
+                                >
+                                    <option value="" disabled>
+                                        Select relationship
+                                    </option>
+                                    {RELATIONSHIPS.map((r) => (
+                                        <option key={r} value={r} className="text-[#101828]">
+                                            {r}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Sign here — the signature pad (customer or, for a minor, guardian). */}
+                <div className="flex w-full flex-col gap-2">
+                    <p className="text-sm font-semibold leading-5 text-[#101828]">
+                        {isMinor ? "Parent / guardian signature" : "Sign here"}
+                    </p>
+                    <SignaturePad
+                        key={isMinor ? "guardian" : "self"}
+                        onChange={setSigned}
+                        ariaLabel={isMinor ? "Parent or guardian signature" : "Your signature"}
+                    />
+                </div>
+
                 {/* Acknowledgment */}
                 <button
                     type="button"
@@ -131,7 +252,11 @@ function Waiver() {
                     <span className="pt-0.5">
                         <CheckBox checked={checked} />
                     </span>
-                    <span className="text-sm font-medium leading-5 text-[#344054]">I have read and agree to the terms</span>
+                    <span className="text-sm font-medium leading-5 text-[#344054]">
+                        {isMinor
+                            ? "I am the parent / legal guardian and I consent to the terms on behalf of the minor"
+                            : "I have read and agree to the terms"}
+                    </span>
                 </button>
 
                 {/* Action — in-flow (not sticky); reached after reading to the end. */}
@@ -139,7 +264,7 @@ function Waiver() {
                     variant="primary"
                     size="xl"
                     className="mt-2 w-full rounded-full"
-                    disabled={!checked}
+                    disabled={!canContinue}
                     onClick={agree}
                 >
                     Agree &amp; continue

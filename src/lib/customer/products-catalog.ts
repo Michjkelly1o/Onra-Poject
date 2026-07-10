@@ -11,13 +11,14 @@
 // list (you can't re-buy what you already hold).
 
 import { useEffect, useMemo } from "react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type CustomerPlan } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
 import type { PlanRow } from "@/lib/customer/purchase";
 
 function fmtLongDate(iso?: string): string {
     if (!iso) return "—";
-    const d = new Date(`${iso}T00:00:00`);
+    // Accept both date-only ("2026-07-01") and full ISO timestamps (purchased plans).
+    const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso);
     return Number.isNaN(d.getTime())
         ? "—"
         : d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -25,7 +26,8 @@ function fmtLongDate(iso?: string): string {
 
 function fmtMonthDay(iso?: string): string {
     if (!iso) return "—";
-    const d = new Date(`${iso}T00:00:00`);
+    // Accept both date-only ("2026-07-01") and full ISO timestamps (purchased plans).
+    const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso);
     return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
@@ -195,15 +197,37 @@ export function useCreditBalance(): CreditBalanceVM | null {
     }, [member, customerPlans]);
 }
 
+/** True when the active/frozen plan set breaks the "one membership OR many
+ *  packages" rule — i.e. two+ active memberships, or a membership alongside a
+ *  package. (Multiple active packages are fine.) */
+export function isPlanSetInvalid(activePlans: { kind: CustomerPlan["kind"] }[]): boolean {
+    const memberships = activePlans.filter((p) => p.kind === "membership").length;
+    const packages = activePlans.filter((p) => p.kind === "package").length;
+    return memberships >= 2 || (memberships >= 1 && packages >= 1);
+}
+
+/** Given the active/frozen plans, decide which stay active. The most recently
+ *  purchased active plan's KIND wins: a membership winner keeps ONLY itself (one
+ *  active membership ever); a package winner keeps every active package and drops
+ *  all memberships. Returns the ids to cancel. */
+export function planIdsToCancel(activePlans: CustomerPlan[]): string[] {
+    if (!isPlanSetInvalid(activePlans)) return [];
+    const winner = [...activePlans].sort((a, b) =>
+        (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""),
+    )[0];
+    return activePlans
+        .filter((p) => (winner.kind === "membership" ? p.id !== winner.id : p.kind !== "package"))
+        .map((p) => p.id);
+}
+
 /**
  * Invariant self-heal: a customer holds ONE active membership OR one-or-more
- * active credit packages — never both. If legacy / corrupt persisted state has
- * BOTH kinds active at once, cancel the losing kind (keeping the most recently
- * purchased kind active) so every customer surface — My plan, the credit-balance
- * card, the Products gating — reads a valid single-active-type state. Fires only
- * when the violation exists (a no-op for clean data), and converges in one pass
- * because cancelling the loser removes the both-active condition. Uses the same
- * `cancelCustomerPlan` action the manual flows use (no store changes).
+ * active credit packages — never two memberships and never a membership + a
+ * package. If legacy / corrupt persisted state violates this, cancel the extras
+ * (keeping the most recently purchased plan / kind) so every customer surface —
+ * My plan, the credit-balance card, the Products gating — reads a valid state.
+ * Fires only on a violation (a no-op for clean data) and converges in one pass.
+ * Uses the same `cancelCustomerPlan` action the manual flows use (no store changes).
  */
 export function useReconcileMemberPlans(): void {
     const { member } = useCurrentCustomerContext();
@@ -217,18 +241,8 @@ export function useReconcileMemberPlans(): void {
                 p.kind !== "complimentary" &&
                 (p.status === "active" || p.status === "frozen"),
         );
-        const hasMembership = active.some((p) => p.kind === "membership");
-        const hasPackage = active.some((p) => p.kind === "package");
-        if (!hasMembership || !hasPackage) return; // no violation
-        // Winner = the most recently purchased active kind (mirrors applyPurchase's
-        // "latest purchase wins" cascade). Cancel every active plan of the other kind.
-        const winnerKind = [...active].sort((a, b) =>
-            (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""),
-        )[0].kind;
-        for (const p of active) {
-            if (p.kind !== winnerKind) {
-                cancelCustomerPlan(p.id, "period_end", "Switched plan — only one plan type can be active");
-            }
+        for (const id of planIdsToCancel(active)) {
+            cancelCustomerPlan(id, "period_end", "Switched plan — only one plan type can be active");
         }
     }, [member, customerPlans, cancelCustomerPlan]);
 }

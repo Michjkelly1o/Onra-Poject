@@ -54,7 +54,7 @@ export default function ClassDetailPage() {
     });
     const badge =
         detail.state === "available"
-            ? { label: `${detail.spotsLeft} spots left`, cls: "border-[#abefc6] bg-[#ecfdf3] text-[#067647]" }
+            ? { label: `${detail.booked}/${detail.capacity}`, cls: "border-[#abefc6] bg-[#ecfdf3] text-[#067647]" }
             : detail.state === "waitlist"
               ? { label: "Waitlist open", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
               : detail.state === "booked"
