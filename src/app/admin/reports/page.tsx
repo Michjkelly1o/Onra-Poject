@@ -14,12 +14,39 @@
 // scope) and knows what's still queued.
 
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
-    BankNote01, CreditCard02, Activity, User01, Users01, Announcement01,
+    BankNote01, CreditCard02, Activity, User01, Users01, Announcement01, Star01,
 } from "@untitledui/icons";
+import { cn } from "@/lib/utils";
 import { isReportCategoryDisabled, isReportSlugDisabled } from "@/config/feature-flags";
+
+// ─── Favourites (persisted per-browser) ──────────────────────────────────────
+//
+// A report is starred by slug. The set is saved to localStorage under the
+// same `onra-reports:` namespace the column-visibility prefs use, so a
+// tester's favourites survive refresh + tab close. Favourited reports pin
+// to the TOP of their own category (order otherwise preserved).
+const FAV_STORAGE_KEY = "onra-reports:favorites";
+
+function loadFavorites(): Set<string> {
+    if (typeof window === "undefined") return new Set();
+    try {
+        const raw = window.localStorage.getItem(FAV_STORAGE_KEY);
+        return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch {
+        return new Set();
+    }
+}
+
+function saveFavorites(favs: Set<string>): void {
+    try {
+        window.localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(Array.from(favs)));
+    } catch {
+        /* storage full / unavailable — favourites stay in-memory only */
+    }
+}
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -135,6 +162,20 @@ const CATEGORIES: ReportCategory[] = [
 export default function ReportsPage() {
     const router = useRouter();
 
+    // Favourites hydrate AFTER mount (SSR renders none → no hydration
+    // mismatch; the pin order settles on the first client tick).
+    const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
+    useEffect(() => { setFavorites(loadFavorites()); }, []);
+
+    const toggleFavorite = useCallback((slug: string) => {
+        setFavorites(prev => {
+            const next = new Set(prev);
+            if (next.has(slug)) next.delete(slug); else next.add(slug);
+            saveFavorites(next);
+            return next;
+        });
+    }, []);
+
     function handleSelect(item: ReportItem) {
         // Every item routes to /reports/{slug}. Built ones render on the
         // shell; unbuilt slugs 404 naturally — the client sees the full
@@ -161,6 +202,8 @@ export default function ReportsPage() {
                 <CategoryCard
                     key={category.id}
                     category={category}
+                    favorites={favorites}
+                    onToggleFavorite={toggleFavorite}
                     onSelect={handleSelect}
                 />
             ))}
@@ -172,12 +215,26 @@ export default function ReportsPage() {
 
 function CategoryCard({
     category,
+    favorites,
+    onToggleFavorite,
     onSelect,
 }: {
     category: ReportCategory;
+    favorites: Set<string>;
+    onToggleFavorite: (slug: string) => void;
     onSelect: (item: ReportItem) => void;
 }) {
     const Icon = category.icon;
+
+    // Pin favourited reports to the top of this category. Array partition
+    // preserves each group's original spec order (stable — no reshuffling
+    // within the starred or unstarred groups).
+    const orderedItems = useMemo(() => {
+        const starred = category.items.filter(i => favorites.has(i.slug));
+        const rest    = category.items.filter(i => !favorites.has(i.slug));
+        return [...starred, ...rest];
+    }, [category.items, favorites]);
+
     return (
         <section className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex gap-16 items-start">
             {/* Left — featured icon + title + description */}
@@ -195,22 +252,44 @@ function CategoryCard({
                 </div>
             </div>
 
-            {/* Right — report items as a divider-separated list */}
+            {/* Right — report items as a divider-separated list. Each row is a
+                star toggle (left) + the report link (fills the rest). */}
             <ul className="flex-1 min-w-0 flex flex-col rounded-[12px] overflow-hidden py-1">
-                {category.items.map((item, idx) => (
-                    <li key={item.slug} className="flex flex-col w-full">
-                        <button
-                            type="button"
-                            onClick={() => onSelect(item)}
-                            className="w-full text-left px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors text-[14px] font-medium leading-[20px] text-[#344054]"
-                        >
-                            {item.label}
-                        </button>
-                        {idx < category.items.length - 1 && (
-                            <div className="h-px bg-[#e4e7ec] my-1" />
-                        )}
-                    </li>
-                ))}
+                {orderedItems.map((item, idx) => {
+                    const isFav = favorites.has(item.slug);
+                    return (
+                        <li key={item.slug} className="flex flex-col w-full">
+                            <div className="flex items-center gap-1.5 px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors">
+                                <button
+                                    type="button"
+                                    onClick={() => onToggleFavorite(item.slug)}
+                                    aria-label={isFav ? `Unpin ${item.label}` : `Pin ${item.label} to top`}
+                                    aria-pressed={isFav}
+                                    title={isFav ? "Remove from favourites" : "Add to favourites"}
+                                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-[4px] hover:bg-[#f2f4f7] transition-colors"
+                                >
+                                    <Star01
+                                        className={cn(
+                                            "w-4 h-4 transition-colors",
+                                            isFav ? "text-[#fdb022]" : "text-[#d0d5dd] hover:text-[#98a2b3]",
+                                        )}
+                                        fill={isFav ? "#fdb022" : "none"}
+                                    />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onSelect(item)}
+                                    className="flex-1 min-w-0 text-left truncate rounded-[6px] text-[14px] font-medium leading-[20px] text-[#344054]"
+                                >
+                                    {item.label}
+                                </button>
+                            </div>
+                            {idx < orderedItems.length - 1 && (
+                                <div className="h-px bg-[#e4e7ec] my-1" />
+                            )}
+                        </li>
+                    );
+                })}
             </ul>
         </section>
     );
