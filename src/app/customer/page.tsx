@@ -96,10 +96,17 @@ export default function CustomerHomePage() {
                         {/* Up to 3 active marketing campaigns (the carousel). */}
                         <WhatsOn items={home.whatsOn.slice(0, 3)} />
 
-                        {/* Discover rails — real class + service data, so the
-                            (guest) Home never reads empty below "What's on". */}
-                        <TrendingClasses />
-                        <RecommendedServices />
+                        {/* Discover rails — GUEST ONLY. They exist so a guest's
+                            Home never reads empty below "What's on". An existing
+                            (authenticated) customer already has their personal
+                            overview + upcoming booking above, so the rails are
+                            hidden to keep their Home focused (client Jul 2026). */}
+                        {!isAuth && (
+                            <>
+                                <TrendingClasses />
+                                <RecommendedServices />
+                            </>
+                        )}
                     </>
                 )}
             </div>
