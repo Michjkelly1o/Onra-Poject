@@ -2531,29 +2531,35 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                             <p className="text-[18px] font-semibold text-[#101828]">Recurring Ends</p>
 
                                             <div className="flex flex-col gap-3">
-                                                {/* Never */}
-                                                <RepeatEndRadio
-                                                    label="Never"
-                                                    checked={repeatEnd === "No end date"}
-                                                    onSelect={() => setRepeatEnd("No end date")}
-                                                />
-                                                {/* On [date picker] */}
-                                                <RepeatEndRadio
-                                                    label="On"
-                                                    checked={repeatEnd === "End on date"}
-                                                    onSelect={() => setRepeatEnd("End on date")}
-                                                >
-                                                    {/* Date picker sits inline. Disabled + dimmed
-                                                        when this radio isn't the active choice. */}
-                                                    <div className={cn("w-[240px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
-                                                        <DatePicker
-                                                            value={endDate}
-                                                            onChange={setEndDate}
-                                                            minDate={selectedDate || todayISO()}
-                                                        />
-                                                    </div>
-                                                </RepeatEndRadio>
-                                                {/* After [N] classes */}
+                                                {/* Row 1 — Never · On [date picker].
+                                                    Matches the client's screenshot layout:
+                                                    the two "no more work" options sit side
+                                                    by side with the date picker inline. */}
+                                                <div className="flex items-center gap-6 flex-wrap">
+                                                    <RepeatEndRadio
+                                                        label="Never"
+                                                        checked={repeatEnd === "No end date"}
+                                                        onSelect={() => setRepeatEnd("No end date")}
+                                                    />
+                                                    <RepeatEndRadio
+                                                        label="On"
+                                                        checked={repeatEnd === "End on date"}
+                                                        onSelect={() => setRepeatEnd("End on date")}
+                                                    >
+                                                        {/* Date picker sits inline; disabled + dimmed
+                                                            when this radio isn't the active choice. */}
+                                                        <div className={cn("w-[240px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
+                                                            <DatePicker
+                                                                value={endDate}
+                                                                onChange={setEndDate}
+                                                                minDate={selectedDate || todayISO()}
+                                                            />
+                                                        </div>
+                                                    </RepeatEndRadio>
+                                                </div>
+                                                {/* Row 2 — After [N] classes.
+                                                    On its own line so the numeric input has
+                                                    enough breathing room. */}
                                                 <RepeatEndRadio
                                                     label="After"
                                                     checked={repeatEnd === "End after"}
