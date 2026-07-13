@@ -130,7 +130,11 @@ export default function AcquisitionEfficiencyReportPage() {
                 ltv: overallLtv,
                 cacLtvRatio,
                 branchId,
-                location: bucket?.location ?? branchName.get(branchId) ?? "—",
+                // Prefer the TZ-enriched name map ("Forma South · Dubai")
+                // over `bucket.location` (which came from the leads selector
+                // as the plain name only). Falls back to bucket location for
+                // any branchId not present in the current branches slice.
+                location: branchName.get(branchId) ?? bucket?.location ?? "—",
                 dateAnchorISO: bucket?.dateAnchorISO ?? "",
             } satisfies AcquisitionRow;
         });

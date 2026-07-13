@@ -118,6 +118,13 @@ export default function PromoRedemptionsReportPage() {
             }
         }
 
+        // TZ-enriched name map — used to overwrite every row's `location`
+        // regardless of whether it originally came from the selector
+        // (redemption path) or the enrichment loop above (unused-promo
+        // path). Guarantees "Forma South · Dubai" everywhere.
+        const branchTzName = new Map(
+            branches.map(bx => [bx.id, `${bx.name} · ${branchTzShortLabel(bx)}`]),
+        );
         return Array.from(buckets.values()).map(b => ({
             promoCode:        b.promoCode,
             promoName:        b.promoName,
@@ -127,7 +134,7 @@ export default function PromoRedemptionsReportPage() {
             revenueCategory:  b.revenueCategory,
             newVsExisting:    b.redemptions === 0 ? "—" : `${b.newCustomers} new / ${b.existingCustomers} existing`,
             branchId:         b.branchId,
-            location:         b.location,
+            location:         branchTzName.get(b.branchId) ?? b.location,
             dateAnchorISO:    b.dateAnchorISO,
         } satisfies PromoRedemptionRow));
     }, [promoCodes, transactions, customers, branches, staff, classBookings]);

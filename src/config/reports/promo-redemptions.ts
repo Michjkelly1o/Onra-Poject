@@ -32,6 +32,10 @@ export const PROMO_REDEMPTIONS_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
+        // Location shown as a default column ("Forma South · Dubai") so
+        // multi-timezone deployments can tell rows apart at a glance
+        // (client Jul 2026).
+        { key: K.location,         label: "Location",           kind: "text",     minWidth: 200 },
         { key: K.promoCode,        label: "Promotion",          kind: "id",       minWidth: 160 },
         { key: K.promoName,        label: "Promotion name",     kind: "text",     minWidth: 220 },
         { key: K.redemptions,      label: "Redemptions",        kind: "number",   minWidth: 140 },

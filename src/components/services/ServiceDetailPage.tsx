@@ -57,6 +57,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore, type Service, type ServiceStatus, type Appointment, type AppointmentStatus } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { branchTzShortLabel } from "@/lib/branch-time";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
@@ -125,6 +126,12 @@ function LeftPanel({ service, hasAppointments, onAction }: {
     onAction: (kind: "edit" | "archive" | "deactivate" | "delete" | "reactivate" | "recover") => void;
 }) {
     const { status, openSession, capacity, durationMin } = service;
+    // Resolve the service's branch → its timezone label. Every service is
+    // hosted at exactly one branch (Spa or Club), so tagging the Location
+    // row with the branch's own TZ makes it clear which zone the future
+    // appointment times listed in the right-hand table are in.
+    const branch = useAppStore(s => s.branches).find(b => b.id === service.branchId);
+    const branchTz = branch ? branchTzShortLabel(branch) : "";
 
     const actions = (() => {
         if (status === "Archived") {
@@ -200,7 +207,12 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                         </div>
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{service.branchName || "—"}</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {service.branchName || "—"}
+                                {branchTz && (
+                                    <span className="text-[13px] font-normal text-[#667085]"> · {branchTz} time</span>
+                                )}
+                            </p>
                         </div>
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Recovery condition</p>

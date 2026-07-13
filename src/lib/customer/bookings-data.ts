@@ -17,6 +17,7 @@ import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail, type ClassDetailVM } from "@/lib/customer/search-data";
 import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { formatShortDate, formatTime12 } from "@/lib/customer/format";
+import { branchTzShortLabel } from "@/lib/branch-time";
 import type { BookingStatus } from "@/components/customer/bookings/BookingCard";
 
 export type BookingViewStatus = "booked" | "waitlisted" | "attended" | "cancelled_free" | "cancelled_late" | "no_show";
@@ -260,6 +261,7 @@ export function useBookingDetail(bookingId: string): BookingDetailVM | null {
     const member = useCurrentCustomer();
     const bookings = useAppStore((s) => s.classBookings);
     const schedules = useAppStore((s) => s.classSchedules);
+    const branches = useAppStore((s) => s.branches);
     const booking = bookings.find((b) => b.id === bookingId && b.customerId === member?.id);
     const detail = useClassDetail(booking?.classScheduleId ?? "");
 
@@ -268,14 +270,18 @@ export function useBookingDetail(bookingId: string): BookingDetailVM | null {
         const sched = schedules.find((s) => s.id === booking.classScheduleId);
         if (!sched) return null;
         const { viewStatus, tab } = classifyBooking(booking, sched);
+        // Append the class branch's own TZ short label so a member with
+        // bookings across cities never has to guess which zone a time is in.
+        const branch = branches.find((b) => b.id === sched.branchId);
+        const tz = branch ? branchTzShortLabel(branch) : "";
         const heroSubtitle = `${new Date(`${sched.dateISO}T00:00:00`).toLocaleString("en-US", {
             weekday: "short",
             day: "numeric",
             month: "short",
             year: "numeric",
-        })} at ${formatTime12(sched.startTime)}`;
+        })} at ${formatTime12(sched.startTime)}${tz ? ` · ${tz} time` : ""}`;
         return { booking, detail, viewStatus, tab, heroSubtitle, spot: deriveSpot(booking, sched) };
-    }, [booking, detail, schedules]);
+    }, [booking, detail, schedules, branches]);
 }
 
 // ─── Reviews (ratings) ───────────────────────────────────────────────────────

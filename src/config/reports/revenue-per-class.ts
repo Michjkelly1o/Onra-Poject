@@ -39,6 +39,10 @@ export const REVENUE_PER_CLASS_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
+        // Location shown as a default column ("Forma South · Dubai") so
+        // multi-timezone deployments can tell rows apart without having
+        // to open the Break-down dropdown first (client Jul 2026).
+        { key: K.location,          label: "Location",                  kind: "text",     minWidth: 200 },
         { key: K.className,         label: "Class name",                kind: "text",     minWidth: 220 },
         { key: K.classType,         label: "Class type",                kind: "text",     minWidth: 180 },
         { key: K.instructor,        label: "Instructor",                kind: "text",     minWidth: 180 },
