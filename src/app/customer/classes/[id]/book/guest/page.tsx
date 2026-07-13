@@ -31,7 +31,7 @@ export default function AddGuestPage() {
 }
 
 const INPUT =
-    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] placeholder:text-[#667085] focus:border-[#658774] focus:outline-none";
+    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[#667085] focus:border-[var(--brand-primary)] focus:outline-none";
 
 function FeaturedIcon({ icon: Icon }: { icon: IconType }) {
     return (
@@ -116,7 +116,7 @@ function AddGuest() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Guest {index + 1}
                 </p>
                 <button
@@ -156,7 +156,7 @@ function AddGuest() {
                     <>
                         <div className="h-px w-full bg-[#e4e7ec]" />
                         <div className="flex w-full flex-col gap-3">
-                            <p className="text-base font-semibold leading-6 text-[#101828]">Guest payment</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Guest payment</p>
                             {options.map((o) => (
                                 <button
                                     key={o.value}
@@ -167,13 +167,13 @@ function AddGuest() {
                                         o.disabled
                                             ? "border border-[#e4e7ec] bg-[#f9fafb] opacity-60"
                                             : effectivePayment === o.value
-                                              ? "border-2 border-[#7ba08c] bg-white"
+                                              ? "border-2 border-[var(--brand-primary)] bg-white"
                                               : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
                                     <FeaturedIcon icon={o.icon} />
                                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                        <span className="text-sm font-medium leading-5 text-[#101828]">{o.label}</span>
+                                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{o.label}</span>
                                         <span className="text-sm font-normal leading-5 text-[#667085]">{o.sub}</span>
                                     </div>
                                     <RadioDot checked={effectivePayment === o.value} />

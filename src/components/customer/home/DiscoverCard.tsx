@@ -33,7 +33,7 @@ export function DiscoverCard({
                 )}
             </div>
             <div className="flex flex-col gap-0.5">
-                <p className="truncate text-base font-semibold leading-6 text-[#101828]">{title}</p>
+                <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
                 <p className="truncate text-sm font-normal leading-5 text-[#475467]">{subtitle}</p>
             </div>
         </button>

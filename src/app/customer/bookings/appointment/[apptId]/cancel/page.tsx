@@ -109,7 +109,7 @@ export default function CancelAppointmentPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Cancel appointment
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -129,7 +129,7 @@ export default function CancelAppointmentPage() {
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex flex-col">
-                            <p className="truncate text-base font-semibold leading-6 text-[#101828]">{booking.name}</p>
+                            <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{booking.name}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">
                                 {fullDate} at {to12h(booking.slotTime)}
                             </p>
@@ -165,11 +165,11 @@ export default function CancelAppointmentPage() {
 
                 {/* Location */}
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Location</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</h2>
                     <div className="flex items-start gap-2">
                         <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <p className="text-sm font-medium leading-5 text-[#101828]">{booking.branchName}</p>
+                            <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{booking.branchName}</p>
                             {booking.branchAddress && (
                                 <p className="text-sm font-normal leading-5 text-[#475467]">{booking.branchAddress}</p>
                             )}
@@ -183,7 +183,7 @@ export default function CancelAppointmentPage() {
                 {isLate && (
                     <>
                         <section className="flex flex-col gap-3">
-                            <h2 className="text-base font-semibold leading-6 text-[#101828]">Cancellation policy</h2>
+                            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</h2>
                             <div className="flex items-start gap-3 rounded-2xl border border-[#fedf89] bg-[#fffaeb] p-4">
                                 <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[#dc6803]" aria-hidden />
                                 <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
@@ -197,20 +197,20 @@ export default function CancelAppointmentPage() {
 
                 {/* Refund details (AED) */}
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Refund details</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Refund details</h2>
                     <div className="flex flex-col gap-2 text-sm leading-5">
                         <div className="flex items-center justify-between">
                             <span className="font-normal text-[#475467]">You've paid</span>
-                            <span className="font-medium text-[#101828]">AED {booking.price}</span>
+                            <span className="font-medium text-[var(--brand-text)]">AED {booking.price}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="font-normal text-[#475467]">Your refund</span>
-                            <span className="font-medium text-[#101828]">AED {isLate ? 0 : booking.price}</span>
+                            <span className="font-medium text-[var(--brand-text)]">AED {isLate ? 0 : booking.price}</span>
                         </div>
                         {!isLate && (
                             <div className="flex items-center justify-between">
                                 <span className="font-normal text-[#475467]">Refund via</span>
-                                <span className="font-medium text-[#101828]">
+                                <span className="font-medium text-[var(--brand-text)]">
                                     {booking.paymentMethod ?? "Original payment method"}
                                 </span>
                             </div>
@@ -242,7 +242,7 @@ export default function CancelAppointmentPage() {
                             <SlashCircle01 className="size-6 text-[#d92d20]" aria-hidden />
                         </span>
                         <div className="flex flex-col items-center gap-1 text-center">
-                            <p className="text-lg font-semibold leading-7 text-[#101828]">Cancel this appointment?</p>
+                            <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Cancel this appointment?</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">
                                 {isLate
                                     ? "This cancellation is within 24 hours. You won't be refunded for this appointment."
@@ -252,7 +252,7 @@ export default function CancelAppointmentPage() {
                     </div>
 
                     {!isLate && (
-                        <div className="flex w-full items-start gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+                        <div className="flex w-full items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
                             <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
                                 AED {booking.price} will be refunded to your account.

@@ -78,13 +78,13 @@ export function PlanCard({
                     disabled={disabled}
                 />
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium leading-5 text-[#101828]">{plan.name}</p>
-                    <p className={`text-sm font-normal leading-5 ${disabled ? "text-[#667085]" : "text-[#067647]"}`}>
+                    <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{plan.name}</p>
+                    <p className={`text-sm font-normal leading-5 ${disabled ? "text-[#667085]" : "text-[var(--brand-primary)]"}`}>
                         {statusLine}
                     </p>
                 </div>
                 <div className="shrink-0 text-right">
-                    <p className={`text-sm font-semibold leading-5 ${disabled ? "text-[#667085]" : "text-[#658774]"}`}>
+                    <p className={`text-sm font-semibold leading-5 ${disabled ? "text-[#667085]" : "text-[var(--brand-primary)]"}`}>
                         {aed(plan.priceAed ?? 0)}
                     </p>
                     <p className="text-sm font-normal leading-5 text-[#667085]">
@@ -114,7 +114,7 @@ export function PlanCard({
                     </div>
                     <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
                         <div
-                            className={`h-full rounded-full ${plan.status === "frozen" ? "bg-[#98a2b3]" : "bg-[#658774]"}`}
+                            className={`h-full rounded-full ${plan.status === "frozen" ? "bg-[#98a2b3]" : "bg-[var(--brand-primary)]"}`}
                             style={{ width: `${pct}%` }}
                         />
                     </div>
@@ -125,11 +125,11 @@ export function PlanCard({
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-normal leading-5 text-[#667085]">Next billing date</span>
-                        <span className="text-sm font-medium leading-5 text-[#101828]">{nextBilling}</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{nextBilling}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-normal leading-5 text-[#667085]">Expiry date</span>
-                        <span className="text-sm font-medium leading-5 text-[#101828]">{shortDate(plan.expiryISO)}</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{shortDate(plan.expiryISO)}</span>
                     </div>
                 </div>
             )}

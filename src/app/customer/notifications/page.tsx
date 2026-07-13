@@ -83,7 +83,7 @@ function Section({
     if (rows.length === 0) return null;
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-base font-semibold leading-6 text-[#101828]">{title}</p>
+            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
             <div className="flex flex-col gap-3">
                 {rows.map((n, i) => (
                     <div key={n.id} className="flex flex-col gap-3">
@@ -136,14 +136,14 @@ export default function NotificationsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 truncate text-center text-lg font-semibold leading-7 text-[#101828]">
+                <h1 className="min-w-0 flex-1 truncate text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Notifications
                 </h1>
                 {hasUnread ? (
                     <button
                         type="button"
                         onClick={markAll}
-                        className="shrink-0 whitespace-nowrap text-sm font-semibold leading-5 text-[#658774]"
+                        className="shrink-0 whitespace-nowrap text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                     >
                         Mark all read
                     </button>
@@ -164,7 +164,7 @@ export default function NotificationsPage() {
                                 onClick={() => setTab(t.id)}
                                 className={`flex h-8 flex-1 items-center justify-center gap-2 px-2 pb-3 text-sm leading-5 transition-colors ${
                                     active
-                                        ? "border-b-2 border-[#101828] font-semibold text-[#101828]"
+                                        ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
                                         : "font-medium text-[#667085]"
                                 }`}
                             >

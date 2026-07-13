@@ -230,7 +230,7 @@ export default function ProductsPage() {
                                     onClick={() => setTab(t.id)}
                                     className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
-                                            ? "border-b-2 border-[#101828] font-semibold text-[#101828]"
+                                            ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
                                             : "font-medium text-[#667085]"
                                     }`}
                                 >
@@ -268,7 +268,7 @@ export default function ProductsPage() {
                         {showGiftCards && giftCards.length > 0 && (
                             <>
                                 {tab === "all" && (
-                                    <h2 className="mt-2 text-base font-semibold leading-6 text-[#101828]">Gift cards</h2>
+                                    <h2 className="mt-2 text-base font-semibold leading-6 text-[var(--brand-text)]">Gift cards</h2>
                                 )}
                                 {giftCards.map((g) => (
                                     <ProductCard key={g.id} product={g} {...cardProps(g)} />

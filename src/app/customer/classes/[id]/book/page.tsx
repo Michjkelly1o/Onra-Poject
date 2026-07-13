@@ -84,7 +84,7 @@ function BookingConfirmation() {
     if (!detail) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[#101828]">Class not found</p>
+                <p className="text-base font-semibold text-[var(--brand-text)]">Class not found</p>
                 <p className="text-sm text-[#667085]">This class is no longer available.</p>
                 <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/search")}>
                     Back to Search
@@ -181,7 +181,7 @@ function BookingConfirmation() {
                 }`}
             >
                 <div className="size-10 shrink-0" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Review and book
                 </p>
                 <button
@@ -208,7 +208,7 @@ function BookingConfirmation() {
                         )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <p className="truncate text-base font-semibold leading-6 text-[#101828]">{detail.name}</p>
+                        <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
                         <p className="text-sm font-normal leading-5 text-[#475467]">
                             {fullDate} at {to12h(detail.startTime)}
                         </p>
@@ -249,11 +249,11 @@ function BookingConfirmation() {
 
                 {/* Location */}
                 <section className="flex w-full flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">Location</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</p>
                     <div className="flex w-full items-start gap-2">
                         <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <p className="text-sm font-medium leading-5 text-[#101828]">{detail.branchName}</p>
+                            <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.branchName}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{detail.branchAddress}</p>
                         </div>
                     </div>
@@ -264,7 +264,7 @@ function BookingConfirmation() {
                 {/* Spot — picker when the admin enabled spot selection, else an
                     auto-assign note. */}
                 <section className="flex w-full flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                         {spotLayout ? "Select spot" : "Spot"}
                     </p>
                     {spotLayout ? (
@@ -276,8 +276,8 @@ function BookingConfirmation() {
                             onSelect={setSelectedSpot}
                         />
                     ) : (
-                        <div className="flex w-full items-center gap-2 rounded-xl border border-[#abefc6] bg-[#edfdf2] p-4">
-                            <Lightbulb02 className="size-4 shrink-0 text-[#067647]" aria-hidden />
+                        <div className="flex w-full items-center gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
+                            <Lightbulb02 className="size-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                             <p className="text-sm font-normal leading-5 text-[#3f5b4c]">
                                 A spot will be auto assigned to you.
                             </p>
@@ -290,11 +290,11 @@ function BookingConfirmation() {
                 {/* Guest */}
                 <section className="flex w-full flex-col gap-3">
                     <div className="flex w-full items-center justify-between">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">Guest</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Guest</p>
                         <button
                             type="button"
                             onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=${guests.length}`)}
-                            className="text-sm font-semibold leading-5 text-[#4f6e5d]"
+                            className="text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                         >
                             Add guest
                         </button>
@@ -309,14 +309,14 @@ function BookingConfirmation() {
                                     className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4"
                                 >
                                     <div className="flex min-w-0 flex-1 flex-col">
-                                        <span className="truncate text-sm font-medium leading-5 text-[#101828]">{g.name}</span>
+                                        <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{g.name}</span>
                                         <span className="truncate text-sm font-normal leading-5 text-[#667085]">{g.email}</span>
                                     </div>
                                     {/* Remove a guest from inside the Edit screen (trash icon), not here. */}
                                     <button
                                         type="button"
                                         onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=${i}`)}
-                                        className="shrink-0 text-sm font-semibold leading-5 text-[#4f6e5d]"
+                                        className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                                     >
                                         Edit
                                     </button>
@@ -344,12 +344,12 @@ function BookingConfirmation() {
                 )}
                 {mode === "book" ? (
                     hasEligiblePlan ? (
-                        <div className="flex w-full items-center gap-3 rounded-xl border-2 border-[#7ba08c] bg-white p-4">
+                        <div className="flex w-full items-center gap-3 rounded-xl border-2 border-[var(--brand-primary)] bg-white p-4">
                             <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-[#feebff]">
                                 <CoinsStacked03 className="size-4 text-[#344054]" aria-hidden />
                             </span>
                             <div className="flex min-w-0 flex-1 flex-col">
-                                <p className="truncate text-sm font-medium leading-5 text-[#101828]">{member?.planName}</p>
+                                <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{member?.planName}</p>
                                 <p className="text-sm font-normal leading-5 text-[#475467]">{planLine}</p>
                             </div>
                         </div>
@@ -362,7 +362,7 @@ function BookingConfirmation() {
                             <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
                                 <ShoppingBag03 className="size-5 text-[#344054]" aria-hidden />
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#101828]">
+                            <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--brand-text)]">
                                 Purchase product
                             </span>
                             <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />

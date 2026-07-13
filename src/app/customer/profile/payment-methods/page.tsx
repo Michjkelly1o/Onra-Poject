@@ -30,11 +30,11 @@ function PaymentMark({ kind }: { kind: "visa" | "mastercard" | "applepay" | "goo
                     <span className="absolute right-0 top-0 size-[18px] rounded-full bg-[#f79e1b] mix-blend-multiply" />
                 </span>
             )}
-            {kind === "applepay" && <span className="text-[12px] font-semibold leading-none text-[#101828]">Pay</span>}
+            {kind === "applepay" && <span className="text-[12px] font-semibold leading-none text-[var(--brand-text)]">Pay</span>}
             {kind === "googlepay" && (
                 <span className="text-[12px] font-semibold leading-none">
                     <span className="text-[#4285f4]">G</span>
-                    <span className="text-[#101828]"> Pay</span>
+                    <span className="text-[var(--brand-text)]"> Pay</span>
                 </span>
             )}
         </div>
@@ -81,7 +81,7 @@ export default function PaymentSettingsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">Payment settings</h1>
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Payment settings</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
@@ -89,7 +89,7 @@ export default function PaymentSettingsPage() {
                 {/* Credit card */}
                 <div>
                     <div className="mb-3 flex items-center justify-between">
-                        <h2 className="text-sm font-semibold leading-5 text-[#101828]">Credit card</h2>
+                        <h2 className="text-sm font-semibold leading-5 text-[var(--brand-text)]">Credit card</h2>
                         <span className="text-sm leading-5 text-[#475467]">
                             {cards.length} card{cards.length === 1 ? "" : "s"} added
                         </span>
@@ -104,7 +104,7 @@ export default function PaymentSettingsPage() {
                             >
                                 <PaymentMark kind={c.brand.toLowerCase().includes("visa") ? "visa" : "mastercard"} />
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-base font-medium leading-6 text-[#101828]">{c.holder}</p>
+                                    <p className="text-base font-medium leading-6 text-[var(--brand-text)]">{c.holder}</p>
                                     <p className="text-sm leading-5 text-[#475467]">•••• •••• •••• {c.last4}</p>
                                 </div>
                                 <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
@@ -124,7 +124,7 @@ export default function PaymentSettingsPage() {
 
                 {/* Others */}
                 <div>
-                    <h2 className="mb-3 text-sm font-semibold leading-5 text-[#101828]">Others</h2>
+                    <h2 className="mb-3 text-sm font-semibold leading-5 text-[var(--brand-text)]">Others</h2>
                     <div className="flex flex-col gap-3">
                         {WALLETS.map((w) => {
                             const connected = wallet[w.key];
@@ -133,7 +133,7 @@ export default function PaymentSettingsPage() {
                                 <div key={w.key} className="flex items-center gap-3 rounded-2xl border border-[#eaecf0] bg-white p-3.5">
                                     {tile}
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-base font-medium leading-6 text-[#101828]">{w.label}</p>
+                                        <p className="text-base font-medium leading-6 text-[var(--brand-text)]">{w.label}</p>
                                         <p className="text-sm leading-5 text-[#475467]">Connected</p>
                                     </div>
                                     <button
@@ -154,7 +154,7 @@ export default function PaymentSettingsPage() {
                                 >
                                     {tile}
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-base font-medium leading-6 text-[#101828]">{w.label}</p>
+                                        <p className="text-base font-medium leading-6 text-[var(--brand-text)]">{w.label}</p>
                                         <p className="text-sm leading-5 text-[#475467]">Not connected</p>
                                     </div>
                                     <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
@@ -185,7 +185,7 @@ export default function PaymentSettingsPage() {
                                 className="flex items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white px-4 py-3.5 text-left transition-colors active:bg-gray-50"
                             >
                                 <Icon className="size-5 shrink-0 text-[#344054]" aria-hidden />
-                                <span className="flex-1 text-base leading-6 text-[#101828]">{o.label}</span>
+                                <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{o.label}</span>
                                 <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
                             </button>
                         );
@@ -201,7 +201,7 @@ export default function PaymentSettingsPage() {
                         <LinkBroken01 className="size-6 text-[#d92d20]" aria-hidden />
                     </div>
                     <div>
-                        <p className="text-lg font-semibold leading-7 text-[#101828]">Disconnect payment method?</p>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Disconnect payment method?</p>
                         <p className="mt-1 text-sm leading-5 text-[#475467]">
                             This will remove all of the payment information and it can no longer be used.
                         </p>
@@ -229,7 +229,7 @@ export default function PaymentSettingsPage() {
                         <XClose className="size-5 text-[#344054]" aria-hidden />
                     </button>
                     <div className="h-28 w-44 animate-pulse rounded-xl bg-[#f2f4f7]" />
-                    <p className="text-lg font-semibold leading-7 text-[#101828]">Redirecting to {redirecting}…</p>
+                    <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Redirecting to {redirecting}…</p>
                     <p className="text-sm leading-5 text-[#475467]">
                         You will be redirected to {redirecting} to authorize and access your account.
                     </p>

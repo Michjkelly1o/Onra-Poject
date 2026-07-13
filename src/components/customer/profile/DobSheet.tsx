@@ -109,14 +109,14 @@ export function DobSheet({
                     <button
                         type="button"
                         onClick={() => setMode(mode === "month" ? "calendar" : "month")}
-                        className={`${labelBtn} ${mode === "month" ? "text-[#658774]" : "text-[#101828]"}`}
+                        className={`${labelBtn} ${mode === "month" ? "text-[var(--brand-primary)]" : "text-[var(--brand-text)]"}`}
                     >
                         {MONTHS[viewM]}
                     </button>
                     <button
                         type="button"
                         onClick={openYear}
-                        className={`${labelBtn} ${mode === "year" ? "text-[#658774]" : "text-[#101828]"}`}
+                        className={`${labelBtn} ${mode === "year" ? "text-[var(--brand-primary)]" : "text-[var(--brand-text)]"}`}
                     >
                         {viewY}
                     </button>
@@ -137,7 +137,7 @@ export function DobSheet({
                                 setMode("calendar");
                             }}
                             className={`rounded-lg py-2.5 text-base font-medium transition-colors ${
-                                y === viewY ? "bg-[#658774] text-white" : "text-[#101828] active:bg-gray-50"
+                                y === viewY ? "bg-[var(--brand-primary)] text-white" : "text-[var(--brand-text)] active:bg-gray-50"
                             }`}
                         >
                             {y}
@@ -155,7 +155,7 @@ export function DobSheet({
                                 setMode("calendar");
                             }}
                             className={`rounded-lg py-3 text-base font-medium transition-colors ${
-                                i === viewM ? "bg-[#658774] text-white" : "text-[#101828] active:bg-gray-50"
+                                i === viewM ? "bg-[var(--brand-primary)] text-white" : "text-[var(--brand-text)] active:bg-gray-50"
                             }`}
                         >
                             {m.slice(0, 3)}
@@ -179,9 +179,9 @@ export function DobSheet({
                                     onClick={() => setSel(cellIso)}
                                     className={`flex size-10 items-center justify-center rounded-full text-sm leading-5 transition-colors ${
                                         selected
-                                            ? "bg-[#658774] font-semibold text-white"
+                                            ? "bg-[var(--brand-primary)] font-semibold text-white"
                                             : c.cur
-                                              ? "text-[#101828] active:bg-gray-50"
+                                              ? "text-[var(--brand-text)] active:bg-gray-50"
                                               : "text-[#d0d5dd]"
                                     }`}
                                 >

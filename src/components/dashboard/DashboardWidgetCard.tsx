@@ -463,14 +463,14 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
         case "sales-by-product":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#c4edd6", label: "Membership" }, { color: "#92d1de", label: "Class package" }]} />
+                    <Legend items={[{ color: "var(--brand-tertiary)", label: "Membership" }, { color: "#92d1de", label: "Class package" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={36} tickFormatter={aedAxisTick} />
                             <Tooltip content={<MoneyChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                            <Bar dataKey="membership" name="Membership"   fill="#c4edd6" radius={[3,3,0,0]} maxBarSize={10} />
+                            <Bar dataKey="membership" name="Membership"   fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="package"    name="Class package" fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -568,7 +568,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
         case "attendance-overview":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#92baa4", label: "Total visits" }, { color: "#c4edd6", label: "Total cancellations" }, { color: "#b892ba", label: "Total no show" }]} />
+                    <Legend items={[{ color: "#92baa4", label: "Total visits" }, { color: "var(--brand-tertiary)", label: "Total cancellations" }, { color: "#b892ba", label: "Total no show" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
@@ -576,7 +576,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="visits"        name="Total visits"        fill="#92baa4" radius={[3,3,0,0]} maxBarSize={8} />
-                            <Bar dataKey="cancellations" name="Total cancellations" fill="#c4edd6" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="cancellations" name="Total cancellations" fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="noShow"        name="No show"             fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -711,7 +711,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
             // 5-stop palette from lightest → darkest. Same sage-green
             // family every widget uses so the widget palette stays
             // coherent across the dashboard.
-            const PALETTE = ["#e9fff3", "#c4edd6", "#aad4bd", "#79ab8a", "#3f7a58"];
+            const PALETTE = ["#e9fff3", "var(--brand-tertiary)", "#aad4bd", "#79ab8a", "#3f7a58"];
             const tintFor = (v: number): string => {
                 if (v >= 75) return PALETTE[4];
                 if (v >= 55) return PALETTE[3];
@@ -724,7 +724,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                 <div className="flex flex-col gap-3 mt-1">
                     {/* Legend */}
                     <div className="flex items-center justify-end gap-1.5 text-xs text-[#667085]">
-                        <span className="inline-block w-2 h-2 rounded-full bg-[#c4edd6]" />
+                        <span className="inline-block w-2 h-2 rounded-full bg-[var(--brand-tertiary)]" />
                         <span>Light = Lower</span>
                         <span className="text-[#98a2b3]">·</span>
                         <span>Dark = Higher</span>
@@ -824,7 +824,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             }}
                             cursor={{ fill: "#f9fafb" }}
                         />
-                        <Bar dataKey="v" name="Percentage" fill="#c4edd6" radius={[3,3,0,0]} maxBarSize={48} />
+                        <Bar dataKey="v" name="Percentage" fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={48} />
                     </BarChart>
                 </ResponsiveContainer>
             );

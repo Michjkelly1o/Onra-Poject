@@ -24,7 +24,7 @@ import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountryShe
 import { splitPhone } from "@/components/customers/CustomerFormPage";
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors placeholder:text-[#667085] focus:border-[#658774]";
+    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[#344054]";
 const GENDERS = ["Male", "Female"];
 
@@ -40,7 +40,7 @@ function Checkbox({ checked, onToggle, children }: { checked: boolean; onToggle:
         <button type="button" onClick={onToggle} className="flex w-full items-start gap-2 text-left">
             <span
                 className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded transition-colors ${
-                    checked ? "bg-[#658774]" : "border border-[#d0d5dd] bg-white"
+                    checked ? "bg-[var(--brand-primary)]" : "border border-[#d0d5dd] bg-white"
                 }`}
             >
                 {checked && <Check className="size-3 text-white" aria-hidden />}
@@ -111,7 +111,7 @@ export default function AuthSignupPage() {
 
             <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-4 pt-[118px]">
                 <div className="flex w-full flex-col gap-2">
-                    <h1 className="text-2xl font-semibold leading-8 text-[#101828]">Create an account</h1>
+                    <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Create an account</h1>
                     <p className="text-base leading-6 text-[#667085]">
                         Fill in your details to complete your account setup.
                     </p>
@@ -130,7 +130,7 @@ export default function AuthSignupPage() {
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>Date of birth</span>
                         <button type="button" onClick={() => setDobOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                            <span className={`flex-1 ${dob ? "text-[#101828]" : "text-[#667085]"}`}>
+                            <span className={`flex-1 ${dob ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                                 {formatDob(dob) || "Enter date of birth"}
                             </span>
                         </button>
@@ -139,7 +139,7 @@ export default function AuthSignupPage() {
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>Gender</span>
                         <button type="button" onClick={() => setGenderOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                            <span className={`flex-1 ${gender ? "text-[#101828]" : "text-[#667085]"}`}>
+                            <span className={`flex-1 ${gender ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                                 {gender || "Select gender"}
                             </span>
                             <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
@@ -177,7 +177,7 @@ export default function AuthSignupPage() {
                             className={FIELD}
                         />
                         {referralValid === true && (
-                            <span className="text-sm leading-5 text-[#079455]">Referral code applied.</span>
+                            <span className="text-sm leading-5 text-[var(--brand-primary)]">Referral code applied.</span>
                         )}
                         {referralValid === false && (
                             <span className="text-sm leading-5 text-[#667085]">
@@ -189,8 +189,8 @@ export default function AuthSignupPage() {
                     <div className="mt-1 flex flex-col gap-4">
                         <Checkbox checked={agreed} onToggle={() => setAgreed((v) => !v)}>
                             I agree to the{" "}
-                            <span className="font-semibold text-[#4f6e5d]">Privacy Policy</span> and{" "}
-                            <span className="font-semibold text-[#4f6e5d]">Terms and Conditions</span>
+                            <span className="font-semibold text-[var(--brand-primary)]">Privacy Policy</span> and{" "}
+                            <span className="font-semibold text-[var(--brand-primary)]">Terms and Conditions</span>
                         </Checkbox>
                         <Checkbox checked={marketingOptOut} onToggle={() => setMarketingOptOut((v) => !v)}>
                             I do not wish to receive marketing notifications with offers and news

@@ -23,12 +23,10 @@
 //   • Body — 2-column: form (flex-1) + preview panel (320 px, sticky)
 //   • Footer — Cancel (left) + Save changes (right)
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
-    XClose, ChevronLeft, ChevronRight, Share02,
-    ClockFastForward, Users01, UserCheck01, Grid01,
-    CheckCircle, MarkerPin01, UploadCloud02, Image01,
-    SearchSm, ShoppingBag03, User01, HomeLine, Mail01, MessageChatCircle,
+    XClose, ChevronRight,
+    UploadCloud02, Image01, Mail01, MessageChatCircle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -205,9 +203,7 @@ export function CustomizeDesignPanel({ open, onClose }: {
                         </div>
                         <div className="flex-1 min-h-0 bg-[#f8f8f6] overflow-y-auto scrollbar-hide flex justify-center items-start py-4 px-2">
                             <PhoneMock>
-                                {previewTab === "login" && <LoginPreview brand={previewBrand} />}
-                                {previewTab === "home"  && <HomePreview  brand={previewBrand} />}
-                                {previewTab === "class" && <ClassPreview brand={previewBrand} />}
+                                <IframePreview tab={previewTab} brand={previewBrand} />
                             </PhoneMock>
                         </div>
                     </div>
@@ -612,339 +608,138 @@ function PhoneMock({ children }: { children: React.ReactNode }) {
     );
 }
 
-// ─── Login preview ──────────────────────────────────────────────────────────
-// Figma 7627:316999 — phone screen with logo + display name centered on a
-// soft background → primary gradient that rises through the lower 60%, with
-// "powered by Onra" at the foot. The Forma-logo glyph is the placeholder
-// when the admin hasn't uploaded a custom logo yet.
 
-function LoginPreview({ brand }: { brand: PreviewBrand }) {
-    const fontFamily = brandTypefaceFontFamily(brand.typeface);
-    return (
-        <div
-            className="absolute inset-0 flex flex-col"
-            style={{
-                backgroundColor: brand.backgroundColor,
-                color: brand.textColor,
-                fontFamily,
-                backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor} 0%, ${brand.backgroundColor} 40%, ${brand.primaryColor}cc 100%)`,
-            }}
-        >
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
-                <div className="w-20 h-20 flex items-center justify-center">
-                    {brand.logoUrl
-                        ? <img src={brand.logoUrl} alt="" className="w-full h-full object-contain" />
-                        : <FormaGlyph color={brand.textColor} />}
-                </div>
-                <p className="text-[32px] font-semibold leading-[40px] tracking-[-0.01em]">
-                    {brand.displayName || "Forma"}
-                </p>
-            </div>
-            <div className="shrink-0 flex items-center justify-center pb-7 pt-2">
-                <p className="text-[13px] font-medium opacity-50 flex items-center gap-1.5" style={{ color: brand.textColor }}>
-                    <span>powered by</span>
-                    <OnraGlyph color={brand.textColor} />
-                    <span>Onra</span>
-                </p>
-            </div>
-        </div>
-    );
-}
+// ─── Iframe preview ─────────────────────────────────────────────────────────
+// Renders the REAL customer screen (Login = /customer/welcome, Home =
+// /customer, Class = /customer/classes/[first-schedule-id]) inside the
+// device viewport by mounting an <iframe>. The iframe URL only carries the
+// tab route + `?preview=1` gate — draft brand values (unsaved form state)
+// stream in via `postMessage`, so:
+//
+//   • Uploaded logos (base64 data URLs, potentially 100KB+) cross the
+//     boundary without breaking URL length limits.
+//   • Colour scrubs / typeface picks / logo swaps DON'T reload the iframe
+//     (no flash) — the customer-side `BrandTokens` listens for messages
+//     and updates its state in place.
+//   • Only a Login/Home/Class tab change triggers navigation.
+//
+// A `ready` handshake covers the mount race: the iframe posts
+// `onra-brand-preview-ready` once mounted, and the parent replies with
+// the current draft. See `BrandTokens` in src/components/customer/shell/
+// for the receiver.
+//
+// An absolute overlay above the iframe blocks all pointer events (clicks,
+// scrolls, focus) so the preview stays display-only — the admin can look
+// but not accidentally navigate away, submit a login, or scroll a page
+// out of view (client Jul 2026).
 
-/** Default "Forma" 4-quadrant logo glyph rendered when the admin hasn't
- *  uploaded their own logo. Recolors with brand.textColor so it reads
- *  on any background. */
-function FormaGlyph({ color }: { color: string }) {
-    return (
-        <svg viewBox="0 0 56 56" className="w-full h-full" aria-hidden="true">
-            <g fill={color}>
-                <path d="M28 4 C20 4, 16 8, 16 16 C16 20, 18 22, 22 22 C26 22, 28 24, 28 28 C28 24, 30 22, 34 22 C38 22, 40 20, 40 16 C40 8, 36 4, 28 4 Z" />
-                <path d="M28 28 C28 24, 30 22, 34 22 C38 22, 40 24, 40 28 C40 36, 36 40, 28 40 C20 40, 16 36, 16 28 C16 24, 18 22, 22 22 C26 22, 28 24, 28 28 Z" opacity="0.55" />
-                <path d="M28 52 C20 52, 16 48, 16 40 C16 36, 18 34, 22 34 C26 34, 28 32, 28 28 C28 32, 30 34, 34 34 C38 34, 40 36, 40 40 C40 48, 36 52, 28 52 Z" opacity="0.35" />
-            </g>
-        </svg>
-    );
-}
+function IframePreview({ tab, brand }: { tab: PreviewTab; brand: PreviewBrand }) {
+    // Grab the first available class schedule to build a real Class detail
+    // route. Falls back to a stable placeholder id so the iframe still
+    // resolves to a customer screen (the 404 branch renders friendly
+    // chrome, which is fine as a "no data" preview state).
+    const firstClassId = useAppStore(s => s.classSchedules[0]?.id) ?? "preview";
 
-/** Tiny "✦ Onra" logomark next to the powered-by footer text. */
-function OnraGlyph({ color }: { color: string }) {
+    const route =
+        tab === "login" ? "/customer/welcome"
+      : tab === "home"  ? "/customer"
+      :                    `/customer/classes/${firstClassId}`;
+
+    // URL only carries the preview gate — brand values arrive via message.
+    // Include the tab in the src so switching tabs remounts the iframe
+    // (React sees a different src prop and navigates).
+    const src = `${route}?preview=1`;
+
+    const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+    // Build the payload once per render; used both by the "ready" reply
+    // and the effect that broadcasts on every brand change.
+    const payload = {
+        primaryColor:    brand.primaryColor,
+        backgroundColor: brand.backgroundColor,
+        tertiaryColor:   brand.tertiaryColor,
+        textColor:       brand.textColor,
+        typeface:        brand.typeface,
+        logoUrl:         brand.logoUrl,
+        displayName:     brand.displayName,
+    };
+
+    // Rebroadcast on every brand change so live scrubs paint immediately.
+    useEffect(() => {
+        const win = iframeRef.current?.contentWindow;
+        if (!win) return;
+        win.postMessage({ type: "onra-brand-preview", payload }, "*");
+        // payload fields listed exhaustively so this fires on any change.
+    }, [payload.primaryColor, payload.backgroundColor, payload.tertiaryColor,
+        payload.textColor, payload.typeface, payload.logoUrl, payload.displayName]);
+
+    // Handshake — reply with the current payload when the iframe reports
+    // ready (covers the mount race where the iframe finishes loading AFTER
+    // the parent's initial useEffect ran).
+    useEffect(() => {
+        function onMessage(e: MessageEvent) {
+            if (e.data?.type !== "onra-brand-preview-ready") return;
+            if (e.source !== iframeRef.current?.contentWindow) return;
+            iframeRef.current?.contentWindow?.postMessage(
+                { type: "onra-brand-preview", payload },
+                "*",
+            );
+        }
+        window.addEventListener("message", onMessage);
+        return () => window.removeEventListener("message", onMessage);
+    }, [payload]);
+
+    // Forward wheel events to the iframe's scrolling `<main>` element so
+    // the admin can scroll the customer preview without unlocking clicks.
+    // Same-origin iframe → contentDocument access is allowed (see sandbox
+    // note below). The customer layout scrolls its `<main>` (not the
+    // document), so we target that directly and fall back to the document
+    // element for older screens.
+    function forwardWheel(e: React.WheelEvent<HTMLDivElement>) {
+        const doc = iframeRef.current?.contentDocument;
+        if (!doc) return;
+        const main = doc.querySelector("main") ?? doc.scrollingElement;
+        if (main) {
+            main.scrollTop += e.deltaY;
+            main.scrollLeft += e.deltaX;
+        }
+    }
+
     return (
-        <svg viewBox="0 0 12 12" className="w-3 h-3" aria-hidden="true">
-            <path
-                d="M6 0 L7 5 L12 6 L7 7 L6 12 L5 7 L0 6 L5 5 Z"
-                fill={color}
-                opacity="0.6"
+        <>
+            <iframe
+                ref={iframeRef}
+                src={src}
+                title={`Customer ${tab} preview`}
+                className="absolute inset-0 w-full h-full border-0"
+                // Extra broadcast on load — belt-and-suspenders on top of
+                // the ready handshake, so late-loading iframes still get
+                // the current draft even if their ready message got lost.
+                onLoad={() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                        { type: "onra-brand-preview", payload },
+                        "*",
+                    );
+                }}
+                // Sandbox: `allow-same-origin` so BrandTokens can read the
+                // parent's localStorage-backed Zustand store; `allow-scripts`
+                // to actually execute the app. No `allow-forms` — the admin
+                // preview is display-only; a stray tap on Login won't sign
+                // anyone in.
+                sandbox="allow-same-origin allow-scripts"
             />
-        </svg>
-    );
-}
-
-// ─── Home preview ───────────────────────────────────────────────────────────
-// Figma 7627:317355 — All Branches picker → What's on card with countdown +
-// stock image → Instructor cards with photos → Categories tiles with
-// activity images → sticky Book class CTA → 4-icon bottom nav. Scrolls
-// vertically inside the device frame.
-
-function HomePreview({ brand }: { brand: PreviewBrand }) {
-    const fontFamily = brandTypefaceFontFamily(brand.typeface);
-    return (
-        <div
-            className="absolute inset-0 flex flex-col overflow-hidden"
-            style={{
-                backgroundColor: brand.backgroundColor,
-                color: brand.textColor,
-                fontFamily,
-            }}
-        >
-            <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col gap-4 pb-[160px] px-4 pt-5">
-                {/* All Branches picker */}
-                <div
-                    className="flex items-center gap-2.5 px-4 h-[52px] rounded-[12px] border-1 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]"
-                    style={{ borderColor: `${brand.textColor}1a`, backgroundColor: brand.backgroundColor }}
-                >
-                    <MarkerPin01 className="w-[18px] h-[18px] opacity-70" />
-                    <span className="flex-1 text-[14px] font-medium">All Branches</span>
-                    <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 opacity-60"><path d="M3 4 L6 7 L9 4" stroke="currentColor" fill="none" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </div>
-
-                {/* What's on */}
-                <div className="flex flex-col gap-2">
-                    <p className="text-[16px] font-semibold">What&apos;s on</p>
-                    <div
-                        className="rounded-[14px] overflow-hidden h-[130px] relative"
-                        style={{
-                            backgroundImage: "url(/images/class-template/hot-yoga.webp)",
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                        }}
-                    >
-                        {/* Dark gradient overlay so the text reads on any image */}
-                        <div className="absolute inset-0" style={{
-                            backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%)",
-                        }} />
-                        <div className="absolute top-2.5 left-2.5 rounded-[6px] px-2 py-0.5 text-[11px] font-medium tracking-[0.02em] backdrop-blur-sm"
-                            style={{ backgroundColor: "rgba(0,0,0,0.4)", color: "#ffffff" }}>
-                            13h : 33m : 50s
-                        </div>
-                        <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-0.5 text-white">
-                            <span className="text-[11px] font-medium tracking-[0.12em] opacity-90">WEEKEND</span>
-                            <span className="text-[20px] font-semibold leading-tight tracking-[-0.01em]">Workout Pass</span>
-                            <span className="text-[10px] opacity-70">*T&amp;Cs Apply</span>
-                        </div>
-                    </div>
-                    {/* Page dots */}
-                    <div className="flex items-center justify-center gap-1 pt-0.5">
-                        <span className="w-5 h-1.5 rounded-full" style={{ backgroundColor: brand.primaryColor }} />
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${brand.textColor}33` }} />
-                    </div>
-                </div>
-
-                {/* Instructor */}
-                <div className="flex flex-col gap-2">
-                    <p className="text-[16px] font-semibold">Instructor</p>
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
-                        {[
-                            { name: "Liam Chen", count: "3 active classes", img: "/images/instructors/liam-chen.webp" },
-                            { name: "Sara-Al Rashid", count: "4 active classes", img: "/images/instructors/sarah%20al%20rashid.webp" },
-                            { name: "Maya Johnson", count: "2 active classes", img: "/images/instructors/maya-johnson.webp" },
-                        ].map((i, idx) => (
-                            <div key={idx}
-                                className="rounded-[10px] shrink-0 w-[170px] h-[72px] flex items-center justify-between overflow-hidden"
-                                style={{ backgroundColor: brand.tertiaryColor }}>
-                                <div className="flex flex-col gap-0.5 pl-3 pr-2 py-2 min-w-0">
-                                    <span className="text-[12px] font-semibold leading-tight truncate">{i.name}</span>
-                                    <span className="text-[10px] opacity-60">{i.count}</span>
-                                </div>
-                                <img src={i.img} alt="" className="w-[70px] h-full object-cover shrink-0"
-                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Categories */}
-                <div className="flex flex-col gap-2">
-                    <p className="text-[16px] font-semibold">Categories</p>
-                    <div className="grid grid-cols-2 gap-2">
-                        {[
-                            { label: "Yoga",    img: "/images/class-categories/yoga.png" },
-                            { label: "Pilates", img: "/images/class-categories/pilates.png" },
-                            { label: "Barre",   img: "/images/class-categories/barre.png" },
-                            { label: "Cycling", img: "/images/class-categories/cycling.png" },
-                        ].map(c => (
-                            <div key={c.label}
-                                className="rounded-[10px] p-3 h-[80px] flex justify-between items-end relative overflow-hidden"
-                                style={{ backgroundColor: brand.tertiaryColor }}>
-                                <span className="text-[13px] font-medium relative z-10 self-start">{c.label}</span>
-                                <img src={c.img} alt="" className="w-10 h-10 object-contain self-end opacity-90"
-                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Floating Book class CTA dock — full-width backdrop with a
-                soft gradient fade so scrolled content underneath doesn't
-                peek around the pill. The pill itself sits 16px above the
-                bottom nav so it reads as a sticky action hovering above
-                the tab bar. z-10 keeps the dock above scrolled content. */}
-            <div className="absolute bottom-[52px] left-0 right-0 px-4 pt-6 pb-4 z-10 pointer-events-none"
-                style={{
-                    backgroundImage: `linear-gradient(180deg, ${brand.backgroundColor}00 0%, ${brand.backgroundColor}ee 40%, ${brand.backgroundColor} 100%)`,
-                }}>
-                <div className="w-full rounded-full px-4 py-3 text-center text-[15px] font-semibold shadow-[0px_8px_20px_-4px_rgba(16,24,40,0.18)] pointer-events-auto"
-                    style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
-                    Book class
-                </div>
-            </div>
-
-            {/* Bottom nav — z-20 so it stacks above the CTA dock + any
-                scrolled content. */}
-            <div className="absolute bottom-0 left-0 right-0 h-[52px] pb-1.5 flex items-center justify-around z-20"
-                style={{
-                    backgroundColor: brand.backgroundColor,
-                    borderTop: `1px solid ${brand.textColor}11`,
-                }}>
-                {[
-                    { Icon: HomeLine, label: "Home", active: true },
-                    { Icon: SearchSm, label: "Search" },
-                    { Icon: ShoppingBag03, label: "Products" },
-                    { Icon: User01, label: "Profile" },
-                ].map((n, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-1 relative">
-                        {n.active && (
-                            <span className="absolute -top-1.5 w-6 h-[2px] rounded-full"
-                                style={{ backgroundColor: brand.primaryColor }} />
-                        )}
-                        <n.Icon className="w-5 h-5" style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }} />
-                        <span className="text-[10px] font-medium"
-                            style={{ color: n.active ? brand.primaryColor : `${brand.textColor}77` }}>{n.label}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-// ─── Class preview ──────────────────────────────────────────────────────────
-// Figma 7628:324590 — cover image at the top with back + share overlay,
-// class title + date overlaid on the bottom, "8 spots left" pill on the
-// right. Below: Class details copy + 4 metric tiles (2×2 grid) on the
-// tertiary surface + Equipment list + Check-in guidance + sticky footer
-// with "20 credits left" and Book class CTA.
-
-function ClassPreview({ brand }: { brand: PreviewBrand }) {
-    const fontFamily = brandTypefaceFontFamily(brand.typeface);
-    return (
-        <div
-            className="absolute inset-0 flex flex-col overflow-hidden"
-            style={{
-                backgroundColor: brand.backgroundColor,
-                color: brand.textColor,
-                fontFamily,
-            }}
-        >
-            <div className="flex-1 overflow-y-auto scrollbar-hide pb-[72px]">
-                {/* Cover */}
-                <div
-                    className="mx-4 mt-5 rounded-[14px] overflow-hidden h-[170px] relative"
-                    style={{
-                        backgroundImage: "url(/images/class-template/reformer-pilates.webp)",
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                        backgroundColor: brand.textColor,
-                    }}
-                >
-                    {/* Vignette so overlay text reads on bright photos */}
-                    <div className="absolute inset-0" style={{
-                        backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.55) 100%)",
-                    }} />
-                    <button className="absolute top-3 left-3 w-8 h-8 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
-                        <ChevronLeft className="w-4 h-4 text-white" />
-                    </button>
-                    <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-sm flex items-center justify-center">
-                        <Share02 className="w-4 h-4 text-white" />
-                    </button>
-                    <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-2">
-                        <div className="flex flex-col gap-0.5 text-white min-w-0">
-                            <span className="text-[18px] font-semibold leading-tight tracking-[-0.01em]">Mat Pilates</span>
-                            <span className="text-[11px] opacity-90">Sun, 20 Feb 2025 at 10:00 AM</span>
-                        </div>
-                        <span className="rounded-full px-2.5 py-1 text-[11px] font-medium flex items-center gap-1 shrink-0"
-                            style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
-                            <CheckCircle className="w-3 h-3" />
-                            8 spots left
-                        </span>
-                    </div>
-                </div>
-
-                {/* Body */}
-                <div className="px-4 pt-5 flex flex-col gap-5">
-                    <div className="flex flex-col gap-2.5">
-                        <p className="text-[16px] font-semibold">Class details</p>
-                        <p className="text-[12px] leading-[17px] opacity-70">
-                            This classic mat-based Pilates class focuses on strengthening the core through controlled and precise movements. <span className="font-semibold underline" style={{ color: brand.textColor }}>See more</span>
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                            {[
-                                { Icon: ClockFastForward, label: "Duration",   value: "60 minutes" },
-                                { Icon: Users01,          label: "Capacity",   value: "8 participants" },
-                                { Icon: UserCheck01,      label: "Instructor", value: "Liam Chen", instructor: true },
-                                { Icon: Grid01,           label: "Class type", value: "Group" },
-                            ].map((m, idx) => (
-                                <div key={idx}
-                                    className="rounded-[10px] p-3 flex items-start gap-2.5"
-                                    style={{ backgroundColor: brand.tertiaryColor }}>
-                                    <m.Icon className="w-4 h-4 mt-0.5 shrink-0 opacity-70" />
-                                    <div className="flex flex-col gap-0.5 min-w-0">
-                                        <span className="text-[11px] opacity-60 leading-tight">{m.label}</span>
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            {m.instructor && (
-                                                <img src="/images/instructors/liam-chen.webp" alt=""
-                                                    className="w-4 h-4 rounded-full object-cover shrink-0"
-                                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                                            )}
-                                            <span className="text-[12px] font-semibold leading-tight truncate">{m.value}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[16px] font-semibold">Equipment</p>
-                        <div className="flex flex-col gap-1 text-[12px] opacity-80">
-                            {["Mat", "Resistance band"].map(item => (
-                                <div key={item} className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${brand.textColor}77` }} />
-                                    <span>{item}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 pt-3 border-t" style={{ borderColor: `${brand.textColor}14` }}>
-                        <p className="text-[16px] font-semibold">Check-in or arrival guidance</p>
-                        <div className="flex items-center gap-2 text-[12px]">
-                            <CheckCircle className="w-4 h-4" style={{ color: brand.primaryColor }} />
-                            <span>Arrive 10 minutes early</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Sticky CTA — credits left text + book pill */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 pt-3 pb-4 flex items-center justify-between gap-3"
-                style={{ backgroundColor: brand.backgroundColor, borderTop: `1px solid ${brand.textColor}11` }}>
-                <span className="text-[12px] font-medium opacity-70">20 credits left</span>
-                <div className="rounded-full px-5 py-2 text-[14px] font-semibold"
-                    style={{ backgroundColor: brand.primaryColor, color: brand.textColor }}>
-                    Book class
-                </div>
-            </div>
-        </div>
+            {/* Click blocker — the preview must not be interactive, but MUST
+                stay scrollable so admin can see full Home / Class detail.
+                Overlay sits above the iframe (z-10) and intercepts click /
+                mousedown, then forwards wheel + touch scroll into the
+                iframe's `<main>` scroll container. */}
+            <div
+                className="absolute inset-0 z-10 cursor-default select-none"
+                aria-hidden="true"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onMouseDown={(e) => e.preventDefault()}
+                onWheel={forwardWheel}
+            />
+        </>
     );
 }

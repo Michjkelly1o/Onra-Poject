@@ -17,7 +17,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div className="flex items-center justify-between text-sm leading-5">
             <span className="font-normal text-[#475467]">{label}</span>
-            <span className="font-medium text-[#101828]">{value}</span>
+            <span className="font-medium text-[var(--brand-text)]">{value}</span>
         </div>
     );
 }
@@ -43,15 +43,15 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
             <div className={`flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-6 ${onClose ? "pt-2" : "pt-16"}`}>
                 {/* Ringed check */}
                 <div className="relative flex size-12 shrink-0 items-center justify-center">
-                    <span className="absolute -inset-[7px] rounded-full border-2 border-[#658774] opacity-30" aria-hidden />
-                    <span className="absolute -inset-[15px] rounded-full border-2 border-[#658774] opacity-10" aria-hidden />
-                    <span className="flex size-12 items-center justify-center rounded-full bg-[#658774]">
+                    <span className="absolute -inset-[7px] rounded-full border-2 border-[var(--brand-primary)] opacity-30" aria-hidden />
+                    <span className="absolute -inset-[15px] rounded-full border-2 border-[var(--brand-primary)] opacity-10" aria-hidden />
+                    <span className="flex size-12 items-center justify-center rounded-full bg-[var(--brand-primary)]">
                         <Check className="size-6 text-white" strokeWidth={3} aria-hidden />
                     </span>
                 </div>
 
                 <div className="flex flex-col items-center gap-0.5">
-                    <p className="text-center text-xl font-semibold leading-[30px] text-[#101828]">Payment successful</p>
+                    <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Payment successful</p>
                     <p className="text-center text-sm font-normal leading-5 text-[#475467]">
                         Your payment of AED {order?.total ?? 0} has been successfully processed.
                     </p>
@@ -60,7 +60,7 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                 {/* Order + payment detail card */}
                 <div className="flex w-full flex-col gap-5 rounded-[20px] border border-[#e4e7ec] bg-white p-4">
                     <div className="flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">Order detail</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Order detail</p>
                         <Row label="Transaction ID" value={order?.txnId ?? "—"} />
                         <Row label="Date" value={order?.dateLabel ?? "—"} />
                         <Row label="Time" value={order?.timeLabel ?? "—"} />
@@ -70,21 +70,21 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                     <div className="h-px w-full bg-[#f2f4f7]" />
 
                     <div className="flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">Payment detail</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment detail</p>
                         <Row
                             label="Total items"
                             value={`${order?.totalItems ?? 0} item${(order?.totalItems ?? 0) === 1 ? "" : "s"}`}
                         />
                         {order && order.discount > 0 && (
-                            <Row label="Discount" value={<span className="text-[#067647]">−AED {order.discount}</span>} />
+                            <Row label="Discount" value={<span className="text-[var(--brand-primary)]">−AED {order.discount}</span>} />
                         )}
                         <Row label={`Tax rate (${TAX_RATE_PCT}%)`} value={`AED ${order?.tax ?? 0}`} />
                         <Row label="Total" value={`AED ${order?.total ?? 0}`} />
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-normal leading-5 text-[#475467]">Status</span>
                             <span className="flex items-center gap-1">
-                                <CheckCircle className="size-3.5 text-[#067647]" aria-hidden />
-                                <span className="text-sm font-medium leading-5 text-[#101828]">Success</span>
+                                <CheckCircle className="size-3.5 text-[var(--brand-primary)]" aria-hidden />
+                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">Success</span>
                             </span>
                         </div>
                     </div>

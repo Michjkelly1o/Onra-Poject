@@ -69,7 +69,7 @@ export function AppointmentCard({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <p className="truncate text-base font-semibold leading-6 text-[#101828]">{name}</p>
+                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
                     <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">AED {price}</p>
                 </div>
 

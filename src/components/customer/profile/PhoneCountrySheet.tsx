@@ -29,7 +29,7 @@ export function PhoneCountrySheet({ value, onChange }: { value: PhoneCountry; on
                 className="flex h-[46px] shrink-0 items-center gap-1.5 rounded-lg border border-[#d0d5dd] bg-white px-3"
             >
                 <span className="text-base leading-none">{value.flag}</span>
-                <span className="text-base leading-6 text-[#101828]">{value.dial}</span>
+                <span className="text-base leading-6 text-[var(--brand-text)]">{value.dial}</span>
                 <ChevronDown className="size-4 text-[#667085]" aria-hidden />
             </button>
 
@@ -53,7 +53,7 @@ export function PhoneCountrySheet({ value, onChange }: { value: PhoneCountry; on
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Search country"
-                        className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
+                        className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
                     />
                 </div>
                 <div className="flex max-h-[50vh] flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -69,7 +69,7 @@ export function PhoneCountrySheet({ value, onChange }: { value: PhoneCountry; on
                             className="flex items-center gap-3 py-3.5 text-left"
                         >
                             <span className="text-lg leading-none">{c.flag}</span>
-                            <span className="min-w-0 flex-1 truncate text-base leading-6 text-[#101828]">{c.name}</span>
+                            <span className="min-w-0 flex-1 truncate text-base leading-6 text-[var(--brand-text)]">{c.name}</span>
                             <span className="shrink-0 text-sm leading-5 text-[#475467]">{c.dial}</span>
                             <RadioDot checked={c.code === value.code} />
                         </button>

@@ -18,7 +18,7 @@ export function UpcomingBookings({
 }) {
     return (
         <section className="flex w-full flex-col gap-3">
-            <h2 className="text-base font-semibold leading-6 text-[#101828]">Upcoming bookings</h2>
+            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Upcoming bookings</h2>
 
             {bookings.length === 0 ? (
                 <div className="flex flex-col items-start gap-1 rounded-2xl border border-[var(--colors-border-secondary,#e4e7ec)] bg-white px-4 py-5">

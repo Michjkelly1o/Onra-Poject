@@ -70,7 +70,7 @@ export default function AppointmentBookingDetailPage() {
                     <div className="flex-1" />
                 </CustomerHeader>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-                    <p className="text-base font-semibold text-[#101828]">This booking is no longer available</p>
+                    <p className="text-base font-semibold text-[var(--brand-text)]">This booking is no longer available</p>
                     <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/bookings")}>
                         Back to Bookings
                     </Button>
@@ -139,7 +139,7 @@ export default function AppointmentBookingDetailPage() {
             {booking.lateCancel ? "Cancelled (late)" : "Cancelled (no charge)"}
         </span>
     ) : (
-        <span className="flex shrink-0 items-center gap-1 rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
+        <span className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
             <CheckCircle className="size-3" aria-hidden />
             Booked
         </span>
@@ -148,7 +148,7 @@ export default function AppointmentBookingDetailPage() {
     const statusBlock = (
         <div
             className={`relative flex items-start gap-4 overflow-hidden rounded-2xl border p-4 ${
-                isCancelled ? "border-[#e4e7ec] bg-[#f9fafb]" : "border-[#7ba08c] bg-[#e9fff3]"
+                isCancelled ? "border-[#e4e7ec] bg-[#f9fafb]" : "border-[var(--brand-primary)] bg-[var(--brand-tertiary)]"
             }`}
         >
             <div aria-hidden className="pointer-events-none absolute right-0 top-0" style={{ opacity: 0.5 }}>
@@ -161,13 +161,13 @@ export default function AppointmentBookingDetailPage() {
                             height: d,
                             right: -14 - d / 2,
                             top: -14 - d / 2,
-                            borderColor: isCancelled ? "#e4e7ec" : "#c9e4d5",
+                            borderColor: isCancelled ? "#e4e7ec" : "var(--brand-tertiary)",
                         }}
                     />
                 ))}
             </div>
             <div className="relative flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[#101828]">
+                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">
                     {isCancelled
                         ? booking.lateCancel
                             ? "Cancelled (late)"
@@ -189,7 +189,7 @@ export default function AppointmentBookingDetailPage() {
                     <RefreshCcw01 className="relative size-5 shrink-0 text-[#d92d20]" aria-hidden />
                 )
             ) : (
-                <CheckCircle className="relative size-5 shrink-0 text-[#067647]" aria-hidden />
+                <CheckCircle className="relative size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
             )}
         </div>
     );
@@ -198,10 +198,10 @@ export default function AppointmentBookingDetailPage() {
         <div className="flex flex-col gap-4">
             <div className="flex gap-4">
                 <InfoCell icon={Clock} label="Duration">
-                    <span className="text-sm font-medium leading-5 text-[#101828]">{booking.durationMins} minutes</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{booking.durationMins} minutes</span>
                 </InfoCell>
                 <InfoCell icon={Tag01} label="Session type">
-                    <span className="text-sm font-medium leading-5 text-[#101828]">
+                    <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">
                         {isPrivate ? "Private" : "Open session"}
                     </span>
                 </InfoCell>
@@ -229,7 +229,7 @@ export default function AppointmentBookingDetailPage() {
                                         </span>
                                     )}
                                 </span>
-                                <span className="truncate text-sm font-medium leading-5 text-[#101828]">
+                                <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
                                     {booking.instructorName}
                                 </span>
                             </span>
@@ -237,7 +237,7 @@ export default function AppointmentBookingDetailPage() {
                     </button>
                 ) : (
                     <InfoCell icon={Users01} label="Capacity">
-                        <span className="text-sm font-medium leading-5 text-[#101828]">
+                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">
                             {booking.capacity ? `${booking.capacity} participants` : "Group session"}
                         </span>
                     </InfoCell>

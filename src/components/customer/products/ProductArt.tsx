@@ -20,9 +20,9 @@ const THEME: Record<
 > = {
     // Unified brand-green theme for every product type (membership / package /
     // gift card) — only the icon differs. Client Jul 2026.
-    membership: { Icon: CreditCard02, tileBg: "#e9fff3", iconColor: "#658774", ring: "#aad4bd", ringOpacity: 0.6 },
-    package: { Icon: Package, tileBg: "#e9fff3", iconColor: "#658774", ring: "#aad4bd", ringOpacity: 0.6 },
-    gift_card: { Icon: Gift01, tileBg: "#e9fff3", iconColor: "#658774", ring: "#aad4bd", ringOpacity: 0.6 },
+    membership: { Icon: CreditCard02, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
+    package: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
+    gift_card: { Icon: Gift01, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
 };
 
 // DS ring sizes (px @ the 64px banner) — concentric rounded squares.

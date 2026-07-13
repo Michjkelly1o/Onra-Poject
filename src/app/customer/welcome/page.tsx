@@ -14,6 +14,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { hasOnboarded, markOnboarded } from "@/lib/customer/auth";
+import { useAppStore } from "@/lib/store";
+import { usePreviewBrand } from "@/components/customer/shell/BrandTokens";
 import { Button } from "@/components/ui/button";
 
 interface Slide {
@@ -47,15 +49,46 @@ export default function WelcomePage() {
     const [phase, setPhase] = useState<"splash" | "onboarding">("splash");
     const [active, setActive] = useState(0);
     const scrollRef = useRef<HTMLDivElement | null>(null);
+    // Splash mirrors admin's Branding — the studio's display name + logo (from
+    // Settings → Branding → Business info) so the first thing a member sees is
+    // the branded studio, not "Forma". Falls back to Forma when not uploaded.
+    // The default Forma SVG has `preserveAspectRatio="none"` so it stretches
+    // to fill any container — must be locked to its native 43×52. Uploaded
+    // logos can be any aspect ratio, so we cap them with `object-contain`.
+    //
+    // The preview override (admin panel's draft state, streamed in via
+    // postMessage) takes precedence over the store so live-edits in
+    // Customize design settings reflect here before Save.
+    const preview          = usePreviewBrand();
+    const storedDisplayName = useAppStore(s => s.brandingSettings.displayName);
+    const storedLogoUrl    = useAppStore(s => s.brandingSettings.logoUrl);
+    const brandDisplayName = preview?.displayName ?? (storedDisplayName || "Forma");
+    const effectiveLogoUrl = preview?.logoUrl ?? storedLogoUrl;
+    const isCustomLogo     = effectiveLogoUrl.length > 0;
+    const brandLogoUrl     = effectiveLogoUrl || "/customer/auth/forma-logomark.svg";
+    const brandLogoClass   = isCustomLogo
+        ? "max-h-[52px] max-w-[120px] w-auto h-auto object-contain"
+        : "h-[52px] w-[43px]";
 
-    // Already onboarded → skip the intro entirely.
+    // Already onboarded → skip the intro entirely. In admin preview mode
+    // (`?preview=1`, iframe embed from Branding → Customize design settings)
+    // we suppress this redirect so the splash always renders regardless of
+    // the tester's onboarded state.
     useEffect(() => {
-        if (hasOnboarded()) router.replace("/customer");
+        const isPreview = typeof window !== "undefined"
+            && new URLSearchParams(window.location.search).get("preview") === "1";
+        if (!isPreview && hasOnboarded()) router.replace("/customer");
     }, [router]);
 
-    // Splash auto-advances to the carousel after a short beat.
+    // Splash auto-advances to the carousel after a short beat. In admin
+    // preview mode the splash is exactly what we want to render, so we
+    // skip the timer — the panel's "Login" tab always shows the logo+name
+    // hero (not the onboarding carousel underneath).
     useEffect(() => {
         if (phase !== "splash") return;
+        const isPreview = typeof window !== "undefined"
+            && new URLSearchParams(window.location.search).get("preview") === "1";
+        if (isPreview) return;
         const t = setTimeout(() => setPhase("onboarding"), 1200);
         return () => clearTimeout(t);
     }, [phase]);
@@ -84,12 +117,12 @@ export default function WelcomePage() {
                 type="button"
                 onClick={() => setPhase("onboarding")}
                 aria-label="Continue"
-                className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-[#e7f6ee]"
+                className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-[var(--brand-tertiary)]"
             >
                 <div className="flex flex-col items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/customer/auth/forma-logomark.svg" alt="" className="h-[52px] w-[43px]" aria-hidden />
-                    <span className="text-[32px] font-semibold leading-none text-[#101828]">Forma</span>
+                    <img src={brandLogoUrl} alt="" className={brandLogoClass} aria-hidden />
+                    <span className="text-[32px] font-semibold leading-none text-[var(--brand-text)]">{brandDisplayName}</span>
                 </div>
                 <div className="absolute bottom-[max(24px,env(safe-area-inset-bottom))] flex items-center gap-1.5">
                     <span className="text-sm leading-5 text-[#98a2b3]">powered by</span>
@@ -129,7 +162,7 @@ export default function WelcomePage() {
                             onClick={() => goToSlide(i)}
                             aria-label={`Go to slide ${i + 1}`}
                             className={`h-1.5 rounded-full transition-all ${
-                                i === active ? "w-6 bg-[#c4edd6]" : "w-1.5 bg-[#e4e7ec]/70"
+                                i === active ? "w-6 bg-[var(--brand-tertiary)]" : "w-1.5 bg-[#e4e7ec]/70"
                             }`}
                         />
                     ))}

@@ -135,7 +135,7 @@ export function ClassDetailLayout({
 
                 {/* Class details */}
                 <section className="flex flex-col gap-2">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">{detailsHeading ?? "Class details"}</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">{detailsHeading ?? "Class details"}</h2>
                     <p className={`text-sm font-normal leading-5 text-[#475467] ${expanded ? "" : "line-clamp-3"}`}>
                         {detail.description}
                     </p>
@@ -143,7 +143,7 @@ export function ClassDetailLayout({
                         <button
                             type="button"
                             onClick={() => setExpanded((v) => !v)}
-                            className="self-start text-sm font-semibold text-[#101828]"
+                            className="self-start text-sm font-semibold text-[var(--brand-text)]"
                         >
                             {expanded ? "See less" : "See more"}
                         </button>
@@ -160,7 +160,7 @@ export function ClassDetailLayout({
                             </span>
                             <div className="flex flex-col">
                                 <span className="text-xs leading-[18px] text-[#667085]">Duration</span>
-                                <span className="text-sm font-medium leading-5 text-[#101828]">{detail.durationMins} minutes</span>
+                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.durationMins} minutes</span>
                             </div>
                         </InfoCell>
                         <InfoCell>
@@ -169,7 +169,7 @@ export function ClassDetailLayout({
                             </span>
                             <div className="flex flex-col">
                                 <span className="text-xs leading-[18px] text-[#667085]">Capacity</span>
-                                <span className="text-sm font-medium leading-5 text-[#101828]">{detail.capacity} participants</span>
+                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.capacity} participants</span>
                             </div>
                         </InfoCell>
                     </div>
@@ -199,7 +199,7 @@ export function ClassDetailLayout({
                                             </span>
                                         )}
                                     </span>
-                                    <span className="truncate text-sm font-medium leading-5 text-[#101828]">
+                                    <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
                                         {abbreviateName(detail.instructorName)}
                                     </span>
                                 </span>
@@ -211,7 +211,7 @@ export function ClassDetailLayout({
                             </span>
                             <div className="flex flex-col">
                                 <span className="text-xs leading-[18px] text-[#667085]">Class type</span>
-                                <span className="text-sm font-medium leading-5 text-[#101828]">{detail.classType}</span>
+                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.classType}</span>
                             </div>
                         </InfoCell>
                     </div>
@@ -222,7 +222,7 @@ export function ClassDetailLayout({
                     <>
                         <div className="h-px w-full bg-[#e4e7ec]" />
                         <section className="flex flex-col gap-3">
-                            <h2 className="text-base font-semibold leading-6 text-[#101828]">Equipment</h2>
+                            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Equipment</h2>
                             <div className="flex flex-col gap-2">
                                 {detail.equipment.map((e) => (
                                     <div key={e} className="flex items-center gap-2 text-sm font-normal leading-5 text-[#475467]">
@@ -237,7 +237,7 @@ export function ClassDetailLayout({
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Check-in or arrival guidance</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Check-in or arrival guidance</h2>
                     <div className="flex flex-col gap-2">
                         {CHECK_IN_GUIDANCE.map((g) => (
                             <div key={g} className="flex items-center gap-2 text-sm font-normal leading-5 text-[#475467]">
@@ -250,17 +250,17 @@ export function ClassDetailLayout({
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
                 <section className="flex flex-col gap-2">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Cancellation policy</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</h2>
                     <p className="text-sm font-normal leading-5 text-[#475467]">Full refund if you cancel 24 hours before.</p>
                 </section>
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Location</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</h2>
                     <div className="relative h-[160px] w-full overflow-hidden rounded-xl bg-white">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/images/customer/branch-map.png" alt="" className="absolute inset-0 size-full object-cover" />
-                        <span className="absolute left-1/2 top-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-black/20 bg-[#101828]">
+                        <span className="absolute left-1/2 top-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-black/20 bg-[var(--brand-text)]">
                             <MarkerPin01 className="size-5 text-white" aria-hidden />
                         </span>
                         <button
@@ -275,7 +275,7 @@ export function ClassDetailLayout({
                     <div className="flex w-full items-start gap-2">
                         <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <p className="text-sm font-medium leading-5 text-[#101828]">
+                            <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">
                                 {detail.room ? `${detail.room} - ` : ""}{detail.branchName}
                             </p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{detail.branchAddress}</p>

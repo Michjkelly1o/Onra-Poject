@@ -18,7 +18,7 @@ import type { ComponentType, SVGProps } from "react";
 import { Archive, Check, RefreshCcw01, SlashCircle01, Trash01 } from "@untitledui/icons";
 import { useAppStore, type ToastData } from "@/lib/store";
 
-const SUCCESS = "#079455";
+const SUCCESS = "var(--brand-primary)";
 const DANGER = "#d92d20";
 const NEUTRAL = "#475467";
 
@@ -51,12 +51,12 @@ export interface CustomerToastProps {
 }
 
 /** Presentational card — fully configurable, no store coupling. */
-export function CustomerToast({ icon: Icon, iconColor = "#101828", title, subtext }: CustomerToastProps) {
+export function CustomerToast({ icon: Icon, iconColor = "var(--brand-text)", title, subtext }: CustomerToastProps) {
     return (
         <div className="flex w-full items-start gap-3 rounded-2xl border border-[#f2f4f7] bg-white p-4 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
             <Icon className="size-5 shrink-0" style={{ color: iconColor }} aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[#101828]">{title}</p>
+                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{title}</p>
                 {subtext && <p className="text-xs font-normal leading-[18px] text-[#344054]">{subtext}</p>}
             </div>
         </div>

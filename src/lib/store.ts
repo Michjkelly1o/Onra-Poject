@@ -7861,7 +7861,27 @@ export const useAppStore = create<AppState>()(persist(
         //     resolve via city lookup as before.
         //   • Persist bumped so testers re-seed with the new field on the 4
         //     seed branches.
-        version: 52,
+        // v53 (2026-07-13): brandingSettings seed re-anchored — primaryColor
+        //   `#C4EDD6` → `#658774` (customer sage) and tertiaryColor `#F1F2ED`
+        //   → `#E9FFF3` (pale sage). The Branding wire-up flows these seeds
+        //   through `--brand-*` CSS vars to every customer surface, so a
+        //   stale persisted mint value would visually break the customer app
+        //   until the admin manually re-picked sage. Bump forces a reseed on
+        //   next hydrate. Non-branding slices unaffected.
+        // v54 (2026-07-13): tertiaryColor re-anchored `#E9FFF3` → `#C4EDD6` so
+        //   the seed matches the actual DS Button "primary" variant background
+        //   (`bg-[#c4edd6]`). Before this bump, the admin form showed
+        //   `#E9FFF3` but the customer's Book class button rendered `#c4edd6`,
+        //   which read as "tertiary not connected" when scrubbed. Bump forces
+        //   testers to reseed with the aligned value.
+        // v55 (2026-07-13): customers seed re-anchored — 6 date_of_birth values
+        //   shifted onto class dates in the demo range (2026-05-08 → 05-22) and
+        //   3 created_at values pulled to within 30 days of the demo dates so
+        //   the new roster context pills (`ClassCustomerBadges` /
+        //   `AppointmentCustomerBadges`) actually fire during a client demo.
+        //   Every class detail in the seed range now shows at least one
+        //   Birthday or New Member pill. Bump forces a reseed on next hydrate.
+        version: 55,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

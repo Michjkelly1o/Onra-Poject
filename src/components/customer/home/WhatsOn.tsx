@@ -57,7 +57,7 @@ export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
 
     return (
         <section className="flex w-full flex-col gap-3">
-            <h2 className="text-base font-semibold leading-6 text-[#101828]">What’s on</h2>
+            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">What’s on</h2>
 
             <div className="flex w-full flex-col gap-3">
                 <div
@@ -96,7 +96,7 @@ export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
                                 aria-hidden
                                 className={
                                     i === active
-                                        ? "h-[6px] w-6 rounded-full bg-[#658774]"
+                                        ? "h-[6px] w-6 rounded-full bg-[var(--brand-primary)]"
                                         : "size-[6px] rounded-full bg-[#e4e7ec]"
                                 }
                             />

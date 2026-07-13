@@ -203,7 +203,7 @@ function ConfirmDialog({
                             "flex-1 h-10 rounded-[8px] text-[14px] font-semibold transition-colors",
                             danger
                                 ? "bg-[#d92d20] text-white hover:bg-[#b42318]"
-                                : "bg-[#c4edd6] text-[#0c2d34] hover:bg-[#aad4bd]",
+                                : "bg-[var(--brand-tertiary)] text-[#0c2d34] hover:bg-[#aad4bd]",
                         )}>
                         {confirmLabel}
                     </button>

@@ -400,7 +400,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                             Cancel
                         </button>
                         <button type="button" onClick={handleApply}
-                            className="flex-1 h-9 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-[#c4edd6] hover:bg-[#aad4bd] transition-colors">
+                            className="flex-1 h-9 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-[var(--brand-tertiary)] hover:bg-[#aad4bd] transition-colors">
                             Apply
                         </button>
                     </div>

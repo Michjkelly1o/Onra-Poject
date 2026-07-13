@@ -28,7 +28,7 @@ export default function BookingProcessingPage() {
 
 function StepLine({ text, variant }: { text: string; variant: "done" | "active" | "next" }) {
     if (variant === "active") {
-        return <p className="text-xl font-semibold leading-[30px] text-[#4f6e5d]">{text}</p>;
+        return <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">{text}</p>;
     }
     return (
         <p className={`text-base font-semibold leading-6 text-[#344054] ${variant === "done" ? "opacity-30" : "opacity-10"}`}>
@@ -83,7 +83,7 @@ function BookingProcessing() {
                 {[0, 1, 2].map((i) => (
                     <span
                         key={i}
-                        className="size-2 animate-bounce rounded-full bg-[#658774]"
+                        className="size-2 animate-bounce rounded-full bg-[var(--brand-primary)]"
                         style={{ animationDelay: `${i * 0.15}s` }}
                     />
                 ))}

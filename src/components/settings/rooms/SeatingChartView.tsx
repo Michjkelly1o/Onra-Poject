@@ -31,7 +31,7 @@ export function SeatingChartView({ rows, columns }: { rows: number; columns: num
                         <div key={ri} className="flex gap-4 items-center">
                             {Array.from({ length: columns }).map((_, ci) => (
                                 <div key={ci} className="flex flex-col items-center gap-1">
-                                    <div className="w-7 h-7 rounded-full bg-[#c4edd6] shrink-0" />
+                                    <div className="w-7 h-7 rounded-full bg-[var(--brand-tertiary)] shrink-0" />
                                     <span className="text-[9px] font-semibold text-[#475467]">
                                         {rowLabel(ri)}{ci + 1}
                                     </span>

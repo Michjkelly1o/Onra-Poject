@@ -47,7 +47,7 @@ export function OptionSheet({
                             onClick={() => setDraft(opt)}
                             className="flex items-center gap-3 py-4 text-left"
                         >
-                            <span className="flex-1 text-base leading-6 text-[#101828]">{opt}</span>
+                            <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{opt}</span>
                             <RadioDot checked={draft === opt} />
                         </button>
                     ) : (
@@ -56,10 +56,10 @@ export function OptionSheet({
                             type="button"
                             onClick={() => setDraft(opt)}
                             className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
-                                draft === opt ? "border-[#658774] bg-[#fbfdfc] ring-1 ring-inset ring-[#658774]" : "border-[#e4e7ec]"
+                                draft === opt ? "border-[var(--brand-primary)] bg-[#fbfdfc] ring-1 ring-inset ring-[var(--brand-primary)]" : "border-[#e4e7ec]"
                             }`}
                         >
-                            <span className="flex-1 text-base leading-6 text-[#101828]">{opt}</span>
+                            <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{opt}</span>
                             <RadioDot checked={draft === opt} />
                         </button>
                     ),

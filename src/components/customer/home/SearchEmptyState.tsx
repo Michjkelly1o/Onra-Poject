@@ -45,7 +45,7 @@ export function SearchEmptyState({
 
             {/* Text */}
             <div className="flex max-w-[352px] flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[#101828]">{title}</p>
+                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{title}</p>
                 <p className="text-sm font-normal leading-5 text-[#475467]">{description}</p>
             </div>
         </div>

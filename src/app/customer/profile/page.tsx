@@ -103,7 +103,7 @@ export default function ProfilePage() {
                             }`}
                         >
                             <Icon className="size-5 shrink-0 text-[#344054]" aria-hidden />
-                            <span className="flex-1 text-base font-semibold leading-6 text-[#101828]">{row.label}</span>
+                            <span className="flex-1 text-base font-semibold leading-6 text-[var(--brand-text)]">{row.label}</span>
                             <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
                         </button>
                     );
@@ -122,7 +122,7 @@ export default function ProfilePage() {
                         <User01 className="size-7 text-[#667085]" aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="truncate text-lg font-semibold leading-7 text-[#101828]">Hi guest</p>
+                        <p className="truncate text-lg font-semibold leading-7 text-[var(--brand-text)]">Hi guest</p>
                         <p className="truncate text-base leading-6 text-[#667085]">You&apos;re browsing as a guest</p>
                     </div>
                 </div>
@@ -130,7 +130,7 @@ export default function ProfilePage() {
                 <div className={`relative overflow-hidden p-4 ${CARD}`}>
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">Hey there!</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Hey there!</p>
                         <p className="text-sm leading-5 text-[#475467]">
                             Log in or sign up to access your profile, bookings, and memberships.
                         </p>
@@ -165,7 +165,7 @@ export default function ProfilePage() {
                     </div>
                 )}
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-lg font-semibold leading-7 text-[#101828]">{name}</p>
+                    <p className="truncate text-lg font-semibold leading-7 text-[var(--brand-text)]">{name}</p>
                     <p className="truncate text-base leading-6 text-[#667085]">{member?.email}</p>
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
@@ -182,19 +182,19 @@ export default function ProfilePage() {
                     <div className="relative flex flex-col gap-3">
                         <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
                         <div className="flex flex-col gap-2">
-                            <p className="text-base font-semibold leading-6 text-[#101828]">{creditLabel}</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{creditLabel}</p>
                             <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
-                                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${progressPct}%` }} />
+                                <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${progressPct}%` }} />
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <p className="text-xs font-normal leading-[18px] text-[#667085]">{planTypeLabel}</p>
-                                <p className="truncate text-xs font-medium leading-[18px] text-[#101828]">{totalCreditsValue}</p>
+                                <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">{totalCreditsValue}</p>
                             </div>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <p className="text-xs font-normal leading-[18px] text-[#667085]">Expires on</p>
-                                <p className="truncate text-xs font-medium leading-[18px] text-[#101828]">{expiresValue}</p>
+                                <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">{expiresValue}</p>
                             </div>
                         </div>
                     </div>
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
                         <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
-                        <p className="text-base font-semibold leading-6 text-[#101828]">No active plan</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">No active plan</p>
                         <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]" />
                         <Button
                             variant="primary"
@@ -253,7 +253,7 @@ export default function ProfilePage() {
                         <LogOut01 className="size-6 text-[#d92d20]" aria-hidden />
                     </div>
                     <div>
-                        <p className="text-lg font-semibold leading-7 text-[#101828]">Log out of your account?</p>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Log out of your account?</p>
                         <p className="mt-1 text-sm leading-5 text-[#475467]">
                             You&apos;ll need to sign in again to access your bookings.
                         </p>

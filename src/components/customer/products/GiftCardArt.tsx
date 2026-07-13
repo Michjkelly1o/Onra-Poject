@@ -46,7 +46,7 @@ export interface GiftCardArtProps {
 export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
     return (
         <div
-            className={`relative aspect-[335/210] w-full overflow-hidden rounded-2xl border border-[#c4edd6] shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)] ${className ?? ""}`}
+            className={`relative aspect-[335/210] w-full overflow-hidden rounded-2xl border border-[var(--brand-tertiary)] shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)] ${className ?? ""}`}
             style={{ backgroundImage: FORMA_GRADIENT }}
         >
             {/* Curved swoosh overlay */}
@@ -73,18 +73,18 @@ export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
                     <div className="absolute left-0 top-0 flex items-center gap-1.5 p-5">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/images/pay/forma-logomark.svg" alt="" className="h-8 w-[26.67px] shrink-0" />
-                        <span className="text-lg font-semibold leading-7 text-[#7ba08c]">Forma</span>
+                        <span className="text-lg font-semibold leading-7 text-[var(--brand-primary)]">Forma</span>
                     </div>
                     {/* Top-right — check */}
                     <div className="absolute right-0 top-0 p-5">
-                        <span className="flex size-7 items-center justify-center rounded-full bg-[#7ba08c]">
+                        <span className="flex size-7 items-center justify-center rounded-full bg-[var(--brand-primary)]">
                             <Check className="size-[18px] text-white" strokeWidth={3} aria-hidden />
                         </span>
                     </div>
                     {/* Bottom-left — balance (padding on the wrapper so the 112px text box
                         wraps to "AED 250" / "Gift Card", not one word per line). */}
                     <div className="absolute bottom-0 left-0 p-6">
-                        <p className="w-28 text-xl font-semibold leading-[30px] text-[#7ba08c]">AED {value} Gift Card</p>
+                        <p className="w-28 text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">AED {value} Gift Card</p>
                     </div>
                 </>
             )}

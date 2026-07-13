@@ -49,12 +49,14 @@ export const branding_settings: BrandingSettings = {
     logoUrl:    "",
     appIconUrl: "",
     favIconUrl: "",
-    // ── Brand palette — defaults per Figma 4468:21332 (the new branding
-    //    landing reference). Primary is the existing soft mint;
-    //    tertiary (#F1F2ED) is the new warm-grey tile chrome.
-    primaryColor:    "#C4EDD6",
-    backgroundColor: "#FAFAFA",
-    tertiaryColor:   "#F1F2ED",
+    // ── Brand palette — defaults match the pre-Branding customer sage
+    //    baked into every customer surface. Keeping these as the seed
+    //    means a fresh workspace looks identical to what customers had
+    //    before Branding shipped; admin edits then flow through
+    //    `--brand-*` vars to the same surfaces (client Jul 2026).
+    primaryColor:    "#658774",
+    backgroundColor: "#FFFFFF",
+    tertiaryColor:   "#C4EDD6",
     textColor:       "#101828",
     textColorLabel:  "Black",
     // ── Typeface — DM Sans is the default and pre-selected on Step 2.

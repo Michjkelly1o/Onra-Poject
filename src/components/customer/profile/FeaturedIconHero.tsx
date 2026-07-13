@@ -15,7 +15,7 @@ export interface FeaturedIconHeroProps {
     icon: ComponentType<SVGProps<SVGSVGElement>>;
     /** Diamond tile background + shadow (e.g. "bg-[#dbf8ff] shadow-[…]"). */
     tileClassName: string;
-    /** Icon size + color (e.g. "size-[42px] text-[#101828]"). */
+    /** Icon size + color (e.g. "size-[42px] text-[var(--brand-text)]"). */
     iconClassName: string;
     /** Concentric-ring border color. Default secondary/300 green. */
     patternColor?: string;
@@ -61,7 +61,7 @@ export function FeaturedIconHero({
                     <Icon className={`${upright ? "" : "-rotate-45"} ${iconClassName}`} aria-hidden />
                 </div>
             </div>
-            <p className="mt-1 text-xl font-semibold leading-[30px] text-[#101828]">{title}</p>
+            <p className="mt-1 text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{title}</p>
             <p className="mt-1 text-sm font-medium leading-5 text-[#475467]">{subtitle}</p>
         </div>
     );

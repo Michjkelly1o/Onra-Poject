@@ -20,7 +20,7 @@ export function TrendingClasses() {
 
     return (
         <section className="flex w-full flex-col gap-3">
-            <h2 className="text-base font-semibold leading-6 text-[#101828]">Trending today</h2>
+            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Trending today</h2>
 
             {/* Full-bleed rail: cancels the page's px-4 so cards scroll edge-to-edge. */}
             <div className="-mx-4 flex gap-4 overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

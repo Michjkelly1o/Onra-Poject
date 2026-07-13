@@ -65,7 +65,7 @@ export default function SelectInstructorPage() {
                             type="button"
                             onClick={() => pick(i.id)}
                             className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-all duration-300 ease-out active:bg-gray-50 ${
-                                isSel ? "border-2 border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
+                                isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                             }`}
                         >
                             <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">

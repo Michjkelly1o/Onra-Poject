@@ -106,7 +106,7 @@ export default function CancelBookingPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     {isWaitlist ? "Leave waitlist" : "Cancel booking"}
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -126,7 +126,7 @@ export default function CancelBookingPage() {
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex flex-col">
-                            <p className="truncate text-base font-semibold leading-6 text-[#101828]">{detail.name}</p>
+                            <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{fullDate} at {timeOf(detail.startTime)}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-normal leading-5 text-[#475467]">
@@ -160,12 +160,12 @@ export default function CancelBookingPage() {
 
                 {/* Location */}
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Location</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</h2>
                     <div className="flex items-start gap-2">
                         <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <p className="text-sm leading-5 text-[#475467]">
-                                <span className="font-medium text-[#101828]">{detail.room}</span> - {detail.branchName}
+                                <span className="font-medium text-[var(--brand-text)]">{detail.room}</span> - {detail.branchName}
                             </p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{detail.branchAddress}</p>
                         </div>
@@ -176,7 +176,7 @@ export default function CancelBookingPage() {
 
                 {/* Waitlist → queue position; booked → reserved spot (live booking data) */}
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                         {isWaitlist ? "Waitlist number" : "Spot"}
                     </h2>
                     <p className="text-sm font-normal leading-5 text-[#475467]">
@@ -190,7 +190,7 @@ export default function CancelBookingPage() {
                 {isLate && !isWaitlist && (
                     <>
                         <section className="flex flex-col gap-3">
-                            <h2 className="text-base font-semibold leading-6 text-[#101828]">Cancellation policy</h2>
+                            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</h2>
                             <div className="flex items-start gap-3 rounded-2xl border border-[#fedf89] bg-[#fffaeb] p-4">
                                 <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[#dc6803]" aria-hidden />
                                 <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
@@ -204,15 +204,15 @@ export default function CancelBookingPage() {
 
                 {/* Refund details — always at the bottom */}
                 <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[#101828]">Refund details</h2>
+                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Refund details</h2>
                     <div className="flex flex-col gap-2 text-sm leading-5">
                         <div className="flex items-center justify-between">
                             <span className="font-normal text-[#475467]">You've paid</span>
-                            <span className="font-medium text-[#101828]">{isWaitlist ? "0 credit" : "1 credit"}</span>
+                            <span className="font-medium text-[var(--brand-text)]">{isWaitlist ? "0 credit" : "1 credit"}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="font-normal text-[#475467]">Your refund</span>
-                            <span className="font-medium text-[#101828]">{isWaitlist || isLate ? "0 credit" : "1 credit"}</span>
+                            <span className="font-medium text-[var(--brand-text)]">{isWaitlist || isLate ? "0 credit" : "1 credit"}</span>
                         </div>
                     </div>
                 </section>
@@ -242,7 +242,7 @@ export default function CancelBookingPage() {
                             <SlashCircle01 className="size-6 text-[#d92d20]" aria-hidden />
                         </span>
                         <div className="flex flex-col items-center gap-1 text-center">
-                            <p className="text-lg font-semibold leading-7 text-[#101828]">
+                            <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">
                                 {isWaitlist ? "Leave the waitlist?" : "Cancel this class?"}
                             </p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">
@@ -256,7 +256,7 @@ export default function CancelBookingPage() {
                     </div>
 
                     {(isWaitlist || !isLate) && (
-                        <div className="flex w-full items-start gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+                        <div className="flex w-full items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
                             <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
                                 {isWaitlist

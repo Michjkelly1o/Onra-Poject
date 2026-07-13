@@ -44,7 +44,7 @@ export default function ClassDetailPage() {
                     <div className="flex-1" />
                 </CustomerHeader>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-                    <p className="text-base font-semibold text-[#101828]">This class is no longer available</p>
+                    <p className="text-base font-semibold text-[var(--brand-text)]">This class is no longer available</p>
                     <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/search")}>
                         Back to Search
                     </Button>
@@ -60,11 +60,11 @@ export default function ClassDetailPage() {
     });
     const badge =
         detail.state === "available"
-            ? { label: `${detail.booked}/${detail.capacity}`, cls: "border-[#abefc6] bg-[#ecfdf3] text-[#067647]" }
+            ? { label: `${detail.booked}/${detail.capacity}`, cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
             : detail.state === "waitlist"
               ? { label: "Waitlist open", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
               : detail.state === "booked"
-                ? { label: "Booked", cls: "border-[#abefc6] bg-[#ecfdf3] text-[#067647]" }
+                ? { label: "Booked", cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
                 : detail.state === "waitlisted"
                   ? { label: "Waitlisted", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
                   : detail.state === "closed"
@@ -88,7 +88,7 @@ export default function ClassDetailPage() {
                 <div className="flex items-center justify-between gap-6">
                     {booked ? (
                         <>
-                            <span className="text-base font-semibold leading-6 text-[#101828]">
+                            <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                                 {detail.state === "booked" ? "You're booked" : "You're on the waitlist"}
                             </span>
                             <Button
@@ -102,7 +102,7 @@ export default function ClassDetailPage() {
                         </>
                     ) : (
                         <>
-                            <span className="text-base font-semibold leading-6 text-[#101828]">
+                            <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                                 {typeof credits === "number" ? `${credits} credits left` : " "}
                             </span>
                             {detail.state === "available" ? (

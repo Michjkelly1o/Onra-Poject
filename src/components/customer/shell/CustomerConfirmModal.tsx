@@ -53,7 +53,7 @@ export function CustomerConfirmModal({
                 className="relative z-10 flex w-full max-w-[360px] flex-col gap-5 rounded-2xl bg-white p-5 shadow-[0px_8px_24px_0px_rgba(16,24,40,0.18)]"
             >
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">{title}</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
                     <p className="text-sm font-normal leading-5 text-[#475467]">{description}</p>
                 </div>
                 <div className="flex gap-3">

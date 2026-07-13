@@ -345,7 +345,7 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
 function ProductIcon({ type }: { type: PurchaseLineItem["productType"] }) {
     const tint =
         type === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
-        type === "package"    ? { bg: "bg-[#c4edd6]", color: "text-[#658774]" } :
+        type === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
                                  { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
     const Icon = type === "membership" ? CreditCard02 : type === "package" ? Package : Gift01;
     return (

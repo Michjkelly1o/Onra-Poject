@@ -44,7 +44,7 @@ export function SpotPicker({ cols, rows, unavailable, selected, onSelect }: Spot
                     Available
                 </span>
                 <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[#475467]">
-                    <span className="size-2 shrink-0 rounded-full border border-[#658774] bg-[#e9fff3]" />
+                    <span className="size-2 shrink-0 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" />
                     Selected
                 </span>
             </div>
@@ -76,7 +76,7 @@ export function SpotPicker({ cols, rows, unavailable, selected, onSelect }: Spot
                                                 isTaken
                                                     ? "cursor-not-allowed bg-[#d0d5dd] text-white"
                                                     : isSel
-                                                      ? "border-[1.5px] border-[#658774] bg-[#e9fff3] text-[#344054]"
+                                                      ? "border-[1.5px] border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[#344054]"
                                                       : "border border-[#e4e7ec] bg-[#f9fafb] text-[#344054] active:bg-[#f2f4f7]"
                                             }`}
                                         >

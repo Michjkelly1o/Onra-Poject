@@ -20,11 +20,11 @@ import type { ComponentType, CSSProperties } from "react";
 
 export const BANNER_TINTS = {
     membership: { lineColor: "#c7d7fe", iconBg: "#e0eaff", iconColor: "#3538cd" },
-    package:    { lineColor: "#aad4bd", iconBg: "#c4edd6", iconColor: "#658774" },
+    package:    { lineColor: "#aad4bd", iconBg: "var(--brand-tertiary)", iconColor: "#658774" },
     giftCard:   { lineColor: "#92d1de", iconBg: "#ccf6ff", iconColor: "#0e7090" },
     /** Pay rate (PRD 10) — brand sage palette so the monthly-salary badge
      *  reads as a "house"-tagged item. Same color stack as `package`. */
-    payRate:    { lineColor: "#aad4bd", iconBg: "#c4edd6", iconColor: "#658774" },
+    payRate:    { lineColor: "#aad4bd", iconBg: "var(--brand-tertiary)", iconColor: "#658774" },
 } as const;
 
 type IconComponent = ComponentType<{ className?: string; style?: CSSProperties }>;

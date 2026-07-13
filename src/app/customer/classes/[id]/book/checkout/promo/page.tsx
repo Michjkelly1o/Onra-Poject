@@ -59,7 +59,7 @@ export default function PromoListPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Promotion
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -74,13 +74,13 @@ export default function PromoListPage() {
                         onChange={(e) => setCode(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && applyCode()}
                         placeholder="Enter promotion"
-                        className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
+                        className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
                     />
                     {code.trim() && (
                         <button
                             type="button"
                             onClick={applyCode}
-                            className="shrink-0 text-sm font-semibold leading-5 text-[#658774]"
+                            className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                         >
                             Apply
                         </button>

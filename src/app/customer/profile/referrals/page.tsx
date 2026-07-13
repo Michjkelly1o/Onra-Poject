@@ -82,7 +82,7 @@ export default function ReferralsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[#101828]">Invite friends</h1>
+                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Invite friends</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
@@ -99,13 +99,13 @@ export default function ReferralsPage() {
                     icon={HeartHand}
                     upright
                     tileClassName="bg-[#dcfae5] shadow-[0px_4px_18px_0px_rgba(220,250,229,0.7),0px_2px_4px_0px_rgba(16,24,40,0.04)]"
-                    iconClassName="size-9 text-[#079455]"
+                    iconClassName="size-9 text-[var(--brand-primary)]"
                     title="Refer friends, get free credits"
                     subtitle="Get 2 free credits for each you invite."
                 />
 
                 <div className="relative flex items-center gap-2">
-                    <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828]">
+                    <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)]">
                         {code}
                     </div>
                     <Button
@@ -135,11 +135,11 @@ export default function ReferralsPage() {
                         return (
                             <div key={i} className="flex gap-3">
                                 <div className="flex flex-col items-center self-stretch">
-                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#ecfdf3] text-[#079455]">
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tertiary)] text-[var(--brand-primary)]">
                                         <Icon className="size-4" aria-hidden />
                                     </div>
                                     {!last && (
-                                        <div className="my-1 w-0.5 flex-1 rounded-full bg-gradient-to-b from-[#a9efc5] to-[#ecfdf3]" />
+                                        <div className="my-1 w-0.5 flex-1 rounded-full bg-gradient-to-b from-[#a9efc5] to-[var(--brand-tertiary)]" />
                                     )}
                                 </div>
                                 <p className={`flex-1 pt-1 text-sm leading-5 text-[#344054] ${last ? "" : "pb-5"}`}>
@@ -154,11 +154,11 @@ export default function ReferralsPage() {
                 <div className="relative grid grid-cols-2 gap-3">
                     <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
                         <p className="text-sm leading-5 text-[#475467]">Total bonus credit</p>
-                        <p className="mt-1 text-xl font-semibold leading-7 text-[#101828]">{totalBonus} credit</p>
+                        <p className="mt-1 text-xl font-semibold leading-7 text-[var(--brand-text)]">{totalBonus} credit</p>
                     </div>
                     <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
                         <p className="text-sm leading-5 text-[#475467]">Successful referrals</p>
-                        <p className="mt-1 text-xl font-semibold leading-7 text-[#101828]">
+                        <p className="mt-1 text-xl font-semibold leading-7 text-[var(--brand-text)]">
                             {successful}/{maxReferrals}
                         </p>
                     </div>
@@ -166,7 +166,7 @@ export default function ReferralsPage() {
 
                 {/* Referred customers */}
                 <div className="relative">
-                    <p className="mb-3 text-sm font-semibold leading-5 text-[#101828]">Referred customers</p>
+                    <p className="mb-3 text-sm font-semibold leading-5 text-[var(--brand-text)]">Referred customers</p>
                     {referrals.length > 0 ? (
                         <div className="flex flex-col gap-3">
                             {referrals.map((r) => {
@@ -180,7 +180,7 @@ export default function ReferralsPage() {
                                             {initialsOf(r.referredName)}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-base font-medium leading-6 text-[#101828]">
+                                            <p className="truncate text-base font-medium leading-6 text-[var(--brand-text)]">
                                                 {r.referredName}
                                             </p>
                                             <p className="truncate text-sm leading-5 text-[#475467]">
@@ -190,7 +190,7 @@ export default function ReferralsPage() {
                                             </p>
                                         </div>
                                         {success ? (
-                                            <span className="shrink-0 rounded-full bg-[#ecfdf3] px-2.5 py-0.5 text-xs font-medium leading-5 text-[#067647] ring-1 ring-inset ring-[#abefc6]">
+                                            <span className="shrink-0 rounded-full bg-[var(--brand-tertiary)] px-2.5 py-0.5 text-xs font-medium leading-5 text-[var(--brand-primary)] ring-1 ring-inset ring-[var(--brand-primary)]">
                                                 +{r.benefitCredits} credits
                                             </span>
                                         ) : (
@@ -204,7 +204,7 @@ export default function ReferralsPage() {
                         </div>
                     ) : (
                         <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-[#eaecf0] py-10 text-center">
-                            <p className="text-base font-semibold leading-6 text-[#101828]">No referrals yet</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">No referrals yet</p>
                             <p className="text-sm leading-5 text-[#475467]">Refer friends and get free credits!</p>
                         </div>
                     )}
@@ -220,7 +220,7 @@ export default function ReferralsPage() {
                     <div className="flex flex-col gap-4">
                         <div className="rounded-xl bg-[#f9fafb] p-4 text-sm leading-5 text-[#344054]">{resolvedMessage}</div>
                         <div className="flex items-center gap-2">
-                            <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828]">
+                            <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)]">
                                 {code}
                             </div>
                             <Button

@@ -23,7 +23,7 @@ export function Categories({
 
     return (
         <section className="flex w-full flex-col gap-3">
-            <h2 className="text-base font-semibold leading-6 text-[#101828]">Categories</h2>
+            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Categories</h2>
 
             <div className="grid grid-cols-2 gap-4">
                 {categories.map((cat) => (

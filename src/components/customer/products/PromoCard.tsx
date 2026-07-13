@@ -50,9 +50,9 @@ export function PromoBanner({
 
 function SaleBadge() {
     return (
-        <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[#abefc6] bg-[#ecfdf3] py-0.5 pl-1.5 pr-2">
-            <Sale04 className="size-3 text-[#067647]" aria-hidden />
-            <span className="text-xs font-medium leading-[18px] text-[#067647]">1x</span>
+        <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2">
+            <Sale04 className="size-3 text-[var(--brand-primary)]" aria-hidden />
+            <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">1x</span>
         </span>
     );
 }
@@ -81,14 +81,14 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
                 }
             }}
             className={`w-full overflow-hidden rounded-2xl bg-white text-left ${
-                applied ? "border-2 border-[#658774]" : "border border-[#e4e7ec]"
+                applied ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
             } ${disabled ? "cursor-default" : "cursor-pointer transition-shadow active:shadow-sm"}`}
         >
             <PromoBanner promo={promo} disabled={disabled} />
             <div className="flex flex-col gap-3 px-4 pb-4 pt-3">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between gap-2">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">{promo.label}</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{promo.label}</p>
                         <SaleBadge />
                     </div>
                     <p className="line-clamp-2 text-xs font-normal leading-[18px] text-[#475467]">
@@ -105,7 +105,7 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
                 <div className="flex items-center gap-2">
                     <p className="min-w-0 flex-1 text-xs leading-[18px]">
                         <span className="font-normal text-[#667085]">Valid until </span>
-                        <span className="font-medium text-[#101828]">{promo.validUntil}</span>
+                        <span className="font-medium text-[var(--brand-text)]">{promo.validUntil}</span>
                     </p>
                     {applied ? (
                         <Button

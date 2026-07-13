@@ -61,7 +61,7 @@ export default function PromoDetailPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Promo detail
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -78,10 +78,10 @@ export default function PromoDetailPage() {
 
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-base font-semibold leading-6 text-[#101828]">{promo.label}</p>
-                                <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[#abefc6] bg-[#ecfdf3] py-0.5 pl-1.5 pr-2">
-                                    <Sale04 className="size-3 text-[#067647]" aria-hidden />
-                                    <span className="text-xs font-medium leading-[18px] text-[#067647]">1x</span>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{promo.label}</p>
+                                <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2">
+                                    <Sale04 className="size-3 text-[var(--brand-primary)]" aria-hidden />
+                                    <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">1x</span>
                                 </span>
                             </div>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{promo.description}</p>
@@ -102,7 +102,7 @@ export default function PromoDetailPage() {
                             <TermRow icon={MarkerPin01}>Applicable for {promo.locations}</TermRow>
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <TermRow icon={Clock}>
-                                Valid until <span className="font-medium text-[#101828]">{promo.validUntil}</span>
+                                Valid until <span className="font-medium text-[var(--brand-text)]">{promo.validUntil}</span>
                             </TermRow>
                         </div>
                     </div>

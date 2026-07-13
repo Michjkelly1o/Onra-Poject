@@ -203,7 +203,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Payment
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -213,28 +213,28 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                 {/* Summary — products "Detail product" cart, or a caller-supplied summary (appointments). */}
                 {summary ?? (
                 <section className="flex flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">Detail product</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail product</p>
                     {purchaseCart.items.map((it) => (
                         <div key={it.lineId} className="flex w-full items-end gap-6">
                             <div className="flex min-w-0 flex-1 items-center gap-3">
                                 <ProductArt kind={it.kind} variant="card" />
                                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                                     <div className="flex flex-col">
-                                        <span className="truncate text-sm font-medium leading-5 text-[#101828]">{it.name}</span>
+                                        <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{it.name}</span>
                                         <span className="truncate text-sm font-normal leading-5 text-[#475467]">
                                             {it.kind === "gift_card" && it.recipientName
                                                 ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
                                                 : it.sub}
                                         </span>
                                     </div>
-                                    <span className="text-sm font-semibold leading-5 text-[#658774]">AED {it.price}</span>
+                                    <span className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">AED {it.price}</span>
                                 </div>
                             </div>
                             <div className="flex w-[72px] shrink-0 items-center justify-between">
                                 <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
                                     <Minus className="size-3 text-[#344054]" aria-hidden />
                                 </StepBtn>
-                                <span className="text-sm font-semibold leading-5 text-[#101828]">{it.quantity}</span>
+                                <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
                                 <StepBtn
                                     onClick={() => setQty(it.lineId, it.quantity + 1)}
                                     disabled={it.kind !== "package"}
@@ -250,7 +250,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
 
                 {/* Pay with — DS Checkbox Group / Payment (72px rows, 12px radius, 46×32 tiles) */}
                 <section className="flex flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">Pay with</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
                     {methods.map((m) => {
                         const selected = m.id === activeMethodId;
                         const mDisabled = m.id === "gift" && giftDisabled;
@@ -261,7 +261,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                                 onClick={() => setMethod(m.id)}
                                 disabled={mDisabled}
                                 className={`flex h-[72px] items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors disabled:cursor-not-allowed ${
-                                    selected ? "border-2 border-[#7ba08c]" : "border border-[#e4e7ec] active:bg-gray-50"
+                                    selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
                                 } ${mDisabled ? "opacity-50" : ""}`}
                             >
                                 {m.icon === "gift" ? (
@@ -305,26 +305,26 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
 
                 {/* Detail payment */}
                 <section className="flex flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">Detail payment</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
                     <div className="flex items-center justify-between text-sm leading-5">
                         <span className="font-normal text-[#475467]">Subtotal</span>
-                        <span className="font-medium text-[#101828]">AED {totals.subtotal}</span>
+                        <span className="font-medium text-[var(--brand-text)]">AED {totals.subtotal}</span>
                     </div>
                     {promo && totals.discount > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
                             <span className="font-normal text-[#475467]">Discount ({promo.label})</span>
-                            <span className="font-medium text-[#067647]">−AED {totals.discount}</span>
+                            <span className="font-medium text-[var(--brand-primary)]">−AED {totals.discount}</span>
                         </div>
                     )}
                     {taxPct > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
                             <span className="font-normal text-[#475467]">Tax rate ({taxPct}%)</span>
-                            <span className="font-medium text-[#101828]">AED {totals.tax}</span>
+                            <span className="font-medium text-[var(--brand-text)]">AED {totals.tax}</span>
                         </div>
                     )}
                     <div className="flex items-center justify-between text-sm leading-5">
                         <span className="font-normal text-[#475467]">Total</span>
-                        <span className="font-semibold text-[#101828]">AED {totals.total}</span>
+                        <span className="font-semibold text-[var(--brand-text)]">AED {totals.total}</span>
                     </div>
                 </section>
             </div>
@@ -339,7 +339,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                     <Ticket01 className="size-5 shrink-0 text-[#344054]" aria-hidden />
                     {promo ? (
                         <span className="flex flex-1 items-center">
-                            <span className="rounded border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
+                            <span className="rounded border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
                                 {promo.label}
                             </span>
                         </span>
@@ -352,7 +352,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                 <div className="flex items-center gap-4 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))]">
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="text-sm font-normal leading-5 text-[#344054]">Total</span>
-                        <span className="text-lg font-semibold leading-7 text-[#101828]">AED {totals.total}</span>
+                        <span className="text-lg font-semibold leading-7 text-[var(--brand-text)]">AED {totals.total}</span>
                     </div>
                     <Button variant="primary" size="xl" className="shrink-0 rounded-full px-[18px]" onClick={payNow}>
                         Pay now

@@ -25,6 +25,7 @@ import { CustomerBackground } from "@/components/customer/shell/Background";
 import { CustomerToastHost } from "@/components/customer/shell/CustomerToast";
 import { BookNowButton } from "@/components/customer/appointments/BookNowButton";
 import { ScrollRestoration } from "@/components/customer/shell/ScrollRestoration";
+import { BrandTokens } from "@/components/customer/shell/BrandTokens";
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -49,8 +50,17 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     return (
         <CurrentCustomerProvider>
             <PlanInvariantGuard />
-            <div className="flex h-[100dvh] w-full justify-center overflow-hidden bg-[#f2f4f7]">
-                <div className="relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden bg-white">
+            {/* Injects brand CSS variables (primary / bg / tertiary / text /
+                font) from `brandingSettings` AND exposes a preview context
+                so components rendering logo / display name can override
+                those from the admin panel's live iframe preview (postMessage
+                bridge). Wraps children so `usePreviewBrand()` reaches every
+                page — admin edits in Settings → Branding → Customize design
+                settings reflect here after Save; DRAFT edits reflect inside
+                the panel's iframe preview live, before Save. */}
+            <BrandTokens>
+            <div data-brand-scope="customer" className="flex h-[100dvh] w-full justify-center overflow-hidden bg-[#f2f4f7]">
+                <div className="relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden bg-[var(--brand-background)]">
                     {/* Shared decorative background — once, behind everything (§3). */}
                     <CustomerBackground />
                     <ScrollRestoration />
@@ -81,6 +91,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                     <CustomerToastHost />
                 </div>
             </div>
+            </BrandTokens>
         </CurrentCustomerProvider>
     );
 }

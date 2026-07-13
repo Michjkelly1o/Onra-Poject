@@ -59,13 +59,13 @@ export default function AppointmentPromoListPage() {
                     }}
                     onKeyDown={(e) => e.key === "Enter" && applyCode()}
                     placeholder="Enter promo code"
-                    className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
+                    className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
                 />
                 {error ? (
                     <AlertCircle className="size-5 shrink-0 text-[#d92d20]" aria-hidden />
                 ) : (
                     code.trim() && (
-                        <button type="button" onClick={applyCode} className="shrink-0 text-sm font-semibold leading-5 text-[#658774]">
+                        <button type="button" onClick={applyCode} className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                             Apply
                         </button>
                     )
@@ -86,7 +86,7 @@ export default function AppointmentPromoListPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">Promo</p>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Promo</p>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 

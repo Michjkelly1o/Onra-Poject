@@ -48,10 +48,10 @@ function SpotCircle({ id, blocked, active, customized, onClick, onMouseEnter, on
                     blocked
                         ? "bg-[#fecdca] border-2 border-[#f04438]"
                         : active
-                            ? "bg-[#c4edd6] border-2 border-[#658774] scale-105"
+                            ? "bg-[var(--brand-tertiary)] border-2 border-[#658774] scale-105"
                             : customized
-                                ? "bg-[#c4edd6] hover:brightness-95 hover:scale-105 cursor-pointer border-2 border-transparent"
-                                : "bg-[#c4edd6] border-2 border-transparent"
+                                ? "bg-[var(--brand-tertiary)] hover:brightness-95 hover:scale-105 cursor-pointer border-2 border-transparent"
+                                : "bg-[var(--brand-tertiary)] border-2 border-transparent"
                 )}
             />
             {/* Label */}
@@ -251,7 +251,7 @@ function CustomizeSpotInner() {
                             {/* Legend */}
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-[#c4edd6]" />
+                                    <div className="w-2 h-2 rounded-full bg-[var(--brand-tertiary)]" />
                                     <span className="text-[14px] text-[#667085]">Available spot</span>
                                 </div>
                                 <div className="flex items-center gap-2">

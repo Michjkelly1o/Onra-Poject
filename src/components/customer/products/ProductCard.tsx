@@ -74,10 +74,10 @@ export function ProductCard({
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex min-w-0 flex-col">
-                    <p className="truncate text-sm font-medium leading-5 text-[#101828]">{product.name}</p>
+                    <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{product.name}</p>
                     <p className="truncate text-sm font-normal leading-5 text-[#475467]">{product.sub}</p>
                 </div>
-                <p className="text-sm font-semibold leading-5 text-[#658774]">
+                <p className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                     {product.priceLabel ?? `AED ${product.price}`}
                 </p>
             </div>
@@ -85,7 +85,7 @@ export function ProductCard({
             {inCart ? (
                 // Count badge (cart qty) for BOTH memberships and packages — tapping
                 // the card re-opens the detail sheet to adjust the quantity.
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#658774] text-sm font-semibold leading-5 text-[#101828]">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--brand-primary)] text-sm font-semibold leading-5 text-[var(--brand-text)]">
                     {cartQty}
                 </span>
             ) : addDisabled ? null : (

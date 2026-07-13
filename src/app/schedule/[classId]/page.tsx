@@ -20,6 +20,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, planKindFromName, cancellationBadgeKind } from "@/components/ui/badge";
+import { ClassCustomerBadges } from "@/components/customers/CustomerBadges";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
 import type { ClassRating } from "@/lib/store";
@@ -541,7 +542,7 @@ function PlanIconBadge({ kind, size = 40 }: { kind: "membership" | "package"; si
     const inner = size === 40 ? 24 : 20;
     const tint = kind === "membership"
         ? { bg: "bg-[#e0eaff]", icon: "text-[#3538cd]" }
-        : { bg: "bg-[#c4edd6]", icon: "text-[#658774]" };
+        : { bg: "bg-[var(--brand-tertiary)]", icon: "text-[#658774]" };
     const Icon = kind === "membership" ? CreditCard02 : Package;
     return (
         <div
@@ -1193,7 +1194,7 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                                 <div key={it.productId} className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
                                     <div className={cn(
                                         "w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0 shadow-[inset_2px_2px_3px_rgba(255,255,255,0.2)]",
-                                        it.productType === "membership" ? "bg-[#e0eaff]" : "bg-[#c4edd6]"
+                                        it.productType === "membership" ? "bg-[#e0eaff]" : "bg-[var(--brand-tertiary)]"
                                     )}>
                                         {it.productType === "membership"
                                             ? <CreditCard02 className="w-5 h-5 text-[#3538cd]" />
@@ -2596,8 +2597,14 @@ export default function ClassDetailPage() {
                                                                 <td className={TD}>
                                                                     <div className="flex items-center gap-3">
                                                                         <TableAvatar initials={customerById.get(b.customerId)?.initials ?? ""} imageUrl={customerById.get(b.customerId)?.imageUrl} size={40} />
-                                                                        <div>
-                                                                            <div className="text-[14px] font-medium text-[#101828]">{customerName(b.customerId)}</div>
+                                                                        <div className="min-w-0">
+                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                <span className="text-[14px] font-medium text-[#101828] truncate">{customerName(b.customerId)}</span>
+                                                                                {/* Context pills — "1st class", "100th class", "Birthday",
+                                                                                    "New member". Priority-sorted, capped at 2 by the
+                                                                                    component. Renders nothing when the customer has none. */}
+                                                                                <ClassCustomerBadges customerId={b.customerId} classDateISO={classInstance?.dateISO ?? ""} />
+                                                                            </div>
                                                                             <div className="text-[13px] text-[#667085]">{customerById.get(b.customerId)?.email ?? ""}</div>
                                                                         </div>
                                                                     </div>

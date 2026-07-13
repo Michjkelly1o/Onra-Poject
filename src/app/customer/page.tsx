@@ -36,8 +36,14 @@ export default function CustomerHomePage() {
     const [branchSheet, setBranchSheet] = useState(false);
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
+        // Admin preview iframe (`?preview=1`) always renders home as-is,
+        // regardless of onboarded state — the preview shell has no
+        // localStorage flag so this redirect would otherwise send the
+        // Home tab straight into the onboarding splash.
+        const isPreview = typeof window !== "undefined"
+            && new URLSearchParams(window.location.search).get("preview") === "1";
         // First-ever launch (never onboarded) → the splash + onboarding intro.
-        if (!hasOnboarded()) {
+        if (!isPreview && !hasOnboarded()) {
             router.replace("/customer/welcome");
             return;
         }
@@ -73,7 +79,7 @@ export default function CustomerHomePage() {
                                     gap-3, matching Upcoming bookings / What's on). */}
                                 <div className="flex w-full flex-col gap-3">
                                     {home.member && (
-                                        <h1 className="text-base font-semibold leading-6 text-[#101828]">
+                                        <h1 className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                                             Welcome back, {home.member.firstName}!
                                         </h1>
                                     )}

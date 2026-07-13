@@ -15,9 +15,9 @@ const TILE_SHADOW =
 
 export function ActivePlanCard({ name, sub }: { name: string; sub: string }) {
     return (
-        <div className="flex items-center gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
             <span
-                className="relative flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-white/[0.12] bg-[#658774]"
+                className="relative flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-white/[0.12] bg-[var(--brand-primary)]"
                 style={{ boxShadow: TILE_SHADOW }}
             >
                 <CreditCard02 className="size-[18px] text-white" aria-hidden />
@@ -28,7 +28,7 @@ export function ActivePlanCard({ name, sub }: { name: string; sub: string }) {
                 />
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="truncate text-sm font-medium leading-5 text-[#101828]">{name}</p>
+                <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{name}</p>
                 <p className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</p>
             </div>
         </div>

@@ -79,7 +79,7 @@ export default function SelectBranchPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Select branch
                 </h1>
                 {/* Spacer balances the back button so the title stays centred. */}
@@ -108,7 +108,7 @@ export default function SelectBranchPage() {
 
             {/* Sticky footer — hint + Confirm. */}
             <div className="sticky bottom-0 z-10 flex flex-col gap-4 bg-gradient-to-b from-white/0 via-white to-white px-5 pb-6 pt-4">
-                <div className="flex items-start gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+                <div className="flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                     <Lightbulb02 className="size-5 shrink-0 text-[#475467]" aria-hidden />
                     <p className="text-sm font-normal leading-5 text-[#475467]">
                         This location will be set as your main branch.

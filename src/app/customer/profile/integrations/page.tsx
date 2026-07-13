@@ -42,7 +42,7 @@ export default function IntegrationsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">Integrations</h1>
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Integrations</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
@@ -53,7 +53,7 @@ export default function IntegrationsPage() {
                         <img src="/customer/pay/google-calendar.svg" alt="" className="size-8" />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">Calendar</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Calendar</p>
                         <p className="text-sm leading-5 text-[#475467]">Sync your schedule events</p>
                     </div>
                     {calendar.connected ? (
@@ -76,11 +76,11 @@ export default function IntegrationsPage() {
             <CustomerSheet open={connectOpen} onClose={() => setConnectOpen(false)}>
                 <SheetToolbar title="" onClose={() => setConnectOpen(false)} />
                 <div className="flex flex-col items-center gap-4 pt-2 text-center">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-[#e9fff3]">
-                        <Link01 className="size-6 text-[#658774]" aria-hidden />
+                    <div className="flex size-12 items-center justify-center rounded-full bg-[var(--brand-tertiary)]">
+                        <Link01 className="size-6 text-[var(--brand-primary)]" aria-hidden />
                     </div>
                     <div>
-                        <p className="text-lg font-semibold leading-7 text-[#101828]">Connect to your calendar</p>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Connect to your calendar</p>
                         <p className="mt-1 text-sm leading-5 text-[#475467]">
                             Allow Onra to integrate with Google Calendar to view and sync your class schedule.
                         </p>

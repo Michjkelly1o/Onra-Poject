@@ -19,6 +19,19 @@
   --sidebar-collapsed-width: 72px;
   --header-height: 64px;
 
+  /* ── Brand tokens — fallback defaults for admin surfaces ──
+     The customer app's <BrandTokens> overrides these on `document.documentElement`
+     at runtime from the admin-editable brandingSettings. Admin routes never
+     mount <BrandTokens>, so these fallbacks keep every `var(--brand-*)`
+     reference valid across the whole app (buttons, badges, chips). Values
+     match the pre-Branding sage palette so nothing looks different by
+     default. */
+  --brand-primary: #658774;
+  --brand-background: #ffffff;
+  --brand-tertiary: #c4edd6;
+  --brand-text: #101828;
+  --brand-font: 'DM Sans', system-ui, sans-serif;
+
   /* ── Design token color primitives (from tokens.json) ── */
   /* Spacing */
   --spacing-none: 0px;

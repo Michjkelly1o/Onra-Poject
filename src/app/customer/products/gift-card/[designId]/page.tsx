@@ -29,8 +29,8 @@ function fmtLong(iso?: string): string {
 
 // Base field (no focus border — applied conditionally so the error border wins).
 const FIELD =
-    "w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085]";
-const FIELD_OK = "border-[#d0d5dd] focus:border-[#658774]";
+    "w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085]";
+const FIELD_OK = "border-[#d0d5dd] focus:border-[var(--brand-primary)]";
 const FIELD_ERR = "border-[#fda29b] focus:border-[#fda29b]";
 
 export default function GiftCardInfoPage() {
@@ -129,7 +129,7 @@ export default function GiftCardInfoPage() {
                 }`}
             >
                 <Back />
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Gift card information
                 </p>
                 <span aria-hidden className="size-10 shrink-0" />

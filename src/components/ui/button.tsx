@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 // ─── Onra Design System — Button component ───────────────────────────────────
 //
 // Variants (hierarchy):
-//   primary        — sage green bg (#c4edd6), dark text  [DS: Primary]
+//   primary        — sage green bg (var(--brand-tertiary)), dark text  [DS: Primary]
 //   secondary-gray — white bg, gray border               [DS: Secondary gray]
 //   tertiary-gray  — transparent bg, no border           [DS: Tertiary gray]
 //   destructive    — red bg, white text                  [DS: custom]
@@ -34,14 +34,14 @@ const buttonVariants = cva(
         variants: {
             variant: {
                 // ── Figma DS: Primary ──────────────────────────────────────
-                // bg: secondary/200 #c4edd6 | hover: secondary/300 #aad4bd | fg: black
+                // bg: secondary/200 var(--brand-tertiary) | hover: secondary/300 #aad4bd | fg: black
                 primary: [
-                    "bg-[#c4edd6] border-1 border-white/[0.12] text-[#0c2d34]",
+                    "bg-[var(--brand-tertiary)] border-1 border-white/[0.12] text-[#0c2d34]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#aad4bd] active:bg-[#92baa4]",
                 ],
                 default: [
-                    "bg-[#c4edd6] border-1 border-white/[0.12] text-[#0c2d34]",
+                    "bg-[var(--brand-tertiary)] border-1 border-white/[0.12] text-[#0c2d34]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                     "hover:bg-[#aad4bd] active:bg-[#92baa4]",
                 ],

@@ -19,7 +19,7 @@ export function RefundDetailsSection({ lines }: { lines: RefundLine[] }) {
         <>
             <div className="h-px w-full bg-[#e4e7ec]" />
             <section className="flex flex-col gap-3">
-                <h2 className="text-base font-semibold leading-6 text-[#101828]">Refund details</h2>
+                <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Refund details</h2>
                 <div className="flex flex-col gap-2 text-sm leading-5">
                     {lines.map((l, i) => (
                         <div key={i} className="flex items-center justify-between gap-4">
@@ -27,10 +27,10 @@ export function RefundDetailsSection({ lines }: { lines: RefundLine[] }) {
                             <span
                                 className={`text-right font-medium ${
                                     l.tone === "success"
-                                        ? "text-[#067647]"
+                                        ? "text-[var(--brand-primary)]"
                                         : l.tone === "muted"
                                           ? "text-[#667085]"
-                                          : "text-[#101828]"
+                                          : "text-[var(--brand-text)]"
                                 }`}
                             >
                                 {l.value}

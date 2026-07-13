@@ -16,7 +16,7 @@ import { splitPhone } from "@/components/customers/CustomerFormPage";
 import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountrySheet";
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] outline-none transition-colors placeholder:text-[#667085] focus:border-[#658774]";
+    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[#344054]";
 const RELATIONS = ["Siblings", "Parent", "Spouse", "Child", "Friend", "Other"];
 
@@ -67,7 +67,7 @@ export default function EmergencyContactPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Emergency contact
                 </h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -98,7 +98,7 @@ export default function EmergencyContactPage() {
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Relation</span>
                     <button type="button" onClick={() => setRelationOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 ${relation ? "text-[#101828]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 ${relation ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                             {relation || "Select relation"}
                         </span>
                         <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />

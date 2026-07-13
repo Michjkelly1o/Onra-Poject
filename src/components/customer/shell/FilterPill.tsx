@@ -19,7 +19,7 @@ export function FilterPill({
             onClick={onClick}
             className={`rounded-lg border px-4 py-2 text-sm font-medium leading-5 transition-colors ${
                 selected
-                    ? "border-[#658774] bg-[#e9fff3] text-[#101828]"
+                    ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]"
                     : "border-[#e4e7ec] bg-white text-[#344054]"
             }`}
         >

@@ -39,7 +39,7 @@ export function ReviewRow({ review }: { review: ReviewVM }) {
                         <User01 className="size-2.5 text-[#667085]" aria-hidden />
                     )}
                 </span>
-                <span className="truncate text-sm font-semibold leading-5 text-[#101828]">{review.authorName}</span>
+                <span className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)]">{review.authorName}</span>
             </div>
             <div className="flex items-center gap-1">
                 <Stars score={review.score} className="text-base" />
@@ -59,7 +59,7 @@ export function RatingsSection({ reviews, onMoreReviews }: { reviews: ClassRevie
                     {/* Recap — zeroed average with a muted star */}
                     <div className="flex items-center gap-1">
                         <Star01 className="size-6" style={{ fill: "#d5d9df", color: "#d5d9df" }} aria-hidden />
-                        <span className="text-2xl font-semibold leading-8 text-[#101828]">0.0</span>
+                        <span className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">0.0</span>
                         <span className="text-sm font-normal leading-5 text-[#475467]">(0 ratings)</span>
                     </div>
                     <div className="flex justify-center">
@@ -77,7 +77,7 @@ export function RatingsSection({ reviews, onMoreReviews }: { reviews: ClassRevie
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-1">
                                 <Star01 className="size-6" style={{ fill: "#fdb022", color: "#fdb022" }} aria-hidden />
-                                <span className="text-2xl font-semibold leading-8 text-[#101828]">
+                                <span className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">
                                     {reviews.average.toFixed(1)}
                                 </span>
                                 <span className="text-sm font-normal leading-5 text-[#475467]">
@@ -87,7 +87,7 @@ export function RatingsSection({ reviews, onMoreReviews }: { reviews: ClassRevie
                             <button
                                 type="button"
                                 onClick={onMoreReviews}
-                                className="shrink-0 text-sm font-semibold leading-5 text-[#4f6e5d]"
+                                className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                             >
                                 More reviews
                             </button>

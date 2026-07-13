@@ -58,7 +58,7 @@ export function MonthPickerSheet({ open, onClose, month, year, minYear, maxYear,
                     className="pointer-events-none absolute inset-x-6 top-1/2 h-10 -translate-y-1/2 rounded-xl bg-[#f9fafb]"
                 />
                 <ScrollWheel labels={MONTHS_SHORT} values={MONTH_VALUES} value={m} onChange={setM} widthClass="w-[80px]" />
-                <span className="relative text-lg font-semibold leading-7 text-[#101828]">–</span>
+                <span className="relative text-lg font-semibold leading-7 text-[var(--brand-text)]">–</span>
                 <ScrollWheel labels={years.map(String)} values={years} value={y} onChange={setY} widthClass="w-[80px]" />
             </div>
 

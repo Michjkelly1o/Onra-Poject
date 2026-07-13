@@ -57,7 +57,7 @@ export default function ReviewsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">Ratings</p>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Ratings</p>
                 <div className="size-10 shrink-0" aria-hidden />
             </header>
 
@@ -74,7 +74,7 @@ export default function ReviewsPage() {
                                         type="button"
                                         onClick={() => setTopic(on ? null : t.tag)}
                                         className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm leading-5 ${
-                                            on ? "border-2 border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
+                                            on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                         }`}
                                     >
                                         <span className="font-medium text-[#344054]">{t.tag}</span>
@@ -93,7 +93,7 @@ export default function ReviewsPage() {
                         type="button"
                         onClick={openFilter}
                         className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-2 ${
-                            star !== null ? "border-2 border-[#7ba08c] bg-white" : "border border-[#e4e7ec] bg-white"
+                            star !== null ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
                         }`}
                     >
                         <Star01 className="size-4" style={{ fill: "#fdb022", color: "#fdb022" }} aria-hidden />
@@ -141,7 +141,7 @@ export default function ReviewsPage() {
                                     className="flex items-center gap-3 py-4 text-left"
                                 >
                                     <Star01 className="size-6" style={{ fill: "#fdb022", color: "#fdb022" }} aria-hidden />
-                                    <span className="flex-1 text-sm font-medium leading-5 text-[#101828]">{n} Star</span>
+                                    <span className="flex-1 text-sm font-medium leading-5 text-[var(--brand-text)]">{n} Star</span>
                                     <RadioDot checked={on} />
                                 </button>
                             );

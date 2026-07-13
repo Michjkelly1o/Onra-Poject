@@ -35,8 +35,8 @@ export function ScheduleDateBar({
         <div className="flex w-full flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
                 <button type="button" onClick={onMonthClick} className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold leading-5 text-[#101828]">{formatMonth(selectedISO)}</span>
-                    <ChevronDown className="size-5 text-[#101828]" aria-hidden />
+                    <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{formatMonth(selectedISO)}</span>
+                    <ChevronDown className="size-5 text-[var(--brand-text)]" aria-hidden />
                 </button>
                 <TimezonePill tz={timezone} onClick={onTimezoneClick} />
             </div>

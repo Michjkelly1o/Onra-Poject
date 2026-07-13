@@ -18,7 +18,7 @@ import { splitPhone } from "@/components/customers/CustomerFormPage";
 import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountrySheet";
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] outline-none transition-colors placeholder:text-[#667085] focus:border-[#658774]";
+    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[#344054]";
 
 function dobLabel(iso: string): string {
@@ -131,7 +131,7 @@ export default function ProfileInformationPage() {
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Date of birth</span>
                     <button type="button" onClick={() => setDobOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 ${dob ? "text-[#101828]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 ${dob ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                             {dob ? dobLabel(dob) : "Enter date of birth"}
                         </span>
                         <Calendar className="size-5 shrink-0 text-[#667085]" aria-hidden />
@@ -141,7 +141,7 @@ export default function ProfileInformationPage() {
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Gender</span>
                     <button type="button" onClick={() => setGenderOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 ${gender ? "text-[#101828]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 ${gender ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                             {gender || "Select gender"}
                         </span>
                         <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />

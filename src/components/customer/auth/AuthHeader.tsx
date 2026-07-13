@@ -1,27 +1,49 @@
 "use client";
 
-// Customer — auth screens header (Forma logomark + wordmark, top-left).
+// Customer — auth screens header (studio logomark + wordmark, top-left).
 // Figma 3228-22636/22812/22512: a frosted top bar pinned over the auth flow.
 // Reused by Log in / Sign up, OTP, Create account, and the sign-up Emergency step.
 // An optional close (X, top-right) turns the entry screen into a dismissible
 // full-page modal — tapping it returns to wherever the user came from.
+//
+// Logo + wordmark come from `brandingSettings` (admin → Settings → Branding →
+// Business info) so uploading a new logo / renaming the studio reflects here
+// on every branded auth screen after Save. Falls back to Forma when unset so a
+// fresh workspace still looks polished.
 
 import { XClose } from "@untitledui/icons";
+import { useAppStore } from "@/lib/store";
+import { usePreviewBrand } from "@/components/customer/shell/BrandTokens";
 
 export function AuthHeader({ onClose }: { onClose?: () => void }) {
+    // Preview override wins over store — see BrandTokens for the bridge.
+    const preview          = usePreviewBrand();
+    const storedDisplayName = useAppStore(s => s.brandingSettings.displayName);
+    const storedLogoUrl    = useAppStore(s => s.brandingSettings.logoUrl);
+    const brandDisplayName = preview?.displayName ?? (storedDisplayName || "Forma");
+    const effectiveLogoUrl = preview?.logoUrl ?? storedLogoUrl;
+    const isCustomLogo     = effectiveLogoUrl.length > 0;
+    const brandLogoUrl     = effectiveLogoUrl || "/customer/auth/forma-logomark.svg";
+    // The default Forma SVG has `preserveAspectRatio="none"` and needs a
+    // fixed 26.67×32 (viewBox aspect) box or it stretches. Uploaded logos
+    // can be any shape — `object-contain` letterboxes them inside the
+    // header's 32px height cap. Matches the welcome splash logic.
+    const brandLogoClass   = isCustomLogo
+        ? "max-h-8 max-w-[80px] w-auto h-auto object-contain"
+        : "h-8 w-[26.67px]";
     return (
         <header className="absolute inset-x-0 top-0 z-20 flex h-16 items-center justify-between px-4 backdrop-blur-[12px]">
             <div className="flex items-center gap-0.5">
                 <span className="relative flex size-8 items-center justify-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                        src="/customer/auth/forma-logomark.svg"
+                        src={brandLogoUrl}
                         alt=""
-                        className="h-8 w-[26.67px]"
+                        className={brandLogoClass}
                         aria-hidden
                     />
                 </span>
-                <span className="text-lg font-semibold leading-7 text-[#101828]">Forma</span>
+                <span className="text-lg font-semibold leading-7 text-[var(--brand-text)]">{brandDisplayName}</span>
             </div>
 
             {onClose && (

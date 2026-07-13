@@ -34,7 +34,7 @@ export default function AppointmentReviewPage() {
     if (!appointment || appointmentDraft.appointmentId !== id || !appointmentDraft.slotISO || !appointmentDraft.slotTime) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[#101828]">Appointment unavailable</p>
+                <p className="text-base font-semibold text-[var(--brand-text)]">Appointment unavailable</p>
                 <Button
                     variant="secondary-gray"
                     size="sm"
@@ -73,7 +73,7 @@ export default function AppointmentReviewPage() {
                     )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <p className="truncate text-base font-semibold leading-6 text-[#101828]">{appointment.name}</p>
+                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{appointment.name}</p>
                     <p className="text-sm font-normal leading-5 text-[#475467]">{fullDate} at {to12h(appointmentDraft.slotTime)}</p>
                     {branch && (
                         <p className="text-xs font-normal leading-4 text-[#98a2b3]">{branchTzLabel(branch)}</p>
@@ -109,11 +109,11 @@ export default function AppointmentReviewPage() {
 
             {/* Location */}
             <section className="flex w-full flex-col gap-3">
-                <p className="text-base font-semibold leading-6 text-[#101828]">Location</p>
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</p>
                 <div className="flex w-full items-start gap-2">
                     <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <p className="text-sm font-medium leading-5 text-[#101828]">{appointment.branchName}</p>
+                        <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{appointment.branchName}</p>
                         {addressLine && (
                             <p className="text-sm font-normal leading-5 text-[#475467]">{addressLine}</p>
                         )}

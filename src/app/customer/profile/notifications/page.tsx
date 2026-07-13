@@ -84,7 +84,7 @@ export default function NotificationSettingsPage() {
                         className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-[#f2f4f7]" : ""}`}
                     >
                         <div className="min-w-0 flex-1">
-                            <p className="text-base font-medium leading-6 text-[#101828]">{row.title}</p>
+                            <p className="text-base font-medium leading-6 text-[var(--brand-text)]">{row.title}</p>
                             <p className="text-sm leading-5 text-[#475467]">{row.sub}</p>
                         </div>
                         <Switch
@@ -109,7 +109,7 @@ export default function NotificationSettingsPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Notification settings
                 </h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -123,7 +123,7 @@ export default function NotificationSettingsPage() {
                     </>
                 ) : (
                     <div className="overflow-hidden rounded-2xl border border-[#eaecf0] bg-white p-6 text-center">
-                        <p className="text-base font-semibold text-[#101828]">Sign in required</p>
+                        <p className="text-base font-semibold text-[var(--brand-text)]">Sign in required</p>
                         <p className="mt-1 text-sm leading-5 text-[#475467]">
                             Log in to manage your notification preferences.
                         </p>

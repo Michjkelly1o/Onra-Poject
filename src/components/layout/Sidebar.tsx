@@ -474,7 +474,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                     onClick={() => !slim && toggleGroup(item.label)}
                                 >
                                     {parentActive && (
-                                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[#c4edd6] rounded-r" />
+                                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
                                     )}
                                     <item.icon className={iconCls} />
                                     {!slim && (
@@ -494,7 +494,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                             ) : (
                                 <Link href={item.href!} className={rowCls}>
                                     {isSelfActive && (
-                                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[#c4edd6] rounded-r" />
+                                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
                                     )}
                                     <item.icon className={iconCls} />
                                     {!slim && (
@@ -538,7 +538,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                                     )}
                                                 >
                                                     {childActive && (
-                                                        <span className="absolute left-0 top-[6px] w-1 h-5 bg-[#c4edd6] rounded-r" />
+                                                        <span className="absolute left-0 top-[6px] w-1 h-5 bg-[var(--brand-tertiary)] rounded-r" />
                                                     )}
                                                     {ChildIcon && (
                                                         <ChildIcon className={cn(
@@ -644,7 +644,7 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
                     )}
                 >
                     {(isActive || open) && (
-                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[#c4edd6] rounded-r" />
+                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
                     )}
                     <Settings01 className={cn(
                         "w-5 h-5 shrink-0",

@@ -15,12 +15,12 @@ export function ProcessingLoader({ label, fill = false }: { label: string; fill?
                 {[0, 1, 2].map((i) => (
                     <span
                         key={i}
-                        className="size-2 animate-bounce rounded-full bg-[#658774]"
+                        className="size-2 animate-bounce rounded-full bg-[var(--brand-primary)]"
                         style={{ animationDelay: `${i * 0.15}s` }}
                     />
                 ))}
             </div>
-            <p className="text-xl font-semibold leading-[30px] text-[#4f6e5d]">{label}</p>
+            <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">{label}</p>
         </div>
     );
 }

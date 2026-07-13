@@ -84,7 +84,7 @@ export default function RateBookingPage() {
                 }`}
             >
                 <div className="size-10 shrink-0" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Add ratings &amp; review
                 </p>
                 <button
@@ -111,7 +111,7 @@ export default function RateBookingPage() {
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex flex-col">
-                            <p className="truncate text-base font-semibold leading-6 text-[#101828]">{detail.name}</p>
+                            <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{heroSubtitle}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-normal leading-5 text-[#475467]">
@@ -146,7 +146,7 @@ export default function RateBookingPage() {
                 {/* Stars */}
                 <section className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">How was your class?</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">How was your class?</p>
                         <p className="text-sm font-normal leading-5 text-[#475467]">
                             Your feedback helps improve future classes.
                         </p>
@@ -171,7 +171,7 @@ export default function RateBookingPage() {
 
                 {/* What stood out */}
                 <section className="flex flex-col gap-4">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">What stood out?</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">What stood out?</p>
                     <div className="flex flex-wrap gap-2">
                         {TAGS.map((t) => {
                             const on = tags.includes(t);
@@ -181,7 +181,7 @@ export default function RateBookingPage() {
                                     type="button"
                                     onClick={() => toggleTag(t)}
                                     className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 text-[#344054] transition-colors ${
-                                        on ? "border-2 border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
+                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
                                     {t}
@@ -194,7 +194,7 @@ export default function RateBookingPage() {
                         onChange={(e) => setComment(e.target.value.slice(0, 200))}
                         placeholder="Add a comment (optional)"
                         rows={4}
-                        className="w-full resize-none rounded-md border border-[#d0d5dd] px-3.5 py-3 text-base font-normal leading-6 text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085]"
+                        className="w-full resize-none rounded-md border border-[#d0d5dd] px-3.5 py-3 text-base font-normal leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085]"
                     />
                 </section>
             </div>

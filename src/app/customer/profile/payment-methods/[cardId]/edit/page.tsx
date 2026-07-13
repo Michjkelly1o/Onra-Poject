@@ -86,7 +86,7 @@ export default function EditCardPage() {
                                 <Trash01 className="size-6 text-[#667085]" aria-hidden />
                             </div>
                             <div>
-                                <p className="text-lg font-semibold leading-7 text-[#101828]">You can&apos;t delete this payment method</p>
+                                <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">You can&apos;t delete this payment method</p>
                                 <p className="mt-1 text-sm leading-5 text-[#475467]">
                                     Your membership has recurring payments. Please add a new card before removing this one.
                                 </p>
@@ -112,7 +112,7 @@ export default function EditCardPage() {
                                 <Trash01 className="size-6 text-[#d92d20]" aria-hidden />
                             </div>
                             <div>
-                                <p className="text-lg font-semibold leading-7 text-[#101828]">Delete this payment method?</p>
+                                <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Delete this payment method?</p>
                                 <p className="mt-1 text-sm leading-5 text-[#475467]">
                                     This will remove all of the payment information and no longer can be use.
                                 </p>

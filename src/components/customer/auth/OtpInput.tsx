@@ -70,8 +70,8 @@ export function OtpInput({ value, onChange }: { value: string; onChange: (v: str
                         autoComplete={i === 0 ? "one-time-code" : "off"}
                         maxLength={1}
                         aria-label={`Digit ${i + 1}`}
-                        className={`h-20 min-w-0 flex-1 rounded-xl border-2 bg-white text-center text-5xl font-medium leading-[60px] tracking-[-0.96px] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors ${
-                            filled ? "border-[#7ba08c]" : "border-[#d0d5dd] focus:border-[#7ba08c]"
+                        className={`h-20 min-w-0 flex-1 rounded-xl border-2 bg-white text-center text-5xl font-medium leading-[60px] tracking-[-0.96px] text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors ${
+                            filled ? "border-[var(--brand-primary)]" : "border-[#d0d5dd] focus:border-[var(--brand-primary)]"
                         }`}
                     />
                 );

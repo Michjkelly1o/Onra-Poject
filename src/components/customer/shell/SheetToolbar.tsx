@@ -29,7 +29,7 @@ export function SheetToolbar({ title, onClose }: { title: string; onClose: () =>
     return (
         <div className="flex w-full items-center gap-3 pb-2">
             <span className="size-10 shrink-0" aria-hidden />
-            <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">{title}</p>
+            <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
             <button
                 type="button"
                 onClick={onClose}

@@ -1060,7 +1060,7 @@ function CartIcon({ kind }: { kind: PosProductKind }) {
     // "the same product" the buyer just clicked in the catalog.
     const tint =
         kind === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
-        kind === "package"    ? { bg: "bg-[#c4edd6]", color: "text-[#658774]" } :
+        kind === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
                                  { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
     const Icon = kind === "membership" ? CreditCard02 : kind === "package" ? Package : Gift01;
     return (

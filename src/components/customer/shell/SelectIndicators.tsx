@@ -5,14 +5,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // 16px indicators for flat selectable list rows (Timezone = radio, Instructor =
-// checkbox). Unselected: 1px #d0d5dd border. Selected: brand-green (#658774) fill
+// checkbox). Unselected: 1px #d0d5dd border. Selected: brand-green (var(--brand-primary)) fill
 // — a white centre dot (radio) or a white check (checkbox).
 
 import { Check } from "@untitledui/icons";
 
 export function RadioDot({ checked }: { checked: boolean }) {
     return checked ? (
-        <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[#658774]" aria-hidden>
+        <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[var(--brand-primary)]" aria-hidden>
             <span className="absolute inset-[31.25%] rounded-full bg-white" />
         </span>
     ) : (
@@ -22,7 +22,7 @@ export function RadioDot({ checked }: { checked: boolean }) {
 
 export function CheckBox({ checked }: { checked: boolean }) {
     return checked ? (
-        <span className="flex size-4 shrink-0 items-center justify-center rounded bg-[#658774]" aria-hidden>
+        <span className="flex size-4 shrink-0 items-center justify-center rounded bg-[var(--brand-primary)]" aria-hidden>
             <Check className="size-3 text-white" strokeWidth={3} />
         </span>
     ) : (

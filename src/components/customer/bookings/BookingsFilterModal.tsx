@@ -97,7 +97,7 @@ export function BookingsFilterModal({
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-medium leading-5 text-[#344054]">Instructor</span>
                         {showSeeAll && (
-                            <button type="button" onClick={onSeeAll} className="text-sm font-semibold leading-5 text-[#4f6e5d]">
+                            <button type="button" onClick={onSeeAll} className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                                 See all
                             </button>
                         )}
@@ -111,7 +111,7 @@ export function BookingsFilterModal({
                                     type="button"
                                     onClick={() => toggleInstructor(i.id)}
                                     className={`flex items-center gap-3 rounded-md border px-4 py-2 transition-colors ${
-                                        on ? "border-[#658774] bg-[#e9fff3]" : "border-[#e4e7ec] bg-white"
+                                        on ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border-[#e4e7ec] bg-white"
                                     }`}
                                 >
                                     <InstructorAvatar imageUrl={i.imageUrl} initials={i.initials} size={20} />
@@ -136,7 +136,7 @@ export function BookingsFilterModal({
                                     type="button"
                                     onClick={() => toggleCategory(c)}
                                     className={`rounded-lg border px-4 py-2 text-sm font-medium leading-5 transition-colors ${
-                                        on ? "border-[#658774] bg-[#e9fff3] text-[#101828]" : "border-[#e4e7ec] bg-white text-[#344054]"
+                                        on ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]" : "border-[#e4e7ec] bg-white text-[#344054]"
                                     }`}
                                 >
                                     {c}

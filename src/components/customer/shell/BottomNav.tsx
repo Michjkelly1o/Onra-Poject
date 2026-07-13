@@ -20,7 +20,7 @@ import { useCurrentCustomer } from "@/lib/customer/context";
 import { useIsAuthenticated } from "@/lib/customer/auth";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 
-const ACTIVE = "#658774"; // colors/foreground/fg-brand-primary-(600) — active stroke + label
+const ACTIVE = "var(--brand-primary)"; // colors/foreground/fg-brand-primary-(600) — active stroke + label
 const ACTIVE_FILL = "#d7ffe9"; // Brand/100 — light mint fill inside the active icon (Figma 4056-36820)
 const INACTIVE = "#98a2b3"; // colors/foreground/fg-quinary-(400)
 

@@ -51,6 +51,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { AppointmentCustomerBadges } from "@/components/customers/CustomerBadges";
 
 // ─── Table constants ─────────────────────────────────────────────────────────
 
@@ -1076,9 +1077,15 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                 </td>
                                             )}
                                             <td className={TD}>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
                                                     <TableAvatar initials={r.customerInitials} imageUrl={r.customerImageUrl} size={36} />
-                                                    <span className="text-[14px] font-medium text-[#101828]">{r.customerName}</span>
+                                                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{r.customerName}</span>
+                                                        {/* Context pills — "1st appointment", "Birthday", "New member", etc.
+                                                            Priority-sorted, capped at 2 by the component. Renders nothing
+                                                            when the customer has none. */}
+                                                        <AppointmentCustomerBadges customerId={r.customerId} appointmentDateISO={appointment.dateISO} />
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>

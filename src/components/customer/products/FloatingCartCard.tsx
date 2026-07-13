@@ -27,13 +27,13 @@ export function FloatingCartCard({
             <button
                 type="button"
                 onClick={onCheckout}
-                className="flex w-full items-center gap-4 rounded-xl bg-[#c4edd6] px-4 py-3 text-left shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] transition-colors active:brightness-95"
+                className="flex w-full items-center gap-4 rounded-xl bg-[var(--brand-tertiary)] px-4 py-3 text-left shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] transition-colors active:brightness-95"
             >
                 <div className="flex min-w-0 flex-1 flex-col">
                     <span className="text-sm font-normal leading-5 text-[#475467]">
                         {count} item{count === 1 ? "" : "s"}
                     </span>
-                    <span className="text-base font-semibold leading-6 text-[#101828]">AED {total}</span>
+                    <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">AED {total}</span>
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
             </button>

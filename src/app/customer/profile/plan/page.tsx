@@ -142,7 +142,7 @@ export default function MyPlanPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">My plan</h1>
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">My plan</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
@@ -165,7 +165,7 @@ export default function MyPlanPage() {
                         <div className="flex size-12 items-center justify-center rounded-full bg-[#f2f4f7]">
                             <CreditCardX className="size-6 text-[#667085]" aria-hidden />
                         </div>
-                        <p className="mt-4 text-base font-semibold leading-6 text-[#101828]">No active plan</p>
+                        <p className="mt-4 text-base font-semibold leading-6 text-[var(--brand-text)]">No active plan</p>
                         <p className="mt-1 text-sm leading-5 text-[#475467]">Browse our plans to start booking classes.</p>
                         <Button
                             variant="primary"

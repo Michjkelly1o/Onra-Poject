@@ -33,7 +33,7 @@ export default function ProfileTimezonePage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search timezone…"
-                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
+                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
             />
         </div>
     );
@@ -49,7 +49,7 @@ export default function ProfileTimezonePage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[#101828]">Timezone</h1>
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Timezone</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 

@@ -42,7 +42,7 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
                 ) : (
                     <div className="size-10 shrink-0" aria-hidden />
                 )}
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     {title}
                 </p>
                 {onClose ? (
@@ -60,7 +60,7 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
             </div>
             <div className="h-1 w-full bg-[#e4e7ec]">
                 <div
-                    className="h-full rounded-r-full bg-[#658774] transition-all duration-300"
+                    className="h-full rounded-r-full bg-[var(--brand-primary)] transition-all duration-300"
                     style={{ width: `${progress}%` }}
                 />
             </div>

@@ -41,7 +41,7 @@ function BookingSuccess() {
     if (!detail) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[#101828]">Booking complete</p>
+                <p className="text-base font-semibold text-[var(--brand-text)]">Booking complete</p>
                 <Button variant="secondary-gray" size="sm" className="rounded-full" onClick={() => router.push("/customer/bookings")}>
                     View bookings
                 </Button>
@@ -79,14 +79,14 @@ function BookingSuccess() {
             <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-6 pt-2">
                 {/* Ringed check — filled brand circle + white tick (Figma 2134-24288). */}
                 <div className="relative flex size-12 shrink-0 items-center justify-center">
-                    <span className="absolute -inset-[7px] rounded-full border-2 border-[#658774] opacity-30" aria-hidden />
-                    <span className="absolute -inset-[15px] rounded-full border-2 border-[#658774] opacity-10" aria-hidden />
-                    <span className="flex size-12 items-center justify-center rounded-full bg-[#658774]">
+                    <span className="absolute -inset-[7px] rounded-full border-2 border-[var(--brand-primary)] opacity-30" aria-hidden />
+                    <span className="absolute -inset-[15px] rounded-full border-2 border-[var(--brand-primary)] opacity-10" aria-hidden />
+                    <span className="flex size-12 items-center justify-center rounded-full bg-[var(--brand-primary)]">
                         <Check className="size-6 text-white" strokeWidth={3} aria-hidden />
                     </span>
                 </div>
 
-                <p className="text-center text-xl font-semibold leading-[30px] text-[#101828]">
+                <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">
                     {waitlist ? "You're on the waitlist!" : "Your booking is confirmed!"}
                 </p>
 
@@ -104,7 +104,7 @@ function BookingSuccess() {
                             className={`absolute left-3 top-3 flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${
                                 waitlist
                                     ? "border-[#e4e7ec] bg-white text-[#344054]"
-                                    : "border-[#abefc6] bg-[#ecfdf3] text-[#067647]"
+                                    : "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]"
                             }`}
                         >
                             {!waitlist && <CheckCircle className="size-3 shrink-0" aria-hidden />}
@@ -114,7 +114,7 @@ function BookingSuccess() {
 
                     <div className="flex w-full flex-col gap-5">
                         <div className="flex w-full flex-col gap-1">
-                            <p className="text-base font-semibold leading-6 text-[#101828]">{detail.name}</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">
                                 {fullDate} at {to12h(detail.startTime)}
                             </p>

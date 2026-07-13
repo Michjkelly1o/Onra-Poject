@@ -136,7 +136,7 @@ export default function SearchPage() {
                                     onClick={() => setTab(t)}
                                     className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
-                                            ? "border-b-2 border-[#101828] font-semibold text-[#101828]"
+                                            ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
                                             : "font-medium text-[#667085]"
                                     }`}
                                 >
@@ -171,7 +171,7 @@ export default function SearchPage() {
                 >
                     <FilterLines className="size-5 text-[#344054]" aria-hidden />
                     {fcount > 0 && (
-                        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#658774] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}
                         </span>
                     )}

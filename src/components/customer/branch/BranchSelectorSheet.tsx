@@ -60,7 +60,7 @@ function BranchRow({
             <span
                 className={`flex size-8 shrink-0 items-center justify-center rounded-md ${
                     selected
-                        ? "bg-gradient-to-br from-[#edfdf5] to-[#dcfae9]"
+                        ? "bg-gradient-to-br from-[var(--brand-tertiary)] to-[var(--brand-tertiary)]"
                         : "border border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                 }`}
             >
@@ -75,7 +75,7 @@ function BranchRow({
                 )}
                 {operational && (
                     <p className="flex items-center gap-1 text-sm leading-5">
-                        <span className="font-medium text-[#067647]">{operational.isOpen ? "Open" : "Closed"}</span>
+                        <span className="font-medium text-[var(--brand-primary)]">{operational.isOpen ? "Open" : "Closed"}</span>
                         <span className="text-[#667085]">•</span>
                         <span className="text-[#667085]">{operational.hoursLabel}</span>
                     </p>
@@ -85,7 +85,7 @@ function BranchRow({
             {/* Radio */}
             <span
                 className={`flex size-4 shrink-0 items-center justify-center rounded-full ${
-                    selected ? "bg-[#658774]" : "border border-[#d0d5dd] bg-white"
+                    selected ? "bg-[var(--brand-primary)]" : "border border-[#d0d5dd] bg-white"
                 }`}
             >
                 {selected && <span className="size-1.5 rounded-full bg-white" />}
@@ -125,7 +125,7 @@ export function BranchSelectorSheet({ open, onClose }: { open: boolean; onClose:
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Search branch..."
-                    className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
+                    className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
                 />
             </div>
 
@@ -157,7 +157,7 @@ export function BranchSelectorSheet({ open, onClose }: { open: boolean; onClose:
             </div>
 
             {/* Hint */}
-            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                 <Lightbulb02 className="size-5 shrink-0 text-[#475467]" aria-hidden />
                 <p className="text-sm font-normal leading-5 text-[#475467]">Location will be set as your main branch.</p>
             </div>

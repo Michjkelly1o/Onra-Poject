@@ -69,7 +69,7 @@ export default function GiftCardPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[#101828]">Gift card</h1>
+                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Gift card</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
@@ -85,7 +85,7 @@ export default function GiftCardPage() {
                 <FeaturedIconHero
                     icon={Gift01}
                     tileClassName="bg-[#dcfae5] shadow-[0px_4px_18px_0px_rgba(220,250,229,0.7),0px_2px_4px_0px_rgba(16,24,40,0.04)]"
-                    iconClassName="size-[42px] text-[#079455]"
+                    iconClassName="size-[42px] text-[var(--brand-primary)]"
                     title="Redeem gift code"
                     subtitle="Enter the digit code to redeem your gift card"
                 />
@@ -106,7 +106,7 @@ export default function GiftCardPage() {
                             }}
                             onKeyDown={(e) => e.key === "Enter" && confirm()}
                             placeholder="Enter gift card code"
-                            className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#101828] outline-none placeholder:text-[#667085]"
+                            className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
                         />
                     </div>
                     {error && <p className="mt-1.5 text-sm leading-5 text-[#d92d20]">{error}</p>}
@@ -122,7 +122,7 @@ export default function GiftCardPage() {
                 </div>
 
                 {/* Redeemed */}
-                <p className="relative mb-3 mt-8 text-base font-semibold leading-6 text-[#101828]">Redeemed gift card</p>
+                <p className="relative mb-3 mt-8 text-base font-semibold leading-6 text-[var(--brand-text)]">Redeemed gift card</p>
                 {redeemed.length > 0 ? (
                     <div className="relative flex flex-col gap-3">
                         {redeemed.map((r) => (
@@ -130,11 +130,11 @@ export default function GiftCardPage() {
                                 <div className="flex items-center gap-3">
                                     <GiftCardMark />
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium leading-5 text-[#101828]">Gift card</p>
+                                        <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">Gift card</p>
                                         <p className="truncate text-sm font-normal leading-5 text-[#667085]">Code: {r.code}</p>
                                     </div>
                                     <div className="flex shrink-0 flex-col items-end">
-                                        <p className="text-sm font-semibold leading-5 text-[#658774]">{aed(r.faceValue)}</p>
+                                        <p className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">{aed(r.faceValue)}</p>
                                         <p className="text-sm font-normal leading-5 text-[#667085]">{validityLabel(r)}</p>
                                     </div>
                                 </div>
@@ -147,7 +147,7 @@ export default function GiftCardPage() {
                                     </div>
                                     <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
                                         <div
-                                            className="h-full rounded-full bg-[#658774]"
+                                            className="h-full rounded-full bg-[var(--brand-primary)]"
                                             style={{ width: `${(r.balance / r.faceValue) * 100}%` }}
                                         />
                                     </div>

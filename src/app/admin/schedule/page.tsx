@@ -802,7 +802,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
         id: "__recovery__",
         name: "Recovery",
         initials: "RS",
-        color: "#c4edd6",
+        color: "var(--brand-tertiary)",
         branchId: null,
     };
     const columns: Instructor[] = hasRecovery

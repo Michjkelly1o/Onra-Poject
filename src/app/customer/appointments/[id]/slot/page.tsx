@@ -103,8 +103,8 @@ export default function SelectSlotPage() {
                 {/* Month (opens the month sheet) + timezone (opens the timezone screen) */}
                 <div className="flex w-full items-center justify-between">
                     <button type="button" onClick={() => setMonthOpen(true)} className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold leading-5 text-[#101828]">{formatMonth(weekStartISO)}</span>
-                        <ChevronDown className="size-5 text-[#101828]" aria-hidden />
+                        <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{formatMonth(weekStartISO)}</span>
+                        <ChevronDown className="size-5 text-[var(--brand-text)]" aria-hidden />
                     </button>
                     <TimezonePill tz={timezone} onClick={() => router.push("/customer/search/timezone")} />
                 </div>
@@ -122,16 +122,16 @@ export default function SelectSlotPage() {
                                     setSlot(appointmentDraft.slotISO === d ? appointmentDraft.slotTime : null);
                                 }}
                                 className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl p-2 transition-colors ${
-                                    active ? "border-2 border-[#658774] bg-white" : "border border-[#e4e7ec] bg-white"
+                                    active ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
                                 }`}
                             >
                                 <span
-                                    className={`text-xs font-normal leading-[18px] ${active ? "text-[#658774]" : "text-[#667085]"}`}
+                                    className={`text-xs font-normal leading-[18px] ${active ? "text-[var(--brand-primary)]" : "text-[#667085]"}`}
                                 >
                                     {weekdayAbbr(d)}
                                 </span>
                                 <span
-                                    className={`text-xs font-medium leading-[18px] ${active ? "text-[#4f6e5d]" : "text-[#344054]"}`}
+                                    className={`text-xs font-medium leading-[18px] ${active ? "text-[var(--brand-primary)]" : "text-[#344054]"}`}
                                 >
                                     {dayNum(d)}
                                 </span>
@@ -162,7 +162,7 @@ export default function SelectSlotPage() {
                                     type="button"
                                     onClick={() => pickSlot(s.time)}
                                     className={`relative flex w-full items-center justify-center rounded-xl p-4 transition-all duration-300 ease-out ${
-                                        isSel ? "border-2 border-[#7ba08c] bg-[#e9fff3]" : "border border-[#e4e7ec] bg-white"
+                                        isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
                                     <span className="text-sm font-medium leading-5 text-[#344054]">{fmtSlot(s.time)}</span>
@@ -171,7 +171,7 @@ export default function SelectSlotPage() {
                                         <span
                                             className={`absolute right-4 top-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${
                                                 isSel
-                                                    ? "border-[#c4edd6] bg-[#e9fff3] text-[#4f6e5d]"
+                                                    ? "border-[var(--brand-tertiary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]"
                                                     : "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]"
                                             }`}
                                         >

@@ -22,7 +22,7 @@ import { Rings } from "@/components/customer/products/ProductArt";
 import { Button } from "@/components/ui/button";
 
 // Unified brand-green hero for every product type (client Jul 2026).
-const HERO = { from: "#e9fff3", to: "#c4edd6", text: "#658774", ring: "#aad4bd" };
+const HERO = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#aad4bd" };
 
 const STEP_BTN =
     "flex size-9 items-center justify-center rounded-full border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50 disabled:opacity-40";
@@ -31,7 +31,7 @@ function InfoRow({ icon: Icon, children }: { icon: React.ComponentType<{ classNa
     return (
         <div className="flex items-start gap-2">
             <span className="flex size-4 shrink-0 items-center justify-center py-0.5">
-                <Icon className="size-4 text-[#658774]" />
+                <Icon className="size-4 text-[var(--brand-primary)]" />
             </span>
             <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">{children}</p>
         </div>
@@ -65,7 +65,7 @@ export default function ProductDetailPage() {
     if (!product) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[#101828]">This product is no longer available</p>
+                <p className="text-base font-semibold text-[var(--brand-text)]">This product is no longer available</p>
                 <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/products")}>
                     Back to Products
                 </Button>
@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
                     >
                         <ChevronLeft className="size-5 text-white" aria-hidden />
                     </button>
-                    <span className="flex items-center gap-0.5 rounded-full border border-[#abefc6] bg-[#ecfdf3] py-0.5 pl-1.5 pr-2 text-xs font-medium leading-[18px] text-[#067647]">
+                    <span className="flex items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
                         <BadgeIcon className="size-3 shrink-0" aria-hidden />
                         {typeLabel}
                     </span>
@@ -175,8 +175,8 @@ export default function ProductDetailPage() {
             <div className="flex flex-1 flex-col gap-8 px-4 pb-[120px] pt-6">
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                        <p className="text-xl font-semibold leading-[30px] text-[#101828]">{product.name}</p>
-                        <p className="text-xl font-semibold leading-[30px] text-[#658774]">
+                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{product.name}</p>
+                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">
                             {product.priceLabel ?? `AED ${product.price}`}
                         </p>
                     </div>
@@ -195,7 +195,7 @@ export default function ProductDetailPage() {
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <InfoRow icon={Clock}>
                                 Valid until{" "}
-                                <span className="font-medium text-[#101828]">
+                                <span className="font-medium text-[var(--brand-text)]">
                                     {membership.duration_months} month{membership.duration_months === 1 ? "" : "s"}
                                 </span>
                             </InfoRow>
@@ -208,7 +208,7 @@ export default function ProductDetailPage() {
                             <InfoRow icon={MarkerPin01}>Applicable for {branchNames(pkg.branch_ids) || "all branches"}</InfoRow>
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <InfoRow icon={Clock}>
-                                Valid until <span className="font-medium text-[#101828]">{pkg.validity_days} days</span>
+                                Valid until <span className="font-medium text-[var(--brand-text)]">{pkg.validity_days} days</span>
                             </InfoRow>
                         </>
                     )}
@@ -222,10 +222,10 @@ export default function ProductDetailPage() {
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <InfoRow icon={Clock}>
                                 {gift.no_expiry ? (
-                                    <span className="font-medium text-[#101828]">No expiry</span>
+                                    <span className="font-medium text-[var(--brand-text)]">No expiry</span>
                                 ) : (
                                     <>
-                                        Valid for <span className="font-medium text-[#101828]">{gift.validity_days} days</span>
+                                        Valid for <span className="font-medium text-[var(--brand-text)]">{gift.validity_days} days</span>
                                     </>
                                 )}
                             </InfoRow>
@@ -236,19 +236,19 @@ export default function ProductDetailPage() {
                 {/* Membership upgrade / downgrade panel */}
                 {upgrade && (
                     <section className="flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[#101828]">
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                             {upgrade.mode === "upgrade" ? "Upgrade plan" : "Downgrade plan"}
                         </p>
                         <div className="flex items-center gap-2">
                             <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#e4e7ec] bg-white p-3">
-                                <span className="min-w-0 truncate text-sm font-medium leading-5 text-[#101828]">{upgrade.currentName}</span>
+                                <span className="min-w-0 truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{upgrade.currentName}</span>
                             </span>
                             <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
                             <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#e4e7ec] bg-white p-3">
-                                <span className="min-w-0 truncate text-sm font-medium leading-5 text-[#101828]">{product.name}</span>
+                                <span className="min-w-0 truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{product.name}</span>
                             </span>
                         </div>
-                        <div className="flex items-start gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+                        <div className="flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
                             <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
                                 {upgrade.mode === "upgrade" ? "Upgrading" : "Downgrading"} will replace your current plan once the duration ends.
@@ -277,7 +277,7 @@ export default function ProductDetailPage() {
                         <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={addDisabled || !isPackage || qty <= 1} aria-label="Decrease quantity" className={STEP_BTN}>
                             <Minus className="size-5 text-[#344054]" aria-hidden />
                         </button>
-                        <span className="min-w-4 text-center text-base font-semibold leading-6 text-[#101828]">{qty}</span>
+                        <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{qty}</span>
                         <button type="button" onClick={() => setQty((q) => q + 1)} disabled={addDisabled || !isPackage} aria-label="Increase quantity" className={STEP_BTN}>
                             <Plus className="size-5 text-[#344054]" aria-hidden />
                         </button>

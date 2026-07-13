@@ -94,7 +94,7 @@ export function BookingCard({ name, date, time, location, tzLabel, status, image
                     {/* Class info */}
                     <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
                         <div className="flex w-full flex-col">
-                            <p className="whitespace-nowrap text-base font-semibold leading-6 text-[#101828]">{name}</p>
+                            <p className="whitespace-nowrap text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
                             <p className="w-full truncate text-xs font-normal leading-[18px] text-[#475467]">{location}</p>
                             {tzLabel && (
                                 <p className="w-full truncate text-[11px] font-normal leading-4 text-[#98a2b3]">{tzLabel}</p>

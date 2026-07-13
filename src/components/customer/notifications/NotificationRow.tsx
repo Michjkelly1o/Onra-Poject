@@ -50,7 +50,7 @@ export function NotificationRow({
 
             {/* Unread dot */}
             {!notification.isRead && (
-                <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[#658774]" aria-label="Unread" />
+                <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[var(--brand-primary)]" aria-label="Unread" />
             )}
         </button>
     );

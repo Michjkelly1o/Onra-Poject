@@ -56,7 +56,7 @@ export interface ProductPosCardProps {
 
 const TYPE_TOKENS: Record<ProductPosCardType, { iconBg: string; iconColor: string; patternBorder: string }> = {
     membership: { iconBg: "bg-[#e0eaff]", iconColor: "text-[#3538cd]", patternBorder: "border-[#c7d7fe]" },
-    package:    { iconBg: "bg-[#c4edd6]", iconColor: "text-[#658774]", patternBorder: "border-[#aad4bd]" },
+    package:    { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[#658774]", patternBorder: "border-[#aad4bd]" },
     // Gift cards use the cyan family — same tint as the gift-card create/edit
     // preview + detail sidebar so the card reads consistently everywhere.
     "gift-card":{ iconBg: "bg-[#ccf6ff]", iconColor: "text-[#0e7090]", patternBorder: "border-[#92d1de]" },

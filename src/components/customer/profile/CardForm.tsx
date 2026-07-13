@@ -17,7 +17,7 @@ export interface CardFormData {
 }
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] outline-none transition-colors placeholder:text-[#667085] focus:border-[#658774]";
+    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[#344054]";
 
 function fmtNumber(v: string): string {
@@ -69,7 +69,7 @@ export function CardForm({
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-base font-semibold leading-6 text-[#101828]">{title}</h1>
+                <h1 className="min-w-0 flex-1 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</h1>
                 {onDelete ? (
                     <button
                         type="button"
@@ -91,7 +91,7 @@ export function CardForm({
                         <div className="h-6 w-9 rounded bg-[#cbd2dd]" />
                         <span className="text-[#98a2b3]">)))</span>
                     </div>
-                    <p className="mt-6 font-mono text-lg tracking-[0.2em] text-[#101828]">
+                    <p className="mt-6 font-mono text-lg tracking-[0.2em] text-[var(--brand-text)]">
                         {number || "1234 5678 9000 0000"}
                     </p>
                     <div className="mt-3 flex items-end justify-between">

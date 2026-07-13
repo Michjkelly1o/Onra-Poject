@@ -22,7 +22,7 @@ const UNITS = [
     { label: "Month", days: 30 },
 ];
 const FIELD =
-    "h-10 w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 text-base leading-6 text-[#101828] outline-none focus:border-[#658774]";
+    "h-10 w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 text-base leading-6 text-[var(--brand-text)] outline-none focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[#344054]";
 
 export function FreezePlanSheet({
@@ -84,10 +84,10 @@ export function FreezePlanSheet({
                         type="button"
                         onClick={() => setReason(r)}
                         className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
-                            reason === r ? "border-[#658774] bg-[#fbfdfc] ring-1 ring-inset ring-[#658774]" : "border-[#e4e7ec]"
+                            reason === r ? "border-[var(--brand-primary)] bg-[#fbfdfc] ring-1 ring-inset ring-[var(--brand-primary)]" : "border-[#e4e7ec]"
                         }`}
                     >
-                        <span className="flex-1 text-base leading-6 text-[#101828]">{r}</span>
+                        <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{r}</span>
                         <RadioDot checked={reason === r} />
                     </button>
                 ))}

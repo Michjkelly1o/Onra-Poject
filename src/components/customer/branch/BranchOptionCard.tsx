@@ -31,7 +31,7 @@ export function BranchOptionCard({ name, subtitle, selected, onClick, operationa
             onClick={onClick}
             aria-pressed={selected}
             className={`flex w-full flex-col gap-3 rounded-2xl bg-white p-4 text-left transition-colors ${
-                selected ? "border-2 border-[#7ba08c]" : "border border-[#e4e7ec]"
+                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
             }`}
         >
             <div className="flex flex-col gap-3">
@@ -41,7 +41,7 @@ export function BranchOptionCard({ name, subtitle, selected, onClick, operationa
                 </span>
 
                 <div className="flex flex-col gap-1">
-                    <p className="text-base font-semibold leading-6 text-[#101828]">{name}</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
                     <p className="line-clamp-2 text-sm font-normal leading-5 text-[#475467]">{subtitle}</p>
                 </div>
             </div>
@@ -51,7 +51,7 @@ export function BranchOptionCard({ name, subtitle, selected, onClick, operationa
                     <span
                         className={`flex items-center rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${
                             operational.isOpen
-                                ? "border-[#abefc6] bg-[#ecfdf3] text-[#067647]"
+                                ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]"
                                 : "border-[#fecdca] bg-[#fef3f2] text-[#b42318]"
                         }`}
                     >

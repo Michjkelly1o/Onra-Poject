@@ -19,7 +19,7 @@ export function Switch({
             aria-label={ariaLabel}
             onClick={() => onChange(!checked)}
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                checked ? "bg-[#658774]" : "bg-[#e4e7ec]"
+                checked ? "bg-[var(--brand-primary)]" : "bg-[#e4e7ec]"
             }`}
         >
             <span

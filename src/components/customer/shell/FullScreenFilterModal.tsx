@@ -55,7 +55,7 @@ export function FullScreenFilterModal({
                 {/* Header — centred title + close. */}
                 <header className="flex items-center gap-3 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
                     <span aria-hidden className="size-10 shrink-0" />
-                    <h1 className="min-w-0 flex-1 text-center text-base font-semibold leading-6 text-[#101828]">{title}</h1>
+                    <h1 className="min-w-0 flex-1 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</h1>
                     <button
                         type="button"
                         onClick={onClose}

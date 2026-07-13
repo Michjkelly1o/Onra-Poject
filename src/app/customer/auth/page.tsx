@@ -70,7 +70,7 @@ export default function AuthEmailPage() {
 
             <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-8 pt-[118px]">
                 <div className="flex w-full flex-col gap-2">
-                    <h1 className="text-2xl font-semibold leading-8 text-[#101828]">Log in or sign up</h1>
+                    <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Log in or sign up</h1>
                     <p className="text-base leading-6 text-[#667085]">
                         Create an account or log in to book and manage your appointments.
                     </p>
@@ -91,8 +91,8 @@ export default function AuthEmailPage() {
                                 }}
                                 onKeyDown={(e) => e.key === "Enter" && onContinue()}
                                 placeholder="Enter email address"
-                                className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors placeholder:text-[#667085] ${
-                                    error ? "border-[#fda29b] focus:border-[#f04438]" : "border-[#d0d5dd] focus:border-[#658774]"
+                                className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors placeholder:text-[#667085] ${
+                                    error ? "border-[#fda29b] focus:border-[#f04438]" : "border-[#d0d5dd] focus:border-[var(--brand-primary)]"
                                 }`}
                             />
                             {error && <span className="text-sm leading-5 text-[#d92d20]">{error}</span>}

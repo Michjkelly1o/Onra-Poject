@@ -35,7 +35,7 @@ export interface ClassScheduleCardProps {
 }
 
 const TONE: Record<BadgeTone, string> = {
-    success: "border-[#abefc6] bg-[#ecfdf3] text-[#067647]",
+    success: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]",
     neutral: "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]",
     error: "border-[#fecdca] bg-[#fef3f2] text-[#b42318]",
 };
@@ -84,7 +84,7 @@ export function ClassScheduleCard({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <p className="truncate text-base font-semibold leading-6 text-[#101828]">{name}</p>
+                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
                     <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">with {instructorName}</p>
                 </div>
 

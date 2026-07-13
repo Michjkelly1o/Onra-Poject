@@ -60,7 +60,7 @@ export function ScrollWheel({
                         type="button"
                         onClick={() => ref.current?.scrollTo({ top: i * WHEEL_ITEM_H, behavior: "smooth" })}
                         className={`flex h-10 w-full snap-center items-center justify-center transition-colors ${
-                            selected ? "text-xl font-semibold text-[#101828]" : "text-lg font-medium text-[#98a2b3]"
+                            selected ? "text-xl font-semibold text-[var(--brand-text)]" : "text-lg font-medium text-[#98a2b3]"
                         }`}
                     >
                         {l}

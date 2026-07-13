@@ -88,7 +88,7 @@ export function AchievementHighlight({ count, monthLabel }: AchievementHighlight
             <PixelsDecoration />
             <div className="relative flex min-w-0 flex-1 items-start justify-center gap-2">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <p className="truncate text-xl font-semibold leading-[30px] text-[#101828]">
+                    <p className="truncate text-xl font-semibold leading-[30px] text-[var(--brand-text)]">
                         {count} in {monthLabel}
                     </p>
                     <p className="w-full text-xs font-normal leading-[18px] text-[#667085]">Most classes in a month</p>

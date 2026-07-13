@@ -19,7 +19,7 @@ export function InstructorOverview({ instructors }: { instructors: HomeInstructo
 
     return (
         <section className="flex w-full flex-col gap-3">
-            <h2 className="text-base font-semibold leading-6 text-[#101828]">Instructor</h2>
+            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Instructor</h2>
 
             {/* Full-bleed rail: cancels the page's px-4 so cards scroll edge-to-edge
                 (not clipped at the content box), with px-4 keeping the first card aligned. */}

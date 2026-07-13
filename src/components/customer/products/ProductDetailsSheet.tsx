@@ -45,10 +45,10 @@ const STEP_BTN =
 function PlanChip({ name }: { name: string }) {
     return (
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#e4e7ec] bg-white p-3">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-[#658774]">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-[var(--brand-primary)]">
                 <CreditCard02 className="size-[18px] text-white" aria-hidden />
             </span>
-            <span className="min-w-0 text-sm font-medium leading-5 text-[#101828] line-clamp-2">{name}</span>
+            <span className="min-w-0 text-sm font-medium leading-5 text-[var(--brand-text)] line-clamp-2">{name}</span>
         </div>
     );
 }
@@ -76,13 +76,13 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                     {/* Title + (upgrade/downgrade) + price */}
                     <div className="flex w-full flex-col gap-5">
                         <div className="flex flex-col gap-0.5">
-                            <p className="text-xl font-semibold leading-[30px] text-[#101828]">{plan.name}</p>
+                            <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{plan.name}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">{plan.sub}</p>
                         </div>
 
                         {upgrade && (
                             <section className="flex flex-col gap-3">
-                                <p className="text-base font-semibold leading-6 text-[#101828]">
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                                     {upgrade.mode === "upgrade" ? "Upgrade plan" : "Downgrade plan"}
                                 </p>
                                 <div className="flex items-center gap-2">
@@ -90,7 +90,7 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                                     <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
                                     <PlanChip name={plan.name} />
                                 </div>
-                                <div className="flex items-start gap-3 rounded-xl border border-[#7ba08c] bg-[#e9fff3] p-4">
+                                <div className="flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                                     <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
                                     <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
                                         {upgrade.mode === "upgrade" ? "Upgrading" : "Downgrading"} will replace your
@@ -100,7 +100,7 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                             </section>
                         )}
 
-                        <p className="text-xl font-semibold leading-[30px] text-[#658774]">
+                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">
                             {plan.priceLabel ?? `AED ${plan.price}`}
                         </p>
                     </div>
@@ -130,7 +130,7 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                                 >
                                     <Minus className="size-5 text-[#344054]" aria-hidden />
                                 </button>
-                                <span className="min-w-4 text-center text-base font-semibold leading-6 text-[#101828]">
+                                <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                                     {qty}
                                 </span>
                                 <button
