@@ -104,6 +104,13 @@ function buildBranchRooms(
 }
 
 const REPEAT_OPTIONS = ["Does not repeat", "Repeat weekly"] as const;
+// Values kept in the existing 3-string vocabulary so persisted drafts + all
+// downstream generators (preview / conflict scan / handleCreate) don't need
+// re-mapping. The Recurring Ends UI now renders these as three radios per
+// client Jul 2026 feedback:
+//   "No end date" → Never
+//   "End on date" → On
+//   "End after"   → After
 const REPEAT_END     = ["No end date", "End on date", "End after"] as const;
 const WEEK_DAYS      = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -459,6 +466,46 @@ function InstructorCard({ instructor, selected, disabled = false, disabledReason
                 </div>
             </div>
         </button>
+    );
+}
+
+// ─── Recurring-ends radio row ────────────────────────────────────────────────
+//
+// One row of the Recurring Ends section: a label + a native-style radio
+// dot on the left, plus optional inline content on the right (date picker
+// for "On", numeric input for "After"). Whole row is clickable to switch
+// the pick — the inline input handles its own clicks so they don't
+// re-toggle. Client Jul 2026 requested this layout in place of the old
+// dropdown.
+
+function RepeatEndRadio({
+    label, checked, onSelect, children,
+}: {
+    label: string;
+    checked: boolean;
+    onSelect: () => void;
+    children?: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <button
+                type="button"
+                onClick={onSelect}
+                aria-pressed={checked}
+                className="flex items-center gap-2 shrink-0 group"
+            >
+                <span
+                    className={cn(
+                        "w-5 h-5 rounded-full border-1 flex items-center justify-center transition-colors",
+                        checked ? "border-[#658774]" : "border-[#d0d5dd] group-hover:border-[#98a2b3]",
+                    )}
+                >
+                    {checked && <span className="w-2.5 h-2.5 rounded-full bg-[#658774]" />}
+                </span>
+                <span className="text-[14px] font-medium text-[#344054] min-w-[52px]">{label}</span>
+            </button>
+            {children}
+        </div>
     );
 }
 
@@ -2471,37 +2518,59 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
                                     </div>
 
-                                    {/* Recurring ends section */}
+                                    {/* Recurring ends section — Jul 2026 client
+                                        feedback: dropdown collapsed to three
+                                        inline radios (Never / On / After) with
+                                        the associated input (date picker or
+                                        numeric) appearing right next to the
+                                        picked radio. Same 3-value vocab as
+                                        before, so persisted drafts and every
+                                        downstream generator keep working. */}
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[#101828]">Recurring ends</p>
-                                            {/* "No end date" pins the schedule to a single week → drop Date + Repeat every entirely.
-                                                "End on date" / "End after" → keep both inputs in their 2-column row. */}
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="flex flex-col gap-1.5">
-                                                    <label className={labelCls}>End condition</label>
-                                                    <SimpleSelect label="Select end" value={repeatEnd} options={REPEAT_END as unknown as string[]} onChange={v => setRepeatEnd(v as typeof repeatEnd)} />
-                                                </div>
-                                                {repeatEnd === "End after" && (
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <label className={labelCls}>Number of classes</label>
-                                                        <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
-                                                    </div>
-                                                )}
-                                                {repeatEnd === "End on date" && (
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <label className={labelCls}>Date</label>
-                                                        {/* Must be on or after the Step-3 Date — a recurring
-                                                            series can't end before it begins. Falls back to
-                                                            today when no Step-3 Date is picked yet. */}
+                                            <p className="text-[18px] font-semibold text-[#101828]">Recurring Ends</p>
+
+                                            <div className="flex flex-col gap-3">
+                                                {/* Never */}
+                                                <RepeatEndRadio
+                                                    label="Never"
+                                                    checked={repeatEnd === "No end date"}
+                                                    onSelect={() => setRepeatEnd("No end date")}
+                                                />
+                                                {/* On [date picker] */}
+                                                <RepeatEndRadio
+                                                    label="On"
+                                                    checked={repeatEnd === "End on date"}
+                                                    onSelect={() => setRepeatEnd("End on date")}
+                                                >
+                                                    {/* Date picker sits inline. Disabled + dimmed
+                                                        when this radio isn't the active choice. */}
+                                                    <div className={cn("w-[240px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
                                                         <DatePicker
                                                             value={endDate}
                                                             onChange={setEndDate}
                                                             minDate={selectedDate || todayISO()}
                                                         />
                                                     </div>
-                                                )}
+                                                </RepeatEndRadio>
+                                                {/* After [N] classes */}
+                                                <RepeatEndRadio
+                                                    label="After"
+                                                    checked={repeatEnd === "End after"}
+                                                    onSelect={() => setRepeatEnd("End after")}
+                                                >
+                                                    <div className={cn("flex items-center gap-2", repeatEnd !== "End after" && "opacity-40 pointer-events-none")}>
+                                                        <div className="w-[120px]">
+                                                            <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
+                                                        </div>
+                                                        <span className="text-[14px] text-[#475467]">classes</span>
+                                                    </div>
+                                                </RepeatEndRadio>
                                             </div>
+
+                                            {/* Repeat frequency stays as its own row, kept per
+                                                client Q&A. Hidden for "Never" since a single-week
+                                                schedule has no repeat interval to configure. */}
                                             {repeatEnd !== "No end date" && (
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="flex flex-col gap-1.5">
