@@ -12,6 +12,7 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
 import {
     Bell01,
+    CalendarCheck01,
     ChevronRight,
     CreditCard02,
     Gift01,
@@ -35,9 +36,10 @@ import { Button } from "@/components/ui/button";
 type Row = { icon: ComponentType<SVGProps<SVGSVGElement>>; label: string; href: string };
 
 const GROUP_A: Row[] = [
+    { icon: CalendarCheck01, label: "Bookings", href: "/customer/bookings" },
     { icon: Share07, label: "Integrations", href: "/customer/profile/integrations" },
-    { icon: Bell01, label: "Notification settings", href: "/customer/profile/notifications" },
-    { icon: CreditCard02, label: "Payment settings", href: "/customer/profile/payment-methods" },
+    { icon: Bell01, label: "Notifications", href: "/customer/profile/notifications" },
+    { icon: CreditCard02, label: "Payment methods", href: "/customer/profile/payment-methods" },
     { icon: PhoneCall01, label: "Emergency contact", href: "/customer/profile/emergency" },
     { icon: Globe01, label: "Timezone", href: "/customer/profile/timezone" },
 ];

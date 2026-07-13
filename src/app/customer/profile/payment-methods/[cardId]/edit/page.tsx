@@ -51,13 +51,13 @@ export default function EditCardPage() {
             expYear,
         });
         showToast("Card updated", "All changes has been saved.", "success");
-        router.push(LIST);
+        router.replace(LIST);
     }
     function confirmDelete() {
         if (!card) return;
         removeCard(card.id);
         showToast("Payment method has been removed", "Payment method successfully removed and no longer be use.", "success", "trash");
-        router.push(LIST);
+        router.replace(LIST);
     }
 
     const initial: Partial<CardFormData> = {

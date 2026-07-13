@@ -7,18 +7,16 @@
 // Mirrors the class Cancel-booking review, worded for appointments and priced in
 // AED (appointments are paid, not credit-based): an appointment overview,
 // location, refund details, and a cancellation-policy warning when <24h before
-// the slot (no refund). "Cancel appointment" opens the confirm sheet → writes the
-// cancel to the UI-only store → returns to the (now Cancelled) booking detail.
+// the slot (no refund). "Cancel appointment" writes the cancel directly (no
+// confirmation sheet) to the UI-only store → the (now Cancelled) booking detail.
 
-import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ChevronLeft, Clock, Lightbulb02, MarkerPin01, SlashCircle01 } from "@untitledui/icons";
+import { AlertTriangle, ChevronLeft, Clock, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { to12h } from "@/lib/customer/dates";
 import { cancelAppointmentBooking, useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
 import { addCustomerNotification } from "@/lib/customer/notifications-feed";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
-import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { Button } from "@/components/ui/button";
 
 const CANCEL_BTN =
@@ -35,7 +33,6 @@ export default function CancelAppointmentPage() {
     const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
     const scrollable = useMainScrollable();
-    const [sheetOpen, setSheetOpen] = useState(false);
 
     const startMs = booking ? new Date(`${booking.slotISO}T${booking.slotTime}:00`).getTime() : 0;
     const cancellable = !!booking && booking.status === "booked" && startMs > Date.now();
@@ -90,7 +87,6 @@ export default function CancelAppointmentPage() {
             "success",
             isLate ? "slash" : "check",
         );
-        setSheetOpen(false);
         router.replace(`/customer/bookings/appointment/${apptId}`);
     }
 
@@ -228,50 +224,11 @@ export default function CancelAppointmentPage() {
                     variant="secondary"
                     size="xl"
                     className={`w-full rounded-full ${CANCEL_BTN}`}
-                    onClick={() => setSheetOpen(true)}
+                    onClick={confirmCancel}
                 >
                     Cancel appointment
                 </Button>
             </div>
-
-            {/* Confirmation sheet */}
-            <CustomerSheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
-                <div className="flex flex-col items-center gap-5">
-                    <div className="flex flex-col items-center gap-4">
-                        <span className="flex size-12 items-center justify-center rounded-full bg-[#fee4e2]">
-                            <SlashCircle01 className="size-6 text-[#d92d20]" aria-hidden />
-                        </span>
-                        <div className="flex flex-col items-center gap-1 text-center">
-                            <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Cancel this appointment?</p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">
-                                {isLate
-                                    ? "This cancellation is within 24 hours. You won't be refunded for this appointment."
-                                    : "This will cancel your appointment and free up the slot."}
-                            </p>
-                        </div>
-                    </div>
-
-                    {!isLate && (
-                        <div className="flex w-full items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
-                            <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
-                            <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
-                                AED {booking.price} will be refunded to your account.
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="pt-4">
-                    <Button
-                        variant="secondary"
-                        size="xl"
-                        className={`w-full rounded-full ${CANCEL_BTN}`}
-                        onClick={confirmCancel}
-                    >
-                        Yes, cancel appointment
-                    </Button>
-                </div>
-            </CustomerSheet>
         </div>
     );
 }

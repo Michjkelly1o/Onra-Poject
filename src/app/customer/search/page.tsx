@@ -207,7 +207,7 @@ export default function SearchPage() {
                                             coverColor={c.coverColor}
                                             room={c.room}
                                             branch={c.branchName}
-                                            timeLabel={c.state === "closed" ? "" : `${to12h(c.startTime)} • ${c.durationMins} mins`}
+                                            timeLabel={`${to12h(c.startTime)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
                                             ctaLabel={p.ctaLabel}

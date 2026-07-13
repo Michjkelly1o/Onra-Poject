@@ -6,17 +6,15 @@
 // Figma 2191-15799 (≥24h) / 2440-21018 (<24h). Reuses the booking-confirmation
 // review anatomy: a class overview, location, spot, and the credit outcome — a
 // Refund-details block (≥24h → 1 credit refunded) or a Cancellation-policy
-// warning (<24h → credit forfeited). "Cancel booking" opens the confirmation
-// sheet (3433-28165) → writes the cancel → the cancelled Booking Detail.
+// warning (<24h → credit forfeited). "Cancel booking" writes the cancel
+// directly (no confirmation sheet) → the cancelled Booking Detail.
 
-import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ChevronLeft, Clock, Lightbulb02, MarkerPin01, SlashCircle01 } from "@untitledui/icons";
+import { AlertTriangle, ChevronLeft, Clock, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { useBookingDetail } from "@/lib/customer/bookings-data";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
-import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { Button } from "@/components/ui/button";
 
 // Destructive secondary (Figma 4248-39738 / 39756): error-50 bg + error border/
@@ -38,7 +36,6 @@ export default function CancelBookingPage() {
     const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
     const scrollable = useMainScrollable();
-    const [sheetOpen, setSheetOpen] = useState(false);
 
     if (!vm || vm.tab !== "upcoming") {
         return (
@@ -87,7 +84,6 @@ export default function CancelBookingPage() {
             cancelClassBooking(bookingId, "Cancelled by member", true, "customer_portal");
             showToast("Booking cancelled", "Your credit has been returned to your account.", "success", "refresh");
         }
-        setSheetOpen(false);
         router.replace(`/customer/bookings/${bookingId}`);
     }
 
@@ -228,57 +224,11 @@ export default function CancelBookingPage() {
                     variant="secondary"
                     size="xl"
                     className={`w-full rounded-full ${CANCEL_BTN}`}
-                    onClick={() => setSheetOpen(true)}
+                    onClick={confirmCancel}
                 >
                     {isWaitlist ? "Leave waitlist" : "Cancel booking"}
                 </Button>
             </div>
-
-            {/* Confirmation sheet (Figma 3433-28165) */}
-            <CustomerSheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
-                <div className="flex flex-col items-center gap-5">
-                    <div className="flex flex-col items-center gap-4">
-                        <span className="flex size-12 items-center justify-center rounded-full bg-[#fee4e2]">
-                            <SlashCircle01 className="size-6 text-[#d92d20]" aria-hidden />
-                        </span>
-                        <div className="flex flex-col items-center gap-1 text-center">
-                            <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">
-                                {isWaitlist ? "Leave the waitlist?" : "Cancel this class?"}
-                            </p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">
-                                {isWaitlist
-                                    ? "This will remove you from the waitlist for this class."
-                                    : isLate
-                                      ? "This cancellation is within 24 hours. Your credit will not be returned to your package."
-                                      : "This will cancel your booking and free up your spot"}
-                            </p>
-                        </div>
-                    </div>
-
-                    {(isWaitlist || !isLate) && (
-                        <div className="flex w-full items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
-                            <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
-                            <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
-                                {isWaitlist
-                                    ? "You'll lose your spot on the waitlist. No credit was taken when you joined, so nothing is charged."
-                                    : "1 credit refunded to your account"}
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom action — same pt-4 footer height as the filter/page sheets. */}
-                <div className="pt-4">
-                    <Button
-                        variant="secondary"
-                        size="xl"
-                        className={`w-full rounded-full ${CANCEL_BTN}`}
-                        onClick={confirmCancel}
-                    >
-                        {isWaitlist ? "Yes, leave waitlist" : "Yes, cancel booking"}
-                    </Button>
-                </div>
-            </CustomerSheet>
         </div>
     );
 }

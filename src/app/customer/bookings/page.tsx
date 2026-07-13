@@ -4,15 +4,16 @@
 // Customer — Bookings list (`/customer/bookings`) — Figma 2134-28989 / 2175-30812
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Tab 3 of the bottom nav. Header = "Bookings" + filter, with Upcoming / Past
-// segmented tabs in the header subBar (sticky, frosts with the header). Each row
+// A level-2 page reached from Profile → Bookings (back button → Profile; no
+// bottom nav). Header = "Bookings" + filter, with Upcoming / Past segmented
+// tabs in the header subBar (sticky, frosts with the header). Each row
 // is the shared <BookingCard>; tapping opens the Booking Detail. The filter modal
 // (Class type · Instructor · Categories) narrows the active tab. Tab + filters
 // persist across detail round-trips via a module cache.
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
+import { ChevronLeft, FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
 import {
     applyBookingFilters,
     bookingFilterCount,
@@ -31,8 +32,6 @@ import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 import { useIsAuthenticated } from "@/lib/customer/auth";
-import { useAppStore } from "@/lib/store";
-import { branchTzLabel } from "@/lib/branch-time";
 
 function fmtShortDate(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -50,17 +49,6 @@ export default function BookingsPage() {
     // Booked appointments (UI-only store) show alongside class bookings: active
     // future ones under Upcoming, cancelled/past ones under Past.
     const apptBookings = useAppointmentBookings();
-    // Branch-name → short TZ label lookup (bookings/appts here carry
-    // `branchName` as a string, not `branchId`). Used to tag the location
-    // TZ label passed on its own line under the card's location (client Jul
-    // 2026) so a member with cross-city bookings never has to guess which
-    // zone a time is in. Keyed by branchName since the appointment-bookings
-    // store only carries the name.
-    const branches = useAppStore((s) => s.branches);
-    const branchTzByName = useMemo(
-        () => new Map(branches.map((b) => [b.name, branchTzLabel(b)])),
-        [branches],
-    );
     const apptSplit = useMemo(() => {
         // Date-based (like classes: today still counts as upcoming). Any non-cancelled
         // record — including legacy rows written before `status` existed — is bookable.
@@ -102,7 +90,9 @@ export default function BookingsPage() {
             applied.classType !== "Group" &&
             (applied.instructorIds.length === 0 ||
                 (a.instructorId != null && applied.instructorIds.includes(a.instructorId))) &&
-            (applied.categories.length === 0 || applied.categories.includes(a.category)),
+            (applied.categories.length === 0 || applied.categories.includes(a.category)) &&
+            (!applied.dateFrom || a.slotISO >= applied.dateFrom) &&
+            (!applied.dateTo || a.slotISO <= applied.dateTo),
     );
 
     // Merge appointments + class bookings into ONE list sorted by date/time —
@@ -118,7 +108,6 @@ export default function BookingsPage() {
                     date={fmtShortDate(a.slotISO)}
                     time={to12h(a.slotTime)}
                     location={a.branchName}
-                    tzLabel={branchTzByName.get(a.branchName)}
                     status={
                         a.status === "cancelled"
                             ? {
@@ -146,7 +135,6 @@ export default function BookingsPage() {
                     date={b.dateShort}
                     time={b.time}
                     location={b.location}
-                    tzLabel={branchTzByName.get(b.location)}
                     status={BOOKING_STATUS[b.viewStatus].card}
                     mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
                     image={b.coverImage}
@@ -199,7 +187,14 @@ export default function BookingsPage() {
                     </div>
                 }
             >
-                <div className="size-10 shrink-0" aria-hidden />
+                <button
+                    type="button"
+                    onClick={() => router.push("/customer/profile")}
+                    aria-label="Go back"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                >
+                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Bookings
                 </p>

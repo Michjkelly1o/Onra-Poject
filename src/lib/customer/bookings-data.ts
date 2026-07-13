@@ -132,6 +132,8 @@ export interface BookingListItemVM {
     bookingId: string;
     scheduleId: string;
     name: string;
+    /** Raw class date (ISO `YYYY-MM-DD`) — drives the filter's date range. */
+    dateISO: string;
     dateShort: string;
     time: string;
     location: string;
@@ -169,6 +171,7 @@ export function useMemberBookings(): { upcoming: BookingListItemVM[]; past: Book
                 bookingId: b.id,
                 scheduleId: sched.id,
                 name: sched.name,
+                dateISO: sched.dateISO,
                 dateShort: formatShortDate(sched.dateISO),
                 time: formatTime12(sched.startTime),
                 location: `${sched.room} - ${sched.location}`,
@@ -197,9 +200,13 @@ export interface BookingFilters {
     classType: "Group" | "Appointment" | null;
     instructorIds: string[];
     categories: string[];
+    /** Inclusive date range (ISO `YYYY-MM-DD`), either bound optional. Filters the
+     *  active tab (upcoming or past) by the booking's class / slot date. */
+    dateFrom: string | null;
+    dateTo: string | null;
 }
 
-export const EMPTY_BOOKING_FILTERS: BookingFilters = { classType: null, instructorIds: [], categories: [] };
+export const EMPTY_BOOKING_FILTERS: BookingFilters = { classType: null, instructorIds: [], categories: [], dateFrom: null, dateTo: null };
 
 /** Module cache so the Bookings tab + filter survive list → detail → back AND
  *  the "See all" instructor screen (mirrors `searchUi`): tab, applied filters,
@@ -212,7 +219,7 @@ export const bookingsUi: { tab: BookingTab; applied: BookingFilters; draft: Book
 };
 
 export function bookingFilterCount(f: BookingFilters): number {
-    return (f.classType ? 1 : 0) + f.instructorIds.length + f.categories.length;
+    return (f.classType ? 1 : 0) + f.instructorIds.length + f.categories.length + (f.dateFrom || f.dateTo ? 1 : 0);
 }
 
 export function applyBookingFilters(list: BookingListItemVM[], f: BookingFilters): BookingListItemVM[] {
@@ -222,7 +229,9 @@ export function applyBookingFilters(list: BookingListItemVM[], f: BookingFilters
     return list.filter(
         (b) =>
             (f.instructorIds.length === 0 || f.instructorIds.includes(b.instructorId)) &&
-            (f.categories.length === 0 || f.categories.includes(b.category)),
+            (f.categories.length === 0 || f.categories.includes(b.category)) &&
+            (!f.dateFrom || b.dateISO >= f.dateFrom) &&
+            (!f.dateTo || b.dateISO <= f.dateTo),
     );
 }
 

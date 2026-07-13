@@ -4,7 +4,7 @@
 // Edit name, photo (crop overlay), DOB (calendar sheet), gender (option sheet),
 // email, phone. Save writes `customers` via the store + toasts.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Camera01, ChevronDown, ChevronLeft } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
@@ -16,6 +16,19 @@ import { OptionSheet } from "@/components/customer/profile/OptionSheet";
 import { Button } from "@/components/ui/button";
 import { splitPhone } from "@/components/customers/CustomerFormPage";
 import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountrySheet";
+import { PickerSheet } from "@/components/customer/shell/PickerSheet";
+// Country / state / city taxonomy lives in the unified `locales.ts` — the
+// admin BranchFormPage and POS Add Customer flow both read from here, so
+// the customer profile picker mirrors them 1:1 (adaptive state label per
+// country, per-country city + postal hiding rules).
+import {
+    COUNTRIES,
+    countryByName,
+    stateLabelForCountry,
+    statesForCountry,
+    hasCityForCountry,
+    hasPostalCodeForCountry,
+} from "@/lib/data/locales";
 
 const FIELD =
     "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
@@ -40,11 +53,17 @@ export default function ProfileInformationPage() {
     const [email, setEmail] = useState(member?.email ?? "");
     const [phoneCountry, setPhoneCountry] = useState(initialPhone.country);
     const [phone, setPhone] = useState(initialPhone.number);
+    const [country, setCountry] = useState(member?.country ?? "");
+    const [stateRegion, setStateRegion] = useState(member?.state ?? "");
+    const [city, setCity] = useState(member?.city ?? "");
+    const [postalCode, setPostalCode] = useState(member?.postalCode ?? "");
+    const [streetAddress, setStreetAddress] = useState(member?.streetAddress ?? "");
     const [avatar, setAvatar] = useState(member?.imageUrl ?? "");
     const [dirty, setDirty] = useState(false);
 
     const [dobOpen, setDobOpen] = useState(false);
     const [genderOpen, setGenderOpen] = useState(false);
+    const [picker, setPicker] = useState<null | "country" | "state">(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
 
@@ -54,6 +73,37 @@ export default function ProfileInformationPage() {
             setDirty(true);
         };
     }
+
+    // Country-driven address behaviour — mirrors the admin BranchFormPage +
+    // POS Add Customer flow via the shared `locales.ts` config: the sub-
+    // division LABEL + option list + whether City/Postal rows show at all
+    // all derive from the picked country (UAE hides both; GCC hides Postal;
+    // US/CA/SA carry canonical state lists; every other country falls back
+    // to free-text with a generic "Region" label).
+    const stateLabel = stateLabelForCountry(country);
+    // Adapter — `statesForCountry` returns `State[]`; the picker sheet only
+    // needs the name strings, so we map once here and reuse below.
+    const stateOptions = country
+        ? statesForCountry(country).map((s) => s.name)
+        : undefined;
+    // Coarse "either field visible" flag — preserves the friend's original
+    // wrapper JSX (one conditional around both City + Postal). Countries
+    // without BOTH fields (UAE and GCC) collapse the wrapper entirely.
+    const showCityPostal = country
+        ? hasCityForCountry(country) && hasPostalCodeForCountry(country)
+        : true;
+
+    useEffect(() => {
+        // Drop a stale sub-division pick when the country swaps to a list without it.
+        if (stateRegion && stateOptions && !stateOptions.includes(stateRegion)) setStateRegion("");
+    }, [stateOptions, stateRegion]);
+    useEffect(() => {
+        // Clear City / Postal for countries that don't use them (UAE).
+        if (!showCityPostal) {
+            if (city) setCity("");
+            if (postalCode) setPostalCode("");
+        }
+    }, [showCityPostal, city, postalCode]);
 
     function save() {
         if (!member) return;
@@ -65,6 +115,11 @@ export default function ProfileInformationPage() {
             dateOfBirth: dob || undefined,
             gender: gender || undefined,
             imageUrl: avatar || undefined,
+            country: country || undefined,
+            state: stateRegion || undefined,
+            city: city || undefined,
+            postalCode: postalCode || undefined,
+            streetAddress: streetAddress || undefined,
         });
         showToast("Your profile is updated", "All changes has been saved.", "success");
         setDirty(false);
@@ -171,6 +226,80 @@ export default function ProfileInformationPage() {
                         />
                     </div>
                 </div>
+
+                {/* Address — country-driven (label / options / shown fields) from the
+                    shared admin `country-states` config, so it mirrors the admin form. */}
+                <div className="flex flex-col gap-1.5">
+                    <span className={LABEL}>Country</span>
+                    <button
+                        type="button"
+                        onClick={() => setPicker("country")}
+                        className={`${FIELD} flex items-center text-left`}
+                    >
+                        <span className={`flex-1 truncate ${country ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                            {country ? `${countryByName(country)?.flag ?? ""} ${country}` : "Select country"}
+                        </span>
+                        <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                    </button>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                    <span className={LABEL}>{stateLabel}</span>
+                    {stateOptions ? (
+                        <button
+                            type="button"
+                            onClick={() => setPicker("state")}
+                            className={`${FIELD} flex items-center text-left`}
+                        >
+                            <span className={`flex-1 truncate ${stateRegion ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                                {stateRegion || `Select ${stateLabel.toLowerCase()}`}
+                            </span>
+                            <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                        </button>
+                    ) : (
+                        <input
+                            value={stateRegion}
+                            onChange={(e) => touch(setStateRegion)(e.target.value)}
+                            placeholder={`Enter ${stateLabel.toLowerCase()}...`}
+                            className={FIELD}
+                        />
+                    )}
+                </div>
+
+                {showCityPostal && (
+                    <>
+                        <label className="flex flex-col gap-1.5">
+                            <span className={LABEL}>City</span>
+                            <input
+                                value={city}
+                                onChange={(e) => touch(setCity)(e.target.value)}
+                                placeholder="Enter city..."
+                                className={FIELD}
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1.5">
+                            <span className={LABEL}>Postal code</span>
+                            <input
+                                value={postalCode}
+                                onChange={(e) => touch(setPostalCode)(e.target.value.replace(/\D/g, ""))}
+                                placeholder="Enter postal code"
+                                inputMode="numeric"
+                                className={FIELD}
+                            />
+                        </label>
+                    </>
+                )}
+
+                <label className="flex flex-col gap-1.5">
+                    <span className={LABEL}>Street address</span>
+                    <textarea
+                        value={streetAddress}
+                        onChange={(e) => touch(setStreetAddress)(e.target.value)}
+                        rows={3}
+                        placeholder="Enter street address..."
+                        className={`${FIELD} resize-none`}
+                    />
+                </label>
             </div>
 
             <div
@@ -198,6 +327,25 @@ export default function ProfileInformationPage() {
                 value={gender}
                 flat
                 onConfirm={touch(setGender)}
+            />
+
+            <PickerSheet
+                open={picker === "country"}
+                onClose={() => setPicker(null)}
+                title="Country"
+                searchPlaceholder="Search country..."
+                options={COUNTRIES.map((c) => ({ value: c.name, label: c.name, flag: c.flag }))}
+                value={country || undefined}
+                onConfirm={(v) => touch(setCountry)(v)}
+            />
+            <PickerSheet
+                open={picker === "state"}
+                onClose={() => setPicker(null)}
+                title={stateLabel}
+                searchPlaceholder={`Search ${stateLabel.toLowerCase()}...`}
+                options={(stateOptions ?? []).map((st) => ({ value: st, label: st }))}
+                value={stateRegion || undefined}
+                onConfirm={(v) => touch(setStateRegion)(v)}
             />
 
             {/* Photo crop overlay */}

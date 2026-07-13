@@ -38,6 +38,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         pathname === "/customer/auth" ||
         pathname.startsWith("/customer/auth/") ||
         pathname === "/customer/select-branch" ||
+        pathname === "/customer/bookings" ||
         pathname.startsWith("/customer/instructors/") ||
         pathname.startsWith("/customer/classes/") ||
         pathname.startsWith("/customer/appointments/") ||

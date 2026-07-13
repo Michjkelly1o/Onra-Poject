@@ -1,6 +1,6 @@
 "use client";
 
-// Customer — Payment settings (`/customer/profile/payment-methods`). Saved cards
+// Customer — Payment methods (`/customer/profile/payment-methods`). Saved cards
 // (tap → edit), add-new (scan / manual), and Apple/Google Pay connect/disconnect.
 
 import { useState } from "react";
@@ -75,13 +75,13 @@ export default function PaymentSettingsPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.back()}
+                    onClick={() => router.push("/customer/profile")}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Payment settings</h1>
+                <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Payment methods</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
