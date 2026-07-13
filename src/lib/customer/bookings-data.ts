@@ -253,6 +253,9 @@ export interface BookingDetailVM {
     tab: BookingTab;
     /** Date/time line for the hero, e.g. "Sun, 20 Feb 2025 at 10:00 AM". */
     heroSubtitle: string;
+    /** Second hero line — the branch's timezone label, stacked under the
+     *  subtitle. Empty when the branch can't be resolved. */
+    heroSubtitleLine2: string;
     /** Reserved seat (chosen or auto-assigned). */
     spot: string;
 }
@@ -270,17 +273,17 @@ export function useBookingDetail(bookingId: string): BookingDetailVM | null {
         const sched = schedules.find((s) => s.id === booking.classScheduleId);
         if (!sched) return null;
         const { viewStatus, tab } = classifyBooking(booking, sched);
-        // Append the class branch's own TZ short label so a member with
-        // bookings across cities never has to guess which zone a time is in.
+        // The class branch's TZ label goes on its own line under the hero
+        // subtitle (client Jul 2026 — inline was too busy).
         const branch = branches.find((b) => b.id === sched.branchId);
-        const tz = branch ? branchTzLabel(branch) : "";
+        const heroSubtitleLine2 = branch ? branchTzLabel(branch) : "";
         const heroSubtitle = `${new Date(`${sched.dateISO}T00:00:00`).toLocaleString("en-US", {
             weekday: "short",
             day: "numeric",
             month: "short",
             year: "numeric",
-        })} at ${formatTime12(sched.startTime)}${tz ? ` · ${tz}` : ""}`;
-        return { booking, detail, viewStatus, tab, heroSubtitle, spot: deriveSpot(booking, sched) };
+        })} at ${formatTime12(sched.startTime)}`;
+        return { booking, detail, viewStatus, tab, heroSubtitle, heroSubtitleLine2, spot: deriveSpot(booking, sched) };
     }, [booking, detail, schedules, branches]);
 }
 

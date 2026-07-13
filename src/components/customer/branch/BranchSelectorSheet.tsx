@@ -39,12 +39,17 @@ function branchHoursToday(branchId: string): { isOpen: boolean; hoursLabel: stri
 function BranchRow({
     name,
     subtitle,
+    tzLabel,
     operational,
     selected,
     onClick,
 }: {
     name: string;
     subtitle: string;
+    /** Optional branch timezone label — rendered on its own line under the
+     *  address so a member picking between multi-city branches never has to
+     *  guess which zone a class time is in. */
+    tzLabel?: string;
     operational?: { isOpen: boolean; hoursLabel: string };
     selected: boolean;
     onClick: () => void;
@@ -65,6 +70,9 @@ function BranchRow({
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="text-sm font-medium leading-5 text-[#344054]">{name}</p>
                 <p className={`text-sm font-normal leading-5 text-[#667085] ${operational ? "truncate" : ""}`}>{subtitle}</p>
+                {tzLabel && (
+                    <p className="text-xs font-normal leading-4 text-[#98a2b3]">{tzLabel}</p>
+                )}
                 {operational && (
                     <p className="flex items-center gap-1 text-sm leading-5">
                         <span className="font-medium text-[#067647]">{operational.isOpen ? "Open" : "Closed"}</span>
@@ -135,14 +143,12 @@ export function BranchSelectorSheet({ open, onClose }: { open: boolean; onClose:
                     <BranchRow
                         key={b.id}
                         name={b.name}
-                        // Append the branch's TZ short label so a member
-                        // picking between branches in different cities can
-                        // see "Dubai" vs "Riyadh" at a glance without
-                        // having to guess from the address.
-                        subtitle={[
-                            [b.address, b.country].filter(Boolean).join(", "),
-                            branchTzLabel(b),
-                        ].filter(Boolean).join(" · ")}
+                        subtitle={[b.address, b.country].filter(Boolean).join(", ")}
+                        // Branch TZ on its own line under the address so a
+                        // member picking between branches in different cities
+                        // sees the zone clearly, not squeezed inline (client
+                        // Jul 2026).
+                        tzLabel={branchTzLabel(b)}
                         selected={selectedBranchId === b.id}
                         onClick={() => pick(b.id)}
                         operational={branchHoursToday(b.id)}

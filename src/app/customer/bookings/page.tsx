@@ -52,18 +52,15 @@ export default function BookingsPage() {
     const apptBookings = useAppointmentBookings();
     // Branch-name → short TZ label lookup (bookings/appts here carry
     // `branchName` as a string, not `branchId`). Used to tag the location
-    // sub-line with the branch's TZ so a member with bookings across cities
-    // never has to guess which zone a time is in.
+    // TZ label passed on its own line under the card's location (client Jul
+    // 2026) so a member with cross-city bookings never has to guess which
+    // zone a time is in. Keyed by branchName since the appointment-bookings
+    // store only carries the name.
     const branches = useAppStore((s) => s.branches);
     const branchTzByName = useMemo(
         () => new Map(branches.map((b) => [b.name, branchTzLabel(b)])),
         [branches],
     );
-    function withTz(location: string | undefined): string {
-        if (!location) return "";
-        const tz = branchTzByName.get(location);
-        return tz ? `${location} · ${tz}` : location;
-    }
     const apptSplit = useMemo(() => {
         // Date-based (like classes: today still counts as upcoming). Any non-cancelled
         // record — including legacy rows written before `status` existed — is bookable.
@@ -120,7 +117,8 @@ export default function BookingsPage() {
                     name={a.name}
                     date={fmtShortDate(a.slotISO)}
                     time={to12h(a.slotTime)}
-                    location={withTz(a.branchName)}
+                    location={a.branchName}
+                    tzLabel={branchTzByName.get(a.branchName)}
                     status={
                         a.status === "cancelled"
                             ? {
@@ -147,7 +145,8 @@ export default function BookingsPage() {
                     name={b.name}
                     date={b.dateShort}
                     time={b.time}
-                    location={withTz(b.location)}
+                    location={b.location}
+                    tzLabel={branchTzByName.get(b.location)}
                     status={BOOKING_STATUS[b.viewStatus].card}
                     mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
                     image={b.coverImage}

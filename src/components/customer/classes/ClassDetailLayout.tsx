@@ -40,6 +40,10 @@ export interface ClassDetailLayoutProps {
     detail: ClassDetailVM;
     /** Date/time line over the cover, e.g. "Sun, 20 Feb at 10:00 AM". */
     heroSubtitle: string;
+    /** Optional second line shown UNDER the subtitle — used for the branch
+     *  timezone label ("(UTC+04:00) Abu Dhabi") so it stacks below the
+     *  date/time instead of running inline with a "·" separator. */
+    heroSubtitleLine2?: string;
     /** Fully-rendered pill over the cover (state badge). */
     heroBadge?: ReactNode;
     /** Desaturate the cover (cancelled / no-show bookings). */
@@ -62,6 +66,7 @@ export interface ClassDetailLayoutProps {
 export function ClassDetailLayout({
     detail,
     heroSubtitle,
+    heroSubtitleLine2,
     heroBadge,
     mutedCover,
     detailsHeading,
@@ -116,6 +121,9 @@ export function ClassDetailLayout({
                     <div className="flex min-w-0 flex-col gap-1">
                         <p className="truncate text-xl font-semibold leading-[30px] text-white">{detail.name}</p>
                         <p className="text-sm font-normal leading-5 text-[#d0d5dd]">{heroSubtitle}</p>
+                        {heroSubtitleLine2 && (
+                            <p className="text-xs font-normal leading-4 text-[#d0d5dd]/80">{heroSubtitleLine2}</p>
+                        )}
                     </div>
                     {heroBadge}
                 </div>

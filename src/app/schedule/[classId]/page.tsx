@@ -1639,12 +1639,10 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Date &amp; time</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
-                                {ci.date} • {ci.displayTime}
-                                {branchTzShort && (
-                                    <span className="text-[13px] font-normal text-[#667085]"> · {branchTzShort}</span>
-                                )}
-                            </p>
+                            <p className="text-[16px] font-medium text-[#101828]">{ci.date} • {ci.displayTime}</p>
+                            {branchTzShort && (
+                                <p className="text-[13px] font-normal text-[#667085]">{branchTzShort}</p>
+                            )}
                         </div>
                         {/* Class type row removed — class schedules always represent
                             Group classes; Private 1-on-1 lives in the Services module. */}

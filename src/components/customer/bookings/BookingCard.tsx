@@ -42,6 +42,10 @@ export interface BookingCardProps {
     duration?: string;
     /** "Mat Studio - Forma Studio (South)". */
     location: string;
+    /** Optional branch timezone label — rendered on its own line under the
+     *  location so members with cross-city bookings never have to guess
+     *  which zone a time is in. */
+    tzLabel?: string;
     status: BookingStatus;
     /** Cover image URL; falls back to `imageColor` when absent. */
     image?: string;
@@ -52,7 +56,7 @@ export interface BookingCardProps {
     onClick?: () => void;
 }
 
-export function BookingCard({ name, date, time, location, status, image, imageColor, mutedCover, onClick }: BookingCardProps) {
+export function BookingCard({ name, date, time, location, tzLabel, status, image, imageColor, mutedCover, onClick }: BookingCardProps) {
     const tone = TONE[status.tone];
     const Icon = status.icon ?? tone.Icon;
     const color = status.color ?? tone.color;
@@ -92,6 +96,9 @@ export function BookingCard({ name, date, time, location, status, image, imageCo
                         <div className="flex w-full flex-col">
                             <p className="whitespace-nowrap text-base font-semibold leading-6 text-[#101828]">{name}</p>
                             <p className="w-full truncate text-xs font-normal leading-[18px] text-[#475467]">{location}</p>
+                            {tzLabel && (
+                                <p className="w-full truncate text-[11px] font-normal leading-4 text-[#98a2b3]">{tzLabel}</p>
+                            )}
                         </div>
 
                         {/* Status */}

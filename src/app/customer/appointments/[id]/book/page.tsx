@@ -74,12 +74,10 @@ export default function AppointmentReviewPage() {
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="truncate text-base font-semibold leading-6 text-[#101828]">{appointment.name}</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">
-                        {fullDate} at {to12h(appointmentDraft.slotTime)}
-                        {branch && (
-                            <span className="text-[#98a2b3]"> · {branchTzLabel(branch)}</span>
-                        )}
-                    </p>
+                    <p className="text-sm font-normal leading-5 text-[#475467]">{fullDate} at {to12h(appointmentDraft.slotTime)}</p>
+                    {branch && (
+                        <p className="text-xs font-normal leading-4 text-[#98a2b3]">{branchTzLabel(branch)}</p>
+                    )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[#475467]">
                             <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />

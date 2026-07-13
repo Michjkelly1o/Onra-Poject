@@ -673,12 +673,10 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                             className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="font-medium text-[#101828]">{c.date}</div>
-                                <div className="text-[13px] text-[#667085] mt-0.5">
-                                    {c.displayTime}
-                                    {branchTzById.get(c.branchId) && (
-                                        <span className="text-[12px]"> · {branchTzById.get(c.branchId)}</span>
-                                    )}
-                                </div>
+                                <div className="text-[13px] text-[#667085] mt-0.5">{c.displayTime}</div>
+                                {branchTzById.get(c.branchId) && (
+                                    <div className="text-[12px] text-[#667085] mt-0.5">{branchTzById.get(c.branchId)}</div>
+                                )}
                             </td>
                             <td className={TD}>
                                 <div className="flex items-center gap-3">

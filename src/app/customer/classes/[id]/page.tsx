@@ -77,7 +77,8 @@ export default function ClassDetailPage() {
     return (
         <ClassDetailLayout
             detail={detail}
-            heroSubtitle={`${dateLabel} at ${to12h(detail.startTime)}${branchTz ? ` · ${branchTz}` : ""}`}
+            heroSubtitle={`${dateLabel} at ${to12h(detail.startTime)}`}
+            heroSubtitleLine2={branchTz || undefined}
             heroBadge={
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${badge.cls}`}>
                     {badge.label}

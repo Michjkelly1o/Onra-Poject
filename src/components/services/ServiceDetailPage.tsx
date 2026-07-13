@@ -207,12 +207,10 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                         </div>
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
-                                {service.branchName || "—"}
-                                {branchTz && (
-                                    <span className="text-[13px] font-normal text-[#667085]"> · {branchTz}</span>
-                                )}
-                            </p>
+                            <p className="text-[16px] font-medium text-[#101828]">{service.branchName || "—"}</p>
+                            {branchTz && (
+                                <p className="text-[13px] font-normal text-[#667085]">{branchTz}</p>
+                            )}
                         </div>
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Recovery condition</p>

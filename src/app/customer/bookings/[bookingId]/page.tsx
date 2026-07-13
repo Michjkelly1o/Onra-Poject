@@ -51,7 +51,7 @@ export default function BookingDetailPage() {
         );
     }
 
-    const { detail, viewStatus, tab, heroSubtitle, spot, booking } = vm;
+    const { detail, viewStatus, tab, heroSubtitle, heroSubtitleLine2, spot, booking } = vm;
     const p = BOOKING_STATUS[viewStatus];
     const HeroIcon = p.heroIcon;
     const isAttended = viewStatus === "attended";
@@ -104,6 +104,7 @@ export default function BookingDetailPage() {
         <ClassDetailLayout
             detail={detail}
             heroSubtitle={heroSubtitle}
+            heroSubtitleLine2={heroSubtitleLine2 || undefined}
             mutedCover={p.mutedCover}
             onBack={() => router.push("/customer/bookings")}
             heroBadge={

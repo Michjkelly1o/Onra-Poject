@@ -85,8 +85,8 @@ export default function AppointmentBookingDetailPage() {
     const isUpcoming = !isCancelled && startMs > Date.now();
 
     // Resolve the appointment's branch (by name — the UI-only booking store
-    // carries branchName only) → its TZ short label. Appended to the hero
-    // subtitle so a member with bookings across cities never has to guess.
+    // carries branchName only) → its TZ label. Stacked on its own line under
+    // the subtitle so members with cross-city bookings never have to guess.
     const branches = useAppStore(s => s.branches);
     const branch = branches.find(b => b.name === booking.branchName);
     const branchTz = branch ? branchTzLabel(branch) : "";
@@ -95,7 +95,7 @@ export default function AppointmentBookingDetailPage() {
         weekday: "short",
         day: "numeric",
         month: "short",
-    })} at ${to12h(booking.slotTime)}${branchTz ? ` · ${branchTz}` : ""}`;
+    })} at ${to12h(booking.slotTime)}`;
 
     // Map the appointment booking onto the class detail view-model. Fields the
     // appointment grid/location don't use are given safe placeholders; equipment
@@ -278,6 +278,7 @@ export default function AppointmentBookingDetailPage() {
         <ClassDetailLayout
             detail={detail}
             heroSubtitle={heroSubtitle}
+            heroSubtitleLine2={branchTz || undefined}
             mutedCover={isCancelled}
             detailsHeading="Appointment details"
             infoGrid={infoGrid}

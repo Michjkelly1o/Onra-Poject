@@ -468,12 +468,10 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Date &amp; time</p>
                             <p className="text-[16px] font-medium text-[#101828]">{appointment.date}</p>
-                            <p className="text-[14px] text-[#475467]">
-                                {appointment.displayTime}
-                                {branchTzShort && (
-                                    <span className="text-[13px] text-[#667085]"> · {branchTzShort}</span>
-                                )}
-                            </p>
+                            <p className="text-[14px] text-[#475467]">{appointment.displayTime}</p>
+                            {branchTzShort && (
+                                <p className="text-[13px] text-[#667085]">{branchTzShort}</p>
+                            )}
                         </div>
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Service category</p>
