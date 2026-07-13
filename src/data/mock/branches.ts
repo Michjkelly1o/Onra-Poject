@@ -44,6 +44,7 @@ export const branches: Branch[] = [
         phone: "+971 55 200 2001",
         city: "Dubai",
         country: "United Arab Emirates",
+        timezone: "Asia/Dubai",
     },
     {
         id: "branch_forma_east",
@@ -56,6 +57,7 @@ export const branches: Branch[] = [
         phone: "+971 55 200 2002",
         city: "Dubai",
         country: "United Arab Emirates",
+        timezone: "Asia/Dubai",
     },
     {
         id: "branch_forma_west",
@@ -68,6 +70,7 @@ export const branches: Branch[] = [
         phone: "+971 55 200 2003",
         city: "Dubai",
         country: "United Arab Emirates",
+        timezone: "Asia/Dubai",
     },
     // Forma Spa — sole seeded Spa branch. Hosts every service with
     // `is_recovery=true`. Spa-branch admins/operators/front-desk staff
@@ -85,5 +88,6 @@ export const branches: Branch[] = [
         phone: "+971 55 200 2010",
         city: "Dubai",
         country: "United Arab Emirates",
+        timezone: "Asia/Dubai",
     },
 ];

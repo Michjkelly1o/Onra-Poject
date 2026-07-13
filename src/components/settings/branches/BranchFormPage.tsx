@@ -27,7 +27,8 @@ import {
     FormHeader, StepSidebar, SectionHeader, Field, TextInput, Textarea,
     LogoPreview,
 } from "@/components/settings/business/StudioProfileFormPage";
-import { COUNTRIES, CITIES_BY_COUNTRY } from "@/lib/data/locales";
+import { COUNTRIES, CITIES_BY_COUNTRY, resolveBranchTimezone, timezoneLabel } from "@/lib/data/locales";
+import { Globe01 } from "@untitledui/icons";
 
 const RETURN_ROUTE = "/admin/settings/business-locations";
 
@@ -113,6 +114,14 @@ export function BranchFormPage({ mode, branchId }: {
         const code = COUNTRIES.find(c => c.name === country)?.code;
         return code ? (CITIES_BY_COUNTRY[code] ?? []) : [];
     }, [country]);
+    // Timezone is DERIVED, never manually picked — it flows from
+    // country + city on every change and stays in lock-step with the
+    // address block. Shown to the admin as a read-only line below City
+    // so they can see what the system inferred (client Jul 2026).
+    const derivedTimezone = useMemo(
+        () => resolveBranchTimezone(country, city || undefined),
+        [country, city],
+    );
     const [workingHours, setWorkingHours] = useState<WorkingHourState[]>(
         existing ? workingHoursFromLive(existing.id, liveHours) : defaultWorkingHours(),
     );
@@ -142,6 +151,10 @@ export function BranchFormPage({ mode, branchId }: {
             address: address.trim(),
             city: city.trim() || undefined,
             country,
+            // Re-derive on save so the stored value can never drift from
+            // the country/city the admin just picked, even if the derived
+            // state was memoized from a stale render.
+            timezone: resolveBranchTimezone(country, city.trim() || undefined),
             image_url: logoDataUrl,
         };
         const newBranchId = mode === "create"
@@ -333,6 +346,20 @@ export function BranchFormPage({ mode, branchId }: {
                                             width="w-full"
                                         />
                                     </Field>
+                                </div>
+
+                                {/* Detected timezone — read-only. Auto-derives from
+                                    country + city (see resolveBranchTimezone). Never
+                                    manually edited per client Jul 2026. Same
+                                    styling weight as an Info-tile so it reads as
+                                    "system computed" rather than a form field. */}
+                                <div className="flex items-start gap-3 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] px-4 py-3">
+                                    <Globe01 className="w-4 h-4 text-[#667085] mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                        <p className="text-[13px] font-medium text-[#475467] leading-[18px]">Detected timezone</p>
+                                        <p className="text-[14px] font-semibold text-[#101828] leading-5 truncate">{timezoneLabel(derivedTimezone)}</p>
+                                        <p className="text-[12px] text-[#667085] leading-4">Auto-derived from country and city. Update the address to change it.</p>
+                                    </div>
                                 </div>
 
                                 <SectionHeader title="Working hours" small />

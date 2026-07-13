@@ -34,8 +34,9 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, Trash01, SlashCircle01, RefreshCcw01, Plus,
-    Check, Building01, LayoutGrid01, Eye, Pencil01, DotsVertical,
+    Check, Building01, LayoutGrid01, Eye, Pencil01, DotsVertical, Globe01,
 } from "@untitledui/icons";
+import { timezoneLabel, resolveBranchTimezone } from "@/lib/data/locales";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
@@ -341,6 +342,19 @@ function DetailsTab({
                         />
                     </div>
                     <DetailField label="Address" value={branch.address ?? "—"} />
+                    {/* Timezone — auto-derived from country + city (never
+                        manually edited). Read the persisted value first;
+                        fall back to a re-derivation for legacy rows that
+                        pre-date the field. */}
+                    <DetailField
+                        label="Timezone"
+                        value={
+                            <span className="flex items-center gap-2 text-[16px] font-medium text-[#101828] leading-6">
+                                <Globe01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.city))}
+                            </span>
+                        }
+                    />
                 </div>
             </section>
 

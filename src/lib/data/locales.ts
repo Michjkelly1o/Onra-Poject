@@ -257,3 +257,77 @@ export function countryByName(name: string): Country | undefined {
 export function timezoneLabel(iana: string): string {
     return TIMEZONES.find(t => t.iana === iana)?.label ?? iana;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Branch timezone — auto-derivation from country + city
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Countries that span multiple IANA zones need a per-city override map;
+// every other country falls back to `Country.defaultTimezone`. Keyed by
+// country CODE (e.g. "US") → then by city name as it appears in
+// `CITIES_BY_COUNTRY`. Only the multi-zone countries need entries —
+// single-zone countries like UAE / Saudi Arabia are covered by the fallback
+// alone. Adding a new city-level override: extend both this map AND the
+// matching row in CITIES_BY_COUNTRY so the picker still surfaces the city.
+
+export const CITY_TIMEZONES: Record<string, Record<string, string>> = {
+    US: {
+        "New York":       "America/New_York",
+        "Boston":         "America/New_York",
+        "Miami":          "America/New_York",
+        "Chicago":        "America/Chicago",
+        "Dallas":         "America/Chicago",
+        "Houston":        "America/Chicago",
+        "Denver":         "America/Denver",
+        "Phoenix":        "America/Phoenix",
+        "Los Angeles":    "America/Los_Angeles",
+        "San Francisco":  "America/Los_Angeles",
+        "Seattle":        "America/Los_Angeles",
+    },
+    CA: {
+        "Toronto":        "America/Toronto",
+        "Montreal":       "America/Toronto",
+        "Ottawa":         "America/Toronto",
+        "Winnipeg":       "America/Winnipeg",
+        "Calgary":        "America/Edmonton",
+        "Edmonton":       "America/Edmonton",
+        "Vancouver":      "America/Vancouver",
+    },
+    AU: {
+        "Sydney":         "Australia/Sydney",
+        "Melbourne":      "Australia/Melbourne",
+        "Brisbane":       "Australia/Brisbane",
+        "Adelaide":       "Australia/Adelaide",
+        "Perth":          "Australia/Perth",
+        "Darwin":         "Australia/Darwin",
+        "Hobart":         "Australia/Hobart",
+    },
+    RU: {
+        "Moscow":         "Europe/Moscow",
+        "Saint Petersburg": "Europe/Moscow",
+        "Kazan":          "Europe/Moscow",
+        "Yekaterinburg":  "Asia/Yekaterinburg",
+        "Novosibirsk":    "Asia/Novosibirsk",
+        "Vladivostok":    "Asia/Vladivostok",
+    },
+    BR: {
+        "São Paulo":      "America/Sao_Paulo",
+        "Rio de Janeiro": "America/Sao_Paulo",
+        "Brasília":       "America/Sao_Paulo",
+        "Manaus":         "America/Manaus",
+    },
+};
+
+/** Resolve a branch's IANA timezone from its country + city. City-level
+ *  overrides win (for multi-zone countries); otherwise the country's
+ *  `defaultTimezone` is returned. If the country isn't in COUNTRIES,
+ *  falls back to "Asia/Dubai" so the resolver never returns undefined. */
+export function resolveBranchTimezone(country?: string, city?: string): string {
+    const c = country ? countryByName(country) : undefined;
+    if (!c) return "Asia/Dubai";
+    if (city) {
+        const cityMap = CITY_TIMEZONES[c.code];
+        if (cityMap && cityMap[city]) return cityMap[city];
+    }
+    return c.defaultTimezone;
+}

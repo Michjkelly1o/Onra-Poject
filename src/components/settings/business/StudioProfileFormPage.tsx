@@ -23,7 +23,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { XClose, Image01, UploadCloud02, Globe01, MarkerPin01, Coins01, Phone } from "@untitledui/icons";
+import { XClose, Image01, UploadCloud02, MarkerPin01, Coins01, Phone } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
@@ -35,7 +35,7 @@ import {
     type PhoneCountry,
 } from "@/components/customers/CustomerFormPage";
 import {
-    COUNTRIES, CURRENCIES, TIMEZONES, countryByName, timezoneLabel,
+    COUNTRIES, CURRENCIES, countryByName,
 } from "@/lib/data/locales";
 
 const RETURN_ROUTE = "/admin/settings/business-locations";
@@ -213,18 +213,14 @@ export function StudioProfileFormPage() {
                                     </Field>
                                 </div>
 
-                                <Field label="Time zone">
-                                    <SelectInput
-                                        value={timezone}
-                                        onChange={setTimezone}
-                                        placeholder="Select timezone"
-                                        options={TIMEZONES.map(t => ({
-                                            value: t.iana,
-                                            label: t.label,
-                                        }))}
-                                        width="w-full"
-                                    />
-                                </Field>
+                                {/* Studio-wide "Time zone" picker removed per
+                                    client Jul 2026 — each branch now owns its
+                                    own timezone (auto-derived from address
+                                    on the Branch form). The studio-level
+                                    field is still written on save for legacy
+                                    consumers (customer app default etc.), but
+                                    it's no longer editable here.
+                                    See src/data/mock/_types.ts → Branch.timezone. */}
 
                                 <SectionHeader title="Primary contact" small />
 
@@ -276,7 +272,6 @@ export function StudioProfileFormPage() {
                                     <div className="flex flex-col gap-1.5 mt-1">
                                         <PreviewLine icon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />} text={country} />
                                         <PreviewLine icon={<Coins01 className="w-4 h-4 text-[#667085]" />}     text={currency} />
-                                        <PreviewLine icon={<Globe01 className="w-4 h-4 text-[#667085]" />}    text={timezoneLabel(timezone)} />
                                         <PreviewLine icon={<Phone className="w-4 h-4 text-[#667085]" />}     text={phoneNumber ? `${phoneCountry.dial} ${phoneNumber}` : "Phone number"} />
                                     </div>
                                 </div>

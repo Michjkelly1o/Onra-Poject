@@ -54,11 +54,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { timezoneLabel } from "@/lib/data/locales";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { timezoneLabel, resolveBranchTimezone } from "@/lib/data/locales";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -281,7 +281,6 @@ export default function BusinessLocationsPage() {
                 tradeLicenseNumber={businessProfile.tradeLicenseNumber}
                 country={businessProfile.country}
                 currency={businessProfile.currency}
-                timezone={businessProfile.timezone}
                 onEdit={editStudio}
             />
 
@@ -444,14 +443,13 @@ export default function BusinessLocationsPage() {
 
 // ─── Subcomponents ──────────────────────────────────────────────────────────
 
-function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, country, currency, timezone, onEdit }: {
+function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, country, currency, onEdit }: {
     name: string;
     logoUrl?: string;
     legalBusinessName: string;
     tradeLicenseNumber: string;
     country: string;
     currency: string;
-    timezone: string;
     onEdit: () => void;
 }) {
     return (
@@ -461,18 +459,15 @@ function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, coun
                 <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
                     {name}
                 </p>
-                {/* Single 3-col grid so Legal business name lines up
-                    directly under Country and Trade license number under
-                    Currency. The third cell on row 2 is intentionally
-                    empty (Time zone has no paired field). Matches the
-                    user's reference image. */}
-                <div className="grid grid-cols-3 gap-x-3 gap-y-3 w-full">
+                {/* Studio-wide "Time zone" tile removed per client Jul 2026 —
+                    each branch now owns its own timezone (auto-derived from
+                    address). Legal business name + Trade license line up
+                    under Country + Currency in the same 2-col grid. */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-3 w-full">
                     <InfoTile label="Country"   value={country || "—"} />
                     <InfoTile label="Currency"  value={currency || "—"} />
-                    <InfoTile label="Time zone" value={timezoneLabel(timezone) || timezone || "—"} />
                     <InfoTile label="Legal business name"  value={legalBusinessName || "—"} />
                     <InfoTile label="Trade license number" value={tradeLicenseNumber || "—"} />
-                    <div />
                 </div>
             </div>
             <Button
@@ -734,10 +729,16 @@ function BranchRow({
                     {primaryHoursDisplay(hours)}
                 </p>
             </div>
-            {/* Col 4 — Address */}
-            <div className="px-6">
+            {/* Col 4 — Address + timezone. Branch owns its own IANA zone
+                (auto-derived from country + city) — surfaced here so
+                multi-timezone studios can see "Riyadh vs Dubai" at a
+                glance without opening each branch's detail page. */}
+            <div className="px-6 flex flex-col gap-0.5">
                 <p className="text-[14px] text-[#101828] leading-5 line-clamp-2">
                     {branch.address ?? "—"}
+                </p>
+                <p className="text-[12px] text-[#667085] leading-4 truncate">
+                    {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.city))}
                 </p>
             </div>
             {/* Col 5 — Status */}

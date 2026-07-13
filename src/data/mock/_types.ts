@@ -61,12 +61,19 @@ export interface Branch {
      *      (Spa-branch admins can only author recovery services). */
     kind: "club" | "spa";
     address?: string;
-    // +later: phone, timezone, opening_hours, logo_url
+    // +later: opening_hours, logo_url
     /** Optional branch-level contact info — populated by the Branch form. */
     phone?: string;
     email?: string;
     city?: string;
     country?: string;
+    /** IANA timezone (e.g. "Asia/Dubai") — auto-derived from country + city
+     *  by `resolveBranchTimezone` in `src/lib/data/locales.ts`. Never edited
+     *  directly; the Branch form re-derives on every country/city change,
+     *  keeping this field in lock-step with the address. Every time display
+     *  scoped to a branch (schedule, class detail, dashboard) reads this
+     *  instead of the studio-wide default. */
+    timezone?: string;
     image_url?: string;
 }
 

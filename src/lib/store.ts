@@ -7831,7 +7831,21 @@ export const useAppStore = create<AppState>()(persist(
         //   surfaces only Referral rewards (credits) and POS spends
         //   (debits). Persist bumped so old localStorage payloads drop the
         //   phantom row.
-        version: 50,
+        //
+        // v51: Per-branch timezone (client Jul 2026).
+        //   • Branch gains an optional `timezone: string` (IANA) — auto-
+        //     derived from country + city via
+        //     `resolveBranchTimezone` in src/lib/data/locales.ts. Never
+        //     manually edited.
+        //   • Studio-wide `businessProfile.timezone` is deprecated as
+        //     admin-facing UI (dropdown + landing card tile removed);
+        //     the field stays on the model as a fallback for legacy
+        //     reads (customer app default, etc.). Every future
+        //     branch-scoped time display should prefer branches[i].timezone.
+        //   • Seed: existing 4 branches carry Asia/Dubai (matches their
+        //     Dubai addresses); creating a new branch triggers
+        //     re-derivation.
+        version: 51,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
