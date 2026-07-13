@@ -18,7 +18,7 @@ import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context"
 import { DEMO_TODAY_ISO } from "@/lib/customer/home-data";
 import { business_hours } from "@/data/mock";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 
 const TODAY_DOW = new Date(`${DEMO_TODAY_ISO}T00:00:00Z`).getUTCDay();
 
@@ -141,7 +141,7 @@ export function BranchSelectorSheet({ open, onClose }: { open: boolean; onClose:
                         // having to guess from the address.
                         subtitle={[
                             [b.address, b.country].filter(Boolean).join(", "),
-                            branchTzShortLabel(b),
+                            branchTzLabel(b),
                         ].filter(Boolean).join(" · ")}
                         selected={selectedBranchId === b.id}
                         onClick={() => pick(b.id)}

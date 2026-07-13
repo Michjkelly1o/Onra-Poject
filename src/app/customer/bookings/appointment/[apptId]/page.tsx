@@ -16,7 +16,7 @@ import { RefreshCcw01, CheckCircle, ChevronLeft, Clock, SlashCircle01, Tag01, Us
 import { to12h } from "@/lib/customer/dates";
 import { useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
 import { useAppStore } from "@/lib/store";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
@@ -89,13 +89,13 @@ export default function AppointmentBookingDetailPage() {
     // subtitle so a member with bookings across cities never has to guess.
     const branches = useAppStore(s => s.branches);
     const branch = branches.find(b => b.name === booking.branchName);
-    const branchTz = branch ? branchTzShortLabel(branch) : "";
+    const branchTz = branch ? branchTzLabel(branch) : "";
 
     const heroSubtitle = `${new Date(`${booking.slotISO}T00:00:00`).toLocaleDateString("en-GB", {
         weekday: "short",
         day: "numeric",
         month: "short",
-    })} at ${to12h(booking.slotTime)}${branchTz ? ` · ${branchTz} time` : ""}`;
+    })} at ${to12h(booking.slotTime)}${branchTz ? ` · ${branchTz}` : ""}`;
 
     // Map the appointment booking onto the class detail view-model. Fields the
     // appointment grid/location don't use are given safe placeholders; equipment

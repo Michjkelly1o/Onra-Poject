@@ -10,12 +10,13 @@
 // to look the branch up itself.
 //
 // Two flavours:
-//   • formatUtcInBranchTz  — takes a UTC ISO ("2026-05-15T09:00:00Z") and
-//                            formats it in the branch's TZ. Use for stored
-//                            timestamps (transactions, bookings, ratings).
-//   • branchTzTag / branchTzShortLabel — return the human labels used in
-//                            the small "· Asia/Dubai" / "(UTC+04:00)" tags
-//                            that we append next to time strings.
+//   • formatUtcInBranchTz — takes a UTC ISO ("2026-05-15T09:00:00Z") and
+//                           formats it in the branch's TZ. Use for stored
+//                           timestamps (transactions, bookings, ratings).
+//   • branchTzLabel      — returns "(UTC+04:00) Abu Dhabi" — the canonical
+//                           label appended to every time display. City-only
+//                           was tested and dropped (non-technical users
+//                           didn't know which city meant which offset).
 //
 // Wall-clock times (class start_time = "09:00") are ALREADY branch-local by
 // construction — no conversion needed, just append the label if you want
@@ -32,20 +33,13 @@ export function branchTimezone(branch: Pick<Branch, "timezone" | "country" | "ci
     return branch.timezone ?? resolveBranchTimezone(branch.country, branch.city);
 }
 
-/** Long label — e.g. "(UTC+04:00) Abu Dhabi". Same style used inside the
- *  Branch detail Timezone row and the Business & locations list sub-line
- *  (so every surface reads consistently). */
+/** Long label — e.g. "(UTC+04:00) Abu Dhabi". Client Jul 2026: this is the
+ *  canonical form for every consumption surface (schedule row, class detail,
+ *  customer bookings, reports Location column, etc.) — city-only was
+ *  shorter but non-technical users didn't know which city meant which zone.
+ *  A short/city variant used to exist here; consolidated into this one. */
 export function branchTzLabel(branch: Pick<Branch, "timezone" | "country" | "city"> | null | undefined): string {
     return timezoneLabel(branchTimezone(branch));
-}
-
-/** Short label — the trailing part of an IANA zone id, e.g.
- *  "Dubai" for "Asia/Dubai", "New York" for "America/New_York".
- *  Used for compact tags next to a time string. */
-export function branchTzShortLabel(branch: Pick<Branch, "timezone" | "country" | "city"> | null | undefined): string {
-    const iana = branchTimezone(branch);
-    const last = iana.split("/").pop() ?? iana;
-    return last.replace(/_/g, " ");
 }
 
 /** Format a UTC ISO timestamp (e.g. "2026-05-15T09:00:00Z") in a specific

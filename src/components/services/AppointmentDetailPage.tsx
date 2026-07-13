@@ -37,7 +37,7 @@ import {
     FilterLines,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
@@ -434,7 +434,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
     // Resolve the appointment's branch so we can tag the wall-clock time
     // with the branch's own TZ. Same pattern as the class detail page.
     const branch = useAppStore(s => s.branches).find(b => b.id === appointment.branchId);
-    const branchTzShort = branch ? branchTzShortLabel(branch) : undefined;
+    const branchTzShort = branch ? branchTzLabel(branch) : undefined;
 
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
@@ -471,7 +471,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                             <p className="text-[14px] text-[#475467]">
                                 {appointment.displayTime}
                                 {branchTzShort && (
-                                    <span className="text-[13px] text-[#667085]"> · {branchTzShort} time</span>
+                                    <span className="text-[13px] text-[#667085]"> · {branchTzShort}</span>
                                 )}
                             </p>
                         </div>

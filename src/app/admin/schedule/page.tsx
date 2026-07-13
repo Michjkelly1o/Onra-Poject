@@ -28,7 +28,7 @@ import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -1413,7 +1413,7 @@ function SchedulePage() {
     // Short-TZ lookup for the list-view row time — appended so cross-branch
     // Owner views ("Riyadh 9:00 · Dubai 9:00") never look ambiguous.
     const branchTzById = useMemo(
-        () => new Map(branches.map(b => [b.id, branchTzShortLabel(b)])),
+        () => new Map(branches.map(b => [b.id, branchTzLabel(b)])),
         [branches],
     );
     const [activeTab, setActiveTab] = useState<ViewTab>("list");

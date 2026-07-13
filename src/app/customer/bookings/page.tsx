@@ -32,7 +32,7 @@ import { REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 import { useIsAuthenticated } from "@/lib/customer/auth";
 import { useAppStore } from "@/lib/store";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 
 function fmtShortDate(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -56,7 +56,7 @@ export default function BookingsPage() {
     // never has to guess which zone a time is in.
     const branches = useAppStore((s) => s.branches);
     const branchTzByName = useMemo(
-        () => new Map(branches.map((b) => [b.name, branchTzShortLabel(b)])),
+        () => new Map(branches.map((b) => [b.name, branchTzLabel(b)])),
         [branches],
     );
     function withTz(location: string | undefined): string {

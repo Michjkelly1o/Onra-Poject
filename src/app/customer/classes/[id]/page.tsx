@@ -14,7 +14,7 @@ import { useAppStore } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { to12h } from "@/lib/customer/dates";
 import { useClassDetail } from "@/lib/customer/search-data";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export default function ClassDetailPage() {
     // Resolve the class's branch → its short TZ label so remote members
     // know the local zone before they book (client Jul 2026).
     const branch = useAppStore(s => s.branches).find(b => b.id === detail?.branchId);
-    const branchTz = branch ? branchTzShortLabel(branch) : "";
+    const branchTz = branch ? branchTzLabel(branch) : "";
 
     if (!detail) {
         return (
@@ -77,7 +77,7 @@ export default function ClassDetailPage() {
     return (
         <ClassDetailLayout
             detail={detail}
-            heroSubtitle={`${dateLabel} at ${to12h(detail.startTime)}${branchTz ? ` · ${branchTz} time` : ""}`}
+            heroSubtitle={`${dateLabel} at ${to12h(detail.startTime)}${branchTz ? ` · ${branchTz}` : ""}`}
             heroBadge={
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${badge.cls}`}>
                     {badge.label}

@@ -21,7 +21,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
 import { selectTransactionLedger } from "@/lib/reports/selectors";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 
 interface RevenuePerClassRow {
     [k: string]: unknown;
@@ -72,7 +72,7 @@ export default function RevenuePerClassReportPage() {
         const scheduleById = new Map(classSchedules.map(s => [s.id, s]));
         // Location cell reads "Forma South · Dubai" so multi-timezone
         // studios can tell rows apart at a glance in the Excel export.
-        const branchName = new Map(branches.map(b => [b.id, `${b.name} · ${branchTzShortLabel(b)}`]));
+        const branchName = new Map(branches.map(b => [b.id, `${b.name} · ${branchTzLabel(b)}`]));
 
         // Count sessions run per (branch × class × instructor).
         for (const s of classSchedules) {

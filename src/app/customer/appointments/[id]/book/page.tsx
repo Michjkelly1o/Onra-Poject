@@ -13,7 +13,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Clock, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { to12h } from "@/lib/customer/dates";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 import { appointmentDraft } from "@/lib/customer/booking-flow";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { CheckoutCart } from "@/components/customer/checkout/CheckoutCart";
@@ -77,7 +77,7 @@ export default function AppointmentReviewPage() {
                     <p className="text-sm font-normal leading-5 text-[#475467]">
                         {fullDate} at {to12h(appointmentDraft.slotTime)}
                         {branch && (
-                            <span className="text-[#98a2b3]"> · {branchTzShortLabel(branch)} time</span>
+                            <span className="text-[#98a2b3]"> · {branchTzLabel(branch)}</span>
                         )}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

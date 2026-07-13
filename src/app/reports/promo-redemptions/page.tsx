@@ -14,7 +14,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
 import { selectTransactionLedger } from "@/lib/reports/selectors";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 
 interface PromoRedemptionRow extends Record<string, unknown> {
     promoCode:        string;
@@ -112,7 +112,7 @@ export default function PromoRedemptionsReportPage() {
                     branchId: branch.id,
                     // Location cell reads "Forma South · Dubai" so
                     // multi-timezone studios can tell rows apart at a glance.
-                    location: `${branch.name} · ${branchTzShortLabel(branch)}`,
+                    location: `${branch.name} · ${branchTzLabel(branch)}`,
                     dateAnchorISO: "",
                 });
             }
@@ -123,7 +123,7 @@ export default function PromoRedemptionsReportPage() {
         // (redemption path) or the enrichment loop above (unused-promo
         // path). Guarantees "Forma South · Dubai" everywhere.
         const branchTzName = new Map(
-            branches.map(bx => [bx.id, `${bx.name} · ${branchTzShortLabel(bx)}`]),
+            branches.map(bx => [bx.id, `${bx.name} · ${branchTzLabel(bx)}`]),
         );
         return Array.from(buckets.values()).map(b => ({
             promoCode:        b.promoCode,

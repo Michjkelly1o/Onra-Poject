@@ -27,7 +27,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { RowActions } from "@/components/patterns/RowActions";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { branchTzShortLabel } from "@/lib/branch-time";
+import { branchTzLabel } from "@/lib/branch-time";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1642,7 +1642,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                             <p className="text-[16px] font-medium text-[#101828]">
                                 {ci.date} • {ci.displayTime}
                                 {branchTzShort && (
-                                    <span className="text-[13px] font-normal text-[#667085]"> · {branchTzShort} time</span>
+                                    <span className="text-[13px] font-normal text-[#667085]"> · {branchTzShort}</span>
                                 )}
                             </p>
                         </div>
@@ -1769,7 +1769,7 @@ export default function ClassDetailPage() {
     // class at Dubai. Reads live so a mid-session branch edit reflects.
     const branches = useAppStore(s => s.branches);
     const classBranch = classInstance ? branches.find(b => b.id === classInstance.branchId) : undefined;
-    const classBranchTzShort = classBranch ? branchTzShortLabel(classBranch) : undefined;
+    const classBranchTzShort = classBranch ? branchTzLabel(classBranch) : undefined;
 
     // The class-scoped POS catalog is filtered by the schedule's applicable
     // plans (per CLAUDE.md mini-POS rule). Resolution order:
