@@ -1103,27 +1103,30 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* Merged "quiet hours" row — the previous design split
+                        this into 3 rows (Only send during set hours ·
+                        Quiet hours · Critical bypass) with two dividers,
+                        which read as unrelated settings. Client Jul 2026
+                        feedback: the modal title already says "Delivery
+                        hours" so the on/off toggle + the time window can
+                        collapse to a single line ("Pause messages between
+                        [start] and [end]"). Times gray out with the
+                        toggle. */}
                     <div className="flex items-start gap-4">
-                        <div className="flex-1 flex flex-col gap-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Only send during set hours</p>
-                        </div>
-                        <Toggle on={onlyDuringHours} onChange={setOnlyDuringHours} ariaLabel="Only send during set hours" />
-                    </div>
-
-                    <div className="h-px w-full bg-[#e4e7ec]" />
-
-                    <div className="flex items-start gap-4">
-                        <div className="flex-1 flex flex-col gap-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Quiet hours</p>
+                        <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Pause messages between</span>
+                                <div className={cn("flex items-center gap-2", !onlyDuringHours && "opacity-40 pointer-events-none")}>
+                                    <TimeDropdown value={start} onChange={setStart} ariaLabel="Quiet hours start" />
+                                    <span className="text-[14px] text-[#475467]">and</span>
+                                    <TimeDropdown value={end}   onChange={setEnd}   ariaLabel="Quiet hours end" />
+                                </div>
+                            </div>
                             <p className="text-[13px] text-[#667085] leading-[18px]">
-                                Messages pause between these times.
+                                Messages queued in this window send when it ends.
                             </p>
                         </div>
-                        <div className={cn("flex items-center gap-2", !onlyDuringHours && "opacity-40 pointer-events-none")}>
-                            <TimeDropdown value={start} onChange={setStart} ariaLabel="Quiet hours start" />
-                            <span className="text-[#98a2b3]">—</span>
-                            <TimeDropdown value={end}   onChange={setEnd}   ariaLabel="Quiet hours end" />
-                        </div>
+                        <Toggle on={onlyDuringHours} onChange={setOnlyDuringHours} ariaLabel="Pause messages during quiet hours" />
                     </div>
 
                     <div className="h-px w-full bg-[#e4e7ec]" />
