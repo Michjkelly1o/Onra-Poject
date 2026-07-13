@@ -27,7 +27,7 @@ import {
     FormHeader, StepSidebar, SectionHeader, Field, TextInput, Textarea,
     LogoPreview,
 } from "@/components/settings/business/StudioProfileFormPage";
-import { COUNTRIES, resolveBranchTimezone, timezoneLabel, statesForCountry, citiesForState, stateLabelForCountry } from "@/lib/data/locales";
+import { COUNTRIES, resolveBranchTimezone, timezoneLabel, statesForCountry, citiesForState, stateLabelForCountry, hasCityForCountry } from "@/lib/data/locales";
 import { Globe01 } from "@untitledui/icons";
 
 const RETURN_ROUTE = "/admin/settings/business-locations";
@@ -117,6 +117,9 @@ export function BranchFormPage({ mode, branchId }: {
     const stateLabel = useMemo(() => stateLabelForCountry(country), [country]);
     const stateOptions = useMemo(() => statesForCountry(country), [country]);
     const cityOptions = useMemo(() => citiesForState(country, state || undefined), [country, state]);
+    // Per-country address structure: UAE has no separate city concept
+    // (Emirate is the address). Field hides entirely for those countries.
+    const showCity = useMemo(() => hasCityForCountry(country), [country]);
     // Timezone is DERIVED from (country, state, city). State is the primary
     // signal — a Riyadh branch vs a Dubai branch resolves the country to
     // different zones. Shown to the admin as a read-only line so they can
@@ -153,7 +156,9 @@ export function BranchFormPage({ mode, branchId }: {
             phone: fullPhone,
             address: address.trim(),
             state: state.trim() || undefined,
-            city: city.trim() || undefined,
+            // Only persist city when the country actually uses the concept
+            // (UAE addresses don't — hasCity: false).
+            city: showCity ? (city.trim() || undefined) : undefined,
             country,
             // Re-derive on save so the stored value can never drift from
             // the (country, state, city) tuple the admin just picked, even
@@ -364,15 +369,17 @@ export function BranchFormPage({ mode, branchId }: {
                                             />
                                         </Field>
                                     )}
-                                    <Field label="City">
-                                        <SelectInput
-                                            value={cityOptions.includes(city) ? city : ""}
-                                            onChange={setCity}
-                                            placeholder={cityOptions.length === 0 ? (stateLabel ? `Pick a ${stateLabel.toLowerCase()} first` : "Pick a country first") : "Select city"}
-                                            options={cityOptions.map(c => ({ value: c, label: c }))}
-                                            width="w-full"
-                                        />
-                                    </Field>
+                                    {showCity && (
+                                        <Field label="City">
+                                            <SelectInput
+                                                value={cityOptions.includes(city) ? city : ""}
+                                                onChange={setCity}
+                                                placeholder={cityOptions.length === 0 ? (stateLabel ? `Pick a ${stateLabel.toLowerCase()} first` : "Pick a country first") : "Select city"}
+                                                options={cityOptions.map(c => ({ value: c, label: c }))}
+                                                width="w-full"
+                                            />
+                                        </Field>
+                                    )}
                                 </div>
 
                                 {/* Detected timezone — read-only. Auto-derives from

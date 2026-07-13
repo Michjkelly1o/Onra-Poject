@@ -54,6 +54,18 @@ export interface Country {
      *  Vatican) → the State field is hidden and cities are picked directly
      *  under Country. */
     stateLabel?: string;
+    /** Whether this country has a meaningful CITY concept distinct from
+     *  its states. Default true. Set false for countries where the
+     *  first-level subdivision IS the address (e.g. UAE — an emirate like
+     *  "Dubai" both names the state AND doubles as the delivery locality;
+     *  a separate City field is redundant). When false, the customer +
+     *  branch forms hide the City field entirely. */
+    hasCity?: boolean;
+    /** Whether this country has a postal code system that's commonly
+     *  captured on address forms. Default true. Set false for countries
+     *  that use PO Box / no postal system (UAE, KW, BH, QA, OM). When
+     *  false, the customer form hides the Postal code field entirely. */
+    hasPostalCode?: boolean;
     /** Ordered list of states/regions/emirates. Empty for city-states. */
     states: State[];
 }
@@ -66,6 +78,11 @@ export const COUNTRIES: Country[] = [
         code: "AE", name: "United Arab Emirates", flag: "🇦🇪",
         defaultCurrency: "AED", defaultTimezone: "Asia/Dubai",
         stateLabel: "Emirate",
+        // UAE addresses = Emirate + street. No separate city (the emirate
+        // IS the delivery locality) and no postal code system (mail flows
+        // via PO Box). Both fields hide on every location form.
+        hasCity: false,
+        hasPostalCode: false,
         states: [
             { code: "DU", name: "Dubai",           timezone: "Asia/Dubai", cities: ["Dubai", "Dubai Marina", "Jumeirah", "Deira", "Bur Dubai", "Business Bay", "Downtown Dubai", "Jumeirah Village Circle"] },
             { code: "AZ", name: "Abu Dhabi",       timezone: "Asia/Dubai", cities: ["Abu Dhabi", "Al Ain", "Al Reem Island", "Yas Island", "Saadiyat Island"] },
@@ -100,6 +117,9 @@ export const COUNTRIES: Country[] = [
         code: "QA", name: "Qatar", flag: "🇶🇦",
         defaultCurrency: "QAR", defaultTimezone: "Asia/Qatar",
         stateLabel: "Municipality",
+        // Qatar has postal codes but they're optional / rarely required on
+        // address forms in practice — hide the field to reduce friction.
+        hasPostalCode: false,
         states: [
             { code: "DA", name: "Doha",           timezone: "Asia/Qatar", cities: ["Doha", "West Bay", "The Pearl", "Msheireb"] },
             { code: "WA", name: "Al Wakrah",      timezone: "Asia/Qatar", cities: ["Al Wakrah"] },
@@ -112,6 +132,7 @@ export const COUNTRIES: Country[] = [
         code: "KW", name: "Kuwait", flag: "🇰🇼",
         defaultCurrency: "KWD", defaultTimezone: "Asia/Kuwait",
         stateLabel: "Governorate",
+        hasPostalCode: false,
         states: [
             { code: "KU", name: "Al Asimah",      timezone: "Asia/Kuwait", cities: ["Kuwait City", "Sharq", "Salmiya"] },
             { code: "HA", name: "Hawalli",        timezone: "Asia/Kuwait", cities: ["Hawalli", "Salmiya", "Jabriya"] },
@@ -125,6 +146,7 @@ export const COUNTRIES: Country[] = [
         code: "OM", name: "Oman", flag: "🇴🇲",
         defaultCurrency: "OMR", defaultTimezone: "Asia/Muscat",
         stateLabel: "Governorate",
+        hasPostalCode: false,
         states: [
             { code: "MU", name: "Muscat",         timezone: "Asia/Muscat", cities: ["Muscat", "Muttrah", "Seeb", "Bawshar"] },
             { code: "DA", name: "Dhofar",         timezone: "Asia/Muscat", cities: ["Salalah"] },
@@ -137,6 +159,7 @@ export const COUNTRIES: Country[] = [
         code: "BH", name: "Bahrain", flag: "🇧🇭",
         defaultCurrency: "BHD", defaultTimezone: "Asia/Bahrain",
         stateLabel: "Governorate",
+        hasPostalCode: false,
         states: [
             { code: "13", name: "Capital",        timezone: "Asia/Bahrain", cities: ["Manama", "Adliya", "Juffair"] },
             { code: "14", name: "Southern",       timezone: "Asia/Bahrain", cities: ["Riffa", "Isa Town", "Hamad Town"] },
@@ -948,6 +971,27 @@ export function stateLabelForCountry(country?: string): string {
     const c = countryByName(country);
     if (!c) return "State/Region";
     return c.stateLabel ?? "";
+}
+
+/** Whether a City field should render for this country. Defaults to true;
+ *  false for countries where the state IS the delivery locality (UAE,
+ *  where "Dubai" emirate is also the city). Undefined country → true so
+ *  legacy records that never captured country still show City. */
+export function hasCityForCountry(country?: string): boolean {
+    if (!country) return true;
+    const c = countryByName(country);
+    if (!c) return true;
+    return c.hasCity !== false;
+}
+
+/** Whether a Postal code field should render for this country. Defaults
+ *  to true; false for countries without a common postal system (UAE, KW,
+ *  BH, QA, OM — mail flows via PO Box). */
+export function hasPostalCodeForCountry(country?: string): boolean {
+    if (!country) return true;
+    const c = countryByName(country);
+    if (!c) return true;
+    return c.hasPostalCode !== false;
 }
 
 /** States for a given country name — used to populate the middle dropdown. */

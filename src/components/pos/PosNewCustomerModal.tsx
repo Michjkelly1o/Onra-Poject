@@ -37,7 +37,7 @@ import {
 // Branch form and CustomerFormPage. Client Jul 2026 — "same context =
 // same input"; the POS modal previously used a legacy country-states.ts
 // that only had state lists for 4 countries.
-import { COUNTRIES, statesForCountry, stateLabelForCountry, citiesForState } from "@/lib/data/locales";
+import { COUNTRIES, statesForCountry, stateLabelForCountry, citiesForState, hasCityForCountry, hasPostalCodeForCountry } from "@/lib/data/locales";
 
 const GENDER_OPTIONS = ["Male", "Female"];
 
@@ -177,6 +177,11 @@ export function PosNewCustomerModal({
         () => citiesForState(country, stateRegion || undefined),
         [country, stateRegion],
     );
+    // Per-country address structure (see CustomerFormPage for details):
+    //   UAE  → both hidden
+    //   UAE, KW, BH, QA, OM → postal hidden
+    const showCity = useMemo(() => hasCityForCountry(country), [country]);
+    const showPostal = useMemo(() => hasPostalCodeForCountry(country), [country]);
 
     useEffect(() => {
         // If the picked state doesn't belong to the current country's list,
@@ -193,6 +198,13 @@ export function PosNewCustomerModal({
         if (cityOptions.length === 0) return;
         if (!cityOptions.includes(city)) setCity("");
     }, [country, stateRegion, city, cityOptions]);
+
+    useEffect(() => {
+        // Clear stored values when their fields are hidden for the current
+        // country — matches CustomerFormPage's per-country flag effect.
+        if (!showCity && city) setCity("");
+        if (!showPostal && postalCode) setPostalCode("");
+    }, [showCity, showPostal, city, postalCode]);
 
     function handleSave() {
         if (!canSave) return;
@@ -346,28 +358,34 @@ export function PosNewCustomerModal({
                             </Field>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="City">
-                                {cityOptions.length > 0 ? (
-                                    <SelectInput
-                                        value={cityOptions.includes(city) ? city : ""}
-                                        onChange={setCity}
-                                        placeholder={stateRegion || !stateLabel ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
-                                        options={cityOptions.map(c => ({ value: c, label: c }))}
-                                        width="w-full"
-                                    />
-                                ) : (
-                                    <input type="text" value={city}
-                                        onChange={e => setCity(e.target.value)}
-                                        placeholder="Enter city..." className={inputCls} />
+                        {(showCity || showPostal) && (
+                            <div className={cn("grid gap-4", showCity && showPostal ? "grid-cols-2" : "grid-cols-1")}>
+                                {showCity && (
+                                    <Field label="City">
+                                        {cityOptions.length > 0 ? (
+                                            <SelectInput
+                                                value={cityOptions.includes(city) ? city : ""}
+                                                onChange={setCity}
+                                                placeholder={stateRegion || !stateLabel ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
+                                                options={cityOptions.map(c => ({ value: c, label: c }))}
+                                                width="w-full"
+                                            />
+                                        ) : (
+                                            <input type="text" value={city}
+                                                onChange={e => setCity(e.target.value)}
+                                                placeholder="Enter city..." className={inputCls} />
+                                        )}
+                                    </Field>
                                 )}
-                            </Field>
-                            <Field label="Postal code">
-                                <input type="text" value={postalCode}
-                                    onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
-                                    placeholder="Enter postal code..." className={inputCls} />
-                            </Field>
-                        </div>
+                                {showPostal && (
+                                    <Field label="Postal code">
+                                        <input type="text" value={postalCode}
+                                            onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
+                                            placeholder="Enter postal code..." className={inputCls} />
+                                    </Field>
+                                )}
+                            </div>
+                        )}
 
                         <Field label="Street address">
                             <textarea value={streetAddress} onChange={e => setStreetAddress(e.target.value)}

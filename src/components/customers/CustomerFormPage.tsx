@@ -31,7 +31,7 @@ import { isValidEmail } from "@/lib/validation";
 // countries; every other country fell back to a free-text field. Migrated
 // to `locales.ts` which has states + adaptive labels + city lists for 46
 // countries.
-import { COUNTRIES, statesForCountry, stateLabelForCountry, citiesForState } from "@/lib/data/locales";
+import { COUNTRIES, statesForCountry, stateLabelForCountry, citiesForState, hasCityForCountry, hasPostalCodeForCountry } from "@/lib/data/locales";
 import { AlertCircle, ArrowUpRight } from "@untitledui/icons";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 
@@ -344,6 +344,13 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
         () => citiesForState(country, stateRegion || undefined),
         [country, stateRegion],
     );
+    // Per-country address structure (client Jul 2026):
+    //   UAE  → hasCity: false  (Emirate IS the address, no city concept)
+    //   UAE, KW, BH, QA, OM → hasPostalCode: false (PO Box, no postal system)
+    //   Everyone else → both true.
+    // Field hides entirely + gets skipped on save when its flag is false.
+    const showCity = useMemo(() => hasCityForCountry(country), [country]);
+    const showPostal = useMemo(() => hasPostalCodeForCountry(country), [country]);
 
     useEffect(() => {
         // If the picked state doesn't belong to the current country's list,
@@ -360,6 +367,14 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
         if (cityOptions.length === 0) return;
         if (!cityOptions.includes(city)) setCity("");
     }, [country, stateRegion, city, cityOptions]);
+
+    useEffect(() => {
+        // Clear stored values when their fields are hidden for the
+        // current country — otherwise a country change to UAE would
+        // leave a stale "Surabaya" city or postal code on the record.
+        if (!showCity && city) setCity("");
+        if (!showPostal && postalCode) setPostalCode("");
+    }, [showCity, showPostal, city, postalCode]);
 
     // Edit mode opened for an id that no longer exists (deleted in another
     // tab / stale link) — bail with a clear message instead of a blank form.
@@ -534,36 +549,38 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                                 )}
                             </div>
 
-                            {/* City + Postal — city is a curated dropdown per
-                                (country, state). UAE emirates carry
-                                neighborhood-level cities in the unified
-                                dataset (Dubai emirate → "Dubai Marina",
-                                "Jumeirah", …) so we no longer hide the row
-                                for UAE. Free-text stays as a fallback only
-                                when the (country, state) combo has no
-                                curated cities. */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="City">
-                                    {cityOptions.length > 0 ? (
-                                        <SelectInput
-                                            value={cityOptions.includes(city) ? city : ""}
-                                            onChange={setCity}
-                                            placeholder={stateRegion || !stateLabel ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
-                                            options={cityOptions.map(c => ({ value: c, label: c }))}
-                                            width="w-full"
-                                        />
-                                    ) : (
-                                        <input type="text" value={city}
-                                            onChange={e => setCity(e.target.value)}
-                                            placeholder="Enter city..." className={inputCls} />
+                            {/* City + Postal — each field respects its own
+                                per-country flag. UAE hides both. Kuwait /
+                                Bahrain / Qatar / Oman hide postal only. The
+                                whole row also hides when nothing to show. */}
+                            {(showCity || showPostal) && (
+                                <div className={cn("grid gap-4", showCity && showPostal ? "grid-cols-2" : "grid-cols-1")}>
+                                    {showCity && (
+                                        <Field label="City">
+                                            {cityOptions.length > 0 ? (
+                                                <SelectInput
+                                                    value={cityOptions.includes(city) ? city : ""}
+                                                    onChange={setCity}
+                                                    placeholder={stateRegion || !stateLabel ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
+                                                    options={cityOptions.map(c => ({ value: c, label: c }))}
+                                                    width="w-full"
+                                                />
+                                            ) : (
+                                                <input type="text" value={city}
+                                                    onChange={e => setCity(e.target.value)}
+                                                    placeholder="Enter city..." className={inputCls} />
+                                            )}
+                                        </Field>
                                     )}
-                                </Field>
-                                <Field label="Postal code">
-                                    <input type="text" value={postalCode}
-                                        onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
-                                        placeholder="Enter postal code..." className={inputCls} />
-                                </Field>
-                            </div>
+                                    {showPostal && (
+                                        <Field label="Postal code">
+                                            <input type="text" value={postalCode}
+                                                onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
+                                                placeholder="Enter postal code..." className={inputCls} />
+                                        </Field>
+                                    )}
+                                </div>
+                            )}
 
                             <Field label="Street address">
                                 <textarea value={streetAddress} onChange={e => setStreetAddress(e.target.value)}
