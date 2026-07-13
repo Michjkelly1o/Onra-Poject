@@ -33,8 +33,11 @@ import {
     PHONE_COUNTRIES,
     type PhoneCountry,
 } from "@/components/customers/CustomerFormPage";
-import { COUNTRIES, getCountryInfo } from "@/components/customers/country-states";
-import { citiesForState } from "@/lib/data/locales";
+// Unified 3-tier country / state / city data — same source of truth as the
+// Branch form and CustomerFormPage. Client Jul 2026 — "same context =
+// same input"; the POS modal previously used a legacy country-states.ts
+// that only had state lists for 4 countries.
+import { COUNTRIES, statesForCountry, stateLabelForCountry, citiesForState } from "@/lib/data/locales";
 
 const GENDER_OPTIONS = ["Male", "Female"];
 
@@ -165,38 +168,27 @@ export function PosNewCustomerModal({
     // "Open profile" recovery actions.
     const canSave = canSaveBase && !duplicate;
 
-    // Country-dependent rules.
-    const countryInfo = useMemo(() => country ? getCountryInfo(country) : null, [country]);
-    const stateLabel = countryInfo?.stateLabel ?? "Region";
-    const stateOptions = countryInfo?.states;
-    const showCityPostal = countryInfo ? countryInfo.showCityPostal !== false : true;
-    // City dropdown data — sourced from the shared locales.ts dataset so
-    // every (country, state) pair has a curated city list. Client Jul 2026:
-    // "we should make it all dropdown, no manual typing" — this replaces
-    // the previous <input type="text" /> for city (identical fix to the
-    // shared CustomerFormPage). Falls back to free-text below when the
-    // (country, state) combo has no curated cities.
+    // 3-tier cascade Country → State → City. Adaptive state label per
+    // country ("Emirate" for UAE, "Province" for Indonesia, "State" for
+    // US). Middle field hides for city-states (Singapore).
+    const stateLabel = useMemo(() => stateLabelForCountry(country), [country]);
+    const stateOptions = useMemo(() => statesForCountry(country), [country]);
     const cityOptions = useMemo(
         () => citiesForState(country, stateRegion || undefined),
         [country, stateRegion],
     );
 
     useEffect(() => {
+        // If the picked state doesn't belong to the current country's list,
+        // clear it — prevents saving "Dubai" while Country is "Canada".
         if (!stateRegion) return;
-        if (stateOptions && !stateOptions.includes(stateRegion)) setStateRegion("");
+        if (stateOptions.length === 0) return;
+        if (!stateOptions.some(s => s.name === stateRegion)) setStateRegion("");
     }, [country, stateOptions, stateRegion]);
 
     useEffect(() => {
-        if (!showCityPostal) {
-            if (city) setCity("");
-            if (postalCode) setPostalCode("");
-        }
-    }, [showCityPostal, city, postalCode]);
-
-    useEffect(() => {
         // If the city no longer belongs to the current (country, state)
-        // dropdown options, clear it — prevents saving stale values like
-        // "Dubai" while the country flipped to Saudi Arabia mid-checkout.
+        // list, clear it — prevents saving "Surabaya" while country is UAE.
         if (!city) return;
         if (cityOptions.length === 0) return;
         if (!cityOptions.includes(city)) setCity("");
@@ -324,55 +316,58 @@ export function PosNewCustomerModal({
                         <p className="text-[16px] font-semibold text-[#101828]">Address details</p>
 
                         <Field label="Country">
-                            <SelectInput value={country} onChange={setCountry} placeholder="Select country"
+                            <SelectInput
+                                value={country}
+                                onChange={(next) => { setCountry(next); setStateRegion(""); setCity(""); }}
+                                placeholder="Select country"
                                 options={COUNTRIES.map(c => ({
                                     value: c.name, label: c.name,
                                     icon: <span className="text-[16px] leading-none">{c.flag}</span>,
                                 }))}
-                                triggerIcon={countryInfo ? (
-                                    <span className="text-[16px] leading-none">{countryInfo.flag}</span>
+                                triggerIcon={country ? (
+                                    <span className="text-[16px] leading-none">{COUNTRIES.find(c => c.name === country)?.flag}</span>
                                 ) : undefined}
-                                width="w-full" />
+                                width="w-full"
+                            />
                         </Field>
 
-                        <Field label={stateLabel}>
-                            {stateOptions ? (
-                                <SelectInput value={stateRegion} onChange={setStateRegion}
-                                    placeholder={`Select ${stateLabel.toLowerCase()}`}
-                                    options={stateOptions.map(o => ({ value: o, label: o }))}
-                                    width="w-full" />
-                            ) : (
-                                <input type="text" value={stateRegion}
-                                    onChange={e => setStateRegion(e.target.value)}
-                                    placeholder={`Enter ${stateLabel.toLowerCase()}...`}
-                                    className={inputCls} />
-                            )}
-                        </Field>
-
-                        {showCityPostal && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="City">
-                                    {cityOptions.length > 0 ? (
-                                        <SelectInput
-                                            value={cityOptions.includes(city) ? city : ""}
-                                            onChange={setCity}
-                                            placeholder={stateRegion ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
-                                            options={cityOptions.map(c => ({ value: c, label: c }))}
-                                            width="w-full"
-                                        />
-                                    ) : (
-                                        <input type="text" value={city}
-                                            onChange={e => setCity(e.target.value)}
-                                            placeholder="Enter city..." className={inputCls} />
-                                    )}
-                                </Field>
-                                <Field label="Postal code">
-                                    <input type="text" value={postalCode}
-                                        onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
-                                        placeholder="Enter postal code..." className={inputCls} />
-                                </Field>
-                            </div>
+                        {/* State/Emirate/Province/Region dropdown — hidden for
+                            city-states like Singapore where stateLabel is
+                            empty. Adaptive label per country. */}
+                        {stateLabel && (
+                            <Field label={stateLabel}>
+                                <SelectInput
+                                    value={stateRegion}
+                                    onChange={(next) => { setStateRegion(next); setCity(""); }}
+                                    placeholder={stateOptions.length === 0 ? "Pick a country first" : `Select ${stateLabel.toLowerCase()}`}
+                                    options={stateOptions.map(s => ({ value: s.name, label: s.name }))}
+                                    width="w-full"
+                                />
+                            </Field>
                         )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <Field label="City">
+                                {cityOptions.length > 0 ? (
+                                    <SelectInput
+                                        value={cityOptions.includes(city) ? city : ""}
+                                        onChange={setCity}
+                                        placeholder={stateRegion || !stateLabel ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
+                                        options={cityOptions.map(c => ({ value: c, label: c }))}
+                                        width="w-full"
+                                    />
+                                ) : (
+                                    <input type="text" value={city}
+                                        onChange={e => setCity(e.target.value)}
+                                        placeholder="Enter city..." className={inputCls} />
+                                )}
+                            </Field>
+                            <Field label="Postal code">
+                                <input type="text" value={postalCode}
+                                    onChange={e => setPostalCode(e.target.value.replace(/\D/g, ""))}
+                                    placeholder="Enter postal code..." className={inputCls} />
+                            </Field>
+                        </div>
 
                         <Field label="Street address">
                             <textarea value={streetAddress} onChange={e => setStreetAddress(e.target.value)}
