@@ -27,7 +27,7 @@ import {
     FormHeader, StepSidebar, SectionHeader, Field, TextInput, Textarea,
     LogoPreview,
 } from "@/components/settings/business/StudioProfileFormPage";
-import { COUNTRIES, CITIES_BY_COUNTRY, resolveBranchTimezone, timezoneLabel } from "@/lib/data/locales";
+import { COUNTRIES, resolveBranchTimezone, timezoneLabel, statesForCountry, citiesForState, stateLabelForCountry } from "@/lib/data/locales";
 import { Globe01 } from "@untitledui/icons";
 
 const RETURN_ROUTE = "/admin/settings/business-locations";
@@ -107,20 +107,23 @@ export function BranchFormPage({ mode, branchId }: {
     const [phoneNumber, setPhoneNumber] = useState<string>(initialPhone.number);
     const [address,     setAddress]     = useState<string>(existing?.address ?? "");
     const [country,     setCountry]     = useState<string>(existing?.country ?? "United Arab Emirates");
+    const [state,       setState]       = useState<string>(existing?.state ?? "");
     const [city,        setCity]        = useState<string>(existing?.city ?? "");
-    // Cities cascade from the chosen country. When country changes and the
-    // current city isn't in the new country's list, we clear it.
-    const cityOptions = useMemo(() => {
-        const code = COUNTRIES.find(c => c.name === country)?.code;
-        return code ? (CITIES_BY_COUNTRY[code] ?? []) : [];
-    }, [country]);
-    // Timezone is DERIVED, never manually picked — it flows from
-    // country + city on every change and stays in lock-step with the
-    // address block. Shown to the admin as a read-only line below City
-    // so they can see what the system inferred (client Jul 2026).
+    // 3-tier cascade: Country → State → City. Everything below is derived
+    // live so the dropdowns stay in sync with whatever the admin just
+    // picked. `stateLabelForCountry` returns "Emirate" for UAE, "Province"
+    // for Indonesia, "State" for US, etc. Empty label = hide the middle
+    // field entirely (city-states like Singapore).
+    const stateLabel = useMemo(() => stateLabelForCountry(country), [country]);
+    const stateOptions = useMemo(() => statesForCountry(country), [country]);
+    const cityOptions = useMemo(() => citiesForState(country, state || undefined), [country, state]);
+    // Timezone is DERIVED from (country, state, city). State is the primary
+    // signal — a Riyadh branch vs a Dubai branch resolves the country to
+    // different zones. Shown to the admin as a read-only line so they can
+    // see what the system inferred (client Jul 2026).
     const derivedTimezone = useMemo(
-        () => resolveBranchTimezone(country, city || undefined),
-        [country, city],
+        () => resolveBranchTimezone(country, state || undefined, city || undefined),
+        [country, state, city],
     );
     const [workingHours, setWorkingHours] = useState<WorkingHourState[]>(
         existing ? workingHoursFromLive(existing.id, liveHours) : defaultWorkingHours(),
@@ -149,12 +152,13 @@ export function BranchFormPage({ mode, branchId }: {
             email: email.trim(),
             phone: fullPhone,
             address: address.trim(),
+            state: state.trim() || undefined,
             city: city.trim() || undefined,
             country,
             // Re-derive on save so the stored value can never drift from
-            // the country/city the admin just picked, even if the derived
-            // state was memoized from a stale render.
-            timezone: resolveBranchTimezone(country, city.trim() || undefined),
+            // the (country, state, city) tuple the admin just picked, even
+            // if the derived state was memoized from a stale render.
+            timezone: resolveBranchTimezone(country, state.trim() || undefined, city.trim() || undefined),
             image_url: logoDataUrl,
         };
         const newBranchId = mode === "create"
@@ -318,16 +322,23 @@ export function BranchFormPage({ mode, branchId }: {
                                     <Textarea value={address} onChange={setAddress} placeholder="Enter branch address..." rows={3} />
                                 </Field>
 
+                                {/* 3-tier cascade: Country → State → City.
+                                    Country picker clears state + city when they'd be
+                                    invalid for the new country. State picker (labelled
+                                    "Emirate" for UAE, "Province" for Indonesia, etc.)
+                                    hides entirely for city-states like Singapore where
+                                    stateLabelForCountry() returns "".  City picker
+                                    filters to the selected state's cities. */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <Field label="Country">
                                         <SelectInput
                                             value={country}
                                             onChange={(next) => {
                                                 setCountry(next);
-                                                // Clear city if it's no longer valid for the new country.
-                                                const code = COUNTRIES.find(c => c.name === next)?.code;
-                                                const nextCities = code ? (CITIES_BY_COUNTRY[code] ?? []) : [];
-                                                if (!nextCities.includes(city)) setCity("");
+                                                // Clear state + city — the new country has
+                                                // its own set of both.
+                                                setState("");
+                                                setCity("");
                                             }}
                                             placeholder="Select country"
                                             options={COUNTRIES.map(c => ({
@@ -337,11 +348,27 @@ export function BranchFormPage({ mode, branchId }: {
                                             width="w-full"
                                         />
                                     </Field>
+                                    {stateLabel && (
+                                        <Field label={stateLabel}>
+                                            <SelectInput
+                                                value={state}
+                                                onChange={(next) => {
+                                                    setState(next);
+                                                    // Reset city when it doesn't belong to the new state.
+                                                    const nextCities = citiesForState(country, next);
+                                                    if (!nextCities.includes(city)) setCity("");
+                                                }}
+                                                placeholder={stateOptions.length === 0 ? "Pick a country first" : `Select ${stateLabel.toLowerCase()}`}
+                                                options={stateOptions.map(s => ({ value: s.name, label: s.name }))}
+                                                width="w-full"
+                                            />
+                                        </Field>
+                                    )}
                                     <Field label="City">
                                         <SelectInput
                                             value={cityOptions.includes(city) ? city : ""}
                                             onChange={setCity}
-                                            placeholder={cityOptions.length === 0 ? "Pick a country first" : "Select city"}
+                                            placeholder={cityOptions.length === 0 ? (stateLabel ? `Pick a ${stateLabel.toLowerCase()} first` : "Pick a country first") : "Select city"}
                                             options={cityOptions.map(c => ({ value: c, label: c }))}
                                             width="w-full"
                                         />

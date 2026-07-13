@@ -7845,7 +7845,23 @@ export const useAppStore = create<AppState>()(persist(
         //   • Seed: existing 4 branches carry Asia/Dubai (matches their
         //     Dubai addresses); creating a new branch triggers
         //     re-derivation.
-        version: 51,
+        //
+        // v52: 3-tier country/state/city dropdowns (client Jul 2026).
+        //   • Branch schema gains an optional `state: string` (English
+        //     display name, e.g. "Dubai", "East Java", "California"). Same
+        //     for Customer records via CustomerFormPage.
+        //   • locales.ts redesigned: every Country carries a list of
+        //     `states`, each with its OWN IANA timezone (Indonesia's WIB /
+        //     WITA / WIT, Australia's 5 zones, US's 6, etc.) plus a curated
+        //     list of top cities. Adaptive state labels ("Emirate" for UAE,
+        //     "Province" for Indonesia, "Governorate" for Egypt, …).
+        //   • `resolveBranchTimezone` now reads (country, state, city) —
+        //     state wins, city fallback searches every state, country
+        //     default last. Backward-compat: legacy records without `state`
+        //     resolve via city lookup as before.
+        //   • Persist bumped so testers re-seed with the new field on the 4
+        //     seed branches.
+        version: 52,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

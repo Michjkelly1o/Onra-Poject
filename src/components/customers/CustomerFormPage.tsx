@@ -25,6 +25,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore, DEFAULT_BRANCH_ID } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
 import { COUNTRIES, getCountryInfo } from "./country-states";
+import { citiesForState } from "@/lib/data/locales";
 import { AlertCircle, ArrowUpRight } from "@untitledui/icons";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 
@@ -333,6 +334,15 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const stateLabel  = countryInfo?.stateLabel ?? "Region";
     const stateOptions = countryInfo?.states;
     const showCityPostal = countryInfo ? countryInfo.showCityPostal !== false : true;
+    // City dropdown data — sourced from the shared locales.ts dataset so
+    // every country / state has a curated city list. Empty array falls back
+    // to a free-text input below (rare — only for countries without curated
+    // cities). Client Jul 2026: "we should make it all dropdown, no manual
+    // typing" — this replaces the previous <input type="text" /> for city.
+    const cityOptions = useMemo(
+        () => citiesForState(country, stateRegion || undefined),
+        [country, stateRegion],
+    );
 
     useEffect(() => {
         // Drop a stale state pick once the country swaps to a list that
@@ -349,6 +359,15 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
             if (postalCode) setPostalCode("");
         }
     }, [showCityPostal, city, postalCode]);
+
+    useEffect(() => {
+        // If the city no longer belongs to the current (country, state)
+        // dropdown options, clear it — prevents saving stale values like
+        // "Dubai" while the country is now Saudi Arabia.
+        if (!city) return;
+        if (cityOptions.length === 0) return;
+        if (!cityOptions.includes(city)) setCity("");
+    }, [country, stateRegion, city, cityOptions]);
 
     // Edit mode opened for an id that no longer exists (deleted in another
     // tab / stale link) — bail with a clear message instead of a blank form.
@@ -527,16 +546,28 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                             </div>
 
                             {/* City + Postal — hidden for countries that don't
-                                use them on the form (UAE). The free-text city
-                                input replaces the previous Dubai-only dropdown
-                                so visitors from other countries can fill in
-                                their own city. */}
+                                use them on the form (UAE, where Emirate + Street
+                                cover the same context). City is now a curated
+                                dropdown per country + state (client Jul 2026 —
+                                no manual typing). Falls back to a free-text
+                                input only when the (country, state) combo has
+                                no curated city list. */}
                             {showCityPostal && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <Field label="City">
-                                        <input type="text" value={city}
-                                            onChange={e => setCity(e.target.value)}
-                                            placeholder="Enter city..." className={inputCls} />
+                                        {cityOptions.length > 0 ? (
+                                            <SelectInput
+                                                value={cityOptions.includes(city) ? city : ""}
+                                                onChange={setCity}
+                                                placeholder={stateRegion ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
+                                                options={cityOptions.map(c => ({ value: c, label: c }))}
+                                                width="w-full"
+                                            />
+                                        ) : (
+                                            <input type="text" value={city}
+                                                onChange={e => setCity(e.target.value)}
+                                                placeholder="Enter city..." className={inputCls} />
+                                        )}
                                     </Field>
                                     <Field label="Postal code">
                                         <input type="text" value={postalCode}

@@ -738,7 +738,7 @@ function BranchRow({
                     {branch.address ?? "—"}
                 </p>
                 <p className="text-[12px] text-[#667085] leading-4 truncate">
-                    {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.city))}
+                    {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.state, branch.city))}
                 </p>
             </div>
             {/* Col 5 — Status */}

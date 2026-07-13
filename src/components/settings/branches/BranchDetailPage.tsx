@@ -351,7 +351,7 @@ function DetailsTab({
                         value={
                             <span className="flex items-center gap-2 text-[16px] font-medium text-[#101828] leading-6">
                                 <Globe01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.city))}
+                                {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.state, branch.city))}
                             </span>
                         }
                     />

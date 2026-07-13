@@ -28,9 +28,9 @@ import { resolveBranchTimezone, timezoneLabel } from "@/lib/data/locales";
 /** The IANA zone for a branch. Reads the persisted field first; falls back
  *  to re-derivation from country/city for legacy rows persisted before the
  *  field was added. Never returns undefined. */
-export function branchTimezone(branch: Pick<Branch, "timezone" | "country" | "city"> | null | undefined): string {
+export function branchTimezone(branch: Pick<Branch, "timezone" | "country" | "state" | "city"> | null | undefined): string {
     if (!branch) return "Asia/Dubai";
-    return branch.timezone ?? resolveBranchTimezone(branch.country, branch.city);
+    return branch.timezone ?? resolveBranchTimezone(branch.country, branch.state, branch.city);
 }
 
 /** Long label — e.g. "(UTC+04:00) Abu Dhabi". Client Jul 2026: this is the
@@ -38,7 +38,7 @@ export function branchTimezone(branch: Pick<Branch, "timezone" | "country" | "ci
  *  customer bookings, reports Location column, etc.) — city-only was
  *  shorter but non-technical users didn't know which city meant which zone.
  *  A short/city variant used to exist here; consolidated into this one. */
-export function branchTzLabel(branch: Pick<Branch, "timezone" | "country" | "city"> | null | undefined): string {
+export function branchTzLabel(branch: Pick<Branch, "timezone" | "country" | "state" | "city"> | null | undefined): string {
     return timezoneLabel(branchTimezone(branch));
 }
 
@@ -52,7 +52,7 @@ export function branchTzLabel(branch: Pick<Branch, "timezone" | "country" | "cit
  *  for time-only. */
 export function formatUtcInBranchTz(
     iso: string,
-    branch: Pick<Branch, "timezone" | "country" | "city"> | null | undefined,
+    branch: Pick<Branch, "timezone" | "country" | "state" | "city"> | null | undefined,
     opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" },
 ): string {
     if (!iso) return "—";

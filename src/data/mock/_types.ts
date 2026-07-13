@@ -65,6 +65,13 @@ export interface Branch {
     /** Optional branch-level contact info — populated by the Branch form. */
     phone?: string;
     email?: string;
+    /** First-level subdivision — "Dubai" (Emirate), "East Java" (Province),
+     *  "California" (State). What the country calls this varies (see
+     *  `Country.stateLabel`); we always store the English display name.
+     *  Drives timezone resolution — a state's TZ is authoritative for its
+     *  cities. Undefined for legacy records; the resolver falls back to the
+     *  city-in-state lookup, then the country default. */
+    state?: string;
     city?: string;
     country?: string;
     /** IANA timezone (e.g. "Asia/Dubai") — auto-derived from country + city
