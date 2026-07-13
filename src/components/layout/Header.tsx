@@ -182,7 +182,7 @@ export default function Header() {
                 self-hide on dashboards / plain list pages where the trail
                 would be a single crumb). Same title→breadcrumb spacing the
                 detail-takeover pages use, so every surface reads the same. */}
-            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                 <h1 className="text-[24px] font-semibold text-[#101828] leading-tight">
                     {pageTitle}
                 </h1>

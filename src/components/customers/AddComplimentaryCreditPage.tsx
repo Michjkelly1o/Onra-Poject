@@ -292,7 +292,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <p className="text-[20px] font-semibold text-[#101828]">Add complimentary credit</p>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
