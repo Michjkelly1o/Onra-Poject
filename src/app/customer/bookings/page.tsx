@@ -31,6 +31,8 @@ import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 import { useIsAuthenticated } from "@/lib/customer/auth";
+import { useAppStore } from "@/lib/store";
+import { branchTzShortLabel } from "@/lib/branch-time";
 
 function fmtShortDate(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -48,6 +50,20 @@ export default function BookingsPage() {
     // Booked appointments (UI-only store) show alongside class bookings: active
     // future ones under Upcoming, cancelled/past ones under Past.
     const apptBookings = useAppointmentBookings();
+    // Branch-name → short TZ label lookup (bookings/appts here carry
+    // `branchName` as a string, not `branchId`). Used to tag the location
+    // sub-line with the branch's TZ so a member with bookings across cities
+    // never has to guess which zone a time is in.
+    const branches = useAppStore((s) => s.branches);
+    const branchTzByName = useMemo(
+        () => new Map(branches.map((b) => [b.name, branchTzShortLabel(b)])),
+        [branches],
+    );
+    function withTz(location: string | undefined): string {
+        if (!location) return "";
+        const tz = branchTzByName.get(location);
+        return tz ? `${location} · ${tz}` : location;
+    }
     const apptSplit = useMemo(() => {
         // Date-based (like classes: today still counts as upcoming). Any non-cancelled
         // record — including legacy rows written before `status` existed — is bookable.
@@ -104,7 +120,7 @@ export default function BookingsPage() {
                     name={a.name}
                     date={fmtShortDate(a.slotISO)}
                     time={to12h(a.slotTime)}
-                    location={a.branchName}
+                    location={withTz(a.branchName)}
                     status={
                         a.status === "cancelled"
                             ? {
@@ -131,7 +147,7 @@ export default function BookingsPage() {
                     name={b.name}
                     date={b.dateShort}
                     time={b.time}
-                    location={b.location}
+                    location={withTz(b.location)}
                     status={BOOKING_STATUS[b.viewStatus].card}
                     mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
                     image={b.coverImage}

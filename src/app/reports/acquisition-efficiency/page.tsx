@@ -12,6 +12,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
 import { selectLeads, selectMarketingSpend, selectTransactionLedger } from "@/lib/reports/selectors";
+import { branchTzShortLabel } from "@/lib/branch-time";
 
 interface AcquisitionRow extends Record<string, unknown> {
     channel:            string;
@@ -103,7 +104,9 @@ export default function AcquisitionEfficiencyReportPage() {
             ...Array.from(spendByKey.keys()),
         ]);
 
-        const branchName = new Map(branches.map(b => [b.id, b.name]));
+        // Location cell reads "Forma South · Dubai" so multi-timezone
+        // studios can tell rows apart at a glance in the Excel export.
+        const branchName = new Map(branches.map(b => [b.id, `${b.name} · ${branchTzShortLabel(b)}`]));
         return Array.from(allKeys).map(key => {
             const [branchId, channel] = key.split("|");
             const bucket = buckets.get(key);

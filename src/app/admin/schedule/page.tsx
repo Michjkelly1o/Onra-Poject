@@ -28,6 +28,7 @@ import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
+import { branchTzShortLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -621,8 +622,12 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
 // ─── List view ────────────────────────────────────────────────────────────────
 
-function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, onAddCustomer }: {
+function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, onDuplicate, onAddCustomer }: {
     classes: ClassInstance[];
+    /** Short branch-TZ label keyed by branch id — appended next to each
+     *  row's time so Owner views mixing multiple timezones never look
+     *  ambiguous. Undefined entries just fall back to no tag. */
+    branchTzById: Map<string, string>;
     sortKey: string | null;
     sortDir: SortDir;
     onSort: (key: string) => void;
@@ -668,7 +673,12 @@ function ListView({ classes, sortKey, sortDir, onSort, onCancel, onDuplicate, on
                             className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
                             <td className={TD}>
                                 <div className="font-medium text-[#101828]">{c.date}</div>
-                                <div className="text-[13px] text-[#667085] mt-0.5">{c.displayTime}</div>
+                                <div className="text-[13px] text-[#667085] mt-0.5">
+                                    {c.displayTime}
+                                    {branchTzById.get(c.branchId) && (
+                                        <span className="text-[12px]"> · {branchTzById.get(c.branchId)}</span>
+                                    )}
+                                </div>
                             </td>
                             <td className={TD}>
                                 <div className="flex items-center gap-3">
@@ -1400,6 +1410,12 @@ function SchedulePage() {
     const rooms = useAppStore(s => s.rooms);
     const businessHours = useAppStore(s => s.businessHours);
     const blockedTimes = useAppStore(s => s.blockedTimes);
+    // Short-TZ lookup for the list-view row time — appended so cross-branch
+    // Owner views ("Riyadh 9:00 · Dubai 9:00") never look ambiguous.
+    const branchTzById = useMemo(
+        () => new Map(branches.map(b => [b.id, branchTzShortLabel(b)])),
+        [branches],
+    );
     const [activeTab, setActiveTab] = useState<ViewTab>("list");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
@@ -1669,6 +1685,7 @@ function SchedulePage() {
                                     <div className="px-6">
                                         <ListView
                                             classes={paginatedClasses}
+                                            branchTzById={branchTzById}
                                             sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort}
                                             onCancel={id => isAppointmentId(id)
                                                 ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)

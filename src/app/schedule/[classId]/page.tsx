@@ -27,6 +27,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { RowActions } from "@/components/patterns/RowActions";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { branchTzShortLabel } from "@/lib/branch-time";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1593,8 +1594,12 @@ function RatingSummary({ rating, count }: { rating: number; count: number }) {
     );
 }
 
-function LeftPanel({ ci, isUpcoming, isOngoing, isCancelled, isCompleted, canCancelClass, onAddCustomer, onEdit, onCancelClass }: {
+function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCompleted, canCancelClass, onAddCustomer, onEdit, onCancelClass }: {
     ci: ClassInstance;
+    /** Short TZ label (e.g. "Dubai") for the class's branch — shown next to
+     *  the wall-clock time so cross-branch views (Owner) never mix up which
+     *  09:00 they're looking at. */
+    branchTzShort?: string;
     isUpcoming: boolean; isOngoing: boolean; isCancelled: boolean; isCompleted: boolean; canCancelClass: boolean;
     onAddCustomer: () => void; onEdit: () => void; onCancelClass: () => void;
 }) {
@@ -1634,7 +1639,12 @@ function LeftPanel({ ci, isUpcoming, isOngoing, isCancelled, isCompleted, canCan
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Date &amp; time</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{ci.date} • {ci.displayTime}</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {ci.date} • {ci.displayTime}
+                                {branchTzShort && (
+                                    <span className="text-[13px] font-normal text-[#667085]"> · {branchTzShort} time</span>
+                                )}
+                            </p>
                         </div>
                         {/* Class type row removed — class schedules always represent
                             Group classes; Private 1-on-1 lives in the Services module. */}
@@ -1754,6 +1764,12 @@ export default function ClassDetailPage() {
     const classInstance = classSchedules.find(c => c.id === classId);
     const allBookings = classBookings.filter(b => b.classScheduleId === classId);
     const classIsCancelled = classInstance?.status === "Cancelled";
+    // Resolve the class's branch so we can tag times with the branch's TZ
+    // — a 9:00 AM class at the Riyadh branch is one hour off a 9:00 AM
+    // class at Dubai. Reads live so a mid-session branch edit reflects.
+    const branches = useAppStore(s => s.branches);
+    const classBranch = classInstance ? branches.find(b => b.id === classInstance.branchId) : undefined;
+    const classBranchTzShort = classBranch ? branchTzShortLabel(classBranch) : undefined;
 
     // The class-scoped POS catalog is filtered by the schedule's applicable
     // plans (per CLAUDE.md mini-POS rule). Resolution order:
@@ -2288,6 +2304,7 @@ export default function ClassDetailPage() {
                 sidebar={
                     <LeftPanel
                         ci={ci}
+                        branchTzShort={classBranchTzShort}
                         isUpcoming={isUpcoming} isOngoing={isOngoing} isCancelled={isCancelled} isCompleted={isCompleted} canCancelClass={canCancelClass}
                         onAddCustomer={() => setAddCustomerOpen(true)}
                         onEdit={() => router.push(`/schedule/${ci.id}/edit?returnTo=${encodeURIComponent(pathname)}`)}

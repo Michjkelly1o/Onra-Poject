@@ -14,6 +14,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
 import { selectTransactionLedger } from "@/lib/reports/selectors";
+import { branchTzShortLabel } from "@/lib/branch-time";
 
 interface PromoRedemptionRow extends Record<string, unknown> {
     promoCode:        string;
@@ -109,7 +110,9 @@ export default function PromoRedemptionsReportPage() {
                     newCustomers: 0,
                     existingCustomers: 0,
                     branchId: branch.id,
-                    location: branch.name,
+                    // Location cell reads "Forma South · Dubai" so
+                    // multi-timezone studios can tell rows apart at a glance.
+                    location: `${branch.name} · ${branchTzShortLabel(branch)}`,
                     dateAnchorISO: "",
                 });
             }

@@ -39,6 +39,7 @@ import {
 import { IntegrationsTab } from "@/components/instructor/account/IntegrationsTab";
 import { NotificationSettingsTab } from "@/components/instructor/account/NotificationSettingsTab";
 import { cn } from "@/lib/utils";
+import { branchTzLabel } from "@/lib/branch-time";
 
 type TabKey = "personal" | "integrations" | "notifications" | "security";
 const TABS: { key: TabKey; label: string }[] = [
@@ -212,6 +213,7 @@ export default function InstructorAccountPage() {
                         user={currentUser}
                         branchName={branch?.name}
                         branchAddress={branch?.address}
+                        branchTimezoneLabel={branch ? branchTzLabel(branch) : undefined}
                         branchWorkingDays={branchOpenBySunSat}
                         branchWorkingHoursLabel={branchHoursWindow}
                         workingExperienceYears={myStaffRow?.workingExperienceYears}
@@ -274,6 +276,10 @@ interface PersonalInformationTabProps {
      *  the currentUser's address so the row doesn't render "—" when the
      *  branch was set up without a street. */
     branchAddress?: string;
+    /** Branch's timezone label — e.g. "(UTC+04:00) Abu Dhabi". Derived
+     *  from the branch's own IANA zone (auto-set from country + city on
+     *  the Branch form). Undefined when no branch is assigned. */
+    branchTimezoneLabel?: string;
     /** Branch's operating days as a [Sun..Sat] boolean array (matches
      *  `business_hours.day_of_week` indexing). Drives the M-T-W-T-F-S-S
      *  glyph row on Branch information — off days render red. */
@@ -299,6 +305,7 @@ function PersonalInformationTab({
     user,
     branchName,
     branchAddress,
+    branchTimezoneLabel,
     branchWorkingDays,
     branchWorkingHoursLabel,
     workingExperienceYears,
@@ -462,6 +469,10 @@ function PersonalInformationTab({
                         </div>
                         <ReadOnlyField label="Working hours" value={branchWorkingHoursLabel ?? "—"} />
                         <ReadOnlyField label="Address"       value={branchAddress ?? user.address ?? "—"} />
+                        {/* Timezone — auto-derived from the branch's country
+                            + city. Instructor sees exactly which zone their
+                            branch's working hours are stated in. */}
+                        <ReadOnlyField label="Timezone"      value={branchTimezoneLabel ?? "—"} />
                     </FieldGrid>
                 </Section>
 
