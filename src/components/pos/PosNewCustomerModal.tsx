@@ -34,6 +34,7 @@ import {
     type PhoneCountry,
 } from "@/components/customers/CustomerFormPage";
 import { COUNTRIES, getCountryInfo } from "@/components/customers/country-states";
+import { citiesForState } from "@/lib/data/locales";
 
 const GENDER_OPTIONS = ["Male", "Female"];
 
@@ -169,6 +170,16 @@ export function PosNewCustomerModal({
     const stateLabel = countryInfo?.stateLabel ?? "Region";
     const stateOptions = countryInfo?.states;
     const showCityPostal = countryInfo ? countryInfo.showCityPostal !== false : true;
+    // City dropdown data — sourced from the shared locales.ts dataset so
+    // every (country, state) pair has a curated city list. Client Jul 2026:
+    // "we should make it all dropdown, no manual typing" — this replaces
+    // the previous <input type="text" /> for city (identical fix to the
+    // shared CustomerFormPage). Falls back to free-text below when the
+    // (country, state) combo has no curated cities.
+    const cityOptions = useMemo(
+        () => citiesForState(country, stateRegion || undefined),
+        [country, stateRegion],
+    );
 
     useEffect(() => {
         if (!stateRegion) return;
@@ -181,6 +192,15 @@ export function PosNewCustomerModal({
             if (postalCode) setPostalCode("");
         }
     }, [showCityPostal, city, postalCode]);
+
+    useEffect(() => {
+        // If the city no longer belongs to the current (country, state)
+        // dropdown options, clear it — prevents saving stale values like
+        // "Dubai" while the country flipped to Saudi Arabia mid-checkout.
+        if (!city) return;
+        if (cityOptions.length === 0) return;
+        if (!cityOptions.includes(city)) setCity("");
+    }, [country, stateRegion, city, cityOptions]);
 
     function handleSave() {
         if (!canSave) return;
@@ -332,9 +352,19 @@ export function PosNewCustomerModal({
                         {showCityPostal && (
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="City">
-                                    <input type="text" value={city}
-                                        onChange={e => setCity(e.target.value)}
-                                        placeholder="Enter city..." className={inputCls} />
+                                    {cityOptions.length > 0 ? (
+                                        <SelectInput
+                                            value={cityOptions.includes(city) ? city : ""}
+                                            onChange={setCity}
+                                            placeholder={stateRegion ? "Select city" : `Pick a ${stateLabel.toLowerCase()} first`}
+                                            options={cityOptions.map(c => ({ value: c, label: c }))}
+                                            width="w-full"
+                                        />
+                                    ) : (
+                                        <input type="text" value={city}
+                                            onChange={e => setCity(e.target.value)}
+                                            placeholder="Enter city..." className={inputCls} />
+                                    )}
                                 </Field>
                                 <Field label="Postal code">
                                     <input type="text" value={postalCode}
