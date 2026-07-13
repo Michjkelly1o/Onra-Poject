@@ -1856,7 +1856,13 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         const instName     = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
         const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
-        const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
+        // Read the ACTUAL branch id (was previously a broken heuristic that
+        // hardcoded only "East" vs default "South", silently misfiling every
+        // West / Spa / new-branch schedule to Forma South — and with per-
+        // branch TZs now live, that mistake surfaces as wrong timezone tags
+        // and mixed-up wall-clock semantics on the schedule list). Falls
+        // back only when locationId matches no known room.
+        const branchId     = branchGroup?.branchId ?? "branch_forma_south";
         const now          = new Date().toISOString();
         // Scratch sentinel never persists — rewrite to "" so the schedule has
         // no template FK. The override resolver then drives applicable plans
@@ -1960,7 +1966,9 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         const instName = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
         const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
-        const branchId     = branchGroup?.branch.includes("East") ? "branch_forma_east" : "branch_forma_south";
+        // Same fix as handleCreate — use the actual `branchId` field on the
+        // group instead of a broken name-substring heuristic.
+        const branchId     = branchGroup?.branchId ?? "branch_forma_south";
 
         // ─── Date / time reschedule block ─────────────────────────────────
         // Only emitted when canReschedule AND the user actually changed the

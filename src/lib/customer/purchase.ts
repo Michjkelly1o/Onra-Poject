@@ -244,11 +244,10 @@ export interface PromoVM {
     locations: string;
 }
 
-const BRANCH_NAMES: Record<string, string> = {
-    branch_forma_south: "Forma Studio (South)",
-    branch_forma_east: "Forma Studio (East)",
-    branch_forma_west: "Forma Studio (West)",
-};
+// Branch-name lookup used by the promo VM's `locations` string. Read live
+// from the `branches` slice below inside `usePromos` — the previous
+// hardcoded map was missing Forma Spa AND any user-added branch, so those
+// promos rendered raw ids like "branch_forma_spa" instead of the name.
 
 function fmtDate(iso?: string): string {
     if (!iso) return "—";
@@ -267,6 +266,11 @@ export type PromoScope = "class" | "appointment";
  *  which vouchers can actually be applied (the rest render disabled). */
 export function usePromos(scope: PromoScope = "class"): PromoVM[] {
     const promoCodes = useAppStore((s) => s.promoCodes);
+    const branches = useAppStore((s) => s.branches);
+    const branchNameById = useMemo(
+        () => new Map(branches.map((b) => [b.id, b.name])),
+        [branches],
+    );
     return useMemo(
         () =>
             promoCodes
@@ -299,11 +303,11 @@ export function usePromos(scope: PromoScope = "class"): PromoVM[] {
                         discountValue: p.discount_value,
                         applicable,
                         locations:
-                            (p.branch_ids ?? []).map((b) => BRANCH_NAMES[b] ?? b).join(", ") ||
+                            (p.branch_ids ?? []).map((b) => branchNameById.get(b) ?? b).join(", ") ||
                             "All Forma Studio branches",
                     };
                 }),
-        [promoCodes, scope],
+        [promoCodes, scope, branchNameById],
     );
 }
 
