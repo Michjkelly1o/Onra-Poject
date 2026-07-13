@@ -502,7 +502,7 @@ function RepeatEndRadio({
                 >
                     {checked && <span className="w-2.5 h-2.5 rounded-full bg-[#658774]" />}
                 </span>
-                <span className="text-[14px] font-medium text-[#344054] min-w-[52px]">{label}</span>
+                <span className="text-[14px] font-medium text-[#344054]">{label}</span>
             </button>
             {children}
         </div>
@@ -2530,43 +2530,36 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                         <div className="flex flex-col gap-4">
                                             <p className="text-[18px] font-semibold text-[#101828]">Recurring Ends</p>
 
-                                            <div className="flex flex-col gap-3">
-                                                {/* Row 1 — Never · On [date picker].
-                                                    Matches the client's screenshot layout:
-                                                    the two "no more work" options sit side
-                                                    by side with the date picker inline. */}
-                                                <div className="flex items-center gap-6 flex-wrap">
-                                                    <RepeatEndRadio
-                                                        label="Never"
-                                                        checked={repeatEnd === "No end date"}
-                                                        onSelect={() => setRepeatEnd("No end date")}
-                                                    />
-                                                    <RepeatEndRadio
-                                                        label="On"
-                                                        checked={repeatEnd === "End on date"}
-                                                        onSelect={() => setRepeatEnd("End on date")}
-                                                    >
-                                                        {/* Date picker sits inline; disabled + dimmed
-                                                            when this radio isn't the active choice. */}
-                                                        <div className={cn("w-[240px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
-                                                            <DatePicker
-                                                                value={endDate}
-                                                                onChange={setEndDate}
-                                                                minDate={selectedDate || todayISO()}
-                                                            />
-                                                        </div>
-                                                    </RepeatEndRadio>
-                                                </div>
-                                                {/* Row 2 — After [N] classes.
-                                                    On its own line so the numeric input has
-                                                    enough breathing room. */}
+                                            {/* All 3 radios inline on one row. Date picker + numeric
+                                                widths shrunk (160 / 80) so the row fits without wrap.
+                                                Row still wraps on narrow viewports via `flex-wrap` —
+                                                falls back to a 2/1 split gracefully. */}
+                                            <div className="flex items-center gap-5 flex-wrap">
+                                                <RepeatEndRadio
+                                                    label="Never"
+                                                    checked={repeatEnd === "No end date"}
+                                                    onSelect={() => setRepeatEnd("No end date")}
+                                                />
+                                                <RepeatEndRadio
+                                                    label="On"
+                                                    checked={repeatEnd === "End on date"}
+                                                    onSelect={() => setRepeatEnd("End on date")}
+                                                >
+                                                    <div className={cn("w-[160px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
+                                                        <DatePicker
+                                                            value={endDate}
+                                                            onChange={setEndDate}
+                                                            minDate={selectedDate || todayISO()}
+                                                        />
+                                                    </div>
+                                                </RepeatEndRadio>
                                                 <RepeatEndRadio
                                                     label="After"
                                                     checked={repeatEnd === "End after"}
                                                     onSelect={() => setRepeatEnd("End after")}
                                                 >
                                                     <div className={cn("flex items-center gap-2", repeatEnd !== "End after" && "opacity-40 pointer-events-none")}>
-                                                        <div className="w-[120px]">
+                                                        <div className="w-[80px]">
                                                             <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
                                                         </div>
                                                         <span className="text-[14px] text-[#475467]">classes</span>
