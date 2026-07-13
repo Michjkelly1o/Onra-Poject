@@ -32,7 +32,7 @@ export default function AddCardPage() {
             expYear,
         });
         showToast("Payment method has been added", "New payment method has been added, now you can start buy product.", "success");
-        router.push("/customer/profile/payment-methods");
+        router.replace("/customer/profile/payment-methods");
     }
 
     return <CardForm title="Add payment method" submitLabel="Add card" initial={initial} onSubmit={submit} />;

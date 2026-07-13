@@ -4,15 +4,16 @@
 // Customer — Bookings list (`/customer/bookings`) — Figma 2134-28989 / 2175-30812
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Tab 3 of the bottom nav. Header = "Bookings" + filter, with Upcoming / Past
-// segmented tabs in the header subBar (sticky, frosts with the header). Each row
+// A level-2 page reached from Profile → Bookings (back button → Profile; no
+// bottom nav). Header = "Bookings" + filter, with Upcoming / Past segmented
+// tabs in the header subBar (sticky, frosts with the header). Each row
 // is the shared <BookingCard>; tapping opens the Booking Detail. The filter modal
 // (Class type · Instructor · Categories) narrows the active tab. Tab + filters
 // persist across detail round-trips via a module cache.
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
+import { ChevronLeft, FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
 import {
     applyBookingFilters,
     bookingFilterCount,
@@ -89,7 +90,9 @@ export default function BookingsPage() {
             applied.classType !== "Group" &&
             (applied.instructorIds.length === 0 ||
                 (a.instructorId != null && applied.instructorIds.includes(a.instructorId))) &&
-            (applied.categories.length === 0 || applied.categories.includes(a.category)),
+            (applied.categories.length === 0 || applied.categories.includes(a.category)) &&
+            (!applied.dateFrom || a.slotISO >= applied.dateFrom) &&
+            (!applied.dateTo || a.slotISO <= applied.dateTo),
     );
 
     // Merge appointments + class bookings into ONE list sorted by date/time —
@@ -184,7 +187,14 @@ export default function BookingsPage() {
                     </div>
                 }
             >
-                <div className="size-10 shrink-0" aria-hidden />
+                <button
+                    type="button"
+                    onClick={() => router.push("/customer/profile")}
+                    aria-label="Go back"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                >
+                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[#101828]">
                     Bookings
                 </p>

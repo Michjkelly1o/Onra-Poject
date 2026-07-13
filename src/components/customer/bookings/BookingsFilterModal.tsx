@@ -9,10 +9,22 @@
 // Class type (Group / Appointment), Instructor (multi-select pills), Categories
 // (multi-select chips). Multi within Instructor/Categories; Class type is single.
 
+import { useState } from "react";
+import { Calendar } from "@untitledui/icons";
 import { FullScreenFilterModal } from "@/components/customer/shell/FullScreenFilterModal";
+import { DatePickerSheet } from "@/components/customer/shell/DatePickerSheet";
 import { InstructorAvatar } from "@/components/customer/instructors/InstructorAvatar";
 import { bookingFilterCount, type BookingFilters } from "@/lib/customer/bookings-data";
+import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import type { FilterInstructor } from "@/lib/customer/instructors";
+
+/** ISO `YYYY-MM-DD` → "13 Jul 2026" for the date-field labels. */
+function fmtDate(iso: string): string {
+    const d = new Date(`${iso}T00:00:00`);
+    return Number.isNaN(d.getTime())
+        ? iso
+        : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
 
 export type { FilterInstructor };
 
@@ -45,6 +57,13 @@ export function BookingsFilterModal({
 
     const setClassType = (ct: "Group" | "Appointment") =>
         onDraftChange({ ...draft, classType: draft.classType === ct ? null : ct });
+    const setDateFrom = (v: string) => onDraftChange({ ...draft, dateFrom: v || null });
+    const setDateTo = (v: string) => onDraftChange({ ...draft, dateTo: v || null });
+    const clearDates = () => onDraftChange({ ...draft, dateFrom: null, dateTo: null });
+    // Which date field's calendar sheet is open (null = none).
+    const [picker, setPicker] = useState<"from" | "to" | null>(null);
+    const dateFieldCls =
+        "flex w-full items-center justify-between gap-2 rounded-md border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
     const toggleInstructor = (id: string) =>
         onDraftChange({
             ...draft,
@@ -87,6 +106,40 @@ export function BookingsFilterModal({
                                 </button>
                             );
                         })}
+                    </div>
+                </div>
+
+                <div className="h-px w-full bg-[#e4e7ec]" />
+
+                {/* Date range — filters the active tab (upcoming / past) by date */}
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium leading-5 text-[#344054]">Date range</span>
+                        {(draft.dateFrom || draft.dateTo) && (
+                            <button type="button" onClick={clearDates} className="text-sm font-semibold leading-5 text-[#4f6e5d]">
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex flex-1 flex-col gap-1.5">
+                            <span className="text-xs font-normal leading-[18px] text-[#667085]">From</span>
+                            <button type="button" onClick={() => setPicker("from")} className={dateFieldCls}>
+                                <span className={draft.dateFrom ? "text-[#101828]" : "text-[#667085]"}>
+                                    {draft.dateFrom ? fmtDate(draft.dateFrom) : "Select date"}
+                                </span>
+                                <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                            </button>
+                        </div>
+                        <div className="flex flex-1 flex-col gap-1.5">
+                            <span className="text-xs font-normal leading-[18px] text-[#667085]">To</span>
+                            <button type="button" onClick={() => setPicker("to")} className={dateFieldCls}>
+                                <span className={draft.dateTo ? "text-[#101828]" : "text-[#667085]"}>
+                                    {draft.dateTo ? fmtDate(draft.dateTo) : "Select date"}
+                                </span>
+                                <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -146,6 +199,27 @@ export function BookingsFilterModal({
                     </div>
                 </div>
             </div>
+
+            {/* Branded calendar sheets — same picker as Date of birth. From ≤ To is
+                enforced via minISO/maxISO so the range can't invert. */}
+            <DatePickerSheet
+                open={picker === "from"}
+                onClose={() => setPicker(null)}
+                title="From date"
+                value={draft.dateFrom ?? undefined}
+                defaultISO={REAL_TODAY_ISO}
+                maxISO={draft.dateTo ?? undefined}
+                onSelect={setDateFrom}
+            />
+            <DatePickerSheet
+                open={picker === "to"}
+                onClose={() => setPicker(null)}
+                title="To date"
+                value={draft.dateTo ?? undefined}
+                defaultISO={draft.dateFrom ?? REAL_TODAY_ISO}
+                minISO={draft.dateFrom ?? undefined}
+                onSelect={setDateTo}
+            />
         </FullScreenFilterModal>
     );
 }
