@@ -172,8 +172,8 @@ export default function TotalSalesReportPageV2() {
                 staffName: r.staffName ?? "",
                 salesChannel,
                 // `selectTransactionLedger` already filters out
-                // `cancellation_penalty` rows (operational fees, not
-                // product revenue), so `r.kind` here is always
+                // `cancellation_penalty` + `freeze_fee` rows (operational
+                // fees, not product revenue), so `r.kind` here is always
                 // membership | package — assert to satisfy the report's
                 // narrower display type.
                 revenueCategory: r.kind as "membership" | "package",

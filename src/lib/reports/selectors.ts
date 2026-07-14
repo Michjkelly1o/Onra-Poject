@@ -406,7 +406,7 @@ export function selectTransactionLedger(state: AppState): LedgerRow[] {
     // exports don't get polluted with penalty AED. Same rule applies in
     // `selectPayments` below (payments report also filters them out).
     return resolveLedger(state.customerTransactions)
-        .filter(t => t.kind !== "cancellation_penalty")
+        .filter(t => t.kind !== "cancellation_penalty" && t.kind !== "freeze_fee")
         .map(t => {
             const c = cust(t.customerId);
             return {
@@ -431,7 +431,7 @@ export function selectPayments(state: AppState): PaymentRow[] {
     const cust = makeCustomerLookup(state);
 
     return state.customerTransactions
-        .filter(t => t.kind !== "cancellation_penalty")
+        .filter(t => t.kind !== "cancellation_penalty" && t.kind !== "freeze_fee")
         .map(t => {
         const c = cust(t.customerId);
         const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;

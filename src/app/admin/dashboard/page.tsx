@@ -671,6 +671,7 @@ export default function AdminDashboard() {
             && t.createdAtISO.startsWith(todayISO)
             && (t.transactionType === undefined || t.transactionType === "sale")
             && t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee"
         );
         const totalSalesCount = todaySales.length;
         const totalRevenueAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);

@@ -52,11 +52,12 @@ export function FreezePlanSheet({
 
     useEffect(() => {
         if (open) {
-            setDuration("30");
+            // Open on a valid default — 30 days, but never above the policy cap.
+            setDuration(String(maxDays != null && maxDays < 30 ? maxDays : 30));
             setUnit("Day");
             setReason(null);
         }
-    }, [open]);
+    }, [open, maxDays]);
 
     const n = parseInt(duration, 10) || 0;
     const days = n * (UNITS.find((u) => u.label === unit)?.days ?? 1);
