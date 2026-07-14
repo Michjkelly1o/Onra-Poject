@@ -29,14 +29,16 @@ export const SESSION_TYPE_TAG_LABEL: Record<SessionType, string> = {
     recovery: "Recovery",
 };
 
-/** Tag chip palette — bg / text / border per type. */
-export const SESSION_TYPE_TAG_COLORS: Record<SessionType, { bg: string; text: string; border: string }> = {
+/** Tag chip palette — bg / text / border per type, plus a softer `bar`
+ *  mid-tone for the dashboard occupancy mini bars (the badge text colours
+ *  read too heavy as a filled bar). */
+export const SESSION_TYPE_TAG_COLORS: Record<SessionType, { bg: string; text: string; border: string; bar: string }> = {
     // Green (matches the DS success badge).
-    class:    { bg: "#ecfdf3", text: "#067647", border: "#abefc6" },
+    class:    { bg: "#ecfdf3", text: "#067647", border: "#abefc6", bar: "#7cc8a0" },
     // Purple / indigo.
-    private:  { bg: "#f4f3ff", text: "#5925dc", border: "#d9d6fe" },
+    private:  { bg: "#f4f3ff", text: "#5925dc", border: "#d9d6fe", bar: "#a99cf5" },
     // Orange.
-    recovery: { bg: "#fef6ee", text: "#b93815", border: "#f9dbaf" },
+    recovery: { bg: "#fef6ee", text: "#b93815", border: "#f9dbaf", bar: "#f0a06a" },
 };
 
 /** Ordered list for filter chips / bubbles — Classes, then Private, then Recovery. */

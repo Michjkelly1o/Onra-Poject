@@ -423,7 +423,7 @@ function OccupancyCard({ byType, selected, typeFilter }: {
     typeFilter: SessionType | "";
 }) {
     return (
-        <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col gap-1.5 min-w-0 p-4 rounded-2xl min-w-[220px]">
+        <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col justify-center gap-1.5 min-w-0 p-4 rounded-2xl min-w-[220px]">
             <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
                 {typeFilter ? `Occupancy · ${SESSION_TYPE_TAG_LABEL[typeFilter]}` : "Occupancy"}
             </p>
@@ -433,17 +433,17 @@ function OccupancyCard({ byType, selected, typeFilter }: {
                     <p className="font-normal text-xs text-[#667085]">avg fill today</p>
                 </>
             ) : (
-                <div className="flex flex-col gap-2 w-full pt-1">
+                <div className="flex flex-col gap-1 w-full">
                     {SESSION_TYPE_ORDER.map(t => {
                         const { pct } = byType[t];
                         const c = SESSION_TYPE_TAG_COLORS[t];
                         return (
                             <div key={t} className="flex items-center gap-2">
-                                <span className="text-[12px] text-[#667085] w-[60px] shrink-0">{SESSION_TYPE_TAG_LABEL[t]}</span>
+                                <span className="text-[11px] text-[#667085] w-[56px] shrink-0">{SESSION_TYPE_TAG_LABEL[t]}</span>
                                 <div className="flex-1 h-1.5 bg-[#f2f4f7] rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: c.text }} />
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: c.bar }} />
                                 </div>
-                                <span className="text-[12px] font-medium text-[#101828] w-[36px] text-right shrink-0">{pct}%</span>
+                                <span className="text-[11px] font-medium text-[#344054] w-[32px] text-right shrink-0">{pct}%</span>
                             </div>
                         );
                     })}
@@ -1176,7 +1176,9 @@ export default function AdminDashboard() {
             <div className={cn(
                 activeTab === "coming"
                     ? "grid grid-cols-3 gap-6 items-start"
-                    : "flex flex-wrap gap-6 items-start",
+                    // Today/Performance: stretch so every card (incl. the
+                    // Occupancy split card) shares one row height.
+                    : "flex flex-wrap gap-6 items-stretch",
             )}>
                 {metrics.map((metric) => (
                     <MetricCard key={metric.label} metric={metric} />
