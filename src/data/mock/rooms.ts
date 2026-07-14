@@ -2,9 +2,14 @@
 // Onra Studio — `rooms` seed
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// 4 rooms across the two active branches. The West branch is inactive in
+// 5 rooms across the two active branches. The West branch is inactive in
 // `branches.ts`, so it intentionally has no rooms seeded — preserves the
 // "no rooms when branch is inactive" invariant.
+//
+// South carries a "Recovery" room so recovery services have a room to
+// (optionally) use — recovery is a session type that lives inside a real
+// branch, not a separate location. Room use is optional per service (some
+// recovery sessions are room-less — see appointments.ts).
 //
 // FK: `branch_id` → branches.id
 
@@ -33,6 +38,17 @@ export const rooms: Room[] = [
         capacity: 15,
         status: "active",
     },
+    // Recovery room — the space recovery/wellness sessions optionally use.
+    // Recovery is a session type inside a real branch, not a location of its
+    // own. Massage + IV therapy appointments book this room; the open
+    // sessions (Sauna, Breathwork) run room-less to exercise both paths.
+    {
+        id: "room_south_recovery",
+        branch_id: "branch_forma_south",
+        name: "Recovery Room",
+        capacity: 10,
+        status: "active",
+    },
 
     // ── Forma Studio East (active) — 1 room ──────────────────────────────────
     // Named after the class type it hosts — every seeded East class is Hot
@@ -47,10 +63,4 @@ export const rooms: Room[] = [
         status: "active",
     },
 
-    // ── Forma Spa (active, Spa kind) — NO rooms seeded ───────────────────────
-    // Spa branches are deliberately room-less in the prototype — recovery
-    // sessions aren't room-scoped. Appointments at this branch carry
-    // room_id="" (Appointment.room_id is optional; the detail panel only
-    // renders the Room subline when roomName is present, so empty values
-    // degrade cleanly).
 ];

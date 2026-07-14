@@ -60,7 +60,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { useAppStore, type Service } from "@/lib/store";
+import { useAppStore, type Service, type ServiceType } from "@/lib/store";
 
 // ─── Stepper ─────────────────────────────────────────────────────────────────
 
@@ -606,6 +606,9 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
             description: existing?.description ?? "",
             categoryId:  cat?.id ?? "",
             category:    step1.category,
+            // Session type derived from the recovery toggle — Phase 2 swaps
+            // the toggle for an explicit Private/Recovery selector.
+            type:        (step1.isRecovery ? "recovery" : "private") as ServiceType,
             isRecovery:  step1.isRecovery,
             // Non-recovery services are always Private with an instructor —
             // force open_session=false even if the local toggle drifted.
@@ -615,7 +618,10 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
             price:       Number(price),
             branchId:    branchId,
             branchName:  branch?.name ?? "",
-            branchKind:  (branch?.kind ?? "club") as "club" | "spa",
+            // Phase-1 shim (see serviceFromSeed) — branchKind derives from the
+            // recovery flag, not the branch kind, so a newly-created recovery
+            // service still surfaces in the customer open-session filter.
+            branchKind:  (step1.isRecovery ? "spa" : "club") as "club" | "spa",
             status:      (existing?.status ?? "Active") as Service["status"],
             coverImage:  step1.coverPreview ?? undefined,
             coverColor:  cat?.color_hex ?? "#e9fff3",

@@ -169,6 +169,8 @@ import {
     type ClassesSettings,
     type CancellationPolicy,
     type CancellationOutcome,
+    type SessionType,
+    type ServiceType,
     type Branch,
     type Room,
     type BusinessHours,
@@ -238,6 +240,7 @@ import {
 
 // Re-export raw seed types — consumers can read these directly from the store.
 export type {
+    SessionType, ServiceType,
     ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
     // Reports v33 — new seed types the selectors reach into
@@ -511,6 +514,10 @@ export type ClassStatus    = "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 /** Class template — camelCase shape used by all current consumers. */
 export interface ClassTemplate {
     id: string;
+    /** Session type dimension — always "class" for a template (Classes come
+     *  from templates; Private/Recovery come from Services). Stamped at
+     *  adapter/boot. See new-prd/session-type-dimension-implementation-plan.md. */
+    type: SessionType;
     name: string;
     description: string;
     categoryId: string;
@@ -556,10 +563,14 @@ export interface Service {
     categoryId: string;
     /** Category display name — denormalized from class_categories. */
     category: string;
-    /** True = Recovery service (lives at Spa branches, may be open
-     *  session). False = Non-recovery (lives at Club branches, always
-     *  Private with an instructor). Drives the booking-conditions form
-     *  section + location dropdown filter + list-page Recovery column. */
+    /** Session type dimension — "private" (1:1) or "recovery" (spa/wellness).
+     *  The explicit field new code filters on. See
+     *  new-prd/session-type-dimension-implementation-plan.md. */
+    type: ServiceType;
+    /** @deprecated Back-compat mirror derived from `type` (`type === "recovery"`).
+     *  Existing consumers (ServiceForm, services list, customer appointments-
+     *  data) still read this; Phase 2 rewrites them to read `type` and this
+     *  field is removed. */
     isRecovery: boolean;
     /** True = Open session (multi-customer, capacity meaningful). Only
      *  meaningful when isRecovery=true — non-recovery services force this
@@ -602,6 +613,9 @@ export type AppointmentBookingStatus = "Booked" | "Attended" | "NoShow" | "Cance
 export interface Appointment {
     id: string;
     serviceId: string;
+    /** Session type dimension — inherited from the parent Service
+     *  ("private" or "recovery"). Stamped at adapter/boot. */
+    type: ServiceType;
     serviceName: string;
     serviceCategory: string;
     /** Tile background hex — resolved from class_categories.color_hex. */
@@ -877,6 +891,12 @@ export type GenderAccess = "all" | "female" | "male";
 export interface ClassSchedule {
     id: string;
     templateId: string;
+    /** Session type dimension. "class" for a real class schedule; when an
+     *  Appointment is projected into this shape via `appointmentToClassInstance`
+     *  it carries the appointment's "private"/"recovery" type — so the
+     *  schedule grid + dashboard filter one field across both surfaces.
+     *  See new-prd/session-type-dimension-implementation-plan.md. */
+    type: SessionType;
     /** Denormalized template fields for fast UI render. */
     name: string;
     description: string;
@@ -945,6 +965,10 @@ export type ClassInstance = ClassSchedule;
 export function appointmentToClassInstance(a: Appointment): ClassInstance {
     return {
         id: a.id,
+        // Carry the appointment's own type through the projection so the
+        // schedule grid + dashboard can filter Class/Private/Recovery on one
+        // field even though appointments render through the ClassInstance shape.
+        type: a.type,
         templateId: a.serviceId,
         name: a.serviceName,
         description: "",
@@ -1947,6 +1971,7 @@ function templateFromSeed(t: SeedClassTemplate): ClassTemplate {
     const cat = SEED_CLASS_CATEGORIES.find(c => c.id === t.category_id);
     return {
         id: t.id,
+        type: "class",
         name: t.name,
         description: t.description,
         categoryId: t.category_id,
@@ -1972,14 +1997,22 @@ function serviceFromSeed(s: SeedService): Service {
         description: s.description,
         categoryId: s.category_id,
         category: cat?.name ?? "",
-        isRecovery: s.is_recovery,
+        type: s.type,
+        // Back-compat mirror — derived so existing isRecovery consumers keep
+        // working until Phase 2 rewrites them to read `type`.
+        isRecovery: s.type === "recovery",
         openSession: s.open_session,
         durationMin: s.duration_min,
         capacity: s.capacity,
         price: s.price,
         branchId: s.branch_id,
         branchName: branch?.name ?? "",
-        branchKind: branch?.kind ?? "club",
+        // Phase-1 shim: branchKind now derives from `type` (recovery → "spa")
+        // instead of the branch's kind, so the ONE consumer still reading it —
+        // the customer open-session filter in appointments-data.ts — keeps its
+        // exact behaviour now that every real branch is "club". Phase 2 removes
+        // branchKind entirely and rewrites that filter to read `type`.
+        branchKind: s.type === "recovery" ? "spa" : "club",
         status: s.status,
         coverImage: s.cover_image_url,
         coverColor: cat?.color_hex ?? "#f1f2ed",
@@ -1994,6 +2027,9 @@ function appointmentFromSeed(a: SeedAppointment, services: Service[]): Appointme
     return {
         id: a.id,
         serviceId: a.service_id,
+        // Inherit the session type from the parent service. Falls back to
+        // "private" only if the service can't be resolved (shouldn't happen).
+        type: service?.type ?? "private",
         serviceName: service?.name ?? "",
         serviceCategory: service?.category ?? "",
         coverColor: service?.coverColor ?? "#f1f2ed",
@@ -2087,6 +2123,7 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
     return {
         id: s.id,
         templateId: s.template_id,
+        type: "class",
         name: tpl?.name ?? "",
         description: tpl?.description ?? "",
         category: tpl?.category ?? "",
@@ -7918,7 +7955,17 @@ export const useAppStore = create<AppState>()(persist(
         //   types). 3 seed rows + half of DEMO_NOW_REFERRALS re-typed to
         //   `wallet_credit` so both card lines demo populated. Bump forces
         //   a reseed on next hydrate so testers pick up the new fields.
-        version: 56,
+        // v57 (2026-07-14): session-type dimension Phase 1. Every bookable/
+        //   scheduled row gains an explicit `type` ("class" | "private" |
+        //   "recovery"): ClassTemplate/ClassSchedule = "class", Service =
+        //   "private" | "recovery" (replaces `is_recovery`; store keeps a
+        //   derived back-compat `isRecovery`), Appointment inherits from its
+        //   service. The fake "Forma Spa" branch (`branch_forma_spa`) is
+        //   deleted — recovery services/appointments/staff/hours relocated to
+        //   Forma South, with a new "Recovery" room (massage + IV use it,
+        //   sauna + breathwork are room-less). Bump forces a reseed so stale
+        //   payloads (spa branch, is_recovery-only services) drop cleanly.
+        version: 57,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

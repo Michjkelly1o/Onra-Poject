@@ -81,15 +81,4 @@ export const business_hours: BusinessHours[] = [
         { open: "08:00", close: "19:00" },   // Sat
         { open: "08:00", close: "18:00" },   // Sun
     ),
-
-    // Forma Spa — recovery branch, open all week with shorter spa hours.
-    // Without this entry the Spa branch detail page would render every
-    // day as "(Closed)" even though we seed live Spa appointments —
-    // a contradiction that broke the demo.
-    ...makeWeek(
-        "branch_forma_spa",
-        { open: "09:00", close: "21:00" },   // Mon–Fri
-        { open: "10:00", close: "20:00" },   // Sat
-        { open: "10:00", close: "20:00" },   // Sun
-    ),
 ];

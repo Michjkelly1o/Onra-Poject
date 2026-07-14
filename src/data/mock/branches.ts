@@ -27,11 +27,11 @@
 
 import type { Branch } from "./_types";
 
-// All 3 Forma Studio locations are Club branches — they host classes
-// and non-recovery private services (Reformer, Mat Pilates). Forma
-// Recovery is the new Spa branch hosting recovery services (Massage,
-// Sauna, Breathwork, IV therapy). See `services.ts` for the service
-// → branch assignment driven by the new `is_recovery` flag.
+// 3 Forma Studio locations, each a real physical branch. A branch hosts
+// classes AND appointment-based sessions (private + recovery) — recovery is
+// a session `type`, not a separate location. See `services.ts` for the
+// service → branch assignment driven by `type`. `kind` is a dead-but-safe
+// legacy field (all "club"); it's removed entirely in Phase 2.
 export const branches: Branch[] = [
     {
         id: "branch_forma_south",
@@ -70,25 +70,6 @@ export const branches: Branch[] = [
         address: "32 The Greens Avenue, Emirates Living, Dubai",
         email: "forma.west@formastudio.ae",
         phone: "+971 55 200 2003",
-        state: "Dubai",
-        city: "Dubai",
-        country: "United Arab Emirates",
-        timezone: "Asia/Dubai",
-    },
-    // Forma Spa — sole seeded Spa branch. Hosts every service with
-    // `is_recovery=true`. Spa-branch admins/operators/front-desk staff
-    // creating a new service via this branch will see Booking conditions
-    // with "Service is recovery" pre-toggled ON + disabled (per the
-    // form's role-conditional logic).
-    {
-        id: "branch_forma_spa",
-        name: "Forma Spa",
-        status: "active",
-        is_main: false,
-        kind: "spa",
-        address: "6 Marina Promenade, Dubai Marina, Dubai",
-        email: "spa@formastudio.ae",
-        phone: "+971 55 200 2010",
         state: "Dubai",
         city: "Dubai",
         country: "United Arab Emirates",

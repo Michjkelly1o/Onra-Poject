@@ -367,28 +367,25 @@ export const staff: StaffSeed[] = [
         shift_id: "shift_afternoon",
         category_ids: ["cat_pilates", "cat_barre"],
     },
-    // ── Spa-branch practitioners ───────────────────────────────────────────
-    // Bug fix — Spa branch previously seeded with zero practitioners even
-    // though Forma Spa hosts private recovery services (massage / IV
-    // therapy). Two entries here so /admin/services and appointment
-    // instructor pickers have something to render for spa services. Note
-    // the appointment seed's SPA_INSTRUCTORS pool stays empty on purpose
-    // — that array powers the historical appointment backfill; live
-    // creation flows read the staff store, which now has entries.
+    // ── Recovery & wellness practitioners ──────────────────────────────────
+    // Recovery services (massage / IV / breathwork / sauna) now live at real
+    // branches — these two practitioners are based at Forma South. Two
+    // entries so /admin/services and appointment instructor pickers have
+    // something to render for recovery services.
     {
         id: "staff_nadia_hassan",
         first_name: "Nadia", last_name: "Hassan", full_name: "Nadia Hassan",
         email: "nadia@formastudio.ae", phone: "+971 55 200 2013",
         initials: "NH", color_hex: "#dd2590",
         role_id: "role_instructor",
-        branch_id: "branch_forma_spa",
+        branch_id: "branch_forma_south",
         status: "active",
         first_login_completed: true,
         joined_date: "Oct 1, 2024",
         bio: "Licensed massage therapist specialising in deep tissue and sports recovery.",
         specialties: ["Deep Tissue Massage", "Sports Recovery"],
         pay_rate_id: "pr_private_sess",
-        short_intro: "Nadia leads Forma Spa's private recovery bookings with 8 years of clinical massage practice.",
+        short_intro: "Nadia leads Forma's private recovery bookings with 8 years of clinical massage practice.",
         working_experience_years: 8,
         shift_id: "shift_morning",
         category_ids: [],
@@ -399,14 +396,14 @@ export const staff: StaffSeed[] = [
         email: "omar@formastudio.ae", phone: "+971 55 200 2014",
         initials: "OS", color_hex: "#2e90fa",
         role_id: "role_instructor",
-        branch_id: "branch_forma_spa",
+        branch_id: "branch_forma_south",
         status: "active",
         first_login_completed: true,
         joined_date: "Nov 4, 2024",
         bio: "Breathwork and wellness coach guiding recovery-focused open sessions.",
         specialties: ["Breathwork", "Sauna Guidance"],
         pay_rate_id: "pr_community",
-        short_intro: "Omar runs Forma Spa's group breathwork and sauna sessions, drawing on 6 years of holistic wellness coaching.",
+        short_intro: "Omar runs Forma's group breathwork and sauna sessions, drawing on 6 years of holistic wellness coaching.",
         working_experience_years: 6,
         shift_id: "shift_afternoon",
         category_ids: [],

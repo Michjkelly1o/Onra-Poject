@@ -511,6 +511,9 @@ function NewClassTemplatePageInner() {
         const membershipIds = selectedMemberships.filter(x => allMemberships.some(m => m.id === x));
         const packageIds    = selectedMemberships.filter(x => allPackages.some(p => p.id === x));
         addClassTemplate({
+            // A class template is always the "class" session type — Private
+            // and Recovery live in the Services module.
+            type: "class",
             name: step1.name,
             description: step1.description,
             categoryId: cat?.id ?? "",

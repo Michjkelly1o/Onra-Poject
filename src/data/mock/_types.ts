@@ -51,14 +51,11 @@ export interface Branch {
     status: "active" | "inactive" | "archive";
     /** Display flag — the "main" branch shows first in selectors. */
     is_main: boolean;
-    /** Branch type, gates which services + appointments live here:
-     *    • "club" — classes + non-recovery private services (Reformer, Mat
-     *      Pilates, etc.). Default for the original 3 Forma locations.
-     *    • "spa"  — recovery-only branch. Hosts services with
-     *      `is_recovery=true` (Massage, Sauna, Breathwork, IV therapy,
-     *      etc.). The service create flow filters the location dropdown
-     *      on this field and the role-based form gating is wired off it
-     *      (Spa-branch admins can only author recovery services). */
+    /** @deprecated Being retired in the session-type refactor. Every branch
+     *  is now a plain physical location ("club") — recovery is a session
+     *  `type`, not a branch kind, and any branch can host any type. Kept as
+     *  a dead-but-safe field in Phase 1 (all branches "club") so the spa-only
+     *  conditionals still compile; removed entirely in Phase 2. */
     kind: "club" | "spa";
     address?: string;
     // +later: opening_hours, logo_url
@@ -1135,22 +1132,46 @@ export interface ClassTemplate {
     branch_ids?: string[]; // → branches.id[]
 }
 
+// ─── Session type dimension (Phase 1 — session-type refactor) ─────────────────
+
+/**
+ * The `type` dimension — every bookable/scheduled thing in Onra is exactly
+ * one of these three. This is the explicit field that replaces the old
+ * scattered signals (`ClassTemplate.location_type`, `ClassSchedule.class_type`,
+ * `Service.is_recovery`). See
+ * `new-prd/session-type-dimension-implementation-plan.md`.
+ *
+ *   • "class"    — group session. Comes from a ClassTemplate → ClassSchedule.
+ *   • "private"  — 1:1 session.   Comes from a Service      → Appointment.
+ *   • "recovery" — spa/wellness.  Comes from a Service      → Appointment.
+ *
+ * Canonical UI labels: "Classes" · "Private sessions" · "Recovery & wellness".
+ */
+export type SessionType = "class" | "private" | "recovery";
+
+/** A Service is only ever Private or Recovery — Classes come from templates,
+ *  never from a Service. */
+export type ServiceType = Extract<SessionType, "private" | "recovery">;
+
 // ─── Services (Appointment services) ──────────────────────────────────────────
 
 /**
  * Service template — the reusable "blueprint" for scheduled appointments.
- * Two distinct shapes:
+ * Every Service is `type: "private"` or `type: "recovery"` (Classes come
+ * from ClassTemplate, never a Service). Shapes:
  *
- *   • Recovery + Open session — `is_recovery=true` + `open_session=true`.
- *     Multi-customer, has capacity. No instructor required. Lives at Spa
- *     branches (`branch.kind="spa"`). Massage, Sauna, Breathwork, etc.
- *   • Recovery + Private      — `is_recovery=true` + `open_session=false`.
- *     1 customer at a time, no instructor. Spa branches.
- *   • Non-recovery (Private)  — `is_recovery=false`. 1 customer + 1
- *     instructor. Lives at Club branches (`branch.kind="club"`).
- *     Private Reformer, Mat Pilates. `open_session` is forced false.
+ *   • Recovery + Open session — `type="recovery"` + `open_session=true`.
+ *     Multi-customer, has capacity. No instructor required. Sauna,
+ *     Breathwork, etc.
+ *   • Recovery + Private      — `type="recovery"` + `open_session=false`.
+ *     1 customer at a time, no instructor. Massage, IV therapy.
+ *   • Private                 — `type="private"`. 1 customer + 1
+ *     instructor. Private Reformer, Mat Pilates. `open_session` forced false.
  *
- * Pricing model: services are now currency-priced (`price` AED), NOT
+ * A service can live at ANY active branch (recovery is no longer pinned to a
+ * fake "spa" location); `branch_id` is a plain FK and rooms are optional.
+ *
+ * Pricing model: services are currency-priced (`price` AED), NOT
  * membership/package-gated. The legacy `applicable_membership_ids` and
  * `applicable_package_ids` fields were dropped — customers pay the fixed
  * price at checkout via the appointment booking flow.
@@ -1164,18 +1185,16 @@ export interface Service {
     category_id: string;          // → class_categories.id
     name: string;                 // "Private Reformer"
     description: string;
-    /** True = Recovery service (lives at Spa branches, may be open
-     *  session). False = Non-recovery (lives at Club branches, always
-     *  private session with an instructor). Drives:
-     *    • Step 1 form: "Booking conditions" toggle + role-conditional
-     *      gating (Club admins hide section; Spa admins force ON+disabled)
-     *    • Step 3 form: location dropdown filters by matching `branch.kind`
-     *    • List page Recovery column (Yes/No)
-     *    • Detail + appointment side panel rows */
-    is_recovery: boolean;
-    /** True = Open session (multi-customer w/ capacity). False = Private.
-     *  Only meaningful when `is_recovery=true` — non-recovery services
-     *  always force this to false. */
+    /** The session type — "private" (1:1 training) or "recovery"
+     *  (spa/wellness). Replaces the old `is_recovery` boolean as part of
+     *  the session-type dimension refactor: `is_recovery:true` → "recovery",
+     *  `false` → "private". The store still derives a back-compat
+     *  `isRecovery` (`type === "recovery"`) so existing consumers keep
+     *  working until Phase 2 rewrites them. */
+    type: ServiceType;
+    /** True = Open session (multi-customer w/ capacity). False = Private
+     *  (1 customer). Only meaningful for `type: "recovery"` — a "private"
+     *  service always forces this false. */
     open_session: boolean;
     duration_min: number;
     /** Only meaningful when `open_session = true`. Persisted as 0 for
@@ -1186,10 +1205,9 @@ export interface Service {
      *  checkout (Phase: customer-side checkout still uses subtotal=0 per
      *  current product direction). */
     price: number;
-    /** Branch where this service is offered. Single-branch in Phase 1 to
-     *  match the Figma step 3 "select location" single-select; Phase 2+
-     *  may widen to a multi-branch array depending on customer-portal
-     *  rollout. */
+    /** Branch where this service is offered — any active branch. Single-
+     *  branch to match the Figma step 3 "select location" single-select;
+     *  may widen to a multi-branch array later. */
     branch_id: string;            // → branches.id
     cover_image_url?: string;
     status: "Active" | "Inactive" | "Archived";
@@ -1220,11 +1238,10 @@ export interface Appointment {
     id: string;
     service_id: string;            // → services.id
     branch_id: string;             // → branches.id (denormalized for fast filter)
-    /** Optional — Club appointments resolve to a real room id; Spa branch
-     *  appointments omit this (recovery sessions aren't room-scoped, the
-     *  spa branch deliberately has no rooms seeded). The Appointment
-     *  detail side panel already gates the Room subline on roomName so
-     *  empty values render cleanly. */
+    /** Optional — a room is optional for any appointment (private + recovery
+     *  sessions may or may not use one). Omitted when the session isn't
+     *  room-scoped. The Appointment detail side panel gates the Room subline
+     *  on roomName so empty values render cleanly. */
     room_id?: string;              // → rooms.id
     /** Required for Private services, omitted for Open session. */
     instructor_id?: string;        // → staff_profiles.id

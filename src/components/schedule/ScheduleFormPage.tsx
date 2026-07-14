@@ -1943,7 +1943,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
         if (repeat === "Does not repeat" && selectedDate) {
             instances.push({
-                templateId: persistedTemplateId, name, description: desc, category,
+                templateId: persistedTemplateId, type: "class", name, description: desc, category,
                 branchId,
                 instructorId, instructorName: instName?.name ?? "",
                 instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",
@@ -1965,7 +1965,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         } else {
             for (const p of previewItems) {
                 instances.push({
-                    templateId: persistedTemplateId, name, description: desc, category,
+                    templateId: persistedTemplateId, type: "class", name, description: desc, category,
                     branchId,
                     instructorId, instructorName: instName?.name ?? "",
                     instructorInitials: instName?.initials ?? "", instructorColor: instName?.color ?? "#667085",

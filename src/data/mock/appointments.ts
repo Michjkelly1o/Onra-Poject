@@ -102,47 +102,42 @@ interface ServiceSpec {
     open: boolean;
     branch: string;
     instructorPool: readonly string[];  // ignored for Open session services
-    /** Empty for Spa-branch services (recovery sessions aren't room-scoped).
-     *  `roomFor` returns "" in that case and Appointment.room_id is optional
-     *  in the type — the detail panel's Room subline gates on `roomName` so
-     *  empty rooms never render. */
+    /** Empty for room-less sessions (some recovery services don't use a
+     *  room). `roomFor` returns "" in that case and Appointment.room_id is
+     *  optional in the type — the detail panel's Room subline gates on
+     *  `roomName` so empty rooms never render. */
     roomPool: readonly string[];
 }
 
 const SOUTH = "branch_forma_south";
 const EAST  = "branch_forma_east";
-// Spa branch hosts every is_recovery=true service per the Module 13
-// update — keeps the appointment-side branch FK in sync with services.ts
-// so the schedule grid + appointment detail location both resolve to
-// "Forma Spa" for Massage / Sauna / Breathwork / IV therapy.
-const SPA   = "branch_forma_spa";
 
 const SOUTH_INSTRUCTORS = ["staff_maya_johnson", "staff_phoenix_baker", "staff_sara_al_rashid"] as const;
 const EAST_INSTRUCTORS  = ["staff_demi_wilkinson", "staff_lana_steiner"] as const;
 
 const SOUTH_ROOMS = ["room_south_reformer", "room_south_mat", "room_south_barre"] as const;
 const EAST_ROOMS  = ["room_east_studio_a"] as const;
-// Spa branch ships with NO rooms — recovery services aren't room-scoped.
-// Pool stays empty; `roomFor` returns "" and Appointment.room_id is
-// optional in the type, so the renderers cope gracefully.
-const SPA_ROOMS: readonly string[] = [];
-// Recovery services aren't instructor-led either (no Spa staff seeded).
-// Private recovery (Massage / IV) still get a placeholder pool — recall
-// `instructor_id` is only written when `open=false`, but recovery
-// open=true overrides that and skips it entirely.
-const SPA_INSTRUCTORS: readonly string[] = [];
+// Recovery room at South — Massage + IV therapy (private recovery) book it.
+const RECOVERY_ROOMS = ["room_south_recovery"] as const;
+// Open recovery sessions (Sauna, Breathwork) run room-less — the empty pool
+// makes `roomFor` return "" and Appointment.room_id is optional, so the
+// renderers cope. This exercises the optional-room path.
+const NO_ROOMS: readonly string[] = [];
+// Recovery services aren't instructor-led in the seed — the appointment
+// backfill omits instructor_id (only written when the pool is non-empty).
+const RECOVERY_INSTRUCTORS: readonly string[] = [];
 
-// Services routed to the Spa branch — kept in sync with services.ts so
-// the schedule grid + detail-page Location both resolve to "Forma Spa".
-// Massage / IV therapy are private recovery (no instructor either in this
-// prototype — Spa has no instructor pool). Sauna / Breathwork are open.
+// Services + their appointment routing — kept in sync with services.ts.
+// All recovery now lives at Forma South (recovery is a session type inside a
+// real branch, not a separate location). Massage / IV are private recovery
+// booked into the Recovery room; Sauna / Breathwork are open + room-less.
 const SERVICES: ServiceSpec[] = [
-    { id: "svc_private_reformer",    durationMin: 60, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
-    { id: "svc_private_mat_pilates", durationMin: 45, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS, roomPool: SOUTH_ROOMS },
-    { id: "svc_massage",             durationMin: 60, capacity: 1,  open: false, branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
-    { id: "svc_sauna",               durationMin: 30, capacity: 6,  open: true,  branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
-    { id: "svc_breathwork",          durationMin: 45, capacity: 10, open: true,  branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
-    { id: "svc_iv_therapy",          durationMin: 30, capacity: 1,  open: false, branch: SPA,   instructorPool: SPA_INSTRUCTORS,   roomPool: SPA_ROOMS   },
+    { id: "svc_private_reformer",    durationMin: 60, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS,     roomPool: SOUTH_ROOMS    },
+    { id: "svc_private_mat_pilates", durationMin: 45, capacity: 1,  open: false, branch: SOUTH, instructorPool: SOUTH_INSTRUCTORS,     roomPool: SOUTH_ROOMS    },
+    { id: "svc_massage",             durationMin: 60, capacity: 1,  open: false, branch: SOUTH, instructorPool: RECOVERY_INSTRUCTORS, roomPool: RECOVERY_ROOMS },
+    { id: "svc_sauna",               durationMin: 30, capacity: 6,  open: true,  branch: SOUTH, instructorPool: RECOVERY_INSTRUCTORS, roomPool: NO_ROOMS       },
+    { id: "svc_breathwork",          durationMin: 45, capacity: 10, open: true,  branch: SOUTH, instructorPool: RECOVERY_INSTRUCTORS, roomPool: NO_ROOMS       },
+    { id: "svc_iv_therapy",          durationMin: 30, capacity: 1,  open: false, branch: SOUTH, instructorPool: RECOVERY_INSTRUCTORS, roomPool: RECOVERY_ROOMS },
 ];
 
 // ─── Customer pool (matches src/data/mock/customers.ts) ──────────────────────
