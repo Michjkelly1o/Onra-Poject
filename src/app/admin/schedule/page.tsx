@@ -791,13 +791,11 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
     const instructorIds = Array.from(new Set(dayClasses.map(c => c.instructorId)));
     const allInstructors = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
     const missingInstructors = INSTRUCTORS.filter(i => !instructorIds.includes(i.id)).slice(0, Math.max(0, 4 - allInstructors.length));
-    // Recovery / open-session appointments have no instructor assigned
-    // (Spa branch services like Sauna / Breathwork are self-serve). They
-    // were silently dropped from the Day view before this synthetic
-    // column existed, because every other column filters on an exact
-    // instructor id match. Surfaces a single "Recovery" lane at the
-    // right of the instructor columns whenever the day has any
-    // unassigned cards.
+    // Open-session recovery/wellness sessions (e.g. Sauna / Breathwork) have
+    // no instructor assigned — they'd be silently dropped from the Day view
+    // (every other column matches an exact instructor id), so this synthetic
+    // "Recovery" lane at the right catches every instructor-less card. In the
+    // current data those are exactly the recovery sessions.
     const hasRecovery = dayClasses.some(c => !c.instructorId);
     const recoveryColumn: Instructor = {
         id: "__recovery__",
@@ -897,8 +895,8 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                             {columns.map(instructor => {
                                 const isRecoveryCol = instructor.id === "__recovery__";
                                 // Recovery column catches every card whose
-                                // instructorId is empty (Spa-branch recovery
-                                // services have no instructor). All other
+                                // instructorId is empty (open recovery/wellness
+                                // sessions have no instructor). All other
                                 // columns match on exact id.
                                 const instrClasses = isRecoveryCol
                                     ? dayClasses.filter(c => !c.instructorId)

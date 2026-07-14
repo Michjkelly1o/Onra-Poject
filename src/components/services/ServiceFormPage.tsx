@@ -120,8 +120,7 @@ function Toggle({ on, onChange, ariaLabel, disabled }: {
     on: boolean;
     onChange: () => void;
     ariaLabel: string;
-    /** When true the toggle ignores clicks and paints muted — used for
-     *  the Spa-persona-locked "Service is recovery" toggle. */
+    /** When true the toggle ignores clicks and paints muted. */
     disabled?: boolean;
 }) {
     return (

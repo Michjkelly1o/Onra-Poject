@@ -127,9 +127,9 @@ function LeftPanel({ service, hasAppointments, onAction }: {
 }) {
     const { status, openSession, capacity, durationMin } = service;
     // Resolve the service's branch → its timezone label. Every service is
-    // hosted at exactly one branch (Spa or Club), so tagging the Location
-    // row with the branch's own TZ makes it clear which zone the future
-    // appointment times listed in the right-hand table are in.
+    // hosted at exactly one branch, so tagging the Location row with the
+    // branch's own TZ makes it clear which zone the future appointment
+    // times listed in the right-hand table are in.
     const branch = useAppStore(s => s.branches).find(b => b.id === service.branchId);
     const branchTz = branch ? branchTzLabel(branch) : "";
 

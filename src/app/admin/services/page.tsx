@@ -12,8 +12,8 @@
 //
 // Differences from Gift Cards:
 //   • Branch dropdown sits in the toolbar (Figma 7414:328584)
-//   • "Recovery" column reports Yes / No off `isRecovery` — drives Spa-vs-
-//     Club branch placement and the Booking conditions form gating
+//   • "Type" column shows the session type (Private session / Recovery &
+//     wellness) off `service.type`; the ?type= deep-link scopes the list
 //   • "Price" column shows fixed AED price (services are currency-priced,
 //     not membership-gated, per the Module 13 update)
 //   • Filter is the side-panel multi-select (Figma 7424:139522) — Status +
@@ -708,14 +708,19 @@ function ServicesPageInner() {
     // — NOT under `/admin/services/*` — so they render full-screen without
     // the admin sidebar + header chrome. Same convention as class templates
     // (`/class-types/new`) and customers (`/customers/[id]/edit`).
+    //
+    // returnTo carries the active `?type=` scope so closing a service from the
+    // "Private sessions" / "Recovery & wellness" view lands back on the SAME
+    // filtered list (keeps the sidebar highlight + the type-scoped header title).
+    const listPath = typeScope ? `/admin/services?type=${typeScope}` : "/admin/services";
     function handleAdd() {
-        router.push(`/services/new?returnTo=${encodeURIComponent("/admin/services")}`);
+        router.push(`/services/new?returnTo=${encodeURIComponent(listPath)}`);
     }
     function handleView(row: ServiceRow) {
-        router.push(`/services/${row.id}?returnTo=${encodeURIComponent("/admin/services")}`);
+        router.push(`/services/${row.id}?returnTo=${encodeURIComponent(listPath)}`);
     }
     function handleEdit(row: ServiceRow) {
-        router.push(`/services/${row.id}/edit?returnTo=${encodeURIComponent("/admin/services")}`);
+        router.push(`/services/${row.id}/edit?returnTo=${encodeURIComponent(listPath)}`);
     }
 
     const hasActiveFilter = applied.statuses.length > 0 || applied.categories.length > 0;
