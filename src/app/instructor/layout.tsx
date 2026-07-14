@@ -15,7 +15,7 @@
 //      `currentUser.first_name` reader render the instructor identity —
 //      no login screen required. Per CLAUDE.md the demo flow is URL-driven.
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
@@ -81,13 +81,18 @@ export default function InstructorLayout({
                         sidebarCollapsed ? "w-[88px]" : "w-[280px]",
                     )}
                 >
-                    <Sidebar
-                        navItems={INSTRUCTOR_NAV_ITEMS}
-                        accountHref="/instructor/account"
-                        // Instructors have no admin settings module — hide
-                        // the footer Settings chip so it doesn't leak in.
-                        showSettings={false}
-                    />
+                    {/* Suspense-bounded — Sidebar reads useSearchParams; the
+                        boundary keeps that bailout from de-optimising the
+                        instructor pages' static prerender. */}
+                    <Suspense fallback={null}>
+                        <Sidebar
+                            navItems={INSTRUCTOR_NAV_ITEMS}
+                            accountHref="/instructor/account"
+                            // Instructors have no admin settings module — hide
+                            // the footer Settings chip so it doesn't leak in.
+                            showSettings={false}
+                        />
+                    </Suspense>
                 </div>
 
                 {/* Content area */}

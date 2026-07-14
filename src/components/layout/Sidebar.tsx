@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
     BarChartSquare02,
     CalendarCheck01,
+    LayoutAlt01,
     ShoppingBag03,
     ShoppingBag01,
     Announcement01,
@@ -50,23 +51,18 @@ export type NavItemDef = {
     sectionLabel?: string;
 };
 
-// Sidebar structure per Figma 7616:16658. The 'Studio' divider splits
-// top-of-funnel modules (operations + comms) from studio-scoped
-// inventory + people management. Each child route is unchanged — this
-// is purely a reorganisation + 3 menu renames + 1 new parent group.
+// Sidebar structure. The 'Studio' divider splits daily-operations modules
+// from studio-setup (inventory / class structure / people). Session-type
+// refactor Phase 5: the old "Classes" group is dissolved — Schedule is a
+// top-level daily item; class Templates + Categories move below the line
+// into a "Classes" setup section; "Services & pricing" is renamed
+// "Products & pricing" with Private sessions + Recovery & wellness as
+// type-filtered views of /admin/services.
 const NAV_ITEMS: NavItemDef[] = [
     { label: "Dashboard", href: "/admin/dashboard", icon: BarChartSquare02 },
-    {
-        label: "Classes", icon: CalendarCheck01, permission: "manage_schedule",
-        children: [
-            { label: "Class templates", href: "/admin/class-types" },
-            { label: "Schedule",        href: "/admin/schedule"    },
-            // Categories moved DOWN to "Services & pricing" per client Jul
-            // 2026 — sits next to Memberships & packages + Services under
-            // the Studio section divider. Route unchanged.
-            // Services also lives in "Services & pricing" (moved earlier).
-        ],
-    },
+    // Schedule — the daily operational calendar (classes + private + recovery),
+    // now a top-level item (was the old Classes group's child).
+    { label: "Schedule", href: "/admin/schedule", icon: CalendarCheck01, permission: "manage_schedule" },
     { label: "Customers", href: "/admin/customers", icon: User01, permission: "manage_members" },
     {
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
@@ -80,10 +76,6 @@ const NAV_ITEMS: NavItemDef[] = [
     },
     { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
     {
-        // NEW PARENT GROUP — collapses the old standalone Marketing leaf,
-        // Promo (renamed Promo codes → Promotions), and Referral
-        // (renamed Referral program) into one Marketing module. Routes
-        // are unchanged — only display labels reflect the new naming.
         label: "Marketing", icon: Announcement01, permission: "manage_marketing",
         children: [
             { label: "Campaigns",        href: "/admin/marketing"            },
@@ -92,18 +84,24 @@ const NAV_ITEMS: NavItemDef[] = [
         ],
     },
     {
-        // 'Studio' section caption renders above this item — splits the
-        // sidebar into top-of-funnel vs studio-scoped sections per the
-        // Figma. Repurposes the old 'Services & products' group: Promo
-        // moved up under Marketing, Gift cards moved out to its own leaf,
-        // and Services arrived from the old Classes group. Now reads as
-        // 'studio inventory + pricing'.
-        label: "Services & pricing", icon: ShoppingBag01, permission: "manage_products",
+        // 'Studio' caption renders above this item — the first setup section
+        // below the divider. Renamed from "Services & pricing": everything a
+        // member buys / books lives here. Private sessions + Recovery &
+        // wellness are type-filtered views of the shared /admin/services list.
+        label: "Products & pricing", icon: ShoppingBag01, permission: "manage_products",
         sectionLabel: "Studio",
         children: [
-            { label: "Memberships & packages", href: "/admin/products"   },
-            { label: "Services",                href: "/admin/services"   },
-            { label: "Categories",              href: "/admin/categories" },
+            { label: "Memberships & packages", href: "/admin/products"                },
+            { label: "Private sessions",       href: "/admin/services?type=private"   },
+            { label: "Recovery & wellness",    href: "/admin/services?type=recovery"  },
+        ],
+    },
+    {
+        // Class structure (no price) — how classes are built + organised.
+        label: "Classes", icon: LayoutAlt01, permission: "manage_schedule",
+        children: [
+            { label: "Templates",  href: "/admin/class-types" },
+            { label: "Categories", href: "/admin/categories"  },
         ],
     },
     { label: "Gift cards", href: "/admin/products/gift-cards", icon: Gift01, permission: "manage_products" },
@@ -143,7 +141,7 @@ function isUserMenuRoute(pathname: string): boolean {
 // prefix of another's — even across different parent groups.
 //
 // Example: a user on `/admin/products/promo-codes` (Marketing → Promotions)
-// must NOT also highlight Services & pricing → Memberships & packages
+// must NOT also highlight Products & pricing → Memberships & packages
 // (`/admin/products`), because the latter is a prefix of the former. Per-
 // parent resolution can't catch this since each parent's resolver runs in
 // isolation. A single global pass with "longest match wins" does.
@@ -151,7 +149,7 @@ function isUserMenuRoute(pathname: string): boolean {
 // Returns the winning href (or null if nothing matches / we're on a route
 // owned by another surface like the user menu). Callers compare their own
 // href against the winner string for an exact-equality active check.
-function activeHrefFor(items: NavItemDef[], pathname: string): string | null {
+function activeHrefFor(items: NavItemDef[], pathname: string, search = ""): string | null {
     if (isUserMenuRoute(pathname)) return null;
     // Settings group normalization — the sidebar's Settings children
     // (Business / Operations / Customer) each point at their group's
@@ -163,10 +161,22 @@ function activeHrefFor(items: NavItemDef[], pathname: string): string | null {
     // unchanged.
     const settingsGroup = findSettingsGroupFor(pathname);
     const matchPath = settingsGroup ? settingsGroup.tabs[0].href : pathname;
+    // Full path incl. query — used ONLY to match query-param deep-links
+    // (e.g. /admin/services?type=private vs …?type=recovery, which share a
+    // pathname). Plain hrefs keep the pathname-prefix match below.
+    const fullPath = search ? `${pathname}?${search}` : pathname;
     let bestHref: string | null = null;
     let bestLen = -1;
     const consider = (href: string | undefined) => {
         if (!href) return;
+        if (href.includes("?")) {
+            // Query-param deep-link — exact match against pathname+search.
+            if (fullPath === href && href.length > bestLen) {
+                bestHref = href;
+                bestLen = href.length;
+            }
+            return;
+        }
         const matches = matchPath === href || matchPath.startsWith(href + "/");
         if (matches && href.length > bestLen) {
             bestHref = href;
@@ -243,6 +253,10 @@ interface SidebarProps {
 
 export default function Sidebar({ navItems, accountHref, showSettings = true }: SidebarProps = {}) {
     const pathname = usePathname();
+    // Query string — used only to disambiguate the two /admin/services deep-
+    // links (Private sessions vs Recovery & wellness). `.toString()` drops the
+    // leading "?"; empty when no params.
+    const search = useSearchParams()?.toString() ?? "";
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
     const effectiveNavItems = navItems ?? NAV_ITEMS;
@@ -265,7 +279,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     // pricing). Without this, raw startsWith() would open both groups.
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
         const init: Record<string, boolean> = {};
-        const winner = activeHrefFor(effectiveNavItems, pathname);
+        const winner = activeHrefFor(effectiveNavItems, pathname, search);
         effectiveNavItems.forEach((item) => {
             if (item.children) {
                 init[item.label] = !!winner && item.children.some(c => c.href === winner);
@@ -298,7 +312,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     // longest-prefix winner (settings normalization + user-menu
     // exclusion), same rule the active highlight uses.
     useEffect(() => {
-        const winner = activeHrefFor(effectiveNavItems, pathname);
+        const winner = activeHrefFor(effectiveNavItems, pathname, search);
         if (!winner) return;
         setOpenGroups(() => {
             const next: Record<string, boolean> = {};
@@ -337,7 +351,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     // Single winner across the entire sidebar — resolved on the full nav
     // (visible OR permission-filtered), so permission edits never change
     // the active state semantics. Used by every row's active check below.
-    const navWinner = activeHrefFor(effectiveNavItems, pathname);
+    const navWinner = activeHrefFor(effectiveNavItems, pathname, search);
 
     return (
         <aside className="h-full bg-[#f1f2ed] flex flex-col">

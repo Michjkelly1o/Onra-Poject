@@ -25,7 +25,8 @@
 // phases wire appointments + schedule-grid rendering).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus, DotsVertical,
     ChevronLeft, Eye, Edit02, Trash01, Trash02, Archive,
@@ -501,8 +502,22 @@ type PendingConfirm =
     | { mode: "row";  row: ServiceRow;   kind: RowActionKind }
     | { mode: "bulk"; rows: ServiceRow[]; kind: RowActionKind };
 
+// Default export wraps the page in a Suspense boundary — required because
+// ServicesPageInner reads the `?type=` deep-link via useSearchParams (the
+// Products & pricing nav's "Private sessions" / "Recovery & wellness" entries).
 export default function ServicesPage() {
+    return (
+        <Suspense fallback={null}>
+            <ServicesPageInner />
+        </Suspense>
+    );
+}
+
+function ServicesPageInner() {
     const router = useRouter();
+    // Type deep-link — "private" | "recovery" | null (all). Drives the list
+    // scope + the page's contextual title.
+    const typeScope = useSearchParams().get("type");
 
     // ─── Store subscriptions ───────────────────────────────────────────────
     const services         = useAppStore(s => s.services);
@@ -550,13 +565,15 @@ export default function ServicesPage() {
     const filteredRows = useMemo(() => {
         const q = search.trim().toLowerCase();
         return allRows.filter(r => {
+            // Type deep-link scope — "private" / "recovery" nav entries.
+            if (typeScope && r.type !== typeScope) return false;
             if (branchId && r.branchId !== branchId) return false;
             if (applied.statuses.length   && !applied.statuses.includes(r.status))     return false;
             if (applied.categories.length && !applied.categories.includes(r.category)) return false;
             if (q && !`${r.name} ${r.category}`.toLowerCase().includes(q))             return false;
             return true;
         });
-    }, [allRows, search, applied, branchId]);
+    }, [allRows, search, applied, branchId, typeScope]);
 
     // ─── Sort (gift-cards twin) ────────────────────────────────────────────
     const comparators: Record<string, (a: ServiceRow, b: ServiceRow) => number> = {

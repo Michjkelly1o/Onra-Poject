@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
@@ -34,7 +34,13 @@ export default function AdminLayout({
                         sidebarCollapsed ? "w-[88px]" : "w-[280px]"
                     )}
                 >
-                    <Sidebar />
+                    {/* Suspense-bounded — the Sidebar reads useSearchParams to
+                        disambiguate the /admin/services deep-links; the boundary
+                        keeps that bailout from opting every admin page out of
+                        static prerendering. */}
+                    <Suspense fallback={null}>
+                        <Sidebar />
+                    </Suspense>
                 </div>
 
                 {/* Content area */}
