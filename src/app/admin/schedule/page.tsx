@@ -647,6 +647,9 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                         <th className={cn(TH, "w-[220px]")}>
                             <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={onSort}>Class name</SortableHeader>
                         </th>
+                        <th className={cn(TH, "w-[130px]")}>
+                            <SortableHeader sortKey="type" currentSort={sortKey} dir={sortDir} onSort={onSort}>Type</SortableHeader>
+                        </th>
                         <th className={cn(TH, "w-[140px]")}>
                             <SortableHeader sortKey="location" currentSort={sortKey} dir={sortDir} onSort={onSort}>Location</SortableHeader>
                         </th>
@@ -690,10 +693,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                         )}
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[14px] font-medium text-[#101828]">{c.name}</span>
-                                            <SessionTypeTag type={c.type} />
-                                        </div>
+                                        <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
                                         <div className="text-[13px] text-[#667085]">
                                             {/* Appointment open sessions have no fixed instructor —
                                                 surface "Open session" instead of a dangling "with ". */}
@@ -704,6 +704,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                     </div>
                                 </div>
                             </td>
+                            <td className={TD}><SessionTypeTag type={c.type} /></td>
                             <td className={TD}>{c.location}</td>
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}>
@@ -1507,6 +1508,7 @@ function SchedulePage() {
     const listComparators: Record<string, (a: ClassInstance, b: ClassInstance) => number> = {
         date: (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
         name: (a, b) => a.name.localeCompare(b.name),
+        type: (a, b) => a.type.localeCompare(b.type),
         location: (a, b) => `${a.location} ${a.room}`.localeCompare(`${b.location} ${b.room}`),
         attendance: (a, b) => (a.capacity ? a.booked / a.capacity : 0) - (b.capacity ? b.booked / b.capacity : 0),
         rating: (a, b) => a.rating - b.rating,
