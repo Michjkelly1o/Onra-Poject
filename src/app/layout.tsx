@@ -15,29 +15,6 @@ export default function RootLayout({
     return (
         <html lang="en">
             <head>
-                {/* UserLenz replay-testing bridge — ALL routes (admin +
-                    instructor + customer). Per the vendor's install
-                    instruction: "add this snippet right after your <head>
-                    tag on every page to verify your domain and activate
-                    live testing."
-
-                    UserLenz's install check looks for a REAL
-                    `<script src=".../bridge.min.js">` element in the
-                    parsed DOM. `next/script` (beforeInteractive) doesn't
-                    emit a real tag — it uses Next's `__next_s` queue + a
-                    `<link rel="preload">`, which their parser doesn't
-                    recognise; and a post-hydration `createElement` append
-                    isn't in the initial HTML. So an inline `<script>`
-                    runs synchronously during head parse and uses
-                    `document.write` to insert the vendor tag directly
-                    into the document stream — the browser processes it as
-                    part of the original HTML, so the real `<script src>`
-                    lands in the DOM immediately, on every page.
-
-                    A second inline `<script>` polls for the bridge global
-                    (the vendor script is `defer`, so it executes after
-                    HTML parse) and calls `init(...)` once it's ready. No
-                    pathname gate — every view is now testable. */}
                 <script
                     src="https://api-en72htyjgq-uc.a.run.app/bridge.min.js"
                     defer
