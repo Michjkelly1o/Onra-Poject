@@ -26,10 +26,11 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { RowActions } from "@/components/patterns/RowActions";
 import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { Toast } from "@/components/ui/Toast";
-import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type ScheduleInstructor, type BusinessHours, type BlockedTime, type HoursWindow, type SessionType, SCHEDULE_INSTRUCTORS } from "@/lib/store";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { branchTzLabel } from "@/lib/branch-time";
-import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
+import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
+import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
@@ -347,15 +348,11 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 // Removed in this revision: `dayOfWeek` + `dateFrom` / `dateTo` (Day of
 // week + Custom date range sections dropped from the Figma).
 //
-// Updated (Figma 2337:112097):
-//   • `types` was a multi-select Group / Private pill pair.
-//   • Now `type` is a SINGLE selection ("Group" | "Appointments" | "")
-//     rendered as a 2-button toggle (single radio-style picker).
-//     - "Group"        → only NORMAL class schedule cards.
-//     - "Appointments" → only the appointment-derived cards (private
-//                        sessions + open sessions).
-//   • Empty string means no Type filter applied — show both.
-type ClassTypeFilter = "Group" | "Appointments";
+// Type filter — SINGLE selection on the session type dimension
+//   ("class" | "private" | "recovery" | ""), rendered as a 3-button toggle.
+//   Filters the merged schedule feed (class schedules + appointments) by
+//   `ClassInstance.type`. Empty string = no Type filter (show all).
+type ClassTypeFilter = SessionType;
 type FilterState = {
     type: ClassTypeFilter | "";
     statuses: ClassStatus[];
@@ -369,7 +366,7 @@ const EMPTY_FILTER: FilterState = {
     type: "", statuses: [], timeOfDay: [],
     instructors: [], categories: [],
 };
-const ALL_TYPES: ClassTypeFilter[] = ["Group", "Appointments"];
+const ALL_TYPES: ClassTypeFilter[] = SESSION_TYPE_ORDER;
 const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing", "Cancelled", "Completed"];
 
 // Branch → room-name groups for the location filter, derived from the live
@@ -532,25 +529,24 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                     2337:111898: Type → Status → Time of the day →
                     Location → Instructor → Template. */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                    {/* Type — Group / Appointments (single-select toggle).
-                        Click the active option again to clear. Figma
-                        2337:112097 — the two buttons sit side by side and
-                        fill the available width as a segmented pair. */}
+                    {/* Type — Classes / Private sessions / Recovery & wellness
+                        (single-select toggle). Click the active option again to
+                        clear. */}
                     <div className="flex flex-col gap-2">
                         <SectionLabel label="Type" />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             {ALL_TYPES.map(t => {
                                 const selected = pending.type === t;
                                 return (
                                     <button key={t} type="button"
                                         onClick={() => setPending(p => ({ ...p, type: selected ? "" : t }))}
                                         className={cn(
-                                            "h-10 px-3 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
+                                            "h-10 px-2 rounded-[8px] text-[13px] font-medium border transition-all text-center leading-tight",
                                             selected
                                                 ? "bg-[#f5fffa] border-2 border-[#7ba08c] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                                                 : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
                                         )}>
-                                        {t}
+                                        {SESSION_TYPE_LABEL[t]}
                                     </button>
                                 );
                             })}
@@ -747,6 +743,7 @@ function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
             size="md"
             cls={{
                 name: cls.name,
+                type: cls.type,
                 color: colors,
                 startTime: cls.startTime,
                 endTime: cls.endTime,
@@ -1064,7 +1061,7 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
                                                 <ScheduleClassCard key={cls.id}
                                                     size="sm"
                                                     cls={{
-                                                        name: cls.name, color: colors,
+                                                        name: cls.name, type: cls.type, color: colors,
                                                         startTime: cls.startTime, endTime: cls.endTime, displayTime: cls.displayTime,
                                                         instructorName: cls.instructorName,
                                                         instructorInitials: cls.instructorInitials,
@@ -1142,7 +1139,7 @@ function MonthView({ classes, monthYear, onClassClick }: {
                                                 <ScheduleClassCard key={cls.id}
                                                     size="xs"
                                                     cls={{
-                                                        name: cls.name, color: col,
+                                                        name: cls.name, type: cls.type, color: col,
                                                         startTime: cls.startTime, endTime: cls.endTime,
                                                         instructorName: cls.instructorName,
                                                         instructorInitials: cls.instructorInitials,
@@ -1258,7 +1255,10 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
                         <StatusBadge type="class" status={cls.status} />
                     </div>
                     <div>
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{cls.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{cls.name}</p>
+                            <SessionTypeTag type={cls.type} />
+                        </div>
                         <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2 mt-0.5">{cls.description}</p>
                     </div>
                 </div>
@@ -1486,11 +1486,9 @@ function SchedulePage() {
         if (location && c.branchId !== location) return false;
         const q = search.toLowerCase();
         if (q && !c.name.toLowerCase().includes(q) && !c.instructorName.toLowerCase().includes(q) && !c.location.toLowerCase().includes(q)) return false;
-        // Type filter — single select per Figma 2337:112097.
-        //   "Group"        → normal class schedule cards only (non-appointments).
-        //   "Appointments" → private + open-session appointment cards only.
-        if (applied.type === "Group" && isAppointmentId(c.id)) return false;
-        if (applied.type === "Appointments" && !isAppointmentId(c.id)) return false;
+        // Type filter — single select on the session type dimension
+        //   ("class" | "private" | "recovery").
+        if (applied.type && c.type !== applied.type) return false;
         if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
         if (applied.instructors.length > 0 && !applied.instructors.includes(c.instructorId)) return false;
         if (applied.categories.length > 0 && !applied.categories.includes(c.category)) return false;

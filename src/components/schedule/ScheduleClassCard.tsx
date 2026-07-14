@@ -3,6 +3,23 @@
 import * as React from "react";
 import { Clock, MarkerPin01, Users01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import type { SessionType } from "@/lib/store";
+import { SESSION_TYPE_TAG_LABEL, SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
+
+/** Small coloured type-tag chip — Class / Private / Recovery. Rendered on the
+ *  schedule + dashboard cards so the session type reads at a glance,
+ *  independent of the category discipline stripe. */
+export function SessionTypeTag({ type, className }: { type: SessionType; className?: string }) {
+    const c = SESSION_TYPE_TAG_COLORS[type];
+    return (
+        <span
+            className={cn("inline-flex shrink-0 items-center rounded-full border px-1.5 py-[1px] text-[11px] font-medium leading-[16px]", className)}
+            style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+        >
+            {SESSION_TYPE_TAG_LABEL[type]}
+        </span>
+    );
+}
 
 // ─── Onra DS — Schedule Class Card ────────────────────────────────────────────
 //
@@ -24,6 +41,10 @@ import { cn } from "@/lib/utils";
 export interface ScheduleCardClass {
     /** Class template name — "Mat Pilates", "Reformer Pilates", … */
     name: string;
+    /** Session type — drives the coloured type tag chip (Class / Private /
+     *  Recovery). Optional so callers that haven't wired it yet keep the
+     *  pre-type-dimension look; when set the LG + MD cards render the chip. */
+    type?: SessionType;
     /** Category palette — resolved hex triple. */
     color: { bg: string; border: string; text: string };
     /** "10:00" — 24h. */
@@ -164,9 +185,11 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     "relative w-full rounded-[10px] px-4 py-3 flex flex-col gap-2 text-left cursor-pointer hover:brightness-95 transition-all min-h-[96px]",
                     className,
                 )}>
-                {/* Title row + Ongoing pill / participant glyph. */}
+                {/* Title row + type tag + Ongoing pill / participant glyph. */}
                 <div className="flex items-start gap-2 w-full">
-                    <span className="flex-1 min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    <span className="min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {cls.type && <SessionTypeTag type={cls.type} className="mt-px" />}
+                    <span className="flex-1" />
                     {isOngoing && (
                         <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3] shrink-0">
                             Ongoing
@@ -226,7 +249,10 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     !absolute && "w-full",
                     className,
                 )}>
-                <span className="block text-[14px] font-medium leading-[20px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="block text-[14px] font-medium leading-[20px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {cls.type && <SessionTypeTag type={cls.type} />}
+                </div>
                 <div className="flex items-center gap-1.5 min-w-0">
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
                     <span className="text-[12px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
