@@ -32,6 +32,7 @@ export function PlanCard({
     onCancel,
     onReactivate,
     canReactivate = false,
+    canFreeze = true,
 }: {
     plan: CustomerPlan;
     creditsRemaining?: number;
@@ -42,6 +43,10 @@ export function PlanCard({
     /** Reactivate is offered only for a cancelled MEMBERSHIP while the customer
      *  holds no other active plan (packages never reactivate). */
     canReactivate?: boolean;
+    /** Whether self-service Freeze is offered — driven by the branch's freeze
+     *  policy (enabled + apply-to + under the max-freezes limit). When false the
+     *  Freeze button is hidden (Cancel fills the row). Unfreeze is unaffected. */
+    canFreeze?: boolean;
 }) {
     const isMembership = plan.kind === "membership";
     const total = totalCredits(plan.creditsLabel);
@@ -164,11 +169,11 @@ export function PlanCard({
                             <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onUnfreeze}>
                                 Unfreeze
                             </Button>
-                        ) : (
+                        ) : canFreeze ? (
                             <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onFreeze}>
                                 Freeze
                             </Button>
-                        )}
+                        ) : null}
                     </div>
                 ) : null)}
         </div>

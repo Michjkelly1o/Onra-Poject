@@ -625,8 +625,11 @@ export interface CustomerTransaction {
      *  `cancellation_penalty` was added Jul 2026 for the unlimited-
      *  membership cancellation-penalty flow (Figma 7790:27893). It
      *  represents a fee CHARGED (not a purchase); such rows are
-     *  always flagged `is_refundable: false` per client spec. */
-    kind: "membership" | "package" | "cancellation_penalty";
+     *  always flagged `is_refundable: false` per client spec.
+     *  `freeze_fee` (Jul 2026) is the membership-freeze fee charged when
+     *  a customer freezes under a policy that sets a fee — also a fee
+     *  CHARGED, non-refundable. */
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee";
     /** FK → memberships.id / packages.id (depending on `kind`). For
      *  `cancellation_penalty` rows this instead references the
      *  cancelled `class_bookings.id` so Payment history rows can

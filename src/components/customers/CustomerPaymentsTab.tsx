@@ -139,7 +139,7 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
     // just there to identify the row shape at a glance.
     const Icon = kind === "membership"
         ? CreditCard02
-        : kind === "cancellation_penalty"
+        : (kind === "cancellation_penalty" || kind === "freeze_fee")
             ? SlashCircle01
             : Package;
     return (
@@ -158,7 +158,8 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 // customers can never receive one, so there's no "Credit package"
 // case here. Client requirement Jul 2026.
 function planTypeLabel(t: CustomerTransaction): string {
-    if (t.kind === "cancellation_penalty") return "Membership";
+    // Penalty + freeze-fee rows are membership-scoped fees → always "Membership".
+    if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee") return "Membership";
     return KIND_LABEL[t.kind];
 }
 

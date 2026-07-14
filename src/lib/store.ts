@@ -1750,6 +1750,10 @@ export interface CustomerPlan {
     /** Origin surface that initiated the freeze. Mirrors the
      *  `customer_plans.freeze_source` seed column. */
     freezeSource?: "customer_portal" | "admin" | "front_desk";
+    /** Lifetime count of times this plan has been frozen — enforces the
+     *  freeze policy's "max freezes per membership" on the customer side.
+     *  Incremented on every freeze (admin + customer). */
+    freezeCount?: number;
     freeCredits?: number;
     grantReason?: string;
     grantIssuedBy?: string;
@@ -1776,7 +1780,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -3529,6 +3533,12 @@ export interface AppState {
     freezeCustomerPlan: (planId: string, startISO: string, endISO: string, source?: CustomerPlan["freezeSource"]) => void;
     /** Unfreeze a plan — status → active. The extended expiry date is kept. */
     unfreezeCustomerPlan: (planId: string) => void;
+    /** Customer-portal membership freeze — freezes the plan (customer_portal
+     *  source, increments freezeCount) AND charges the branch's freeze fee if
+     *  the policy sets one (charge-now). The policy gate (enabled / apply-to /
+     *  max-freezes / max-duration) is enforced in the customer UI; this action
+     *  performs the mutation + fee charge. Returns the fee charged (0 = none). */
+    freezeMembershipByCustomer: (planId: string, startISO: string, endISO: string) => { fee: number };
     /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
     cancelCustomerPlan: (planId: string, mode: "today" | "period_end", reason: string) => void;
     reactivateCustomerPlan: (planId: string) => void;
@@ -5487,6 +5497,9 @@ export const useAppStore = create<AppState>()(persist(
                     // customer detail page. Callers from the customer
                     // portal or front desk should pass their own.
                     freezeSource: source ?? "admin" as const,
+                    // Lifetime freeze tally — the freeze policy's
+                    // "max freezes per membership" is checked against this.
+                    freezeCount: (p.freezeCount ?? 0) + 1,
                     expiryISO: extendedExpiry,
                 };
             }),
@@ -5496,6 +5509,44 @@ export const useAppStore = create<AppState>()(persist(
             const customerName = customer ? capitalizeName(`${customer.firstName} ${customer.lastName}`) : "a customer";
             get().recordAudit(`Froze ${customerName}'s plan`, "customer_plan", planId, target.name, { from: startISO, to: endISO });
         }
+    },
+
+    freezeMembershipByCustomer: (planId, startISO, endISO) => {
+        const plan = get().customerPlans.find(p => p.id === planId);
+        if (!plan) return { fee: 0 };
+        const customer = get().customers.find(c => c.id === plan.customerId);
+        // Freeze via the shared action — handles status, expiry extension,
+        // freezeCount++ and the audit entry with a customer_portal source.
+        get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal");
+        // Charge-now: emit a non-refundable freeze-fee row when the branch's
+        // policy configures a fee (mirrors the cancellation-penalty pattern).
+        const policy = customer
+            ? get().freezePolicies.find(p => p.branch_id === customer.branchId)
+            : undefined;
+        const fee = policy?.fee_enabled ? Math.max(0, policy.fee_amount_aed) : 0;
+        if (customer && policy && fee > 0) {
+            const now = new Date().toISOString();
+            const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            const feeTxn: CustomerTransaction = {
+                id: txnId,
+                customerId: customer.id,
+                branchId: customer.branchId,
+                kind: "freeze_fee",
+                productId: planId,
+                name: policy.fee_type === "recurring" ? "Membership freeze fee (recurring)" : "Membership freeze fee",
+                amountAed: fee,
+                status: "complete",
+                paymentMethod: "card",
+                paymentSource: "customer_portal",
+                createdAtISO: now,
+                // Ledger classification — a fee charged (money-in), never a
+                // refund/void, and never refundable.
+                transactionType: "sale",
+                isRefundable: false,
+            };
+            set(state => ({ customerTransactions: [...state.customerTransactions, feeTxn] }));
+        }
+        return { fee };
     },
 
     unfreezeCustomerPlan: (planId) => {

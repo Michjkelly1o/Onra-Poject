@@ -29,11 +29,40 @@ const Noun = (p: CustomerPlan) => (p.kind === "membership" ? "Membership" : "Cre
 export default function MyPlanPage() {
     const router = useRouter();
     const member = useCurrentCustomer();
-    const freezeCustomerPlan = useAppStore((s) => s.freezeCustomerPlan);
+    const freezeMembershipByCustomer = useAppStore((s) => s.freezeMembershipByCustomer);
     const unfreezeCustomerPlan = useAppStore((s) => s.unfreezeCustomerPlan);
     const cancelCustomerPlan = useAppStore((s) => s.cancelCustomerPlan);
     const reactivateCustomerPlan = useAppStore((s) => s.reactivateCustomerPlan);
+    const freezePolicies = useAppStore((s) => s.freezePolicies);
     const showToast = useAppStore((s) => s.showToast);
+
+    // Branch freeze policy governs the customer's self-service freeze. Missing
+    // policy → allow (backward-compatible default).
+    const policy = freezePolicies.find((p) => p.branch_id === member?.branchId);
+
+    /** Freeze is offered only when the policy is on, the plan's membership is in
+     *  scope (apply-to), and it's under the max-freezes limit. */
+    function canFreezePlan(p: CustomerPlan): boolean {
+        if (p.kind !== "membership") return false;
+        if (!policy) return true;
+        if (!policy.enabled) return false;
+        if (policy.apply_to === "specific" && !(p.productId && policy.membership_ids.includes(p.productId))) return false;
+        if (policy.limit_freezes_enabled && (p.freezeCount ?? 0) >= policy.max_freezes) return false;
+        return true;
+    }
+
+    // Sheet inputs derived from the policy (reasons / max duration / fee).
+    const unitDays = { days: 1, weeks: 7, months: 30 } as const;
+    const freezeReasons = policy
+        ? (policy.allow_exceptions ? policy.reasons.filter((r) => r.enabled && r.label.trim()).map((r) => r.label) : [])
+        : ["I want to cancel", "I'll be traveling", "I have an injury or medical issue"];
+    const requireReason = policy ? policy.allow_exceptions : true;
+    const maxFreezeDays = policy && policy.max_duration_enabled
+        ? policy.max_duration_value * unitDays[policy.max_duration_unit]
+        : null;
+    const freezeFee = policy && policy.fee_enabled && policy.fee_amount_aed > 0
+        ? { amount: policy.fee_amount_aed, type: policy.fee_type }
+        : null;
 
     // Admin invariant: a customer holds EITHER one Membership OR one-
     // or-more credit packages — never both (client rule Jul 2026,
@@ -99,12 +128,14 @@ export default function MyPlanPage() {
 
     function doFreeze(days: number) {
         if (!freezePlan) return;
-        freezeCustomerPlan(freezePlan.id, REAL_TODAY_ISO, addDaysISO(REAL_TODAY_ISO, days), "customer_portal");
+        const { fee } = freezeMembershipByCustomer(freezePlan.id, REAL_TODAY_ISO, addDaysISO(REAL_TODAY_ISO, days));
         showToast(
             `${Noun(freezePlan)} has been frozen`,
-            `All active benefits and bookings for this ${noun(freezePlan)} will be frozen until reactivated.`,
-            "error",
-            "slash",
+            fee > 0
+                ? `A freeze fee of AED ${fee} was charged. Benefits and bookings are paused until reactivated.`
+                : `All active benefits and bookings for this ${noun(freezePlan)} will be frozen until reactivated.`,
+            fee > 0 ? "success" : "error",
+            fee > 0 ? "check" : "slash",
         );
     }
     function doUnfreeze(p: CustomerPlan) {
@@ -154,6 +185,7 @@ export default function MyPlanPage() {
                             plan={p}
                             creditsRemaining={member?.creditsRemaining}
                             canReactivate={canReactivate(p)}
+                            canFreeze={canFreezePlan(p)}
                             onFreeze={() => setFreezePlan(p)}
                             onUnfreeze={() => doUnfreeze(p)}
                             onCancel={() => setCancelPlan(p)}
@@ -183,6 +215,10 @@ export default function MyPlanPage() {
                 open={!!freezePlan}
                 onClose={() => setFreezePlan(null)}
                 planNoun={freezePlan?.kind === "membership" ? "membership" : "package"}
+                reasons={freezeReasons}
+                requireReason={requireReason}
+                maxDays={maxFreezeDays}
+                fee={freezeFee}
                 onConfirm={doFreeze}
             />
             <OptionSheet
