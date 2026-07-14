@@ -8,6 +8,7 @@ import {
     ArrowUp,
     ArrowDown,
     MarkerPin01,
+    Tag01,
     CalendarCheck01,
     BarChartSquare01,
     Plus,
@@ -1095,6 +1096,23 @@ export default function AdminDashboard() {
                     width="w-[220px]"
                 />
 
+                {/* Session-type picker — Today tab only. Sits beside the
+                    location dropdown. Re-scopes the session-based tiles
+                    (Bookings, Occupancy) + the Today's-sessions list. */}
+                {activeTab === "today" && (
+                    <SelectInput
+                        triggerIcon={<Tag01 className="w-5 h-5" />}
+                        placeholder="All types"
+                        options={[
+                            { value: "", label: "All types" },
+                            ...SESSION_TYPE_ORDER.map(t => ({ value: t, label: SESSION_TYPE_LABEL[t] })),
+                        ]}
+                        value={typeFilter}
+                        onChange={(v) => setTypeFilter(v as SessionType | "")}
+                        width="w-[200px]"
+                    />
+                )}
+
                 {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
                     7823:53746). Height locked to h-10 (40px) to match the
                     Location dropdown so the header row reads as one strip. */}
@@ -1151,35 +1169,6 @@ export default function AdminDashboard() {
                     </>
                 )}
             </div>
-
-            {/* Session-type filter bubbles — Today tab only. "All" + the three
-                types. Selecting one re-scopes the session-based tiles
-                (Bookings, Occupancy) + the Today's-sessions list. Additive
-                money tiles stay the studio total. */}
-            {activeTab === "today" && (
-                <div className="flex flex-wrap items-center gap-2">
-                    {([{ value: "" as const, label: "All" },
-                       ...SESSION_TYPE_ORDER.map(t => ({ value: t, label: SESSION_TYPE_LABEL[t] }))]
-                    ).map(opt => {
-                        const active = typeFilter === opt.value;
-                        return (
-                            <button
-                                key={opt.value || "all"}
-                                type="button"
-                                onClick={() => setTypeFilter(opt.value)}
-                                className={cn(
-                                    "h-9 px-4 rounded-full text-[13px] font-medium border-1 transition-colors",
-                                    active
-                                        ? "bg-[#101828] border-[#101828] text-white"
-                                        : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-                                )}
-                            >
-                                {opt.label}
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
 
             {/* KPI Metrics — Coming-up uses a fixed 3-col grid to match the
                 Figma 6-card layout; Today/Performance keep the wrap-flex
