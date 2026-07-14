@@ -249,6 +249,11 @@ function LeftSidebar({ vm, onAction, branches }: {
                     <div className="flex flex-col gap-3">
                         <SidebarField label="Campaign type" value={TYPE_LABEL[vm.type]} />
                         <SidebarField label="Campaign action" value={ACTION_LABEL[vm.actionType]} />
+                        {vm.actionType === "book_event" && vm.ctaClassLabel && (
+                            <SidebarField
+                                label={vm.type === "event" ? "Booked event" : "Booked class"}
+                                value={vm.ctaClassLabel} />
+                        )}
                         <SidebarField label="Start date & time" value={formatDateTime(vm.publishDate)} />
                         <SidebarField label="End date & time" value={formatDateTime(vm.expiryDate)} />
                         <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
@@ -488,6 +493,8 @@ interface MarketingDetailVM {
     actionType: MarketingItem["action_type"];
     ticketPrice?: number;
     externalUrl?: string;
+    /** book_event → "Class name · date · time" of the booked class. */
+    ctaClassLabel?: string;
     coverImageUrl?: string;
     publishDate: string;
     expiryDate?: string;
@@ -513,6 +520,7 @@ function MarketingDetailPageInner() {
     const memberships       = useAppStore(s => s.memberships);
     const packages          = useAppStore(s => s.packages);
     const classTemplates    = useAppStore(s => s.classTemplates);
+    const classSchedules    = useAppStore(s => s.classSchedules);
     const branches          = useAppStore(s => s.branches);
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
     const deleteMarketingItem = useAppStore(s => s.deleteMarketingItem);
@@ -555,6 +563,14 @@ function MarketingDetailPageInner() {
         })
         .filter((r): r is ClassRow => r !== null);
 
+    // book_event → resolve the booked class into a readable label.
+    const ctaClass = item.cta_class_id
+        ? classSchedules.find(c => c.id === item.cta_class_id)
+        : undefined;
+    const ctaClassLabel = ctaClass
+        ? `${ctaClass.name} · ${ctaClass.date} · ${ctaClass.displayTime || ctaClass.startTime}`
+        : undefined;
+
     const vm: MarketingDetailVM = {
         status: item.status,
         effectiveStatus: effectiveStatus(item),
@@ -564,6 +580,7 @@ function MarketingDetailPageInner() {
         actionType: item.action_type,
         ticketPrice: item.ticket_price,
         externalUrl: item.external_url,
+        ctaClassLabel,
         coverImageUrl: item.cover_image_url,
         publishDate: item.publish_date,
         expiryDate: item.expiry_date,

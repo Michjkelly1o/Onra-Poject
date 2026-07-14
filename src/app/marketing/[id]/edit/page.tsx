@@ -50,6 +50,7 @@ function EditMarketingRouteInner() {
                 description: item.short_description,
                 action: item.action_type,
                 ticketPrice: item.ticket_price != null ? String(item.ticket_price) : "",
+                ctaClassId: item.cta_class_id ?? "",
                 externalUrl: (item.external_url ?? "").replace(/^https?:\/\//i, ""),
                 startDate: start.date,
                 startTime: start.time,

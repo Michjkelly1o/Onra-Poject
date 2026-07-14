@@ -1029,6 +1029,10 @@ export interface MarketingItem {
     action_type: "book_event" | "buy_ticket" | "external_link" | "no_action";
     /** buy_ticket → ticket price in AED. */
     ticket_price?: number;
+    /** book_event → the specific class the CTA books (a `class_schedule.id`).
+     *  For `new_class` campaigns the picker is limited to classes in the next
+     *  7 days; for `event` campaigns it lists all upcoming classes. Single id. */
+    cta_class_id?: string;
     /** external_link → destination URL. */
     external_url?: string;
     /** ISO 8601 — when the item goes live (publish date + time). */

@@ -18,7 +18,7 @@
 // Create writes a `marketing_items` row via `addMarketingItem`; edit patches
 // it via `updateMarketingItem`. Both route to the marketing detail page after.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, Check, ChevronDown, ChevronUp,
@@ -208,6 +208,8 @@ interface MarketingFormData {
     description: string;
     action: MarketingAction | "";
     ticketPrice: string;
+    /** book_event → the class the CTA opens (a class_schedule id, single). */
+    ctaClassId: string;
     externalUrl: string;
     startDate: string;
     startTime: string;
@@ -335,6 +337,56 @@ function TimeSelect({ value, onChange, disabledOption }: {
                             </button>
                         );
                     })}
+                </div>
+            </FixedDropdown>
+        </>
+    );
+}
+
+// ─── Class / event single-select (the "Book an event" CTA target) ────────────
+
+interface ClassCtaOption { value: string; label: string; sub: string }
+
+/** Single-select dropdown for the class/event the "Book an event" CTA opens.
+ *  Fixed-positioned so the menu escapes the scrollable form card. */
+function ClassCtaSelect({ value, onChange, options, placeholder }: {
+    value: string;
+    onChange: (v: string) => void;
+    options: ClassCtaOption[];
+    placeholder: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const [width, setWidth] = useState(0);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const selected = options.find(o => o.value === value);
+    function toggle() {
+        if (btnRef.current) setWidth(btnRef.current.offsetWidth);
+        setOpen(p => !p);
+    }
+    return (
+        <>
+            <button ref={btnRef} type="button" onClick={toggle}
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <span className={cn("flex-1 text-left truncate", selected ? "text-[#101828]" : "text-[#667085]")}>
+                    {selected?.label ?? placeholder}
+                </span>
+                <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
+            </button>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 240}>
+                <div className="max-h-[240px] overflow-y-auto">
+                    {options.length === 0 ? (
+                        <p className="px-3 py-3 text-[14px] text-[#667085]">No upcoming classes available.</p>
+                    ) : options.map(o => (
+                        <button key={o.value} type="button"
+                            onClick={() => { onChange(o.value); setOpen(false); }}
+                            className={cn(
+                                "flex flex-col w-full px-3 py-2 text-left transition-colors",
+                                value === o.value ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                            )}>
+                            <span className="text-[14px] font-medium text-[#101828] truncate">{o.label}</span>
+                            <span className="text-[13px] text-[#667085] truncate">{o.sub}</span>
+                        </button>
+                    ))}
                 </div>
             </FixedDropdown>
         </>
@@ -530,6 +582,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
     const memberships         = useAppStore(s => s.memberships);
     const packages            = useAppStore(s => s.packages);
     const classTemplates      = useAppStore(s => s.classTemplates);
+    const classSchedules      = useAppStore(s => s.classSchedules);
     const branches            = useAppStore(s => s.branches);
 
     const [step, setStep] = useState(1);
@@ -540,6 +593,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         description: initial?.description ?? "",
         action: initial?.action ?? "",
         ticketPrice: initial?.ticketPrice ?? "",
+        ctaClassId: initial?.ctaClassId ?? "",
         externalUrl: initial?.externalUrl ?? "",
         startDate: initial?.startDate ?? "",
         startTime: initial?.startTime ?? "",
@@ -562,14 +616,17 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
     /** Switching marketing type resets the action + its config — the action
      *  options differ per type, so the previous pick may no longer be valid. */
     function handleTypeChange(t: MarketingType) {
-        patch({ type: t, action: "", ticketPrice: "", externalUrl: "" });
+        // The class picker's option list differs per type (new_class is limited
+        // to the next 7 days), so drop the previous class pick too.
+        patch({ type: t, action: "", ticketPrice: "", externalUrl: "", ctaClassId: "" });
     }
 
     // Step-1 gate — type + essentials, plus the action-specific config field.
     const actionConfigOk =
         form.action === "buy_ticket" ? form.ticketPrice.trim().length > 0
             : form.action === "external_link" ? form.externalUrl.trim().length > 0
-                : true;
+                : form.action === "book_event" ? form.ctaClassId.trim().length > 0
+                    : true;
     const canContinue =
         form.type !== "" &&
         form.name.trim().length > 0 &&
@@ -597,6 +654,38 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             .map(t => ({ id: t.id, label: t.name, sublabel: t.category })),
         [classTemplates]);
 
+    // "Book an event" CTA target — upcoming real classes (type "class", not
+    // cancelled/completed). new_class campaigns are limited to the next 7 days;
+    // event campaigns list every upcoming class. Single-select.
+    const ctaClassOptions: ClassCtaOption[] = useMemo(() => {
+        const from = todayISO();
+        const to = (() => {
+            const d = new Date(`${from}T00:00:00Z`);
+            d.setUTCDate(d.getUTCDate() + 7);
+            return d.toISOString().slice(0, 10);
+        })();
+        const windowEnd = form.type === "new_class" ? to : null;
+        return classSchedules
+            .filter(c => c.type === "class"
+                && c.status !== "Cancelled" && c.status !== "Completed"
+                && c.dateISO >= from
+                && (windowEnd == null || c.dateISO <= windowEnd))
+            .sort((a, b) => (a.dateISO + a.startTime).localeCompare(b.dateISO + b.startTime))
+            .map(c => ({
+                value: c.id,
+                label: c.name,
+                sub: `${c.date} · ${c.displayTime || c.startTime} · ${c.instructorName}`,
+            }));
+    }, [classSchedules, form.type]);
+
+    // If the picked class drops out of the current option list (type switch,
+    // data change), clear it so a stale id can't be submitted.
+    useEffect(() => {
+        if (form.ctaClassId && !ctaClassOptions.some(o => o.value === form.ctaClassId)) {
+            patch({ ctaClassId: "" });
+        }
+    }, [ctaClassOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+
     function handleSubmit() {
         // Collapse date + time into ISO strings for publish / expiry.
         const toIso = (date: string, time: string) =>
@@ -622,6 +711,8 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             action_type: form.action || "no_action",
             ticket_price: form.action === "buy_ticket" && form.ticketPrice
                 ? Number(form.ticketPrice) : undefined,
+            cta_class_id: form.action === "book_event" && form.ctaClassId
+                ? form.ctaClassId : undefined,
             external_url: externalUrl,
             publish_date: toIso(form.startDate, form.startTime) ?? new Date().toISOString(),
             expiry_date: toIso(form.endDate, form.endTime),
@@ -726,6 +817,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                                                 action: a,
                                                                 ticketPrice: a === "buy_ticket" ? form.ticketPrice : "",
                                                                 externalUrl: a === "external_link" ? form.externalUrl : "",
+                                                                ctaClassId: a === "book_event" ? form.ctaClassId : "",
                                                             })} />
                                                     ))}
                                                 </div>
@@ -733,6 +825,20 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                         </FormField>
 
                                         {/* Action-specific config field */}
+                                        {form.action === "book_event" && (
+                                            <FormField
+                                                label={form.type === "event" ? "Select event" : "Select class"}
+                                                hint={form.type === "new_class"
+                                                    ? "Only classes in the next 7 days can be booked from a new-class campaign."
+                                                    : "The class this campaign's Book button opens."}>
+                                                <ClassCtaSelect
+                                                    value={form.ctaClassId}
+                                                    onChange={id => patch({ ctaClassId: id })}
+                                                    options={ctaClassOptions}
+                                                    placeholder={form.type === "event" ? "Select an event" : "Select a class"}
+                                                />
+                                            </FormField>
+                                        )}
                                         {form.action === "buy_ticket" && (
                                             <FormField label="Ticket price">
                                                 <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] h-10">
