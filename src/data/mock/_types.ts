@@ -51,12 +51,6 @@ export interface Branch {
     status: "active" | "inactive" | "archive";
     /** Display flag — the "main" branch shows first in selectors. */
     is_main: boolean;
-    /** @deprecated Being retired in the session-type refactor. Every branch
-     *  is now a plain physical location ("club") — recovery is a session
-     *  `type`, not a branch kind, and any branch can host any type. Kept as
-     *  a dead-but-safe field in Phase 1 (all branches "club") so the spa-only
-     *  conditionals still compile; removed entirely in Phase 2. */
-    kind: "club" | "spa";
     address?: string;
     // +later: opening_hours, logo_url
     /** Optional branch-level contact info — populated by the Branch form. */
@@ -1209,6 +1203,9 @@ export interface Service {
      *  branch to match the Figma step 3 "select location" single-select;
      *  may widen to a multi-branch array later. */
     branch_id: string;            // → branches.id
+    /** Optional default room for this service's appointments — a session may
+     *  or may not use a room. Empty / omitted = no room. → rooms.id */
+    room_id?: string;
     cover_image_url?: string;
     status: "Active" | "Inactive" | "Archived";
 }

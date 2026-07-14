@@ -759,7 +759,6 @@ function BranchRow({
                     <BranchActionMenu
                         status={status}
                         canDelete={roomCount === 0}
-                        branchKind={branch.kind}
                         onView={onView}
                         onEdit={onEdit}
                         onAddRoom={onAddRoom}
@@ -846,14 +845,11 @@ function RoomRow({
 // ─── Row action menus ──────────────────────────────────────────────────────
 
 function BranchActionMenu({
-    status, canDelete, branchKind, onView, onEdit, onAddRoom, onToggleEnable, onArchive, onRecover, onDelete,
+    status, canDelete, onView, onEdit, onAddRoom, onToggleEnable, onArchive, onRecover, onDelete,
 }: {
     status: "active" | "inactive" | "archive";
     /** True when the branch has zero rooms — delete is only offered then. */
     canDelete: boolean;
-    /** Drives the "Add room" item visibility — Spa branches are room-less
-     *  by design (recovery sessions aren't room-scoped). */
-    branchKind: "club" | "spa";
     onView: () => void;
     onEdit: () => void;
     onAddRoom: () => void;
@@ -874,9 +870,8 @@ function BranchActionMenu({
             {!archived && (
                 <>
                     <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit branch" onClick={onEdit} />
-                    {branchKind !== "spa" && (
-                        <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
-                    )}
+                    <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
+
                     {status === "inactive" && (
                         <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate"  onClick={onToggleEnable} />
                     )}

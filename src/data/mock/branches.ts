@@ -30,15 +30,13 @@ import type { Branch } from "./_types";
 // 3 Forma Studio locations, each a real physical branch. A branch hosts
 // classes AND appointment-based sessions (private + recovery) — recovery is
 // a session `type`, not a separate location. See `services.ts` for the
-// service → branch assignment driven by `type`. `kind` is a dead-but-safe
-// legacy field (all "club"); it's removed entirely in Phase 2.
+// service → branch assignment driven by `type`.
 export const branches: Branch[] = [
     {
         id: "branch_forma_south",
         name: "Forma Studio (South)",
         status: "active",
         is_main: true,
-        kind: "club",
         address: "12 Marina Walk, Dubai Marina, Dubai",
         email: "forma.south@formastudio.ae",
         phone: "+971 55 200 2001",
@@ -52,7 +50,6 @@ export const branches: Branch[] = [
         name: "Forma Studio (East)",
         status: "active",
         is_main: false,
-        kind: "club",
         address: "8 Festival Boulevard, Dubai Festival City, Dubai",
         email: "forma.east@formastudio.ae",
         phone: "+971 55 200 2002",
@@ -66,7 +63,6 @@ export const branches: Branch[] = [
         name: "Forma Studio (West)",
         status: "inactive",
         is_main: false,
-        kind: "club",
         address: "32 The Greens Avenue, Emirates Living, Dubai",
         email: "forma.west@formastudio.ae",
         phone: "+971 55 200 2003",

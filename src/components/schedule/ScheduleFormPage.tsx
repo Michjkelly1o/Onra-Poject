@@ -1065,15 +1065,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Live branch + room slices — drive the Location dropdown so adds
     // performed via the "+ Add room" affordance below reflect immediately.
     //
-    // Spa branches (`kind === "spa"`) are intentionally excluded — the Spa
-    // surface only hosts appointment Services (Module 13), never class
-    // schedules. Letting an admin pick a Spa branch here would let them
-    // schedule a class at a room-less location with no instructor pool.
-    // Service creation has its own filter that does the inverse (only Spa).
+    // Every branch is a real physical location that can host classes.
     const liveBranches      = useAppStore(s => s.branches);
     const liveRooms         = useAppStore(s => s.rooms);
     const classBranches     = useMemo(
-        () => liveBranches.filter(b => b.kind !== "spa"),
+        () => liveBranches,
         [liveBranches],
     );
     const branchRooms       = useMemo(

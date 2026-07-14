@@ -80,11 +80,7 @@ export interface User {
     permissions?: string[]; // Added for RBAC
     /** Optional single-branch scope for non-Owner personas (Branch Admin,
      *  Operator, Front Desk, Instructor). Undefined = Owner (multi-branch
-     *  scope, full access). Used by feature gating that needs to know
-     *  WHICH branch the user belongs to — e.g. the Service form's
-     *  Booking-conditions section is hidden for Club-branch admins and
-     *  forces "recovery=ON" for Spa-branch admins by joining this id
-     *  against `branches.kind`. */
+     *  scope, full access). Used by branch-scoped feature gating. */
     branch_id?: string;
     /** Demo-only plaintext password — surfaced by the Account settings page's
      *  Password row so the admin can reveal the current credential via the

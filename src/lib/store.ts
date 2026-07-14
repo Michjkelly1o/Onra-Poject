@@ -564,16 +564,11 @@ export interface Service {
     /** Category display name — denormalized from class_categories. */
     category: string;
     /** Session type dimension — "private" (1:1) or "recovery" (spa/wellness).
-     *  The explicit field new code filters on. See
+     *  The explicit field code filters on. See
      *  new-prd/session-type-dimension-implementation-plan.md. */
     type: ServiceType;
-    /** @deprecated Back-compat mirror derived from `type` (`type === "recovery"`).
-     *  Existing consumers (ServiceForm, services list, customer appointments-
-     *  data) still read this; Phase 2 rewrites them to read `type` and this
-     *  field is removed. */
-    isRecovery: boolean;
     /** True = Open session (multi-customer, capacity meaningful). Only
-     *  meaningful when isRecovery=true — non-recovery services force this
+     *  meaningful when type="recovery" — private services force this
      *  false at the form layer. */
     openSession: boolean;
     durationMin: number;
@@ -585,9 +580,9 @@ export interface Service {
     branchId: string;
     /** Branch display name — denormalized from branches for fast list render. */
     branchName: string;
-    /** Branch kind — denormalized for list-page filters and the location
-     *  picker. Mirrors `branches.kind`. */
-    branchKind: "club" | "spa";
+    /** Optional default room ("" = no room). FK → rooms.id. A session may or
+     *  may not use a room. */
+    roomId: string;
     status: ServiceStatus;
     coverImage?: string;
     /** Tile background hex — resolved from class_categories.color_hex. */
@@ -623,8 +618,8 @@ export interface Appointment {
     coverImage?: string;
     branchId: string;
     branchName: string;
-    /** Optional — Spa branch appointments aren't room-scoped (Spa branch
-     *  has no rooms seeded). Empty string when absent; Appointment detail
+    /** Optional — a room is optional for any appointment (some sessions
+     *  aren't room-scoped). Empty string when absent; Appointment detail
      *  side panel only renders the Room subline when `roomName` is set. */
     roomId: string;
     roomName: string;
@@ -1998,21 +1993,14 @@ function serviceFromSeed(s: SeedService): Service {
         categoryId: s.category_id,
         category: cat?.name ?? "",
         type: s.type,
-        // Back-compat mirror — derived so existing isRecovery consumers keep
-        // working until Phase 2 rewrites them to read `type`.
-        isRecovery: s.type === "recovery",
         openSession: s.open_session,
         durationMin: s.duration_min,
         capacity: s.capacity,
         price: s.price,
         branchId: s.branch_id,
         branchName: branch?.name ?? "",
-        // Phase-1 shim: branchKind now derives from `type` (recovery → "spa")
-        // instead of the branch's kind, so the ONE consumer still reading it —
-        // the customer open-session filter in appointments-data.ts — keeps its
-        // exact behaviour now that every real branch is "club". Phase 2 removes
-        // branchKind entirely and rewrites that filter to read `type`.
-        branchKind: s.type === "recovery" ? "spa" : "club",
+        // Optional default room ("" = no room).
+        roomId: s.room_id ?? "",
         status: s.status,
         coverImage: s.cover_image_url,
         coverColor: cat?.color_hex ?? "#f1f2ed",
@@ -4401,6 +4389,7 @@ export const useAppStore = create<AppState>()(persist(
                 services: nextServices,
                 appointments: state.appointments.map(a => a.serviceId === id ? {
                     ...a,
+                    type:            svc.type,
                     serviceName:     svc.name,
                     serviceCategory: svc.category,
                     coverColor:      svc.coverColor,
@@ -7965,7 +7954,15 @@ export const useAppStore = create<AppState>()(persist(
         //   Forma South, with a new "Recovery" room (massage + IV use it,
         //   sauna + breathwork are room-less). Bump forces a reseed so stale
         //   payloads (spa branch, is_recovery-only services) drop cleanly.
-        version: 57,
+        // v58 (2026-07-14): session-type dimension Phase 2. Removed the
+        //   Club/Spa concept entirely — `Branch.kind` deleted, `Service.
+        //   isRecovery` + `Service.branchKind` deleted (all consumers now
+        //   read `type`), and `Service.roomId` added (optional default room,
+        //   picked in the service form's new room selector). ServiceForm now
+        //   uses a Private/Recovery type selector instead of a recovery
+        //   toggle. Bump forces a reseed so stale payloads (branch.kind,
+        //   service.isRecovery/branchKind) drop cleanly.
+        version: 58,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

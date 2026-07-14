@@ -46,7 +46,7 @@ import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
-import { useAppStore, type Service, type ServiceStatus } from "@/lib/store";
+import { useAppStore, type Service, type ServiceStatus, type ServiceType } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
@@ -268,7 +268,7 @@ type ServiceRow = {
     durationMin: number;
     branchName: string;
     branchId: string;
-    isRecovery: boolean;
+    type: ServiceType;
     price: number;
     status: ServiceStatus;
     coverImage?: string;
@@ -284,7 +284,7 @@ function rowsFromServices(items: Service[], hasHistory: (id: string) => boolean)
         durationMin: s.durationMin,
         branchName: s.branchName,
         branchId: s.branchId,
-        isRecovery: s.isRecovery,
+        type: s.type,
         price: s.price,
         status: s.status,
         coverImage: s.coverImage,
@@ -433,8 +433,8 @@ function ListView({
                         <th className={cn(TH, "w-[200px]")}>
                             <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch location</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[120px]")}>
-                            <SortableHeader sortKey="recovery" currentSort={sortKey} dir={sortDir} onSort={onSort}>Recovery</SortableHeader>
+                        <th className={cn(TH, "w-[160px]")}>
+                            <SortableHeader sortKey="type" currentSort={sortKey} dir={sortDir} onSort={onSort}>Type</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[120px]")}>
                             <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
@@ -472,7 +472,7 @@ function ListView({
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationMin} minutes</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.branchName || "—"}</td>
-                                <td className={cn(TD, "whitespace-nowrap")}>{r.isRecovery ? "Yes" : "No"}</td>
+                                <td className={cn(TD, "whitespace-nowrap")}>{r.type === "recovery" ? "Recovery & wellness" : "Private session"}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>AED {r.price.toLocaleString()}</td>
                                 <td className={TD}><StatusBadge type="service" status={r.status} /></td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
@@ -563,9 +563,8 @@ export default function ServicesPage() {
         name:     (a, b) => a.name.localeCompare(b.name),
         duration: (a, b) => a.durationMin - b.durationMin,
         branch:   (a, b) => a.branchName.localeCompare(b.branchName),
-        // No-recovery first when ascending, Recovery first when descending —
-        // matches the typical "Club services pop to the top" admin flow.
-        recovery: (a, b) => Number(a.isRecovery) - Number(b.isRecovery),
+        // Private first when ascending, Recovery first when descending.
+        type:     (a, b) => a.type.localeCompare(b.type),
         price:    (a, b) => a.price - b.price,
         status:   (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
     };

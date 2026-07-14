@@ -13,7 +13,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, MarkerPin01, Clock, UploadCloud02, Building01, ShieldZap, Feather } from "@untitledui/icons";
+import { Phone, MarkerPin01, Clock, UploadCloud02, Building01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
@@ -95,13 +95,6 @@ export function BranchFormPage({ mode, branchId }: {
 
     const [logoDataUrl, setLogoDataUrl] = useState<string>(existing?.image_url ?? "");
     const [name,        setName]        = useState<string>(existing?.name ?? "");
-    // Location scope (Club vs Spa) per Figma 7664:38201. On CREATE the
-    // picker is interactive; on EDIT it shows the current value but is
-    // locked — switching kind on a live branch would orphan rooms /
-    // classes / appointments, so the user's direction is "locked once
-    // created" (confirmed via question).
-    const [kind, setKind] = useState<"club" | "spa">(existing?.kind ?? "club");
-    const kindEditable = mode === "create";
     const [email,       setEmail]       = useState<string>(existing?.email ?? "");
     const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(initialPhone.country);
     const [phoneNumber, setPhoneNumber] = useState<string>(initialPhone.number);
@@ -174,16 +167,9 @@ export function BranchFormPage({ mode, branchId }: {
                 id: newBranchId,
                 status: "active",
                 is_main: false,
-                // Picked from the Location scope card (interactive on
-                // create per Figma 7664:38201).
-                kind,
                 ...patch,
             });
         } else if (existing) {
-            // Edit mode never writes `kind` — the picker is disabled and
-            // the existing kind is preserved. Spreading existing.kind into
-            // the patch would no-op anyway, but skipping it altogether
-            // documents that the field is intentionally immutable here.
             updateBranchStore(existing.id, patch);
         }
         // Persist working hours alongside the branch — `setBranchHours`
@@ -240,68 +226,6 @@ export function BranchFormPage({ mode, branchId }: {
 
                                 <Field label="Branch name">
                                     <TextInput value={name} onChange={setName} placeholder="Enter branch name" />
-                                </Field>
-
-                                {/* Location scope picker — Figma 7664:38201. Two
-                                    side-by-side cards. The selected card paints
-                                    with a green border + minty fill so the choice
-                                    reads at a glance. On EDIT the picker is
-                                    locked: both cards render but clicks are
-                                    ignored and the wrapper paints with reduced
-                                    opacity so the read-only state is clear. */}
-                                <Field label="Location scope">
-                                    <div className="grid grid-cols-2 gap-3 w-full">
-                                        {([
-                                            {
-                                                value: "club" as const,
-                                                title: "Club",
-                                                subtitle: "Locations for classes and appointment private sessions.",
-                                                Icon: ShieldZap,
-                                            },
-                                            {
-                                                value: "spa" as const,
-                                                title: "Spa",
-                                                subtitle: "Locations for recovery appointment services.",
-                                                Icon: Feather,
-                                            },
-                                        ]).map(opt => {
-                                            const selected = kind === opt.value;
-                                            return (
-                                                <button
-                                                    key={opt.value}
-                                                    type="button"
-                                                    disabled={!kindEditable}
-                                                    onClick={() => kindEditable && setKind(opt.value)}
-                                                    className={cn(
-                                                        "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
-                                                        selected
-                                                            ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                                            : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
-                                                        !kindEditable && "opacity-70 cursor-not-allowed",
-                                                    )}
-                                                    aria-pressed={selected}
-                                                >
-                                                    <div className={cn(
-                                                        "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
-                                                        selected
-                                                            ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
-                                                            : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
-                                                    )}>
-                                                        <opt.Icon className="w-4 h-4" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
-                                                        <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                    {!kindEditable && (
-                                        <p className="text-[12px] text-[#667085] mt-2 leading-[18px]">
-                                            Location scope can&apos;t be changed after a branch is created.
-                                        </p>
-                                    )}
                                 </Field>
 
                                 <Field label="Email">

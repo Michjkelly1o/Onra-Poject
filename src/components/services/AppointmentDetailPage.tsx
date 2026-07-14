@@ -430,7 +430,8 @@ function LeftPanel({ appointment, onCancelAppointment }: {
     // deleted (rare — the cascade should prevent it).
     const service = useAppStore(s => s.services).find(s => s.id === appointment.serviceId);
     const durationMin = service?.durationMin ?? 0;
-    const isRecovery  = service?.isRecovery ?? false;
+    // Read the appointment's own session type (inherited from its service).
+    const isRecovery  = appointment.type === "recovery";
     const price       = service?.price ?? 0;
     // Resolve the appointment's branch so we can tag the wall-clock time
     // with the branch's own TZ. Same pattern as the class detail page.
@@ -488,8 +489,10 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                             {appointment.roomName && <p className="text-[14px] text-[#475467]">{appointment.roomName}</p>}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Recovery condition</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{isRecovery ? "Yes" : "No"}</p>
+                            <p className="text-[14px] text-[#667085]">Session type</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {isRecovery ? "Recovery & wellness" : "Private session"}
+                            </p>
                         </div>
                         {isRecovery && (
                             <div className="flex flex-col gap-1">

@@ -58,7 +58,7 @@ function toVM(s: Service): AppointmentVM {
         category: s.category,
         branchId: s.branchId,
         branchName: s.branchName,
-        isRecovery: s.isRecovery,
+        isRecovery: s.type === "recovery",
         coverImage: s.coverImage,
         coverColor: s.coverColor,
         capacity: s.openSession ? s.capacity : undefined,
@@ -75,8 +75,7 @@ export function useAppointment(id: string): AppointmentVM | null {
 }
 
 /** Active-branch appointment services, narrowed by the (categories-only) filter.
- *  Admin rule: Club branches offer only private appointments; Spa branches offer
- *  both private and open-session appointments. */
+ *  Only recovery services can be open-session; private services are always 1:1. */
 export function useAppointments(filters: SearchFilters): AppointmentVM[] {
     const { selectedBranchId } = useCurrentCustomerContext();
     const services = useAppStore((s) => s.services);
@@ -86,8 +85,9 @@ export function useAppointments(filters: SearchFilters): AppointmentVM[] {
         return services
             .filter((s) => s.status === "Active")
             .filter((s) => isAll || s.branchId === selectedBranchId)
-            // Club branches (kind !== "spa") never offer open sessions — private only.
-            .filter((s) => s.branchKind === "spa" || !s.openSession)
+            // Open sessions only exist for recovery services; a private
+            // service is always 1:1 (never open).
+            .filter((s) => s.type === "recovery" || !s.openSession)
             .filter((s) => filters.categories.length === 0 || filters.categories.includes(s.category))
             .map(toVM);
     }, [selectedBranchId, services, filters.categories]);

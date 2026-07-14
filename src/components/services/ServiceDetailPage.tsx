@@ -213,10 +213,12 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                             )}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Recovery condition</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{service.isRecovery ? "Yes" : "No"}</p>
+                            <p className="text-[14px] text-[#667085]">Session type</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {service.type === "recovery" ? "Recovery & wellness" : "Private session"}
+                            </p>
                         </div>
-                        {service.isRecovery && (
+                        {service.type === "recovery" && (
                             <div className="flex flex-col gap-1">
                                 <p className="text-[14px] text-[#667085]">Open sessions</p>
                                 <p className="text-[16px] font-medium text-[#101828]">

@@ -52,7 +52,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, Check,
     Lightbulb02, Grid01, ClockFastForward, MarkerPin01,
-    BankNote01,
+    BankNote01, UserCheck01, Feather,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -236,57 +236,36 @@ interface Step1Data {
     name: string;
     category: string;
     durationMin: string;
-    isRecovery: boolean;
+    /** Session type — "private" (1:1) or "recovery" (spa/wellness). */
+    type: ServiceType;
     openSession: boolean;
     capacity: string;
     coverPreview: string | null;
     coverFile: File | null;
 }
 
-/** Persona derived from currentUser.branch_id × branch.kind:
- *    • "owner" — no branch assignment (full multi-branch access)
- *    • "club"  — assigned to a `branch.kind="club"` branch, can only
- *                author non-recovery services. Booking conditions hidden.
- *    • "spa"   — assigned to a `branch.kind="spa"` branch, can only
- *                author recovery services. Recovery toggle forced ON +
- *                disabled. */
-export type ServiceFormPersona = "owner" | "club" | "spa";
-
 function ServiceDetailStep({
-    data, onChange, onContinue, categoryOptions, persona,
+    data, onChange, onContinue, categoryOptions,
 }: {
     data: Step1Data;
     onChange: (d: Partial<Step1Data>) => void;
     onContinue: () => void;
     categoryOptions: string[];
-    persona: ServiceFormPersona;
 }) {
-    // Booking conditions visibility — Club admins skip the section entirely
-    // (their services are always non-recovery). Owner + Spa see it.
-    const showBookingConditions = persona !== "club";
-    // Spa admins can't turn recovery OFF — the toggle reflects state but
-    // is locked. Owner can flip freely.
-    const recoveryToggleDisabled = persona === "spa";
-
-    // Required fields:
-    //   • Always:           name + category + duration
-    //   • If openSession:   + capacity
-    //   • Recovery toggle:  no impact on required fields (just routes to
-    //                       Spa branches downstream)
+    // Required fields: name + category + duration always; capacity when the
+    // recovery service is an open session.
     const canContinue =
         data.name.trim() &&
         data.category &&
         data.durationMin &&
         (!data.openSession || data.capacity);
 
-    function handleRecoveryToggle() {
-        if (recoveryToggleDisabled) return;
-        const next = !data.isRecovery;
-        // Turning recovery OFF forces openSession OFF and wipes capacity —
-        // non-recovery services are always Private with an instructor.
-        onChange(next
-            ? { isRecovery: true }
-            : { isRecovery: false, openSession: false, capacity: "" });
+    function handleTypeChange(next: ServiceType) {
+        // Switching to Private clears the open-session state — private
+        // services are always 1:1 with an instructor.
+        onChange(next === "recovery"
+            ? { type: "recovery" }
+            : { type: "private", openSession: false, capacity: "" });
     }
 
     function handleOpenSessionToggle() {
@@ -331,66 +310,77 @@ function ServiceDetailStep({
                     </FormField>
                 </div>
 
-                {/* Booking conditions — hidden entirely for Club-branch admins
-                    so they can't accidentally route a service to the Spa
-                    branch (their persona ALWAYS creates non-recovery
-                    services). Owner + Spa-branch admins see it. */}
-                {showBookingConditions && (
-                    <div className="flex flex-col gap-3">
-                        <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Booking conditions</h3>
+                {/* Session type — Private (1:1 training) vs Recovery &
+                    wellness. Two selectable cards; the recovery choice
+                    reveals the Open-sessions option. Any branch can host
+                    either type. */}
+                <div className="flex flex-col gap-3">
+                    <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Session type</h3>
 
-                        {/* Card 1 — Service is recovery */}
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                        {([
+                            { value: "private" as const,  title: "Private session",     subtitle: "1:1 training with an instructor.", Icon: UserCheck01 },
+                            { value: "recovery" as const, title: "Recovery & wellness", subtitle: "Spa / wellness — massage, sauna, breathwork, etc.", Icon: Feather },
+                        ]).map(opt => {
+                            const selected = data.type === opt.value;
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => handleTypeChange(opt.value)}
+                                    className={cn(
+                                        "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
+                                        selected
+                                            ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                            : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                    )}
+                                    aria-pressed={selected}
+                                >
+                                    <div className={cn(
+                                        "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
+                                        selected
+                                            ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
+                                            : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                    )}>
+                                        <opt.Icon className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
+                                        <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Open sessions — only meaningful for recovery services
+                        (private services are always 1:1). */}
+                    {data.type === "recovery" && (
                         <div className={cn(
                             "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
-                            data.isRecovery
+                            data.openSession
                                 ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
                                 : "border-1 border-[#e4e7ec] bg-white",
-                            recoveryToggleDisabled && "opacity-90",
                         )}>
                             <div className="flex items-start gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[14px] font-medium text-[#101828]">Service is recovery</p>
-                                    <p className="text-[14px] text-[#667085]">Available at Spa locations only.</p>
+                                    <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
+                                    <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
                                 </div>
                                 <Toggle
-                                    on={data.isRecovery}
-                                    onChange={handleRecoveryToggle}
-                                    disabled={recoveryToggleDisabled}
-                                    ariaLabel="Toggle service is recovery"
+                                    on={data.openSession}
+                                    onChange={handleOpenSessionToggle}
+                                    ariaLabel="Toggle open sessions"
                                 />
                             </div>
+                            {data.openSession && (
+                                <FormField label="Service capacity">
+                                    <NumericStringInput value={data.capacity} onChange={v => onChange({ capacity: v })} min={0} />
+                                </FormField>
+                            )}
                         </div>
-
-                        {/* Card 2 — Service is open sessions (only meaningful
-                            when recovery=ON; non-recovery services are
-                            always Private). */}
-                        {data.isRecovery && (
-                            <div className={cn(
-                                "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
-                                data.openSession
-                                    ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                    : "border-1 border-[#e4e7ec] bg-white",
-                            )}>
-                                <div className="flex items-start gap-4">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
-                                        <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
-                                    </div>
-                                    <Toggle
-                                        on={data.openSession}
-                                        onChange={handleOpenSessionToggle}
-                                        ariaLabel="Toggle open sessions"
-                                    />
-                                </div>
-                                {data.openSession && (
-                                    <FormField label="Service capacity">
-                                        <NumericStringInput value={data.capacity} onChange={v => onChange({ capacity: v })} min={0} />
-                                    </FormField>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             <div className="shrink-0 px-6 pb-6 flex justify-end">
@@ -446,25 +436,27 @@ function PricingStep({
     );
 }
 
-// ─── Step 3 — Location (single-select branch, filtered by branch.kind) ──────
+// ─── Step 3 — Location (branch + optional room) ─────────────────────────────
+
+/** Sentinel for the "No room" option — a session may run without a room. */
+const NO_ROOM = "__no_room__";
 
 function LocationStep({
-    branchId, onChange, branchOptions, onBack, onSubmit, mode, isRecovery,
+    branchId, onChange, branchOptions, roomId, onRoomChange, roomOptions, onBack, onSubmit, mode,
 }: {
     branchId: string;
     onChange: (v: string) => void;
     branchOptions: { value: string; label: string }[];
+    /** Selected room id, or "" for no room. */
+    roomId: string;
+    onRoomChange: (v: string) => void;
+    /** Rooms of the selected branch (empty until a branch is picked). */
+    roomOptions: { value: string; label: string }[];
     onBack: () => void;
     onSubmit: () => void;
     mode: "create" | "edit";
-    /** Drives the contextual hint banner — recovery services list only
-     *  Spa branches, non-recovery list only Club branches. */
-    isRecovery: boolean;
 }) {
     const canSubmit = !!branchId;
-    const hint = isRecovery
-        ? "Recovery services are offered at Spa locations only — the dropdown lists Spa branches."
-        : "Non-recovery services are offered at Club locations only — the dropdown lists Club branches.";
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
@@ -473,9 +465,7 @@ function LocationStep({
                 <FormField label="Branch location">
                     <SelectInput
                         triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                        placeholder={branchOptions.length === 0
-                            ? (isRecovery ? "No active Spa branches" : "No active Club branches")
-                            : "Select location"}
+                        placeholder={branchOptions.length === 0 ? "No active branches" : "Select location"}
                         value={branchId}
                         onChange={onChange}
                         options={branchOptions}
@@ -483,10 +473,19 @@ function LocationStep({
                     />
                 </FormField>
 
-                <div className="flex items-start gap-4 px-4 py-4 bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
-                    <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{hint}</p>
-                </div>
+                {/* Room — optional. Mirrors the class-schedule form's room
+                    picker; a session may or may not use a room. Defaults to
+                    "No room". Disabled until a branch is picked. */}
+                <FormField label="Room" hint="Optional — leave as “No room” if this session isn’t room-scoped.">
+                    <SelectInput
+                        triggerIcon={<Grid01 className="w-4 h-4" />}
+                        placeholder={!branchId ? "Select a branch first" : "No room"}
+                        value={roomId === "" ? NO_ROOM : roomId}
+                        onChange={(v) => onRoomChange(v === NO_ROOM ? "" : v)}
+                        options={[{ value: NO_ROOM, label: "No room" }, ...roomOptions]}
+                        width="w-full"
+                    />
+                </FormField>
             </div>
 
             <div className="shrink-0 px-6 pb-6 flex items-center justify-between">
@@ -515,8 +514,8 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
     // (Booking Rules / Business & Locations) mutates.
     const services         = useAppStore(s => s.services);
     const branches         = useAppStore(s => s.branches);
+    const rooms            = useAppStore(s => s.rooms);
     const classCategories  = useAppStore(s => s.classCategories);
-    const currentUser      = useAppStore(s => s.currentUser);
     const addService       = useAppStore(s => s.addService);
     const updateService    = useAppStore(s => s.updateService);
     const showToast        = useAppStore(s => s.showToast);
@@ -525,16 +524,6 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         ? services.find(s => s.id === serviceId)
         : undefined;
 
-    // Persona derivation — drives Step 1 Booking-conditions visibility and
-    // Step 3 location dropdown filter. Owner = no branch assignment, sees
-    // everything. Club/Spa admins are scoped to their branch's kind.
-    const persona: ServiceFormPersona = useMemo(() => {
-        const branchIdOnUser = currentUser.branch_id;
-        if (!branchIdOnUser) return "owner";
-        const b = branches.find(x => x.id === branchIdOnUser);
-        return b?.kind === "spa" ? "spa" : "club";
-    }, [currentUser.branch_id, branches]);
-
     // ─── Step state ────────────────────────────────────────────────────────
     const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -542,9 +531,8 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         name:         existing?.name ?? "",
         category:     existing?.category ?? "",
         durationMin:  existing ? String(existing.durationMin) : "",
-        // Spa-persona always creates recovery services; club-persona never
-        // does. Owner defaults OFF (most services are non-recovery).
-        isRecovery:   existing?.isRecovery ?? (persona === "spa"),
+        // Default to Private — the most common service type.
+        type:         existing?.type ?? "private",
         openSession:  existing?.openSession ?? false,
         capacity:     existing && existing.capacity > 0 ? String(existing.capacity) : "",
         coverPreview: existing?.coverImage ?? null,
@@ -555,6 +543,8 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         () => existing && existing.price > 0 ? String(existing.price) : "",
     );
     const [branchId, setBranchId] = useState<string>(existing?.branchId ?? "");
+    // Optional room — "" means no room.
+    const [roomId, setRoomId] = useState<string>(existing?.roomId ?? "");
 
     // If the edit-mode service id appears asynchronously (rare but possible
     // on resume-from-persist), refresh the local state once it lands.
@@ -564,7 +554,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
             name:         existing.name,
             category:     existing.category,
             durationMin:  String(existing.durationMin),
-            isRecovery:   existing.isRecovery,
+            type:         existing.type,
             openSession:  existing.openSession,
             capacity:     existing.capacity > 0 ? String(existing.capacity) : "",
             coverPreview: existing.coverImage ?? null,
@@ -572,29 +562,34 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         });
         setPrice(existing.price > 0 ? String(existing.price) : "");
         setBranchId(existing.branchId);
+        setRoomId(existing.roomId ?? "");
     }, [mode, existing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Derived dropdown sources ──────────────────────────────────────────
     const categoryOptions = useMemo(() => classCategories.map(c => c.name), [classCategories]);
-    // Location dropdown filtered by `branch.kind` matching the form's
-    // current isRecovery flag — recovery services live at Spa branches,
-    // non-recovery at Club branches. Spa/Club personas only see their kind
-    // (their isRecovery is locked, so the filter naturally restricts).
-    const branchOptions = useMemo(() => {
-        const targetKind: "club" | "spa" = step1.isRecovery ? "spa" : "club";
-        return branches
-            .filter(b => b.status === "active" && b.kind === targetKind)
-            .map(b => ({ value: b.id, label: b.name }));
-    }, [branches, step1.isRecovery]);
+    // Location dropdown — every active branch. Any branch hosts any type.
+    const branchOptions = useMemo(
+        () => branches
+            .filter(b => b.status === "active")
+            .map(b => ({ value: b.id, label: b.name })),
+        [branches],
+    );
+    // Room dropdown — active rooms of the selected branch (optional; a "No
+    // room" option is prepended by LocationStep).
+    const roomOptions = useMemo(
+        () => rooms
+            .filter(r => r.branch_id === branchId && r.status === "active")
+            .map(r => ({ value: r.id, label: r.name })),
+        [rooms, branchId],
+    );
 
-    // If isRecovery flips, clear branchId when it no longer matches the
-    // new filtered set so the user can't submit a stale Club branch on a
-    // Recovery service or vice versa.
+    // Clear the room when the selected branch changes and the room no longer
+    // belongs to it, so a service can't submit a room from another branch.
     useEffect(() => {
-        if (!branchId) return;
-        const stillValid = branchOptions.some(o => o.value === branchId);
-        if (!stillValid) setBranchId("");
-    }, [branchOptions, branchId]);
+        if (!roomId) return;
+        const stillValid = roomOptions.some(o => o.value === roomId);
+        if (!stillValid) setRoomId("");
+    }, [roomOptions, roomId]);
 
     // ─── Submit ────────────────────────────────────────────────────────────
     function handleSubmit() {
@@ -606,22 +601,16 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
             description: existing?.description ?? "",
             categoryId:  cat?.id ?? "",
             category:    step1.category,
-            // Session type derived from the recovery toggle — Phase 2 swaps
-            // the toggle for an explicit Private/Recovery selector.
-            type:        (step1.isRecovery ? "recovery" : "private") as ServiceType,
-            isRecovery:  step1.isRecovery,
-            // Non-recovery services are always Private with an instructor —
-            // force open_session=false even if the local toggle drifted.
-            openSession: step1.isRecovery ? step1.openSession : false,
+            type:        step1.type,
+            // Only recovery services can be open sessions — private is 1:1.
+            openSession: step1.type === "recovery" ? step1.openSession : false,
             durationMin: Number(step1.durationMin),
-            capacity:    step1.isRecovery && step1.openSession ? Number(step1.capacity) : 0,
+            capacity:    step1.type === "recovery" && step1.openSession ? Number(step1.capacity) : 0,
             price:       Number(price),
             branchId:    branchId,
             branchName:  branch?.name ?? "",
-            // Phase-1 shim (see serviceFromSeed) — branchKind derives from the
-            // recovery flag, not the branch kind, so a newly-created recovery
-            // service still surfaces in the customer open-session filter.
-            branchKind:  (step1.isRecovery ? "spa" : "club") as "club" | "spa",
+            // Optional room ("" = no room).
+            roomId:      roomId,
             status:      (existing?.status ?? "Active") as Service["status"],
             coverImage:  step1.coverPreview ?? undefined,
             coverColor:  cat?.color_hex ?? "#e9fff3",
@@ -658,12 +647,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         );
     }
 
-    // Resolve the selected branch's display name from the current options
-    // list. Using `branchOptions` (already filtered by `isRecovery` ↔
-    // `branch.kind`) means the preview stays in sync if Step 1 flips
-    // recovery — branchId is cleared by the useEffect above when the new
-    // options set no longer contains it, and Location falls back to the
-    // placeholder until the admin picks again.
+    // Resolve the selected branch's display name from the current options.
     const previewBranchName = branchOptions.find(o => o.value === branchId)?.label ?? "";
 
     const previewData: PreviewData = {
@@ -710,7 +694,6 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
                                 onChange={d => setStep1(prev => ({ ...prev, ...d }))}
                                 onContinue={() => setStep(2)}
                                 categoryOptions={categoryOptions}
-                                persona={persona}
                             />
                         )}
                         {step === 2 && (
@@ -726,10 +709,12 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
                                 branchId={branchId}
                                 onChange={setBranchId}
                                 branchOptions={branchOptions}
+                                roomId={roomId}
+                                onRoomChange={setRoomId}
+                                roomOptions={roomOptions}
                                 onBack={() => setStep(2)}
                                 onSubmit={handleSubmit}
                                 mode={mode}
-                                isRecovery={step1.isRecovery}
                             />
                         )}
 
