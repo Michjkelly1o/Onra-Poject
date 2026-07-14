@@ -1130,7 +1130,25 @@ export interface CustomerReferral {
     referrerCustomerId: string;
     referredName: string;
     referredEmail: string;
+    /** LEGACY — kept populated at boot so any consumer still reading
+     *  `benefitCredits` (customer-portal referral page, reports) sees a
+     *  sensible number even for `wallet_credit` rows. Read
+     *  `benefitType` + `benefitAmount` in new code. */
     benefitCredits: number;
+    /** Reward kind stamped at referral-creation from the live
+     *  `referralSettings.referrerEarnType`. Drives how the Referrals
+     *  tab aggregates + how each row's Benefit cell reads:
+     *    • "free_credits"  → row shows "N credits", aggregated into the
+     *                        "Class credits" line of the Rewards earned card.
+     *    • "wallet_credit" → row shows "AED N", aggregated into the
+     *                        "Account credits" line.
+     *    • "discount"      → deferred; not surfaced in the prototype. */
+    benefitType: ReferralRewardType;
+    /** Numeric amount matching `benefitType` — count of class credits for
+     *  `free_credits`, AED amount for `wallet_credit`. Always populated
+     *  at boot by `customerReferralFromSeed` (falls back to
+     *  `benefit_credits` for pre-v56 seed rows). */
+    benefitAmount: number;
     referredAtISO: string;
     /** When the earned reward expires. Computed at referral-creation time
      *  as `referredAtISO + referralSettings.earnedRewardExpiryDays`.
@@ -2251,12 +2269,22 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
     };
     const revenueRecoveredAed = r.revenue_recovered_aed ?? (reactivated && newPlanId ? planPrice[newPlanId] : undefined);
 
+    // v56 — Reward-kind stamp. Pre-v56 seed rows carry only `benefit_credits`
+    // and are implicitly class credits; treat them that way so historical
+    // rows aggregate correctly into the "Class credits" line of the new
+    // "Rewards earned" card. New rows should set `benefit_type` +
+    // `benefit_amount` explicitly at creation.
+    const benefitType: ReferralRewardType = r.benefit_type ?? "free_credits";
+    const benefitAmount = r.benefit_amount ?? r.benefit_credits;
+
     return {
         id: r.id,
         referrerCustomerId: r.referrer_customer_id,
         referredName: r.referred_name,
         referredEmail: r.referred_email,
         benefitCredits: r.benefit_credits,
+        benefitType,
+        benefitAmount,
         referredAtISO: r.referred_at,
         expiresAtISO:   r.expires_at,
         originBranchId: r.origin_branch_id,
@@ -7881,7 +7909,16 @@ export const useAppStore = create<AppState>()(persist(
         //   `AppointmentCustomerBadges`) actually fire during a client demo.
         //   Every class detail in the seed range now shows at least one
         //   Birthday or New Member pill. Bump forces a reseed on next hydrate.
-        version: 55,
+        // v56 (2026-07-14): CustomerReferral gains `benefitType` +
+        //   `benefitAmount`. Split the customer-detail Referrals tab's
+        //   "Total bonus credits" card into a "Rewards earned" card with
+        //   two lines (class credits, account credits AED) — matches how
+        //   the studio's referral program actually pays out (Settings →
+        //   Referral supports `free_credits` OR `wallet_credit` reward
+        //   types). 3 seed rows + half of DEMO_NOW_REFERRALS re-typed to
+        //   `wallet_credit` so both card lines demo populated. Bump forces
+        //   a reseed on next hydrate so testers pick up the new fields.
+        version: 56,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

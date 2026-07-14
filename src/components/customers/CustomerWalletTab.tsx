@@ -120,7 +120,12 @@ export function CustomerWalletTab({ customerId }: { customerId: string }) {
                                             )}
                                         </td>
                                         <td className={cn(TD, "text-[14px] text-[#667085]")}>{t.referenceType ? REFERENCE_LABEL[t.referenceType] : "—"}</td>
-                                        <td className={cn(TD, "text-[14px] font-medium whitespace-nowrap", t.type === "credit" ? "text-[#067647]" : "text-[#101828]")}>
+                                        {/* Amount cell matches Payment history 1:1 —
+                                            `cn(TD, "text-[#475467] whitespace-nowrap")`.
+                                            No `font-medium`, no explicit `text-[14px]`
+                                            (TD already carries it). The +/− prefix
+                                            carries credit / debit direction. */}
+                                        <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>
                                             {t.type === "credit" ? "+" : "−"} {fmtAed(t.amountAed)}
                                         </td>
                                         <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
