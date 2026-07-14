@@ -356,7 +356,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                             ))}
                                         </div>
                                         <button type="button" onClick={addCustomReason}
-                                            className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--brand-primary)] hover:opacity-80 w-fit">
+                                            className="flex items-center gap-1.5 text-[14px] font-medium text-[#658774] hover:opacity-80 w-fit">
                                             <Plus className="w-4 h-4" />
                                             Add custom reason
                                         </button>
