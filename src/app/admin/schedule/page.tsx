@@ -690,7 +690,10 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                         )}
                                     </div>
                                     <div>
-                                        <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[14px] font-medium text-[#101828]">{c.name}</span>
+                                            <SessionTypeTag type={c.type} />
+                                        </div>
                                         <div className="text-[13px] text-[#667085]">
                                             {/* Appointment open sessions have no fixed instructor —
                                                 surface "Open session" instead of a dangling "with ". */}
