@@ -9,28 +9,22 @@
 // live preview. Reused so the two modules look identical to the eye.
 //
 // STEPS
-//   1. Service detail (Figma 7421:105899 / 7423:101931 / 7619:78933)
+//   1. Service detail
 //      – Image banner upload
 //      – Service name
 //      – Class category (live `classCategories` slice — adds in Booking
 //        Rules surface here on the same render)
 //      – Duration (in minutes)
-//      – "Booking conditions" section — role-conditional:
-//        • Owner:    fully interactive (both toggles + capacity)
-//        • Spa role: "Service is recovery" forced ON + disabled, open
-//                    sessions toggle still interactive
-//        • Club role: ENTIRE section hidden, isRecovery=false implicit
-//        Toggles:
-//          1. Service is recovery — when ON reveals card 2
-//          2. Service is open sessions — when ON reveals Service capacity
-//   2. Pricing (Figma 7421:107562)
+//      – "Session type" selector — Private session vs Recovery & wellness.
+//        Choosing Recovery reveals the "open sessions" toggle (multi-
+//        participant, no instructor) + capacity. Private is always 1:1.
+//   2. Pricing
 //      – Single fixed-price AED input. Replaces the legacy
 //        applicable-memberships accordion (services are currency-priced).
-//   3. Location (Figma 7422:95427)
-//      – Single-select branch dropdown filtered by branch.kind ↔ isRecovery
-//        (recovery=ON → Spa branches only; recovery=OFF → Club branches
-//        only). Owner sees the matching subset for whatever the toggle
-//        says; Spa/Club admins see only their branch's kind.
+//   3. Location
+//      – Single-select branch dropdown (any active branch) + an OPTIONAL
+//        room selector (rooms of the picked branch, or "No room"). A
+//        session may or may not use a room.
 //
 // MODE
 //   • create — empty defaults, route returns to /admin/services on success
