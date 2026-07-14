@@ -44,7 +44,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, Lock01,
+    XClose, Check,
     Lightbulb02, Grid01, ClockFastForward, MarkerPin01,
     BankNote01, UserCheck01, Feather,
 } from "@untitledui/icons";
@@ -253,11 +253,10 @@ function ServiceDetailStep({
     onChange: (d: Partial<Step1Data>) => void;
     onContinue: () => void;
     categoryOptions: string[];
-    /** When true the type is fixed (create scoped to a menu, or edit) — show a
-     *  read-only card instead of the Private/Recovery picker. */
+    /** When true the type is fixed (create scoped to a menu, or edit) — the
+     *  Private/Recovery picker is hidden entirely (the menu already decided). */
     lockType: boolean;
 }) {
-    const activeType = TYPE_OPTIONS.find(o => o.value === data.type) ?? TYPE_OPTIONS[0];
     // Required fields: name + category + duration always; capacity when the
     // recovery service is an open session.
     const canContinue =
@@ -316,88 +315,79 @@ function ServiceDetailStep({
                     </FormField>
                 </div>
 
-                {/* Session type — Private (1:1 training) vs Recovery &
-                    wellness. The type is fixed by the menu you came from
-                    ("Private sessions" / "Recovery & wellness"), so it shows as
-                    a read-only card. Only a bare/direct create shows the picker.
-                    Recovery reveals the Open-sessions option below. */}
-                <div className="flex flex-col gap-3">
-                    <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Session type</h3>
-
-                    {lockType ? (
-                        <div className="flex items-start gap-3 rounded-[12px] p-4 w-full border-1 border-[#e4e7ec] bg-[#f9fafb]">
-                            <div className="w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1 bg-[#e7f7ec] border-[#abefc6] text-[#067647]">
-                                <activeType.Icon className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-medium text-[#101828] leading-5">{activeType.title}</p>
-                                <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{activeType.subtitle}</p>
-                            </div>
-                            <Lock01 className="w-4 h-4 text-[#98a2b3] shrink-0 mt-0.5" />
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-3 w-full">
-                            {TYPE_OPTIONS.map(opt => {
-                                const selected = data.type === opt.value;
-                                return (
-                                    <button
-                                        key={opt.value}
-                                        type="button"
-                                        onClick={() => handleTypeChange(opt.value)}
-                                        className={cn(
-                                            "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
-                                            selected
-                                                ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                                : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
-                                        )}
-                                        aria-pressed={selected}
-                                    >
-                                        <div className={cn(
-                                            "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
-                                            selected
-                                                ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
-                                                : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
-                                        )}>
-                                            <opt.Icon className="w-4 h-4" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
-                                            <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Open sessions — only meaningful for recovery services
-                        (private services are always 1:1). */}
-                    {data.type === "recovery" && (
-                        <div className={cn(
-                            "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
-                            data.openSession
-                                ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                : "border-1 border-[#e4e7ec] bg-white",
-                        )}>
-                            <div className="flex items-start gap-4">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
-                                    <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
+                {/* Session type — the type is fixed by the menu you came from
+                    ("Private sessions" / "Recovery & wellness"), so the picker
+                    is hidden when locked. Only a bare/direct create shows it.
+                    Recovery keeps the Open-sessions option regardless. */}
+                {(!lockType || data.type === "recovery") && (
+                    <div className="flex flex-col gap-3">
+                        {!lockType && (
+                            <>
+                                <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Session type</h3>
+                                <div className="grid grid-cols-2 gap-3 w-full">
+                                    {TYPE_OPTIONS.map(opt => {
+                                        const selected = data.type === opt.value;
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => handleTypeChange(opt.value)}
+                                                className={cn(
+                                                    "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
+                                                    selected
+                                                        ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                                        : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                                )}
+                                                aria-pressed={selected}
+                                            >
+                                                <div className={cn(
+                                                    "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
+                                                    selected
+                                                        ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
+                                                        : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                                )}>
+                                                    <opt.Icon className="w-4 h-4" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
+                                                    <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                <Toggle
-                                    on={data.openSession}
-                                    onChange={handleOpenSessionToggle}
-                                    ariaLabel="Toggle open sessions"
-                                />
+                            </>
+                        )}
+
+                        {/* Open sessions — only meaningful for recovery services
+                            (private services are always 1:1). */}
+                        {data.type === "recovery" && (
+                            <div className={cn(
+                                "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
+                                data.openSession
+                                    ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                    : "border-1 border-[#e4e7ec] bg-white",
+                            )}>
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
+                                        <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
+                                    </div>
+                                    <Toggle
+                                        on={data.openSession}
+                                        onChange={handleOpenSessionToggle}
+                                        ariaLabel="Toggle open sessions"
+                                    />
+                                </div>
+                                {data.openSession && (
+                                    <FormField label="Service capacity">
+                                        <NumericStringInput value={data.capacity} onChange={v => onChange({ capacity: v })} min={0} />
+                                    </FormField>
+                                )}
                             </div>
-                            {data.openSession && (
-                                <FormField label="Service capacity">
-                                    <NumericStringInput value={data.capacity} onChange={v => onChange({ capacity: v })} min={0} />
-                                </FormField>
-                            )}
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="shrink-0 px-6 pb-6 flex justify-end">
