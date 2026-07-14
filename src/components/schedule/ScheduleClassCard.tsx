@@ -6,14 +6,26 @@ import { cn } from "@/lib/utils";
 import type { SessionType } from "@/lib/store";
 import { SESSION_TYPE_TAG_LABEL, SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
 
-/** Small coloured type-tag chip — Class / Private / Recovery. Rendered on the
+/** Coloured type-tag chip — Class / Private / Recovery. Rendered on the
  *  schedule + dashboard cards so the session type reads at a glance,
- *  independent of the category discipline stripe. */
-export function SessionTypeTag({ type, className }: { type: SessionType; className?: string }) {
+ *  independent of the category discipline stripe.
+ *
+ *  Sizes:
+ *    • "sm" (default) — compact chip for the tight schedule/dashboard cards.
+ *    • "md"           — matches the DS StatusBadge md size, so the schedule
+ *                       list-view Type column lines up with the Status column. */
+export function SessionTypeTag({ type, size = "sm", className }: {
+    type: SessionType;
+    size?: "sm" | "md";
+    className?: string;
+}) {
     const c = SESSION_TYPE_TAG_COLORS[type];
+    const sizeCls = size === "md"
+        ? "px-[10px] py-[2px] text-[13px] whitespace-nowrap"
+        : "px-1.5 py-[1px] text-[11px] leading-[16px]";
     return (
         <span
-            className={cn("inline-flex shrink-0 items-center rounded-full border px-1.5 py-[1px] text-[11px] font-medium leading-[16px]", className)}
+            className={cn("inline-flex shrink-0 items-center rounded-full border-1 font-medium", sizeCls, className)}
             style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
         >
             {SESSION_TYPE_TAG_LABEL[type]}

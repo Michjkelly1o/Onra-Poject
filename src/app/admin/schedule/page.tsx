@@ -704,7 +704,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                     </div>
                                 </div>
                             </td>
-                            <td className={TD}><SessionTypeTag type={c.type} /></td>
+                            <td className={TD}><SessionTypeTag type={c.type} size="md" /></td>
                             <td className={TD}>{c.location}</td>
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}>
