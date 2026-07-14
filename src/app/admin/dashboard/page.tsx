@@ -29,8 +29,9 @@ import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, appointmentToClassInstance, isAppointmentId, type SessionType } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
+import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS, SESSION_TYPE_TAG_LABEL } from "@/lib/session-type";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
@@ -56,6 +57,8 @@ import { Toast } from "@/components/ui/Toast";
 interface ScheduleClass {
     id: string;
     name: string;
+    /** Session type — drives the coloured type tag on the card. */
+    type: SessionType;
     /** 24h "10:00" — used both for slot grouping and inside the card. */
     startTime: string;
     endTime: string;
@@ -407,6 +410,48 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
     );
 }
 
+// ─── Occupancy card — the one metric that can't collapse into a single number ─
+//
+// Class fill, private-slot utilisation and recovery capacity have different
+// denominators, so averaging them would mislead. On "All" the tile shows a
+// three-way split (mini bars per type); a selected type shows that type's
+// single %. Matches the MetricCard chrome so it sits cleanly in the strip.
+function OccupancyCard({ byType, selected, typeFilter }: {
+    byType: Record<SessionType, { pct: number; count: number }>;
+    selected: number;
+    typeFilter: SessionType | "";
+}) {
+    return (
+        <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col gap-1.5 min-w-0 p-4 rounded-2xl min-w-[220px]">
+            <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
+                {typeFilter ? `Occupancy · ${SESSION_TYPE_TAG_LABEL[typeFilter]}` : "Occupancy"}
+            </p>
+            {typeFilter ? (
+                <>
+                    <p className="font-semibold text-xl text-[#101828] leading-[28px]">{selected}%</p>
+                    <p className="font-normal text-xs text-[#667085]">avg fill today</p>
+                </>
+            ) : (
+                <div className="flex flex-col gap-2 w-full pt-1">
+                    {SESSION_TYPE_ORDER.map(t => {
+                        const { pct } = byType[t];
+                        const c = SESSION_TYPE_TAG_COLORS[t];
+                        return (
+                            <div key={t} className="flex items-center gap-2">
+                                <span className="text-[12px] text-[#667085] w-[60px] shrink-0">{SESSION_TYPE_TAG_LABEL[t]}</span>
+                                <div className="flex-1 h-1.5 bg-[#f2f4f7] rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: c.text }} />
+                                </div>
+                                <span className="text-[12px] font-medium text-[#101828] w-[36px] text-right shrink-0">{pct}%</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function ActivityRow({ item }: { item: TeamActivityItem }) {
     const Icon = item.icon;
     return (
@@ -482,6 +527,9 @@ export default function AdminDashboard() {
     // "" = "All locations" — dashboard opens on the aggregate view so
     // KPIs read like the full studio on first paint.
     const [location, setLocation] = useState<string>("");
+    // Session-type filter (Today tab) — "" = All. Re-scopes the session-based
+    // tiles (occupancy, bookings, sessions count) + the Today's-sessions list.
+    const [typeFilter, setTypeFilter] = useState<SessionType | "">("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
     const [widgetModalOpen, setWidgetModalOpen] = useState(false);
     // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
@@ -493,6 +541,7 @@ export default function AdminDashboard() {
     const today = new Date();
 
     const classSchedules = useAppStore(s => s.classSchedules);
+    const appointments = useAppStore(s => s.appointments);
     const classBookings = useAppStore(s => s.classBookings);
     const customers = useAppStore(s => s.customers);
     const customerTransactions = useAppStore(s => s.customerTransactions);
@@ -543,6 +592,18 @@ export default function AdminDashboard() {
         () => branchScopeId ? classSchedules.filter(s => s.branchId === branchScopeId) : classSchedules,
         [classSchedules, branchScopeId],
     );
+    // Merged session feed — class schedules + appointments (private + recovery)
+    // projected into the same ClassInstance shape so the Today tab's session
+    // metrics + list see all three types. Appointments join the grid once they
+    // have a booking (or were cancelled), mirroring /admin/schedule. Branch-
+    // scoped like classSchedules. Every projected instance carries `.type`.
+    const scopedSessions = useMemo(() => {
+        const apptInstances = appointments
+            .filter(a => a.booked > 0 || a.status === "Cancelled")
+            .map(appointmentToClassInstance);
+        const merged = [...classSchedules, ...apptInstances];
+        return branchScopeId ? merged.filter(s => s.branchId === branchScopeId) : merged;
+    }, [classSchedules, appointments, branchScopeId]);
     const scopedBookings = useMemo(
         () => branchScopeId ? classBookings.filter(b => b.branchId === branchScopeId) : classBookings,
         [classBookings, branchScopeId],
@@ -572,6 +633,34 @@ export default function AdminDashboard() {
     //                        Classes today / Bookings today
     // Every value reads live from the scoped slices so branch pick + all-
     // locations aggregate stay in sync.
+    // Session-based Today-tab metrics — computed off the MERGED session feed
+    // (classes + appointments) so occupancy + bookings + count cover all three
+    // types. Occupancy can't be averaged across types (different denominators),
+    // so we keep a per-type breakdown: "All" renders a 3-way split, a selected
+    // type renders that type's single %.
+    const sessionMetrics = useMemo(() => {
+        const sessionsToday = scopedSessions.filter(s => s.dateISO === todayISO);
+        const occFor = (list: typeof sessionsToday) => {
+            const capped = list.filter(s => s.capacity > 0);
+            return capped.length === 0 ? 0
+                : Math.round(capped.reduce((sum, s) => sum + (s.booked / s.capacity) * 100, 0) / capped.length);
+        };
+        const occupancyByType: Record<SessionType, { pct: number; count: number }> = {
+            class:    { pct: occFor(sessionsToday.filter(s => s.type === "class")),    count: sessionsToday.filter(s => s.type === "class").length },
+            private:  { pct: occFor(sessionsToday.filter(s => s.type === "private")),  count: sessionsToday.filter(s => s.type === "private").length },
+            recovery: { pct: occFor(sessionsToday.filter(s => s.type === "recovery")), count: sessionsToday.filter(s => s.type === "recovery").length },
+        };
+        // Type-scoped subset for the additive session tiles + the single-type
+        // occupancy value.
+        const scoped = typeFilter ? sessionsToday.filter(s => s.type === typeFilter) : sessionsToday;
+        return {
+            occupancyByType,
+            occupancySelected: occFor(scoped),
+            bookingsToday: scoped.reduce((sum, s) => sum + s.booked, 0),
+            sessionsCount: scoped.length,
+        };
+    }, [scopedSessions, typeFilter, todayISO]);
+
     const { todayMetrics, performanceMetrics } = useMemo(() => {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
@@ -607,17 +696,6 @@ export default function AdminDashboard() {
             b.status === "booked" && todayScheduleIdSet.has(b.classScheduleId),
         ).length;
 
-        // Average occupancy across today's classes with a real capacity.
-        // Uncapped classes (capacity 0) drop out so a stray seed row can't
-        // divide-by-zero the aggregate. Value shown as a percentage.
-        const capped = todaySchedules.filter(s => s.capacity > 0);
-        const avgOccupancyPct = capped.length === 0
-            ? 0
-            : Math.round(
-                capped.reduce((sum, s) => sum + (s.booked / s.capacity) * 100, 0)
-                / capped.length,
-            );
-
         const today: DashboardMetric[] = [
             {
                 label: "Total sales",
@@ -637,17 +715,14 @@ export default function AdminDashboard() {
                 change: 2, positive: false, comparison: "vs yesterday",
                 icon: UserPlus01,
             },
+            // Bookings today — type-aware (from the merged session feed), so
+            // picking a type filter recomputes it. Occupancy is rendered as a
+            // dedicated OccupancyCard (3-way split on All) below the strip.
             {
                 label: "Bookings today",
-                value: bookingsToday.toLocaleString("en-US"),
+                value: sessionMetrics.bookingsToday.toLocaleString("en-US"),
                 change: 1, positive: false, comparison: "vs yesterday",
                 icon: TrendUp01,
-            },
-            {
-                label: "Avg occupancy",
-                value: `${avgOccupancyPct}%`,
-                change: 1, positive: false, comparison: "vs yesterday",
-                icon: Calendar,
             },
         ];
 
@@ -680,7 +755,7 @@ export default function AdminDashboard() {
         ];
 
         return { todayMetrics: today, performanceMetrics: performance };
-    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
 
     // ── Coming-up metrics — 6 KPI cards per Figma 7823:53746 ──
     //
@@ -820,8 +895,10 @@ export default function AdminDashboard() {
     // of the wall-clock date — keeping the dashboard visually populated. Branch
     // scoping still applies so picking a location filters the list.
     const todayClasses = useMemo<ScheduleClass[]>(() => {
-        return [...scopedSchedules]
+        return [...scopedSessions]
             .filter(ci => ci.status === "Upcoming" || ci.status === "Ongoing")
+            // Type filter — "" = all types.
+            .filter(ci => !typeFilter || ci.type === typeFilter)
             .sort((a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`))
             .slice(0, 6)
             .map(ci => {
@@ -829,6 +906,7 @@ export default function AdminDashboard() {
                 return {
                     id: ci.id,
                     name: ci.name,
+                    type: ci.type,
                     startTime: ci.startTime,
                     endTime: ci.endTime,
                     displayTime: ci.displayTime,
@@ -843,7 +921,7 @@ export default function AdminDashboard() {
                     status: ci.status,
                 };
             });
-    }, [scopedSchedules]);
+    }, [scopedSessions, typeFilter]);
 
     // Group classes by start-time so the timeline matches the original two-column
     // (time | classes) layout, with multiple classes stacked when they share a slot.
@@ -1074,6 +1152,35 @@ export default function AdminDashboard() {
                 )}
             </div>
 
+            {/* Session-type filter bubbles — Today tab only. "All" + the three
+                types. Selecting one re-scopes the session-based tiles
+                (Bookings, Occupancy) + the Today's-sessions list. Additive
+                money tiles stay the studio total. */}
+            {activeTab === "today" && (
+                <div className="flex flex-wrap items-center gap-2">
+                    {([{ value: "" as const, label: "All" },
+                       ...SESSION_TYPE_ORDER.map(t => ({ value: t, label: SESSION_TYPE_LABEL[t] }))]
+                    ).map(opt => {
+                        const active = typeFilter === opt.value;
+                        return (
+                            <button
+                                key={opt.value || "all"}
+                                type="button"
+                                onClick={() => setTypeFilter(opt.value)}
+                                className={cn(
+                                    "h-9 px-4 rounded-full text-[13px] font-medium border-1 transition-colors",
+                                    active
+                                        ? "bg-[#101828] border-[#101828] text-white"
+                                        : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                )}
+                            >
+                                {opt.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* KPI Metrics — Coming-up uses a fixed 3-col grid to match the
                 Figma 6-card layout; Today/Performance keep the wrap-flex
                 behavior so 4-5 cards fill one row without gaps. */}
@@ -1085,6 +1192,15 @@ export default function AdminDashboard() {
                 {metrics.map((metric) => (
                     <MetricCard key={metric.label} metric={metric} />
                 ))}
+                {/* Occupancy — Today tab only. The one metric that shows a
+                    three-way split on "All" (can't be averaged across types). */}
+                {activeTab === "today" && (
+                    <OccupancyCard
+                        byType={sessionMetrics.occupancyByType}
+                        selected={sessionMetrics.occupancySelected}
+                        typeFilter={typeFilter}
+                    />
+                )}
             </div>
 
             {/* Performance tab */}
@@ -1138,7 +1254,7 @@ export default function AdminDashboard() {
                         Click navigates to the schedule list per the brief. */}
                     <div className="flex gap-3 items-center w-full flex-shrink-0">
                         <p className="font-semibold text-lg text-[#101828] flex-1 truncate">
-                            Today&apos;s classes
+                            Today&apos;s sessions
                         </p>
                         <Button
                             variant="secondary-gray"
@@ -1182,9 +1298,10 @@ export default function AdminDashboard() {
                                         {slot.classes.map(c => (
                                             <ScheduleClassCard key={c.id}
                                                 size="lg"
-                                                onClick={() => router.push(`/schedule/${c.id}?returnTo=${encodeURIComponent("/admin/dashboard")}`)}
+                                                onClick={() => router.push(`${isAppointmentId(c.id) ? "/appointments" : "/schedule"}/${c.id}?returnTo=${encodeURIComponent("/admin/dashboard")}`)}
                                                 cls={{
                                                     name: c.name,
+                                                    type: c.type,
                                                     color: c.color,
                                                     startTime: c.startTime,
                                                     endTime: c.endTime,
