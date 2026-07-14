@@ -29,6 +29,14 @@ export const SESSION_TYPE_TAG_LABEL: Record<SessionType, string> = {
     recovery: "Recovery",
 };
 
+/** Simplified filter labels — the schedule Type filter (Classes / Private /
+ *  Recovery). Shorter than the full labels so the 3 chips fit on one row. */
+export const SESSION_TYPE_FILTER_LABEL: Record<SessionType, string> = {
+    class:    "Classes",
+    private:  "Private",
+    recovery: "Recovery",
+};
+
 /** Tag chip palette — bg / text / border per type, plus a softer `bar`
  *  mid-tone for the dashboard occupancy mini bars (the badge text colours
  *  read too heavy as a filled bar). */

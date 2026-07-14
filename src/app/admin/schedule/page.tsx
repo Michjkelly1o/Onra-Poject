@@ -30,7 +30,7 @@ import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointme
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
-import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
+import { SESSION_TYPE_FILTER_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
@@ -529,9 +529,8 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                     2337:111898: Type → Status → Time of the day →
                     Location → Instructor → Template. */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                    {/* Type — Classes / Private sessions / Recovery & wellness
-                        (single-select toggle). Click the active option again to
-                        clear. */}
+                    {/* Type — Classes / Private / Recovery (single-select
+                        toggle). Click the active option again to clear. */}
                     <div className="flex flex-col gap-2">
                         <SectionLabel label="Type" />
                         <div className="grid grid-cols-3 gap-2">
@@ -546,7 +545,7 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                                                 ? "bg-[#f5fffa] border-2 border-[#7ba08c] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                                                 : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
                                         )}>
-                                        {SESSION_TYPE_LABEL[t]}
+                                        {SESSION_TYPE_FILTER_LABEL[t]}
                                     </button>
                                 );
                             })}
