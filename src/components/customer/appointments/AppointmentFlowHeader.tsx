@@ -13,8 +13,8 @@ import { useMainScrolled } from "@/lib/customer/use-scrollable";
 
 export interface AppointmentFlowHeaderProps {
     title: string;
-    /** Progress fill, 0–100. */
-    progress: number;
+    /** Progress fill, 0–100. Omit to hide the progress bar entirely. */
+    progress?: number;
     /** Omit to hide the back button (e.g. the first step, which only needs close). */
     onBack?: () => void;
     /** Omit to hide the close button (e.g. a step that only needs back). */
@@ -58,12 +58,14 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
                     <div className="size-10 shrink-0" aria-hidden />
                 )}
             </div>
-            <div className="h-1 w-full bg-[#e4e7ec]">
-                <div
-                    className="h-full rounded-r-full bg-[var(--brand-primary)] transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                />
-            </div>
+            {progress !== undefined && (
+                <div className="h-1 w-full bg-[#e4e7ec]">
+                    <div
+                        className="h-full rounded-r-full bg-[var(--brand-primary)] transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            )}
         </header>
     );
 }

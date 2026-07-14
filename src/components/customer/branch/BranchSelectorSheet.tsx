@@ -76,10 +76,10 @@ function BranchRow({
             {/* Radio */}
             <span
                 className={`flex size-4 shrink-0 items-center justify-center rounded-full ${
-                    selected ? "bg-[var(--brand-primary)]" : "border border-[#d0d5dd] bg-white"
+                    selected ? "border border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#d0d5dd] bg-white"
                 }`}
             >
-                {selected && <span className="size-1.5 rounded-full bg-white" />}
+                {selected && <span className="size-1.5 rounded-full bg-[var(--brand-primary)]" />}
             </span>
         </button>
     );

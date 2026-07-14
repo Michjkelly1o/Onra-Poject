@@ -41,6 +41,8 @@ export const ALL_BRANCHES = "all" as const;
 const BRANCH_STORAGE_KEY = "onra-member-branch";
 
 /** localStorage key for the persisted display-timezone city (Search class schedule). */
+import { cityForZone } from "@/lib/customer/timezones";
+
 const TIMEZONE_STORAGE_KEY = "onra-member-tz-city";
 
 /** Default display timezone — the studio's city (Abu Dhabi → Asia/Dubai, UTC+04:00). */
@@ -117,14 +119,26 @@ export function CurrentCustomerProvider({ children }: { children: ReactNode }) {
 
     const selectedBranchId = storedBranch ?? fallbackBranch;
 
-    // Display timezone — same hydrate-after-mount pattern (default = studio tz).
+    // Display timezone — hydrate the saved pick, else auto-detect from the device
+    // location (client-only), else fall back to the studio tz.
     const [storedTz, setStoredTz] = useState<string | null>(null);
+    const [detectedTz, setDetectedTz] = useState<string | null>(null);
     useEffect(() => {
         try {
             const v = window.localStorage.getItem(TIMEZONE_STORAGE_KEY);
-            if (v) setStoredTz(v);
+            if (v) {
+                setStoredTz(v);
+                return; // an explicit pick always wins over device detection
+            }
         } catch {
             /* localStorage unavailable */
+        }
+        try {
+            const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const city = zone ? cityForZone(zone) : undefined;
+            if (city) setDetectedTz(city);
+        } catch {
+            /* Intl unavailable */
         }
     }, []);
     const setTimezone = useCallback((tz: string) => {
@@ -135,7 +149,7 @@ export function CurrentCustomerProvider({ children }: { children: ReactNode }) {
             /* ignore */
         }
     }, []);
-    const timezone = storedTz ?? DEFAULT_TIMEZONE;
+    const timezone = storedTz ?? detectedTz ?? DEFAULT_TIMEZONE;
 
     const value = useMemo<CurrentCustomerContextValue>(
         () => ({ memberId, member, selectedBranchId, setSelectedBranch, timezone, setTimezone }),

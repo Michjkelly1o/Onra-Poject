@@ -202,6 +202,7 @@ export function usePurchasePlans(): PlanRow[] {
                     name: m.name,
                     sub: `${m.credits === "unlimited" ? "Unlimited" : `${m.credits} credit${m.credits === 1 ? "" : "s"}`} • ${m.duration_months} month${m.duration_months === 1 ? "" : "s"}`,
                     price: m.price_aed,
+                    creditBadge: { big: m.credits === "unlimited" ? "∞" : String(m.credits), small: "credits" },
                 })),
             ...packages
                 .filter((p) => p.status === "active")
@@ -211,6 +212,7 @@ export function usePurchasePlans(): PlanRow[] {
                     name: p.name,
                     sub: `${p.credits} credit${p.credits === 1 ? "" : "s"} • ${fmtValidity(p.validity_days)}`,
                     price: p.price_aed,
+                    creditBadge: { big: String(p.credits), small: p.credits === 1 ? "credit" : "credits" },
                 })),
         ],
         [memberships, packages],

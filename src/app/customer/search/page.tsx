@@ -28,6 +28,8 @@ import {
     type SearchFilters,
 } from "@/lib/customer/search-data";
 import { useAppointments } from "@/lib/customer/appointments-data";
+import { timeInZoneLabel } from "@/lib/customer/class-time";
+import { tzPickerCtx } from "@/lib/customer/timezones";
 import { useUnreadNotifCount } from "@/lib/customer/notifications-feed";
 import { useIsAuthenticated } from "@/lib/customer/auth";
 import { useFilterInstructors } from "@/lib/customer/instructors";
@@ -190,7 +192,10 @@ export default function SearchPage() {
                             onSelect={setSelectedISO}
                             timezone={timezone}
                             onMonthClick={() => setMonthOpen(true)}
-                            onTimezoneClick={() => router.push("/customer/search/timezone")}
+                            onTimezoneClick={() => {
+                                tzPickerCtx.branchCity = null;
+                                router.push("/customer/search/timezone");
+                            }}
                             bookingOpenDays={bookingOpenDays}
                         />
 
@@ -207,7 +212,7 @@ export default function SearchPage() {
                                             coverColor={c.coverColor}
                                             room={c.room}
                                             branch={c.branchName}
-                                            timeLabel={`${to12h(c.startTime)} • ${c.durationMins} mins`}
+                                            timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), timezone)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
                                             ctaLabel={p.ctaLabel}

@@ -44,14 +44,17 @@ export function PlanCard({
     canReactivate?: boolean;
 }) {
     const isMembership = plan.kind === "membership";
-    // Only an ACTIVE plan is "live" — frozen / cancelled / expired / removed all
-    // render as a disabled (grey) card with a muted status.
-    const isLive = plan.status === "active" || plan.status === "frozen";
-    const disabled = plan.status !== "active";
-
     const total = totalCredits(plan.creditsLabel);
     const bigCredits = total === null ? "∞" : String(total);
     const remaining = isMembership ? (creditsRemaining ?? total ?? 0) : (total ?? 0);
+    // A finite plan with 0 credits left is spent → history: no actions, muted card
+    // (you can't freeze / cancel a run-out plan). Unlimited plans never exhaust.
+    const exhausted = total !== null && remaining <= 0;
+    // Only a NON-exhausted active/frozen plan is "live" — frozen / cancelled /
+    // expired / removed / exhausted all render as a disabled (grey) history card.
+    const isLive = (plan.status === "active" || plan.status === "frozen") && !exhausted;
+    const disabled = plan.status !== "active" || exhausted;
+
     const creditLine = total === null ? "Unlimited credits" : `${remaining} credits left`;
     const pct = total === null ? 100 : total > 0 ? Math.min(100, Math.max(0, (remaining / total) * 100)) : 0;
     const nextBilling = shortDate(new Date(new Date(plan.expiryISO).getTime() - 86_400_000).toISOString());
@@ -65,7 +68,9 @@ export function PlanCard({
                 ? "Expired"
                 : plan.status === "removed"
                   ? "Removed"
-                  : "Active";
+                  : exhausted
+                    ? "No credits left"
+                    : "Active";
 
     return (
         <div className="flex flex-col gap-4 rounded-2xl border border-[#eaecf0] bg-white p-4">
@@ -101,7 +106,9 @@ export function PlanCard({
                             ? `Your subscription ends on ${shortDate(plan.expiryISO)}. You will keep access until then.`
                             : plan.status === "expired"
                               ? `This plan expired on ${shortDate(plan.expiryISO)}.`
-                              : "This plan is no longer available."}
+                              : exhausted
+                                ? "You've used all the credits on this plan."
+                                : "This plan is no longer available."}
                     </p>
                 </div>
             ) : (
@@ -134,33 +141,36 @@ export function PlanCard({
                 </div>
             )}
 
-            {plan.status === "cancelled" ? (
-                canReactivate ? (
-                    <Button variant="primary" size="md" className="w-full rounded-full" onClick={onReactivate}>
-                        Reactivate plan
-                    </Button>
-                ) : null
-            ) : isLive ? (
-                <div className="flex gap-3">
-                    <Button
-                        variant="secondary-gray"
-                        size="md"
-                        className="flex-1 rounded-full font-semibold text-[#b42318]"
-                        onClick={onCancel}
-                    >
-                        Cancel
-                    </Button>
-                    {plan.status === "frozen" ? (
-                        <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onUnfreeze}>
-                            Unfreeze
+            {/* Cancel / Freeze / Reactivate are MEMBERSHIP-only — credit packages
+                have no plan actions. */}
+            {isMembership &&
+                (plan.status === "cancelled" ? (
+                    canReactivate ? (
+                        <Button variant="primary" size="md" className="w-full rounded-full" onClick={onReactivate}>
+                            Reactivate plan
                         </Button>
-                    ) : (
-                        <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onFreeze}>
-                            Freeze
+                    ) : null
+                ) : isLive ? (
+                    <div className="flex gap-3">
+                        <Button
+                            variant="secondary-gray"
+                            size="md"
+                            className="flex-1 rounded-full font-semibold text-[#b42318]"
+                            onClick={onCancel}
+                        >
+                            Cancel
                         </Button>
-                    )}
-                </div>
-            ) : null}
+                        {plan.status === "frozen" ? (
+                            <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onUnfreeze}>
+                                Unfreeze
+                            </Button>
+                        ) : (
+                            <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onFreeze}>
+                                Freeze
+                            </Button>
+                        )}
+                    </div>
+                ) : null)}
         </div>
     );
 }

@@ -9,11 +9,11 @@
 // live UTC offset + a flat row + RadioDot). Picking a row sets the display
 // timezone CITY (persisted on the member context) and returns to Search.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock, SearchLg } from "@untitledui/icons";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
-import { offsetLabel, TIMEZONES } from "@/lib/customer/timezones";
+import { cityForZone, offsetLabel, TIMEZONES, tzPickerCtx } from "@/lib/customer/timezones";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
@@ -25,6 +25,20 @@ export default function TimezonePage() {
 
     // Compute each zone's live offset once (stable for the session).
     const zones = useMemo(() => TIMEZONES.map((t) => ({ ...t, offset: offsetLabel(t.zone) })), []);
+
+    // "Your time" = the device-detected zone; "Branch time" = the branch zone
+    // (only when opened from the appointment flow, via tzPickerCtx).
+    const [deviceCity, setDeviceCity] = useState<string | null>(null);
+    const [branchCity, setBranchCity] = useState<string | null>(null);
+    useEffect(() => {
+        try {
+            const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            setDeviceCity(zone ? cityForZone(zone) ?? null : null);
+        } catch {
+            /* Intl unavailable */
+        }
+        setBranchCity(tzPickerCtx.branchCity);
+    }, []);
     const q = query.trim().toLowerCase();
     const rows = zones.filter((z) => z.city.toLowerCase().includes(q) || z.offset.toLowerCase().includes(q));
 
@@ -70,9 +84,23 @@ export default function TimezonePage() {
                                 onClick={() => select(z.city)}
                                 className="flex w-full items-center gap-3 py-4 text-left"
                             >
-                                <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#344054]">
-                                    {z.city}
-                                </span>
+                                {/* City + its badge grouped on the LEFT (badge sticks to
+                                    the city, not the UTC offset). */}
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    <span className="min-w-0 truncate text-sm font-medium leading-5 text-[#344054]">
+                                        {z.city}
+                                    </span>
+                                    {z.city === branchCity && (
+                                        <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#0c2d34]">
+                                            Branch time
+                                        </span>
+                                    )}
+                                    {z.city === deviceCity && (
+                                        <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#475467]">
+                                            Your time
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="shrink-0 text-sm font-normal leading-5 text-[#475467]">{z.offset}</span>
                                 <RadioDot checked={z.city === timezone} />
                             </button>

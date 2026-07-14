@@ -12,8 +12,8 @@ import { Check } from "@untitledui/icons";
 
 export function RadioDot({ checked }: { checked: boolean }) {
     return checked ? (
-        <span className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[var(--brand-primary)]" aria-hidden>
-            <span className="absolute inset-[31.25%] rounded-full bg-white" />
+        <span className="relative size-4 shrink-0 overflow-hidden rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" aria-hidden>
+            <span className="absolute inset-[28%] rounded-full bg-[var(--brand-primary)]" />
         </span>
     ) : (
         <span className="block size-4 shrink-0 rounded-full border border-[#d0d5dd]" aria-hidden />
@@ -22,8 +22,8 @@ export function RadioDot({ checked }: { checked: boolean }) {
 
 export function CheckBox({ checked }: { checked: boolean }) {
     return checked ? (
-        <span className="flex size-4 shrink-0 items-center justify-center rounded bg-[var(--brand-primary)]" aria-hidden>
-            <Check className="size-3 text-white" strokeWidth={3} />
+        <span className="flex size-4 shrink-0 items-center justify-center rounded border border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" aria-hidden>
+            <Check className="size-3 text-[var(--brand-primary)]" strokeWidth={3} />
         </span>
     ) : (
         <span className="block size-4 shrink-0 rounded border border-[#d0d5dd]" aria-hidden />

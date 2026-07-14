@@ -59,6 +59,8 @@ export const TIMEZONES: TimezoneEntry[] = [
     { city: "Yangon", zone: "Asia/Yangon" },
     { city: "Bangkok", zone: "Asia/Bangkok" },
     { city: "Jakarta", zone: "Asia/Jakarta" },
+    { city: "Bali (Denpasar)", zone: "Asia/Makassar" },
+    { city: "Jayapura", zone: "Asia/Jayapura" },
     { city: "Singapore", zone: "Asia/Singapore" },
     { city: "Hong Kong", zone: "Asia/Hong_Kong" },
     { city: "Shanghai", zone: "Asia/Shanghai" },
@@ -76,6 +78,11 @@ export const TIMEZONES: TimezoneEntry[] = [
 ];
 
 const ZONE_BY_CITY = new Map(TIMEZONES.map((t) => [t.city, t.zone]));
+
+/** Set by the appointment slot step before opening the Timezone page, so that
+ *  page can badge the branch's zone with "Branch time" (appointment flow only).
+ *  The Classes flow clears it (null → no branch badge). */
+export const tzPickerCtx: { branchCity: string | null } = { branchCity: null };
 
 /** The current UTC offset of an IANA zone, e.g. "UTC+04:00" / "UTC±00:00". */
 export function offsetLabel(zone: string): string {
@@ -102,4 +109,23 @@ export function offsetForCity(city: string): string {
 
 export function isKnownCity(city: string): boolean {
     return ZONE_BY_CITY.has(city);
+}
+
+/** The IANA zone for a display-timezone city label (e.g. "Abu Dhabi" →
+ *  "Asia/Dubai"), or undefined when the city isn't in the dataset. */
+export function zoneForCity(city: string): string | undefined {
+    return ZONE_BY_CITY.get(city);
+}
+
+const CITY_BY_ZONE = new Map(TIMEZONES.map((t) => [t.zone, t.city]));
+
+/** The picker city for a device IANA zone (from
+ *  `Intl.DateTimeFormat().resolvedOptions().timeZone`). Exact zone match first;
+ *  otherwise the first city sharing the same current UTC offset (so any device
+ *  zone still maps to a selectable option). Undefined if nothing matches. */
+export function cityForZone(zone: string): string | undefined {
+    const exact = CITY_BY_ZONE.get(zone);
+    if (exact) return exact;
+    const target = offsetLabel(zone);
+    return TIMEZONES.find((t) => offsetLabel(t.zone) === target)?.city;
 }
