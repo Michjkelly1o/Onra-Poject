@@ -94,6 +94,7 @@ export { classes_settings } from "./classes_settings";
 
 // Booking rules — single studio-wide cancellation policy (no FKs)
 export { cancellation_policy } from "./cancellation_policy";
+export { freeze_policy } from "./freeze_policy";
 
 // Schedule (FK → class_templates, branches, rooms, staff_profiles)
 export { class_schedule } from "./class_schedule";

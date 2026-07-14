@@ -11,7 +11,7 @@
 //
 //   Business    → Business & locations · Branding
 //   Operations  → Booking rules · Tax · Integrations
-//   Customer    → Customer notifications · Agreements
+//   Customer    → Customer notifications · Freeze policy · Agreements
 //
 // Two pages stay OUT of the groups (per client):
 //   • Referral program (`/admin/settings/referral`) — lives in the Marketing
@@ -68,8 +68,9 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
         label: "Customer",
         icon: Users01,
         tabs: [
-            { label: "Customer notifications", href: "/admin/settings/notifications" },
-            { label: "Agreements",             href: "/admin/settings/agreements"    },
+            { label: "Customer notifications", href: "/admin/settings/notifications"  },
+            { label: "Freeze policy",          href: "/admin/settings/freeze-policy"   },
+            { label: "Agreements",             href: "/admin/settings/agreements"      },
         ],
     },
 ];

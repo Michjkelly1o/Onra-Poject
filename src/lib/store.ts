@@ -102,6 +102,7 @@ import {
     class_categories as SEED_CLASS_CATEGORIES,
     classes_settings as SEED_CLASSES_SETTINGS,
     cancellation_policy as SEED_CANCELLATION_POLICY,
+    freeze_policy as SEED_FREEZE_POLICY,
     branches as SEED_BRANCHES,
     rooms as SEED_ROOMS,
     business_hours as SEED_BUSINESS_HOURS,
@@ -168,6 +169,8 @@ import {
     type ClassCategory,
     type ClassesSettings,
     type CancellationPolicy,
+    type FreezePolicy,
+    type FreezeReason,
     type CancellationOutcome,
     type SessionType,
     type ServiceType,
@@ -241,7 +244,7 @@ import {
 // Re-export raw seed types — consumers can read these directly from the store.
 export type {
     SessionType, ServiceType,
-    ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
+    ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, FreezePolicy, FreezeReason, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
     // Reports v33 — new seed types the selectors reach into
     Lead, MarketingCampaignStat, MarketingSpend, StaffAttendanceLog,
@@ -3360,6 +3363,14 @@ export interface AppState {
     cancellationPolicy: CancellationPolicy;
     updateCancellationPolicy: (patch: Partial<CancellationPolicy>) => void;
 
+    /** Per-branch freeze policy — one row per branch, governs the CUSTOMER
+     *  self-service membership-freeze flow (enable, max duration, max freezes,
+     *  fee, allowed reasons, apply-to). Admin freeze/unfreeze is a full
+     *  override and does NOT read this. Edited via Settings → Customer →
+     *  Freeze policy. See new-prd/freeze-policy-implementation-plan.md. */
+    freezePolicies: FreezePolicy[];
+    updateFreezePolicy: (branchId: string, patch: Partial<FreezePolicy>) => void;
+
     /** Service categories (Booking Rules Phase 3 + Phase 4 wiring) — the
      *  same rows that drive class-template + schedule category selection.
      *  Class-types list/filter, Class-type create/edit, and Schedule
@@ -3990,6 +4001,7 @@ export const useAppStore = create<AppState>()(persist(
     businessHours: SEED_BUSINESS_HOURS.map(h => ({ ...h })),
     classesSettings: { ...SEED_CLASSES_SETTINGS },
     cancellationPolicy: { ...SEED_CANCELLATION_POLICY },
+    freezePolicies: SEED_FREEZE_POLICY.map(p => ({ ...p, reasons: p.reasons.map(r => ({ ...r })), membership_ids: [...p.membership_ids] })),
     classCategories: SEED_CLASS_CATEGORIES.map(c => ({ ...c })),
     sidebarCollapsed: false,
     classTemplates: INITIAL_TEMPLATES,
@@ -4092,6 +4104,13 @@ export const useAppStore = create<AppState>()(persist(
             cancellationPolicy: { ...state.cancellationPolicy, ...patch },
         }));
         get().recordAudit("Updated cancellation policy", "settings", "cancellation_policy", "Cancellation policy");
+    },
+    updateFreezePolicy: (branchId, patch) => {
+        set(state => ({
+            freezePolicies: state.freezePolicies.map(p =>
+                p.branch_id === branchId ? { ...p, ...patch } : p),
+        }));
+        get().recordAudit("Updated freeze policy", "settings", "freeze_policy", "Freeze policy");
     },
     addClassCategory: (category) => {
         set(state => ({
@@ -7970,7 +7989,11 @@ export const useAppStore = create<AppState>()(persist(
         //   uses a Private/Recovery type selector instead of a recovery
         //   toggle. Bump forces a reseed so stale payloads (branch.kind,
         //   service.isRecovery/branchKind) drop cleanly.
-        version: 58,
+        // v59: Freeze policy — per-branch `freezePolicies` slice + seed
+        //   (Settings → Customer → Freeze policy). Phase 1 is additive; the
+        //   customer/admin freeze flows are wired in Phase 2. Bump reseeds so
+        //   the new slice lands.
+        version: 59,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

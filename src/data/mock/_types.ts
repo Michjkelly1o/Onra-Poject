@@ -243,6 +243,51 @@ export interface CancellationPolicy {
     applied_to_class_template_ids: string[];
 }
 
+// ─── Freeze Policy (customer settings) ─────────────────────────────────────
+
+/** A single freeze reason a member can pick when pausing a membership.
+ *  `enabled` false → hidden from the customer's reason list. */
+export interface FreezeReason {
+    id: string;
+    label: string;
+    enabled: boolean;
+}
+
+/**
+ * Per-branch freeze policy — governs how members self-serve MEMBERSHIP freezes
+ * on the customer side. One row per branch (mirrors the per-branch model the
+ * client picked). Admin freeze/unfreeze is a full override and ignores this.
+ * See new-prd/freeze-policy-implementation-plan.md.
+ */
+export interface FreezePolicy {
+    /** One row per branch. FK → branches.id. */
+    branch_id: string;
+    /** Master toggle — when OFF the customer Freeze action is hidden. */
+    enabled: boolean;
+    /** Cap the freeze length. When OFF, no maximum is enforced. */
+    max_duration_enabled: boolean;
+    max_duration_value: number;
+    max_duration_unit: "days" | "weeks" | "months";
+    /** Cap how many times ONE membership can be frozen (enforced against the
+     *  plan's freeze count). When OFF, unlimited freezes. */
+    limit_freezes_enabled: boolean;
+    max_freezes: number;
+    /** Charge a fee to freeze. `recurring` = per billing cycle while frozen;
+     *  `one_time` = charged once at freeze time. Amount in AED. */
+    fee_enabled: boolean;
+    fee_type: "one_time" | "recurring";
+    fee_amount_aed: number;
+    /** When ON, members must pick from the enabled reasons below; when OFF a
+     *  freeze needs no reason. */
+    allow_exceptions: boolean;
+    reasons: FreezeReason[];
+    /** Which memberships the policy covers. "specific" → only membership_ids
+     *  can be frozen; the rest are treated as freeze-disabled. */
+    apply_to: "all" | "specific";
+    /** FK → memberships.id — used when apply_to === "specific". */
+    membership_ids: string[];
+}
+
 // ─── Booking Rules — Classes settings (PRD 11 §6) ──────────────────────────
 
 /** Instructor / staff profile. For now we only seed instructors. */
