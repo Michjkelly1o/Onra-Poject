@@ -714,7 +714,10 @@ function ServicesPageInner() {
     // filtered list (keeps the sidebar highlight + the type-scoped header title).
     const listPath = typeScope ? `/admin/services?type=${typeScope}` : "/admin/services";
     function handleAdd() {
-        router.push(`/services/new?returnTo=${encodeURIComponent(listPath)}`);
+        // Carry the menu's type so the create form is locked to it — you create
+        // a Private session from the Private menu, Recovery from Recovery.
+        const typeParam = typeScope ? `&type=${typeScope}` : "";
+        router.push(`/services/new?returnTo=${encodeURIComponent(listPath)}${typeParam}`);
     }
     function handleView(row: ServiceRow) {
         router.push(`/services/${row.id}?returnTo=${encodeURIComponent(listPath)}`);

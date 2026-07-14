@@ -44,7 +44,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check,
+    XClose, Check, Lock01,
     Lightbulb02, Grid01, ClockFastForward, MarkerPin01,
     BankNote01, UserCheck01, Feather,
 } from "@untitledui/icons";
@@ -225,6 +225,15 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
 
 // ─── Step 1 — Service detail ────────────────────────────────────────────────
 
+// Session-type card metadata — shared by the interactive picker (bare create)
+// and the read-only card (menu-scoped create / edit). The type is fixed by the
+// menu you came from — "Private sessions" creates Private, "Recovery & wellness"
+// creates Recovery — so the two are never mixed up.
+const TYPE_OPTIONS = [
+    { value: "private" as const,  title: "Private session",     subtitle: "1:1 training with an instructor.", Icon: UserCheck01 },
+    { value: "recovery" as const, title: "Recovery & wellness", subtitle: "Spa / wellness — massage, sauna, breathwork, etc.", Icon: Feather },
+];
+
 interface Step1Data {
     name: string;
     category: string;
@@ -238,13 +247,17 @@ interface Step1Data {
 }
 
 function ServiceDetailStep({
-    data, onChange, onContinue, categoryOptions,
+    data, onChange, onContinue, categoryOptions, lockType,
 }: {
     data: Step1Data;
     onChange: (d: Partial<Step1Data>) => void;
     onContinue: () => void;
     categoryOptions: string[];
+    /** When true the type is fixed (create scoped to a menu, or edit) — show a
+     *  read-only card instead of the Private/Recovery picker. */
+    lockType: boolean;
 }) {
+    const activeType = TYPE_OPTIONS.find(o => o.value === data.type) ?? TYPE_OPTIONS[0];
     // Required fields: name + category + duration always; capacity when the
     // recovery service is an open session.
     const canContinue =
@@ -304,47 +317,58 @@ function ServiceDetailStep({
                 </div>
 
                 {/* Session type — Private (1:1 training) vs Recovery &
-                    wellness. Two selectable cards; the recovery choice
-                    reveals the Open-sessions option. Any branch can host
-                    either type. */}
+                    wellness. The type is fixed by the menu you came from
+                    ("Private sessions" / "Recovery & wellness"), so it shows as
+                    a read-only card. Only a bare/direct create shows the picker.
+                    Recovery reveals the Open-sessions option below. */}
                 <div className="flex flex-col gap-3">
                     <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Session type</h3>
 
-                    <div className="grid grid-cols-2 gap-3 w-full">
-                        {([
-                            { value: "private" as const,  title: "Private session",     subtitle: "1:1 training with an instructor.", Icon: UserCheck01 },
-                            { value: "recovery" as const, title: "Recovery & wellness", subtitle: "Spa / wellness — massage, sauna, breathwork, etc.", Icon: Feather },
-                        ]).map(opt => {
-                            const selected = data.type === opt.value;
-                            return (
-                                <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => handleTypeChange(opt.value)}
-                                    className={cn(
-                                        "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
-                                        selected
-                                            ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                            : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
-                                    )}
-                                    aria-pressed={selected}
-                                >
-                                    <div className={cn(
-                                        "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
-                                        selected
-                                            ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
-                                            : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
-                                    )}>
-                                        <opt.Icon className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
-                                        <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {lockType ? (
+                        <div className="flex items-start gap-3 rounded-[12px] p-4 w-full border-1 border-[#e4e7ec] bg-[#f9fafb]">
+                            <div className="w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1 bg-[#e7f7ec] border-[#abefc6] text-[#067647]">
+                                <activeType.Icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[14px] font-medium text-[#101828] leading-5">{activeType.title}</p>
+                                <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{activeType.subtitle}</p>
+                            </div>
+                            <Lock01 className="w-4 h-4 text-[#98a2b3] shrink-0 mt-0.5" />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-3 w-full">
+                            {TYPE_OPTIONS.map(opt => {
+                                const selected = data.type === opt.value;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => handleTypeChange(opt.value)}
+                                        className={cn(
+                                            "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
+                                            selected
+                                                ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
+                                                : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                        )}
+                                        aria-pressed={selected}
+                                    >
+                                        <div className={cn(
+                                            "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
+                                            selected
+                                                ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
+                                                : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                        )}>
+                                            <opt.Icon className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
+                                            <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Open sessions — only meaningful for recovery services
                         (private services are always 1:1). */}
@@ -498,9 +522,12 @@ export interface ServiceFormPageProps {
     /** Service id — required in edit mode, ignored in create mode. */
     serviceId?: string;
     returnTo?: string;
+    /** Create scoped to a menu ("Private sessions" / "Recovery & wellness") —
+     *  locks the type so you can't create the other kind from this menu. */
+    presetType?: ServiceType;
 }
 
-export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" }: ServiceFormPageProps) {
+export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services", presetType }: ServiceFormPageProps) {
     const router = useRouter();
 
     // Live store reads — every dropdown updates when the underlying module
@@ -524,8 +551,10 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         name:         existing?.name ?? "",
         category:     existing?.category ?? "",
         durationMin:  existing ? String(existing.durationMin) : "",
-        // Default to Private — the most common service type.
-        type:         existing?.type ?? "private",
+        // Type comes from the edited service, else the menu that opened the
+        // create form ("Private sessions" / "Recovery & wellness"), else
+        // defaults to Private for a bare/direct create.
+        type:         existing?.type ?? presetType ?? "private",
         openSession:  existing?.openSession ?? false,
         capacity:     existing && existing.capacity > 0 ? String(existing.capacity) : "",
         coverPreview: existing?.coverImage ?? null,
@@ -652,8 +681,14 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
         coverPreview: step1.coverPreview,
     };
 
+    // Type is fixed for an edit (the service already has one) and for a
+    // menu-scoped create (presetType) — only a bare create lets you pick.
+    const typeLocked = mode === "edit" || presetType != null;
+
     const pageTitle = mode === "edit"
         ? `Edit ${existing?.name ?? "service"}`
+        : presetType === "private"  ? "Create private session"
+        : presetType === "recovery" ? "Create recovery & wellness"
         : "Create new service";
 
     return (
@@ -687,6 +722,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services" 
                                 onChange={d => setStep1(prev => ({ ...prev, ...d }))}
                                 onContinue={() => setStep(2)}
                                 categoryOptions={categoryOptions}
+                                lockType={typeLocked}
                             />
                         )}
                         {step === 2 && (
