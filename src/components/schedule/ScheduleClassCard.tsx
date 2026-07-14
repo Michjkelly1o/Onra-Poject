@@ -295,7 +295,10 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     !absolute && "w-full",
                     className,
                 )}>
-                <span className="block text-[13px] font-medium leading-[18px] truncate shrink-0" style={{ color: cls.color.text }}>{cls.name}</span>
+                <div className="flex items-center gap-1 min-w-0">
+                    <span className="block text-[13px] font-medium leading-[18px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {cls.type && <SessionTypeTag type={cls.type} />}
+                </div>
                 <div className="flex items-center gap-1 min-w-0">
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
                     <span className="text-[11px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
