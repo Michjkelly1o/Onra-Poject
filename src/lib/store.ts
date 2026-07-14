@@ -1097,6 +1097,9 @@ export interface Customer {
 export interface CustomerAgreement {
     id: string;
     customerId: string;
+    /** True when the customer signed WITH parent/guardian consent (they were a
+     *  minor at signing). A minor whose signed waiver lacks this must re-sign. */
+    guardianConsent?: boolean;
     /** Phase 4 FK → agreements.id. The tab joins on this to display the live
      *  agreement name + open the View modal with the joined version's content. */
     agreementId: string;
@@ -3431,7 +3434,7 @@ export interface AppState {
     addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string }) => string;
     /** Member-portal: mark this customer's outstanding (unsigned) booking-waiver
      *  agreements as signed — the first-time waiver gate. */
-    signWaiver: (customerId: string) => void;
+    signWaiver: (customerId: string, guardianConsent?: boolean) => void;
 
     deleteClassRating: (id: string, deletedBy: string) => void;
     /** Append a member's class rating + recompute the schedule's rating aggregate. */
@@ -4934,13 +4937,14 @@ export const useAppStore = create<AppState>()(persist(
 
         return id;
     },
-    signWaiver: (customerId) => set((state) => ({
-        // Signs BOTH terminal not-signed states — a customer coming back
-        // to sign either a never-signed agreement OR a re-accept-due
-        // agreement flips to "signed" in the same action.
+    signWaiver: (customerId, guardianConsent = false) => set((state) => ({
+        // Signs BOTH terminal not-signed states — a customer coming back to sign
+        // either a never-signed agreement OR a re-accept-due agreement flips to
+        // "signed". Also RE-signs an already-signed waiver (e.g. an adult who
+        // later became a minor), recording whether guardian consent was captured.
         customerAgreements: state.customerAgreements.map((ca) =>
-            ca.customerId === customerId && ca.status !== "signed"
-                ? { ...ca, status: "signed" as const, signedAtISO: new Date().toISOString() }
+            ca.customerId === customerId
+                ? { ...ca, status: "signed" as const, signedAtISO: new Date().toISOString(), guardianConsent }
                 : ca,
         ),
     })),
@@ -5485,7 +5489,11 @@ export const useAppStore = create<AppState>()(persist(
                 return {
                     ...c,
                     ...flat,
-                    creditsRemaining: hasUnlimited
+                    // A "period_end" cancellation keeps access until expiry, so the
+                    // customer KEEPS their remaining credits (and gets them back on
+                    // reactivate). Only an immediate ("today") cancel clamps to the
+                    // still-active allotment. Unlimited plans stay uncapped.
+                    creditsRemaining: hasUnlimited || mode === "period_end"
                         ? c.creditsRemaining
                         : Math.min(c.creditsRemaining ?? 0, cap),
                 };

@@ -10,11 +10,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "@untitledui/icons";
-import { useAppStore } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
-import { to12h } from "@/lib/customer/dates";
 import { useClassDetail } from "@/lib/customer/search-data";
-import { branchTzLabel } from "@/lib/branch-time";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
@@ -24,10 +21,6 @@ export default function ClassDetailPage() {
     const { id } = useParams<{ id: string }>();
     const detail = useClassDetail(id);
     const member = useCurrentCustomer();
-    // Resolve the class's branch → its short TZ label so remote members
-    // know the local zone before they book (client Jul 2026).
-    const branch = useAppStore(s => s.branches).find(b => b.id === detail?.branchId);
-    const branchTz = branch ? branchTzLabel(branch) : "";
 
     if (!detail) {
         return (
@@ -53,11 +46,6 @@ export default function ClassDetailPage() {
         );
     }
 
-    const dateLabel = new Date(`${detail.dateISO}T00:00:00`).toLocaleString("en-US", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-    });
     const badge =
         detail.state === "available"
             ? { label: `${detail.booked}/${detail.capacity}`, cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
@@ -77,8 +65,6 @@ export default function ClassDetailPage() {
     return (
         <ClassDetailLayout
             detail={detail}
-            heroSubtitle={`${dateLabel} at ${to12h(detail.startTime)}`}
-            heroSubtitleLine2={branchTz || undefined}
             heroBadge={
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${badge.cls}`}>
                     {badge.label}

@@ -20,7 +20,6 @@ import {
     LogOut01,
     PhoneCall01,
     Share07,
-    Ticket01,
     User01,
     Users01,
 } from "@untitledui/icons";
@@ -44,7 +43,6 @@ const GROUP_A: Row[] = [
     { icon: Globe01, label: "Timezone", href: "/customer/profile/timezone" },
 ];
 const GROUP_B: Row[] = [
-    { icon: Ticket01, label: "Promotion", href: "/customer/profile/promo" },
     { icon: Gift01, label: "Gift card", href: "/customer/profile/gift-cards" },
     { icon: Users01, label: "Invite friends", href: "/customer/profile/referrals" },
 ];

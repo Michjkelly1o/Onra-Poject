@@ -14,6 +14,8 @@ import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, ChevronLeft, Clock, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { to12h } from "@/lib/customer/dates";
+import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { cancelAppointmentBooking, useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
 import { addCustomerNotification } from "@/lib/customer/notifications-feed";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
@@ -31,6 +33,8 @@ export default function CancelAppointmentPage() {
     const { apptId } = useParams<{ apptId: string }>();
     const booking = useAppointmentBookingById(apptId);
     const showToast = useAppStore((s) => s.showToast);
+    const branch = useAppStore((s) => s.branches).find((b) => b.name === booking?.branchName);
+    const { timezone } = useCurrentCustomerContext();
     const scrolled = useMainScrolled();
     const scrollable = useMainScrollable();
 
@@ -127,7 +131,7 @@ export default function CancelAppointmentPage() {
                         <div className="flex flex-col">
                             <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{booking.name}</p>
                             <p className="text-sm font-normal leading-5 text-[#475467]">
-                                {fullDate} at {to12h(booking.slotTime)}
+                                {fullDate} at {timeInZoneLabel(booking.slotISO, booking.slotTime, branch, timezone)}
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-normal leading-5 text-[#475467]">

@@ -12,11 +12,12 @@
 // appointment-bookings store.
 
 import { useParams, useRouter } from "next/navigation";
-import { RefreshCcw01, CheckCircle, ChevronLeft, Clock, SlashCircle01, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { RefreshCcw01, CheckCircle, ChevronLeft, Clock, ClockFastForward, SlashCircle01, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
 import { to12h } from "@/lib/customer/dates";
+import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { classTimeDisplay } from "@/lib/customer/class-time";
 import { useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
 import { useAppStore } from "@/lib/store";
-import { branchTzLabel } from "@/lib/branch-time";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
@@ -89,13 +90,9 @@ export default function AppointmentBookingDetailPage() {
     // the subtitle so members with cross-city bookings never have to guess.
     const branches = useAppStore(s => s.branches);
     const branch = branches.find(b => b.name === booking.branchName);
-    const branchTz = branch ? branchTzLabel(branch) : "";
-
-    const heroSubtitle = `${new Date(`${booking.slotISO}T00:00:00`).toLocaleDateString("en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-    })} at ${to12h(booking.slotTime)}`;
+    const { timezone } = useCurrentCustomerContext();
+    // Dual-timezone Date & time for the info grid — same as the class detail.
+    const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, timezone);
 
     // Map the appointment booking onto the class detail view-model. Fields the
     // appointment grid/location don't use are given safe placeholders; equipment
@@ -196,8 +193,34 @@ export default function AppointmentBookingDetailPage() {
 
     const infoGrid = (
         <div className="flex flex-col gap-4">
+            {/* Date & time — Branch time (always) + Your time (when different),
+                matching the class detail. */}
+            <div className="flex flex-1 items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
+                    <Clock className="size-5 text-[#344054]" aria-hidden />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-xs leading-[18px] text-[#667085]">Date & time</span>
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{apptTime.branchTime}</span>
+                        {apptTime.yourTime && (
+                            <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#0c2d34]">
+                                Branch time
+                            </span>
+                        )}
+                    </span>
+                    {apptTime.yourTime && (
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{apptTime.yourTime}</span>
+                            <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#475467]">
+                                Your time
+                            </span>
+                        </span>
+                    )}
+                </div>
+            </div>
             <div className="flex gap-4">
-                <InfoCell icon={Clock} label="Duration">
+                <InfoCell icon={ClockFastForward} label="Duration">
                     <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{booking.durationMins} minutes</span>
                 </InfoCell>
                 <InfoCell icon={Tag01} label="Session type">
@@ -277,8 +300,6 @@ export default function AppointmentBookingDetailPage() {
     return (
         <ClassDetailLayout
             detail={detail}
-            heroSubtitle={heroSubtitle}
-            heroSubtitleLine2={branchTz || undefined}
             mutedCover={isCancelled}
             detailsHeading="Appointment details"
             infoGrid={infoGrid}

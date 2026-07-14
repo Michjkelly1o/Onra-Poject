@@ -19,26 +19,23 @@ import { ChevronDown } from "@untitledui/icons";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { addDaysISO, dayNum, formatMonth, REAL_TODAY_ISO, weekdayAbbr } from "@/lib/customer/dates";
 import { useAppointment } from "@/lib/customer/appointments-data";
+import { useAppStore } from "@/lib/store";
 import { useAvailableSlots } from "@/lib/customer/slot-availability";
+import { timeInZoneLabel } from "@/lib/customer/class-time";
+import { branchTimezone } from "@/lib/branch-time";
+import { cityForZone, tzPickerCtx } from "@/lib/customer/timezones";
 import { appointmentDraft, ensureAppointmentDraft, resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { AppointmentFlowHeader } from "@/components/customer/appointments/AppointmentFlowHeader";
 import { TimezonePill } from "@/components/customer/shell/TimezonePill";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
-/** "07:00" → "07:00 AM" (leading-zero hour, matching the design). */
-function fmtSlot(time: string): string {
-    const [h, m] = time.split(":").map(Number);
-    const period = h < 12 ? "AM" : "PM";
-    const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
-}
-
 export default function SelectSlotPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const appointment = useAppointment(id);
     const { timezone } = useCurrentCustomerContext();
+    const branch = useAppStore((st) => st.branches).find((b) => b.id === appointment?.branchId);
 
     ensureAppointmentDraft(id);
     // The strip's first day — anchored to the picked month (default: today).
@@ -106,7 +103,13 @@ export default function SelectSlotPage() {
                         <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{formatMonth(weekStartISO)}</span>
                         <ChevronDown className="size-5 text-[var(--brand-text)]" aria-hidden />
                     </button>
-                    <TimezonePill tz={timezone} onClick={() => router.push("/customer/search/timezone")} />
+                    <TimezonePill
+                        tz={timezone}
+                        onClick={() => {
+                            tzPickerCtx.branchCity = cityForZone(branchTimezone(branch)) ?? null;
+                            router.push("/customer/search/timezone");
+                        }}
+                    />
                 </div>
 
                 {/* Date strip — a week anchored to the chosen month */}
@@ -165,7 +168,7 @@ export default function SelectSlotPage() {
                                         isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
-                                    <span className="text-sm font-medium leading-5 text-[#344054]">{fmtSlot(s.time)}</span>
+                                    <span className="text-sm font-medium leading-5 text-[#344054]">{timeInZoneLabel(dateISO, s.time, branch, timezone, true)}</span>
                                     {/* Open sessions surface remaining capacity; Private is 1:1 (no badge). */}
                                     {isOpen && s.spotsLeft != null && (
                                         <span

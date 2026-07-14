@@ -28,6 +28,7 @@ import {
     consumeGiftCardApply,
 } from "@/lib/customer/purchase";
 import { ProductArt } from "@/components/customer/products/ProductArt";
+import { ProductCreditTile } from "@/components/customer/products/ProductCreditTile";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
 import { useRedeemedGiftCards } from "@/lib/customer/gift-cards";
 import { usePaymentMethods } from "@/lib/customer/payment-methods";
@@ -130,20 +131,16 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [method, hasGiftCard]);
 
-    // Payment options mirror the customer's Payment settings exactly: connected
-    // wallets (Apple / Google pay) + their saved cards + a redeemed gift card.
-    const { cards, wallet } = usePaymentMethods();
+    // Apple / Google pay are ALWAYS offered at checkout (no connect step); the
+    // saved cards + a redeemed gift card follow from the customer's records.
+    const { cards } = usePaymentMethods();
     const brandArt = (brand: string) =>
         brand.toLowerCase().includes("visa")
             ? { logo: "/images/pay/visa.svg", inset: "inset-[33.75%_17.1%_33.67%_13.91%]" }
             : { logo: "/images/pay/mastercard.svg", inset: "inset-[20.96%_17.8%_23.21%_17.39%]" };
     const methods: PayMethod[] = [
-        ...(wallet.applePay
-            ? [{ id: "apple", label: "Apple pay", payLabel: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" }]
-            : []),
-        ...(wallet.googlePay
-            ? [{ id: "google", label: "Google pay", payLabel: "Google pay", icon: "google" as const }]
-            : []),
+        { id: "apple", label: "Apple pay", payLabel: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" },
+        { id: "google", label: "Google pay", payLabel: "Google pay", icon: "google" as const },
         ...cards.map((c) => ({
             id: `card_${c.id}`,
             label: c.holder,
@@ -217,7 +214,11 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                     {purchaseCart.items.map((it) => (
                         <div key={it.lineId} className="flex w-full items-end gap-6">
                             <div className="flex min-w-0 flex-1 items-center gap-3">
-                                <ProductArt kind={it.kind} variant="card" />
+                                {it.creditBadge ? (
+                                    <ProductCreditTile kind={it.kind} big={it.creditBadge.big} small={it.creditBadge.small} />
+                                ) : (
+                                    <ProductArt kind={it.kind} variant="card" />
+                                )}
                                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                                     <div className="flex flex-col">
                                         <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{it.name}</span>

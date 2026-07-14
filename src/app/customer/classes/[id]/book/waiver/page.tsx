@@ -7,9 +7,10 @@
 // Phase 4 gate — shown only to members with an unsigned booking waiver (first-
 // timers). A green hint, the full waiver (Assumption of Risk · Health & Medical ·
 // Release of Liability · Guardian Consent · Cancellation Policy), a "Sign here"
-// signature pad, and an acknowledgment checkbox. When the attendee is under 18 a
-// guardian-consent block appears (guardian name + relationship) and the pad
-// captures the PARENT / GUARDIAN signature. The page scrolls; the "Agree &
+// signature pad, and an acknowledgment checkbox. When the customer is under 18
+// (from their date of birth) a guardian-consent block appears automatically
+// (guardian name + relationship) and the pad captures the PARENT / GUARDIAN
+// signature; adults never see it. The page scrolls; the "Agree &
 // continue" button sits in-flow at the very end, so it's only reached after
 // reading to the bottom. Enabled once the waiver is signed + the box is ticked
 // (+ guardian details, for a minor) → signs the waiver and forwards (mode/spot
@@ -17,13 +18,14 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Lightbulb02 } from "@untitledui/icons";
+import { ChevronDown, ChevronLeft, Lightbulb02 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import { CheckBox } from "@/components/customer/shell/SelectIndicators";
 import { SignaturePad } from "@/components/customer/shell/SignaturePad";
+import { OptionSheet } from "@/components/customer/profile/OptionSheet";
 import { Button } from "@/components/ui/button";
 
 const WAIVER_SECTIONS: { heading: string; body: string; bullets?: string[] }[] = [
@@ -88,12 +90,14 @@ function Waiver() {
     const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
 
-    // Auto-flag a minor from the member's DOB when known; the customer can still
-    // toggle it (walk-in / booking on behalf of a child whose DOB isn't on file).
+    // Guardian consent is driven ENTIRELY by the customer's age (from their date
+    // of birth): under 18 → guardian block required; 18+ → never shown. No manual
+    // toggle. Unknown DOB is treated as an adult.
     const detectedAge = useMemo(() => ageFrom(member?.dateOfBirth, REAL_TODAY_ISO), [member?.dateOfBirth]);
-    const [isMinor, setIsMinor] = useState(detectedAge !== null && detectedAge < 18);
+    const isMinor = detectedAge !== null && detectedAge < 18;
     const [guardianName, setGuardianName] = useState("");
     const [relationship, setRelationship] = useState("");
+    const [relOpen, setRelOpen] = useState(false);
 
     const [signed, setSigned] = useState(false);
     const [checked, setChecked] = useState(false);
@@ -103,7 +107,7 @@ function Waiver() {
 
     function agree() {
         if (!canContinue || !member) return;
-        signWaiver(member.id);
+        signWaiver(member.id, isMinor);
         showToast(
             "Waiver signed",
             isMinor
@@ -168,67 +172,47 @@ function Waiver() {
                     ))}
                 </div>
 
-                {/* Minor / guardian consent — toggling reveals the guardian fields and
-                 *  switches the signature to the parent / guardian's. */}
-                <div className="flex w-full flex-col gap-4 rounded-xl border border-[#e4e7ec] bg-white p-4">
-                    <button
-                        type="button"
-                        onClick={() => setIsMinor((v) => !v)}
-                        className="flex w-full items-start gap-2 text-left"
-                        aria-pressed={isMinor}
-                    >
-                        <span className="pt-0.5">
-                            <CheckBox checked={isMinor} />
-                        </span>
-                        <span className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium leading-5 text-[#344054]">
-                                The attendee is under 18 years old
-                            </span>
-                            <span className="text-xs font-normal leading-[18px] text-[#667085]">
-                                A parent or legal guardian must consent and sign below.
-                            </span>
-                        </span>
-                    </button>
-
-                    {isMinor && (
-                        <div className="flex flex-col gap-3 border-t border-[#eaecf0] pt-4">
+                {/* Parent / guardian consent — shown automatically only when the
+                    customer is under 18 (based on their date of birth). */}
+                {isMinor && (
+                    <div className="flex w-full flex-col gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                        <div className="flex flex-col gap-0.5">
                             <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">Parent / guardian consent</p>
-                            <div className="flex flex-col gap-1.5">
-                                <label htmlFor="guardian-name" className="text-sm font-medium leading-5 text-[#344054]">
-                                    Parent / guardian full name
-                                </label>
-                                <input
-                                    id="guardian-name"
-                                    type="text"
-                                    value={guardianName}
-                                    onChange={(e) => setGuardianName(e.target.value)}
-                                    placeholder="e.g. Sara Al-Rashid"
-                                    className={INPUT_CLS}
-                                />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label htmlFor="guardian-relation" className="text-sm font-medium leading-5 text-[#344054]">
-                                    Relationship to minor
-                                </label>
-                                <select
-                                    id="guardian-relation"
-                                    value={relationship}
-                                    onChange={(e) => setRelationship(e.target.value)}
-                                    className={`${INPUT_CLS} ${relationship ? "" : "text-[#667085]"}`}
-                                >
-                                    <option value="" disabled>
-                                        Select relationship
-                                    </option>
-                                    {RELATIONSHIPS.map((r) => (
-                                        <option key={r} value={r} className="text-[var(--brand-text)]">
-                                            {r}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <p className="text-xs font-normal leading-[18px] text-[#667085]">
+                                The attendee is under 18 — a parent or legal guardian must consent and sign below.
+                            </p>
                         </div>
-                    )}
-                </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label htmlFor="guardian-name" className="text-sm font-medium leading-5 text-[#344054]">
+                                Parent / guardian full name
+                            </label>
+                            <input
+                                id="guardian-name"
+                                type="text"
+                                value={guardianName}
+                                onChange={(e) => setGuardianName(e.target.value)}
+                                placeholder="e.g. Sara Al-Rashid"
+                                className={INPUT_CLS}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label htmlFor="guardian-relation" className="text-sm font-medium leading-5 text-[#344054]">
+                                Relationship to minor
+                            </label>
+                            <button
+                                type="button"
+                                id="guardian-relation"
+                                onClick={() => setRelOpen(true)}
+                                className={`${INPUT_CLS} flex items-center text-left`}
+                            >
+                                <span className={`flex-1 ${relationship ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                                    {relationship || "Select relationship"}
+                                </span>
+                                <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Sign here — the signature pad (customer or, for a minor, guardian). */}
                 <div className="flex w-full flex-col gap-2">
@@ -270,6 +254,16 @@ function Waiver() {
                     Agree &amp; continue
                 </Button>
             </div>
+
+            <OptionSheet
+                open={relOpen}
+                onClose={() => setRelOpen(false)}
+                title="Relationship to minor"
+                options={RELATIONSHIPS}
+                value={relationship}
+                flat
+                onConfirm={setRelationship}
+            />
         </div>
     );
 }

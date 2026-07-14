@@ -70,7 +70,12 @@ export default function ProductsPage() {
     // from customerPlans — so a cancelled / expired plan (or a stale
     // member.membershipId in persisted demo state) is correctly treated as "no
     // active plan", and every plan becomes purchasable again.
-    const activeMembershipPlan =
+    // A held plan only blocks BUY-exclusivity while it's USABLE (unlimited or has
+    // credits left). An exhausted (0-credit) or expired plan is treated like no
+    // active plan — every plan type (membership OR package) becomes purchasable
+    // again, exactly like a no-plan customer (client Jul 2026).
+    const creditsLeft = member?.creditsRemaining ?? 0;
+    const heldMembershipPlan =
         member != null
             ? customerPlans.find(
                   (p) =>
@@ -79,6 +84,9 @@ export default function ProductsPage() {
                       (p.status === "active" || p.status === "frozen"),
               )
             : undefined;
+    const membershipUsable =
+        !!heldMembershipPlan && (/unlimited/i.test(heldMembershipPlan.creditsLabel) || creditsLeft > 0);
+    const activeMembershipPlan = membershipUsable ? heldMembershipPlan : undefined;
     const heldMembership = !!activeMembershipPlan;
     // Re-buying a MEMBERSHIP the customer previously cancelled reactivates the
     // existing plan (one active membership only) instead of creating a duplicate
@@ -174,6 +182,7 @@ export default function ProductsPage() {
     // both. Adding either kind hides the OTHER kind's "+" everywhere (list + sheet).
     const holdsActivePackage =
         member != null &&
+        creditsLeft > 0 &&
         customerPlans.some(
             (p) =>
                 p.customerId === member.id &&

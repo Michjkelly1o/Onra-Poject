@@ -312,16 +312,34 @@ export function useHasBookingHistory(): boolean {
     );
 }
 
-/** True when the member still has an unsigned booking-waiver agreement — they
- *  must sign it before a first booking goes through (Phase 4 gate). */
+/** Whole-year age from an ISO DOB against the demo "today" (null when unknown). */
+function memberAge(dob: string | undefined): number | null {
+    if (!dob) return null;
+    const d = new Date(dob.length <= 10 ? `${dob}T00:00:00` : dob);
+    if (Number.isNaN(d.getTime())) return null;
+    const t = new Date(`${REAL_TODAY_ISO}T00:00:00`);
+    let age = t.getFullYear() - d.getFullYear();
+    const m = t.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--;
+    return age;
+}
+
+/** True when the member must (re-)sign the booking waiver before booking:
+ *   • any not-yet-signed agreement (never_signed / re_accept_due), OR
+ *   • the member is now UNDER 18 but their signed waiver never captured
+ *     guardian consent (e.g. they signed as an adult, then changed their DOB) —
+ *     they must sign a fresh waiver through the guardian-consent flow. */
 export function useNeedsWaiver(): boolean {
     const { member } = useCurrentCustomerContext();
     const customerAgreements = useAppStore((s) => s.customerAgreements);
-    return useMemo(
-        // v24: "not signed" means either terminal not-signed state
-        // (never_signed OR re_accept_due) — the customer needs to
-        // sign before booking either way.
-        () => !!member && customerAgreements.some((ca) => ca.customerId === member.id && ca.status !== "signed"),
-        [member, customerAgreements],
-    );
+    return useMemo(() => {
+        if (!member) return false;
+        const mine = customerAgreements.filter((ca) => ca.customerId === member.id);
+        if (mine.length === 0) return false;
+        if (mine.some((ca) => ca.status !== "signed")) return true;
+        const age = memberAge(member.dateOfBirth);
+        const isMinor = age !== null && age < 18;
+        const hasGuardianWaiver = mine.some((ca) => ca.status === "signed" && ca.guardianConsent);
+        return isMinor && !hasGuardianWaiver;
+    }, [member, customerAgreements]);
 }

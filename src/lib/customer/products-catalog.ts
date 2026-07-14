@@ -176,6 +176,9 @@ export function useCreditBalance(): CreditBalanceVM | null {
         // Unlimited memberships carry no numeric credit balance.
         const unlimited = kind === "membership" && member.creditsRemaining === undefined;
         const remaining = member.creditsRemaining ?? 0;
+        // A finite plan with 0 credits left is spent → surface it as "No active
+        // plan" so the profile card prompts the customer to browse a new plan.
+        if (!unlimited && remaining <= 0) return null;
         const total = held.reduce((n, p) => n + (p.totalCredits ?? 0), 0);
         // Expiry = the latest expiry across the held plan(s), read straight from the
         // plan rows (the flat member.planExpiryISO can be stale / unset in the seed).

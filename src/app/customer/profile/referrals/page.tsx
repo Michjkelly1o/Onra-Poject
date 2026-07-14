@@ -7,22 +7,14 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Copy01, HeartHand, ShoppingCart01, Stars02, Upload01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
-import { substituteReferralVariables } from "@/lib/referral-helpers";
+import { rewardSummary, substituteReferralVariables, triggerProse } from "@/lib/referral-helpers";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ShareSheet } from "@/components/customer/shell/ShareSheet";
 import { FeaturedIconHero } from "@/components/customer/profile/FeaturedIconHero";
 import { Button } from "@/components/ui/button";
 
-const STEPS: { icon: ComponentType<SVGProps<SVGSVGElement>>; text: string }[] = [
-    { icon: Upload01, text: "Share your unique link to your friends to join the program." },
-    { icon: ShoppingCart01, text: "Your friends signs up and makes a purchase of membership/product." },
-    { icon: Stars02, text: "1 day after the purchase, you and your friend will both get 2 free class credits." },
-];
-
-/** A referral counts as "successful" once the friend has earned their credits
- *  (full reward granted); otherwise it's still pending (joined, not purchased). */
-const isSuccessful = (benefitCredits: number) => benefitCredits >= 2;
+const STEP_ICONS: ComponentType<SVGProps<SVGSVGElement>>[] = [Upload01, ShoppingCart01, Stars02];
 
 function initialsOf(name: string): string {
     return name
@@ -51,6 +43,24 @@ export default function ReferralsPage() {
 
     const code = member?.referralCode ?? "";
     const maxReferrals = referralSettings.maxReferralsPerMember || 10;
+
+    // All reward copy reflects the admin Referral settings (amounts, reward type,
+    // unlock trigger) rather than hard-coded values.
+    const referrerReward = rewardSummary(referralSettings.referrerEarnType, referralSettings.referrerEarnAmount);
+    const friendReward = rewardSummary(referralSettings.friendEarnType, referralSettings.friendEarnAmount);
+    const trigger = referralSettings.rewardUnlockTrigger;
+    const step2Text =
+        trigger === "friend_signup"
+            ? "Your friend signs up using your referral code."
+            : `Your friend signs up and ${triggerProse(trigger).replace(/^make /, "makes ").replace(/^attend /, "attends ")}.`;
+    const steps = [
+        "Share your unique link with friends to join the program.",
+        step2Text,
+        `Once your friend qualifies, you get ${referrerReward} and they get ${friendReward}.`,
+    ];
+    // A referral is "successful" once the referrer's full reward has been granted.
+    const rewardThreshold = Math.max(1, referralSettings.referrerEarnAmount);
+    const isSuccessful = (benefitCredits: number) => benefitCredits >= rewardThreshold;
     const successfulRefs = referrals.filter((r) => isSuccessful(r.benefitCredits));
     const successful = successfulRefs.length;
     const totalBonus = successfulRefs.reduce((n, r) => n + (r.benefitCredits || 0), 0);
@@ -101,7 +111,7 @@ export default function ReferralsPage() {
                     tileClassName="bg-[#dcfae5] shadow-[0px_4px_18px_0px_rgba(220,250,229,0.7),0px_2px_4px_0px_rgba(16,24,40,0.04)]"
                     iconClassName="size-9 text-[var(--brand-primary)]"
                     title="Refer friends, get free credits"
-                    subtitle="Get 2 free credits for each you invite."
+                    subtitle={`Get ${friendReward} for each friend you invite.`}
                 />
 
                 <div className="relative flex items-center gap-2">
@@ -129,9 +139,9 @@ export default function ReferralsPage() {
 
                 {/* Program steps — connector line runs between the step icons. */}
                 <div className="relative flex flex-col rounded-2xl border border-[#eaecf0] bg-white p-4">
-                    {STEPS.map((s, i) => {
-                        const Icon = s.icon;
-                        const last = i === STEPS.length - 1;
+                    {steps.map((text, i) => {
+                        const Icon = STEP_ICONS[i];
+                        const last = i === steps.length - 1;
                         return (
                             <div key={i} className="flex gap-3">
                                 <div className="flex flex-col items-center self-stretch">
@@ -143,7 +153,7 @@ export default function ReferralsPage() {
                                     )}
                                 </div>
                                 <p className={`flex-1 pt-1 text-sm leading-5 text-[#344054] ${last ? "" : "pb-5"}`}>
-                                    {s.text}
+                                    {text}
                                 </p>
                             </div>
                         );

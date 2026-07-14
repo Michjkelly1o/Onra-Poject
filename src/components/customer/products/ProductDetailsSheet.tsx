@@ -16,6 +16,7 @@ import { ChevronRight, CreditCard02, Lightbulb02, Minus, Plus } from "@untitledu
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { SheetToolbar } from "@/components/customer/shell/SheetToolbar";
 import { ProductArt } from "@/components/customer/products/ProductArt";
+import { ProductCreditTile } from "@/components/customer/products/ProductCreditTile";
 import { Button } from "@/components/ui/button";
 import type { PlanRow } from "@/lib/customer/purchase";
 
@@ -70,8 +71,20 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                     {/* Toolbar */}
                     <SheetToolbar title="Product details" onClose={onClose} />
 
-                    {/* Image */}
-                    <ProductArt kind={plan.kind} variant="sheet" />
+                    {/* Product visual — text-only credit tile (memberships / packages),
+                        gift-card art otherwise. */}
+                    {plan.creditBadge ? (
+                        <div className="flex items-center justify-center rounded-2xl border border-[#eaecf0] py-10">
+                            <ProductCreditTile
+                                kind={plan.kind}
+                                big={plan.creditBadge.big}
+                                small={plan.creditBadge.small}
+                                size={88}
+                            />
+                        </div>
+                    ) : (
+                        <ProductArt kind={plan.kind} variant="sheet" />
+                    )}
 
                     {/* Title + (upgrade/downgrade) + price */}
                     <div className="flex w-full flex-col gap-5">

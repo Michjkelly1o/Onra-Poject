@@ -15,9 +15,11 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, ChevronLeft, Clock, Maximize01, MarkerPin01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { CheckCircle, ChevronLeft, Clock, ClockFastForward, Maximize01, MarkerPin01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
+import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { classTimeDisplay } from "@/lib/customer/class-time";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ShareSheet } from "@/components/customer/shell/ShareSheet";
@@ -39,7 +41,7 @@ function abbreviateName(name: string): string {
 export interface ClassDetailLayoutProps {
     detail: ClassDetailVM;
     /** Date/time line over the cover, e.g. "Sun, 20 Feb at 10:00 AM". */
-    heroSubtitle: string;
+    heroSubtitle?: string;
     /** Optional second line shown UNDER the subtitle — used for the branch
      *  timezone label ("(UTC+04:00) Abu Dhabi") so it stacks below the
      *  date/time instead of running inline with a "·" separator. */
@@ -79,6 +81,11 @@ export function ClassDetailLayout({
     const router = useRouter();
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
+    // Dual-timezone class time (Branch time + Your time) for the default grid.
+    const branches = useAppStore((st) => st.branches);
+    const { timezone } = useCurrentCustomerContext();
+    const branch = branches.find((b) => b.id === detail.branchId);
+    const classTime = classTimeDisplay(detail.dateISO, detail.startTime, branch, timezone);
     const [expanded, setExpanded] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
 
@@ -120,7 +127,9 @@ export function ClassDetailLayout({
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
                     <div className="flex min-w-0 flex-col gap-1">
                         <p className="truncate text-xl font-semibold leading-[30px] text-white">{detail.name}</p>
-                        <p className="text-sm font-normal leading-5 text-[#d0d5dd]">{heroSubtitle}</p>
+                        {heroSubtitle && (
+                            <p className="text-sm font-normal leading-5 text-[#d0d5dd]">{heroSubtitle}</p>
+                        )}
                         {heroSubtitleLine2 && (
                             <p className="text-xs font-normal leading-4 text-[#d0d5dd]/80">{heroSubtitleLine2}</p>
                         )}
@@ -153,10 +162,36 @@ export function ClassDetailLayout({
                 {/* Info grid — default class 2×2, or a caller-supplied grid (appointments). */}
                 {infoGrid ?? (
                 <div className="flex flex-col gap-4">
+                    {/* Time — Branch time (always) + Your time (only when the customer's
+                        timezone differs from the branch's). Figma 4408. */}
+                    <div className="flex flex-1 items-start gap-3">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
+                            <Clock className="size-5 text-[#344054]" aria-hidden />
+                        </span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span className="text-xs leading-[18px] text-[#667085]">Date & time</span>
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{classTime.branchTime}</span>
+                                {classTime.yourTime && (
+                                    <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#0c2d34]">
+                                        Branch time
+                                    </span>
+                                )}
+                            </span>
+                            {classTime.yourTime && (
+                                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{classTime.yourTime}</span>
+                                    <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#475467]">
+                                        Your time
+                                    </span>
+                                </span>
+                            )}
+                        </div>
+                    </div>
                     <div className="flex gap-4">
                         <InfoCell>
                             <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                <Clock className="size-5 text-[#344054]" aria-hidden />
+                                <ClockFastForward className="size-5 text-[#344054]" aria-hidden />
                             </span>
                             <div className="flex flex-col">
                                 <span className="text-xs leading-[18px] text-[#667085]">Duration</span>
