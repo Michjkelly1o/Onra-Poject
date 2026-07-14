@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose, Plus, HelpCircle } from "@untitledui/icons";
+import { XClose, Trash01, HelpCircle } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { UnitSuffixSelect } from "@/components/patterns/UnitSuffixSelect";
@@ -147,11 +147,14 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
 
     const [shown, setShown] = useState(false);
     const [form, setForm] = useState<FreezePolicy | null>(policy ? clonePolicy(policy) : null);
+    // Draft text for the "Add a custom reason" input (committed via the Add button).
+    const [newReason, setNewReason] = useState("");
 
     useEffect(() => {
         if (open) {
             const p = freezePolicies.find(x => x.branch_id === branchId);
             setForm(p ? clonePolicy(p) : null);
+            setNewReason("");
             setShown(false);
             const r = requestAnimationFrame(() => setShown(true));
             return () => cancelAnimationFrame(r);
@@ -177,10 +180,19 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
     function setReason(id: string, next: Partial<FreezeReason>) {
         setForm(prev => (prev ? { ...prev, reasons: prev.reasons.map(r => (r.id === id ? { ...r, ...next } : r)) } : prev));
     }
-    function addCustomReason() {
+    // Commit the typed draft as a new custom reason (enabled), then clear the
+    // input. No-op on blank / duplicate labels.
+    function addNewReason() {
+        const label = newReason.trim();
+        if (!label) return;
         customReasonSeq += 1;
         const id = `custom_${customReasonSeq}`;
-        setForm(prev => (prev ? { ...prev, reasons: [...prev.reasons, { id, label: "", enabled: true }] } : prev));
+        setForm(prev => {
+            if (!prev) return prev;
+            if (prev.reasons.some(r => r.label.trim().toLowerCase() === label.toLowerCase())) return prev;
+            return { ...prev, reasons: [...prev.reasons, { id, label, enabled: true }] };
+        });
+        setNewReason("");
     }
     function removeReason(id: string) {
         setForm(prev => (prev ? { ...prev, reasons: prev.reasons.filter(r => r.id !== id) } : prev));
@@ -335,31 +347,31 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                             {form.reasons.map(r => (
                                                 <div key={r.id} className="flex items-center gap-3">
                                                     <Checkbox checked={r.enabled} onChange={() => setReason(r.id, { enabled: !r.enabled })} />
-                                                    {r.id.startsWith("custom_") ? (
-                                                        <>
-                                                            <input
-                                                                type="text"
-                                                                value={r.label}
-                                                                onChange={e => setReason(r.id, { label: e.target.value })}
-                                                                placeholder="Enter a custom reason"
-                                                                className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
-                                                            />
-                                                            <button type="button" onClick={() => removeReason(r.id)}
-                                                                className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb]">
-                                                                <XClose className="w-4 h-4" />
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-[14px] text-[#344054]">{r.label}</span>
+                                                    <span className="flex-1 text-[14px] text-[#344054]">{r.label}</span>
+                                                    {/* Only custom reasons can be deleted — the 3 defaults stay. */}
+                                                    {r.id.startsWith("custom_") && (
+                                                        <button type="button" onClick={() => removeReason(r.id)} aria-label="Remove reason"
+                                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318]">
+                                                            <Trash01 className="w-4 h-4" />
+                                                        </button>
                                                     )}
                                                 </div>
                                             ))}
                                         </div>
-                                        <button type="button" onClick={addCustomReason}
-                                            className="flex items-center gap-1.5 text-[14px] font-medium text-[#658774] hover:opacity-80 w-fit">
-                                            <Plus className="w-4 h-4" />
-                                            Add custom reason
-                                        </button>
+                                        {/* Add a custom reason — type + click Add (or press Enter). */}
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={newReason}
+                                                onChange={e => setNewReason(e.target.value)}
+                                                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
+                                                placeholder="Add a custom reason"
+                                                className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                            />
+                                            <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
+                                                Add
+                                            </Button>
+                                        </div>
                                     </>
                                 )}
                             </Section>
