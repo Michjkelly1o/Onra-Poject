@@ -187,7 +187,17 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
 
     // ─── Summary metrics (over all referrals, unfiltered) ───────────────────
     const totalReferrals = rows.length;
-    const totalBonusCredits = rows.reduce((s, r) => s + r.benefitCredits, 0);
+    // v56 — rewards are split by kind so the tab surfaces BOTH lines the
+    // studio's program can pay out. Class credits (free_credits type) count
+    // in the "N credits" total; account credits (wallet_credit type) count
+    // in the AED total. Discount rows are ignored here — deferred until a
+    // studio actually turns that reward on.
+    const totalClassCredits = rows
+        .filter(r => r.benefitType === "free_credits")
+        .reduce((s, r) => s + r.benefitAmount, 0);
+    const totalAccountCreditsAed = rows
+        .filter(r => r.benefitType === "wallet_credit")
+        .reduce((s, r) => s + r.benefitAmount, 0);
 
     // ─── Filtering + pagination ─────────────────────────────────────────────
     const filtered = useMemo(() => {
@@ -207,7 +217,10 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
     //    discoverable but don't outrank dated ones.
     const { sorted: sortedReferrals, sortKey: referralSortKey, sortDir: referralSortDir, toggle: toggleReferralSort } = useSort<CustomerReferral>(filtered, {
         referred: (a, b) => a.referredName.localeCompare(b.referredName),
-        benefit:  (a, b) => a.benefitCredits - b.benefitCredits,
+        // Sort by `benefitAmount` regardless of type — a 5-credit row and
+        // an AED-5 row sort together numerically. Type is a semantic
+        // qualifier surfaced in the cell, not a sort dimension.
+        benefit:  (a, b) => a.benefitAmount - b.benefitAmount,
         date:     (a, b) => a.referredAtISO.localeCompare(b.referredAtISO),
         expiry:   (a, b) => (a.expiresAtISO ?? "9999").localeCompare(b.expiresAtISO ?? "9999"),
     });
@@ -268,11 +281,32 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                             : totalReferrals}
                     </p>
                 </div>
-                <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
-                    <p className="text-[14px] text-[#667085]">Total bonus credits</p>
-                    <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">
-                        {totalBonusCredits} {totalBonusCredits === 1 ? "credit" : "credits"}
-                    </p>
+                {/* v56 — "Rewards earned" card. Mirrors the staff Payroll
+                    page's pay-rate snapshot card (`PayRateSnapshotCard`)
+                    1:1: `rounded-[12px]`, `p-5`, shadow, `gap-3` inside.
+                    Title sits INSIDE the card at the top row; two columns
+                    (Class credit | Account credit) sit below in a
+                    `grid-cols-2 gap-4` layout with 14px muted labels +
+                    16px medium values. */}
+                <div className="flex-[1.5] min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    {/* Title style matches sibling card labels ("Referral
+                        code", "Total referrals") — 14px muted `#667085`,
+                        no font-medium. */}
+                    <p className="text-[14px] text-[#667085]">Rewards earned</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[14px] text-[#667085]">Class credit</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {totalClassCredits} {totalClassCredits === 1 ? "credit" : "credits"}
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[14px] text-[#667085]">Account credit</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                AED {totalAccountCreditsAed.toLocaleString("en-US")}
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -330,7 +364,16 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                         </td>
                                         <td className={cn(TD, "text-[#667085]")}>
                                             <div className="flex flex-col gap-0.5">
-                                                <span>{r.benefitCredits} {r.benefitCredits === 1 ? "credit" : "credits"}</span>
+                                                {/* v56 — type-aware Benefit cell. Class-credit rows
+                                                    read "N credit(s)"; account-credit rows read
+                                                    "AED N". Discount rows fall back to the legacy
+                                                    "N credits" shape (not surfaced in the
+                                                    prototype yet). */}
+                                                <span>
+                                                    {r.benefitType === "wallet_credit"
+                                                        ? `AED ${r.benefitAmount.toLocaleString("en-US")}`
+                                                        : `${r.benefitAmount} ${r.benefitAmount === 1 ? "credit" : "credits"}`}
+                                                </span>
                                                 {/* v25 — Branch-lock subtitle only surfaces when
                                                     (a) the global toggle is OFF, and (b) the row
                                                     has an origin branch captured. Amber tint

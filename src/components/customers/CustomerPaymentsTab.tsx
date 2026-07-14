@@ -497,14 +497,47 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     );
 
     // ─── Overview metrics ───────────────────────────────────────────────────
-    // A refunded transaction was collected then returned — it counts toward
-    // Total spent AND Total refunded, so Net spend equals completed-only.
+    //
+    // The seed carries TWO refund conventions that must produce the same
+    // customer-facing totals:
+    //   • Legacy — one row per sale; on refund, the row's `status` flips to
+    //     "refunded". `amountAed` STAYS POSITIVE. `transactionType` is
+    //     usually undefined.
+    //   • Reports v30 ledger — the original sale row keeps its positive
+    //     amount + "complete" (or "refunded") status, AND a SEPARATE
+    //     refund event is written with a NEGATIVE amount +
+    //     `transactionType === "refund"`.
+    //
+    // Naïve filtering breaks under the v30 pattern because:
+    //   • A sale row + a refund row would DOUBLE-count into `totalSpent`
+    //     (the negative refund partially cancels the positive sale).
+    //   • Summing `amountAed` on `status === "refunded"` returns a mix of
+    //     positive (legacy) and negative (v30) numbers — the total can go
+    //     negative even though refunds are always outbound-to-customer.
+    //
+    // Correct rules:
+    //   • Total spent      = every POSITIVE row EXCEPT v30 refund / void /
+    //                        write-off events (which are already the
+    //                        "return" leg of an accounted sale).
+    //   • Total refunded   = `|amountAed|` on any `status === "refunded"`
+    //                        row — legacy and v30 both counted at their
+    //                        magnitude, voids / write-offs excluded (they
+    //                        erase both sides, not refund).
+    //   • Net spend        = totalSpent − totalRefunded.
+    //
+    // Under this: a legacy refunded row contributes to BOTH sums (net 0);
+    // a v30 sale + refund pair contributes to BOTH sums (net 0); a voided
+    // row contributes to neither. Every combination is consistent.
+    const isNonRefundLike = (tt: CustomerTransaction["transactionType"]) =>
+        tt !== "refund" && tt !== "void" && tt !== "write_off";
     const totalSpent = txns
-        .filter(t => t.status === "complete" || t.status === "refunded")
+        .filter(t => t.amountAed > 0 && isNonRefundLike(t.transactionType))
         .reduce((s, t) => s + t.amountAed, 0);
     const totalRefunded = txns
-        .filter(t => t.status === "refunded")
-        .reduce((s, t) => s + t.amountAed, 0);
+        .filter(t => t.status === "refunded"
+            && t.transactionType !== "void"
+            && t.transactionType !== "write_off")
+        .reduce((s, t) => s + Math.abs(t.amountAed), 0);
     const netSpend = totalSpent - totalRefunded;
 
     const metrics: { label: string; value: number }[] = [
@@ -705,7 +738,22 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t)}</td>
-                                                <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtAed(t.amountAed)}</td>
+                                                {/* Refunded rows prefix `+` so the amount reads as
+                                                    money returned to the customer — matches the
+                                                    Wallet tab's `+ / −` convention (customer POV:
+                                                    `+` money in, `−` money out). Sales stay plain
+                                                    — a sale is the natural outbound direction;
+                                                    only refunds need the reversal cue.
+                                                    `Math.abs` guards refunded rows whose
+                                                    `amountAed` was seeded negative (Reports v30
+                                                    ledger convention): without the abs, `+` on
+                                                    top of a stored `-1800` reads as
+                                                    `+ AED −1,800`. */}
+                                                <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>
+                                                    {t.status === "refunded"
+                                                        ? `+ ${fmtAed(Math.abs(t.amountAed))}`
+                                                        : fmtAed(t.amountAed)}
+                                                </td>
                                                 <td className={TD}>
                                                     {/* A still-`complete` payment with a pending refund
                                                         request (raised from the dashboard) reads as

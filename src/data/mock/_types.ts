@@ -401,8 +401,27 @@ export interface CustomerReferral {
     referred_name: string;
     /** Referred person's email. */
     referred_email: string;
-    /** Bonus class credits the referrer earned from this referral. */
+    /** LEGACY — Bonus class credits the referrer earned from this referral.
+     *  Preserved for back-compat; new rows should set `benefit_type` +
+     *  `benefit_amount` instead. When `benefit_type` is set, the runtime
+     *  adapter ignores this field. */
     benefit_credits: number;
+    /** Reward kind stamped at referral-creation from the live
+     *  `referral_settings.referrer_earn_type`. Determines how each row
+     *  is aggregated in the Referrals tab's "Rewards earned" card and
+     *  how the row's Benefit cell reads:
+     *    • `free_credits`  → "N credits"
+     *    • `wallet_credit` → "AED N"
+     *    • `discount`      → deferred — not surfaced in the prototype yet.
+     *  Optional so legacy rows without a type still load; the runtime
+     *  adapter treats undefined as `free_credits` (preserves the pre-v56
+     *  behaviour where every row was implicitly class credits). */
+    benefit_type?: ReferralRewardTypeSeed;
+    /** Numeric amount matching `benefit_type` — count of class credits
+     *  when `free_credits`, AED amount when `wallet_credit`. Optional so
+     *  legacy rows still load; the adapter falls back to
+     *  `benefit_credits` when unset. */
+    benefit_amount?: number;
     /** ISO 8601 — when the referred person signed up via the link. */
     referred_at: string;
     /** ISO 8601 — when the earned reward expires. Computed at create
