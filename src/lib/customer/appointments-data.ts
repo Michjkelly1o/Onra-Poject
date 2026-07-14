@@ -5,18 +5,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Appointments are bookable SERVICES from the admin catalog (`services` store
-// slice) — vs Classes = group sessions. Two customer-facing session types, mapped
-// from the service's `openSession`:
+// slice) — vs Classes = group sessions. Two customer-facing booking shapes,
+// mapped from the service's `openSession`:
 //   • Private (openSession=false) — a 1-on-1 session; the booking flow chooses an
 //     instructor first, then the time slot.
 //   • Open session (openSession=true) — no instructor, a set capacity; time slots
 //     follow the branch's working hours.
 //
-// Branch scope follows the branch KIND (the admin rule):
-//   • Club branches host ONLY private (non-recovery) services — e.g. Private Reformer.
-//   • Spa branches host BOTH private (recovery — e.g. Massage) AND open-session
-//     services (e.g. Sauna, Breathwork).
-// Services are already branch-scoped in the seed; the kind filter enforces the rule.
+// Session type (the `service.type` dimension): a service is "private" or
+// "recovery" — any branch can host either, and open sessions only exist for
+// recovery. The filter below keeps only sessions the customer can actually
+// book: a private service is always 1-on-1, so it's never open.
 
 import { useMemo } from "react";
 import { useAppStore, type Service } from "@/lib/store";
@@ -39,7 +38,7 @@ export interface AppointmentVM {
     category: string;
     branchId: string;
     branchName: string;
-    /** True = Spa recovery service (no instructor in the seed). */
+    /** True = recovery/wellness service (derived from `service.type`). */
     isRecovery: boolean;
     coverImage?: string;
     coverColor: string;

@@ -11,13 +11,13 @@
 // everywhere.
 //
 // The base `instructors` store slice is seeded from `instructors.ts` (South +
-// East only). Newer branches — the Spa (Forma Spa) and West instructors — were
-// added by the admin side to the STAFF directory (`staff.ts`) but not to that
-// legacy instructor seed. To keep the customer app in sync with the LATEST admin
-// data, we union the two: every admin staff member holding an instructor role
-// who isn't already in the instructors slice is folded in (deduped by id). This
-// is a read-only customer-side derivation — it never mutates the seed or the
-// admin/instructor stores.
+// East only). Some staff — e.g. the recovery/wellness practitioners and West
+// instructors — were added by the admin side to the STAFF directory
+// (`staff.ts`) but not to that legacy instructor seed. To keep the customer app
+// in sync with the LATEST admin data, we union the two: every admin staff member
+// holding an instructor role who isn't already in the instructors slice is
+// folded in (deduped by id). This is a read-only customer-side derivation — it
+// never mutates the seed or the admin/instructor stores.
 
 import { useMemo } from "react";
 import { useAppStore, type Instructor, type Staff } from "@/lib/store";
@@ -50,9 +50,9 @@ function staffToInstructor(s: Staff): Instructor {
 }
 
 /** Union the seeded instructor directory with admin STAFF who hold an instructor
- *  role but are missing from the instructors slice (e.g. the Spa / West
- *  instructors). Deduped by id, so shared South/East instructors are never
- *  doubled. Pure — safe to unit-test without React. */
+ *  role but are missing from the instructors slice (e.g. recovery practitioners
+ *  and West instructors). Deduped by id, so shared South/East instructors are
+ *  never doubled. Pure — safe to unit-test without React. */
 export function mergeCustomerInstructors(instructors: Instructor[], staff: Staff[]): Instructor[] {
     const have = new Set(instructors.map((i) => i.id));
     const extra = staff.filter((s) => s.roleId.includes("instructor") && !have.has(s.id)).map(staffToInstructor);

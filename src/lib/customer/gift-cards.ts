@@ -44,9 +44,9 @@ const REDEEMABLE: RedeemableGift[] = [
         expiresISO: "2027-01-31",
     },
     {
-        code: "SPA200",
+        code: "RECOVER200",
         senderName: "Maya Johnson",
-        message: "Some well-earned recovery time — treat yourself at the spa.",
+        message: "Some well-earned recovery time — treat yourself to a wellness session.",
         faceValue: 200,
         expiresISO: "2027-05-31",
     },

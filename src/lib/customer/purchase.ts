@@ -246,8 +246,8 @@ export interface PromoVM {
 
 // Branch-name lookup used by the promo VM's `locations` string. Read live
 // from the `branches` slice below inside `usePromos` — the previous
-// hardcoded map was missing Forma Spa AND any user-added branch, so those
-// promos rendered raw ids like "branch_forma_spa" instead of the name.
+// hardcoded map missed newer + user-added branches, so those promos rendered
+// raw branch ids instead of the display name.
 
 function fmtDate(iso?: string): string {
     if (!iso) return "—";
