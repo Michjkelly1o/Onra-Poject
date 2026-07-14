@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, ChevronDown, ChevronUp,
+    XClose, Check, ChevronDown, ChevronUp, SearchLg,
     CheckCircleBroken, Ticket01, Link01, SlashCircle01, FilterLines,
     MarkerPin01, CursorBox,
 } from "@untitledui/icons";
@@ -357,12 +357,23 @@ function ClassCtaSelect({ value, onChange, options, placeholder }: {
 }) {
     const [open, setOpen] = useState(false);
     const [width, setWidth] = useState(0);
+    const [query, setQuery] = useState("");
     const btnRef = useRef<HTMLButtonElement>(null);
     const selected = options.find(o => o.value === value);
     function toggle() {
         if (btnRef.current) setWidth(btnRef.current.offsetWidth);
         setOpen(p => !p);
     }
+    function close() {
+        setOpen(false);
+        setQuery("");
+    }
+    // Filter on class name + the sub-line (date · time · instructor) so a
+    // search matches by class, day, or instructor.
+    const q = query.trim().toLowerCase();
+    const filtered = q
+        ? options.filter(o => `${o.label} ${o.sub}`.toLowerCase().includes(q))
+        : options;
     return (
         <>
             <button ref={btnRef} type="button" onClick={toggle}
@@ -372,13 +383,30 @@ function ClassCtaSelect({ value, onChange, options, placeholder }: {
                 </span>
                 <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
             </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 240}>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={close} minWidth={width || 240}>
+                {/* Sticky search — keeps the picker usable when there are many
+                    classes. Filters by class name, date, or instructor. */}
+                <div className="p-2 border-b-1 border-[#f2f4f7] sticky top-0 bg-white">
+                    <div className="flex items-center gap-2 h-9 px-2.5 border-1 border-[#d0d5dd] rounded-[8px] bg-white focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
+                        <SearchLg className="w-4 h-4 text-[#667085] shrink-0" />
+                        <input
+                            type="text"
+                            autoFocus
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            placeholder="Search class"
+                            className="flex-1 min-w-0 text-[14px] text-[#101828] placeholder:text-[#667085] bg-transparent focus:outline-none"
+                        />
+                    </div>
+                </div>
                 <div className="max-h-[240px] overflow-y-auto">
                     {options.length === 0 ? (
                         <p className="px-3 py-3 text-[14px] text-[#667085]">No upcoming classes available.</p>
-                    ) : options.map(o => (
+                    ) : filtered.length === 0 ? (
+                        <p className="px-3 py-3 text-[14px] text-[#667085]">No classes match "{query.trim()}".</p>
+                    ) : filtered.map(o => (
                         <button key={o.value} type="button"
-                            onClick={() => { onChange(o.value); setOpen(false); }}
+                            onClick={() => { onChange(o.value); close(); }}
                             className={cn(
                                 "flex flex-col w-full px-3 py-2 text-left transition-colors",
                                 value === o.value ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
