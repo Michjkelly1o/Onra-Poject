@@ -1754,6 +1754,10 @@ export interface CustomerPlan {
      *  freeze policy's "max freezes per membership" on the customer side.
      *  Incremented on every freeze (admin + customer). */
     freezeCount?: number;
+    /** Reason the member gave when self-freezing (from the freeze policy's
+     *  allowed reasons). Surfaced admin-side so the studio sees WHY the
+     *  membership was paused. Cleared on unfreeze. */
+    freezeReason?: string;
     freeCredits?: number;
     grantReason?: string;
     grantIssuedBy?: string;
@@ -3530,7 +3534,7 @@ export interface AppState {
     // ── Customer plans (customer-detail Plan tab) ──────────────────────────
     /** Freeze a plan — status → frozen, freeze window stored, and the expiry
      *  date pushed back by the freeze duration so frozen days aren't lost. */
-    freezeCustomerPlan: (planId: string, startISO: string, endISO: string, source?: CustomerPlan["freezeSource"]) => void;
+    freezeCustomerPlan: (planId: string, startISO: string, endISO: string, source?: CustomerPlan["freezeSource"], reason?: string) => void;
     /** Unfreeze a plan — status → active. The extended expiry date is kept. */
     unfreezeCustomerPlan: (planId: string) => void;
     /** Customer-portal membership freeze — freezes the plan (customer_portal
@@ -3538,7 +3542,7 @@ export interface AppState {
      *  the policy sets one (charge-now). The policy gate (enabled / apply-to /
      *  max-freezes / max-duration) is enforced in the customer UI; this action
      *  performs the mutation + fee charge. Returns the fee charged (0 = none). */
-    freezeMembershipByCustomer: (planId: string, startISO: string, endISO: string) => { fee: number };
+    freezeMembershipByCustomer: (planId: string, startISO: string, endISO: string, reason?: string) => { fee: number };
     /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
     cancelCustomerPlan: (planId: string, mode: "today" | "period_end", reason: string) => void;
     reactivateCustomerPlan: (planId: string) => void;
@@ -5477,7 +5481,7 @@ export const useAppStore = create<AppState>()(persist(
 
     // ── Customer plans ─────────────────────────────────────────────────────
 
-    freezeCustomerPlan: (planId, startISO, endISO, source) => {
+    freezeCustomerPlan: (planId, startISO, endISO, source, reason) => {
         const target = get().customerPlans.find(p => p.id === planId);
         set(state => ({
             customerPlans: state.customerPlans.map(p => {
@@ -5500,6 +5504,8 @@ export const useAppStore = create<AppState>()(persist(
                     // Lifetime freeze tally — the freeze policy's
                     // "max freezes per membership" is checked against this.
                     freezeCount: (p.freezeCount ?? 0) + 1,
+                    // Reason (customer self-freeze) — surfaced admin-side.
+                    freezeReason: reason ?? undefined,
                     expiryISO: extendedExpiry,
                 };
             }),
@@ -5511,13 +5517,13 @@ export const useAppStore = create<AppState>()(persist(
         }
     },
 
-    freezeMembershipByCustomer: (planId, startISO, endISO) => {
+    freezeMembershipByCustomer: (planId, startISO, endISO, reason) => {
         const plan = get().customerPlans.find(p => p.id === planId);
         if (!plan) return { fee: 0 };
         const customer = get().customers.find(c => c.id === plan.customerId);
         // Freeze via the shared action — handles status, expiry extension,
-        // freezeCount++ and the audit entry with a customer_portal source.
-        get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal");
+        // freezeCount++, the reason, and the audit entry (customer_portal).
+        get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal", reason);
         // Charge-now: emit a non-refundable freeze-fee row when the branch's
         // policy configures a fee (mirrors the cancellation-penalty pattern).
         const policy = customer
@@ -5554,7 +5560,7 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             customerPlans: state.customerPlans.map(p =>
                 p.id === planId
-                    ? { ...p, status: "active" as const, freezeStartISO: undefined, freezeEndISO: undefined }
+                    ? { ...p, status: "active" as const, freezeStartISO: undefined, freezeEndISO: undefined, freezeReason: undefined }
                     : p,
             ),
         }));

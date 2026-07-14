@@ -126,9 +126,9 @@ export default function MyPlanPage() {
     const [freezePlan, setFreezePlan] = useState<CustomerPlan | null>(null);
     const [cancelPlan, setCancelPlan] = useState<CustomerPlan | null>(null);
 
-    function doFreeze(days: number) {
+    function doFreeze(days: number, reason: string) {
         if (!freezePlan) return;
-        const { fee } = freezeMembershipByCustomer(freezePlan.id, REAL_TODAY_ISO, addDaysISO(REAL_TODAY_ISO, days));
+        const { fee } = freezeMembershipByCustomer(freezePlan.id, REAL_TODAY_ISO, addDaysISO(REAL_TODAY_ISO, days), reason || undefined);
         showToast(
             `${Noun(freezePlan)} has been frozen`,
             fee > 0

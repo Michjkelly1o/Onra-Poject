@@ -297,6 +297,15 @@ function UnfreezeModal({ plan, onClose, onConfirm }: {
                     <DatePicker value={plan.freezeEndISO ?? ""} onChange={() => {}} placeholder="—" disabled />
                 </div>
             </div>
+            {/* Reason the member gave when self-freezing (customer portal). */}
+            {plan.freezeReason && (
+                <div className="mt-4 flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Freeze reason</label>
+                    <div className="rounded-[8px] border-1 border-[#e4e7ec] bg-[#f9fafb] px-3.5 py-2.5 text-[14px] text-[#475467]">
+                        {plan.freezeReason}
+                    </div>
+                </div>
+            )}
         </ModalShell>
     );
 }

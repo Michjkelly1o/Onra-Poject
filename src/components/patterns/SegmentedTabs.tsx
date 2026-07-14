@@ -40,18 +40,22 @@ export interface SegmentedTabsProps {
     onChange: (key: string) => void;
     /** Extra classes on the outer pill container. */
     className?: string;
+    /** Stretch the control to fill its parent's width, each tab taking an
+     *  equal share. Default false keeps the hug-content chrome. */
+    fullWidth?: boolean;
 }
 
-export function SegmentedTabs({ tabs, activeKey, onChange, className }: SegmentedTabsProps) {
+export function SegmentedTabs({ tabs, activeKey, onChange, className, fullWidth }: SegmentedTabsProps) {
     return (
         // `w-fit` sets width: fit-content so the wrapper truly hugs its
         // tab buttons. `inline-flex` alone isn't enough — when this sits
         // inside a `flex flex-col` parent (e.g. the Integrations page
         // wrapper), the parent's default `align-items: stretch` still
         // pulls the wrapper to full cross-axis width. `w-fit` overrides
-        // that explicitly.
+        // that explicitly. `fullWidth` opts INTO the stretch instead.
         <div className={cn(
-            "inline-flex w-fit items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
+            fullWidth ? "flex w-full" : "inline-flex w-fit",
+            "items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1",
             className,
         )}>
             {tabs.map(t => {
@@ -64,6 +68,7 @@ export function SegmentedTabs({ tabs, activeKey, onChange, className }: Segmente
                         disabled={t.disabled}
                         onClick={() => !t.disabled && onChange(t.key)}
                         className={cn(
+                            fullWidth && "flex-1 justify-center",
                             "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all inline-flex items-center gap-2",
                             active
                                 ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"

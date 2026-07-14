@@ -171,18 +171,19 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
 
     const patch = (p: Partial<FreezePolicy>) => setForm(prev => (prev ? { ...prev, ...p } : prev));
 
+    // Reason mutations read `prev` (not the render-closure `form`) so rapid /
+    // batched clicks can't drop an update — this is what made "Add custom
+    // reason" appear to do nothing.
     function setReason(id: string, next: Partial<FreezeReason>) {
-        if (!form) return;
-        patch({ reasons: form.reasons.map(r => (r.id === id ? { ...r, ...next } : r)) });
+        setForm(prev => (prev ? { ...prev, reasons: prev.reasons.map(r => (r.id === id ? { ...r, ...next } : r)) } : prev));
     }
     function addCustomReason() {
-        if (!form) return;
         customReasonSeq += 1;
-        patch({ reasons: [...form.reasons, { id: `custom_${customReasonSeq}`, label: "", enabled: true }] });
+        const id = `custom_${customReasonSeq}`;
+        setForm(prev => (prev ? { ...prev, reasons: [...prev.reasons, { id, label: "", enabled: true }] } : prev));
     }
     function removeReason(id: string) {
-        if (!form) return;
-        patch({ reasons: form.reasons.filter(r => r.id !== id) });
+        setForm(prev => (prev ? { ...prev, reasons: prev.reasons.filter(r => r.id !== id) } : prev));
     }
 
     const membershipOptions: MultiSelectOption[] = memberships
@@ -290,8 +291,9 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                     onChange={v => patch({ fee_enabled: v })}
                                 />
                                 {form.fee_enabled && (
-                                    <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex flex-col gap-3">
                                         <SegmentedTabs
+                                            fullWidth
                                             tabs={[
                                                 { key: "one_time",  label: "One-time fee"  },
                                                 { key: "recurring", label: "Recurring fee" },
@@ -299,7 +301,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                             activeKey={form.fee_type}
                                             onChange={k => patch({ fee_type: k as FreezePolicy["fee_type"] })}
                                         />
-                                        <div className="w-[180px]">
+                                        <Field label="Fee amount">
                                             <NumberField
                                                 value={form.fee_amount_aed}
                                                 onChange={v => patch({ fee_amount_aed: v })}
@@ -308,7 +310,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                                     <div className="px-3 flex items-center text-[14px] text-[#475467] border-r-1 border-[#d0d5dd] bg-[#fbfdfc]">AED</div>
                                                 }
                                             />
-                                        </div>
+                                        </Field>
                                     </div>
                                 )}
                             </Section>
@@ -354,7 +356,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                             ))}
                                         </div>
                                         <button type="button" onClick={addCustomReason}
-                                            className="flex items-center gap-1.5 text-[14px] font-medium text-[#5925dc] hover:opacity-80 w-fit">
+                                            className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--brand-primary)] hover:opacity-80 w-fit">
                                             <Plus className="w-4 h-4" />
                                             Add custom reason
                                         </button>
@@ -364,6 +366,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
 
                             <Section title="Apply to">
                                 <SegmentedTabs
+                                    fullWidth
                                     tabs={[
                                         { key: "all",      label: "All"      },
                                         { key: "specific", label: "Specific" },
