@@ -99,8 +99,11 @@ export default function InstructorLayout({
                 <div className="flex-1 min-w-0 p-[12px]">
                     <div className="bg-white border border-[#dcded5] rounded-[20px] h-full flex flex-col overflow-hidden">
                         {/* Breadcrumbs render INSIDE Header, tight under the
-                            page title (see components/layout/Header.tsx). */}
-                        <Header />
+                            page title (see components/layout/Header.tsx).
+                            Suspense-bounded — Header reads useSearchParams. */}
+                        <Suspense fallback={null}>
+                            <Header />
+                        </Suspense>
                         <main className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col">
                             {children}
                         </main>

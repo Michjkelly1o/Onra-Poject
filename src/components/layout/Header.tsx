@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { SESSION_TYPE_LABEL } from "@/lib/session-type";
 import Link from "next/link";
 import { SearchMd, UserCircle, LogOut01, ChevronDown } from "@untitledui/icons";
 import NotificationBell from "@/components/NotificationBell";
@@ -165,7 +166,14 @@ function ProfileDropdown({ accountHref }: { accountHref: string }) {
 
 export default function Header() {
     const pathname = usePathname();
-    const pageTitle = getPageTitle(pathname);
+    // Session-type deep-link on /admin/services — the "Private sessions" and
+    // "Recovery & wellness" nav entries share the route, so the header title
+    // reads the type off the query to show the right module name.
+    const typeParam = useSearchParams().get("type");
+    const pageTitle =
+        pathname === "/admin/services" && (typeParam === "private" || typeParam === "recovery")
+            ? SESSION_TYPE_LABEL[typeParam]
+            : getPageTitle(pathname);
     const [searchOpen, setSearchOpen] = useState(false);
     const isInstructor = pathname.startsWith("/instructor");
 
