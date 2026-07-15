@@ -117,7 +117,7 @@ export default function WalletPage() {
                     <div className="flex flex-col gap-6">
                         {groups.map((g) => (
                             <div key={g.key} className="flex flex-col gap-3">
-                                <p className="text-sm font-medium leading-5 text-[#344054]">{g.label}</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{g.label}</p>
                                 <div className="flex flex-col gap-3">
                                     {g.rows.map((t, i) => (
                                         <div key={t.id} className="flex flex-col gap-3">

@@ -38,10 +38,11 @@ function fmtShortDate(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
-/** "2026-07" → "July 2026" for the month group headers (matches Payment history). */
-function monthLabelOf(key: string): string {
-    const [y, m] = key.split("-").map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+/** ISO date → "Wed 15 Jul 2026" for the day group headers. */
+function dayLabelOf(dateISO: string): string {
+    return new Date(`${dateISO}T00:00:00`)
+        .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+        .replace(",", "");
 }
 
 export function BookingsView({ tab }: { tab: BookingTab }) {
@@ -158,13 +159,13 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
         tab === "upcoming" ? x.sortKey.localeCompare(y.sortKey) : y.sortKey.localeCompare(x.sortKey),
     );
 
-    // Group by month for the section headers (like Payment history).
-    const monthGroups: { key: string; label: string; rows: typeof mergedRows }[] = [];
+    // Group by day for the section headers ("Wed 15 Jul 2026").
+    const dayGroups: { key: string; label: string; rows: typeof mergedRows }[] = [];
     for (const row of mergedRows) {
-        const key = row.sortKey.slice(0, 7);
-        const last = monthGroups[monthGroups.length - 1];
+        const key = row.sortKey.slice(0, 10);
+        const last = dayGroups[dayGroups.length - 1];
         if (last && last.key === key) last.rows.push(row);
-        else monthGroups.push({ key, label: monthLabelOf(key), rows: [row] });
+        else dayGroups.push({ key, label: dayLabelOf(key), rows: [row] });
     }
 
     const instructors = useFilterInstructors();
@@ -233,9 +234,9 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                     )
                 ) : (
                     <div className="flex flex-col gap-6">
-                        {monthGroups.map((g) => (
+                        {dayGroups.map((g) => (
                             <div key={g.key} className="flex flex-col gap-3">
-                                <p className="text-sm font-medium leading-5 text-[#344054]">{g.label}</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{g.label}</p>
                                 <div className="flex flex-col gap-3">{g.rows.map((r) => r.el)}</div>
                             </div>
                         ))}

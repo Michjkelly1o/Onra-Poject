@@ -149,7 +149,7 @@ export default function PaymentHistoryPage() {
                     <div className="flex flex-col gap-6">
                         {groups.map(([key, rows]) => (
                             <div key={key} className="flex flex-col gap-3">
-                                <p className="text-sm font-medium leading-5 text-[#344054]">{monthLabel(key)}</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{monthLabel(key)}</p>
                                 <div className="flex flex-col gap-3">
                                     {rows.map((r, i) => (
                                         <div key={r.id} className="flex flex-col gap-3">

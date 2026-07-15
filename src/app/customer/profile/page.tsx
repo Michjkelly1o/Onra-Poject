@@ -186,7 +186,7 @@ export default function ProfilePage() {
                 >
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
-                        <p className="text-xs font-normal leading-[18px] text-[#475467]">Credit balance</p>
+                        <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
                         <div className="flex flex-col gap-2">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{creditLabel}</p>
                             <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                 >
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
-                        <p className="text-xs font-normal leading-[18px] text-[#475467]">Credit balance</p>
+                        <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">No active plan</p>
                         <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]" />
                         <Button
@@ -241,7 +241,7 @@ export default function ProfilePage() {
 
             {/* Bookings — a dedicated card with Upcoming / Past entries (Figma 4488). */}
             <div className={`p-4 ${CARD}`}>
-                <p className="text-xs font-normal leading-[18px] text-[#475467]">Bookings</p>
+                <p className="text-sm font-normal leading-5 text-[#475467]">Bookings</p>
                 <div className="mt-3 flex gap-3">
                     {([
                         { icon: Calendar, label: "Upcoming", tab: "upcoming" },
