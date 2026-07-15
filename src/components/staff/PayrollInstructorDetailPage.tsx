@@ -385,8 +385,13 @@ function exportPayoutReport(rows: ClassRow[], instructor: Instructor, periodLabe
 
 // ─── Sidebar earnings summary (Figma — Total earnings this month card) ────
 
-function SidebarEarningsCard({ totalThisMonth, payRateAmount, branchId, showTax }: {
+function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateAmount, branchId, showTax }: {
     totalThisMonth: number;
+    /** Classes taught this month + the progress-bar cap. Only passed for real
+     *  instructors — non-instructor staff teach nothing, so the whole
+     *  Classes stat + progress bar is omitted for them. */
+    classesCount?: number;
+    classCap?: number;
     /** Branch context for the pay_rate tax-suffix lookup. */
     branchId: string;
     payRateAmount: string;
@@ -395,6 +400,12 @@ function SidebarEarningsCard({ totalThisMonth, payRateAmount, branchId, showTax 
      *  so a country change in Settings propagates here live. */
     showTax: boolean;
 }) {
+    // Instructors keep the classes stat + progress bar; non-instructor staff
+    // get the compact card (total + default pay rate only).
+    const showClasses = classesCount !== undefined && classCap !== undefined;
+    const pct = showClasses && classCap! > 0
+        ? Math.min(100, Math.round((classesCount! / classCap!) * 100))
+        : 0;
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
             <div className="flex flex-col gap-1">
@@ -402,11 +413,31 @@ function SidebarEarningsCard({ totalThisMonth, payRateAmount, branchId, showTax 
                 <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{aed(totalThisMonth)}</p>
                 {showTax && <TaxSuffix category="pay_rate" branchId={branchId} />}
             </div>
-            <div className="h-px w-full bg-[#e4e7ec]" />
-            <div className="flex flex-col gap-1">
-                <p className="text-[12px] text-[#667085]">Default pay rate</p>
-                <p className="text-[13px] font-medium text-[#344054]">{payRateAmount}</p>
-            </div>
+            {showClasses ? (
+                <>
+                    <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
+                        <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[12px] text-[#667085]">Classes</p>
+                            <p className="text-[13px] font-medium text-[#344054]">{classesCount}/{classCap} classes</p>
+                        </div>
+                        <div className="flex flex-col gap-1 text-right">
+                            <p className="text-[12px] text-[#667085]">Default pay rate</p>
+                            <p className="text-[13px] font-medium text-[#344054]">{payRateAmount}</p>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[12px] text-[#667085]">Default pay rate</p>
+                        <p className="text-[13px] font-medium text-[#344054]">{payRateAmount}</p>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
@@ -587,18 +618,23 @@ export default function PayrollInstructorDetailPage({
     // seed dates are static (May 2026) — they'd resolve to 0 every month
     // after May. `payroll_entries.period_start` is computed at load time =
     // current month, so it stays accurate as the demo runs.
-    const sidebarEntryEarnings = useMemo(() => {
+    const sidebarThisMonth = useMemo(() => {
         const now = new Date();
         const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
         const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        return payrollEntries
+        const inMonth = payrollEntries
             .filter(e => e.instructorId === instructorId)
             .filter(e => {
                 const t = new Date(e.periodStart + "T00:00:00").getTime();
                 return t >= mFrom.getTime() && t <= mTo.getTime();
-            })
-            .reduce((s, e) => s + e.totalEarnings, 0);
+            });
+        return {
+            earnings: inMonth.reduce((s, e) => s + e.totalEarnings, 0),
+            classes:  inMonth.reduce((s, e) => s + e.classesCount,  0),
+        };
     }, [payrollEntries, instructorId]);
+    const sidebarEntryEarnings = sidebarThisMonth.earnings;
+    const sidebarClassesCount  = sidebarThisMonth.classes;
 
     // Current-month commission for the sidebar's "this month" total. The
     // sidebar is always the calendar month, independent of the period filter
@@ -713,6 +749,11 @@ export default function PayrollInstructorDetailPage({
                             <div className="px-6 pb-6 flex flex-col gap-5">
                                 <SidebarEarningsCard
                                     totalThisMonth={sidebarMonthly}
+                                    // Classes stat is instructor-only; non-
+                                    // instructor staff teach nothing, so it's
+                                    // omitted for them.
+                                    classesCount={isRealInstructor ? sidebarClassesCount : undefined}
+                                    classCap={isRealInstructor ? Math.max(10, sidebarClassesCount) : undefined}
                                     payRateAmount={payRateAmount}
                                     branchId={ins.branchId}
                                     showTax={showPayrollTax}
