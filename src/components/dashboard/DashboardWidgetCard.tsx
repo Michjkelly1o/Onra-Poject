@@ -404,7 +404,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={32} />
-                        <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} />
+                        <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} />
                         <Line type="monotone" dataKey="v" name="Payments" stroke="#92d1de" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
@@ -473,7 +473,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={36} />
-                            <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} />
+                            <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} />
                             <Line type="monotone" dataKey="revenue"  name="Net revenue"      stroke="#92d1de" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="lastWeek" name="Last week"         stroke="#aad4bd" strokeWidth={2} dot={false} strokeDasharray="4 2" />
                         </LineChart>
@@ -490,7 +490,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={36} tickFormatter={aedAxisTick} />
-                            <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} cursor={{ fill: "#f9fafb" }} />
+                            <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="membership" name="Membership"   fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="package"    name="Class package" fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
                         </BarChart>
