@@ -48,7 +48,10 @@
 // surfaces inherit the new behavior for free. Don't add a parallel
 // "real attendance" helper somewhere else.
 
-import type { ClassSchedule, CustomerTransaction, PayRate, CommissionCategory } from "@/lib/store";
+import type {
+    ClassSchedule, CustomerTransaction, PayRate, CommissionCategory, CommissionValueType,
+    ClassBooking, AppointmentBooking, Appointment,
+} from "@/lib/store";
 
 /** Earnings for a single class.
  *
@@ -486,162 +489,239 @@ function defaultPayModelLabel(type: PayRate["type"]): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sales commission (Monthly rate)
+// Sales commission (categorised — commission refactor Phase 3)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Every POS sale carries `staffId` — stamped at checkout by `applyPurchase`
-// from the logged-in cashier's `staff_profile_id`. When a staff member's
-// pay rate is Monthly and has non-zero commission percentages set, we
-// derive their period commission from those transactions.
+// Commission is now categorised (% or fixed AED per sale) and available on ANY
+// rate type (client Jul 2026). A staff member's period commission is the sum of
+// their pay rate's `commissions[]` rows evaluated against the sales credited to
+// them, plus any threshold `bonuses[]` that fired.
 //
-// The math (per staff, per period):
+// Attribution source per category:
+//   • membership / credit_package — CustomerTransaction rows where
+//     `staffId === staff.id` (the POS "Credited to" pick). Net of refunds/voids.
+//   • gift_card / retail — no sales source in the prototype yet (gift cards
+//     don't post a transaction; retail POS isn't built). Compute to 0 for now.
+//   • class_booking — class bookings on schedules the staff INSTRUCTS. Value
+//     base = count × a drop-in proxy (same `× 150` approximation
+//     `earningsForClass` uses — real per-booking pricing lands with the booking
+//     revenue model).
+//   • service_private / service_recovery — appointment bookings on the staff's
+//     private/recovery services. Value base = count × a service proxy.
 //
-//   net_pkg_sales = sum(kind=package,    type=sale,           in period)
-//                 − sum(kind=package,    type∈{refund,void},  in period)
-//   net_mem_sales = sum(kind=membership, type=sale,           in period)
-//                 − sum(kind=membership, type∈{refund,void},  in period)
-//
-//   commission = net_pkg_sales × packages%  +  net_mem_sales × memberships%
-//
-// Rules the client feedback locks in:
-//   • Only Monthly-rate staff earn commission.
-//   • Only POS-attributed sales count (payment_source ≠ customer_portal
-//     AND staff_id present). Portal self-service sales don't attribute.
-//   • Refunds/voids clawback in the CURRENT period. Past confirmed runs
-//     are frozen (snapshot at run time — see `runPayroll`).
-//   • Cancellation-penalty rows never count toward commission.
+// For a PERCENT row commission = base × %. For a FIXED row commission =
+// value × count. A bonus fires once the category count crosses its threshold.
 
-/** Per-kind subtotal used by the payroll UI + math. All AED. */
+/** Per-booking value proxies for class/service commission bases (percent
+ *  rows). Documented approximations — consistent with `earningsForClass`'s
+ *  `attendees × 150` revenue proxy. Real per-booking pricing arrives with the
+ *  booking-revenue model. */
+const CLASS_DROPIN_AED  = 150;
+const SERVICE_PROXY_AED = 200;
+
+/** Slices the calc reads. Bundled so the signature stays stable as more
+ *  attribution sources come online. */
+export interface CommissionSources {
+    transactions: CustomerTransaction[];
+    classBookings: ClassBooking[];
+    classSchedules: ClassSchedule[];
+    appointmentBookings: AppointmentBooking[];
+    appointments: Appointment[];
+}
+
+/** One evaluated commission row. */
+export interface CommissionLine {
+    category: CommissionCategory;
+    valueType: CommissionValueType;
+    /** The row's % or AED figure. */
+    value: number;
+    /** Net sales AED in the category credited to the staff (the base a percent
+     *  row multiplies). */
+    baseAed: number;
+    /** Number of sales / bookings in the category. */
+    count: number;
+    /** AED commission this row produced. */
+    commissionAed: number;
+}
+
+/** One evaluated threshold-bonus row. */
+export interface BonusLine {
+    category: CommissionCategory;
+    valueType: CommissionValueType;
+    value: number;
+    threshold: number;
+    count: number;
+    fired: boolean;
+    bonusAed: number;
+}
+
 export interface CommissionBreakdown {
-    /** Net package sales (sales − refunds/voids), AED. */
-    packagesSalesAed: number;
-    /** Net membership sales (sales − refunds/voids), AED. */
-    membershipsSalesAed: number;
-    /** Applied packages % (from pay rate; 0 when unset / non-Monthly). */
-    packagesPercent: number;
-    /** Applied memberships % (from pay rate; 0 when unset / non-Monthly). */
-    membershipsPercent: number;
-    /** AED commission on packages: packagesSalesAed × packagesPercent%. */
-    packagesCommission: number;
-    /** AED commission on memberships: membershipsSalesAed × memberships%. */
-    membershipsCommission: number;
-    /** Total AED commission: packagesCommission + membershipsCommission. */
+    lines: CommissionLine[];
+    bonusLines: BonusLine[];
+    /** Total AED: sum(lines) + sum(fired bonuses). */
     totalCommission: number;
-    /** Ids of the sale transactions that produced the commission (drill-
-     *  through source). Refund/void rows are NOT included in the id list
-     *  — they only affect the numeric net. */
+    /** Sale + refund ids that fed the product-category lines (drill-through). */
     saleTransactionIds: string[];
-    /** Ids of the refund/void rows that clawed back commission in the
-     *  period. Surfaced by the drill-through so the admin sees why a
-     *  net is smaller than gross sales. */
     refundTransactionIds: string[];
 }
 
 const EMPTY_COMMISSION: CommissionBreakdown = {
-    packagesSalesAed: 0,
-    membershipsSalesAed: 0,
-    packagesPercent: 0,
-    membershipsPercent: 0,
-    packagesCommission: 0,
-    membershipsCommission: 0,
+    lines: [],
+    bonusLines: [],
     totalCommission: 0,
     saleTransactionIds: [],
     refundTransactionIds: [],
 };
 
-/** Derive commission for one staff member over one period.
- *
- *  Pure — no store access. Callers pass the live `customerTransactions`
- *  slice + the staff's assigned pay rate. Safe to call from render.
- *
- *  Returns EMPTY_COMMISSION when the rate isn't Monthly or has no
- *  commission percentages set — so consumers can call unconditionally
- *  and read `.totalCommission` without null-checks. */
-/** Phase-1 compat shim — resolve a category's commission PERCENT from a pay
- *  rate. Reads the new categorised `commissions[]` rows first (percent-type
- *  only for this legacy calc), falling back to the deprecated Monthly-only
- *  fixed fields. Phase 3 replaces this whole function with a full categorised
- *  + fixed + bonus calc. Product-side categories only: membership ↔ the
- *  "membership" category, packages ↔ "credit_package". */
-function commissionPercentFor(payRate: PayRate, category: CommissionCategory): number {
-    if (payRate.commissions) {
-        const row = payRate.commissions.find(c => c.category === category && c.valueType === "percent");
-        return row?.value ?? 0;
-    }
-    if (payRate.type === "monthly") {
-        if (category === "credit_package") return payRate.salesCommissionPackagesPercent ?? 0;
-        if (category === "membership")     return payRate.salesCommissionMembershipsPercent ?? 0;
-    }
-    return 0;
+interface CategoryStats {
+    /** Net AED base (percent rows). */
+    base: number;
+    /** Number of qualifying sales / bookings. */
+    count: number;
+    saleIds: string[];
+    refundIds: string[];
 }
 
-export function commissionForPeriod(
+/** Transaction kind backing each product commission category. gift_card +
+ *  retail have no transaction source in the prototype yet. */
+const TXN_KIND_FOR: Partial<Record<CommissionCategory, CustomerTransaction["kind"]>> = {
+    membership:     "membership",
+    credit_package: "package",
+};
+
+/** Resolve the (base AED, count) for one category credited to one staff over
+ *  the period. */
+function categoryStats(
     staffId: string,
-    payRate: PayRate | undefined,
-    transactions: CustomerTransaction[],
-    periodStartISO: string,
-    periodEndISO: string,
-): CommissionBreakdown {
-    // Phase 1: commission still computes only for the Monthly rate's product
-    // sales (packages + memberships). Class/service + fixed + bonus commission
-    // — and non-Monthly rates — are wired in Phase 3's full calc rewrite.
-    if (!payRate || payRate.type !== "monthly") return EMPTY_COMMISSION;
-    const pkgPct = commissionPercentFor(payRate, "credit_package");
-    const memPct = commissionPercentFor(payRate, "membership");
-    if (pkgPct === 0 && memPct === 0) return EMPTY_COMMISSION;
-
-    // Period bounds are inclusive on both ends (ISO date strings). We
-    // compare on the yyyy-mm-dd prefix so the comparison is time-zone
-    // agnostic — matches how `payroll_entries` seeds its periods.
-    const startDay = periodStartISO.slice(0, 10);
-    const endDay   = periodEndISO.slice(0, 10);
-
-    let pkgNet = 0, memNet = 0;
+    category: CommissionCategory,
+    s: CommissionSources,
+    startDay: string,
+    endDay: string,
+): CategoryStats {
     const saleIds: string[] = [];
     const refundIds: string[] = [];
 
-    for (const t of transactions) {
-        if (t.staffId !== staffId) continue;
-        if (t.kind !== "package" && t.kind !== "membership") continue;
-        const day = t.createdAtISO.slice(0, 10);
-        if (day < startDay || day > endDay) continue;
-        const isSale     = (t.transactionType ?? "sale") === "sale";
-        const isClawback = t.transactionType === "refund" || t.transactionType === "void";
-        if (!isSale && !isClawback) continue;
-
-        // Sales use subtotalAed when present (excludes tax) so commission
-        // is on the merchandise line, not the VAT — matches how real
-        // studios pay commission. Fallback to amountAed for legacy rows
-        // without the breakdown.
-        const gross = Math.abs(t.subtotalAed ?? t.amountAed);
-        if (t.kind === "package") {
-            if (isSale) { pkgNet += gross; saleIds.push(t.id); }
-            else        { pkgNet -= gross; refundIds.push(t.id); }
-        } else {
-            if (isSale) { memNet += gross; saleIds.push(t.id); }
-            else        { memNet -= gross; refundIds.push(t.id); }
+    // ── Product categories (from POS transactions) ──────────────────────────
+    const txnKind = TXN_KIND_FOR[category];
+    if (txnKind) {
+        let net = 0, count = 0;
+        for (const t of s.transactions) {
+            if (t.staffId !== staffId || t.kind !== txnKind) continue;
+            const day = t.createdAtISO.slice(0, 10);
+            if (day < startDay || day > endDay) continue;
+            const isSale     = (t.transactionType ?? "sale") === "sale";
+            const isClawback = t.transactionType === "refund" || t.transactionType === "void";
+            if (!isSale && !isClawback) continue;
+            // Commission is on the merchandise line (pre-tax) when available.
+            const gross = Math.abs(t.subtotalAed ?? t.amountAed);
+            if (isSale) { net += gross; count++; saleIds.push(t.id); }
+            else        { net -= gross;          refundIds.push(t.id); }
         }
+        return { base: Math.max(0, net), count: Math.max(0, count), saleIds, refundIds };
     }
 
-    // Never let a period's commission go negative — if refunds exceed
-    // sales in the same period, the commission zeros out (the excess
-    // clawback isn't carried forward to future periods, per standard
-    // practice). Callers can inspect `refundTransactionIds` to see why.
-    const packagesSalesAed    = Math.max(0, pkgNet);
-    const membershipsSalesAed = Math.max(0, memNet);
-    const packagesCommission    = Math.round(packagesSalesAed    * pkgPct / 100);
-    const membershipsCommission = Math.round(membershipsSalesAed * memPct / 100);
+    // ── Class bookings (instructor-attributed) ──────────────────────────────
+    if (category === "class_booking") {
+        const schedById = new Map(s.classSchedules.map(c => [c.id, c]));
+        let count = 0;
+        for (const b of s.classBookings) {
+            if (b.status === "cancelled" || b.status === "waitlisted") continue;
+            const sch = schedById.get(b.classScheduleId);
+            if (!sch || sch.instructorId !== staffId) continue;
+            if (sch.dateISO < startDay || sch.dateISO > endDay) continue;
+            count++;
+        }
+        return { base: count * CLASS_DROPIN_AED, count, saleIds, refundIds };
+    }
+
+    // ── Service bookings (private / recovery, instructor-attributed) ─────────
+    if (category === "service_private" || category === "service_recovery") {
+        const wantType = category === "service_private" ? "private" : "recovery";
+        const apptById = new Map(s.appointments.map(a => [a.id, a]));
+        let count = 0;
+        for (const b of s.appointmentBookings) {
+            if (b.status === "Cancelled") continue;
+            const a = apptById.get(b.appointmentId);
+            if (!a || a.instructorId !== staffId || a.type !== wantType) continue;
+            if (a.dateISO < startDay || a.dateISO > endDay) continue;
+            count++;
+        }
+        return { base: count * SERVICE_PROXY_AED, count, saleIds, refundIds };
+    }
+
+    // gift_card, retail — no source yet.
+    return { base: 0, count: 0, saleIds, refundIds };
+}
+
+/** Derive categorised commission for one staff member over one period.
+ *
+ *  Pure — no store access. Callers pass the live slices via `sources` + the
+ *  staff's assigned pay rate. Returns EMPTY_COMMISSION when the rate has no
+ *  commission / bonus rows, so consumers can call unconditionally and read
+ *  `.totalCommission` without null-checks. Works for ANY rate type. */
+export function commissionForPeriod(
+    staffId: string,
+    payRate: PayRate | undefined,
+    sources: CommissionSources,
+    periodStartISO: string,
+    periodEndISO: string,
+): CommissionBreakdown {
+    if (!payRate) return EMPTY_COMMISSION;
+    const commissions = payRate.commissions ?? [];
+    const bonuses     = payRate.bonuses ?? [];
+    if (commissions.length === 0 && bonuses.length === 0) return EMPTY_COMMISSION;
+
+    // Period bounds inclusive (yyyy-mm-dd prefix, tz-agnostic).
+    const startDay = periodStartISO.slice(0, 10);
+    const endDay   = periodEndISO.slice(0, 10);
+
+    // Cache per-category stats — commission + bonus rows may share a category.
+    const cache = new Map<CommissionCategory, CategoryStats>();
+    const statsFor = (cat: CommissionCategory): CategoryStats => {
+        let st = cache.get(cat);
+        if (!st) { st = categoryStats(staffId, cat, sources, startDay, endDay); cache.set(cat, st); }
+        return st;
+    };
+
+    const lines: CommissionLine[] = [];
+    const saleIds: string[] = [];
+    const refundIds: string[] = [];
+    for (const row of commissions) {
+        const st = statsFor(row.category);
+        const commissionAed = row.valueType === "percent"
+            ? Math.round(st.base * row.value / 100)
+            : Math.round(row.value * st.count);
+        lines.push({
+            category: row.category, valueType: row.valueType, value: row.value,
+            baseAed: st.base, count: st.count, commissionAed,
+        });
+        saleIds.push(...st.saleIds);
+        refundIds.push(...st.refundIds);
+    }
+
+    const bonusLines: BonusLine[] = [];
+    for (const row of bonuses) {
+        const st = statsFor(row.category);
+        const fired = st.count >= row.threshold;
+        const bonusAed = !fired ? 0
+            : row.valueType === "percent" ? Math.round(st.base * row.value / 100)
+            : Math.round(row.value);
+        bonusLines.push({
+            category: row.category, valueType: row.valueType, value: row.value,
+            threshold: row.threshold, count: st.count, fired, bonusAed,
+        });
+    }
+
+    const totalCommission =
+        lines.reduce((sum, l) => sum + l.commissionAed, 0) +
+        bonusLines.reduce((sum, b) => sum + b.bonusAed, 0);
 
     return {
-        packagesSalesAed,
-        membershipsSalesAed,
-        packagesPercent: pkgPct,
-        membershipsPercent: memPct,
-        packagesCommission,
-        membershipsCommission,
-        totalCommission: packagesCommission + membershipsCommission,
-        saleTransactionIds: saleIds,
-        refundTransactionIds: refundIds,
+        lines,
+        bonusLines,
+        totalCommission,
+        saleTransactionIds:   Array.from(new Set(saleIds)),
+        refundTransactionIds: Array.from(new Set(refundIds)),
     };
 }
 

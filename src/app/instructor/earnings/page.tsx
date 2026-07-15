@@ -39,7 +39,8 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel } from "@/lib/payroll-calc";
+import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
+import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -112,6 +113,11 @@ export default function InstructorEarningsPage() {
     const classSchedules = useAppStore(s => s.classSchedules);
     const instructors    = useAppStore(s => s.instructors);
     const payRates       = useAppStore(s => s.payRates);
+    // Commission sources (commission refactor Phase 3 — instructors earn it).
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const classBookings        = useAppStore(s => s.classBookings);
+    const appointmentBookings  = useAppStore(s => s.appointmentBookings);
+    const appointments         = useAppStore(s => s.appointments);
     // Live category list — drives the Filter panel's Categories pills.
     const classCategories = useAppStore(s => s.classCategories);
     const categoryNames = useMemo(
@@ -142,6 +148,19 @@ export default function InstructorEarningsPage() {
 
     // ── Period window + previous-period baseline (for KPI delta) ──
     const currentRange = useMemo(() => dateFilterToRange(period), [period]);
+
+    // Categorised commission for the selected period (Phase 3).
+    const commission = useMemo(() => {
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return commissionForPeriod(staffId, payRate, {
+            transactions: customerTransactions,
+            classBookings,
+            classSchedules,
+            appointmentBookings,
+            appointments,
+        }, iso(currentRange.from), iso(currentRange.to));
+    }, [staffId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, currentRange]);
+    const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
     const prevRange = useMemo(() => {
         const len = currentRange.to.getTime() - currentRange.from.getTime();
         return {
@@ -268,6 +287,11 @@ export default function InstructorEarningsPage() {
                     deltaPercent={kpis.classesDelta}
                 />
             </div>
+
+            {/* Sales commission — categorised (commission refactor Phase 3;
+                instructors now earn commission on the classes/services credited
+                to them). */}
+            {hasCommission && <SalesCommissionCard commission={commission} />}
 
             {/* ── Toolbar + table — VERBATIM admin PayrollInstructorDetailPage
                 pattern. Real `<table>` + admin's TH/TD constants.

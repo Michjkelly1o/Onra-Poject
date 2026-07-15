@@ -41,8 +41,6 @@ import {
     PerformanceLineChart, AttendanceBarChart,
     type LinePoint, type AttendancePoint,
 } from "@/components/staff/InstructorCharts";
-import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
-import { commissionForPeriod } from "@/lib/payroll-calc";
 import {
     useAppStore,
     permissionSectionsFor,
@@ -662,20 +660,15 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
 //
 // Front Desk / Operator / Branch admin / Owner get their own Overview that
 // mirrors the instructor "Personal information" section (minus the
-// instructor-only fields) and — when their pay rate is Monthly with a
-// non-zero commission % — a Sales commission section derived LIVE from
-// POS transactions credited to them via `staffId`.
+// instructor-only fields).
 //
-// The commission derivation reuses the same pure `commissionForPeriod`
-// helper the payroll module used before this reshuffle, so the math is
-// consistent even though the surface moved.
+// Sales commission moved to the Payroll detail page (commission refactor
+// Phase 3 — client wants it in payroll, not on the staff profile). This tab no
+// longer renders it.
 
 function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
-    const payRates = useAppStore(s => s.payRates);
-    const customerTransactions = useAppStore(s => s.customerTransactions);
     const shifts = useAppStore(s => s.shifts);
 
-    const payRate = staff.payRateId ? payRates.find(p => p.id === staff.payRateId) : undefined;
     const assignedShift = staff.shiftId ? shifts.find(sh => sh.id === staff.shiftId) : undefined;
 
     // 12-hour formatter (same as InstructorOverviewTab).
@@ -685,19 +678,6 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
         const ampm = h < 12 ? "AM" : "PM";
         return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
     }
-
-    // Commission scoped to the current calendar month — the natural
-    // "how am I doing this month" cadence for a salaried non-instructor.
-    const commission = useMemo(() => {
-        const now = new Date();
-        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-        const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const monthEnd = `${monthEndDate.getFullYear()}-${String(monthEndDate.getMonth() + 1).padStart(2, "0")}-${String(monthEndDate.getDate()).padStart(2, "0")}`;
-        return commissionForPeriod(staff.id, payRate, customerTransactions, monthStart, monthEnd);
-    }, [staff.id, payRate, customerTransactions]);
-
-    const showCommission = payRate?.type === "monthly" &&
-        (commission.packagesPercent > 0 || commission.membershipsPercent > 0);
 
     return (
         <div className="px-6 pb-6 flex flex-col gap-6">
@@ -718,16 +698,6 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
                             : "—"} />
                 </div>
             </div>
-
-            {/* Sales commission (this month) — only when the pay rate is
-                Monthly with a non-zero commission % set. Live from POS
-                transactions credited to this staff via `staffId`. */}
-            {showCommission && (
-                <div className="flex flex-col gap-3">
-                    <p className="text-[14px] text-[#667085]">Sales commission</p>
-                    <SalesCommissionCard commission={commission} />
-                </div>
-            )}
         </div>
     );
 }

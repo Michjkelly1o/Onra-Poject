@@ -6305,10 +6305,19 @@ export const useAppStore = create<AppState>()(persist(
                 // so the field shape is uniform across entries.
                 if (status === "paid") {
                     const rate = state.payRates.find(r => r.id === e.payRateId);
+                    // Categorised commission (Phase 3) — snapshot the total at
+                    // run confirm so past runs stay frozen even if the rate's
+                    // rows change later.
                     const c = commissionForPeriod(
                         e.instructorId,
                         rate,
-                        state.customerTransactions,
+                        {
+                            transactions:        state.customerTransactions,
+                            classBookings:       state.classBookings,
+                            classSchedules:      state.classSchedules,
+                            appointmentBookings: state.appointmentBookings,
+                            appointments:        state.appointments,
+                        },
                         e.periodStart,
                         e.periodEnd,
                     );
@@ -6316,10 +6325,6 @@ export const useAppStore = create<AppState>()(persist(
                         ...e,
                         status,
                         ...(payrollRunId ? { payrollRunId } : {}),
-                        commissionPackagesSalesAed:    c.packagesSalesAed,
-                        commissionMembershipsSalesAed: c.membershipsSalesAed,
-                        commissionPackagesPercent:     c.packagesPercent,
-                        commissionMembershipsPercent:  c.membershipsPercent,
                         commissionAmount:              c.totalCommission,
                         totalEarnings: e.baseEarnings + e.adjustmentAmount + c.totalCommission,
                     };

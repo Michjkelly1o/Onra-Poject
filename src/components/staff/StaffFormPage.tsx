@@ -482,30 +482,17 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             .map(r => ({ value: r.id, label: r.name })),
         [allRoles],
     );
-    // Pay rate options depend on the selected role: instructors can pick any
-    // pay rate EXCEPT ones with a non-zero sales commission % (Monthly rate
-    // variants that award commission on POS sales are reserved for non-
-    // instructor staff). Non-instructors see every active rate.
-    const isInstructorRole = allRoles.find(r => r.id === form.roleId)?.type === "instructor";
+    // Every active pay rate is selectable for any role — commission refactor
+    // Phase 3 lets instructors earn commission too, so there's no longer a
+    // role-based restriction on which rates they can be assigned.
     const payRateOptions = useMemo(
         () => allPayRates
             .filter(p => p.status === "active")
-            .filter(p => {
-                if (!isInstructorRole) return true;
-                if (p.type !== "monthly") return true;
-                // Monthly rates only pass if they carry NO commission —
-                // otherwise they'd credit commission to an instructor, which
-                // last week's client feedback ruled out. (This guard is
-                // removed entirely in Phase 3 of the commission refactor, when
-                // instructors gain commission.) Detection now reads the new
-                // categorised `commissions[]` plus the deprecated % fields.
-                const hasCommission = (p.commissions?.length ?? 0) > 0
-                    || (p.salesCommissionPackagesPercent ?? 0) > 0
-                    || (p.salesCommissionMembershipsPercent ?? 0) > 0;
-                return !hasCommission;
-            })
+            // Commission refactor Phase 3: instructors CAN now earn commission,
+            // so every active rate is selectable for any role (the old
+            // "instructors can't have a commission rate" guard is removed).
             .map(p => ({ value: p.id, label: p.name })),
-        [allPayRates, isInstructorRole],
+        [allPayRates],
     );
 
     // Active branches for the assignment picker.

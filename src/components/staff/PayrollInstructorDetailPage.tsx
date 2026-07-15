@@ -41,7 +41,8 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, type DateRange } from "@/lib/period-filter";
-import { earningsForClass, aed } from "@/lib/payroll-calc";
+import { earningsForClass, aed, commissionForPeriod } from "@/lib/payroll-calc";
+import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
 import { Toast } from "@/components/ui/Toast";
 import {
     useAppStore, computePayRateDisplay,
@@ -455,6 +456,11 @@ export default function PayrollInstructorDetailPage({
     const classSchedules         = useAppStore(s => s.classSchedules);
     const payrollEntries         = useAppStore(s => s.payrollEntries);
     const branches               = useAppStore(s => s.branches);
+    // Sources for the categorised commission calc (commission refactor Phase 3).
+    const customerTransactions   = useAppStore(s => s.customerTransactions);
+    const classBookings          = useAppStore(s => s.classBookings);
+    const appointmentBookings    = useAppStore(s => s.appointmentBookings);
+    const appointments           = useAppStore(s => s.appointments);
     const assignInstructorPayRate = useAppStore(s => s.assignInstructorPayRate);
     const showToast              = useAppStore(s => s.showToast);
     // Country-gated payroll tax UI (see `payrollTaxAppliesForCountry`).
@@ -497,6 +503,20 @@ export default function PayrollInstructorDetailPage({
 
     const branch = branches.find(b => b.id === ins.branchId);
     const range = useMemo(() => dateFilterToRange(period), [period]);
+
+    // Categorised sales commission for the selected period (Phase 3). Renders
+    // only when the pay rate carries commission / bonus rows.
+    const commission = useMemo(() => {
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return commissionForPeriod(instructorId, payRate, {
+            transactions: customerTransactions,
+            classBookings,
+            classSchedules,
+            appointmentBookings,
+            appointments,
+        }, iso(range.from), iso(range.to));
+    }, [instructorId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
+    const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
 
     // ─── Class rows: filter schedules by instructor + period + status ─────
     const instructorSchedules = useMemo(
@@ -721,6 +741,14 @@ export default function PayrollInstructorDetailPage({
                                     Icon={Users01}
                                 />
                             </div>
+
+                            {/* Sales commission — categorised (commission refactor
+                                Phase 3). Moved here from the Staff detail page. */}
+                            {hasCommission && (
+                                <div className="px-6 pt-6">
+                                    <SalesCommissionCard commission={commission} />
+                                </div>
+                            )}
 
                             {/* Toolbar */}
                             <div className="px-6 pt-6 flex items-center gap-3">
