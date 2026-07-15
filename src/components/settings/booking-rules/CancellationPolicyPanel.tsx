@@ -18,14 +18,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose } from "@untitledui/icons";
+import { XClose, Trash01, Lightbulb02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { UnitSuffixSelect } from "@/components/patterns/UnitSuffixSelect";
 import { MultiSelectCard, type MultiSelectOption } from "@/components/patterns/MultiSelectCard";
 import { useAppStore } from "@/lib/store";
-import type { ClassesSettings, CancellationOutcome } from "@/lib/store";
+import type { ClassesSettings, CancellationOutcome, FreezeReason } from "@/lib/store";
 
 type WindowUnit = ClassesSettings["booking_close_unit"] & ("hours" | "minutes");
 
@@ -46,6 +46,24 @@ function Section({ title, children }: { title: string; children: React.ReactNode
             <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
             {children}
         </div>
+    );
+}
+
+/** Sage-filled checkbox — mirrors the freeze policy panel's Checkbox so both
+ *  reason blocks read as one design pattern across settings. */
+function ReasonCheckbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+    return (
+        <button type="button" role="checkbox" aria-checked={checked} onClick={onChange}
+            className={cn(
+                "w-5 h-5 rounded-[6px] border-1 flex items-center justify-center shrink-0 transition-colors",
+                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#98a2b3]",
+            )}>
+            {checked && (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M10 3L4.5 8.5L2 6" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            )}
+        </button>
     );
 }
 
@@ -226,6 +244,12 @@ export function CancellationPolicyPanel({ open, onClose }: {
     const [noShowAed,    setNoShowAed]    = useState<number>(policy.membership_no_show_fee_aed);
     const [packageIds,   setPackageIds]   = useState<string[]>(policy.applied_to_package_ids);
     const [classIds,     setClassIds]     = useState<string[]>(policy.applied_to_class_template_ids);
+    // Cancellation reasons — single source for both admin + customer cancel
+    // modals. `?? []` guards against old persisted policies missing the field.
+    const [reasons,      setReasons]      = useState<FreezeReason[]>(
+        (policy.cancellation_reasons ?? []).map(r => ({ ...r })),
+    );
+    const [newReason,    setNewReason]    = useState("");
 
     useEffect(() => {
         if (open) {
@@ -243,6 +267,8 @@ export function CancellationPolicyPanel({ open, onClose }: {
             setNoShowAed(policy.membership_no_show_fee_aed);
             setPackageIds(policy.applied_to_package_ids);
             setClassIds(policy.applied_to_class_template_ids);
+            setReasons((policy.cancellation_reasons ?? []).map(r => ({ ...r })));
+            setNewReason("");
             setShown(false);
             const r = requestAnimationFrame(() => setShown(true));
             return () => cancelAnimationFrame(r);
@@ -302,9 +328,30 @@ export function CancellationPolicyPanel({ open, onClose }: {
             membership_no_show_fee_aed:         noShowAed,
             applied_to_package_ids:        packageIds,
             applied_to_class_template_ids: classIds,
+            // Drop blank custom rows before persisting.
+            cancellation_reasons:          reasons.filter(r => r.label.trim().length > 0),
         });
         showToast("Cancellation policy updated", "The new policy is now live.", "success", "check");
         onClose();
+    }
+
+    // ── Reason mutations — mirror the freeze policy panel exactly so both
+    //    surfaces behave identically for the studio owner. ────────────────
+    function toggleReason(id: string) {
+        setReasons(prev => prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+    }
+    function removeReason(id: string) {
+        setReasons(prev => prev.filter(r => r.id !== id));
+    }
+    function addNewReason() {
+        const label = newReason.trim();
+        if (!label) return;
+        setReasons(prev => {
+            if (prev.some(r => r.label.trim().toLowerCase() === label.toLowerCase())) return prev;
+            const id = `custom_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+            return [...prev, { id, label, enabled: true }];
+        });
+        setNewReason("");
     }
 
     if (!open) return null;
@@ -474,6 +521,65 @@ export function CancellationPolicyPanel({ open, onClose }: {
                             selected={classIds}
                             onChange={setClassIds}
                         />
+                    </Section>
+
+                    {/* ── Cancellation reasons ───────────────────────
+                        Single source of truth for the reason dropdown in
+                        the admin cancel-plan modal + the customer-portal
+                        cancel sheet. Same UX as the freeze policy
+                        reasons block. Empty list → dropdown hidden on
+                        both surfaces, plan can be cancelled without a
+                        reason. */}
+                    <Section title="Cancellation reasons">
+                        {/* Neutral info banner — matches the canonical
+                            info-alert style used across the app. */}
+                        <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
+                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                                Members will only see the reasons enabled below when they cancel a plan.
+                            </p>
+                        </div>
+
+                        <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white p-4 flex flex-col gap-2">
+                            {reasons.length === 0 ? (
+                                <p className="text-[13px] text-[#667085] italic py-1">
+                                    No reasons yet — add one below.
+                                </p>
+                            ) : (
+                                reasons.map(r => (
+                                    <div key={r.id} className="flex items-center gap-3 min-h-[32px]">
+                                        <ReasonCheckbox checked={r.enabled} onChange={() => toggleReason(r.id)} />
+                                        <span className="flex-1 text-[14px] text-[#344054]">{r.label}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeReason(r.id)}
+                                            aria-label="Remove reason"
+                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors"
+                                        >
+                                            <Trash01 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+
+                            {reasons.length > 0 && (
+                                <div className="h-px w-full bg-[#f2f4f7] my-1" />
+                            )}
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={newReason}
+                                    onChange={e => setNewReason(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
+                                    placeholder="Add a custom reason"
+                                    className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                />
+                                <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
+                                    Add
+                                </Button>
+                            </div>
+                        </div>
                     </Section>
                 </div>
 

@@ -15,7 +15,11 @@ import { FreezePlanSheet } from "@/components/customer/profile/FreezePlanSheet";
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
 import { Button } from "@/components/ui/button";
 
-const CANCEL_REASONS = [
+// Cancel-plan reasons come from the studio-wide Cancellation policy (Booking
+// rules → Cancellation policy panel) — same source the admin cancel modal
+// reads. Fallback (older persisted policies) mirrors the historical customer
+// list so the sheet never opens empty.
+const FALLBACK_CANCEL_REASONS = [
     "I want to cancel",
     "I'm having trouble with payment",
     "I'm moving to a new area",
@@ -34,6 +38,17 @@ export default function MyPlanPage() {
     const cancelCustomerPlan = useAppStore((s) => s.cancelCustomerPlan);
     const reactivateCustomerPlan = useAppStore((s) => s.reactivateCustomerPlan);
     const freezePolicies = useAppStore((s) => s.freezePolicies);
+    const cancellationPolicy = useAppStore((s) => s.cancellationPolicy);
+
+    // Cancel-plan reasons come from Booking rules → Cancellation policy panel.
+    // Fallback covers old persisted policies missing the field. When the list
+    // is empty, the sheet still opens (customer picks nothing).
+    const cancelReasonList = (cancellationPolicy.cancellation_reasons ?? [])
+        .filter((r) => r.enabled && r.label.trim())
+        .map((r) => r.label);
+    const cancelReasons = cancelReasonList.length > 0
+        ? cancelReasonList
+        : FALLBACK_CANCEL_REASONS;
     const showToast = useAppStore((s) => s.showToast);
 
     // Branch freeze policy governs the customer's self-service freeze. Missing
@@ -225,7 +240,7 @@ export default function MyPlanPage() {
                 open={!!cancelPlan}
                 onClose={() => setCancelPlan(null)}
                 title="Please select a reason"
-                options={CANCEL_REASONS}
+                options={cancelReasons}
                 confirmLabel="Cancel"
                 destructive
                 onConfirm={doCancel}

@@ -241,6 +241,15 @@ export interface CancellationPolicy {
     applied_to_package_ids: string[];
     /** Class template ids the policy applies to. FK → class_templates.id. */
     applied_to_class_template_ids: string[];
+
+    /** Cancellation reasons — single source of truth for the reason dropdown
+     *  in BOTH the admin cancel-plan modal AND the customer-portal cancel
+     *  sheet. Edit here in Booking rules → Cancellation policy panel; changes
+     *  flow to both surfaces on the same render. When the list is empty (all
+     *  deleted or all unchecked), the dropdown is hidden and the plan can be
+     *  cancelled without picking a reason (mirrors freeze policy behaviour).
+     *  Shape reused from FreezeReason — same { id, label, enabled }. */
+    cancellation_reasons: FreezeReason[];
 }
 
 // ─── Freeze Policy (customer settings) ─────────────────────────────────────

@@ -4014,7 +4014,12 @@ export const useAppStore = create<AppState>()(persist(
     rooms:         SEED_ROOMS.map(r => ({ ...r })),
     businessHours: SEED_BUSINESS_HOURS.map(h => ({ ...h })),
     classesSettings: { ...SEED_CLASSES_SETTINGS },
-    cancellationPolicy: { ...SEED_CANCELLATION_POLICY },
+    cancellationPolicy: {
+        ...SEED_CANCELLATION_POLICY,
+        // Deep-copy the reasons array so local edits in the panel don't
+        // mutate the seed singleton (same pattern used for freezePolicies).
+        cancellation_reasons: SEED_CANCELLATION_POLICY.cancellation_reasons.map(r => ({ ...r })),
+    },
     freezePolicies: SEED_FREEZE_POLICY.map(p => ({ ...p, reasons: p.reasons.map(r => ({ ...r })), membership_ids: [...p.membership_ids] })),
     classCategories: SEED_CLASS_CATEGORIES.map(c => ({ ...c })),
     sidebarCollapsed: false,
@@ -8050,7 +8055,12 @@ export const useAppStore = create<AppState>()(persist(
         //   (Settings → Customer → Freeze policy). Phase 1 is additive; the
         //   customer/admin freeze flows are wired in Phase 2. Bump reseeds so
         //   the new slice lands.
-        version: 59,
+        // v60 (2026-07-15): CancellationPolicy gains `cancellation_reasons`
+        //   (single source of truth for the cancel-plan reason dropdown in
+        //   the admin CustomerDetailPage modal AND the customer-portal cancel
+        //   sheet). Bump so old persisted policies pick up the new field
+        //   rather than reading undefined.
+        version: 60,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

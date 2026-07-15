@@ -57,12 +57,8 @@ type PlanKind = CustomerPlan["kind"];
 
 const CREDIT_VALUE_AED = 100;
 
-const CANCEL_REASONS = [
-    "Customer request",
-    "Relocating",
-    "Financial reasons",
-    "Switching plan",
-];
+// Plan-cancel reasons come from the studio-wide Cancellation policy — see
+// CancelPlanModal below (Booking rules → Cancellation policy panel).
 const REMOVE_REASONS = [
     "Issued to wrong customer",
     "Duplicate complimentary",
@@ -350,8 +346,18 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
     onClose: () => void;
     onConfirm: (mode: "today" | "period_end", reason: string) => void;
 }) {
+    // Cancellation reasons come from the studio-wide Cancellation policy
+    // (Booking rules → Cancellation policy panel) — same source the customer
+    // portal reads. Empty list = dropdown hidden, cancel proceeds without a
+    // reason. `?? []` guards against an older persisted policy.
+    const cancellationPolicy = useAppStore(s => s.cancellationPolicy);
+    const availableReasons = (cancellationPolicy.cancellation_reasons ?? [])
+        .filter(r => r.enabled && r.label.trim())
+        .map(r => r.label);
+    const showReason = availableReasons.length > 0;
+
     const [mode, setMode] = useState<"today" | "period_end">("today");
-    const [reason, setReason] = useState(CANCEL_REASONS[0]);
+    const [reason, setReason] = useState<string>(availableReasons[0] ?? "");
 
     const billingLabel = plan.kind === "membership" ? "Next billing" : "Expiry date";
     const billingValue = plan.priceAed
@@ -406,11 +412,15 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
                 <ModeCard value="today" title="Cancel start today" sub="Customer loses access now" />
                 <ModeCard value="period_end" title="Cancel at end of current period" sub={`Accessible until ${fmtDate(plan.expiryISO)}`} />
             </div>
-            <div className="flex flex-col gap-1.5">
-                <label className="text-[14px] font-medium text-[#344054]">Cancellation reason</label>
-                <SelectInput value={reason} onChange={setReason} placeholder="Select a reason"
-                    options={CANCEL_REASONS.map(r => ({ value: r, label: r }))} width="w-full" />
-            </div>
+            {/* Hidden when the studio's Cancellation policy has no enabled
+                reasons — cancel then proceeds without one. */}
+            {showReason && (
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Cancellation reason</label>
+                    <SelectInput value={reason} onChange={setReason} placeholder="Select a reason"
+                        options={availableReasons.map(r => ({ value: r, label: r }))} width="w-full" />
+                </div>
+            )}
         </ModalShell>
     );
 }

@@ -63,4 +63,16 @@ export const cancellation_policy: CancellationPolicy = {
         "tpl_barre",
         "tpl_hot_yoga",
     ],
+
+    // ── Cancellation reasons ────────────────────────────────────────
+    // Single source of truth for the reason dropdown in the admin
+    // cancel-plan modal + the customer-portal cancel sheet. Members
+    // pick from the enabled entries below. Empty list → dropdown is
+    // hidden and cancel proceeds without a reason.
+    cancellation_reasons: [
+        { id: "customer_request",  label: "Customer request",     enabled: true },
+        { id: "relocating",        label: "Relocating",           enabled: true },
+        { id: "financial_reasons", label: "Financial reasons",    enabled: true },
+        { id: "switching_plan",    label: "Switching plan",       enabled: true },
+    ],
 };
