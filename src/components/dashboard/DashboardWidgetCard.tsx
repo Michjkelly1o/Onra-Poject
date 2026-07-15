@@ -268,7 +268,14 @@ function buildSeries(id: string, period: DateFilter): object[] {
         const point: Record<string, string | number> = { date };
         for (const key of Object.keys(seed)) {
             const arr = seed[key];
-            point[key] = Math.max(0, Math.round(arr[i % arr.length] * scale));
+            const raw = arr[i % arr.length];
+            // Demo integrity: a positive seed value should never collapse to 0
+            // through display scaling (Day scale of 0.15 × per-branch share can
+            // round small values down). Floor at 1 when the seed was positive
+            // so tooltips never read "AED 0" / "0×" for real data; a genuine
+            // seeded zero stays zero.
+            const scaled = Math.round(raw * scale);
+            point[key] = raw > 0 ? Math.max(1, scaled) : Math.max(0, scaled);
         }
         return point;
     });
@@ -367,7 +374,14 @@ function scaleRows(rows: object[], factor: number): object[] {
     return rows.map(row => {
         const out: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(row)) {
-            out[k] = typeof v === "number" ? Math.max(0, Math.round(v * factor)) : v;
+            if (typeof v === "number") {
+                // Same demo-integrity rule as buildSeries: never let a positive
+                // pre-branch value round down to 0 after branch scaling.
+                const scaled = Math.round(v * factor);
+                out[k] = v > 0 ? Math.max(1, scaled) : Math.max(0, scaled);
+            } else {
+                out[k] = v;
+            }
         }
         return out;
     });
