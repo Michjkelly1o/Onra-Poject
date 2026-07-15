@@ -276,37 +276,40 @@ function buildSeries(id: string, period: DateFilter): object[] {
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
-const ChartTooltip = ({ active, payload, label }: any) => {
+/** Canonical money formatter for chart tooltips: `AED 15,000`. Rounds to whole
+ *  AED, en-US thousands separator (comma) — matches the app-wide convention
+ *  (payroll, insights KPI cards, notification bodies, store fixtures). */
+export function aedMoney(value: unknown): string {
+    const n = Number(value) || 0;
+    return `AED ${Math.round(n).toLocaleString("en-US")}`;
+}
+
+/** Optional per-entry value formatter. Receives the Recharts payload entry
+ *  and returns the display string for the value column. Default = raw value. */
+type ChartValueFormatter = (entry: { value: unknown; dataKey?: string | number; name?: string }) => string;
+
+const ChartTooltip = ({ active, payload, label, valueFormatter }: {
+    active?: boolean;
+    payload?: readonly { dataKey?: string | number; name?: string; value?: unknown; color?: string }[];
+    label?: string | number;
+    valueFormatter?: ChartValueFormatter;
+}) => {
     if (!active || !payload?.length) return null;
     return (
         <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[140px]">
             <p className="font-semibold text-[#101828] mb-1.5">{label}</p>
-            {payload.map((p: any) => (
-                <p key={p.dataKey} className="flex items-center gap-1.5 mb-0.5">
-                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-[#475467]">{p.name}:</span>
-                    <span className="font-medium text-[#101828]">{p.value}</span>
-                </p>
-            ))}
-        </div>
-    );
-};
-
-// AED-formatted variant for money widgets (currently: Sales by product).
-// Values render with thousands separators + AED prefix so the hover state
-// reads as "AED 8,400" instead of the raw quantity-looking "8400".
-const MoneyChartTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[160px]">
-            <p className="font-semibold text-[#101828] mb-1.5">{label}</p>
-            {payload.map((p: any) => (
-                <p key={p.dataKey} className="flex items-center gap-1.5 mb-0.5">
-                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-[#475467]">{p.name}:</span>
-                    <span className="font-medium text-[#101828]">AED {Number(p.value).toLocaleString()}</span>
-                </p>
-            ))}
+            {payload.map((p) => {
+                const display = valueFormatter
+                    ? valueFormatter({ value: p.value, dataKey: p.dataKey, name: p.name })
+                    : String(p.value ?? "");
+                return (
+                    <p key={String(p.dataKey ?? p.name)} className="flex items-center gap-1.5 mb-0.5">
+                        <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="text-[#475467]">{p.name}:</span>
+                        <span className="font-medium text-[#101828]">{display}</span>
+                    </p>
+                );
+            })}
         </div>
     );
 };
@@ -383,7 +386,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={32} />
-                        <Tooltip content={<ChartTooltip />} />
+                        <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} />
                         <Line type="monotone" dataKey="v" name="Payments (AED)" stroke="#92d1de" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
@@ -452,7 +455,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={36} />
-                            <Tooltip content={<ChartTooltip />} />
+                            <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} />
                             <Line type="monotone" dataKey="revenue"  name="Net revenue"      stroke="#92d1de" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="lastWeek" name="Last week"         stroke="#aad4bd" strokeWidth={2} dot={false} strokeDasharray="4 2" />
                         </LineChart>
@@ -469,7 +472,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={36} tickFormatter={aedAxisTick} />
-                            <Tooltip content={<MoneyChartTooltip />} cursor={{ fill: "#f9fafb" }} />
+                            <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="membership" name="Membership"   fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="package"    name="Class package" fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
                         </BarChart>
@@ -689,7 +692,14 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={40} />
-                            <Tooltip content={<ChartTooltip />} />
+                            {/* Mixed units: CPL / CAC are AED, ROAS is a
+                                multiplier. Per-key formatter keeps each
+                                honest instead of AED-prefixing ROAS. */}
+                            <Tooltip content={<ChartTooltip valueFormatter={(p) => {
+                                const n = Number(p.value) || 0;
+                                if (p.dataKey === "roas") return `${n.toLocaleString("en-US")}×`;
+                                return aedMoney(n);
+                            }} />} />
                             <Line type="monotone" dataKey="cpl"  name="CPL"  stroke="#92d1de" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="cac"  name="CAC"  stroke="#f7b955" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="roas" name="ROAS" stroke="#92baa4" strokeWidth={2} dot={false} />
