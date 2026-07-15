@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { payrollBreakdownFor, commissionForPeriod } from "@/lib/payroll-calc";
+import { payrollBreakdownFor, totalEarningsForStaff, type CommissionBreakdown } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -361,6 +361,13 @@ interface RunRow {
      *  silently divides by an approximate per-customer price and
      *  breaks reconciliation on Split-Rate + hybrid revenue rows. */
     totalAttendees: number;
+    /** Base pay BEFORE commission (monthly salary or the entry's class total)
+     *  — the figure the CSV pay-model breakdown expands. */
+    baseEarnings: number;
+    /** Sales commission credited for the period — appended as its own CSV
+     *  line so components reconcile to `payout`. */
+    commission: CommissionBreakdown;
+    /** base + commission — the "Instructor payout" column + run totals. */
     payout: number;
     status: PayrollEntryStatus;
 }
@@ -396,25 +403,33 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
+    const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
     const lines: string[] = [];
     for (const r of rows) {
-        // Pipe REAL totals through — `totalAttendees` and `grossRevenue`
-        // both come from the payroll entry, so the breakdown row math
-        // (basis × rate = amount) reconciles to the entry's
-        // `total_earnings` on every pay model. The old code
-        // reconstructed attendees as `grossRevenue / 150`, which
-        // silently divided by an approximate per-customer price and
-        // desynced Split-Rate + hybrid-revenue rows from their subtotal.
+        // Expand the BASE pay (salary / class earnings) into its pay-model
+        // components. `totalAttendees` + `grossRevenue` come from the payroll
+        // entry so basis × rate = amount reconciles on every pay model.
         const breakdown = payrollBreakdownFor(r.payRate, {
-            totalEarningsAed: r.payout,
+            totalEarningsAed: r.baseEarnings,
             completedClasses: r.classesCount,
             totalAttendees:   r.totalAttendees,
             revenueBaseAed:   r.grossRevenue,
         });
+        // Sales commission is paid ON TOP of the base — append it as its own
+        // component so the rows sum to the total payout (base + commission).
+        const components = [...breakdown.components];
+        if (r.commission.totalCommission > 0) {
+            components.push({
+                component: "Sales commission",
+                basis:  "—",
+                rate:   "—",
+                amount: fmt(r.commission.totalCommission),
+            });
+        }
         const statusLabel = r.status === "paid" ? "Paid" : "Pending";
         const totalPayout = Math.round(r.payout);
 
-        breakdown.components.forEach((comp, idx) => {
+        components.forEach((comp, idx) => {
             const isFirst = idx === 0;
             lines.push([
                 isFirst ? r.instructor.name  : "",
@@ -431,12 +446,12 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
             ].map(escape).join(","));
         });
 
-        // Multi-component models get an explicit Subtotal row so the
-        // client can see the sum without re-adding in Excel — matches
-        // the reference table shipped in the client's screenshot.
-        if (breakdown.components.length > 1) {
+        // Multi-component rows (incl. any base + commission split) get an
+        // explicit Subtotal = total payout so the client can see the sum
+        // without re-adding in Excel.
+        if (components.length > 1) {
             lines.push([
-                "", "", "", "", "Subtotal", "", "", breakdown.total,
+                "", "", "", "", "Subtotal", "", "", fmt(r.payout),
                 "", "", "",
             ].map(escape).join(","));
         }
@@ -530,6 +545,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             });
         }
 
+        // Shared inputs for the canonical earnings formula (base + commission).
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const fromISO = iso(range.from);
+        const toISO   = iso(range.to);
+
         const instructorRows: RunRow[] = instructors
             .filter(i => i.status === "active")
             .map(instructor => {
@@ -537,34 +558,39 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                 const livePayRate = instructor.payRateId
                     ? payRates.find(p => p.id === instructor.payRateId)
                     : undefined;
+                const { base, commission, total } = totalEarningsForStaff(
+                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                );
                 return {
                     entryId: entry?.id ?? `noentry_${instructor.id}`,
                     actualEntryId: entry?.id,
                     instructor,
                     branchId: instructor.branchId,
-                    payRateName: entry?.payRateName ?? livePayRate?.name ?? "—",
+                    // Current default rate — live name over the entry snapshot.
+                    payRateName: livePayRate?.name ?? entry?.payRateName ?? "—",
                     payRate:     livePayRate,
                     classesCount:   entry?.classesCount   ?? 0,
                     totalHours:     entry?.totalHours     ?? 0,
                     grossRevenue:   entry?.grossRevenue   ?? 0,
                     totalAttendees: entry?.totalAttendees ?? 0,
-                    payout:         entry?.totalEarnings  ?? 0,
+                    baseEarnings:   base,
+                    commission,
+                    payout:         total,
                     status:         entry?.status         ?? "pending",
                 } satisfies RunRow;
             });
 
-        // Non-instructor staff rows (Phase 3B) — no class teaching, so payout =
+        // Non-instructor staff rows (Phase 3B) — no class teaching, so base pay =
         // monthly salary (if any) + commission. No payroll entry, so they show
         // but aren't part of the mark-paid batch (needs `actualEntryId`).
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
         const staffRows: RunRow[] = staff
             .filter(st => st.status === "active")
             .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
             .map(st => {
                 const livePayRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
-                const commission = commissionForPeriod(st.id, livePayRate, sources, iso(range.from), iso(range.to));
-                const salary = livePayRate?.type === "monthly" ? livePayRate.fixedSalary : 0;
+                const { base, commission, total } = totalEarningsForStaff(
+                    st.id, livePayRate, undefined, sources, fromISO, toISO,
+                );
                 const synthetic: Instructor = {
                     id: st.id, name: st.fullName, initials: st.initials, color: st.color,
                     imageUrl: st.imageUrl, email: st.email, phone: st.phone,
@@ -582,7 +608,9 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     totalHours: 0,
                     grossRevenue: 0,
                     totalAttendees: 0,
-                    payout: salary + commission.totalCommission,
+                    baseEarnings: base,
+                    commission,
+                    payout: total,
                     status: "pending",
                 } satisfies RunRow;
             });

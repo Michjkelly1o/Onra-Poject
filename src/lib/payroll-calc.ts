@@ -727,3 +727,49 @@ export function commissionForPeriod(
     };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Canonical staff earnings — the SINGLE formula every payroll surface uses
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A staff member's earnings for a period = base pay + sales commission. Before
+// this helper each surface (compensation list, Run payroll, staff detail, CSV
+// exports) rolled its own math and they drifted apart — the list showed a
+// per-class instructor's payroll-entry total while the detail recomputed live
+// class earnings (0 when the schedule seed sits in a different month), and
+// neither the list nor the run added commission to instructors. Route every
+// surface through `baseEarningsFor` + `totalEarningsForStaff` so the Earnings /
+// Payout figure is identical wherever it renders.
+
+/** Base pay (BEFORE sales commission) for a staff member over a month:
+ *  - `monthly` rate  → the fixed monthly salary (a month rollup is one salary,
+ *    independent of how many classes the schedule seed happens to hold).
+ *  - any per-class rate → the payroll entry's class-teaching total.
+ *  - no rate / no entry → 0.
+ *
+ *  Reading the live pay rate (not the entry's snapshot) for the monthly branch
+ *  means a stale entry — e.g. an instructor moved onto Monthly but whose seed
+ *  entry still says the old flat rate — never desyncs the displayed salary. */
+export function baseEarningsFor(
+    payRate: PayRate | undefined,
+    entryTotalEarnings: number | undefined,
+): number {
+    if (payRate?.type === "monthly") return payRate.fixedSalary;
+    return entryTotalEarnings ?? 0;
+}
+
+/** Total staff earnings = base pay + sales commission, plus the pieces the
+ *  callers need (base, the commission breakdown). ONE call every payroll
+ *  surface makes so the number always agrees. */
+export function totalEarningsForStaff(
+    staffId: string,
+    payRate: PayRate | undefined,
+    entryTotalEarnings: number | undefined,
+    sources: CommissionSources,
+    periodStartISO: string,
+    periodEndISO: string,
+): { base: number; commission: CommissionBreakdown; total: number } {
+    const base = baseEarningsFor(payRate, entryTotalEarnings);
+    const commission = commissionForPeriod(staffId, payRate, sources, periodStartISO, periodEndISO);
+    return { base, commission, total: base + commission.totalCommission };
+}
+

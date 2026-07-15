@@ -36,7 +36,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
-import { commissionForPeriod } from "@/lib/payroll-calc";
+import { totalEarningsForStaff } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
@@ -236,6 +236,12 @@ export default function CompensationPage() {
     const payRates = useAppStore(s => s.payRates);
 
     const allRows = useMemo<CompRow[]>(() => {
+        // Shared inputs for the canonical earnings formula (base + commission).
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const fromISO = iso(range.from);
+        const toISO   = iso(range.to);
+
         const entriesByInstructor = new Map<string, PayrollEntry>();
         for (const e of payrollEntries) {
             if (!spanInRange(e.periodStart, e.periodEnd, range)) continue;
@@ -262,15 +268,23 @@ export default function CompensationPage() {
             }
         }
 
-        // Instructor rows — class-teaching earnings from payroll entries.
+        // Instructor rows — base pay (class teaching / monthly salary) plus any
+        // sales commission credited to them, via the shared earnings helper so
+        // the figure matches the detail + run-payroll pages exactly.
         const instructorRows: CompRow[] = instructors
             .filter(i => i.status === "active")
             .map(instructor => {
                 const entry = entriesByInstructor.get(instructor.id);
-                const liveRateName = instructor.payRateId
-                    ? payRates.find(p => p.id === instructor.payRateId)?.name
+                const livePayRate = instructor.payRateId
+                    ? payRates.find(p => p.id === instructor.payRateId)
                     : undefined;
-                const payRateName = entry?.payRateName ?? liveRateName ?? "—";
+                // "Default pay rate" is the instructor's CURRENT rate — prefer
+                // the live name over the entry's historical snapshot.
+                const payRateName = livePayRate?.name ?? entry?.payRateName ?? "—";
+
+                const { total } = totalEarningsForStaff(
+                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                );
 
                 const identity: CompRowIdentity = {
                     id: instructor.id,
@@ -289,24 +303,22 @@ export default function CompensationPage() {
                     branchId: instructor.branchId,
                     payRateName,
                     classesCount: entry?.classesCount ?? 0,
-                    earnings: entry?.totalEarnings ?? 0,
+                    earnings: total,
                     status: entry?.status ?? "pending",
                     periodStart: entry?.periodStart ?? "",
                     periodEnd: entry?.periodEnd ?? "",
                 } satisfies CompRow;
             });
 
-        // Non-instructor staff rows (Phase 3B) — no class teaching, so earnings
-        // = monthly salary (if any) + categorised commission for the period.
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        // Non-instructor staff rows (Phase 3B) — no class teaching, so base pay
+        // = monthly salary (if any); commission adds on top. Same helper as the
+        // instructor rows so the earnings column is computed one way only.
         const staffRows: CompRow[] = staff
             .filter(st => st.status === "active")
             .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
             .map(st => {
                 const payRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
-                const commission = commissionForPeriod(st.id, payRate, sources, iso(range.from), iso(range.to));
-                const salary = payRate?.type === "monthly" ? payRate.fixedSalary : 0;
+                const { total } = totalEarningsForStaff(st.id, payRate, undefined, sources, fromISO, toISO);
                 const identity: CompRowIdentity = {
                     id: st.id,
                     name: st.fullName,
@@ -323,7 +335,7 @@ export default function CompensationPage() {
                     branchId: st.branchId ?? "",
                     payRateName: payRate?.name ?? "—",
                     classesCount: 0,
-                    earnings: salary + commission.totalCommission,
+                    earnings: total,
                     status: "pending",
                     periodStart: "",
                     periodEnd: "",

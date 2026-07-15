@@ -146,13 +146,14 @@ export const payroll_entries: PayrollEntrySeed[] = [
     {
         id: "pe_candice_apr2026",
         instructor_id: "staff_candice_wu", branch_id: "branch_forma_east",
-        // Candice moved off the commission-bearing Monthly Rate onto the
-        // Standard flat rate (instructors don't earn sales commission).
-        pay_rate_id: "pr_standard", pay_rate_name: "Standard",
+        // Candice is on the Monthly Rate — keep her entry aligned with that
+        // assignment so the compensation list, run payroll + her detail page
+        // all read the same salary base.
+        pay_rate_id: "pr_monthly", pay_rate_name: "Monthly Rate",
         period_start: DEMO_PERIOD_START, period_end: DEMO_PERIOD_END,
         classes_count: 2,  total_attendees: 18, total_hours: 2,  gross_revenue: 1620,
-        // flat: 2 × 147 = 294
-        base_earnings: 294, adjustment_amount: 0, total_earnings: 294,
+        // monthly: fixed_salary = 8,000 (period rollup is the full month)
+        base_earnings: 8000, adjustment_amount: 0, total_earnings: 8000,
         status: "pending",
     },
     {

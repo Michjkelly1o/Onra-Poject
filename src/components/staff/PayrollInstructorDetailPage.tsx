@@ -40,8 +40,8 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
-import { dateFilterToRange, isoInRange, type DateRange } from "@/lib/period-filter";
-import { earningsForClass, aed, commissionForPeriod } from "@/lib/payroll-calc";
+import { dateFilterToRange, isoInRange, spanInRange, type DateRange } from "@/lib/period-filter";
+import { earningsForClass, aed, commissionForPeriod, baseEarningsFor, totalEarningsForStaff } from "@/lib/payroll-calc";
 import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
 import { Toast } from "@/components/ui/Toast";
 import {
@@ -544,22 +544,33 @@ export default function PayrollInstructorDetailPage({
     const branch = branches.find(b => b.id === ins.branchId);
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
-    // Categorised sales commission for the selected period (Phase 3). Renders
-    // only when the pay rate carries commission / bonus rows.
-    const commission = useMemo(() => {
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return commissionForPeriod(instructorId, payRate, {
-            transactions: customerTransactions,
-            classBookings,
-            classSchedules,
-            appointmentBookings,
-            appointments,
-        }, iso(range.from), iso(range.to));
-    }, [instructorId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
-    const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
     // Non-instructor staff (Phase 3B synthetic rows) teach no classes — hide
     // the bookings toolbar + table + the "Class taught" metric for them.
     const isRealInstructor = instructors.some(i => i.id === instructorId);
+
+    // Payroll-entry base for the SELECTED period — the class-teaching / salary
+    // rollup. Instructors carry entries; non-instructor staff don't.
+    const periodEntryEarnings = useMemo(
+        () => payrollEntries
+            .filter(e => e.instructorId === instructorId && spanInRange(e.periodStart, e.periodEnd, range))
+            .reduce((s, e) => s + e.totalEarnings, 0),
+        [payrollEntries, instructorId, range],
+    );
+
+    // Canonical earnings for the selected period — the SAME helper the
+    // compensation list + run payroll use (base pay + sales commission), so the
+    // "Total earnings" headline agrees wherever the staff is opened. Renders the
+    // commission card only when the pay rate carries commission / bonus rows.
+    const periodTotals = useMemo(() => {
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return totalEarningsForStaff(
+            instructorId, payRate, isRealInstructor ? periodEntryEarnings : undefined,
+            { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments },
+            iso(range.from), iso(range.to),
+        );
+    }, [instructorId, payRate, isRealInstructor, periodEntryEarnings, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
+    const commission = periodTotals.commission;
+    const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
 
     // ─── Class rows: filter schedules by instructor + period + status ─────
     const instructorSchedules = useMemo(
@@ -601,11 +612,9 @@ export default function PayrollInstructorDetailPage({
         });
     }, [allRows, search, statusFilter]);
 
-    // ─── Metrics: total earnings + class taught in selected period ─────────
-    const periodEarnings = useMemo(
-        () => filteredRows.reduce((s, r) => s + r.earnings, 0),
-        [filteredRows],
-    );
+    // ─── Metric: classes taught in the selected period ────────────────────
+    // ("Total earnings" comes from `periodTotals` — the shared base+commission
+    // helper — so it matches the compensation list + run payroll exactly.)
     const classesTaught = useMemo(
         () => filteredRows.filter(r => r.schedule.status === "Completed").length,
         [filteredRows],
@@ -651,12 +660,9 @@ export default function PayrollInstructorDetailPage({
         }, iso(mFrom), iso(mTo)).totalCommission;
     }, [instructorId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);
 
-    // "Total earnings this month" — a monthly-rate person earns a FIXED
-    // salary (+ commission), never a per-class sum. Per-class rate types roll
-    // up from their payroll entries.
-    const sidebarMonthly = payRate?.type === "monthly"
-        ? payRate.fixedSalary + sidebarMonthCommission
-        : sidebarEntryEarnings;
+    // "Total earnings this month" — base pay (monthly salary or the entry's
+    // class rollup, via the shared helper) plus this month's commission.
+    const sidebarMonthly = baseEarningsFor(payRate, sidebarEntryEarnings) + sidebarMonthCommission;
 
     // ─── Pagination ───────────────────────────────────────────────────────
     // ── Bookings sort — Class name / Attendance / Rating / Status /
@@ -797,11 +803,7 @@ export default function PayrollInstructorDetailPage({
                                 <PayRateSnapshotCard payRate={payRate} />
                                 <MetricCard
                                     label="Total earnings"
-                                    value={aed(
-                                        payRate?.type === "monthly"
-                                            ? payRate.fixedSalary + commission.totalCommission
-                                            : isRealInstructor ? periodEarnings : commission.totalCommission,
-                                    )}
+                                    value={aed(periodTotals.total)}
                                     hint="↑ 30% vs last week"
                                     Icon={CheckCircle}
                                 />

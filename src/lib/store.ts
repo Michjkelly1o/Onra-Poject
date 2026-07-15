@@ -8125,7 +8125,12 @@ export const useAppStore = create<AppState>()(persist(
         //   (was stale pr_standard/AED 441) → month rollup = AED 8,000 salary,
         //   so the payroll staff-detail + compensation list show a real total
         //   instead of AED 0. Bump reseeds payroll entries.
-        version: 65,
+        // v66 (2026-07-15): Candice's payroll entry re-based to her Monthly Rate
+        //   (was stale pr_standard/AED 294) to match her assignment — QA fix so
+        //   the earnings figure agrees across the compensation list, run
+        //   payroll + staff detail (all now go through one shared helper). Bump
+        //   reseeds payroll entries.
+        version: 66,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
