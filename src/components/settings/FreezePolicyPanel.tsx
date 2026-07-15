@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose, Trash01, HelpCircle } from "@untitledui/icons";
+import { XClose, Trash01, HelpCircle, Lightbulb02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { UnitSuffixSelect } from "@/components/patterns/UnitSuffixSelect";
@@ -337,10 +337,12 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                 />
                                 {form.allow_exceptions && (
                                     <>
-                                        {/* Brand-tinted info banner — sage, not the previous
-                                            generic blue (matches admin's `#658774` accent). */}
-                                        <div className="rounded-[8px] bg-[#e9fff3] border-1 border-[#abefc6] px-3.5 py-2.5">
-                                            <p className="text-[14px] text-[#3b5446] leading-[20px]">
+                                        {/* Neutral info banner — matches the class-template
+                                            creation tip (target reference for the app-wide
+                                            info-alert style). */}
+                                        <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
+                                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
+                                            <p className="text-[14px] text-[#475467] leading-[20px]">
                                                 Members will only see the reasons enabled below.
                                             </p>
                                         </div>
