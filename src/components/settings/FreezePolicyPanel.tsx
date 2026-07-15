@@ -229,13 +229,9 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                 )}
             >
                 {/* Header */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4">
-                    <div className="flex-1 flex flex-col gap-1">
+                <div className="flex items-center gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4">
+                    <div className="flex-1">
                         <p className="font-semibold text-[18px] text-[#101828]">Freeze policy</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
-                            Freezes let members pause their memberships without canceling. Define
-                            whether freezes are allowed, for how long, and for which memberships.
-                        </p>
                     </div>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">

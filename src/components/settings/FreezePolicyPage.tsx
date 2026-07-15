@@ -63,13 +63,9 @@ export default function FreezePolicyPage() {
 
     return (
         <div className="flex flex-col gap-4 max-w-[1100px]">
-            {/* Header — description + per-branch selector */}
-            <div className="flex items-start justify-between gap-6">
-                <p className="text-[14px] text-[#667085] leading-[20px] max-w-[560px]">
-                    Freezes let members pause their memberships without canceling. Define whether
-                    freezes are allowed, for how long, and for which memberships.
-                </p>
-                <div className="flex flex-col gap-1.5 shrink-0 w-[240px]">
+            {/* Header — per-branch selector (description removed per client Jul 2026). */}
+            <div className="flex justify-end">
+                <div className="flex flex-col gap-1.5 w-[240px]">
                     <span className="text-[13px] font-medium text-[#344054]">Branch</span>
                     <SelectInput value={branchId} onChange={setBranchId} options={branchOptions} width="w-full" />
                 </div>
