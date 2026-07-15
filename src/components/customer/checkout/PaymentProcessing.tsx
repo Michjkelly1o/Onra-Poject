@@ -69,6 +69,10 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                     unitPrice: it.price,
                     quantity: it.quantity,
                 })),
+                // Member self-checkout in the app → tag the origin as the
+                // customer portal (not the front-desk POS). Self-service sales
+                // stay unattributed, so no staff earns commission on them.
+                "customer_portal",
             );
 
             const now = new Date();
