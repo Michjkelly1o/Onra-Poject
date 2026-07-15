@@ -184,7 +184,11 @@ export const staff: StaffSeed[] = [
         first_login_completed: true,
         joined_date: "Mar 12, 2024",
         specialties: ["Reformer Pilates"],
-        pay_rate_id: "pr_standard",
+        // On the Monthly rate so the instructor-side Earnings + admin payroll
+        // show sales commission for an instructor (client Jul 2026 — commission
+        // is Monthly-rate only; Liam is the instructor persona, so this makes
+        // it visible on the instructor's own view).
+        pay_rate_id: "pr_monthly",
         // Demo exemplar — fields match the Figma 7449:161921 personal info card.
         short_intro: "With 7 years of experience, Liam Chen brings dedicated expertise to every Pilates session. With a strong background in fitness, Liam empowers clients to master body awareness, functional movement, and core strength.",
         working_experience_years: 1,

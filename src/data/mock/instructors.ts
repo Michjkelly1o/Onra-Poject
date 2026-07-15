@@ -37,7 +37,9 @@ export const instructors: InstructorSeed[] = [
         email: "liam@email.com", phone: "+971 55 200 2001",
         joined_date: "Mar 12, 2024",
         branch_id: "branch_forma_south",
-        pay_rate_id: "pr_standard", status: "active",
+        // Monthly rate — commission is Monthly-only; Liam (instructor persona)
+        // on it so the client sees instructor commission on the instructor side.
+        pay_rate_id: "pr_monthly", status: "active",
     },
     {
         id: "staff_sara_al_rashid",

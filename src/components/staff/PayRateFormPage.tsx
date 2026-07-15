@@ -198,8 +198,11 @@ function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate 
         // Empty-string sentinel → undefined so the persisted record reads
         // as "no override" instead of holding an empty FK string.
         taxRateId: form.taxRateId === "" ? undefined : form.taxRateId,
-        commissions: commissions.length > 0 ? commissions : undefined,
-        bonuses: bonuses.length > 0 ? bonuses : undefined,
+        // Commission / bonus is a Monthly-rate-only concept — never persist it
+        // on a per-class rate type even if rows linger in form state after a
+        // type switch.
+        commissions: form.type === "monthly" && commissions.length > 0 ? commissions : undefined,
+        bonuses:     form.type === "monthly" && bonuses.length > 0 ? bonuses : undefined,
     };
     const num = (v: number | "") => (v === "" ? 0 : v);
     switch (form.type) {
@@ -1077,11 +1080,15 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                     {form.type === "monthly" && <MonthlyRateSection form={form} set={set} />}
                                 </div>
 
-                                {/* Sales commission + bonus — shared across every
-                                    rate type (client Jul 2026). */}
-                                <div className="flex flex-col gap-4 w-full">
-                                    <SalesCommissionSection form={form} set={set} />
-                                </div>
+                                {/* Sales commission + bonus — Monthly rate only
+                                    (the client's model; commission is a salaried
+                                    staff / seller concept). Hidden for the
+                                    per-class rate types. */}
+                                {form.type === "monthly" && (
+                                    <div className="flex flex-col gap-4 w-full">
+                                        <SalesCommissionSection form={form} set={set} />
+                                    </div>
+                                )}
 
                                 {/* Tax rates — Figma 6106:10962. Lists the global pay-rate
                                     tax rules so the admin can override the inherited

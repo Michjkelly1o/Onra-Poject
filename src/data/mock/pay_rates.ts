@@ -43,16 +43,6 @@ export const pay_rates: PayRateSeed[] = [
         // so the additional-settings toggles are forced off — matches the
         // form which hides that section entirely for `type === "flat"`.
         only_checked_in: false, include_late_cancelled: false,
-        // Flat base + a small per-class commission (client Jul 2026 — every
-        // rate can carry commission). Puts the data-rich SOUTH instructors
-        // (Liam / Maya / Olivia) on a non-zero commission so the instructor
-        // Earnings + payroll-detail commission cards are populated.
-        commissions: [
-            { id: "pr_standard_c1", category: "class_booking", value_type: "percent", value: 4 },
-        ],
-        bonuses: [
-            { id: "pr_standard_b1", category: "class_booking", value_type: "fixed", value: 250, threshold: 50 },
-        ],
     },
     {
         id: "pr_class_tiers", name: "Class Tiers", type: "tiered",
@@ -78,16 +68,6 @@ export const pay_rates: PayRateSeed[] = [
         condition: { kind: "bonus_attendance", bonus_threshold: 8, bonus_per_customer: 37 },
         branch_id: "branch_forma_east", status: "active", usage_count: 2,
         only_checked_in: false, include_late_cancelled: true,
-        // Instructor rate that ALSO earns commission (client Jul 2026 — any
-        // rate can carry categorised commission). Senior instructors get 5%
-        // on the classes credited to them + a monthly volume bonus.
-        commissions: [
-            { id: "pr_senior_c1", category: "class_booking",   value_type: "percent", value: 5 },
-            { id: "pr_senior_c2", category: "service_private", value_type: "percent", value: 8 },
-        ],
-        bonuses: [
-            { id: "pr_senior_b1", category: "class_booking", value_type: "fixed", value: 300, threshold: 40 },
-        ],
     },
     {
         id: "pr_private_sess", name: "Private Session Rate", type: "hybrid",

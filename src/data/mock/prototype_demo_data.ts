@@ -320,6 +320,10 @@ const SELLER_STAFF_DIST: string[] = [
     // payroll won't credit them because their rate has 0% commission).
     "staff_maya_johnson",
     "staff_lucy_hale",
+    // Liam is on the Monthly rate (commission-bearing) — give him product
+    // sales so the instructor-side Earnings + admin payroll show his sales
+    // commission non-empty. Weighted a bit heavier so it's clearly visible.
+    "staff_liam_chen",       "staff_liam_chen",       "staff_liam_chen",
 ];
 const FREEZE_SOURCE_DIST: CustomerPlan["freeze_source"][] = [
     "admin",           "admin",            // 40% — admin assistance during freeze flow

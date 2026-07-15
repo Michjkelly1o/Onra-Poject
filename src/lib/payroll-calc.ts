@@ -666,7 +666,9 @@ export function commissionForPeriod(
     periodStartISO: string,
     periodEndISO: string,
 ): CommissionBreakdown {
-    if (!payRate) return EMPTY_COMMISSION;
+    // Commission is a Monthly-rate-only feature (client's model). Per-class
+    // rate types never earn commission.
+    if (!payRate || payRate.type !== "monthly") return EMPTY_COMMISSION;
     const commissions = payRate.commissions ?? [];
     const bonuses     = payRate.bonuses ?? [];
     if (commissions.length === 0 && bonuses.length === 0) return EMPTY_COMMISSION;
