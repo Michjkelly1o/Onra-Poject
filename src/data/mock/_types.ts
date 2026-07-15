@@ -263,14 +263,16 @@ export interface FreezeReason {
 }
 
 /**
- * Per-branch freeze policy — governs how members self-serve MEMBERSHIP freezes
- * on the customer side. One row per branch (mirrors the per-branch model the
- * client picked). Admin freeze/unfreeze is a full override and ignores this.
- * See new-prd/freeze-policy-implementation-plan.md.
+ * Studio-wide freeze policy — governs how members self-serve MEMBERSHIP
+ * freezes on the customer side. Single record per studio (client flipped from
+ * per-branch to studio-level Jul 2026 — matches how `cancellation_policy` and
+ * `classes_settings` are stored). Admin freeze/unfreeze is a full override
+ * and ignores this. See new-prd/freeze-policy-implementation-plan.md.
  */
 export interface FreezePolicy {
-    /** One row per branch. FK → branches.id. */
-    branch_id: string;
+    /** Singleton identifier — "freeze_policy_default". Matches the pattern
+     *  used by `cancellation_policy` + `classes_settings` (single record). */
+    id: string;
     /** Master toggle — when OFF the customer Freeze action is hidden. */
     enabled: boolean;
     /** Cap the freeze length. When OFF, no maximum is enforced. */

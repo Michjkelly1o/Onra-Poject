@@ -220,7 +220,6 @@ interface MarketingFormData {
     branchIds: string[];
     singleBranchId: string | null;
     productIds: string[];
-    classIds: string[];
     customerTargeting: "all" | "new_users" | "";
 }
 
@@ -609,7 +608,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
     const showToast           = useAppStore(s => s.showToast);
     const memberships         = useAppStore(s => s.memberships);
     const packages            = useAppStore(s => s.packages);
-    const classTemplates      = useAppStore(s => s.classTemplates);
     const classSchedules      = useAppStore(s => s.classSchedules);
     const branches            = useAppStore(s => s.branches);
 
@@ -632,7 +630,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         branchIds: initial?.branchIds ?? [],
         singleBranchId: initial?.singleBranchId ?? null,
         productIds: initial?.productIds ?? [],
-        classIds: initial?.classIds ?? [],
         customerTargeting: initial?.customerTargeting ?? "",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
@@ -676,11 +673,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         ...packages.filter(p => p.status === "active")
             .map(p => ({ id: p.id, label: p.name, group: "Class package" })),
     ], [memberships, packages]);
-
-    const classOptions: MultiOption[] = useMemo(() =>
-        classTemplates.filter(t => t.status === "Active")
-            .map(t => ({ id: t.id, label: t.name, sublabel: t.category })),
-        [classTemplates]);
 
     // "Book an event" CTA target — upcoming real classes (type "class", not
     // cancelled/completed). new_class campaigns are limited to the next 7 days;
@@ -748,7 +740,10 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             branch_ids: branchIds,
             multi_location: form.multiLocation,
             target_package_ids: form.productIds,
-            target_class_ids: form.classIds,
+            // Class scope removed Jul 2026 — payload keeps the FK-list
+            // column empty for schema compat; the Book-an-event CTA already
+            // targets a specific class via cta_class_id.
+            target_class_ids: [],
             customer_targeting: form.customerTargeting || undefined,
             created_at: new Date().toISOString(),
         };
@@ -1000,7 +995,11 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                 )}
                             </Section>
 
-                            {/* ── Applies to ── */}
+                            {/* ── Applies to ──
+                                Class scope was removed per client Jul 2026 —
+                                the Book-an-event CTA already targets a
+                                specific class, so a second class-scope was
+                                redundant. Packages/memberships stay. */}
                             <Section title="Applies to">
                                 <MultiSelectCard
                                     title="Packages"
@@ -1008,13 +1007,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                     options={productOptions}
                                     selected={form.productIds}
                                     onChange={ids => patch({ productIds: ids })}
-                                />
-                                <MultiSelectCard
-                                    title="Classes"
-                                    subtitle="The marketing can be used on these classes"
-                                    options={classOptions}
-                                    selected={form.classIds}
-                                    onChange={ids => patch({ classIds: ids })}
                                 />
                             </Section>
 

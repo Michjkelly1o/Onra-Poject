@@ -445,19 +445,6 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                     )}
                 </VisibilityCard>
 
-                {/* Classes — class name + category */}
-                <VisibilityCard
-                    title="Classes"
-                    subtitle="The campaign can be used on multiple classes"
-                    badge={`${vm.classes.length} selected`}
-                >
-                    {vm.classes.length === 0 ? (
-                        <p className="text-[14px] text-[#667085]">No classes selected.</p>
-                    ) : (
-                        vm.classes.map(c => <CheckRow key={c.id} label={c.name} trailing={c.category} />)
-                    )}
-                </VisibilityCard>
-
                 {/* Customer targeting */}
                 <VisibilityCard
                     title="Customer"
@@ -482,7 +469,6 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
 // ─── ViewModel ───────────────────────────────────────────────────────────────
 
 interface ProductRow { id: string; name: string; group: "Membership" | "Class package" }
-interface ClassRow { id: string; name: string; category: string }
 
 interface MarketingDetailVM {
     status: StoredStatus;
@@ -503,7 +489,6 @@ interface MarketingDetailVM {
     viewCount: number;
     customerTargeting: MarketingItem["customer_targeting"] | "";
     products: ProductRow[];
-    classes: ClassRow[];
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -519,7 +504,6 @@ function MarketingDetailPageInner() {
     const marketingItems    = useAppStore(s => s.marketingItems);
     const memberships       = useAppStore(s => s.memberships);
     const packages          = useAppStore(s => s.packages);
-    const classTemplates    = useAppStore(s => s.classTemplates);
     const classSchedules    = useAppStore(s => s.classSchedules);
     const branches          = useAppStore(s => s.branches);
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
@@ -556,13 +540,6 @@ function MarketingDetailPageInner() {
         })
         .filter((r): r is ProductRow => r !== null);
 
-    const classes: ClassRow[] = (item.target_class_ids ?? [])
-        .map((cid): ClassRow | null => {
-            const t = classTemplates.find(x => x.id === cid);
-            return t ? { id: cid, name: t.name, category: t.category } : null;
-        })
-        .filter((r): r is ClassRow => r !== null);
-
     // book_event → resolve the booked class into a readable label.
     const ctaClass = item.cta_class_id
         ? classSchedules.find(c => c.id === item.cta_class_id)
@@ -589,7 +566,6 @@ function MarketingDetailPageInner() {
         viewCount: item.view_count,
         customerTargeting: item.customer_targeting ?? "",
         products,
-        classes,
     };
 
     function handleAction(a: "edit" | ModalAction) {

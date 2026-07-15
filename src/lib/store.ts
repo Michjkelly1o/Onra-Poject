@@ -3371,13 +3371,14 @@ export interface AppState {
     cancellationPolicy: CancellationPolicy;
     updateCancellationPolicy: (patch: Partial<CancellationPolicy>) => void;
 
-    /** Per-branch freeze policy — one row per branch, governs the CUSTOMER
+    /** Studio-wide freeze policy — singleton, governs the CUSTOMER
      *  self-service membership-freeze flow (enable, max duration, max freezes,
      *  fee, allowed reasons, apply-to). Admin freeze/unfreeze is a full
      *  override and does NOT read this. Edited via Settings → Customer →
-     *  Freeze policy. See new-prd/freeze-policy-implementation-plan.md. */
-    freezePolicies: FreezePolicy[];
-    updateFreezePolicy: (branchId: string, patch: Partial<FreezePolicy>) => void;
+     *  Freeze policy. Client Jul 2026: flipped from per-branch to studio-
+     *  level to match cancellationPolicy / classesSettings storage. */
+    freezePolicy: FreezePolicy;
+    updateFreezePolicy: (patch: Partial<FreezePolicy>) => void;
 
     /** Service categories (Booking Rules Phase 3 + Phase 4 wiring) — the
      *  same rows that drive class-template + schedule category selection.
@@ -4020,7 +4021,12 @@ export const useAppStore = create<AppState>()(persist(
         // mutate the seed singleton (same pattern used for freezePolicies).
         cancellation_reasons: SEED_CANCELLATION_POLICY.cancellation_reasons.map(r => ({ ...r })),
     },
-    freezePolicies: SEED_FREEZE_POLICY.map(p => ({ ...p, reasons: p.reasons.map(r => ({ ...r })), membership_ids: [...p.membership_ids] })),
+    freezePolicy: {
+        ...SEED_FREEZE_POLICY,
+        // Deep-copy so local panel edits don't mutate the seed singleton.
+        reasons: SEED_FREEZE_POLICY.reasons.map(r => ({ ...r })),
+        membership_ids: [...SEED_FREEZE_POLICY.membership_ids],
+    },
     classCategories: SEED_CLASS_CATEGORIES.map(c => ({ ...c })),
     sidebarCollapsed: false,
     classTemplates: INITIAL_TEMPLATES,
@@ -4124,10 +4130,9 @@ export const useAppStore = create<AppState>()(persist(
         }));
         get().recordAudit("Updated cancellation policy", "settings", "cancellation_policy", "Cancellation policy");
     },
-    updateFreezePolicy: (branchId, patch) => {
+    updateFreezePolicy: (patch) => {
         set(state => ({
-            freezePolicies: state.freezePolicies.map(p =>
-                p.branch_id === branchId ? { ...p, ...patch } : p),
+            freezePolicy: { ...state.freezePolicy, ...patch },
         }));
         get().recordAudit("Updated freeze policy", "settings", "freeze_policy", "Freeze policy");
     },
@@ -5529,13 +5534,11 @@ export const useAppStore = create<AppState>()(persist(
         // Freeze via the shared action — handles status, expiry extension,
         // freezeCount++, the reason, and the audit entry (customer_portal).
         get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal", reason);
-        // Charge-now: emit a non-refundable freeze-fee row when the branch's
+        // Charge-now: emit a non-refundable freeze-fee row when the studio
         // policy configures a fee (mirrors the cancellation-penalty pattern).
-        const policy = customer
-            ? get().freezePolicies.find(p => p.branch_id === customer.branchId)
-            : undefined;
-        const fee = policy?.fee_enabled ? Math.max(0, policy.fee_amount_aed) : 0;
-        if (customer && policy && fee > 0) {
+        const policy = get().freezePolicy;
+        const fee = policy.fee_enabled ? Math.max(0, policy.fee_amount_aed) : 0;
+        if (customer && fee > 0) {
             const now = new Date().toISOString();
             const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
             const feeTxn: CustomerTransaction = {
@@ -8060,7 +8063,12 @@ export const useAppStore = create<AppState>()(persist(
         //   the admin CustomerDetailPage modal AND the customer-portal cancel
         //   sheet). Bump so old persisted policies pick up the new field
         //   rather than reading undefined.
-        version: 60,
+        // v61 (2026-07-15): FreezePolicy flipped from per-branch array
+        //   (`freezePolicies: FreezePolicy[]`) to a single studio-wide record
+        //   (`freezePolicy: FreezePolicy`, with `id` replacing `branch_id`).
+        //   Matches how cancellationPolicy / classesSettings are stored.
+        //   Bump reseeds so old array payloads drop cleanly.
+        version: 61,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

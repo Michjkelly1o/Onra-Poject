@@ -5,16 +5,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Single summary card + "Customize" button that opens the FreezePolicyPanel
-// side panel (same pattern as Booking Rules). Per-branch — a branch selector
-// picks which policy the card + panel show. Governs the CUSTOMER self-service
-// membership-freeze flow; admin freeze/unfreeze is a full override and ignores
-// it. See new-prd/freeze-policy-implementation-plan.md.
+// side panel (same pattern as Booking Rules). Studio-wide singleton — client
+// Jul 2026 flipped away from the earlier per-branch model. Governs the
+// CUSTOMER self-service membership-freeze flow; admin freeze/unfreeze is a
+// full override and ignores it.
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Edit02 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
-import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore } from "@/lib/store";
 import type { FreezePolicy } from "@/lib/store";
 import { FreezePolicyPanel } from "./FreezePolicyPanel";
@@ -26,23 +25,8 @@ const UNIT_LABEL: Record<FreezePolicy["max_duration_unit"], (n: number) => strin
 };
 
 export default function FreezePolicyPage() {
-    const freezePolicies = useAppStore(s => s.freezePolicies);
-    const branches       = useAppStore(s => s.branches);
-
-    const branchOptions = useMemo(
-        () => branches
-            .filter(b => freezePolicies.some(p => p.branch_id === b.id))
-            .map(b => ({ value: b.id, label: b.name })),
-        [branches, freezePolicies],
-    );
-    const [branchId, setBranchId] = useState<string>(() => freezePolicies[0]?.branch_id ?? "");
+    const policy = useAppStore(s => s.freezePolicy);
     const [panelOpen, setPanelOpen] = useState(false);
-
-    const policy = freezePolicies.find(p => p.branch_id === branchId) ?? freezePolicies[0];
-
-    if (!policy) {
-        return <div className="p-6 text-[14px] text-[#667085]">No branches available.</div>;
-    }
 
     const durationValue = policy.max_duration_enabled
         ? `${policy.max_duration_value} ${UNIT_LABEL[policy.max_duration_unit](policy.max_duration_value)}`
@@ -63,14 +47,6 @@ export default function FreezePolicyPage() {
 
     return (
         <div className="flex flex-col gap-4 max-w-[1100px]">
-            {/* Header — per-branch selector (description removed per client Jul 2026). */}
-            <div className="flex justify-end">
-                <div className="flex flex-col gap-1.5 w-[240px]">
-                    <span className="text-[13px] font-medium text-[#344054]">Branch</span>
-                    <SelectInput value={branchId} onChange={setBranchId} options={branchOptions} width="w-full" />
-                </div>
-            </div>
-
             {/* Summary card */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex items-start gap-4">
@@ -99,7 +75,7 @@ export default function FreezePolicyPage() {
                 )}
             </div>
 
-            <FreezePolicyPanel open={panelOpen} onClose={() => setPanelOpen(false)} branchId={branchId} />
+            <FreezePolicyPanel open={panelOpen} onClose={() => setPanelOpen(false)} />
             <Toast />
         </div>
     );

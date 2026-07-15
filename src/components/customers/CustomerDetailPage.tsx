@@ -229,18 +229,12 @@ function FreezeModal({ plan, onClose, onConfirm }: {
     const [end, setEnd] = useState("");
     const [reason, setReason] = useState("");
 
-    // Freeze reasons come from the freeze policy for THIS customer's branch —
-    // same source of truth the customer-portal Freeze sheet reads. When the
-    // list is empty (exceptions off, or all reasons unchecked / deleted) the
-    // dropdown is hidden entirely per client Jul 2026.
-    const customer = useAppStore(s =>
-        s.customers.find(c => c.id === plan.customerId),
-    );
-    const freezePolicies = useAppStore(s => s.freezePolicies);
-    const policy = customer
-        ? freezePolicies.find(p => p.branch_id === customer.branchId)
-        : undefined;
-    const availableReasons = policy && policy.allow_exceptions
+    // Freeze reasons come from the studio-wide freeze policy — same source of
+    // truth the customer-portal Freeze sheet reads. When the list is empty
+    // (exceptions off, or all reasons unchecked / deleted) the dropdown is
+    // hidden entirely per client Jul 2026.
+    const policy = useAppStore(s => s.freezePolicy);
+    const availableReasons = policy.allow_exceptions
         ? policy.reasons.filter(r => r.enabled && r.label.trim()).map(r => r.label)
         : [];
     const showReason = availableReasons.length > 0;

@@ -135,32 +135,29 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
     );
 }
 
-export function FreezePolicyPanel({ open, onClose, branchId }: {
-    open: boolean; onClose: () => void; branchId: string;
+export function FreezePolicyPanel({ open, onClose }: {
+    open: boolean; onClose: () => void;
 }) {
-    const freezePolicies     = useAppStore(s => s.freezePolicies);
+    const policy             = useAppStore(s => s.freezePolicy);
     const memberships        = useAppStore(s => s.memberships);
     const updateFreezePolicy = useAppStore(s => s.updateFreezePolicy);
     const showToast          = useAppStore(s => s.showToast);
 
-    const policy = freezePolicies.find(p => p.branch_id === branchId);
-
     const [shown, setShown] = useState(false);
-    const [form, setForm] = useState<FreezePolicy | null>(policy ? clonePolicy(policy) : null);
+    const [form, setForm] = useState<FreezePolicy>(() => clonePolicy(policy));
     // Draft text for the "Add a custom reason" input (committed via the Add button).
     const [newReason, setNewReason] = useState("");
 
     useEffect(() => {
         if (open) {
-            const p = freezePolicies.find(x => x.branch_id === branchId);
-            setForm(p ? clonePolicy(p) : null);
+            setForm(clonePolicy(policy));
             setNewReason("");
             setShown(false);
             const r = requestAnimationFrame(() => setShown(true));
             return () => cancelAnimationFrame(r);
         }
         setShown(false);
-    }, [open, branchId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!open) return;
@@ -169,16 +166,16 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
         return () => document.removeEventListener("keydown", onKey);
     }, [open, onClose]);
 
-    if (!open || !form) return null;
+    if (!open) return null;
     if (typeof document === "undefined") return null;
 
-    const patch = (p: Partial<FreezePolicy>) => setForm(prev => (prev ? { ...prev, ...p } : prev));
+    const patch = (p: Partial<FreezePolicy>) => setForm(prev => ({ ...prev, ...p }));
 
     // Reason mutations read `prev` (not the render-closure `form`) so rapid /
     // batched clicks can't drop an update — this is what made "Add custom
     // reason" appear to do nothing.
     function setReason(id: string, next: Partial<FreezeReason>) {
-        setForm(prev => (prev ? { ...prev, reasons: prev.reasons.map(r => (r.id === id ? { ...r, ...next } : r)) } : prev));
+        setForm(prev => ({ ...prev, reasons: prev.reasons.map(r => (r.id === id ? { ...r, ...next } : r)) }));
     }
     // Commit the typed draft as a new custom reason (enabled), then clear the
     // input. No-op on blank / duplicate labels.
@@ -188,14 +185,13 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
         customReasonSeq += 1;
         const id = `custom_${customReasonSeq}`;
         setForm(prev => {
-            if (!prev) return prev;
             if (prev.reasons.some(r => r.label.trim().toLowerCase() === label.toLowerCase())) return prev;
             return { ...prev, reasons: [...prev.reasons, { id, label, enabled: true }] };
         });
         setNewReason("");
     }
     function removeReason(id: string) {
-        setForm(prev => (prev ? { ...prev, reasons: prev.reasons.filter(r => r.id !== id) } : prev));
+        setForm(prev => ({ ...prev, reasons: prev.reasons.filter(r => r.id !== id) }));
     }
 
     const membershipOptions: MultiSelectOption[] = memberships
@@ -203,8 +199,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
         .map(m => ({ id: m.id, label: m.name }));
 
     function handleSave() {
-        if (!form) return;
-        updateFreezePolicy(branchId, {
+        updateFreezePolicy({
             ...form,
             reasons: form.reasons.filter(r => r.label.trim().length > 0),
         });

@@ -61,7 +61,6 @@ function EditMarketingRouteInner() {
                 branchIds,
                 singleBranchId: multiLocation ? null : (branchIds[0] ?? null),
                 productIds: item.target_package_ids ?? [],
-                classIds: item.target_class_ids ?? [],
                 customerTargeting: item.customer_targeting ?? "",
             }}
         />
