@@ -9,7 +9,7 @@
 //   2. /settings/branding/design             — Customize design settings
 //                                              (display name + 3 colors +
 //                                              live phone preview)
-//   3. /settings/branding/portal             — Customize portal preferences
+//   3. CustomizePortalPanel slide panel      — Customize portal preferences
 //                                              (portal URL, menu-bar
 //                                              visibility, per-item toggles,
 //                                              embed URL/code, deep links)

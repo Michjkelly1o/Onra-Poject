@@ -1,33 +1,31 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Customer context pills
+// Onra Studio — Customer context pill
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Renders up to 2 context pills next to a customer's name on the class
-// schedule detail roster and the appointment detail roster — surfaces
-// "1st class", "100th class", "Birthday", "New member", etc. so an admin
-// / instructor can spot who's who at a glance (client Jul 2026).
+// Renders the class-count pill next to a customer's name on the class
+// schedule detail roster and the appointment detail roster — always shows
+// "Nth class" / "Nth appointment" (1st, 2nd, 3rd, …) so an admin /
+// instructor can see the count at a glance. Client Jul 2026: simplified
+// down from the earlier Birthday / New member / milestone-only set.
 //
-// This is a THIN wrapper — the business logic (which badges apply, how to
-// count, how to sort) lives in `src/lib/customer-badges.ts` and is unit-
-// testable without React. The component only:
-//   • Subscribes to the store (customers, class/appointment schedules,
-//     bookings) via useAppStore selectors.
-//   • Calls the compute helper for the requested variant.
-//   • Renders up to 2 pills (top-priority first, priority order set by
-//     the helper).
+// This is a THIN wrapper — the business logic lives in
+// `src/lib/customer-badges.ts` and is unit-testable without React. The
+// component subscribes to the store, calls the compute helper for the
+// requested variant, and renders the pill.
 //
 // Two entry-point components — one per surface — so callers don't need to
 // pass the whole context every time:
 //   • <ClassCustomerBadges customerId classDateISO />
 //   • <AppointmentCustomerBadges customerId apptDateISO />
 //
-// Both render nothing when zero badges apply, so callers can drop them
+// Both render nothing when the compute helper returns nothing (e.g. a
+// waitlisted row that hasn't attended yet), so callers can drop them
 // inline unconditionally.
 
 import { useMemo } from "react";
-import { Gift01, Star01, Trophy01, User01 } from "@untitledui/icons";
+import { Star01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import {
     computeCustomerBadgesForClass,
@@ -35,25 +33,11 @@ import {
     type CustomerBadge,
 } from "@/lib/customer-badges";
 
-// ── Pill palette — one per tone ────────────────────────────────────────────
-// Sage / rose / amber / blue combos are consistent with the DS Badge
-// component's soft-color variants.
+// ── Pill palette — soft blue, consistent with the DS Badge "info" tone.
 const TONE: Record<CustomerBadge["tone"], { pill: string; icon: React.ComponentType<{ className?: string }> }> = {
-    birthday: {
-        pill: "border-[#f9dbaf] bg-[#fef6ee] text-[#b93815]",
-        icon: Gift01,
-    },
-    first: {
+    count: {
         pill: "border-[#b2ddff] bg-[#eff8ff] text-[#175cd3]",
         icon: Star01,
-    },
-    milestone: {
-        pill: "border-[#e9d7fe] bg-[#f9f5ff] text-[#6941c6]",
-        icon: Trophy01,
-    },
-    "new-member": {
-        pill: "border-[#abefc6] bg-[#ecfdf3] text-[#067647]",
-        icon: User01,
     },
 };
 

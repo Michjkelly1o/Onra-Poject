@@ -890,9 +890,9 @@ interface DashboardWidgetCardProps {
     onAdd?: () => void;
     onRemove?: () => void;
     /** Show a `DotsGrid` drag handle to the left of the title — same icon
-     *  the Branding portal preferences menu-bar uses
-     *  ([/settings/branding/portal/page.tsx:349](src/app/settings/branding/portal/page.tsx#L349)).
-     *  Communicates "this card can be dragged to reorder". */
+     *  the Branding portal preferences menu-bar uses (see
+     *  `CustomizePortalPanel`). Communicates "this card can be dragged to
+     *  reorder". */
     dragHandle?: boolean;
     /** When passed alongside `dragHandle`, the DotsGrid icon becomes the
      *  ONLY draggable element on the card — clicking anywhere else (title,

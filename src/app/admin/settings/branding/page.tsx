@@ -26,9 +26,10 @@
 //     layout renders even before Phase 3 ships the seed (graceful empty
 //     state — never an unstyled blank). Phase 3 will swap this for
 //     `branding_settings` from `src/data/mock/`.
-//   ✓ Both "Customize" buttons fire success-toast placeholders. Phase 2 will
-//     route them to dedicated `/admin/settings/branding/design` and
-//     `/admin/settings/branding/portal` sub-pages.
+//   ✓ Both "Customize" buttons open right-anchored slide panels
+//     (CustomizeDesignPanel + CustomizePortalPanel) over this landing —
+//     the earlier /settings/branding/{design,portal} sub-routes were
+//     retired per client Jul 2026.
 //   ✓ The Live portal URL chip fires a "Customer portal isn't built yet"
 //     info toast on click (per the brief — the customer-facing portal
 //     isn't implemented; this is the placeholder hand-off).
@@ -37,29 +38,29 @@
 // already. We render just the inner card stack here.
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Edit02, Share04, Image01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type BrandingNotificationChannels } from "@/lib/store";
 import { brandTypefaceLabel } from "@/app/branding-fonts";
 import { CustomizeDesignPanel } from "@/components/settings/branding/CustomizeDesignPanel";
+import { CustomizePortalPanel } from "@/components/settings/branding/CustomizePortalPanel";
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function BrandingPage() {
-    const router = useRouter();
     const b = useAppStore(s => s.brandingSettings);
     const showToast = useAppStore(s => s.showToast);
-    // Client Jul 2026: Customize design settings now opens as a slide panel
-    // over this landing page instead of a route push.
+    // Client Jul 2026: both Customize actions now open as slide panels over
+    // this landing page instead of pushing to sub-routes.
     const [designPanelOpen, setDesignPanelOpen] = useState(false);
+    const [portalPanelOpen, setPortalPanelOpen] = useState(false);
 
     function customizeDesign() {
         setDesignPanelOpen(true);
     }
 
     function customizePortal() {
-        router.push("/settings/branding/portal");
+        setPortalPanelOpen(true);
     }
 
     function openLivePortal() {
@@ -176,6 +177,8 @@ export default function BrandingPage() {
 
             {/* Customize design settings — slide panel (Figma 7824:122617). */}
             <CustomizeDesignPanel open={designPanelOpen} onClose={() => setDesignPanelOpen(false)} />
+            {/* Customize portal preferences — slide panel (matches design panel chrome). */}
+            <CustomizePortalPanel open={portalPanelOpen} onClose={() => setPortalPanelOpen(false)} />
         </div>
     );
 }

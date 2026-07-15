@@ -1,87 +1,84 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Settings → Branding → Customize portal preferences
+// Onra Studio — Settings → Branding → Customize portal preferences (SlidePanel)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Figma:
-//   • Step 1 — Portal link    (4468:24398)
-//   • Step 2 — Embed website  (4468:24852)
+// Client Jul 2026: the portal-preferences 2-step form now opens as a
+// right-anchored slide panel over the Branding landing page — same chrome
+// as the Customize design settings panel (SlidePanel + chevron breadcrumb
+// stepper + panel footer). Replaces the previous full-page route at
+// `/settings/branding/portal`.
 //
-// 2-step full-page form. Lives under `/settings/` so it escapes the admin
-// layout chrome — same convention as the Design settings sub-page.
+// Panel layout (matches CustomizeDesignPanel):
+//   • Header — title "Customize portal preferences" + close X (top-right)
+//   • Breadcrumb stepper — horizontal, chevron-separated. Any step click
+//                          jumps directly (no linear-only gate)
+//   • Body — single column (no preview panel — portal prefs has no live
+//            preview). Scrolls inside.
+//   • Footer — Cancel (left) + Continue / Save changes (right).
+//              Continue advances step 1 → 2; Save changes commits on step 2.
 //
-// Step 1 — Portal address + Menu bar
-//   • Live portal URL (editable) + Share button (fires "customer portal not
-//     built yet" info toast — same hand-off as the landing) + Copy button
-//     (clipboard).
-//   • Menu bar master toggle ("Show the menu bar on your website portal").
-//   • Per-item toggle list with drag handle (drag re-ordering is visual-only
-//     for the prototype — Phase 3 will wire persistence).
+// Steps:
+//   1 — Portal link       (portal URL, menu bar toggle, per-item toggles
+//                          with drag-to-reorder)
+//   2 — Embed website     (embed URL, embed code, per-item deep-link rows)
 //
-// Step 2 — Embed
-//   • Embed URL (mirrors the live portal URL) + Remove button (clears it).
-//   • Embed code (multi-line, read-only) + Copy button.
-//   • "Links" section — one row per menu item with its deep link URL, a
-//     Share button (toast) and a Copy button. The shown URLs come straight
-//     from `menuItems[].url` so renaming or hiding an item in Step 1 stays
-//     in sync.
-//
-// On Save (Step 2 Save changes):
-//   (1) `updateBrandingSettings({ portalUrl, menuBarVisible, menuItems })` —
-//       partial-merge into the store; landing card + Design settings preview
-//       + (future) customer portal all reflect immediately.
-//   (2) Success toast "Portal preferences updated".
-//   (3) router.push back to `/admin/settings/branding`.
+// On Save (step 2):
+//   • `updateBrandingSettings({ portalUrl, menuBarVisible, menuItems })`
+//   • success toast + panel closes.
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
-import { XClose, Share04, Copy03, Trash01, DotsGrid, Check } from "@untitledui/icons";
+import {
+    XClose, ChevronRight, Share04, Copy03, Trash01, DotsGrid, Check,
+} from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { useAppStore, type PortalMenuItem } from "@/lib/store";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SectionHeader } from "@/components/patterns/SectionHeader";
+import { useAppStore, type PortalMenuItem } from "@/lib/store";
 
-const RETURN_ROUTE = "/admin/settings/branding";
+const STEPS = [
+    { n: 1, label: "Portal link"    },
+    { n: 2, label: "Embed website"  },
+] as const;
 
-// ─── Page ───────────────────────────────────────────────────────────────────
-
-export default function CustomizePortalPreferencesPage() {
-    const router = useRouter();
+export function CustomizePortalPanel({ open, onClose }: {
+    open: boolean;
+    onClose: () => void;
+}) {
     const stored = useAppStore(s => s.brandingSettings);
     const updateBrandingSettings = useAppStore(s => s.updateBrandingSettings);
     const showToast = useAppStore(s => s.showToast);
 
-    // Two-step local working copy; commit happens on Save changes.
+    // Wizard state — local working copy, commits on Save changes.
     const [step, setStep] = useState<1 | 2>(1);
     const [portalUrl, setPortalUrl] = useState(stored.portalUrl);
     const [menuBarVisible, setMenuBarVisible] = useState(stored.menuBarVisible);
-    const [menuItems, setMenuItems] = useState<PortalMenuItem[]>(
-        stored.menuItems.map(i => ({ ...i }))
+    const [menuItems, setMenuItems] = useState<PortalMenuItem[]>(() =>
+        stored.menuItems.map(i => ({ ...i })),
     );
 
-    function handleClose() {
-        router.push(RETURN_ROUTE);
-    }
+    // Re-sync local buffer each time the panel opens so a fresh open reads
+    // the current store value (never a stale prior draft).
+    useEffect(() => {
+        if (!open) return;
+        setStep(1);
+        setPortalUrl(stored.portalUrl);
+        setMenuBarVisible(stored.menuBarVisible);
+        setMenuItems(stored.menuItems.map(i => ({ ...i })));
+    }, [open, stored]);
 
     function toggleMenuItem(id: string, next: boolean) {
         setMenuItems(prev => prev.map(i => i.id === id ? { ...i, enabled: next } : i));
     }
 
-    // ── Drag-to-reorder (HTML5 native DnD) ───────────────────────────────
-    //
-    // Tracks the dragged item by `id` (not index) so the reorder logic stays
-    // stable as the array re-shuffles during live drag. Live re-ordering: as
-    // the cursor crosses each row, the dragged item slides into that slot,
-    // so the user sees the final order continuously instead of after-drop.
+    // ── Drag-to-reorder (HTML5 native DnD) ────────────────────────────────
+    // Same logic the old page used — tracks by id (not index) so the
+    // reorder stays stable as the array reshuffles during live drag.
     const [draggedId, setDraggedId] = useState<string | null>(null);
-
-    function handleDragStartItem(id: string) {
-        setDraggedId(id);
-    }
-
+    function handleDragStartItem(id: string) { setDraggedId(id); }
     function handleDragOverItem(overId: string) {
         if (!draggedId || draggedId === overId) return;
         setMenuItems(prev => {
@@ -94,23 +91,15 @@ export default function CustomizePortalPreferencesPage() {
             return next;
         });
     }
-
-    function handleDragEnd() {
-        setDraggedId(null);
-    }
-
-    // Copy is handled directly by the `CopyButton` primitive (which fires
-    // its own inline "Copied!" tooltip). No store-level toast — that one
-    // looked out of place on these full-page sub-pages.
+    function handleDragEnd() { setDraggedId(null); }
 
     function openLivePortal() {
-        // Customer portal isn't built — surface the same hand-off toast the
-        // landing uses.
+        // Customer portal isn't wired to preview yet — surface the same
+        // hand-off toast the landing uses.
         showToast(
             "Customer portal not built yet",
             "We'll wire the live portal preview when the customer-facing app ships.",
-            "success",
-            "check",
+            "success", "check",
         );
     }
 
@@ -123,120 +112,102 @@ export default function CustomizePortalPreferencesPage() {
         showToast(
             "Portal preferences updated",
             "Your portal preferences have been updated.",
-            "success",
-            "check",
+            "success", "check",
         );
-        router.push(RETURN_ROUTE);
+        onClose();
     }
 
     return (
-        <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* ── Header (72 px) ──────────────────────────────────────── */}
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button
-                    type="button"
-                    onClick={handleClose}
-                    aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
-                >
+        <SlidePanel open={open} onClose={onClose} width={720}>
+            {/* Header — title + close X (top-right). */}
+            <div className="relative shrink-0 border-b border-[#e4e7ec] px-6 py-4">
+                <div className="pr-10">
+                    <p className="text-[18px] font-medium leading-[28px] text-[#101828]">
+                        Customize portal preferences
+                    </p>
+                    <p className="text-[14px] text-[#475467] leading-5 mt-1">
+                        Manage your website portal URL, menu bar, and embed code.
+                    </p>
+                </div>
+                <button type="button" onClick={onClose} aria-label="Close"
+                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                        Customize portal preferences
-                    </h1>
-                    <Breadcrumbs className="p-0 text-[12px]" />
-                </div>
             </div>
 
-            {/* ── Body ────────────────────────────────────────────────── */}
-            <div className="flex-1 overflow-hidden">
-                <div className="flex gap-8 px-6 pb-8 h-full items-stretch">
-
-                    {/* Left: step indicator */}
-                    <div className="w-[300px] shrink-0 flex flex-col">
-                        <StepItem n={1} label="Portal link" current={step} total={2} />
-                        <StepItem n={2} label="Embed website" current={step} total={2} />
-                    </div>
-
-                    {/* Middle: form card */}
-                    <div className="flex-1 min-w-0 max-w-[628px] flex flex-col min-h-0">
-                        {/* `min-h-0` on the card itself is the key to making the inner
-                            scroll container actually scroll — flex items default to
-                            `min-height: auto` which makes them grow to fit content. Without
-                            this, Step 2 (Embed + 4 links) overflows the body height and the
-                            inner `overflow-y-auto` never engages, so the bottom rows + the
-                            Save button get visually cut. */}
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex-1 flex flex-col gap-6 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] min-h-0">
-                            {/* `overflow-y-auto` is a scroll container which clips children on
-                                BOTH axes — the 2-px focus ring on inputs would get visually
-                                cut at the left/right edges. The small `px-1` interior padding
-                                (with matching negative margin so the visible width is
-                                unchanged) keeps the ring inside the scrollable area. */}
-                            <div className="flex-1 overflow-y-auto flex flex-col gap-8 px-1 -mx-1 min-h-0">
-                                {step === 1 ? (
-                                    <Step1
-                                        portalUrl={portalUrl}
-                                        setPortalUrl={setPortalUrl}
-                                        menuBarVisible={menuBarVisible}
-                                        setMenuBarVisible={setMenuBarVisible}
-                                        menuItems={menuItems}
-                                        toggleMenuItem={toggleMenuItem}
-                                        onOpenLivePortal={openLivePortal}
-                                        draggedId={draggedId}
-                                        onDragStartItem={handleDragStartItem}
-                                        onDragOverItem={handleDragOverItem}
-                                        onDragEnd={handleDragEnd}
-                                    />
-                                ) : (
-                                    <Step2
-                                        portalUrl={portalUrl}
-                                        setPortalUrl={setPortalUrl}
-                                        embedCode={stored.embedCode}
-                                        menuItems={menuItems}
-                                        onOpenLink={openLivePortal}
-                                    />
-                                )}
-                            </div>
-                            {/* Footer — Continue (step 1) or Back / Save (step 2) */}
-                            <div className="shrink-0 flex items-center justify-between w-full">
-                                {step === 2 ? (
-                                    <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>
-                                        Back
-                                    </Button>
-                                ) : <span />}
-                                {step === 1 ? (
-                                    <Button variant="primary" size="md" onClick={() => setStep(2)}>
-                                        Continue
-                                    </Button>
-                                ) : (
-                                    <Button variant="primary" size="md" onClick={handleSave}>
-                                        Save changes
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* Breadcrumb stepper — matches CustomizeDesignPanel. Any step
+                click jumps directly. */}
+            <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+                {STEPS.map((s, i) => (
+                    <Fragment key={s.n}>
+                        <button
+                            type="button"
+                            onClick={() => setStep(s.n as 1 | 2)}
+                            className={cn(
+                                "text-[14px] font-semibold py-1 px-1 transition-colors",
+                                step === s.n
+                                    ? "text-[#4f6e5d]"
+                                    : "text-[#475467] hover:text-[#344054]",
+                            )}
+                        >
+                            {s.label}
+                        </button>
+                        {i < STEPS.length - 1 && (
+                            <ChevronRight className="w-4 h-4 text-[#98a2b3]" />
+                        )}
+                    </Fragment>
+                ))}
             </div>
-        </div>
+
+            {/* Body — single column form (no preview). Scrolls inside. */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-8">
+                {step === 1 ? (
+                    <Step1
+                        portalUrl={portalUrl}
+                        setPortalUrl={setPortalUrl}
+                        menuBarVisible={menuBarVisible}
+                        setMenuBarVisible={setMenuBarVisible}
+                        menuItems={menuItems}
+                        toggleMenuItem={toggleMenuItem}
+                        onOpenLivePortal={openLivePortal}
+                        draggedId={draggedId}
+                        onDragStartItem={handleDragStartItem}
+                        onDragOverItem={handleDragOverItem}
+                        onDragEnd={handleDragEnd}
+                    />
+                ) : (
+                    <Step2
+                        portalUrl={portalUrl}
+                        setPortalUrl={setPortalUrl}
+                        embedCode={stored.embedCode}
+                        menuItems={menuItems}
+                        onOpenLink={openLivePortal}
+                    />
+                )}
+            </div>
+
+            {/* Footer — Cancel left / Continue or Save right. */}
+            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between">
+                <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
+                {step === 1 ? (
+                    <Button variant="primary" size="md" onClick={() => setStep(2)}>Continue</Button>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>Back</Button>
+                        <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
+                    </div>
+                )}
+            </div>
+        </SlidePanel>
     );
 }
 
 // ─── Step 1 — Portal address + Menu bar ─────────────────────────────────────
 
 function Step1({
-    portalUrl,
-    setPortalUrl,
-    menuBarVisible,
-    setMenuBarVisible,
-    menuItems,
-    toggleMenuItem,
-    onOpenLivePortal,
-    draggedId,
-    onDragStartItem,
-    onDragOverItem,
-    onDragEnd,
+    portalUrl, setPortalUrl, menuBarVisible, setMenuBarVisible, menuItems,
+    toggleMenuItem, onOpenLivePortal,
+    draggedId, onDragStartItem, onDragOverItem, onDragEnd,
 }: {
     portalUrl: string;
     setPortalUrl: (v: string) => void;
@@ -252,7 +223,6 @@ function Step1({
 }) {
     return (
         <>
-            {/* ── Portal address ──────────────────────────────────────── */}
             <SectionHeader title="Portal address" />
             <FormField label="Live portal URL">
                 <div className="flex items-end gap-3 w-full">
@@ -270,7 +240,6 @@ function Step1({
                 </div>
             </FormField>
 
-            {/* ── Menu bar ────────────────────────────────────────────── */}
             <div className="flex items-center gap-16 w-full">
                 <div className="flex-1 flex flex-col gap-1">
                     <p className="text-[18px] font-semibold text-[#101828] leading-7">Menu bar</p>
@@ -281,7 +250,6 @@ function Step1({
                 <Toggle on={menuBarVisible} onChange={setMenuBarVisible} ariaLabel="Toggle menu bar visibility" />
             </div>
 
-            {/* Per-item draggable + toggleable list */}
             <div className="flex flex-col gap-4 w-full">
                 {menuItems.map(item => (
                     <MenuItemRow
@@ -301,13 +269,7 @@ function Step1({
 }
 
 function MenuItemRow({
-    item,
-    onToggle,
-    disabled,
-    isDragging,
-    onDragStart,
-    onDragOver,
-    onDragEnd,
+    item, onToggle, disabled, isDragging, onDragStart, onDragOver, onDragEnd,
 }: {
     item: PortalMenuItem;
     onToggle: (next: boolean) => void;
@@ -319,17 +281,10 @@ function MenuItemRow({
 }) {
     return (
         <div
-            // Native HTML5 drag-and-drop. The row itself is draggable so the
-            // browser captures the whole pill as the drag image; the
-            // `cursor-grab` lives on the handle icon so the affordance still
-            // reads as "grab the dots." Clicking the toggle still works
-            // because browsers only initiate drag when the cursor moves
-            // beyond a threshold after mousedown.
             draggable
             onDragStart={(e) => {
                 onDragStart();
                 e.dataTransfer.effectAllowed = "move";
-                // Firefox requires SOME data on the dataTransfer or drag won't fire.
                 e.dataTransfer.setData("text/plain", item.id);
             }}
             onDragOver={(e) => {
@@ -337,10 +292,7 @@ function MenuItemRow({
                 e.dataTransfer.dropEffect = "move";
                 onDragOver();
             }}
-            onDrop={(e) => {
-                e.preventDefault();
-                onDragEnd();
-            }}
+            onDrop={(e) => { e.preventDefault(); onDragEnd(); }}
             onDragEnd={onDragEnd}
             className={cn(
                 "bg-white border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-1 p-4 transition-all select-none",
@@ -370,11 +322,7 @@ function MenuItemRow({
 // ─── Step 2 — Embed + Links ────────────────────────────────────────────────
 
 function Step2({
-    portalUrl,
-    setPortalUrl,
-    embedCode,
-    menuItems,
-    onOpenLink,
+    portalUrl, setPortalUrl, embedCode, menuItems, onOpenLink,
 }: {
     portalUrl: string;
     setPortalUrl: (v: string) => void;
@@ -384,7 +332,6 @@ function Step2({
 }) {
     return (
         <>
-            {/* ── Embed ───────────────────────────────────────────────── */}
             <div className="flex flex-col gap-4 w-full">
                 <SectionHeader title="Embed" />
                 <FormField label="Embed URL">
@@ -412,7 +359,6 @@ function Step2({
                 </FormField>
             </div>
 
-            {/* ── Links ───────────────────────────────────────────────── */}
             <div className="flex flex-col gap-4 w-full">
                 <SectionHeader title="Links" />
                 {menuItems.map(item => (
@@ -437,45 +383,6 @@ function Step2({
 }
 
 // ─── Shared primitives ─────────────────────────────────────────────────────
-
-function StepItem({ n, label, current, total }: {
-    n: number;
-    label: string;
-    current: number;
-    total: number;
-}) {
-    const active   = n === current;
-    const complete = n < current;
-    const isLast   = n === total;
-    return (
-        <div className={cn(
-            "flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full",
-            active && "bg-[#f5fffa]",
-        )}>
-            <div className="relative flex flex-col items-center shrink-0">
-                <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active   ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                    : complete ? "bg-[#658774] text-white"
-                    : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]",
-                )}>
-                    {n}
-                </div>
-                {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
-                )}
-            </div>
-            <span className={cn(
-                "text-[14px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]"
-            )}>
-                {label}
-            </span>
-        </div>
-    );
-}
-
-// Local SectionHeader removed — uses canonical from `@/components/patterns/SectionHeader`.
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -506,24 +413,12 @@ function IconButton({ onClick, title, children }: {
     );
 }
 
-/** IconButton + clipboard write + inline "Copied!" tooltip.
- *
- *  The tooltip is rendered via `createPortal` straight into `document.body`
- *  with fixed positioning so it ESCAPES every `overflow-hidden` /
- *  `overflow-y-auto` ancestor — those would otherwise clip the chip when
- *  the copy button sits inside the form card's scrollable area. Position
- *  is measured from the button's `getBoundingClientRect` at click time so
- *  the chip lines up regardless of scroll offset.
- *
- *  While the tooltip is up:
- *    • Button bg flips to mint (#ecfdf3) + border to #abefc6
- *    • Icon swaps Copy03 → Check (green)
- *  The state self-dismisses after 1.5 s. */
+/** Copy button + inline "Copied!" tooltip. Tooltip is portalled so it
+ *  escapes the panel's overflow clip. */
 function CopyButton({ text, title }: { text: string; title: string }) {
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [copied, setCopied] = useState(false);
     const [tipPos, setTipPos] = useState<{ left: number; top: number } | null>(null);
-    // SSR-safe portal mount flag — `document.body` only exists client-side.
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
 
@@ -540,9 +435,7 @@ function CopyButton({ text, title }: { text: string; title: string }) {
         try {
             await navigator.clipboard.writeText(text);
         } catch {
-            // Fallback for browsers without the async Clipboard API — use
-            // a hidden textarea + execCommand. Still trips the tooltip so
-            // the user gets feedback either way.
+            // Fallback for browsers without the async Clipboard API.
             const ta = document.createElement("textarea");
             ta.value = text;
             ta.style.position = "fixed";
@@ -552,14 +445,11 @@ function CopyButton({ text, title }: { text: string; title: string }) {
             try { document.execCommand("copy"); } catch { /* ignore */ }
             document.body.removeChild(ta);
         }
-        // Measure button so the portalled tooltip aligns above it. Use
-        // viewport-relative coords because the portal renders with
-        // `position: fixed`.
         const rect = buttonRef.current?.getBoundingClientRect();
         if (rect) {
             setTipPos({
                 left: rect.left + rect.width / 2,
-                top:  rect.top - 8, // 8-px gap above the button
+                top:  rect.top - 8,
             });
         }
         setCopied(true);
