@@ -225,7 +225,7 @@ export default function ProductsPage() {
     const isEmpty = (showPlans ? plans.length : 0) + (showGiftCards ? giftCards.length : 0) === 0;
 
     return (
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-[100dvh] flex-col">
             <CustomerHeader
                 overlap
                 subBar={

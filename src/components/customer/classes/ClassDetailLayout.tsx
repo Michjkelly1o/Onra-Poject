@@ -15,7 +15,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, ChevronLeft, Clock, ClockFastForward, Maximize01, MarkerPin01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { Calendar, CheckCircle, ChevronLeft, ClockFastForward, Coins01, Maximize01, MarkerPin01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
@@ -26,16 +26,51 @@ import { ShareSheet } from "@/components/customer/shell/ShareSheet";
 
 const CHECK_IN_GUIDANCE = ["Arrive 10 minutes early", "Late entry not permitted after 5 min"];
 
-function InfoCell({ children }: { children: React.ReactNode }) {
-    return <div className="flex flex-1 items-center gap-3">{children}</div>;
+/** One row of the detail info list (Figma 4477-82991): a 16px leading icon +
+ *  value content. Shared by the class default grid AND the appointment grid so
+ *  both read as the same clean single-column list. */
+export function InfoRow({
+    icon: Icon,
+    children,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex w-full items-start gap-2">
+            <span className="flex shrink-0 items-center py-0.5">
+                <Icon className="size-4 text-[#667085]" aria-hidden />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm font-normal leading-5 text-[#475467]">
+                {children}
+            </div>
+        </div>
+    );
 }
 
-/** "Sara Al-Rashid" → "Sara A." — keeps the instructor cell to one line on narrow
- *  screens so it never shifts the adjacent Class-type cell. */
-function abbreviateName(name: string): string {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length < 2 || !parts[parts.length - 1][0]) return name;
-    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+/** Date & time row — Branch time (always) + Your time (only when it differs from
+ *  the branch). Reused by class + appointment details. */
+export function DetailTimeRow({ time }: { time: { branchTime: string; yourTime: string | null } }) {
+    return (
+        <InfoRow icon={Calendar}>
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>{time.branchTime}</span>
+                {time.yourTime && (
+                    <span className="shrink-0 rounded-md border border-[#abefc6] bg-[#ecfdf3] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
+                        Branch time
+                    </span>
+                )}
+            </span>
+            {time.yourTime && (
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>{time.yourTime}</span>
+                    <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
+                        Your time
+                    </span>
+                </span>
+            )}
+        </InfoRow>
+    );
 }
 
 export interface ClassDetailLayoutProps {
@@ -159,97 +194,37 @@ export function ClassDetailLayout({
                     )}
                 </section>
 
-                {/* Info grid — default class 2×2, or a caller-supplied grid (appointments). */}
+                {/* Info list — default class list (Figma 4477-82991), or a caller-supplied
+                    grid (appointments). A clean single-column list: leading icon + value. */}
                 {infoGrid ?? (
                 <div className="flex flex-col gap-4">
-                    {/* Time — Branch time (always) + Your time (only when the customer's
-                        timezone differs from the branch's). Figma 4408. */}
-                    <div className="flex flex-1 items-start gap-3">
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                            <Clock className="size-5 text-[#344054]" aria-hidden />
-                        </span>
-                        <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="text-xs leading-[18px] text-[#667085]">Date & time</span>
-                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{classTime.branchTime}</span>
-                                {classTime.yourTime && (
-                                    <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#0c2d34]">
-                                        Branch time
-                                    </span>
-                                )}
-                            </span>
-                            {classTime.yourTime && (
-                                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{classTime.yourTime}</span>
-                                    <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#475467]">
-                                        Your time
-                                    </span>
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <InfoCell>
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                <ClockFastForward className="size-5 text-[#344054]" aria-hidden />
-                            </span>
-                            <div className="flex flex-col">
-                                <span className="text-xs leading-[18px] text-[#667085]">Duration</span>
-                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.durationMins} minutes</span>
-                            </div>
-                        </InfoCell>
-                        <InfoCell>
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                <Users01 className="size-5 text-[#344054]" aria-hidden />
-                            </span>
-                            <div className="flex flex-col">
-                                <span className="text-xs leading-[18px] text-[#667085]">Capacity</span>
-                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.capacity} participants</span>
-                            </div>
-                        </InfoCell>
-                    </div>
-                    <div className="flex gap-4">
+                    <DetailTimeRow time={classTime} />
+                    <InfoRow icon={ClockFastForward}>
+                        <span>{detail.durationMins} minutes</span>
+                    </InfoRow>
+                    <InfoRow icon={Users01}>
+                        <span>{detail.booked}/{detail.capacity} spots</span>
+                    </InfoRow>
+                    <InfoRow icon={Coins01}>
+                        <span>{detail.classType}</span>
+                    </InfoRow>
+                    <InfoRow icon={UserCheck01}>
                         <button
                             type="button"
                             onClick={() => router.push(`/customer/instructors/${detail.instructorId}`)}
-                            className="flex flex-1 items-center gap-3 text-left"
+                            className="flex min-w-0 items-center gap-1.5 text-left"
                         >
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                <UserCheck01 className="size-5 text-[#344054]" aria-hidden />
+                            <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                {detail.instructorImageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={detail.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
+                                ) : (
+                                    <span className="text-[8px] font-semibold leading-none text-[#667085]">{detail.instructorInitials}</span>
+                                )}
                             </span>
-                            <div className="flex min-w-0 flex-col gap-0.5">
-                                <span className="text-xs leading-[18px] text-[#667085]">Instructor</span>
-                                <span className="flex items-center gap-1.5">
-                                    <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
-                                        {detail.instructorImageUrl ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img
-                                                src={detail.instructorImageUrl}
-                                                alt=""
-                                                className="size-full scale-[1.4] object-cover"
-                                            />
-                                        ) : (
-                                            <span className="text-[8px] font-semibold leading-none text-[#667085]">
-                                                {detail.instructorInitials}
-                                            </span>
-                                        )}
-                                    </span>
-                                    <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
-                                        {abbreviateName(detail.instructorName)}
-                                    </span>
-                                </span>
-                            </div>
+                            <span className="truncate">{detail.instructorName}</span>
                         </button>
-                        <InfoCell>
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                <Tag01 className="size-5 text-[#344054]" aria-hidden />
-                            </span>
-                            <div className="flex flex-col">
-                                <span className="text-xs leading-[18px] text-[#667085]">Class type</span>
-                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.classType}</span>
-                            </div>
-                        </InfoCell>
-                    </div>
+                    </InfoRow>
                 </div>
                 )}
 

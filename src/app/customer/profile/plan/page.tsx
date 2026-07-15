@@ -141,6 +141,24 @@ export default function MyPlanPage() {
     const [freezePlan, setFreezePlan] = useState<CustomerPlan | null>(null);
     const [cancelPlan, setCancelPlan] = useState<CustomerPlan | null>(null);
 
+    // Grouped for display: live plans on top ("Active plan"), history below
+    // ("Expired plan") — same section style as the Notifications list.
+    const activePlans = plans.filter((p) => p.status === "active" || p.status === "frozen");
+    const pastPlans = plans.filter((p) => p.status === "cancelled" || p.status === "expired");
+    const renderCard = (p: CustomerPlan) => (
+        <PlanCard
+            key={p.id}
+            plan={p}
+            creditsRemaining={member?.creditsRemaining}
+            canReactivate={canReactivate(p)}
+            canFreeze={canFreezePlan(p)}
+            onFreeze={() => setFreezePlan(p)}
+            onUnfreeze={() => doUnfreeze(p)}
+            onCancel={() => setCancelPlan(p)}
+            onReactivate={() => doReactivate(p)}
+        />
+    );
+
     function doFreeze(days: number, reason: string) {
         if (!freezePlan) return;
         const { fee } = freezeMembershipByCustomer(freezePlan.id, REAL_TODAY_ISO, addDaysISO(REAL_TODAY_ISO, days), reason || undefined);
@@ -192,21 +210,22 @@ export default function MyPlanPage() {
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
-            <div className="flex flex-1 flex-col gap-4 px-4 pb-8 pt-[80px]">
+            <div className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-[80px]">
                 {plans.length > 0 ? (
-                    plans.map((p) => (
-                        <PlanCard
-                            key={p.id}
-                            plan={p}
-                            creditsRemaining={member?.creditsRemaining}
-                            canReactivate={canReactivate(p)}
-                            canFreeze={canFreezePlan(p)}
-                            onFreeze={() => setFreezePlan(p)}
-                            onUnfreeze={() => doUnfreeze(p)}
-                            onCancel={() => setCancelPlan(p)}
-                            onReactivate={() => doReactivate(p)}
-                        />
-                    ))
+                    <>
+                        {activePlans.length > 0 && (
+                            <div className="flex flex-col gap-3">
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Active plan</p>
+                                {activePlans.map(renderCard)}
+                            </div>
+                        )}
+                        {pastPlans.length > 0 && (
+                            <div className="flex flex-col gap-3">
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Expired plan</p>
+                                {pastPlans.map(renderCard)}
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
                         <div className="flex size-12 items-center justify-center rounded-full bg-[#f2f4f7]">

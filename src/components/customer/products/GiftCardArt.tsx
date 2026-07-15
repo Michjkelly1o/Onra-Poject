@@ -12,8 +12,9 @@
 
 import { Check } from "@untitledui/icons";
 
-/** Exact Figma card gradient (stops reordered ascending for CSS). */
-const FORMA_GRADIENT =
+/** Exact Figma card gradient (stops reordered ascending for CSS). Exported so the
+ *  Wallet balance card reuses the same Forma card treatment. */
+export const FORMA_GRADIENT =
     "linear-gradient(178.25deg, rgb(234,239,243) 4%, rgb(216,243,228) 22.7%, rgb(177,231,201) 34.5%, rgb(239,250,244) 69%, rgb(196,237,214) 100%)";
 
 /** Small green gift-card tile (46×32) — the exact Forma payment tile used in the

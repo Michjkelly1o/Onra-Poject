@@ -340,12 +340,21 @@ export function computeTotals(subtotal: number, promo: PromoVM | null, taxRatePc
 
 // ─── Order snapshot (carried from Pay now → processing → success) ────────────
 
+export interface OrderLine {
+    name: string;
+    quantity: number;
+    /** Unit price (AED). */
+    price: number;
+}
+
 export interface OrderSnapshot extends CartTotals {
     totalItems: number;
     method: string;
     txnId: string;
     dateLabel: string;
     timeLabel: string;
+    /** Purchased line items — the receipt's Item detail section. */
+    items: OrderLine[];
     /** Distinct product kinds in the order — drives the success-screen actions. */
     kinds: PlanKind[];
 }

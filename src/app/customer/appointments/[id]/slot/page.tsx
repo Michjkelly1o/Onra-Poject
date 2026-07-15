@@ -15,7 +15,7 @@
 
 import { useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronDown } from "@untitledui/icons";
+import { ChevronDown, Users01 } from "@untitledui/icons";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { addDaysISO, dayNum, formatMonth, REAL_TODAY_ISO, weekdayAbbr } from "@/lib/customer/dates";
 import { useAppointment } from "@/lib/customer/appointments-data";
@@ -82,7 +82,7 @@ export default function SelectSlotPage() {
     }
 
     return (
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-[100dvh] flex-col">
             <AppointmentFlowHeader
                 title="Select date & time"
                 progress={isPrivate ? 66 : 50}
@@ -172,13 +172,14 @@ export default function SelectSlotPage() {
                                     {/* Open sessions surface remaining capacity; Private is 1:1 (no badge). */}
                                     {isOpen && s.spotsLeft != null && (
                                         <span
-                                            className={`absolute right-4 top-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${
+                                            className={`absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${
                                                 isSel
                                                     ? "border-[var(--brand-tertiary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]"
                                                     : "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]"
                                             }`}
                                         >
-                                            {s.spotsLeft}/{s.capacity}
+                                            <Users01 className="size-3 shrink-0" aria-hidden />
+                                            {s.booked}/{s.capacity}
                                         </span>
                                     )}
                                 </button>

@@ -80,7 +80,7 @@ export function FullScreenFilterModal({
                         onClick={onReset}
                         className="min-w-[106px] rounded-full"
                     >
-                        Reset
+                        Clear all
                     </Button>
                     <Button
                         variant="primary"

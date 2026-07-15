@@ -12,18 +12,23 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
 import {
     Bell01,
+    Calendar,
     CalendarCheck01,
     ChevronRight,
     CreditCard02,
     Gift01,
+    BankNote01,
     Globe01,
+    InfoCircle,
+    Link01,
     LogOut01,
     PhoneCall01,
-    Share07,
     User01,
     Users01,
+    Wallet04,
 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import type { BookingTab } from "@/lib/customer/bookings-data";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { logoutCustomer } from "@/lib/customer/auth";
 import { longDate } from "@/lib/customer/profile-format";
@@ -35,8 +40,9 @@ import { Button } from "@/components/ui/button";
 type Row = { icon: ComponentType<SVGProps<SVGSVGElement>>; label: string; href: string };
 
 const GROUP_A: Row[] = [
-    { icon: CalendarCheck01, label: "Bookings", href: "/customer/bookings" },
-    { icon: Share07, label: "Integrations", href: "/customer/profile/integrations" },
+    { icon: Wallet04, label: "Wallet", href: "/customer/profile/wallet" },
+    { icon: BankNote01, label: "Payment history", href: "/customer/profile/payment-history" },
+    { icon: Link01, label: "Integrations", href: "/customer/profile/integrations" },
     { icon: Bell01, label: "Notifications", href: "/customer/profile/notifications" },
     { icon: CreditCard02, label: "Payment methods", href: "/customer/profile/payment-methods" },
     { icon: PhoneCall01, label: "Emergency contact", href: "/customer/profile/emergency" },
@@ -158,9 +164,9 @@ export default function ProfilePage() {
             >
                 {member?.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={member.imageUrl} alt="" className="size-14 shrink-0 rounded-full object-cover" />
+                    <img src={member.imageUrl} alt="" className="size-11 shrink-0 rounded-full object-cover" />
                 ) : (
-                    <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#e0e0e0] text-lg font-semibold text-[#475467]">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#e0e0e0] text-base font-semibold text-[#475467]">
                         {member?.initials}
                     </div>
                 )}
@@ -233,18 +239,53 @@ export default function ProfilePage() {
                 </div>
             )}
 
+            {/* Bookings — a dedicated card with Upcoming / Past entries (Figma 4488). */}
+            <div className={`p-4 ${CARD}`}>
+                <p className="text-sm font-normal leading-5 text-[#475467]">Bookings</p>
+                <div className="mt-3 flex gap-3">
+                    {([
+                        { icon: Calendar, label: "Upcoming", tab: "upcoming" },
+                        { icon: CalendarCheck01, label: "Past", tab: "past" },
+                    ] as { icon: typeof Calendar; label: string; tab: BookingTab }[]).map(({ icon: Icon, label, tab }) => (
+                        <button
+                            key={label}
+                            type="button"
+                            onClick={() => router.push(`/customer/bookings/${tab}`)}
+                            className="flex flex-1 items-center gap-2 text-left transition-opacity active:opacity-70"
+                        >
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
+                                <Icon className="size-4 text-[#344054]" aria-hidden />
+                            </span>
+                            <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <MenuGroup rows={GROUP_A} />
             <MenuGroup rows={GROUP_B} />
 
-            {/* Logout */}
-            <button
-                type="button"
-                onClick={() => setLogoutOpen(true)}
-                className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-gray-50 ${CARD}`}
-            >
-                <LogOut01 className="size-5 shrink-0 text-[#d92d20]" aria-hidden />
-                <span className="flex-1 text-base font-semibold leading-6 text-[#d92d20]">Logout</span>
-            </button>
+            {/* About + Logout */}
+            <div className={`overflow-hidden ${CARD}`}>
+                <button
+                    type="button"
+                    onClick={() => router.push("/customer/profile/about")}
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-gray-50"
+                >
+                    <InfoCircle className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                    <span className="flex-1 text-base font-semibold leading-6 text-[var(--brand-text)]">About</span>
+                    <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setLogoutOpen(true)}
+                    className="flex w-full items-center gap-3 border-t border-[#f2f4f7] px-4 py-3.5 text-left transition-colors active:bg-gray-50"
+                >
+                    <LogOut01 className="size-5 shrink-0 text-[#d92d20]" aria-hidden />
+                    <span className="flex-1 text-base font-semibold leading-6 text-[#d92d20]">Logout</span>
+                    <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                </button>
+            </div>
 
             <CustomerSheet open={logoutOpen} onClose={() => setLogoutOpen(false)}>
                 <SheetToolbar title="" onClose={() => setLogoutOpen(false)} />

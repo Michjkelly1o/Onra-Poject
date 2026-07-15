@@ -5,15 +5,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // The Bookings filter: the same full-screen modal chrome as the Search filter,
-// but the Time section is replaced by a Class type segmented control. Sections:
-// Class type (Group / Appointment), Instructor (multi-select pills), Categories
-// (multi-select chips). Multi within Instructor/Categories; Class type is single.
+// but the Time section is replaced by a Type segmented control. Sections:
+// Type (Classes / Private / Recovery), Date range, Instructor (multi-select
+// pills), Categories (multi-select chips). Multi within Instructor/Categories;
+// Type is single-select.
 
 import { useState } from "react";
 import { Calendar } from "@untitledui/icons";
 import { FullScreenFilterModal } from "@/components/customer/shell/FullScreenFilterModal";
 import { DatePickerSheet } from "@/components/customer/shell/DatePickerSheet";
 import { InstructorAvatar } from "@/components/customer/instructors/InstructorAvatar";
+import { SegmentedControl } from "@/components/customer/shell/SegmentedControl";
 import { bookingFilterCount, type BookingFilters } from "@/lib/customer/bookings-data";
 import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import type { FilterInstructor } from "@/lib/customer/instructors";
@@ -24,6 +26,13 @@ function fmtDate(iso: string): string {
     return Number.isNaN(d.getTime())
         ? iso
         : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** One field label for a single day or a span ("13 Jul 2026" / "13 – 20 Jul 2026"). */
+function rangeLabel(from: string | null, to: string | null): string {
+    if (!from && !to) return "Select date";
+    if (from && (!to || to === from)) return fmtDate(from);
+    return `${fmtDate(from as string)} – ${fmtDate(to as string)}`;
 }
 
 export type { FilterInstructor };
@@ -55,15 +64,10 @@ export function BookingsFilterModal({
     const pillInstructors = instructors.slice(0, 5);
     const showSeeAll = instructors.length > 5;
 
-    const setClassType = (ct: "Group" | "Appointment") =>
-        onDraftChange({ ...draft, classType: draft.classType === ct ? null : ct });
-    const setDateFrom = (v: string) => onDraftChange({ ...draft, dateFrom: v || null });
-    const setDateTo = (v: string) => onDraftChange({ ...draft, dateTo: v || null });
     const clearDates = () => onDraftChange({ ...draft, dateFrom: null, dateTo: null });
-    // Which date field's calendar sheet is open (null = none).
-    const [picker, setPicker] = useState<"from" | "to" | null>(null);
+    const [pickerOpen, setPickerOpen] = useState(false);
     const dateFieldCls =
-        "flex w-full items-center justify-between gap-2 rounded-md border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
+        "flex w-full items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
     const toggleInstructor = (id: string) =>
         onDraftChange({
             ...draft,
@@ -87,27 +91,13 @@ export function BookingsFilterModal({
             applyDisabled={disabled}
         >
             <div className="flex flex-col gap-6">
-                {/* Class type */}
-                <div className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-5 text-[#344054]">Class type</span>
-                    <div className="flex overflow-hidden rounded-md border border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        {(["Group", "Appointment"] as const).map((ct, i) => {
-                            const on = draft.classType === ct;
-                            return (
-                                <button
-                                    key={ct}
-                                    type="button"
-                                    onClick={() => setClassType(ct)}
-                                    className={`min-h-10 flex-1 px-4 py-2 text-sm font-semibold leading-5 text-[#344054] transition-colors ${
-                                        i === 0 ? "border-r border-[#d0d5dd]" : ""
-                                    } ${on ? "bg-[#f9fafb]" : "bg-white"}`}
-                                >
-                                    {ct}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                {/* Type — booking kind: Classes / Private / Recovery */}
+                <SegmentedControl
+                    label="Type"
+                    options={["Classes", "Private", "Recovery"] as const}
+                    value={draft.type}
+                    onChange={(t) => onDraftChange({ ...draft, type: t })}
+                />
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
 
@@ -121,26 +111,12 @@ export function BookingsFilterModal({
                             </button>
                         )}
                     </div>
-                    <div className="flex gap-3">
-                        <div className="flex flex-1 flex-col gap-1.5">
-                            <span className="text-xs font-normal leading-[18px] text-[#667085]">From</span>
-                            <button type="button" onClick={() => setPicker("from")} className={dateFieldCls}>
-                                <span className={draft.dateFrom ? "text-[var(--brand-text)]" : "text-[#667085]"}>
-                                    {draft.dateFrom ? fmtDate(draft.dateFrom) : "Select date"}
-                                </span>
-                                <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
-                            </button>
-                        </div>
-                        <div className="flex flex-1 flex-col gap-1.5">
-                            <span className="text-xs font-normal leading-[18px] text-[#667085]">To</span>
-                            <button type="button" onClick={() => setPicker("to")} className={dateFieldCls}>
-                                <span className={draft.dateTo ? "text-[var(--brand-text)]" : "text-[#667085]"}>
-                                    {draft.dateTo ? fmtDate(draft.dateTo) : "Select date"}
-                                </span>
-                                <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
-                            </button>
-                        </div>
-                    </div>
+                    <button type="button" onClick={() => setPickerOpen(true)} className={dateFieldCls}>
+                        <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                        <span className={`min-w-0 flex-1 truncate text-left ${draft.dateFrom ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                            {rangeLabel(draft.dateFrom, draft.dateTo)}
+                        </span>
+                    </button>
                 </div>
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
@@ -200,25 +176,15 @@ export function BookingsFilterModal({
                 </div>
             </div>
 
-            {/* Branded calendar sheets — same picker as Date of birth. From ≤ To is
-                enforced via minISO/maxISO so the range can't invert. */}
+            {/* One branded calendar — tap a single day or a span (from → to). */}
             <DatePickerSheet
-                open={picker === "from"}
-                onClose={() => setPicker(null)}
-                title="From date"
-                value={draft.dateFrom ?? undefined}
+                open={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                title="Select date range"
+                range
+                rangeValue={{ from: draft.dateFrom, to: draft.dateTo }}
                 defaultISO={REAL_TODAY_ISO}
-                maxISO={draft.dateTo ?? undefined}
-                onSelect={setDateFrom}
-            />
-            <DatePickerSheet
-                open={picker === "to"}
-                onClose={() => setPicker(null)}
-                title="To date"
-                value={draft.dateTo ?? undefined}
-                defaultISO={draft.dateFrom ?? REAL_TODAY_ISO}
-                minISO={draft.dateFrom ?? undefined}
-                onSelect={setDateTo}
+                onSelectRange={(from, to) => onDraftChange({ ...draft, dateFrom: from, dateTo: to })}
             />
         </FullScreenFilterModal>
     );

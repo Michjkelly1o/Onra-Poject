@@ -15,6 +15,7 @@ import type { FilterInstructor } from "@/lib/customer/instructors";
 import { FullScreenFilterModal } from "@/components/customer/shell/FullScreenFilterModal";
 import { InstructorAvatar } from "@/components/customer/instructors/InstructorAvatar";
 import { FilterPill } from "@/components/customer/shell/FilterPill";
+import { SegmentedControl } from "@/components/customer/shell/SegmentedControl";
 
 export type { FilterInstructor };
 
@@ -25,6 +26,7 @@ const TIME_SLOTS: { id: string; label: string; start: string; end: string }[] = 
     { id: "afternoon", label: "Afternoon", start: "12:00", end: "17:00" },
     { id: "evening", label: "Evening", start: "17:00", end: "23:00" },
 ];
+
 
 export interface ClassesFilterModalProps {
     open: boolean;
@@ -40,6 +42,8 @@ export interface ClassesFilterModalProps {
     showTime?: boolean;
     /** Hide the Instructor section (Appointments filter shows Categories only). */
     showInstructor?: boolean;
+    /** Show the session Type section (Appointments filter: Private / Recovery). */
+    showType?: boolean;
 }
 
 export function ClassesFilterModal({
@@ -54,6 +58,7 @@ export function ClassesFilterModal({
     onApply,
     showTime = true,
     showInstructor = true,
+    showType = false,
 }: ClassesFilterModalProps) {
     const active = hasActiveFilters(draft);
     const pillInstructors = instructors.slice(0, 5);
@@ -136,6 +141,19 @@ export function ClassesFilterModal({
                 )}
 
                 {showInstructor && <div className="h-px w-full bg-[#e4e7ec]" />}
+
+                {/* Type — appointment session type (Private / Recovery), before Categories.
+                    Same single-select segmented control as the Bookings filter. */}
+                {showType && (
+                    <SegmentedControl
+                        label="Type"
+                        options={["Private", "Recovery"] as const}
+                        value={draft.sessionType}
+                        onChange={(t) => onDraftChange({ ...draft, sessionType: t })}
+                    />
+                )}
+
+                {showType && <div className="h-px w-full bg-[#e4e7ec]" />}
 
                 {/* Categories */}
                 <div className="flex flex-col gap-2">

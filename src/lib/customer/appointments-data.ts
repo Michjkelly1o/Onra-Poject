@@ -87,7 +87,8 @@ export function useAppointments(filters: SearchFilters): AppointmentVM[] {
             // Open sessions only exist for recovery services; a private
             // service is always 1:1 (never open).
             .filter((s) => s.type === "recovery" || !s.openSession)
+            .filter((s) => !filters.sessionType || s.type === filters.sessionType.toLowerCase())
             .filter((s) => filters.categories.length === 0 || filters.categories.includes(s.category))
             .map(toVM);
-    }, [selectedBranchId, services, filters.categories]);
+    }, [selectedBranchId, services, filters.sessionType, filters.categories]);
 }
