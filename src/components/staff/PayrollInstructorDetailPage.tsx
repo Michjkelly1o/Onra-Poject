@@ -385,20 +385,16 @@ function exportPayoutReport(rows: ClassRow[], instructor: Instructor, periodLabe
 
 // ─── Sidebar earnings summary (Figma — Total earnings this month card) ────
 
-function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateName, payRateAmount, branchId, showTax }: {
+function SidebarEarningsCard({ totalThisMonth, payRateAmount, branchId, showTax }: {
     totalThisMonth: number;
-    classesCount: number;
-    classCap: number;
     /** Branch context for the pay_rate tax-suffix lookup. */
     branchId: string;
-    payRateName: string;
     payRateAmount: string;
     /** Country-gated: hide the TaxSuffix line for GCC studios (see
      *  `payrollTaxAppliesForCountry`). Passed from the page-level flag
      *  so a country change in Settings propagates here live. */
     showTax: boolean;
 }) {
-    const pct = classCap > 0 ? Math.min(100, Math.round((classesCount / classCap) * 100)) : 0;
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
             <div className="flex flex-col gap-1">
@@ -406,18 +402,10 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, payRateNa
                 <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{aed(totalThisMonth)}</p>
                 {showTax && <TaxSuffix category="pay_rate" branchId={branchId} />}
             </div>
-            <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
-                <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[12px] text-[#667085]">Classes</p>
-                    <p className="text-[13px] font-medium text-[#344054]">{classesCount}/{classCap} classes</p>
-                </div>
-                <div className="flex flex-col gap-1 text-right">
-                    <p className="text-[12px] text-[#667085]">Default pay rate</p>
-                    <p className="text-[13px] font-medium text-[#344054]">{payRateAmount}</p>
-                </div>
+            <div className="h-px w-full bg-[#e4e7ec]" />
+            <div className="flex flex-col gap-1">
+                <p className="text-[12px] text-[#667085]">Default pay rate</p>
+                <p className="text-[13px] font-medium text-[#344054]">{payRateAmount}</p>
             </div>
         </div>
     );
@@ -599,23 +587,40 @@ export default function PayrollInstructorDetailPage({
     // seed dates are static (May 2026) — they'd resolve to 0 every month
     // after May. `payroll_entries.period_start` is computed at load time =
     // current month, so it stays accurate as the demo runs.
-    const sidebarThisMonth = useMemo(() => {
+    const sidebarEntryEarnings = useMemo(() => {
         const now = new Date();
         const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
         const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        const inMonth = payrollEntries
+        return payrollEntries
             .filter(e => e.instructorId === instructorId)
             .filter(e => {
                 const t = new Date(e.periodStart + "T00:00:00").getTime();
                 return t >= mFrom.getTime() && t <= mTo.getTime();
-            });
-        return {
-            earnings: inMonth.reduce((s, e) => s + e.totalEarnings, 0),
-            classes:  inMonth.reduce((s, e) => s + e.classesCount,  0),
-        };
+            })
+            .reduce((s, e) => s + e.totalEarnings, 0);
     }, [payrollEntries, instructorId]);
-    const sidebarMonthly       = sidebarThisMonth.earnings;
-    const sidebarClassesCount  = sidebarThisMonth.classes;
+
+    // Current-month commission for the sidebar's "this month" total. The
+    // sidebar is always the calendar month, independent of the period filter
+    // that drives the table below. Monthly-rate staff earn commission; every
+    // other rate type returns 0.
+    const sidebarMonthCommission = useMemo(() => {
+        const now = new Date();
+        const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+        const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return commissionForPeriod(instructorId, payRate, {
+            transactions: customerTransactions, classBookings, classSchedules,
+            appointmentBookings, appointments,
+        }, iso(mFrom), iso(mTo)).totalCommission;
+    }, [instructorId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);
+
+    // "Total earnings this month" — a monthly-rate person earns a FIXED
+    // salary (+ commission), never a per-class sum. Per-class rate types roll
+    // up from their payroll entries.
+    const sidebarMonthly = payRate?.type === "monthly"
+        ? payRate.fixedSalary + sidebarMonthCommission
+        : sidebarEntryEarnings;
 
     // ─── Pagination ───────────────────────────────────────────────────────
     // ── Bookings sort — Class name / Attendance / Rating / Status /
@@ -683,7 +688,7 @@ export default function PayrollInstructorDetailPage({
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Instructor details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -708,9 +713,6 @@ export default function PayrollInstructorDetailPage({
                             <div className="px-6 pb-6 flex flex-col gap-5">
                                 <SidebarEarningsCard
                                     totalThisMonth={sidebarMonthly}
-                                    classesCount={sidebarClassesCount}
-                                    classCap={Math.max(10, sidebarClassesCount)}
-                                    payRateName={payRate?.name ?? "—"}
                                     payRateAmount={payRateAmount}
                                     branchId={ins.branchId}
                                     showTax={showPayrollTax}
@@ -754,7 +756,11 @@ export default function PayrollInstructorDetailPage({
                                 <PayRateSnapshotCard payRate={payRate} />
                                 <MetricCard
                                     label="Total earnings"
-                                    value={aed(isRealInstructor ? periodEarnings : commission.totalCommission)}
+                                    value={aed(
+                                        payRate?.type === "monthly"
+                                            ? payRate.fixedSalary + commission.totalCommission
+                                            : isRealInstructor ? periodEarnings : commission.totalCommission,
+                                    )}
                                     hint="↑ 30% vs last week"
                                     Icon={CheckCircle}
                                 />

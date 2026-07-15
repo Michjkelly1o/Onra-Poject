@@ -72,11 +72,14 @@ export const payroll_entries: PayrollEntrySeed[] = [
     {
         id: "pe_liam_apr2026",
         instructor_id: "staff_liam_chen", branch_id: "branch_forma_south",
-        pay_rate_id: "pr_standard", pay_rate_name: "Standard",
+        // Liam is the demo instructor on the Monthly Rate (commission is a
+        // Monthly-only feature — client wants an instructor to show it). His
+        // month rollup is the fixed salary, NOT a per-class sum.
+        pay_rate_id: "pr_monthly", pay_rate_name: "Monthly Rate",
         period_start: DEMO_PERIOD_START, period_end: DEMO_PERIOD_END,
         classes_count: 3,  total_attendees: 28, total_hours: 3,  gross_revenue: 2646,
-        // flat: 3 × 147 = 441
-        base_earnings: 441, adjustment_amount: 0, total_earnings: 441,
+        // monthly: fixed_salary = 8,000 (period rollup is the full month)
+        base_earnings: 8000, adjustment_amount: 0, total_earnings: 8000,
         status: "pending",
     },
     {

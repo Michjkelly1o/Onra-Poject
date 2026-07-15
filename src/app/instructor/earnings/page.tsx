@@ -169,13 +169,31 @@ export default function InstructorEarningsPage() {
         };
     }, [currentRange]);
 
+    // Completed classes in the CURRENT calendar month — the divisor that
+    // splits a monthly salary evenly across the month's classes (mirrors the
+    // admin Payroll detail's `completedThisMonth`).
+    const completedThisMonth = useMemo(() => {
+        const now = new Date();
+        const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+        const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        return myClasses.filter(c =>
+            c.status === "Completed" && isoInRange(c.dateISO, { from: mFrom, to: mTo }),
+        ).length;
+    }, [myClasses]);
+
     // ── KPI calculations ──────────────────────────────────────────────────
     const kpis = useMemo(() => {
         const currClasses = myClasses.filter(c => isoInRange(c.dateISO, currentRange));
         const prevClasses = myClasses.filter(c => isoInRange(c.dateISO, prevRange));
 
-        const currEarnings = currClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
-        const prevEarnings = prevClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
+        // A monthly-rate instructor earns a FIXED salary (not a per-class
+        // sum). Per-class rate types sum earningsForClass across the period.
+        const currEarnings = payRate?.type === "monthly"
+            ? payRate.fixedSalary
+            : currClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
+        const prevEarnings = payRate?.type === "monthly"
+            ? payRate.fixedSalary
+            : prevClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
 
         const currCompleted = currClasses.filter(c => c.status === "Completed").length;
         const prevCompleted = prevClasses.filter(c => c.status === "Completed").length;
@@ -186,12 +204,13 @@ export default function InstructorEarningsPage() {
         }
 
         return {
-            totalEarnings: currEarnings,
+            // Salary/per-class base + any sales commission credited this period.
+            totalEarnings: currEarnings + commission.totalCommission,
             earningsDelta: delta(currEarnings, prevEarnings),
             classesTaught: currCompleted,
             classesDelta:  delta(currCompleted, prevCompleted),
         };
-    }, [myClasses, currentRange, prevRange, payRate]);
+    }, [myClasses, currentRange, prevRange, payRate, commission]);
 
     // ── Row pipeline: filter → search → sort → paginate ───────────────────
     const filteredRows = useMemo(() => {
@@ -378,6 +397,7 @@ export default function InstructorEarningsPage() {
                                         key={c.id}
                                         schedule={c}
                                         payRate={payRate}
+                                        classesInMonth={completedThisMonth || 1}
                                         onViewDetails={() => handleViewDetails(c.id)}
                                     />
                                 ))}
@@ -480,10 +500,13 @@ function KpiCard({ icon: Icon, label, value, deltaPercent }: KpiCardProps) {
 interface EarningsRowProps {
     schedule: ClassSchedule;
     payRate: PayRate | undefined;
+    /** Completed-classes-in-month divisor for the monthly-rate salary split
+     *  (1 for per-class rate types). */
+    classesInMonth: number;
     onViewDetails: () => void;
 }
-function EarningsRow({ schedule, payRate, onViewDetails }: EarningsRowProps) {
-    const earnings = earningsForClass(schedule, payRate, 1);
+function EarningsRow({ schedule, payRate, classesInMonth, onViewDetails }: EarningsRowProps) {
+    const earnings = earningsForClass(schedule, payRate, classesInMonth);
 
     return (
         <tr onClick={onViewDetails}

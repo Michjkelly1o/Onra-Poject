@@ -8121,7 +8121,11 @@ export const useAppStore = create<AppState>()(persist(
         //   pr_senior + pr_standard; form + calc gate to Monthly. Liam Chen
         //   moved to pr_monthly + added to the POS seller rotation so an
         //   instructor shows non-empty commission. Bump reseeds.
-        version: 64,
+        // v65 (2026-07-15): Liam's payroll entry re-based to his Monthly Rate
+        //   (was stale pr_standard/AED 441) → month rollup = AED 8,000 salary,
+        //   so the payroll staff-detail + compensation list show a real total
+        //   instead of AED 0. Bump reseeds payroll entries.
+        version: 65,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
