@@ -278,9 +278,13 @@ function buildSeries(id: string, period: DateFilter): object[] {
 
 /** Canonical money formatter for chart tooltips: `AED 15,000`. Rounds to whole
  *  AED, en-US thousands separator (comma) — matches the app-wide convention
- *  (payroll, insights KPI cards, notification bodies, store fixtures). */
+ *  (payroll, insights KPI cards, notification bodies, store fixtures). Returns
+ *  `AED —` for null / undefined / NaN so a missing data point doesn't read as
+ *  the misleading `AED 0`. A legitimate zero renders as `AED 0`. */
 export function aedMoney(value: unknown): string {
-    const n = Number(value) || 0;
+    if (value === null || value === undefined || value === "") return "AED —";
+    const n = Number(value);
+    if (Number.isNaN(n)) return "AED —";
     return `AED ${Math.round(n).toLocaleString("en-US")}`;
 }
 
@@ -387,7 +391,7 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={32} />
                         <Tooltip content={<ChartTooltip valueFormatter={aedMoney} />} />
-                        <Line type="monotone" dataKey="v" name="Payments (AED)" stroke="#92d1de" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="v" name="Payments" stroke="#92d1de" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             );
@@ -694,11 +698,16 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
                             <YAxis {...axisProps} width={40} />
                             {/* Mixed units: CPL / CAC are AED, ROAS is a
                                 multiplier. Per-key formatter keeps each
-                                honest instead of AED-prefixing ROAS. */}
+                                honest instead of AED-prefixing ROAS. Missing
+                                data renders as "—" not "AED 0" / "0×". */}
                             <Tooltip content={<ChartTooltip valueFormatter={(p) => {
-                                const n = Number(p.value) || 0;
-                                if (p.dataKey === "roas") return `${n.toLocaleString("en-US")}×`;
-                                return aedMoney(n);
+                                if (p.value === null || p.value === undefined || p.value === "") return "—";
+                                if (p.dataKey === "roas") {
+                                    const n = Number(p.value);
+                                    if (Number.isNaN(n)) return "—";
+                                    return `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`;
+                                }
+                                return aedMoney(p.value);
                             }} />} />
                             <Line type="monotone" dataKey="cpl"  name="CPL"  stroke="#92d1de" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="cac"  name="CAC"  stroke="#f7b955" strokeWidth={2} dot={false} />
