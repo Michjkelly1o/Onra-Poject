@@ -25,7 +25,6 @@
 // inline unconditionally.
 
 import { useMemo } from "react";
-import { Star01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import {
     computeCustomerBadgesForClass,
@@ -34,23 +33,21 @@ import {
 } from "@/lib/customer-badges";
 
 // ── Pill palette — soft blue, consistent with the DS Badge "info" tone.
-const TONE: Record<CustomerBadge["tone"], { pill: string; icon: React.ComponentType<{ className?: string }> }> = {
+const TONE: Record<CustomerBadge["tone"], { pill: string }> = {
     count: {
         pill: "border-[#b2ddff] bg-[#eff8ff] text-[#175cd3]",
-        icon: Star01,
     },
 };
 
 /** Render one pill. Icon + label sit inline; the whole pill shrinks so
  *  long rosters wrap gracefully. */
 function BadgePill({ badge }: { badge: CustomerBadge }) {
-    const { pill, icon: Icon } = TONE[badge.tone];
+    const { pill } = TONE[badge.tone];
     return (
         <span
-            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium leading-[16px] ${pill}`}
+            className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-[16px] ${pill}`}
             title={badge.label}
         >
-            <Icon className="size-3" aria-hidden />
             {badge.label}
         </span>
     );
