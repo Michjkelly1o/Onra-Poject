@@ -461,6 +461,9 @@ export default function PayrollInstructorDetailPage({
     const classBookings          = useAppStore(s => s.classBookings);
     const appointmentBookings    = useAppStore(s => s.appointmentBookings);
     const appointments           = useAppStore(s => s.appointments);
+    // Payroll reopened to all staff (Phase 3B) — non-instructor rows resolve
+    // to a synthetic Instructor built from their staff record.
+    const staff                  = useAppStore(s => s.staff);
     const assignInstructorPayRate = useAppStore(s => s.assignInstructorPayRate);
     const showToast              = useAppStore(s => s.showToast);
     // Country-gated payroll tax UI (see `payrollTaxAppliesForCountry`).
@@ -470,10 +473,28 @@ export default function PayrollInstructorDetailPage({
     const businessCountry        = useAppStore(s => s.businessProfile.country);
     const showPayrollTax         = payrollTaxAppliesForCountry(businessCountry);
 
-    const instructor = useMemo(
-        () => instructors.find(i => i.id === instructorId),
-        [instructors, instructorId],
-    );
+    const instructor = useMemo<Instructor | undefined>(() => {
+        const real = instructors.find(i => i.id === instructorId);
+        if (real) return real;
+        // Non-instructor staff (Phase 3B): synthesise an Instructor-shaped
+        // record so this page renders their profile + commission. They teach
+        // no classes, so the bookings table below is naturally empty.
+        const st = staff.find(s => s.id === instructorId);
+        if (!st) return undefined;
+        return {
+            id: st.id,
+            name: st.fullName,
+            initials: st.initials,
+            color: st.color,
+            imageUrl: st.imageUrl,
+            email: st.email,
+            phone: st.phone,
+            joinedDate: st.joinedDate,
+            branchId: st.branchId ?? "",
+            payRateId: st.payRateId,
+            status: st.status === "active" ? "active" : "inactive",
+        };
+    }, [instructors, staff, instructorId]);
     const payRate = useMemo(
         () => instructor?.payRateId ? payRates.find(p => p.id === instructor.payRateId) : undefined,
         [instructor, payRates],

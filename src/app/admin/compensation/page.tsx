@@ -36,6 +36,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
+import { commissionForPeriod } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
@@ -161,7 +162,7 @@ interface CompRow {
 
 function exportCompensationCsv(rows: CompRow[], branches: Branch[]) {
     const header = [
-        "Instructor", "Email", "Branch", "Default pay rate",
+        "Staff", "Email", "Branch", "Default pay rate",
         "Completed classes", "Earnings (AED)", "Status", "Period",
     ];
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
@@ -201,6 +202,16 @@ export default function CompensationPage() {
     const instructors    = useAppStore(s => s.instructors);
     const branches       = useAppStore(s => s.branches);
     const showToast      = useAppStore(s => s.showToast);
+    // Commission refactor Phase 3B — payroll reopens to ALL staff. Non-
+    // instructor staff appear with their categorised commission (+ monthly
+    // salary). Commission sources + role join.
+    const staff                = useAppStore(s => s.staff);
+    const roles                = useAppStore(s => s.roles);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const classBookings        = useAppStore(s => s.classBookings);
+    const classSchedules       = useAppStore(s => s.classSchedules);
+    const appointmentBookings  = useAppStore(s => s.appointmentBookings);
+    const appointments         = useAppStore(s => s.appointments);
 
     const [branchId, setBranchId] = useState<string>("");
     const [search, setSearch]     = useState("");
@@ -251,10 +262,8 @@ export default function CompensationPage() {
             }
         }
 
-        // Payroll module is INSTRUCTOR-ONLY. Non-instructor staff earn sales
-        // commission — that surfaces on their Staff Detail Overview tab, not
-        // here.
-        return instructors
+        // Instructor rows — class-teaching earnings from payroll entries.
+        const instructorRows: CompRow[] = instructors
             .filter(i => i.status === "active")
             .map(instructor => {
                 const entry = entriesByInstructor.get(instructor.id);
@@ -286,7 +295,44 @@ export default function CompensationPage() {
                     periodEnd: entry?.periodEnd ?? "",
                 } satisfies CompRow;
             });
-    }, [payrollEntries, instructors, payRates, range]);
+
+        // Non-instructor staff rows (Phase 3B) — no class teaching, so earnings
+        // = monthly salary (if any) + categorised commission for the period.
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const staffRows: CompRow[] = staff
+            .filter(st => st.status === "active")
+            .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
+            .map(st => {
+                const payRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
+                const commission = commissionForPeriod(st.id, payRate, sources, iso(range.from), iso(range.to));
+                const salary = payRate?.type === "monthly" ? payRate.fixedSalary : 0;
+                const identity: CompRowIdentity = {
+                    id: st.id,
+                    name: st.fullName,
+                    email: st.email,
+                    imageUrl: st.imageUrl,
+                    initials: st.initials,
+                    color: st.color,
+                    branchId: st.branchId ?? "",
+                    payRateId: st.payRateId,
+                };
+                return {
+                    entryId: `staff_${st.id}`,
+                    instructor: identity,
+                    branchId: st.branchId ?? "",
+                    payRateName: payRate?.name ?? "—",
+                    classesCount: 0,
+                    earnings: salary + commission.totalCommission,
+                    status: "pending",
+                    periodStart: "",
+                    periodEnd: "",
+                } satisfies CompRow;
+            });
+
+        return [...instructorRows, ...staffRows];
+    }, [payrollEntries, instructors, staff, roles, payRates, range,
+        customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);
 
     const filteredRows = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -372,7 +418,7 @@ export default function CompensationPage() {
                 <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
                 <MetricCard label="Total payouts"     value={aed(totalPayouts)}     period={metricPeriodLabel} Icon={CoinsHand} />
                 <MetricCard label="Classes completed" value={totalClasses.toLocaleString("en-US")} period={metricPeriodLabel} Icon={CheckCircle} />
-                <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
+                <MetricCard label="Avg per staff" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
             </div>
 
             {/* Toolbar */}
@@ -380,7 +426,7 @@ export default function CompensationPage() {
                 <div className="flex-1">
                     <p className="text-[16px] text-[#667085]">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
-                        {filteredRows.length} {filteredRows.length === 1 ? "instructor" : "instructors"}
+                        {filteredRows.length} {filteredRows.length === 1 ? "staff member" : "staff"}
                     </p>
                 </div>
                 <SelectInput
@@ -405,7 +451,7 @@ export default function CompensationPage() {
                         exportCompensationCsv(filteredRows, branches);
                         showToast(
                             "Compensation exported",
-                            `${filteredRows.length} ${filteredRows.length === 1 ? "instructor" : "instructors"} exported to CSV.`,
+                            `${filteredRows.length} ${filteredRows.length === 1 ? "staff member" : "staff"} exported to CSV.`,
                             "success", "check",
                         );
                     }}
@@ -420,7 +466,7 @@ export default function CompensationPage() {
                 <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                     {pageRows.length === 0 ? (
                         <EmptyState
-                            title={isTrulyEmpty ? "No active instructors" : "No instructors found"}
+                            title={isTrulyEmpty ? "No active staff" : "No staff found"}
                             subtitle={isTrulyEmpty
                                 ? "Add an instructor to start calculating compensation."
                                 : "Try adjusting your search or branch filter."}
