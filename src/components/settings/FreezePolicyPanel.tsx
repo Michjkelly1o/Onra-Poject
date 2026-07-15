@@ -341,9 +341,7 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                             generic blue (matches admin's `#658774` accent). */}
                                         <div className="rounded-[8px] bg-[#e9fff3] border-1 border-[#abefc6] px-3.5 py-2.5">
                                             <p className="text-[14px] text-[#3b5446] leading-[20px]">
-                                                Select which reasons members can use to freeze their memberships.
-                                                Unselected reasons will not be available. When the list is empty,
-                                                members can freeze without picking a reason.
+                                                Members will only see the reasons enabled below.
                                             </p>
                                         </div>
 
