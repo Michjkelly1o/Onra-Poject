@@ -124,7 +124,7 @@ export default function SearchPage() {
     const todayYear = monthYearOf(REAL_TODAY_ISO).year;
 
     return (
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-[100dvh] flex-col">
             <CustomerHeader
                 overlap
                 subBar={
@@ -215,6 +215,7 @@ export default function SearchPage() {
                                             timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), timezone)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
+                                            badgeIcon={p.badgeIcon}
                                             ctaLabel={p.ctaLabel}
                                             ctaVariant={p.ctaVariant}
                                             ctaDisabled={false}
@@ -292,6 +293,7 @@ export default function SearchPage() {
                 onDraftChange={setActiveDraft}
                 showTime={isClasses}
                 showInstructor={isClasses}
+                showType={!isClasses}
                 categories={activeCategories}
                 instructors={activeInstructors}
                 onSeeAll={() => router.push("/customer/search/instructors")}

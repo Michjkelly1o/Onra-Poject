@@ -10,7 +10,7 @@
 // branch, start time + duration, and a state-driven CTA. The whole card and the
 // CTA both open Class Details (the booking happens there). Built from scratch.
 
-import { Clock, MarkerPin01 } from "@untitledui/icons";
+import { Clock, Hourglass03, MarkerPin01, Users01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 
 export type BadgeTone = "success" | "neutral" | "error";
@@ -28,6 +28,8 @@ export interface ClassScheduleCardProps {
     timeLabel: string;
     badgeLabel: string;
     badgeTone: BadgeTone;
+    /** Leading badge icon — Users (open spots) / Hourglass (waitlist) / none. */
+    badgeIcon?: "users" | "hourglass" | null;
     ctaLabel: string;
     ctaVariant?: "primary" | "secondary";
     ctaDisabled?: boolean;
@@ -50,6 +52,7 @@ export function ClassScheduleCard({
     timeLabel,
     badgeLabel,
     badgeTone,
+    badgeIcon = null,
     ctaLabel,
     ctaVariant = "primary",
     ctaDisabled = false,
@@ -89,8 +92,10 @@ export function ClassScheduleCard({
                 </div>
 
                 <span
-                    className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${TONE[badgeTone]}`}
+                    className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${TONE[badgeTone]}`}
                 >
+                    {badgeIcon === "users" && <Users01 className="size-3 shrink-0" aria-hidden />}
+                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3 shrink-0" aria-hidden />}
                     {badgeLabel}
                 </span>
             </div>

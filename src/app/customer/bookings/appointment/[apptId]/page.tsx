@@ -12,14 +12,14 @@
 // appointment-bookings store.
 
 import { useParams, useRouter } from "next/navigation";
-import { RefreshCcw01, CheckCircle, ChevronLeft, Clock, ClockFastForward, SlashCircle01, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { RefreshCcw01, CheckCircle, ChevronLeft, ClockFastForward, Coins01, SlashCircle01, UserCheck01, Users01 } from "@untitledui/icons";
 import { to12h } from "@/lib/customer/dates";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { classTimeDisplay } from "@/lib/customer/class-time";
 import { useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
 import { useAppStore } from "@/lib/store";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
-import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
+import { ClassDetailLayout, DetailTimeRow, InfoRow } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
 import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
@@ -27,29 +27,6 @@ import { RefundDetailsSection, type RefundLine } from "@/components/customer/boo
 // Destructive secondary (matches the class Cancel-booking button).
 const CANCEL_BTN =
     "border-[#fda29b] bg-[#fef3f2] text-[#b42318] hover:bg-[#fee4e2] hover:text-[#912018] active:bg-[#fee4e2] active:text-[#912018]";
-
-/** One cell of the appointment info grid — mirrors ClassDetailLayout's InfoCell. */
-function InfoCell({
-    icon: Icon,
-    label,
-    children,
-}: {
-    icon: React.ComponentType<{ className?: string }>;
-    label: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="flex flex-1 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                <Icon className="size-5 text-[#344054]" aria-hidden />
-            </span>
-            <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-xs leading-[18px] text-[#667085]">{label}</span>
-                {children}
-            </div>
-        </div>
-    );
-}
 
 export default function AppointmentBookingDetailPage() {
     const router = useRouter();
@@ -120,6 +97,8 @@ export default function AppointmentBookingDetailPage() {
         spotsLeft: 0,
         waitlistEnabled: false,
         waitlistSpotsLeft: null,
+        waitlistCount: 0,
+        maxWaitlist: 0,
         state: "booked",
         description: booking.description,
         equipment: [],
@@ -193,80 +172,36 @@ export default function AppointmentBookingDetailPage() {
 
     const infoGrid = (
         <div className="flex flex-col gap-4">
-            {/* Date & time — Branch time (always) + Your time (when different),
-                matching the class detail. */}
-            <div className="flex flex-1 items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                    <Clock className="size-5 text-[#344054]" aria-hidden />
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-xs leading-[18px] text-[#667085]">Date & time</span>
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{apptTime.branchTime}</span>
-                        {apptTime.yourTime && (
-                            <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#0c2d34]">
-                                Branch time
-                            </span>
-                        )}
-                    </span>
-                    {apptTime.yourTime && (
-                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{apptTime.yourTime}</span>
-                            <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#475467]">
-                                Your time
-                            </span>
-                        </span>
-                    )}
-                </div>
-            </div>
-            <div className="flex gap-4">
-                <InfoCell icon={ClockFastForward} label="Duration">
-                    <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{booking.durationMins} minutes</span>
-                </InfoCell>
-                <InfoCell icon={Tag01} label="Session type">
-                    <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">
-                        {isPrivate ? "Private" : "Open session"}
-                    </span>
-                </InfoCell>
-            </div>
-            <div className="flex gap-4">
-                {isPrivate && booking.instructorName ? (
+            <DetailTimeRow time={apptTime} />
+            <InfoRow icon={ClockFastForward}>
+                <span>{booking.durationMins} minutes</span>
+            </InfoRow>
+            <InfoRow icon={Coins01}>
+                <span>{isPrivate ? "Private" : "Open session"}</span>
+            </InfoRow>
+            {isPrivate && booking.instructorName ? (
+                <InfoRow icon={UserCheck01}>
                     <button
                         type="button"
                         onClick={() => booking.instructorId && router.push(`/customer/instructors/${booking.instructorId}`)}
-                        className="flex flex-1 items-center gap-3 text-left"
+                        className="flex min-w-0 items-center gap-1.5 text-left"
                     >
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                            <UserCheck01 className="size-5 text-[#344054]" aria-hidden />
+                        <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                            {booking.instructorImageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={booking.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
+                            ) : (
+                                <span className="text-[8px] font-semibold leading-none text-[#667085]">{booking.instructorInitials}</span>
+                            )}
                         </span>
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                            <span className="text-xs leading-[18px] text-[#667085]">Instructor</span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
-                                    {booking.instructorImageUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={booking.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
-                                    ) : (
-                                        <span className="text-[8px] font-semibold leading-none text-[#667085]">
-                                            {booking.instructorInitials}
-                                        </span>
-                                    )}
-                                </span>
-                                <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
-                                    {booking.instructorName}
-                                </span>
-                            </span>
-                        </div>
+                        <span className="truncate">{booking.instructorName}</span>
                     </button>
-                ) : (
-                    <InfoCell icon={Users01} label="Capacity">
-                        <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">
-                            {booking.capacity ? `${booking.capacity} participants` : "Group session"}
-                        </span>
-                    </InfoCell>
-                )}
-                <div className="flex-1" />
-            </div>
+                </InfoRow>
+            ) : (
+                <InfoRow icon={Users01}>
+                    <span>{booking.capacity ? `${booking.capacity} participants` : "Group session"}</span>
+                </InfoRow>
+            )}
         </div>
     );
 

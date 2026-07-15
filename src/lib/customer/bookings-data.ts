@@ -195,9 +195,9 @@ export function useMemberBookings(): { upcoming: BookingListItemVM[]; past: Book
 }
 
 export interface BookingFilters {
-    /** Group = class bookings · Appointment = appointment bookings (mirrors the
-     *  admin schedule module's Group/Appointment filter). */
-    classType: "Group" | "Appointment" | null;
+    /** Booking kind — Classes (group class bookings) · Private / Recovery
+     *  (appointment bookings by session type). Single-select. */
+    type: "Classes" | "Private" | "Recovery" | null;
     instructorIds: string[];
     categories: string[];
     /** Inclusive date range (ISO `YYYY-MM-DD`), either bound optional. Filters the
@@ -206,7 +206,7 @@ export interface BookingFilters {
     dateTo: string | null;
 }
 
-export const EMPTY_BOOKING_FILTERS: BookingFilters = { classType: null, instructorIds: [], categories: [], dateFrom: null, dateTo: null };
+export const EMPTY_BOOKING_FILTERS: BookingFilters = { type: null, instructorIds: [], categories: [], dateFrom: null, dateTo: null };
 
 /** Module cache so the Bookings tab + filter survive list → detail → back AND
  *  the "See all" instructor screen (mirrors `searchUi`): tab, applied filters,
@@ -219,13 +219,14 @@ export const bookingsUi: { tab: BookingTab; applied: BookingFilters; draft: Book
 };
 
 export function bookingFilterCount(f: BookingFilters): number {
-    return (f.classType ? 1 : 0) + f.instructorIds.length + f.categories.length + (f.dateFrom || f.dateTo ? 1 : 0);
+    return (f.type ? 1 : 0) + f.instructorIds.length + f.categories.length + (f.dateFrom || f.dateTo ? 1 : 0);
 }
 
 export function applyBookingFilters(list: BookingListItemVM[], f: BookingFilters): BookingListItemVM[] {
-    // Class bookings ARE the "Group" kind — selecting "Appointment" hides them all
-    // (appointment bookings are filtered separately on the Bookings page).
-    if (f.classType === "Appointment") return [];
+    // Class bookings ARE the "Classes" kind — selecting an appointment type
+    // (Private / Recovery) hides them all (appointment bookings are filtered
+    // separately on the Bookings page).
+    if (f.type === "Private" || f.type === "Recovery") return [];
     return list.filter(
         (b) =>
             (f.instructorIds.length === 0 || f.instructorIds.includes(b.instructorId)) &&

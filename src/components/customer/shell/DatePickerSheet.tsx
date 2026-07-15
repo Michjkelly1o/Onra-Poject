@@ -4,12 +4,16 @@
 // Customer — DatePickerSheet (branded calendar bottom sheet)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The reusable calendar behind the Date-of-birth picker AND the Bookings date
-// range filter. Modern mobile pattern: tap the year → a paged 20-year grid
-// (prev/next pages the range); tap the month → a 12-month grid; otherwise a
-// month-grid calendar. Header arrows adapt to the active mode. Optional
-// `minISO`/`maxISO` disable out-of-range days (e.g. a range's From ≤ To);
-// `maxYear` caps the year selector (e.g. DOB never past the current year).
+// The reusable calendar behind the Date-of-birth picker AND the filter date
+// pickers. Modern mobile pattern: tap the year → a paged 20-year grid; tap the
+// month → a 12-month grid; otherwise a month-grid calendar.
+//
+// Two modes:
+//   • Single (default) — tap one day → `onSelect(iso)`.
+//   • Range (`range`)  — tap once for a single day, tap a second day for a span.
+//     The calendar highlights the two endpoints + the days between and returns
+//     `onSelectRange(from, to)` (to === from for a single-day selection).
+// `minISO`/`maxISO` disable out-of-range days; `maxYear` caps the year selector.
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "@untitledui/icons";
@@ -29,6 +33,11 @@ function isoOf(y: number, m: number, d: number): string {
     return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+export interface DateRange {
+    from: string | null;
+    to: string | null;
+}
+
 export function DatePickerSheet({
     open,
     onClose,
@@ -36,40 +45,54 @@ export function DatePickerSheet({
     value,
     onSelect,
     confirmLabel = "Select date",
-    /** Where to open the calendar when there's no value. Defaults to 2000-01-01. */
+    // Where to open the calendar when there's no value. Defaults to 2000-01-01.
     defaultISO = "2000-01-01",
-    /** Earliest / latest selectable day (inclusive, ISO `YYYY-MM-DD`). */
+    // Earliest / latest selectable day (inclusive, ISO YYYY-MM-DD).
     minISO,
     maxISO,
-    /** Cap the year selector (paged grid + month/year nav). Defaults to +5 years. */
+    // Cap the year selector (paged grid + month/year nav). Defaults to +5 years.
     maxYear = CURRENT_YEAR + 5,
+    // Range mode — pick a single day or a span in one calendar.
+    range = false,
+    rangeValue,
+    onSelectRange,
 }: {
     open: boolean;
     onClose: () => void;
     title: string;
     value?: string;
-    onSelect: (iso: string) => void;
+    onSelect?: (iso: string) => void;
     confirmLabel?: string;
     defaultISO?: string;
     minISO?: string;
     maxISO?: string;
     maxYear?: number;
+    range?: boolean;
+    rangeValue?: DateRange;
+    onSelectRange?: (from: string, to: string) => void;
 }) {
-    const start = value ? new Date(`${value}T00:00:00`) : new Date(`${defaultISO}T00:00:00`);
+    const anchorISO = (range ? rangeValue?.from : value) ?? defaultISO;
+    const start = new Date(`${anchorISO}T00:00:00`);
     const [viewY, setViewY] = useState(start.getFullYear());
     const [viewM, setViewM] = useState(start.getMonth());
     const [sel, setSel] = useState<string | null>(value ?? null);
+    const [rFrom, setRFrom] = useState<string | null>(rangeValue?.from ?? null);
+    const [rTo, setRTo] = useState<string | null>(rangeValue?.to ?? null);
     const [mode, setMode] = useState<"calendar" | "month" | "year">("calendar");
     const [yearTop, setYearTop] = useState(CURRENT_YEAR);
 
     useEffect(() => {
         if (!open) return;
-        const d = value ? new Date(`${value}T00:00:00`) : new Date(`${defaultISO}T00:00:00`);
+        const a = (range ? rangeValue?.from : value) ?? defaultISO;
+        const d = new Date(`${a}T00:00:00`);
         setViewY(d.getFullYear());
         setViewM(d.getMonth());
         setSel(value ?? null);
+        setRFrom(rangeValue?.from ?? null);
+        setRTo(rangeValue?.to ?? null);
         setMode("calendar");
-    }, [open, value, defaultISO]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, value, defaultISO, rangeValue?.from, rangeValue?.to, range]);
 
     const firstWd = (new Date(viewY, viewM, 1).getDay() + 6) % 7; // Monday-based
     const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
@@ -103,7 +126,6 @@ export function DatePickerSheet({
         setYearTop(Math.min(maxYear, viewY + 11));
         setMode("year");
     }
-    // Header arrows adapt to the active mode.
     function headerPrev() {
         if (mode === "year") setYearTop(yearTop - YEAR_PAGE);
         else if (mode === "month") setViewY(viewY - 1);
@@ -115,11 +137,39 @@ export function DatePickerSheet({
         else moveMonth(1);
     }
 
+    // Range tap logic: first tap (or after a complete range) starts a new
+    // selection; a second tap closes the span in whichever direction.
+    function pickDay(iso: string) {
+        if (!range) {
+            setSel(iso);
+            return;
+        }
+        if (!rFrom || (rFrom && rTo)) {
+            setRFrom(iso);
+            setRTo(null);
+        } else if (iso < rFrom) {
+            setRTo(rFrom);
+            setRFrom(iso);
+        } else {
+            setRTo(iso);
+        }
+    }
+
     const years = Array.from({ length: YEAR_PAGE }, (_, i) => yearTop - i);
     const navBtn = "flex size-9 items-center justify-center rounded-full text-[#344054] transition-colors active:bg-gray-50";
     const labelBtn = "rounded-md px-1.5 py-0.5 text-base font-semibold leading-6 transition-colors active:bg-gray-50";
 
     const dayDisabled = (iso: string) => (!!minISO && iso < minISO) || (!!maxISO && iso > maxISO);
+    const confirmDisabled = range ? !rFrom : !sel;
+
+    function confirm() {
+        if (range) {
+            if (rFrom && onSelectRange) onSelectRange(rFrom, rTo ?? rFrom);
+        } else if (sel && onSelect) {
+            onSelect(sel);
+        }
+        onClose();
+    }
 
     return (
         <CustomerSheet open={open} onClose={onClose}>
@@ -193,17 +243,36 @@ export function DatePickerSheet({
                         </div>
                     ))}
                     {cells.map((c, i) => {
+                        const col = i % 7;
                         const cellIso = isoOf(c.y, c.m, c.d);
-                        const selected = sel === cellIso;
                         const disabled = dayDisabled(cellIso);
+                        const endpoint = range ? cellIso === rFrom || cellIso === rTo : sel === cellIso;
+                        // A span (from ≠ to) draws a continuous band behind the days,
+                        // rounded at the range ends AND at each week's edges.
+                        const inSpan = range && !!rFrom && !!rTo && rFrom !== rTo && cellIso >= rFrom && cellIso <= rTo;
+                        const isF = cellIso === rFrom;
+                        const isT = cellIso === rTo;
+                        // The band starts at the START circle's centre and ends at the
+                        // END circle's centre (so it never sticks out past either
+                        // endpoint), and rounds only at each week's open edge.
+                        const bandL = isF ? "left-1/2" : "left-0";
+                        const bandR = isT ? "right-1/2" : "right-0";
+                        const roundL = col === 0 && !isF;
+                        const roundR = col === 6 && !isT;
                         return (
-                            <div key={i} className="flex justify-center">
+                            <div key={i} className="relative flex justify-center">
+                                {inSpan && (
+                                    <span
+                                        aria-hidden
+                                        className={`absolute inset-y-0 ${bandL} ${bandR} bg-[#f2f4f7] ${roundL ? "rounded-l-full" : ""} ${roundR ? "rounded-r-full" : ""}`}
+                                    />
+                                )}
                                 <button
                                     type="button"
                                     disabled={disabled}
-                                    onClick={() => setSel(cellIso)}
-                                    className={`flex size-10 items-center justify-center rounded-full text-sm leading-5 transition-colors ${
-                                        selected
+                                    onClick={() => pickDay(cellIso)}
+                                    className={`relative z-[1] flex size-10 items-center justify-center rounded-full text-sm leading-5 transition-colors ${
+                                        endpoint
                                             ? "bg-[var(--brand-primary)] font-semibold text-white"
                                             : disabled
                                               ? "text-[#e4e7ec]"
@@ -223,14 +292,9 @@ export function DatePickerSheet({
             <Button
                 variant="primary"
                 size="xl"
-                disabled={!sel}
+                disabled={confirmDisabled}
                 className="mt-5 w-full rounded-full"
-                onClick={() => {
-                    if (sel) {
-                        onSelect(sel);
-                        onClose();
-                    }
-                }}
+                onClick={confirm}
             >
                 {confirmLabel}
             </Button>

@@ -41,6 +41,10 @@ export interface SearchClassVM {
     waitlistEnabled: boolean;
     /** Remaining waitlist slots (max − current waitlisted), or null when no waitlist. */
     waitlistSpotsLeft: number | null;
+    /** People currently on the waitlist (the badge numerator). */
+    waitlistCount: number;
+    /** Max waitlist size (studio setting) — the badge denominator. */
+    maxWaitlist: number;
     state: ClassState;
 }
 
@@ -128,6 +132,8 @@ function buildDetailVM(
         spotsLeft: Math.max(0, schedule.capacity - schedule.booked),
         waitlistEnabled: schedule.waitlistEnabled,
         waitlistSpotsLeft,
+        waitlistCount,
+        maxWaitlist: maxWaitingSpots,
         state: resolveState(schedule, memberBooking, waitlistSpotsLeft),
         description: schedule.description,
         equipment,
@@ -201,10 +207,15 @@ export function useClassDetail(id: string): ClassDetailVM | null {
     }, [id, member, classSchedules, instructors, branches, bookings, maxWaitingSpots]);
 }
 
+/** Leading icon shown before the badge label (Users for open spots, Hourglass
+ *  for waitlist). `null` = text-only badge (Booked / FULL / Closed). */
+export type BadgeIcon = "users" | "hourglass" | null;
+
 /** Card badge + CTA presentation derived from a class's availability state. */
 export function cardPresentation(vm: SearchClassVM): {
     badgeLabel: string;
     badgeTone: "success" | "neutral" | "error";
+    badgeIcon: BadgeIcon;
     ctaLabel: string;
     ctaVariant: "primary" | "secondary";
     ctaDisabled: boolean;
@@ -214,27 +225,29 @@ export function cardPresentation(vm: SearchClassVM): {
             return {
                 badgeLabel: `${vm.booked}/${vm.capacity}`,
                 badgeTone: "success",
+                badgeIcon: "users",
                 ctaLabel: "Book now",
                 ctaVariant: "primary",
                 ctaDisabled: false,
             };
         case "waitlist":
             return {
-                badgeLabel: `${vm.waitlistSpotsLeft} waitlist`,
+                badgeLabel: `${vm.waitlistCount}/${vm.maxWaitlist}`,
                 badgeTone: "neutral",
+                badgeIcon: "hourglass",
                 ctaLabel: "Join waitlist",
                 ctaVariant: "primary",
                 ctaDisabled: false,
             };
         case "booked":
-            return { badgeLabel: "Booked", badgeTone: "neutral", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
+            return { badgeLabel: "Booked", badgeTone: "neutral", badgeIcon: null, ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
         case "waitlisted":
-            return { badgeLabel: "Waitlisted", badgeTone: "neutral", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
+            return { badgeLabel: "Waitlisted", badgeTone: "neutral", badgeIcon: null, ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
         case "closed":
-            return { badgeLabel: "Closed", badgeTone: "neutral", ctaLabel: "Closed", ctaVariant: "secondary", ctaDisabled: true };
+            return { badgeLabel: "Closed", badgeTone: "neutral", badgeIcon: null, ctaLabel: "Closed", ctaVariant: "secondary", ctaDisabled: true };
         case "full":
         default:
-            return { badgeLabel: "FULL", badgeTone: "error", ctaLabel: "Full", ctaVariant: "secondary", ctaDisabled: true };
+            return { badgeLabel: "FULL", badgeTone: "error", badgeIcon: null, ctaLabel: "Full", ctaVariant: "secondary", ctaDisabled: true };
     }
 }
 
@@ -249,16 +262,19 @@ export interface SearchFilters {
     instructorIds: string[];
     /** Category names (OR within the dimension). */
     categories: string[];
+    /** Appointment session type ("Private" | "Recovery") — Appointments tab only.
+     *  Single-select (segmented control), like the Bookings Type filter. */
+    sessionType: "Private" | "Recovery" | null;
 }
 
-export const EMPTY_FILTERS: SearchFilters = { startTime: null, endTime: null, instructorIds: [], categories: [] };
+export const EMPTY_FILTERS: SearchFilters = { startTime: null, endTime: null, instructorIds: [], categories: [], sessionType: null };
 
 export function hasActiveFilters(f: SearchFilters): boolean {
-    return !!f.startTime || !!f.endTime || f.instructorIds.length > 0 || f.categories.length > 0;
+    return !!f.startTime || !!f.endTime || f.instructorIds.length > 0 || f.categories.length > 0 || !!f.sessionType;
 }
 
 export function filterCount(f: SearchFilters): number {
-    return (f.startTime || f.endTime ? 1 : 0) + f.instructorIds.length + f.categories.length;
+    return (f.startTime || f.endTime ? 1 : 0) + f.instructorIds.length + f.categories.length + (f.sessionType ? 1 : 0);
 }
 
 /** AND across dimensions, OR within instructors + categories. Times compare lexically ("HH:MM"). */
@@ -324,11 +340,14 @@ function memberAge(dob: string | undefined): number | null {
     return age;
 }
 
-/** True when the member must (re-)sign the booking waiver before booking:
+/** True when the member must (re-)sign the booking waiver before booking. The
+ *  waiver is a ONE-TIME agreement — once signed it is never asked again for a
+ *  later booking — EXCEPT:
  *   • any not-yet-signed agreement (never_signed / re_accept_due), OR
- *   • the member is now UNDER 18 but their signed waiver never captured
- *     guardian consent (e.g. they signed as an adult, then changed their DOB) —
- *     they must sign a fresh waiver through the guardian-consent flow. */
+ *   • the member's minor/adult status no longer matches how the waiver was
+ *     signed (adult→under-18 OR under-18→adult). An adult signs without
+ *     guardian consent; a minor signs WITH it — so a change across the 18
+ *     boundary in EITHER direction requires a fresh, correct waiver. */
 export function useNeedsWaiver(): boolean {
     const { member } = useCurrentCustomerContext();
     const customerAgreements = useAppStore((s) => s.customerAgreements);
@@ -337,9 +356,11 @@ export function useNeedsWaiver(): boolean {
         const mine = customerAgreements.filter((ca) => ca.customerId === member.id);
         if (mine.length === 0) return false;
         if (mine.some((ca) => ca.status !== "signed")) return true;
+        // Signed already (one-time). Re-sign only when the member's minor/adult
+        // status no longer matches how the waiver was signed — either direction.
         const age = memberAge(member.dateOfBirth);
         const isMinor = age !== null && age < 18;
-        const hasGuardianWaiver = mine.some((ca) => ca.status === "signed" && ca.guardianConsent);
-        return isMinor && !hasGuardianWaiver;
+        const signedAsGuardian = mine.some((ca) => ca.status === "signed" && ca.guardianConsent);
+        return isMinor !== signedAsGuardian;
     }, [member, customerAgreements]);
 }

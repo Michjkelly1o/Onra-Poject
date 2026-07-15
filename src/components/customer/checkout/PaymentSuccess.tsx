@@ -9,21 +9,12 @@
 // booking flow, "View plan" / "View gift card" for the Products flow.
 
 import type { ReactNode } from "react";
-import { Check, CheckCircle, XClose } from "@untitledui/icons";
-import { useMainScrollable } from "@/lib/customer/use-scrollable";
-import { lastOrder, TAX_RATE_PCT } from "@/lib/customer/purchase";
-
-function Row({ label, value }: { label: string; value: ReactNode }) {
-    return (
-        <div className="flex items-center justify-between text-sm leading-5">
-            <span className="font-normal text-[#475467]">{label}</span>
-            <span className="font-medium text-[var(--brand-text)]">{value}</span>
-        </div>
-    );
-}
+import { Check, XClose } from "@untitledui/icons";
+import { lastOrder } from "@/lib/customer/purchase";
+import { PaymentReceiptCard } from "@/components/customer/checkout/PaymentReceiptCard";
+import { ReceiptActions } from "@/components/customer/checkout/ReceiptActions";
 
 export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose?: () => void }) {
-    const scrollable = useMainScrollable();
     const order = lastOrder.value;
 
     return (
@@ -58,46 +49,34 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                 </div>
 
                 {/* Order + payment detail card */}
-                <div className="flex w-full flex-col gap-5 rounded-[20px] border border-[#e4e7ec] bg-white p-4">
-                    <div className="flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Order detail</p>
-                        <Row label="Transaction ID" value={order?.txnId ?? "—"} />
-                        <Row label="Date" value={order?.dateLabel ?? "—"} />
-                        <Row label="Time" value={order?.timeLabel ?? "—"} />
-                        <Row label="Type of transaction" value={order?.method ?? "—"} />
-                    </div>
-
-                    <div className="h-px w-full bg-[#f2f4f7]" />
-
-                    <div className="flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment detail</p>
-                        <Row
-                            label="Total items"
-                            value={`${order?.totalItems ?? 0} item${(order?.totalItems ?? 0) === 1 ? "" : "s"}`}
-                        />
-                        {order && order.discount > 0 && (
-                            <Row label="Discount" value={<span className="text-[var(--brand-primary)]">−AED {order.discount}</span>} />
-                        )}
-                        <Row label={`Tax rate (${TAX_RATE_PCT}%)`} value={`AED ${order?.tax ?? 0}`} />
-                        <Row label="Total" value={`AED ${order?.total ?? 0}`} />
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-normal leading-5 text-[#475467]">Status</span>
-                            <span className="flex items-center gap-1">
-                                <CheckCircle className="size-3.5 text-[var(--brand-primary)]" aria-hidden />
-                                <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">Success</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
+                <PaymentReceiptCard
+                    txnId={order?.txnId ?? "—"}
+                    dateLabel={order?.dateLabel ?? "—"}
+                    timeLabel={order?.timeLabel ?? "—"}
+                    methodLabel={order?.method ?? "—"}
+                    items={order?.items ?? []}
+                    totalItems={order?.totalItems ?? 0}
+                    discount={order?.discount ?? 0}
+                    tax={order?.tax ?? 0}
+                    total={order?.total ?? 0}
+                    status="success"
+                />
             </div>
 
-            <div
-                className={`sticky bottom-0 z-10 flex flex-col gap-3 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${
-                    scrollable ? "bg-white" : ""
-                }`}
+            <ReceiptActions
+                receipt={{
+                    title: "Payment receipt",
+                    txnId: order?.txnId ?? "—",
+                    dateLabel: order?.dateLabel ?? "—",
+                    timeLabel: order?.timeLabel ?? "—",
+                    methodLabel: order?.method ?? "—",
+                    total: order?.total ?? 0,
+                    status: "success",
+                    items: order?.items ?? [],
+                }}
             >
                 {footer}
-            </div>
+            </ReceiptActions>
         </div>
     );
 }

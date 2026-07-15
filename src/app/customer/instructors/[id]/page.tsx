@@ -299,6 +299,7 @@ export default function InstructorDetailPage() {
                                             timeLabel={`${to12h(c.startTime)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
+                                            badgeIcon={p.badgeIcon}
                                             ctaLabel={p.ctaLabel}
                                             ctaVariant={p.ctaVariant}
                                             ctaDisabled={false}

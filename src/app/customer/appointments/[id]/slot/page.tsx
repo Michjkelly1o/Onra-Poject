@@ -82,7 +82,7 @@ export default function SelectSlotPage() {
     }
 
     return (
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-[100dvh] flex-col">
             <AppointmentFlowHeader
                 title="Select date & time"
                 progress={isPrivate ? 66 : 50}
@@ -178,7 +178,7 @@ export default function SelectSlotPage() {
                                                     : "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]"
                                             }`}
                                         >
-                                            {s.spotsLeft}/{s.capacity}
+                                            {s.booked}/{s.capacity}
                                         </span>
                                     )}
                                 </button>

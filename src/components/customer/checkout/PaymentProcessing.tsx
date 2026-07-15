@@ -22,6 +22,7 @@ import {
     purchaseCart,
     usePromo,
 } from "@/lib/customer/purchase";
+import { addPaymentRecord, methodKind } from "@/lib/customer/payment-history";
 
 const STEPS = ["Processing payment", "Securing your payment", "Confirming your purchase"];
 const STEP_MS = 900;
@@ -71,15 +72,36 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
             );
 
             const now = new Date();
+            const orderLines = items.map((it) => ({ name: it.name, quantity: it.quantity, price: it.price }));
+            const txnId = `#P${Math.floor(100000000 + Math.random() * 900000000)}`;
             lastOrder.value = {
                 ...totals,
                 totalItems,
                 method,
                 kinds,
-                txnId: `#P${Math.floor(100000000 + Math.random() * 900000000)}`,
+                items: orderLines,
+                txnId,
                 dateLabel: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
                 timeLabel: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             };
+
+            // Record the payment in the customer's Payment history (Products flow).
+            const pad = (n: number) => String(n).padStart(2, "0");
+            addPaymentRecord({
+                type: "products",
+                method: methodKind(method),
+                methodLabel: method,
+                amount: totals.total,
+                status: "success",
+                dateISO: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+                timeLabel: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+                txnId,
+                items: orderLines,
+                totalItems,
+                subtotal: totals.subtotal,
+                discount: totals.discount,
+                tax: totals.tax,
+            });
 
             purchaseCart.classId = null;
             purchaseCart.items = [];

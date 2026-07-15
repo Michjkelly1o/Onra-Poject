@@ -126,7 +126,7 @@ export default function NotificationsPage() {
     }
 
     return (
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-[100dvh] flex-col">
             <CustomerHeader>
                 <button
                     type="button"

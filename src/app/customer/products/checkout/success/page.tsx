@@ -19,38 +19,22 @@ export default function ProductsSuccessPage() {
         <PaymentSuccess
             onClose={() => router.replace("/customer/products")}
             footer={
-                <>
-                    {hasPlan && (
-                        <Button
-                            variant="primary"
-                            size="xl"
-                            className="w-full rounded-full"
-                            onClick={() => router.replace("/customer/profile/plan")}
-                        >
-                            View plan
-                        </Button>
-                    )}
-                    {hasGiftCard && (
-                        <Button
-                            variant={hasPlan ? "secondary" : "primary"}
-                            size="xl"
-                            className="w-full rounded-full"
-                            onClick={() => router.replace("/customer/profile/gift-cards")}
-                        >
-                            View gift card
-                        </Button>
-                    )}
-                    {!hasPlan && !hasGiftCard && (
-                        <Button
-                            variant="primary"
-                            size="xl"
-                            className="w-full rounded-full"
-                            onClick={() => router.replace("/customer/products")}
-                        >
-                            Done
-                        </Button>
-                    )}
-                </>
+                <Button
+                    variant="primary"
+                    size="xl"
+                    className="w-full rounded-full"
+                    onClick={() =>
+                        router.replace(
+                            hasPlan
+                                ? "/customer/profile/plan"
+                                : hasGiftCard
+                                  ? "/customer/profile/gift-cards"
+                                  : "/customer/products",
+                        )
+                    }
+                >
+                    {hasPlan ? "View plan" : hasGiftCard ? "View gift card" : "Done"}
+                </Button>
             }
         />
     );

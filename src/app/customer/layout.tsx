@@ -31,6 +31,14 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     const pathname = usePathname();
     // The "Book now" CTA is a Home-only element; other screens just show the nav.
     const isHome = pathname === "/customer";
+    // Decorative mesh background lives on the MAIN module pages only (Home,
+    // Search, Products, Profile) — level-2 pages (details, sub-pages, flows)
+    // render on the plain brand background so they read cleaner.
+    const showBackground =
+        pathname === "/customer" ||
+        pathname === "/customer/search" ||
+        pathname === "/customer/products" ||
+        pathname === "/customer/profile";
     // Full-screen flows render their own header + footer and hide the shared
     // bottom nav — e.g. Select branch (§6.1) and Instructor Detail (§6 / §3.10).
     const isFullScreen =
@@ -62,8 +70,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             <BrandTokens>
             <div data-brand-scope="customer" className="flex h-[100dvh] w-full justify-center overflow-hidden bg-[#f2f4f7]">
                 <div className="relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden bg-[var(--brand-background)]">
-                    {/* Shared decorative background — once, behind everything (§3). */}
-                    <CustomerBackground />
+                    {/* Shared decorative background — MAIN pages only (§3); level-2
+                        pages omit it for a cleaner plain-background look. */}
+                    {showBackground && <CustomerBackground />}
                     <ScrollRestoration />
                     {/* Content scrolls; scrollbar hidden (mobile-first). Bottom padding clears the
                         sticky cluster (taller on Home, which also has the Book now button). */}

@@ -9,7 +9,7 @@
 // Join waitlist / Full / Manage in Bookings. Reads the live class detail VM.
 
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft } from "@untitledui/icons";
+import { ChevronLeft, Hourglass03, Users01 } from "@untitledui/icons";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail } from "@/lib/customer/search-data";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
@@ -46,18 +46,21 @@ export default function ClassDetailPage() {
         );
     }
 
+    // Hero badge — leading icon + label mirror the class card (Users for open
+    // spots, Hourglass for waitlist; FULL / Closed / Booked stay text-only).
     const badge =
         detail.state === "available"
-            ? { label: `${detail.booked}/${detail.capacity}`, cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
+            ? { icon: Users01, label: `${detail.booked}/${detail.capacity} spots`, cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
             : detail.state === "waitlist"
-              ? { label: "Waitlist open", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+              ? { icon: Hourglass03, label: `${detail.waitlistCount}/${detail.maxWaitlist} waitlist`, cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
               : detail.state === "booked"
-                ? { label: "Booked", cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
+                ? { icon: null, label: "Booked", cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
                 : detail.state === "waitlisted"
-                  ? { label: "Waitlisted", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+                  ? { icon: null, label: "Waitlisted", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
                   : detail.state === "closed"
-                    ? { label: "Closed", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
-                    : { label: "Full", cls: "border-[#fecdca] bg-[#fef3f2] text-[#b42318]" };
+                    ? { icon: null, label: "Closed", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+                    : { icon: null, label: "FULL", cls: "border-[#fecdca] bg-[#fef3f2] text-[#b42318]" };
+    const BadgeIcon = badge.icon;
 
     const credits = member?.creditsRemaining;
     const booked = detail.state === "booked" || detail.state === "waitlisted";
@@ -66,7 +69,8 @@ export default function ClassDetailPage() {
         <ClassDetailLayout
             detail={detail}
             heroBadge={
-                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${badge.cls}`}>
+                <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${badge.cls}`}>
+                    {BadgeIcon && <BadgeIcon className="size-3 shrink-0" aria-hidden />}
                     {badge.label}
                 </span>
             }

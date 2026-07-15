@@ -38,6 +38,8 @@ export interface AvailableSlot {
     spotsLeft: number | null;
     /** Open sessions only — total capacity; null for private. */
     capacity: number | null;
+    /** Open sessions only — current booked count (0 when empty); null for private. */
+    booked: number | null;
 }
 
 const toMin = (hhmm: string): number => {
@@ -169,11 +171,12 @@ export function useAvailableSlots(
             if (customerBusy.some(([bS, bE]) => overlaps(m, m + dur, bS, bE))) continue;
             if (isPrivate) {
                 if (busy.some(([bS, bE]) => overlaps(m, m + dur, bS, bE))) continue;
-                out.push({ time: toHHMM(m), spotsLeft: null, capacity: null });
+                out.push({ time: toHHMM(m), spotsLeft: null, capacity: null, booked: null });
             } else {
-                const left = capacity - bookedAt(m);
+                const bookedNow = bookedAt(m);
+                const left = capacity - bookedNow;
                 if (left <= 0) continue; // full → hidden
-                out.push({ time: toHHMM(m), spotsLeft: left, capacity });
+                out.push({ time: toHHMM(m), spotsLeft: left, capacity, booked: bookedNow });
             }
         }
         return out;
