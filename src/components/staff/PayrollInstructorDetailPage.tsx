@@ -776,22 +776,23 @@ export default function PayrollInstructorDetailPage({
                                 </div>
                             )}
 
-                            {/* Toolbar — the bookings count / search / status
-                                filter are instructor-only; the period filter
-                                stays so non-instructors can scope commission. */}
-                            <div className="px-6 pt-6 flex items-center gap-3">
-                                {isRealInstructor && <ToolbarTotal count={filteredRows.length} entitySingular="booking" />}
-                                {isRealInstructor && (
+                            {/* Toolbar — instructor-only. Non-instructor staff
+                                teach nothing, so the whole bookings toolbar
+                                (incl. the period filter) is hidden; their
+                                commission card scopes to the current month. */}
+                            {isRealInstructor && (
+                                <div className="px-6 pt-6 flex items-center gap-3">
+                                    <ToolbarTotal count={filteredRows.length} entitySingular="booking" />
                                     <ToolbarSearch
                                         value={search}
                                         onChange={setSearch}
                                         placeholder="Search bookings..."
                                         widthClass="w-[260px]"
                                     />
-                                )}
-                                <DateRangeFilter value={period} onChange={setPeriod} />
-                                {isRealInstructor && <ClassStatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />}
-                            </div>
+                                    <DateRangeFilter value={period} onChange={setPeriod} />
+                                    <ClassStatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
+                                </div>
+                            )}
 
                             {/* Bookings table — instructor-only (non-instructor
                                 staff teach nothing). */}

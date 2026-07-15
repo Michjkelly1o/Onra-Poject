@@ -667,22 +667,28 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
 // longer renders it.
 
 function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
-    const shifts = useAppStore(s => s.shifts);
+    // Shift management is instructor-only (client Jul 2026), so non-instructor
+    // staff have no shift. Their working days come from their BRANCH's business
+    // hours instead (day_of_week where the branch isn't closed).
+    const businessHours = useAppStore(s => s.businessHours);
 
-    const assignedShift = staff.shiftId ? shifts.find(sh => sh.id === staff.shiftId) : undefined;
-
-    // 12-hour formatter (same as InstructorOverviewTab).
-    function fmtShiftTime(t: string): string {
-        const [h, m] = t.split(":").map(Number);
-        const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-        const ampm = h < 12 ? "AM" : "PM";
-        return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
-    }
+    // Build a [Sun..Sat] boolean strip from the branch's business hours —
+    // matches the order WorkingDaysStrip renders (0=Sun … 6=Sat).
+    const workingDays = useMemo<boolean[]>(() => {
+        const branchRows = staff.branchId
+            ? businessHours.filter(h => h.branch_id === staff.branchId)
+            : [];
+        return Array.from({ length: 7 }, (_, dow) => {
+            const row = branchRows.find(h => h.day_of_week === dow);
+            return row ? !row.is_closed : false;
+        });
+    }, [businessHours, staff.branchId]);
+    const hasBranchHours = staff.branchId != null && businessHours.some(h => h.branch_id === staff.branchId);
 
     return (
         <div className="px-6 pb-6 flex flex-col gap-6">
             {/* Personal information — flush 2-col grid, mirrors the
-                instructor overview above. */}
+                instructor overview above (minus shift, which is instructor-only). */}
             <div className="flex flex-col gap-3">
                 <p className="text-[14px] text-[#667085]">Personal information</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-5">
@@ -691,11 +697,7 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
                     <InfoField label="Email"       value={staff.email} />
                     <InfoField label="Phone"       value={staff.phone} />
                     <InfoField label="Working days"
-                        value={assignedShift ? <WorkingDaysStrip workingDays={assignedShift.working_days} /> : "—"} />
-                    <InfoField label="Shift hours"
-                        value={assignedShift
-                            ? `${assignedShift.name} (${fmtShiftTime(assignedShift.start_time)} – ${fmtShiftTime(assignedShift.end_time)})`
-                            : "—"} />
+                        value={hasBranchHours ? <WorkingDaysStrip workingDays={workingDays} /> : "—"} />
                 </div>
             </div>
         </div>
