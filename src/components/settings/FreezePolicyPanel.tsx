@@ -337,40 +337,64 @@ export function FreezePolicyPanel({ open, onClose, branchId }: {
                                 />
                                 {form.allow_exceptions && (
                                     <>
-                                        <div className="rounded-[8px] bg-[#eff8ff] border-1 border-[#b2ddff] px-3.5 py-2.5">
-                                            <p className="text-[14px] text-[#175cd3] leading-[20px]">
+                                        {/* Brand-tinted info banner — sage, not the previous
+                                            generic blue (matches admin's `#658774` accent). */}
+                                        <div className="rounded-[8px] bg-[#e9fff3] border-1 border-[#abefc6] px-3.5 py-2.5">
+                                            <p className="text-[14px] text-[#3b5446] leading-[20px]">
                                                 Select which reasons members can use to freeze their memberships.
-                                                Unselected reasons will not be available.
+                                                Unselected reasons will not be available. When the list is empty,
+                                                members can freeze without picking a reason.
                                             </p>
                                         </div>
-                                        <div className="flex flex-col gap-2.5">
-                                            {form.reasons.map(r => (
-                                                <div key={r.id} className="flex items-center gap-3">
-                                                    <Checkbox checked={r.enabled} onChange={() => setReason(r.id, { enabled: !r.enabled })} />
-                                                    <span className="flex-1 text-[14px] text-[#344054]">{r.label}</span>
-                                                    {/* Only custom reasons can be deleted — the 3 defaults stay. */}
-                                                    {r.id.startsWith("custom_") && (
-                                                        <button type="button" onClick={() => removeReason(r.id)} aria-label="Remove reason"
-                                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318]">
+
+                                        {/* Container groups the reasons list + inline add-input into
+                                            one visual block. Every reason (defaults + custom) has a
+                                            trash button so row heights are consistent. */}
+                                        <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white p-4 flex flex-col gap-2">
+                                            {form.reasons.length === 0 ? (
+                                                <p className="text-[13px] text-[#667085] italic py-1">
+                                                    No reasons yet — add one below.
+                                                </p>
+                                            ) : (
+                                                form.reasons.map(r => (
+                                                    <div key={r.id} className="flex items-center gap-3 min-h-[32px]">
+                                                        <Checkbox
+                                                            checked={r.enabled}
+                                                            onChange={() => setReason(r.id, { enabled: !r.enabled })}
+                                                        />
+                                                        <span className="flex-1 text-[14px] text-[#344054]">{r.label}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeReason(r.id)}
+                                                            aria-label="Remove reason"
+                                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors"
+                                                        >
                                                             <Trash01 className="w-4 h-4" />
                                                         </button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* Add a custom reason — type + click Add (or press Enter). */}
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={newReason}
-                                                onChange={e => setNewReason(e.target.value)}
-                                                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
-                                                placeholder="Add a custom reason"
-                                                className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
-                                            />
-                                            <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
-                                                Add
-                                            </Button>
+                                                    </div>
+                                                ))
+                                            )}
+
+                                            {/* Divider between the list and the add-input — only when
+                                                there ARE reasons above, to avoid a lone divider on empty state. */}
+                                            {form.reasons.length > 0 && (
+                                                <div className="h-px w-full bg-[#f2f4f7] my-1" />
+                                            )}
+
+                                            {/* Add a custom reason — type + click Add (or press Enter). */}
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newReason}
+                                                    onChange={e => setNewReason(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
+                                                    placeholder="Add a custom reason"
+                                                    className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                                />
+                                                <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
+                                                    Add
+                                                </Button>
+                                            </div>
                                         </div>
                                     </>
                                 )}

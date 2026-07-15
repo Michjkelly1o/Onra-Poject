@@ -224,14 +224,33 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 function FreezeModal({ plan, onClose, onConfirm }: {
     plan: CustomerPlan;
     onClose: () => void;
-    onConfirm: (startISO: string, endISO: string) => void;
+    /** `reason` is empty when the policy has no enabled reasons (or exceptions
+     *  are off) — the dropdown is hidden and admin freezes without a reason. */
+    onConfirm: (startISO: string, endISO: string, reason: string) => void;
 }) {
     const today = todayISO();
     const [start, setStart] = useState(today);
     const [end, setEnd] = useState("");
+    const [reason, setReason] = useState("");
+
+    // Freeze reasons come from the freeze policy for THIS customer's branch —
+    // same source of truth the customer-portal Freeze sheet reads. When the
+    // list is empty (exceptions off, or all reasons unchecked / deleted) the
+    // dropdown is hidden entirely per client Jul 2026.
+    const customer = useAppStore(s =>
+        s.customers.find(c => c.id === plan.customerId),
+    );
+    const freezePolicies = useAppStore(s => s.freezePolicies);
+    const policy = customer
+        ? freezePolicies.find(p => p.branch_id === customer.branchId)
+        : undefined;
+    const availableReasons = policy && policy.allow_exceptions
+        ? policy.reasons.filter(r => r.enabled && r.label.trim()).map(r => r.label)
+        : [];
+    const showReason = availableReasons.length > 0;
 
     const days = end && end >= start ? daysBetween(start, end) : 0;
-    const canConfirm = !!end && end >= start && days > 0;
+    const canConfirm = !!end && end >= start && days > 0 && (!showReason || !!reason);
     const newExpiry = days > 0 ? addDaysISO(plan.expiryISO, days) : plan.expiryISO;
 
     return (
@@ -242,7 +261,7 @@ function FreezeModal({ plan, onClose, onConfirm }: {
             footer={<>
                 <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
                 <Button variant="primary" size="lg" className="flex-1" disabled={!canConfirm}
-                    onClick={() => onConfirm(start, end)}>Confirm freeze</Button>
+                    onClick={() => onConfirm(start, end, reason)}>Confirm freeze</Button>
             </>}
         >
             <div className="grid grid-cols-2 gap-4">
@@ -264,6 +283,20 @@ function FreezeModal({ plan, onClose, onConfirm }: {
                         : "Pick a start and end date — the plan's expiry will be extended by the frozen duration."}
                 </p>
             </div>
+            {/* Reason picker — reads from the freeze policy's enabled reasons.
+                Hidden when the policy has none (exceptions off, or all deleted). */}
+            {showReason && (
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Freeze reason</label>
+                    <SelectInput
+                        value={reason}
+                        onChange={setReason}
+                        placeholder="Select a reason"
+                        options={availableReasons.map(r => ({ value: r, label: r }))}
+                        width="w-full"
+                    />
+                </div>
+            )}
         </ModalShell>
     );
 }
@@ -911,10 +944,13 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const customerName = `${customer.firstName} ${customer.lastName}`.trim();
 
     // ─── Plan action handlers ───────────────────────────────────────────────
-    function handleFreeze(plan: CustomerPlan, startISO: string, endISO: string) {
+    function handleFreeze(plan: CustomerPlan, startISO: string, endISO: string, reason: string) {
         // Customer detail is an admin surface — attribute the freeze
         // there so the Frozen package report shows "Admin" for this row.
-        freezeCustomerPlan(plan.id, startISO, endISO, "admin");
+        // Reason (from the freeze policy dropdown) is stored on the plan
+        // and surfaced in the Unfreeze modal alongside the customer-picked
+        // one — same source of truth for both surfaces.
+        freezeCustomerPlan(plan.id, startISO, endISO, "admin", reason || undefined);
         setPlanModal(null);
         showToast(
             "Membership has been frozen",
@@ -1253,7 +1289,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             {/* ── Plan modals ── */}
             {planModal?.kind === "freeze" && (
                 <FreezeModal plan={planModal.plan} onClose={() => setPlanModal(null)}
-                    onConfirm={(s, e) => handleFreeze(planModal.plan, s, e)} />
+                    onConfirm={(s, e, r) => handleFreeze(planModal.plan, s, e, r)} />
             )}
             {planModal?.kind === "unfreeze" && (
                 <UnfreezeModal plan={planModal.plan} onClose={() => setPlanModal(null)}
