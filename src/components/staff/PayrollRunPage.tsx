@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { payrollBreakdownFor } from "@/lib/payroll-calc";
+import { payrollBreakdownFor, commissionForPeriod } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -263,7 +263,7 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, showT
                     <div className="flex flex-col gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Process payroll?</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            You&apos;re about to process payroll for {instructorCount} {instructorCount === 1 ? "instructor" : "instructors"}. This action cannot be undone.
+                            You&apos;re about to process payroll for {instructorCount} {instructorCount === 1 ? "staff member" : "staff"}. This action cannot be undone.
                         </p>
                     </div>
                 </div>
@@ -323,7 +323,7 @@ function PayrollSubmittedModal({ open, total, instructorCount, periodLabel, onCl
                     <div className="flex flex-col gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Payroll submitted</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            {aed(total)} processed for {instructorCount} {instructorCount === 1 ? "instructor" : "instructors"} · {periodLabel}
+                            {aed(total)} processed for {instructorCount} {instructorCount === 1 ? "staff member" : "staff"} · {periodLabel}
                         </p>
                     </div>
                 </div>
@@ -386,7 +386,7 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
     // grouping reads naturally in Excel. See `payrollBreakdownFor` for
     // the per-model component shape.
     const header = [
-        "Instructor", "Email", "Branch",
+        "Staff", "Email", "Branch",
         "Pay model", "Component", "Basis", "Rate", "Amount (AED)",
         "Total payout (AED)", "Status", "Period",
     ];
@@ -466,6 +466,15 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const instructors           = useAppStore(s => s.instructors);
     const payRates              = useAppStore(s => s.payRates);
     const branches              = useAppStore(s => s.branches);
+    // Payroll reopened to all staff (Phase 3B) — non-instructor staff appear
+    // with monthly salary + commission. Sources for the commission calc.
+    const staff                 = useAppStore(s => s.staff);
+    const roles                 = useAppStore(s => s.roles);
+    const classSchedules        = useAppStore(s => s.classSchedules);
+    const classBookings         = useAppStore(s => s.classBookings);
+    const customerTransactions  = useAppStore(s => s.customerTransactions);
+    const appointmentBookings   = useAppStore(s => s.appointmentBookings);
+    const appointments          = useAppStore(s => s.appointments);
     // v27 client-feedback fix — Process Payroll modal reads the
     // withholding rate LIVE from the Tax module's "pay_rate" category
     // rule so an owner editing tax in Settings sees the payroll modal
@@ -521,7 +530,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             });
         }
 
-        return instructors
+        const instructorRows: RunRow[] = instructors
             .filter(i => i.status === "active")
             .map(instructor => {
                 const entry = byInstructor.get(instructor.id);
@@ -543,7 +552,44 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     status:         entry?.status         ?? "pending",
                 } satisfies RunRow;
             });
-    }, [payrollEntries, instructors, payRates, range]);
+
+        // Non-instructor staff rows (Phase 3B) — no class teaching, so payout =
+        // monthly salary (if any) + commission. No payroll entry, so they show
+        // but aren't part of the mark-paid batch (needs `actualEntryId`).
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const staffRows: RunRow[] = staff
+            .filter(st => st.status === "active")
+            .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
+            .map(st => {
+                const livePayRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
+                const commission = commissionForPeriod(st.id, livePayRate, sources, iso(range.from), iso(range.to));
+                const salary = livePayRate?.type === "monthly" ? livePayRate.fixedSalary : 0;
+                const synthetic: Instructor = {
+                    id: st.id, name: st.fullName, initials: st.initials, color: st.color,
+                    imageUrl: st.imageUrl, email: st.email, phone: st.phone,
+                    joinedDate: st.joinedDate, branchId: st.branchId ?? "",
+                    payRateId: st.payRateId, status: st.status === "active" ? "active" : "inactive",
+                };
+                return {
+                    entryId: `staff_${st.id}`,
+                    actualEntryId: undefined,
+                    instructor: synthetic,
+                    branchId: st.branchId ?? "",
+                    payRateName: livePayRate?.name ?? "—",
+                    payRate: livePayRate,
+                    classesCount: 0,
+                    totalHours: 0,
+                    grossRevenue: 0,
+                    totalAttendees: 0,
+                    payout: salary + commission.totalCommission,
+                    status: "pending",
+                } satisfies RunRow;
+            });
+
+        return [...instructorRows, ...staffRows];
+    }, [payrollEntries, instructors, staff, roles, payRates, range,
+        customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);
 
     // ─── Filter chain (branch + status + nothing-to-search-by here) ───────
     const filteredRows = useMemo(() => {
@@ -615,7 +661,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const allPaid = pendingEntryIds.length === 0;
 
     // Subtitle: "7 instructors · Feb 2025" — derived from filteredRows + period.
-    const subtitle = `${filteredRows.length} ${filteredRows.length === 1 ? "instructor" : "instructors"} · ${monthYearLabel(range.from)}`;
+    const subtitle = `${filteredRows.length} ${filteredRows.length === 1 ? "staff member" : "staff"} · ${monthYearLabel(range.from)}`;
 
     // ─── Actions ──────────────────────────────────────────────────────────
     function handleMarkPaid(row: RunRow) {

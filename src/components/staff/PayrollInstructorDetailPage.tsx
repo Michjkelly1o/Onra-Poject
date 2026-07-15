@@ -538,6 +538,9 @@ export default function PayrollInstructorDetailPage({
         }, iso(range.from), iso(range.to));
     }, [instructorId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
     const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
+    // Non-instructor staff (Phase 3B synthetic rows) teach no classes — hide
+    // the bookings toolbar + table + the "Class taught" metric for them.
+    const isRealInstructor = instructors.some(i => i.id === instructorId);
 
     // ─── Class rows: filter schedules by instructor + period + status ─────
     const instructorSchedules = useMemo(
@@ -751,16 +754,18 @@ export default function PayrollInstructorDetailPage({
                                 <PayRateSnapshotCard payRate={payRate} />
                                 <MetricCard
                                     label="Total earnings"
-                                    value={aed(periodEarnings)}
+                                    value={aed(isRealInstructor ? periodEarnings : commission.totalCommission)}
                                     hint="↑ 30% vs last week"
                                     Icon={CheckCircle}
                                 />
-                                <MetricCard
-                                    label="Class taught"
-                                    value={classesTaught.toString()}
-                                    hint="↑ 30% vs last week"
-                                    Icon={Users01}
-                                />
+                                {isRealInstructor && (
+                                    <MetricCard
+                                        label="Class taught"
+                                        value={classesTaught.toString()}
+                                        hint="↑ 30% vs last week"
+                                        Icon={Users01}
+                                    />
+                                )}
                             </div>
 
                             {/* Sales commission — categorised (commission refactor
@@ -771,20 +776,26 @@ export default function PayrollInstructorDetailPage({
                                 </div>
                             )}
 
-                            {/* Toolbar */}
+                            {/* Toolbar — the bookings count / search / status
+                                filter are instructor-only; the period filter
+                                stays so non-instructors can scope commission. */}
                             <div className="px-6 pt-6 flex items-center gap-3">
-                                <ToolbarTotal count={filteredRows.length} entitySingular="booking" />
-                                <ToolbarSearch
-                                    value={search}
-                                    onChange={setSearch}
-                                    placeholder="Search bookings..."
-                                    widthClass="w-[260px]"
-                                />
+                                {isRealInstructor && <ToolbarTotal count={filteredRows.length} entitySingular="booking" />}
+                                {isRealInstructor && (
+                                    <ToolbarSearch
+                                        value={search}
+                                        onChange={setSearch}
+                                        placeholder="Search bookings..."
+                                        widthClass="w-[260px]"
+                                    />
+                                )}
                                 <DateRangeFilter value={period} onChange={setPeriod} />
-                                <ClassStatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
+                                {isRealInstructor && <ClassStatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />}
                             </div>
 
-                            {/* Table */}
+                            {/* Bookings table — instructor-only (non-instructor
+                                staff teach nothing). */}
+                            {isRealInstructor && (
                             <div className="px-6 pt-4 flex flex-col">
                                 {pageRows.length === 0 ? (
                                     <div className="relative" style={{ minHeight: 360 }}>
@@ -879,6 +890,7 @@ export default function PayrollInstructorDetailPage({
                                     />
                                 )}
                             </div>
+                            )}
                         </div>
                     </div>
                 }

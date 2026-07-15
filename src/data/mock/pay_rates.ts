@@ -43,6 +43,16 @@ export const pay_rates: PayRateSeed[] = [
         // so the additional-settings toggles are forced off — matches the
         // form which hides that section entirely for `type === "flat"`.
         only_checked_in: false, include_late_cancelled: false,
+        // Flat base + a small per-class commission (client Jul 2026 — every
+        // rate can carry commission). Puts the data-rich SOUTH instructors
+        // (Liam / Maya / Olivia) on a non-zero commission so the instructor
+        // Earnings + payroll-detail commission cards are populated.
+        commissions: [
+            { id: "pr_standard_c1", category: "class_booking", value_type: "percent", value: 4 },
+        ],
+        bonuses: [
+            { id: "pr_standard_b1", category: "class_booking", value_type: "fixed", value: 250, threshold: 50 },
+        ],
     },
     {
         id: "pr_class_tiers", name: "Class Tiers", type: "tiered",

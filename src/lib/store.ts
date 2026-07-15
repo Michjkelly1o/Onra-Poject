@@ -8113,7 +8113,10 @@ export const useAppStore = create<AppState>()(persist(
         //   the old Monthly-only `sales_commission_*_percent` fields are
         //   deprecated + dropped from the seed. Bump reseeds so pay rates
         //   land with the new categorised shape.
-        version: 62,
+        // v63 (2026-07-15): Phase 3 polish — pr_standard gains a class
+        //   commission so the data-rich SOUTH instructors show non-empty
+        //   commission. Bump reseeds pay rates.
+        version: 63,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
