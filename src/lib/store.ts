@@ -189,6 +189,8 @@ import {
     type DurationUnit,
     type Weekday,
     type PayRateSeed,
+    type CommissionCategory,
+    type CommissionValueType,
     type InstructorSeed,
     type RoleSeed,
     type RoleTypeSeed,
@@ -246,6 +248,7 @@ export type {
     SessionType, ServiceType,
     ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, FreezePolicy, FreezeReason, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
+    CommissionCategory, CommissionValueType,
     // Reports v33 — new seed types the selectors reach into
     Lead, MarketingCampaignStat, MarketingSpend, StaffAttendanceLog,
 };
@@ -2620,6 +2623,22 @@ export interface PayRateTier {
     aed: number;
 }
 
+/** Categorised sales-commission row (camelCase store shape). Lives on any
+ *  pay rate — see `PayRateBase.commissions`. */
+export interface PayRateCommissionRow {
+    id: string;
+    category: CommissionCategory;
+    valueType: CommissionValueType;
+    /** Percentage when valueType === "percent"; AED when "fixed". */
+    value: number;
+}
+
+/** Categorised threshold-bonus row. */
+export interface PayRateBonusRow extends PayRateCommissionRow {
+    /** Monthly count in the category that must be crossed for the bonus. */
+    threshold: number;
+}
+
 export type PayRateHybridCondition =
     | { kind: "bonus_attendance"; bonusThreshold: number; bonusPerCustomer: number }
     | { kind: "revenue"; splitPercent: number };
@@ -2641,6 +2660,12 @@ interface PayRateBase {
      *  tax rule. Unset = "No tax rate" — the rate inherits whatever the
      *  global Tax module's pay-rate rule provides. */
     taxRateId?: string;
+    /** Categorised sales commission — available on ANY rate type (client Jul
+     *  2026). Replaces the deprecated Monthly-only `salesCommission*Percent`
+     *  fields. See new-prd/commission-refactor-implementation-plan.md. */
+    commissions?: PayRateCommissionRow[];
+    /** Categorised threshold bonuses. */
+    bonuses?: PayRateBonusRow[];
 }
 
 export interface FlatPayRate    extends PayRateBase { type: "flat";    flatAmount: number }
@@ -2719,6 +2744,12 @@ function payRateFromSeed(p: PayRateSeed): PayRate {
         usageCount: p.usage_count,
         createdAt: p.created_at,
         taxRateId: p.tax_rate_id,
+        commissions: p.commissions?.map(c => ({
+            id: c.id, category: c.category, valueType: c.value_type, value: c.value,
+        })),
+        bonuses: p.bonuses?.map(b => ({
+            id: b.id, category: b.category, valueType: b.value_type, value: b.value, threshold: b.threshold,
+        })),
     };
     switch (p.type) {
         case "flat":
@@ -8068,7 +8099,12 @@ export const useAppStore = create<AppState>()(persist(
         //   (`freezePolicy: FreezePolicy`, with `id` replacing `branch_id`).
         //   Matches how cancellationPolicy / classesSettings are stored.
         //   Bump reseeds so old array payloads drop cleanly.
-        version: 61,
+        // v62 (2026-07-15): Commission refactor Phase 1. PayRate gains
+        //   categorised `commissions[]` + `bonuses[]` (on any rate type);
+        //   the old Monthly-only `sales_commission_*_percent` fields are
+        //   deprecated + dropped from the seed. Bump reseeds so pay rates
+        //   land with the new categorised shape.
+        version: 62,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

@@ -1522,6 +1522,41 @@ export type PayRateHybridConditionSeed =
     | { kind: "bonus_attendance"; bonus_threshold: number; bonus_per_customer: number }
     | { kind: "revenue"; split_percent: number };
 
+// ─── Sales commission (categorised) ─────────────────────────────────────────
+//
+// Client Jul 2026: sales commission moves from the 2 fixed Monthly-rate %
+// fields to a categorised model available on ANY pay rate (so instructors
+// on flat/hybrid rates can earn class/service commission too).
+//   • commission = per-sale % or fixed AED in the category
+//   • bonus      = extra AED/% paid once the staff's monthly count in the
+//                  category crosses `threshold`
+// See new-prd/commission-refactor-implementation-plan.md.
+
+export type CommissionCategory =
+    | "membership"
+    | "credit_package"
+    | "gift_card"
+    | "retail"           // stubbed — no retail POS flow yet
+    | "class_booking"
+    | "service_private"
+    | "service_recovery";
+
+export type CommissionValueType = "percent" | "fixed";
+
+export interface PayRateCommissionRowSeed {
+    id: string;
+    category: CommissionCategory;
+    value_type: CommissionValueType;
+    /** Percentage when value_type === "percent"; AED when "fixed". */
+    value: number;
+}
+
+export interface PayRateBonusRowSeed extends PayRateCommissionRowSeed {
+    /** Monthly count in the category that must be crossed for the bonus to
+     *  fire (e.g. 20 memberships sold in a month). */
+    threshold: number;
+}
+
 interface PayRateBaseSeed {
     id: string;
     name: string;
@@ -1538,6 +1573,12 @@ interface PayRateBaseSeed {
      *  Maps to `tax_rates.id`. Unset = "No tax rate" — inherits the
      *  global pay-rate tax rule. */
     tax_rate_id?: string;
+    /** Categorised sales commission — available on any rate type. Each row
+     *  pays % or fixed AED per sale in its category. */
+    commissions?: PayRateCommissionRowSeed[];
+    /** Categorised threshold bonuses — extra paid once the monthly count in
+     *  the category crosses the row's `threshold`. */
+    bonuses?: PayRateBonusRowSeed[];
     // +later: archived_at, superseded_by_id, version, notes
 }
 
@@ -1550,7 +1591,10 @@ export interface MonthlyPayRateSeed extends PayRateBaseSeed {
     fixed_salary: number;
     bonus_of_salary_percent?: number;
     bonus_cap?: number;
+    /** @deprecated Jul 2026 — replaced by `commissions[]` on the base. Kept
+     *  optional for backward-compat; new data uses categorised rows. */
     sales_commission_packages_percent?: number;
+    /** @deprecated Jul 2026 — replaced by `commissions[]` on the base. */
     sales_commission_memberships_percent?: number;
 }
 

@@ -48,7 +48,7 @@
 // surfaces inherit the new behavior for free. Don't add a parallel
 // "real attendance" helper somewhere else.
 
-import type { ClassSchedule, CustomerTransaction, PayRate } from "@/lib/store";
+import type { ClassSchedule, CustomerTransaction, PayRate, CommissionCategory } from "@/lib/store";
 
 /** Earnings for a single class.
  *
@@ -557,6 +557,24 @@ const EMPTY_COMMISSION: CommissionBreakdown = {
  *  Returns EMPTY_COMMISSION when the rate isn't Monthly or has no
  *  commission percentages set — so consumers can call unconditionally
  *  and read `.totalCommission` without null-checks. */
+/** Phase-1 compat shim — resolve a category's commission PERCENT from a pay
+ *  rate. Reads the new categorised `commissions[]` rows first (percent-type
+ *  only for this legacy calc), falling back to the deprecated Monthly-only
+ *  fixed fields. Phase 3 replaces this whole function with a full categorised
+ *  + fixed + bonus calc. Product-side categories only: membership ↔ the
+ *  "membership" category, packages ↔ "credit_package". */
+function commissionPercentFor(payRate: PayRate, category: CommissionCategory): number {
+    if (payRate.commissions) {
+        const row = payRate.commissions.find(c => c.category === category && c.valueType === "percent");
+        return row?.value ?? 0;
+    }
+    if (payRate.type === "monthly") {
+        if (category === "credit_package") return payRate.salesCommissionPackagesPercent ?? 0;
+        if (category === "membership")     return payRate.salesCommissionMembershipsPercent ?? 0;
+    }
+    return 0;
+}
+
 export function commissionForPeriod(
     staffId: string,
     payRate: PayRate | undefined,
@@ -564,9 +582,12 @@ export function commissionForPeriod(
     periodStartISO: string,
     periodEndISO: string,
 ): CommissionBreakdown {
+    // Phase 1: commission still computes only for the Monthly rate's product
+    // sales (packages + memberships). Class/service + fixed + bonus commission
+    // — and non-Monthly rates — are wired in Phase 3's full calc rewrite.
     if (!payRate || payRate.type !== "monthly") return EMPTY_COMMISSION;
-    const pkgPct = payRate.salesCommissionPackagesPercent    ?? 0;
-    const memPct = payRate.salesCommissionMembershipsPercent ?? 0;
+    const pkgPct = commissionPercentFor(payRate, "credit_package");
+    const memPct = commissionPercentFor(payRate, "membership");
     if (pkgPct === 0 && memPct === 0) return EMPTY_COMMISSION;
 
     // Period bounds are inclusive on both ends (ISO date strings). We

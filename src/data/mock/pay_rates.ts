@@ -68,6 +68,16 @@ export const pay_rates: PayRateSeed[] = [
         condition: { kind: "bonus_attendance", bonus_threshold: 8, bonus_per_customer: 37 },
         branch_id: "branch_forma_east", status: "active", usage_count: 2,
         only_checked_in: false, include_late_cancelled: true,
+        // Instructor rate that ALSO earns commission (client Jul 2026 — any
+        // rate can carry categorised commission). Senior instructors get 5%
+        // on the classes credited to them + a monthly volume bonus.
+        commissions: [
+            { id: "pr_senior_c1", category: "class_booking",   value_type: "percent", value: 5 },
+            { id: "pr_senior_c2", category: "service_private", value_type: "percent", value: 8 },
+        ],
+        bonuses: [
+            { id: "pr_senior_b1", category: "class_booking", value_type: "fixed", value: 300, threshold: 40 },
+        ],
     },
     {
         id: "pr_private_sess", name: "Private Session Rate", type: "hybrid",
@@ -81,8 +91,18 @@ export const pay_rates: PayRateSeed[] = [
         id: "pr_monthly", name: "Monthly Rate", type: "monthly",
         fixed_salary: 8000,
         bonus_of_salary_percent: 12,
-        sales_commission_packages_percent: 2,
-        sales_commission_memberships_percent: 2,
+        // Migrated Jul 2026 — the old 2 fixed commission % fields
+        // (packages 2% + memberships 2%) become categorised rows. Credit
+        // package + gift card added so the front-desk demo shows more than
+        // 2 categories.
+        commissions: [
+            { id: "pr_monthly_c1", category: "membership",     value_type: "percent", value: 2 },
+            { id: "pr_monthly_c2", category: "credit_package", value_type: "percent", value: 2 },
+            { id: "pr_monthly_c3", category: "gift_card",      value_type: "percent", value: 3 },
+        ],
+        bonuses: [
+            { id: "pr_monthly_b1", category: "membership", value_type: "fixed", value: 500, threshold: 20 },
+        ],
         branch_id: "branch_forma_east", status: "active", usage_count: 1,
         // Salaried — attendance flags don't change the base pay anyway.
         only_checked_in: false, include_late_cancelled: true,

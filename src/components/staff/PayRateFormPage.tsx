@@ -29,21 +29,37 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, MarkerPin01, Check, Plus, Minus, Percent01,
+    XClose, MarkerPin01, Check, Plus, Minus, Percent01, Trash01,
     DistributeSpacingVertical, LayersTwo01, Sliders01, Calendar, CoinsHand,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { FieldLabel } from "@/components/patterns/FieldLabel";
+import { COMMISSION_CATEGORY_LABEL, COMMISSION_CATEGORY_ORDER } from "@/lib/commission";
 import {
     useAppStore, DEFAULT_BRANCH_ID,
     computePayRateDisplay,
     type PayRate, type PayRateType, type PayRateTier, type PayRateHybridCondition,
     type FlatPayRate, type TieredPayRate, type RevenuePayRate, type HybridPayRate, type MonthlyPayRate,
-    type Branch,
+    type Branch, type CommissionCategory, type CommissionValueType,
 } from "@/lib/store";
+
+// ─── Commission / bonus form-row shapes ──────────────────────────────────────
+// Form-local (value stays "" until typed). Category "" = unselected.
+interface CommissionFormRow {
+    id: string;
+    category: CommissionCategory | "";
+    valueType: CommissionValueType;
+    value: number | "";
+}
+interface BonusFormRow extends CommissionFormRow {
+    threshold: number | "";
+}
+let commissionRowSeq = 0;
+const newRowId = () => `cr_${++commissionRowSeq}`;
 
 // ─── Form value (mirror of PayRate without id/createdAt/usage/status) ───────
 //
@@ -69,8 +85,10 @@ interface FormValue {
     fixedSalary: number | "";
     bonusOfSalaryPercent: number | "";
     bonusCap: number | "";
-    salesCommissionPackagesPercent: number | "";
-    salesCommissionMembershipsPercent: number | "";
+    /** Categorised sales commission + threshold bonuses — available on ANY
+     *  rate type (client Jul 2026). */
+    commissions: CommissionFormRow[];
+    bonuses: BonusFormRow[];
     /** Optional per-rate tax override (Figma 6106:10962). Empty string =
      *  "No tax rate" (the rate inherits the global pay-rate tax rule).
      *  Populated with a `tax_rates.id` when the admin picks one. */
@@ -97,8 +115,8 @@ function emptyForm(): FormValue {
         fixedSalary: "",
         bonusOfSalaryPercent: "",
         bonusCap: "",
-        salesCommissionPackagesPercent: "",
-        salesCommissionMembershipsPercent: "",
+        commissions: [],
+        bonuses: [],
         taxRateId: "",
     };
 }
@@ -112,6 +130,13 @@ function formFromPayRate(p: PayRate): FormValue {
     base.onlyCheckedIn = p.onlyCheckedIn ?? false;
     base.includeLateCancelled = p.includeLateCancelled ?? false;
     base.taxRateId = p.taxRateId ?? "";
+    // Commission + bonus rows live on the base — available on any rate type.
+    base.commissions = (p.commissions ?? []).map(c => ({
+        id: c.id, category: c.category, valueType: c.valueType, value: c.value,
+    }));
+    base.bonuses = (p.bonuses ?? []).map(b => ({
+        id: b.id, category: b.category, valueType: b.valueType, value: b.value, threshold: b.threshold,
+    }));
     switch (p.type) {
         case "flat":
             base.flatAmount = p.flatAmount;
@@ -137,8 +162,6 @@ function formFromPayRate(p: PayRate): FormValue {
             base.fixedSalary = p.fixedSalary;
             base.bonusOfSalaryPercent = p.bonusOfSalaryPercent ?? "";
             base.bonusCap = p.bonusCap ?? "";
-            base.salesCommissionPackagesPercent = p.salesCommissionPackagesPercent ?? "";
-            base.salesCommissionMembershipsPercent = p.salesCommissionMembershipsPercent ?? "";
             break;
     }
     return base;
@@ -156,6 +179,14 @@ function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate 
     // Monthly. The form already hides the toggles for these two types;
     // this is the safety net at the save layer.
     const hidesAttendanceToggles = form.type === "flat" || form.type === "monthly";
+    // Categorised commission + bonus — drop rows with no category or no value
+    // so a half-filled "+ Add" row never persists. Available on every type.
+    const commissions = form.commissions
+        .filter(r => r.category !== "" && r.value !== "" && Number(r.value) > 0)
+        .map(r => ({ id: r.id, category: r.category as CommissionCategory, valueType: r.valueType, value: Number(r.value) }));
+    const bonuses = form.bonuses
+        .filter(r => r.category !== "" && r.value !== "" && Number(r.value) > 0 && r.threshold !== "" && Number(r.threshold) > 0)
+        .map(r => ({ id: r.id, category: r.category as CommissionCategory, valueType: r.valueType, value: Number(r.value), threshold: Number(r.threshold) }));
     const baseShared = {
         id: resolvedId,
         name: form.name.trim(),
@@ -167,6 +198,8 @@ function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate 
         // Empty-string sentinel → undefined so the persisted record reads
         // as "no override" instead of holding an empty FK string.
         taxRateId: form.taxRateId === "" ? undefined : form.taxRateId,
+        commissions: commissions.length > 0 ? commissions : undefined,
+        bonuses: bonuses.length > 0 ? bonuses : undefined,
     };
     const num = (v: number | "") => (v === "" ? 0 : v);
     switch (form.type) {
@@ -192,8 +225,6 @@ function payloadFromForm(form: FormValue, id?: string, usageCount = 0): PayRate 
                 fixedSalary: num(form.fixedSalary),
                 bonusOfSalaryPercent: form.bonusOfSalaryPercent === "" ? undefined : form.bonusOfSalaryPercent,
                 bonusCap: form.bonusCap === "" ? undefined : form.bonusCap,
-                salesCommissionPackagesPercent: form.salesCommissionPackagesPercent === "" ? undefined : form.salesCommissionPackagesPercent,
-                salesCommissionMembershipsPercent: form.salesCommissionMembershipsPercent === "" ? undefined : form.salesCommissionMembershipsPercent,
             };
     }
 }
@@ -595,23 +626,154 @@ function MonthlyRateSection({ form, set }: { form: FormValue; set: (patch: Parti
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4 w-full">
+        </div>
+    );
+}
+
+// ─── Sales commission + bonus (shared — any rate type) ──────────────────────
+//
+// Client Jul 2026: commission is categorised (% or fixed AED per sale) and
+// available on ANY rate type, so instructors on flat/hybrid rates can earn
+// class/service commission too. Bonus = extra paid once the monthly count in
+// a category crosses a threshold. See the commission-refactor plan doc.
+
+const CATEGORY_OPTIONS = COMMISSION_CATEGORY_ORDER.map(c => ({
+    value: c, label: COMMISSION_CATEGORY_LABEL[c],
+}));
+const VALUE_TYPE_TABS = [
+    { key: "percent", label: "%"   },
+    { key: "fixed",   label: "AED" },
+];
+
+function SalesCommissionSection({ form, set }: { form: FormValue; set: (patch: Partial<FormValue>) => void }) {
+    // Commission rows
+    const setCommissions = (rows: CommissionFormRow[]) => set({ commissions: rows });
+    const addCommission = () =>
+        setCommissions([...form.commissions, { id: newRowId(), category: "", valueType: "percent", value: "" }]);
+    const patchCommission = (id: string, patch: Partial<CommissionFormRow>) =>
+        setCommissions(form.commissions.map(r => (r.id === id ? { ...r, ...patch } : r)));
+    const removeCommission = (id: string) =>
+        setCommissions(form.commissions.filter(r => r.id !== id));
+
+    // Bonus rows
+    const setBonuses = (rows: BonusFormRow[]) => set({ bonuses: rows });
+    const addBonus = () =>
+        setBonuses([...form.bonuses, { id: newRowId(), category: "", valueType: "percent", value: "", threshold: "" }]);
+    const patchBonus = (id: string, patch: Partial<BonusFormRow>) =>
+        setBonuses(form.bonuses.map(r => (r.id === id ? { ...r, ...patch } : r)));
+    const removeBonus = (id: string) =>
+        setBonuses(form.bonuses.filter(r => r.id !== id));
+
+    return (
+        <div className="flex flex-col gap-6 w-full">
+            <div className="flex flex-col gap-3 w-full">
                 <SectionHeader
                     title="Sales commission"
-                    subtitle="Set a commission % for each sales category. Leave blank to exclude."
+                    subtitle="Pay % or a fixed AED per sale in a category. Add a row per category."
                 />
-                <div className="grid grid-cols-2 gap-4 w-full">
-                    <div className="flex flex-col gap-[6px]">
-                        <FieldLabel label="Packages" />
-                        <PercentInput value={form.salesCommissionPackagesPercent} onChange={v => set({ salesCommissionPackagesPercent: v })} />
-                    </div>
-                    <div className="flex flex-col gap-[6px]">
-                        <FieldLabel label="Memberships" />
-                        <PercentInput value={form.salesCommissionMembershipsPercent} onChange={v => set({ salesCommissionMembershipsPercent: v })} />
-                    </div>
-                </div>
+                {form.commissions.map(row => (
+                    <RateRow
+                        key={row.id}
+                        category={row.category}
+                        valueType={row.valueType}
+                        value={row.value}
+                        onCategory={v => patchCommission(row.id, { category: v })}
+                        onValueType={v => patchCommission(row.id, { valueType: v })}
+                        onValue={v => patchCommission(row.id, { value: v })}
+                        onRemove={() => removeCommission(row.id)}
+                    />
+                ))}
+                <AddRowButton label="Add commission" onClick={addCommission} />
+            </div>
+
+            <div className="flex flex-col gap-3 w-full">
+                <SectionHeader
+                    title="Sales bonus"
+                    subtitle="Extra paid once the staff's monthly count in a category crosses the threshold."
+                />
+                {form.bonuses.map(row => (
+                    <RateRow
+                        key={row.id}
+                        category={row.category}
+                        valueType={row.valueType}
+                        value={row.value}
+                        threshold={row.threshold}
+                        onCategory={v => patchBonus(row.id, { category: v })}
+                        onValueType={v => patchBonus(row.id, { valueType: v })}
+                        onValue={v => patchBonus(row.id, { value: v })}
+                        onThreshold={v => patchBonus(row.id, { threshold: v })}
+                        onRemove={() => removeBonus(row.id)}
+                    />
+                ))}
+                <AddRowButton label="Add bonus" onClick={addBonus} />
             </div>
         </div>
+    );
+}
+
+/** One commission / bonus row — category + %/AED toggle + value (+ optional
+ *  threshold for bonuses), inside a bordered card. */
+function RateRow({
+    category, valueType, value, threshold,
+    onCategory, onValueType, onValue, onThreshold, onRemove,
+}: {
+    category: CommissionCategory | "";
+    valueType: CommissionValueType;
+    value: number | "";
+    threshold?: number | "";
+    onCategory: (v: CommissionCategory) => void;
+    onValueType: (v: CommissionValueType) => void;
+    onValue: (v: number | "") => void;
+    onThreshold?: (v: number | "") => void;
+    onRemove: () => void;
+}) {
+    const isBonus = threshold !== undefined;
+    return (
+        <div className="border-1 border-[#e4e7ec] rounded-[12px] p-3 flex flex-col gap-3 w-full">
+            <div className="flex items-center gap-2 w-full">
+                <div className="flex-1 min-w-0">
+                    <SelectInput
+                        value={category}
+                        onChange={v => onCategory(v as CommissionCategory)}
+                        options={CATEGORY_OPTIONS}
+                        placeholder="Select category"
+                        width="w-full"
+                    />
+                </div>
+                <button type="button" onClick={onRemove} aria-label="Remove row"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors shrink-0">
+                    <Trash01 className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="flex items-center gap-2 w-full">
+                <SegmentedTabs
+                    tabs={VALUE_TYPE_TABS}
+                    activeKey={valueType}
+                    onChange={k => onValueType(k as CommissionValueType)}
+                />
+                <div className="flex-1 min-w-0">
+                    {valueType === "percent"
+                        ? <PercentInput value={value} onChange={onValue} />
+                        : <AedInput value={value} onChange={onValue} placeholder="0" />}
+                </div>
+            </div>
+            {isBonus && (
+                <div className="flex flex-col gap-[6px] w-full">
+                    <FieldLabel label="After (sales in the month)" />
+                    <PlainNumberInput value={threshold ?? ""} onChange={v => onThreshold?.(v)} placeholder="0" />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AddRowButton({ label, onClick }: { label: string; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick}
+            className="flex items-center gap-1.5 text-[14px] font-medium text-[#658774] hover:opacity-80 w-fit">
+            <Plus className="w-4 h-4" />
+            {label}
+        </button>
     );
 }
 
@@ -665,22 +827,21 @@ function PayRatePreview({ form }: { form: FormValue }) {
     const display = computePayRateDisplay(synthetic);
     const previewName = form.name.trim() || "Pay rate name";
 
-    // Monthly-salary extras — performance bonus + sales commission line items.
-    // Only rendered when at least one value is set so the card stays clean
-    // for blank-canvas previews.
+    // Extras — Monthly performance bonus + categorised sales commission /
+    // bonus line items (any rate type). Only rendered when set so the card
+    // stays clean for blank-canvas previews.
     const monthlyBullets: string[] = [];
-    if (form.type === "monthly") {
-        if (form.bonusOfSalaryPercent !== "" && form.bonusOfSalaryPercent > 0) {
-            monthlyBullets.push(`${form.bonusOfSalaryPercent}% performance bonus`);
-        }
-        const pkg = form.salesCommissionPackagesPercent;
-        const mem = form.salesCommissionMembershipsPercent;
-        const pkgSet = pkg !== "" && pkg > 0;
-        const memSet = mem !== "" && mem > 0;
-        if (pkgSet && memSet)        monthlyBullets.push(`${pkg}% packages & ${mem}% memberships`);
-        else if (pkgSet)             monthlyBullets.push(`${pkg}% packages commission`);
-        else if (memSet)             monthlyBullets.push(`${mem}% memberships commission`);
+    if (form.type === "monthly" && form.bonusOfSalaryPercent !== "" && form.bonusOfSalaryPercent > 0) {
+        monthlyBullets.push(`${form.bonusOfSalaryPercent}% performance bonus`);
     }
+    const validCommissions = form.commissions.filter(r => r.category !== "" && r.value !== "" && Number(r.value) > 0);
+    for (const r of validCommissions.slice(0, 3)) {
+        const val = r.valueType === "percent" ? `${r.value}%` : `AED ${r.value}`;
+        monthlyBullets.push(`${val} ${COMMISSION_CATEGORY_LABEL[r.category as CommissionCategory]} commission`);
+    }
+    if (validCommissions.length > 3) monthlyBullets.push(`+${validCommissions.length - 3} more commission`);
+    const validBonuses = form.bonuses.filter(r => r.category !== "" && r.value !== "" && Number(r.value) > 0 && r.threshold !== "" && Number(r.threshold) > 0);
+    if (validBonuses.length > 0) monthlyBullets.push(`${validBonuses.length} sales bonus${validBonuses.length === 1 ? "" : "es"}`);
 
     return (
         <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
@@ -914,6 +1075,12 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                     {form.type === "revenue" && <RevenueRateSection form={form} set={set} />}
                                     {form.type === "hybrid"  && <HybridRateSection  form={form} set={set} />}
                                     {form.type === "monthly" && <MonthlyRateSection form={form} set={set} />}
+                                </div>
+
+                                {/* Sales commission + bonus — shared across every
+                                    rate type (client Jul 2026). */}
+                                <div className="flex flex-col gap-4 w-full">
+                                    <SalesCommissionSection form={form} set={set} />
                                 </div>
 
                                 {/* Tax rates — Figma 6106:10962. Lists the global pay-rate

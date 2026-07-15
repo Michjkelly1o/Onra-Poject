@@ -493,11 +493,16 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             .filter(p => {
                 if (!isInstructorRole) return true;
                 if (p.type !== "monthly") return true;
-                // Monthly rates only pass if BOTH commission fields are zero /
-                // undefined — otherwise they'd credit commission to an
-                // instructor, which the client explicitly rules out.
-                return !((p.salesCommissionPackagesPercent ?? 0) > 0
-                     || (p.salesCommissionMembershipsPercent ?? 0) > 0);
+                // Monthly rates only pass if they carry NO commission —
+                // otherwise they'd credit commission to an instructor, which
+                // last week's client feedback ruled out. (This guard is
+                // removed entirely in Phase 3 of the commission refactor, when
+                // instructors gain commission.) Detection now reads the new
+                // categorised `commissions[]` plus the deprecated % fields.
+                const hasCommission = (p.commissions?.length ?? 0) > 0
+                    || (p.salesCommissionPackagesPercent ?? 0) > 0
+                    || (p.salesCommissionMembershipsPercent ?? 0) > 0;
+                return !hasCommission;
             })
             .map(p => ({ value: p.id, label: p.name })),
         [allPayRates, isInstructorRole],
