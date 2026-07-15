@@ -28,8 +28,12 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SelectInput } from "@/components/ui/select-input";
 import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+
+/** Option for the checkout "Credited to" staff picker. */
+export interface SellerOption { value: string; label: string }
 
 export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktransfer" | "wallet";
 
@@ -132,6 +136,12 @@ export interface PaymentConfirmationStepProps {
     change: number;
     canConfirm: boolean;
     onConfirm: () => void;
+    /** "Credited to" — the staff who earns commission on this sale. Required
+     *  (commission refactor Phase 2). Empty until the cashier picks. */
+    sellerStaffId: string | null;
+    setSellerStaffId: (id: string) => void;
+    /** Active staff the sale can be credited to (name — role label). */
+    sellerOptions: SellerOption[];
     /** Methods to render in the picker grid. Driven by `payment_providers`
      *  in the store — see `ALL_PAYMENT_METHODS` above. Defaults to all
      *  four for backward compatibility, but every active caller passes the
@@ -163,6 +173,22 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     taxIncluded={p.taxIncluded}
                     total={p.total}
                 />
+
+                {/* Credited to — the staff who earns commission on this sale.
+                    Required; no default (commission refactor Phase 2). */}
+                <div className="flex flex-col gap-2">
+                    <p className="text-[18px] font-semibold text-[#101828]">Credited to</p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">
+                        Choose the staff member who gets sales-commission credit for this sale.
+                    </p>
+                    <SelectInput
+                        value={p.sellerStaffId ?? ""}
+                        onChange={p.setSellerStaffId}
+                        options={p.sellerOptions}
+                        placeholder="Select staff"
+                        width="w-full"
+                    />
+                </div>
 
                 <div className="flex flex-col gap-4">
                     <p className="text-[18px] font-semibold text-[#101828]">Payment method</p>
@@ -266,9 +292,8 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
     taxIncluded?: boolean;
     total: number;
 }) {
-    // Sales-commission attribution is fully automatic — whoever is logged
-    // in when POS completes the sale gets credited via `applyPurchase`
-    // reading `currentUser.staff_profile_id`. No picker in the UI.
+    // Sales-commission attribution is now an EXPLICIT "Credited to" pick — see
+    // the picker in PaymentConfirmationStep above (commission refactor Phase 2).
     return (
         <div className="flex flex-col gap-4">
             <p className="text-[18px] font-semibold text-[#101828]">Payment information</p>

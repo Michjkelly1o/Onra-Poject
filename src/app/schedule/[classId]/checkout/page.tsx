@@ -42,6 +42,8 @@ function ScheduleCheckoutInner() {
 
     const pendingPurchase = useAppStore(s => s.pendingPurchase);
     const customers = useAppStore(s => s.customers);
+    const staff = useAppStore(s => s.staff);
+    const roles = useAppStore(s => s.roles);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
     // Member Wallet payment path — mirrors /admin/pos/checkout.
@@ -72,7 +74,14 @@ function ScheduleCheckoutInner() {
     );
 
     const [step, setStep] = useState<1 | 2>(1);
+    const [sellerStaffId, setSellerStaffId] = useState<string | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+
+    // "Credited to" — active staff labelled with their role (commission Phase 2).
+    const sellerOptions = useMemo(() => staff
+        .filter(st => st.status === "active")
+        .map(st => ({ value: st.id, label: `${st.fullName} — ${roles.find(r => r.id === st.roleId)?.name ?? "Staff"}` })),
+        [staff, roles]);
     const [cashReceived, setCashReceived] = useState<string>("");
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -120,6 +129,7 @@ function ScheduleCheckoutInner() {
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
+        if (sellerStaffId === null) return false;
         if (paymentMethod === null) return false;
         if (paymentMethod === "cash") return cashReceivedNum >= total;
         if (paymentMethod === "card") return selectedCardId !== null;
@@ -158,7 +168,7 @@ function ScheduleCheckoutInner() {
                 silent: true,
             });
         }
-        applyPurchase(customer.id, pendingPurchase.items, "pos");
+        applyPurchase(customer.id, pendingPurchase.items, "pos", sellerStaffId ?? undefined);
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }
 
@@ -192,6 +202,9 @@ function ScheduleCheckoutInner() {
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
                 walletBalance={walletBalance}
+                sellerStaffId={sellerStaffId}
+                setSellerStaffId={setSellerStaffId}
+                sellerOptions={sellerOptions}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}

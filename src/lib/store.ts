@@ -3952,6 +3952,11 @@ export interface AppState {
         customerId: string,
         items: PurchaseLineItem[],
         paymentSource?: CustomerTransaction["paymentSource"],
+        /** Explicit "Credited to" staff pick from POS/admin checkout — the
+         *  staff who gets sales-commission credit for this sale. Required by
+         *  the POS UI (no auto-cashier fallback). Ignored for customer-portal
+         *  sales (self-service → unattributed). Commission refactor Phase 2. */
+        sellerStaffId?: string,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -7387,7 +7392,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -7583,15 +7588,14 @@ export const useAppStore = create<AppState>()(persist(
                         taxInclusive: pricesInclude,
                     };
                 }
-                // Sales-commission attribution — fully automatic.
-                // The logged-in cashier (`currentUser.staff_profile_id`)
-                // gets credit for every POS/admin sale. Portal (self-service)
-                // sales stay unattributed — no seller, no commission.
+                // Sales-commission attribution — EXPLICIT (commission refactor
+                // Phase 2, client Jul 2026). The cashier picks "Credited to" at
+                // checkout; that staff gets commission. No more auto-attribute
+                // to the logged-in cashier. Portal (self-service) sales stay
+                // unattributed — no seller, no commission.
                 const source = paymentSource ?? "pos";
                 const cashierStaffId =
-                    source === "customer_portal"
-                        ? undefined
-                        : (state.currentUser as typeof state.currentUser & { staff_profile_id?: string }).staff_profile_id;
+                    source === "customer_portal" ? undefined : sellerStaffId;
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,

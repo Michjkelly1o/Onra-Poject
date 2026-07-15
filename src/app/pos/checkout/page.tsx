@@ -43,9 +43,18 @@ function POSCheckoutInner() {
     const router = useRouter();
     const pendingPurchase = useAppStore(s => s.pendingPurchase);
     const customers = useAppStore(s => s.customers);
+    const staff = useAppStore(s => s.staff);
+    const roles = useAppStore(s => s.roles);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
     const showToast = useAppStore(s => s.showToast);
+
+    // "Credited to" — active staff the sale can be attributed to, labelled
+    // with their role (commission refactor Phase 2).
+    const sellerOptions = useMemo(() => staff
+        .filter(st => st.status === "active")
+        .map(st => ({ value: st.id, label: `${st.fullName} — ${roles.find(r => r.id === st.roleId)?.name ?? "Staff"}` })),
+        [staff, roles]);
     // Member Wallet payment path — the customer's account-credit balance +
     // the debit action. A wallet charge deducts `total` from the ledger.
     const walletTransactions = useAppStore(s => s.walletTransactions);
@@ -68,6 +77,7 @@ function POSCheckoutInner() {
     // Local state — fully owned by this page so the POS redirect logic stays
     // isolated from the schedule mini-POS flow.
     const [step, setStep] = useState<1 | 2>(1);
+    const [sellerStaffId, setSellerStaffId] = useState<string | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [cashReceived, setCashReceived] = useState<string>("");
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -101,6 +111,8 @@ function POSCheckoutInner() {
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
+        // Sales must be credited to a staff member before completing.
+        if (sellerStaffId === null) return false;
         if (paymentMethod === null) return false;
         if (paymentMethod === "cash") return cashReceivedNum >= total;
         if (paymentMethod === "card") return selectedCardId !== null;
@@ -141,7 +153,7 @@ function POSCheckoutInner() {
                 silent: true,
             });
         }
-        applyPurchase(customer.id, pendingPurchase.items, "pos");
+        applyPurchase(customer.id, pendingPurchase.items, "pos", sellerStaffId ?? undefined);
         setPendingPurchase(null);
         showToast(
             "Transaction complete",
@@ -180,6 +192,9 @@ function POSCheckoutInner() {
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
                 walletBalance={walletBalance}
+                sellerStaffId={sellerStaffId}
+                setSellerStaffId={setSellerStaffId}
+                sellerOptions={sellerOptions}
             />)
         : <ReceiptStep
             receiptNumber={receiptNumber}
