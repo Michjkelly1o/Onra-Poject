@@ -1,26 +1,28 @@
 "use client";
 
 // Customer — Profile information (`/customer/profile/information`) — full-page form.
-// Edit name, photo (crop overlay), DOB (calendar sheet), gender (option sheet),
-// email, phone. Save writes `customers` via the store + toasts.
+// Grouped sections: Personal information · Password · Address details · Emergency
+// contact, plus Change password + Delete account flows. Save writes `customers`
+// via the store + toasts.
 
 import { useEffect, useRef, useState } from "react";
+import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
-import { Calendar, Camera01, ChevronDown, ChevronLeft } from "@untitledui/icons";
+import { Calendar, Camera01, ChevronDown, ChevronLeft, LogOut01, Trash01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
+import { logoutCustomer } from "@/lib/customer/auth";
+import { useHasCustomerPassword } from "@/lib/customer/customer-password";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
+import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
+import { SheetToolbar } from "@/components/customer/shell/SheetToolbar";
 import { DobSheet } from "@/components/customer/profile/DobSheet";
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
 import { Button } from "@/components/ui/button";
 import { splitPhone } from "@/components/customers/CustomerFormPage";
 import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountrySheet";
 import { PickerSheet } from "@/components/customer/shell/PickerSheet";
-// Country / state / city taxonomy lives in the unified `locales.ts` — the
-// admin BranchFormPage and POS Add Customer flow both read from here, so
-// the customer profile picker mirrors them 1:1 (adaptive state label per
-// country, per-country city + postal hiding rules).
 import {
     COUNTRIES,
     countryByName,
@@ -33,17 +35,25 @@ import {
 const FIELD =
     "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[#344054]";
+const SECTION = "text-base font-semibold leading-6 text-[var(--brand-text)]";
+const RELATIONS = ["Siblings", "Parent", "Spouse", "Child", "Friend", "Other"];
 
 function dobLabel(iso: string): string {
     return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
+function Divider() {
+    return <div className="h-px w-full bg-[#e4e7ec]" />;
+}
+
 export default function ProfileInformationPage() {
+    useRequireCustomerAuth();
     const router = useRouter();
     const member = useCurrentCustomer();
     const updateCustomer = useAppStore((s) => s.updateCustomer);
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
+    const hasPassword = useHasCustomerPassword();
 
     const initialPhone = splitPhone(member?.phone);
     const [firstName, setFirstName] = useState(member?.firstName ?? "");
@@ -59,11 +69,22 @@ export default function ProfileInformationPage() {
     const [postalCode, setPostalCode] = useState(member?.postalCode ?? "");
     const [streetAddress, setStreetAddress] = useState(member?.streetAddress ?? "");
     const [avatar, setAvatar] = useState(member?.imageUrl ?? "");
-    const [dirty, setDirty] = useState(false);
 
+    // Emergency contact (merged in from the retired standalone page).
+    const ecNameParts = (member?.emergencyContactName ?? "").trim().split(/\s+/);
+    const ecInitialPhone = splitPhone(member?.emergencyContactPhone);
+    const [ecFirstName, setEcFirstName] = useState(ecNameParts[0] ?? "");
+    const [ecLastName, setEcLastName] = useState(ecNameParts.slice(1).join(" "));
+    const [ecRelation, setEcRelation] = useState(member?.emergencyContactRelation ?? "");
+    const [ecPhoneCountry, setEcPhoneCountry] = useState(ecInitialPhone.country);
+    const [ecPhone, setEcPhone] = useState(ecInitialPhone.number);
+
+    const [dirty, setDirty] = useState(false);
     const [dobOpen, setDobOpen] = useState(false);
     const [genderOpen, setGenderOpen] = useState(false);
+    const [relationOpen, setRelationOpen] = useState(false);
     const [picker, setPicker] = useState<null | "country" | "state">(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
 
@@ -74,31 +95,14 @@ export default function ProfileInformationPage() {
         };
     }
 
-    // Country-driven address behaviour — mirrors the admin BranchFormPage +
-    // POS Add Customer flow via the shared `locales.ts` config: the sub-
-    // division LABEL + option list + whether City/Postal rows show at all
-    // all derive from the picked country (UAE hides both; GCC hides Postal;
-    // US/CA/SA carry canonical state lists; every other country falls back
-    // to free-text with a generic "Region" label).
     const stateLabel = stateLabelForCountry(country);
-    // Adapter — `statesForCountry` returns `State[]`; the picker sheet only
-    // needs the name strings, so we map once here and reuse below.
-    const stateOptions = country
-        ? statesForCountry(country).map((s) => s.name)
-        : undefined;
-    // Coarse "either field visible" flag — preserves the friend's original
-    // wrapper JSX (one conditional around both City + Postal). Countries
-    // without BOTH fields (UAE and GCC) collapse the wrapper entirely.
-    const showCityPostal = country
-        ? hasCityForCountry(country) && hasPostalCodeForCountry(country)
-        : true;
+    const stateOptions = country ? statesForCountry(country).map((s) => s.name) : undefined;
+    const showCityPostal = country ? hasCityForCountry(country) && hasPostalCodeForCountry(country) : true;
 
     useEffect(() => {
-        // Drop a stale sub-division pick when the country swaps to a list without it.
         if (stateRegion && stateOptions && !stateOptions.includes(stateRegion)) setStateRegion("");
     }, [stateOptions, stateRegion]);
     useEffect(() => {
-        // Clear City / Postal for countries that don't use them (UAE).
         if (!showCityPostal) {
             if (city) setCity("");
             if (postalCode) setPostalCode("");
@@ -120,6 +124,9 @@ export default function ProfileInformationPage() {
             city: city || undefined,
             postalCode: postalCode || undefined,
             streetAddress: streetAddress || undefined,
+            emergencyContactName: `${ecFirstName} ${ecLastName}`.trim() || undefined,
+            emergencyContactPhone: ecPhone ? `${ecPhoneCountry.dial} ${ecPhone}`.trim() : undefined,
+            emergencyContactRelation: ecRelation || undefined,
         });
         showToast("Your profile is updated", "All changes has been saved.", "success");
         setDirty(false);
@@ -148,7 +155,7 @@ export default function ProfileInformationPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={avatar} alt="" className="size-24 rounded-full object-cover ring-4 ring-white" />
                         ) : (
-                            <div className="flex size-24 items-center justify-center rounded-full bg-[#e0e0e0] text-2xl font-semibold text-[#475467] ring-4 ring-white">
+                            <div className="flex size-24 items-center justify-center rounded-full bg-[#f2f4f7] text-2xl font-semibold text-[#475467] ring-4 ring-white">
                                 {member?.initials}
                             </div>
                         )}
@@ -174,6 +181,8 @@ export default function ProfileInformationPage() {
                     </div>
                 </div>
 
+                {/* Personal information */}
+                <p className={SECTION}>Personal information</p>
                 <label className="flex flex-col gap-1.5">
                     <span className={LABEL}>First name</span>
                     <input value={firstName} onChange={(e) => touch(setFirstName)(e.target.value)} className={FIELD} />
@@ -182,7 +191,6 @@ export default function ProfileInformationPage() {
                     <span className={LABEL}>Last name</span>
                     <input value={lastName} onChange={(e) => touch(setLastName)(e.target.value)} className={FIELD} />
                 </label>
-
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Date of birth</span>
                     <button type="button" onClick={() => setDobOpen(true)} className={`${FIELD} flex items-center text-left`}>
@@ -192,7 +200,6 @@ export default function ProfileInformationPage() {
                         <Calendar className="size-5 shrink-0 text-[#667085]" aria-hidden />
                     </button>
                 </div>
-
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Gender</span>
                     <button type="button" onClick={() => setGenderOpen(true)} className={`${FIELD} flex items-center text-left`}>
@@ -202,17 +209,10 @@ export default function ProfileInformationPage() {
                         <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
                     </button>
                 </div>
-
                 <label className="flex flex-col gap-1.5">
                     <span className={LABEL}>Email</span>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => touch(setEmail)(e.target.value)}
-                        className={FIELD}
-                    />
+                    <input type="email" value={email} onChange={(e) => touch(setEmail)(e.target.value)} className={FIELD} />
                 </label>
-
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Phone number</span>
                     <div className="flex items-stretch gap-2">
@@ -227,30 +227,36 @@ export default function ProfileInformationPage() {
                     </div>
                 </div>
 
-                {/* Address — country-driven (label / options / shown fields) from the
-                    shared admin `country-states` config, so it mirrors the admin form. */}
+                <Divider />
+
+                {/* Password */}
+                <p className={SECTION}>Password</p>
+                <Button
+                    variant="secondary"
+                    size="lg"
+                    className="w-full rounded-full"
+                    onClick={() => router.push("/customer/profile/change-password")}
+                >
+                    {hasPassword ? "Change password" : "Create password"}
+                </Button>
+
+                <Divider />
+
+                {/* Address details */}
+                <p className={SECTION}>Address details</p>
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Country</span>
-                    <button
-                        type="button"
-                        onClick={() => setPicker("country")}
-                        className={`${FIELD} flex items-center text-left`}
-                    >
+                    <button type="button" onClick={() => setPicker("country")} className={`${FIELD} flex items-center text-left`}>
                         <span className={`flex-1 truncate ${country ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                             {country ? `${countryByName(country)?.flag ?? ""} ${country}` : "Select country"}
                         </span>
                         <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
                     </button>
                 </div>
-
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>{stateLabel}</span>
                     {stateOptions ? (
-                        <button
-                            type="button"
-                            onClick={() => setPicker("state")}
-                            className={`${FIELD} flex items-center text-left`}
-                        >
+                        <button type="button" onClick={() => setPicker("state")} className={`${FIELD} flex items-center text-left`}>
                             <span className={`flex-1 truncate ${stateRegion ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
                                 {stateRegion || `Select ${stateLabel.toLowerCase()}`}
                             </span>
@@ -265,17 +271,11 @@ export default function ProfileInformationPage() {
                         />
                     )}
                 </div>
-
                 {showCityPostal && (
                     <>
                         <label className="flex flex-col gap-1.5">
                             <span className={LABEL}>City</span>
-                            <input
-                                value={city}
-                                onChange={(e) => touch(setCity)(e.target.value)}
-                                placeholder="Enter city..."
-                                className={FIELD}
-                            />
+                            <input value={city} onChange={(e) => touch(setCity)(e.target.value)} placeholder="Enter city..." className={FIELD} />
                         </label>
                         <label className="flex flex-col gap-1.5">
                             <span className={LABEL}>Postal code</span>
@@ -289,7 +289,6 @@ export default function ProfileInformationPage() {
                         </label>
                     </>
                 )}
-
                 <label className="flex flex-col gap-1.5">
                     <span className={LABEL}>Street address</span>
                     <textarea
@@ -300,6 +299,54 @@ export default function ProfileInformationPage() {
                         className={`${FIELD} resize-none`}
                     />
                 </label>
+
+                <Divider />
+
+                {/* Emergency contact */}
+                <p className={SECTION}>Emergency contact</p>
+                <label className="flex flex-col gap-1.5">
+                    <span className={LABEL}>First name</span>
+                    <input value={ecFirstName} onChange={(e) => touch(setEcFirstName)(e.target.value)} placeholder="Enter first name" className={FIELD} />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                    <span className={LABEL}>Last name</span>
+                    <input value={ecLastName} onChange={(e) => touch(setEcLastName)(e.target.value)} placeholder="Enter last name" className={FIELD} />
+                </label>
+                <div className="flex flex-col gap-1.5">
+                    <span className={LABEL}>Relation</span>
+                    <button type="button" onClick={() => setRelationOpen(true)} className={`${FIELD} flex items-center text-left`}>
+                        <span className={`flex-1 ${ecRelation ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                            {ecRelation || "Select relation"}
+                        </span>
+                        <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                    </button>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <span className={LABEL}>Phone number</span>
+                    <div className="flex items-stretch gap-2">
+                        <PhoneCountrySheet value={ecPhoneCountry} onChange={touch(setEcPhoneCountry)} />
+                        <input
+                            type="tel"
+                            value={ecPhone}
+                            onChange={(e) => touch(setEcPhone)(e.target.value.replace(/\D/g, ""))}
+                            placeholder="Enter phone number"
+                            className={`${FIELD} flex-1`}
+                        />
+                    </div>
+                </div>
+
+                <Divider />
+
+                {/* Delete account */}
+                <Button
+                    variant="destructive-secondary"
+                    size="lg"
+                    leftIcon={<Trash01 className="size-5" aria-hidden />}
+                    className="w-full rounded-full"
+                    onClick={() => setDeleteOpen(true)}
+                >
+                    Delete account
+                </Button>
             </div>
 
             <div
@@ -307,13 +354,7 @@ export default function ProfileInformationPage() {
                     scrollable ? "bg-white" : ""
                 }`}
             >
-                <Button
-                    variant="primary"
-                    size="xl"
-                    disabled={!dirty}
-                    className="w-full rounded-full"
-                    onClick={save}
-                >
+                <Button variant="primary" size="xl" disabled={!dirty} className="w-full rounded-full" onClick={save}>
                     Save changes
                 </Button>
             </div>
@@ -328,7 +369,15 @@ export default function ProfileInformationPage() {
                 flat
                 onConfirm={touch(setGender)}
             />
-
+            <OptionSheet
+                open={relationOpen}
+                onClose={() => setRelationOpen(false)}
+                title="Relation"
+                options={RELATIONS}
+                value={ecRelation}
+                flat
+                onConfirm={touch(setEcRelation)}
+            />
             <PickerSheet
                 open={picker === "country"}
                 onClose={() => setPicker(null)}
@@ -347,6 +396,36 @@ export default function ProfileInformationPage() {
                 value={stateRegion || undefined}
                 onConfirm={(v) => touch(setStateRegion)(v)}
             />
+
+            {/* Delete account confirm */}
+            <CustomerSheet open={deleteOpen} onClose={() => setDeleteOpen(false)}>
+                <SheetToolbar title="" onClose={() => setDeleteOpen(false)} />
+                <div className="flex flex-col items-center gap-4 pt-2 text-center">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-[#fee4e2]">
+                        <Trash01 className="size-6 text-[#d92d20]" aria-hidden />
+                    </div>
+                    <div>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Delete your account?</p>
+                        <p className="mt-1 text-sm leading-5 text-[#475467]">
+                            This permanently removes your profile, plans, and bookings. This can&apos;t be undone.
+                        </p>
+                    </div>
+                    <Button
+                        variant="destructive"
+                        size="xl"
+                        leftIcon={<LogOut01 className="size-5" aria-hidden />}
+                        className="mt-1 w-full rounded-full"
+                        onClick={() => {
+                            setDeleteOpen(false);
+                            logoutCustomer();
+                            showToast("Account deleted", "Your account has been removed.", "success");
+                            router.push("/customer");
+                        }}
+                    >
+                        Delete account
+                    </Button>
+                </div>
+            </CustomerSheet>
 
             {/* Photo crop overlay */}
             {pendingPhoto && (

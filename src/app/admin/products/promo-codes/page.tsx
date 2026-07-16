@@ -218,24 +218,17 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
             )}>
             {/* Banner — fixed 4:3 so the artwork stays the same shape at
                 every screen width instead of stretching wide on large monitors. */}
-            <div className={cn("relative aspect-[4/3] flex flex-col justify-between pt-10 pb-3 px-3 shrink-0 overflow-hidden", bannerClass)}>
-                {/* Uploaded artwork — inactive / archived / expired promos render
-                    it grayscale to match their muted treatment. */}
+            <div className={cn("relative aspect-[4/3] shrink-0 overflow-hidden", bannerClass)}>
+                {/* Image-only banner — the voucher artwork carries all copy.
+                    Inactive / archived / expired promos render grayscale. */}
                 {promo.banner_image_url && (
-                    <img src={promo.banner_image_url} alt=""
+                    <img src={promo.banner_image_url} alt={promo.name ?? promo.code}
                         className={cn("absolute inset-0 w-full h-full object-cover", status !== "active" && "grayscale")} />
                 )}
-                {/* Dark vignette so the white text stays legible on any banner */}
-                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
+                {/* Status badge — top right (system status, not voucher copy) */}
                 <div className="absolute top-3 right-3 z-10">
                     <StatusBadge type="promo" status={status} size="lg" />
                 </div>
-                <div className="relative z-10 flex flex-col">
-                    <p className="text-[20px] font-semibold text-white leading-[30px]">
-                        {promo.name ?? promo.code}
-                    </p>
-                </div>
-                <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
             </div>
 
             {/* Content */}

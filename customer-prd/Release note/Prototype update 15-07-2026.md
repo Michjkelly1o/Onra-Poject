@@ -18,7 +18,7 @@ Capabilities:
 - **Appointment type filter** — The Appointments tab can filter by Private or Recovery, one at a time.
 - **One date field for ranges** — The date filter is a single field; open the calendar and pick a single day or drag out a range.
 - **Sign the waiver once** — The booking waiver is a one-time agreement; you only sign again if your age crosses the 18 mark, which switches guardian consent on or off.
-- **Live time slots** — Appointment time slots start empty (0 of the total booked) and fill as people book.
+- **Live time slots** — Appointment time slots show how full they are with a people icon and a count (e.g. 0/6), starting empty and filling as people book.
 
 2 Products
 The storefront and checkout, including the payment receipt.
@@ -31,7 +31,7 @@ Capabilities:
 3 Profile
 Your account hub — plans, bookings, payments, wallet, and settings.
 Capabilities:
-- **Bookings live here now** — Bookings moved into Profile as two dedicated pages, Upcoming and Past, each grouped by month; the profile Bookings card links straight to either.
+- **Bookings live here now** — Bookings moved into Profile as two dedicated pages, Upcoming and Past, each grouped by day (e.g. "Wed 15 Jul 2026"); the profile Bookings card links straight to either.
 - **Payment history** — A full history of your payments grouped by month; tap any one to open its receipt, which you can share or download.
 - **Wallet** — A new Wallet page shows your account-credit balance on a branded card (tap the eye to hide it), with a running list of credits and spends.
 - **My plan, grouped** — Your plans are split into an Active plan section on top and an Expired plan section below.
@@ -40,5 +40,6 @@ Capabilities:
 
 General updates
 - **Clear all** — Every filter's reset button now reads "Clear all".
-- **Grouped by month** — Bookings and payments are grouped under month headings, so long lists are easy to scan.
+- **Grouped lists** — Bookings are grouped by day, while payments and wallet activity are grouped by month, so long lists are easy to scan.
+- **Consistent section headings** — Plans, bookings, payments and wallet all share the same section-heading style and spacing.
 - **Cleaner inner pages** — The soft background pattern now shows only on the main tabs (Home, Search, Products, Profile); detail and settings pages sit on a clean, plain background.

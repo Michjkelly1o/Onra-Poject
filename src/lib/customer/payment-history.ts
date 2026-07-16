@@ -42,6 +42,8 @@ export interface PaymentRecord {
     subtotal: number;
     discount: number;
     tax: number;
+    /** Account Credit (AED) redeemed on this payment (0 / absent when none). */
+    accountCredit?: number;
 }
 
 /** Human labels for a payment type + method (shared by list + receipt). */

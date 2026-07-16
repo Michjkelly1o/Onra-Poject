@@ -43,7 +43,7 @@ const BRANCH_STORAGE_KEY = "onra-member-branch";
 /** localStorage key for the persisted display-timezone city (Search class schedule). */
 import { cityForZone } from "@/lib/customer/timezones";
 
-const TIMEZONE_STORAGE_KEY = "onra-member-tz-city";
+const TIMEZONE_STORAGE_KEY = "onra-member-tz-city-v2";
 
 /** Default display timezone — the studio's city (Abu Dhabi → Asia/Dubai, UTC+04:00). */
 export const DEFAULT_TIMEZONE = "Abu Dhabi";
@@ -61,6 +61,9 @@ interface CurrentCustomerContextValue {
     timezone: string;
     /** Persist a new display timezone city. */
     setTimezone: (city: string) => void;
+    /** The device-detected LOCAL timezone city (independent of the display pick) —
+     *  drives the "Your time" row + out-of-zone default. */
+    localTimezone: string;
 }
 
 const CurrentCustomerContext = createContext<CurrentCustomerContextValue | null>(null);
@@ -150,10 +153,11 @@ export function CurrentCustomerProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     const timezone = storedTz ?? detectedTz ?? DEFAULT_TIMEZONE;
+    const localTimezone = detectedTz ?? DEFAULT_TIMEZONE;
 
     const value = useMemo<CurrentCustomerContextValue>(
-        () => ({ memberId, member, selectedBranchId, setSelectedBranch, timezone, setTimezone }),
-        [memberId, member, selectedBranchId, setSelectedBranch, timezone, setTimezone],
+        () => ({ memberId, member, selectedBranchId, setSelectedBranch, timezone, setTimezone, localTimezone }),
+        [memberId, member, selectedBranchId, setSelectedBranch, timezone, setTimezone, localTimezone],
     );
     return <CurrentCustomerContext.Provider value={value}>{children}</CurrentCustomerContext.Provider>;
 }

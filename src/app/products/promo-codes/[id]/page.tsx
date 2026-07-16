@@ -183,19 +183,16 @@ function PromoSidebarBanner({ vm }: { vm: PromoDetailVM }) {
         ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
         : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
     return (
-        <div className={cn("relative h-[155px] flex flex-col justify-between pt-10 pb-3 px-4 shrink-0", bannerClass)}>
+        <div className={cn("relative h-[155px] shrink-0 overflow-hidden", bannerClass)}>
+            {/* Image-only banner — the voucher artwork carries all copy */}
             {vm.bannerImageUrl && (
-                <img src={vm.bannerImageUrl} alt=""
+                <img src={vm.bannerImageUrl} alt={vm.name}
                     className={cn("absolute inset-0 w-full h-full object-cover", !isActive && "grayscale")} />
             )}
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
+            {/* Status badge — top right (system status, not voucher copy) */}
             <div className="absolute top-3 right-3 z-10">
                 <StatusBadge type="promo" status={vm.effectiveStatus} size="lg" label={vm.effectiveStatus === "archived" ? "Archive" : undefined} />
             </div>
-            <div className="relative z-10 flex flex-col">
-                <p className="text-[20px] font-semibold text-white leading-[30px] break-words">{vm.name}</p>
-            </div>
-            <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
         </div>
     );
 }

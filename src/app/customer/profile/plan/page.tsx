@@ -4,7 +4,9 @@
 // Freeze / Unfreeze / Cancel / Reactivate, driven through the shared store actions.
 
 import { useState } from "react";
+import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { ChevronLeft, CreditCardX } from "@untitledui/icons";
 import { useAppStore, type CustomerPlan } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
@@ -31,7 +33,9 @@ const noun = (p: CustomerPlan) => (p.kind === "membership" ? "membership" : "cre
 const Noun = (p: CustomerPlan) => (p.kind === "membership" ? "Membership" : "Credit package");
 
 export default function MyPlanPage() {
+    useRequireCustomerAuth();
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile");
     const member = useCurrentCustomer();
     const freezeMembershipByCustomer = useAppStore((s) => s.freezeMembershipByCustomer);
     const unfreezeCustomerPlan = useAppStore((s) => s.unfreezeCustomerPlan);
@@ -200,7 +204,7 @@ export default function MyPlanPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/profile")}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >

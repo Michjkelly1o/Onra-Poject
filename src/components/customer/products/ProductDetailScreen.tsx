@@ -12,7 +12,8 @@
 // and `afterAdd` so the same screen returns to the right place in each flow.
 
 import { useEffect, useReducer, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, Gift01, Lightbulb02, MarkerPin01, Minus, Package, Plus } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
@@ -55,6 +56,7 @@ export function ProductDetailScreen({
     afterAdd: (kind: PlanKind) => void;
 }) {
     const router = useRouter();
+    const pathname = usePathname();
     const { member } = useCurrentCustomerContext();
     const memberships = useAppStore((s) => s.memberships);
     const packages = useAppStore((s) => s.packages);
@@ -285,7 +287,7 @@ export function ProductDetailScreen({
             {/* Sticky footer — qty stepper (packages) + Add to cart */}
             <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4">
                 {isGuest ? (
-                    <Button variant="primary" size="xl" className="w-full rounded-full" onClick={() => router.push("/customer/auth")}>
+                    <Button variant="primary" size="xl" className="w-full rounded-full" onClick={() => router.push(loginHref(pathname))}>
                         Log in to purchase
                     </Button>
                 ) : (

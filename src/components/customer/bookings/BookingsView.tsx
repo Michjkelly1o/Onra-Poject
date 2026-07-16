@@ -12,7 +12,9 @@
 // the list. Filter state persists across detail round-trips via a module cache.
 
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
+import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronLeft, FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
 import {
     applyBookingFilters,
@@ -47,11 +49,13 @@ function dayLabelOf(dateISO: string): string {
 
 export function BookingsView({ tab }: { tab: BookingTab }) {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile");
+    const pathname = usePathname();
     // Bookings is auth-only — a guest (reachable by deep link) is redirected to
     // the login front door.
     const isAuth = useIsAuthenticated();
     useEffect(() => {
-        if (!isAuth) router.replace("/customer/auth");
+        if (!isAuth) router.replace(loginHref(pathname));
     }, [isAuth, router]);
     // Keep the module cache in sync with this page so the "See all" instructor
     // round-trip + notification deep-links stay coherent.
@@ -178,20 +182,41 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
 
     if (!isAuth) return null;
 
-    const title = tab === "upcoming" ? "Upcoming bookings" : "Past bookings";
-
     return (
         <div className="flex min-h-[100dvh] flex-col">
-            <CustomerHeader>
+            <CustomerHeader
+                overlap
+                subBar={
+                    <div className="flex w-full gap-3 pt-1">
+                        {(["upcoming", "past"] as BookingTab[]).map((t) => {
+                            const active = tab === t;
+                            return (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => router.push(`/customer/bookings/${t}`)}
+                                    className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
+                                        active
+                                            ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
+                                            : "font-medium text-[#667085]"
+                                    }`}
+                                >
+                                    {t === "upcoming" ? "Upcoming" : "Past"}
+                                </button>
+                            );
+                        })}
+                    </div>
+                }
+            >
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/profile")}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 truncate text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">{title}</h1>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Bookings</p>
                 <button
                     type="button"
                     onClick={() => {
@@ -210,7 +235,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                 </button>
             </CustomerHeader>
 
-            <div className="flex flex-1 flex-col px-4 pb-4 pt-[80px]">
+            <div className="flex flex-1 flex-col px-4 pb-4 pt-[116px]">
                 {list.length === 0 && showAppts.length === 0 ? (
                     fcount > 0 ? (
                         <div className="flex flex-1 items-center justify-center">

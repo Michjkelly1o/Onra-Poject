@@ -15,7 +15,6 @@ import { CheckCircle, Hourglass03, RefreshCcw01, SlashCircle01, XCircle } from "
 import { useAppStore, type ClassBooking, type ClassSchedule } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail, type ClassDetailVM } from "@/lib/customer/search-data";
-import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { formatShortDate, formatTime12 } from "@/lib/customer/format";
 import { branchTzLabel } from "@/lib/branch-time";
 import type { BookingStatus } from "@/components/customer/bookings/BookingCard";
@@ -114,10 +113,10 @@ export function classifyBooking(b: ClassBooking, s: ClassSchedule): { viewStatus
     }
     if (b.attendanceStatus === "no_show") return { viewStatus: "no_show", tab: "past" };
     if (b.attendanceStatus === "present") return { viewStatus: "attended", tab: "past" };
-    // Upcoming = the class hasn't happened yet vs the real today (admin uses the
-    // live clock too), and isn't completed/cancelled. Date-driven, not the fixed
-    // seed status — so seed rows anchored to an older "today" age out correctly.
-    const future = s.dateISO >= REAL_TODAY_ISO && s.status !== "Completed" && s.status !== "Cancelled";
+    // Upcoming = the class SCHEDULE is still "Upcoming" — status-driven, matching
+    // the admin customer-detail Bookings tab (classStatus === "Upcoming") and the
+    // admin schedule module, so the customer's Upcoming set equals the admin's.
+    const future = s.status === "Upcoming";
     // A waitlist entry the member never got promoted from (class is over) =
     // they couldn't join → shown as Cancelled (no charge), no credit taken.
     if (b.status === "waitlisted") {

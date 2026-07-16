@@ -107,6 +107,20 @@ export function offsetForCity(city: string): string {
     return zone ? offsetLabel(zone) : "UTC±00:00";
 }
 
+/** Compact offset for a pill: "UTC+04:00" → "UTC+4", "UTC+05:30" → "UTC+5:30". */
+export function compactOffsetLabel(zone: string): string {
+    const m = offsetLabel(zone).match(/UTC([+\-±])(\d{2}):(\d{2})/);
+    if (!m) return "UTC";
+    const [, sign, hh, mm] = m;
+    if (sign === "±") return "UTC";
+    return mm === "00" ? `UTC${sign}${Number(hh)}` : `UTC${sign}${Number(hh)}:${mm}`;
+}
+/** Compact offset for a city label ("Abu Dhabi" → "UTC+4"). */
+export function compactOffsetForCity(city: string): string {
+    const zone = ZONE_BY_CITY.get(city);
+    return zone ? compactOffsetLabel(zone) : "UTC";
+}
+
 export function isKnownCity(city: string): boolean {
     return ZONE_BY_CITY.has(city);
 }

@@ -16,25 +16,24 @@
 import { useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronDown, Users01 } from "@untitledui/icons";
-import { useCurrentCustomerContext } from "@/lib/customer/context";
-import { addDaysISO, dayNum, formatMonth, REAL_TODAY_ISO, weekdayAbbr } from "@/lib/customer/dates";
+import { addDaysISO, dayNum, formatMonth, REAL_TODAY_ISO, to12h, weekdayAbbr } from "@/lib/customer/dates";
 import { useAppointment } from "@/lib/customer/appointments-data";
+import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { useAppStore } from "@/lib/store";
 import { useAvailableSlots } from "@/lib/customer/slot-availability";
-import { timeInZoneLabel } from "@/lib/customer/class-time";
-import { branchTimezone } from "@/lib/branch-time";
-import { cityForZone, tzPickerCtx } from "@/lib/customer/timezones";
 import { appointmentDraft, ensureAppointmentDraft, resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { AppointmentFlowHeader } from "@/components/customer/appointments/AppointmentFlowHeader";
-import { TimezonePill } from "@/components/customer/shell/TimezonePill";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
+import { TimezonePill } from "@/components/customer/shell/TimezonePill";
+import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
 export default function SelectSlotPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const appointment = useAppointment(id);
-    const { timezone } = useCurrentCustomerContext();
+    const { timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
     const branch = useAppStore((st) => st.branches).find((b) => b.id === appointment?.branchId);
 
     ensureAppointmentDraft(id);
@@ -45,6 +44,7 @@ export default function SelectSlotPage() {
         appointmentDraft.slotISO === dateISO ? appointmentDraft.slotTime : null,
     );
     const [monthOpen, setMonthOpen] = useState(false);
+    const [tzOpen, setTzOpen] = useState(false);
     const [fading, setFading] = useState(false);
     const advancingRef = useRef(false);
 
@@ -97,19 +97,13 @@ export default function SelectSlotPage() {
                 className="flex flex-1 flex-col gap-4 px-4 pb-6 pt-6"
                 style={{ opacity: fading ? 0 : 1, transition: "opacity 340ms ease-out" }}
             >
-                {/* Month (opens the month sheet) + timezone (opens the timezone screen) */}
+                {/* Month (opens the month sheet) + timezone pill (opens the Time Zone sheet) */}
                 <div className="flex w-full items-center justify-between">
                     <button type="button" onClick={() => setMonthOpen(true)} className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{formatMonth(weekStartISO)}</span>
                         <ChevronDown className="size-5 text-[var(--brand-text)]" aria-hidden />
                     </button>
-                    <TimezonePill
-                        tz={timezone}
-                        onClick={() => {
-                            tzPickerCtx.branchCity = cityForZone(branchTimezone(branch)) ?? null;
-                            router.push("/customer/search/timezone");
-                        }}
-                    />
+                    <TimezonePill tz={timezone} onClick={() => setTzOpen(true)} />
                 </div>
 
                 {/* Date strip — a week anchored to the chosen month */}
@@ -197,6 +191,18 @@ export default function SelectSlotPage() {
                 minYear={minYear}
                 maxYear={maxYear}
                 onApply={jumpToMonth}
+            />
+
+            <TimeZoneSheet
+                open={tzOpen}
+                onClose={() => setTzOpen(false)}
+                branch={branch}
+                localCity={localTimezone}
+                value={timezone}
+                onSelect={(city) => {
+                    setTimezone(city);
+                    setTzOpen(false);
+                }}
             />
         </div>
     );

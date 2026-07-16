@@ -58,6 +58,7 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                     totalItems={order?.totalItems ?? 0}
                     discount={order?.discount ?? 0}
                     tax={order?.tax ?? 0}
+                    accountCredit={order?.accountCredit ?? 0}
                     total={order?.total ?? 0}
                     status="success"
                 />

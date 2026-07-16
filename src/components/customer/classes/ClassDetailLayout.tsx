@@ -15,7 +15,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, CheckCircle, ChevronLeft, ClockFastForward, Coins01, Maximize01, MarkerPin01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { Calendar, CheckCircle, ChevronLeft, ClockFastForward, Coins01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
@@ -23,6 +23,7 @@ import { classTimeDisplay } from "@/lib/customer/class-time";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ShareSheet } from "@/components/customer/shell/ShareSheet";
+import { BranchLocationCard } from "@/components/customer/branch/BranchLocationCard";
 
 const CHECK_IN_GUIDANCE = ["Arrive 10 minutes early", "Late entry not permitted after 5 min"];
 
@@ -114,7 +115,6 @@ export function ClassDetailLayout({
     onBack,
 }: ClassDetailLayoutProps) {
     const router = useRouter();
-    const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
     // Dual-timezone class time (Branch time + Your time) for the default grid.
     const branches = useAppStore((st) => st.branches);
@@ -265,33 +265,7 @@ export function ClassDetailLayout({
                 </section>
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
-                <section className="flex flex-col gap-3">
-                    <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</h2>
-                    <div className="relative h-[160px] w-full overflow-hidden rounded-xl bg-white">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/images/customer/branch-map.png" alt="" className="absolute inset-0 size-full object-cover" />
-                        <span className="absolute left-1/2 top-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-black/20 bg-[var(--brand-text)]">
-                            <MarkerPin01 className="size-5 text-white" aria-hidden />
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => showToast("Map", "Full map view is coming soon.", "success")}
-                            aria-label="Expand map"
-                            className="absolute right-4 top-4 flex items-center justify-center rounded-full border border-[#f2f4f7] bg-white p-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                        >
-                            <Maximize01 className="size-5 text-[#344054]" aria-hidden />
-                        </button>
-                    </div>
-                    <div className="flex w-full items-start gap-2">
-                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                        <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">
-                                {detail.room ? `${detail.room} - ` : ""}{detail.branchName}
-                            </p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">{detail.branchAddress}</p>
-                        </div>
-                    </div>
-                </section>
+                <BranchLocationCard branch={branch} room={detail.room} heading="Location" />
 
                 {afterLocation}
             </div>

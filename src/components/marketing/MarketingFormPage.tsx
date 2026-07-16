@@ -1041,12 +1041,6 @@ const PREVIEW_MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-const PREVIEW_TYPE_LABEL: Record<MarketingType, string> = {
-    new_class: "New class",
-    announcement: "Announcement",
-    event: "Event",
-};
-
 /** "YYYY-MM-DD" + "HH:MM" → "20 March 2026, 12:00 AM". */
 function formatPreviewDate(date: string, time: string): string {
     if (!date) return "date & time";
@@ -1099,28 +1093,17 @@ function MarketingPreviewPanel({ form, branches }: { form: MarketingFormData; br
             {/* Stage */}
             <div className="bg-[#f6f6f3] px-6 py-10">
                 <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col w-[352px] mx-auto">
-                    {/* Banner */}
-                    <div className="relative h-[144px] flex flex-col justify-between p-3 shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]">
+                    {/* Banner — image-only; the artwork carries all campaign copy */}
+                    <div className="relative h-[144px] shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]">
                         {form.bannerPreview && (
                             <img src={form.bannerPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
                         )}
-                        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
+                        {/* Status badge — top right (system status, not campaign copy) */}
                         <div className="absolute top-3 right-3 z-10">
                             <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
                                 Active
                             </span>
                         </div>
-                        {form.type !== "" && (
-                            <div className="relative z-10">
-                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium text-white bg-black/40 backdrop-blur-[8px] whitespace-nowrap">
-                                    {PREVIEW_TYPE_LABEL[form.type]}
-                                </span>
-                            </div>
-                        )}
-                        <p className="relative z-10 text-[20px] font-semibold text-white leading-[30px] uppercase line-clamp-2">
-                            {name || "Campaign title"}
-                        </p>
-                        <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
                     </div>
                     {/* Content */}
                     <div className="flex flex-col gap-4 px-4 py-5">

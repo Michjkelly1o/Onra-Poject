@@ -25,8 +25,10 @@ export function PromoBanner({
     rounded?: boolean;
 }) {
     return (
+        // Image-only banner — the voucher artwork carries all copy. Sized to the
+        // 343x140 ratio so it never crops as the phone frame width changes.
         <div
-            className={`relative flex h-[140px] w-full flex-col justify-between overflow-hidden px-4 pb-3 pt-8 ${
+            className={`relative aspect-[343/140] w-full overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467] ${
                 rounded ? "rounded-2xl" : ""
             }`}
         >
@@ -34,16 +36,10 @@ export function PromoBanner({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                     src={promo.bannerImage}
-                    alt=""
+                    alt={promo.label}
                     className={`absolute inset-0 size-full object-cover ${disabled ? "grayscale" : ""}`}
                 />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/30" aria-hidden />
-            <div className="relative flex flex-col text-white">
-                <p className="text-2xl font-semibold leading-8">{promo.label}</p>
-                <p className="text-sm font-medium leading-5">{promo.category}</p>
-            </div>
-            <p className="relative text-xs font-normal leading-[18px] text-[#d0d5dd]">*T&Cs Apply</p>
         </div>
     );
 }

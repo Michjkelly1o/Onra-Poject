@@ -14,8 +14,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { loginCustomer } from "@/lib/customer/auth";
+import { setCustomerPassword } from "@/lib/customer/customer-password";
 import { authDraft } from "@/lib/customer/auth-flow";
-import { AuthHeader } from "@/components/customer/auth/AuthHeader";
+import { AuthHeader, AUTH_CONTENT_OFFSET } from "@/components/customer/auth/AuthHeader";
 import { OtpInput } from "@/components/customer/auth/OtpInput";
 import { Button } from "@/components/ui/button";
 
@@ -73,8 +74,9 @@ export default function AuthOtpPage() {
             marketingTopicPromoCodeOffers: optIn,
         });
         authDraft.newCustomerId = id;
+        setCustomerPassword(authDraft.password);
         loginCustomer(id);
-        router.replace("/customer/auth/emergency");
+        router.replace("/customer/auth/loading");
     }
 
     function resend() {
@@ -87,7 +89,7 @@ export default function AuthOtpPage() {
         <div className="relative flex min-h-full flex-col">
             <AuthHeader />
 
-            <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-8 pt-[118px]">
+            <div className={`flex flex-1 flex-col items-center gap-6 px-4 pb-8 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Enter OTP</h1>
                     <p className="text-base leading-6 text-[#667085]">

@@ -15,16 +15,18 @@ import type { FilterInstructor } from "@/lib/customer/instructors";
 import { FullScreenFilterModal } from "@/components/customer/shell/FullScreenFilterModal";
 import { InstructorAvatar } from "@/components/customer/instructors/InstructorAvatar";
 import { FilterPill } from "@/components/customer/shell/FilterPill";
+import { RadioDot } from "@/components/customer/shell/SelectIndicators";
+import { Sun, Sunrise, Sunset } from "@untitledui/icons";
 import { SegmentedControl } from "@/components/customer/shell/SegmentedControl";
 
 export type { FilterInstructor };
 
 // Three predefined time-of-day slots (replaces the start/end time pickers). Each
 // maps to a [start, end) 24h range the Search list filters against.
-const TIME_SLOTS: { id: string; label: string; start: string; end: string }[] = [
-    { id: "morning", label: "Morning", start: "05:00", end: "12:00" },
-    { id: "afternoon", label: "Afternoon", start: "12:00", end: "17:00" },
-    { id: "evening", label: "Evening", start: "17:00", end: "23:00" },
+const TIME_SLOTS: { id: string; label: string; range: string; icon: typeof Sun; start: string; end: string }[] = [
+    { id: "morning", label: "Morning", range: "Open – 11 AM", icon: Sunrise, start: "00:00", end: "11:00" },
+    { id: "afternoon", label: "Afternoon", range: "11 AM – 3 PM", icon: Sun, start: "11:00", end: "15:00" },
+    { id: "evening", label: "Evening", range: "3 PM – Close", icon: Sunset, start: "15:00", end: "23:59" },
 ];
 
 
@@ -93,15 +95,28 @@ export function ClassesFilterModal({
                 {showTime && (
                     <div className="flex flex-col gap-2">
                         <span className="text-sm font-medium leading-5 text-[#344054]">Time</span>
-                        <div className="flex flex-wrap gap-2">
-                            {TIME_SLOTS.map((slot) => (
-                                <FilterPill
-                                    key={slot.id}
-                                    label={slot.label}
-                                    selected={activeSlotId === slot.id}
-                                    onClick={() => toggleSlot(slot)}
-                                />
-                            ))}
+                        <div className="flex flex-col gap-3">
+                            {TIME_SLOTS.map((slot) => {
+                                const on = activeSlotId === slot.id;
+                                const Icon = slot.icon;
+                                return (
+                                    <button
+                                        key={slot.id}
+                                        type="button"
+                                        onClick={() => toggleSlot(slot)}
+                                        className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
+                                            on ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
+                                        }`}
+                                    >
+                                        <Icon className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                                        <span className="flex-1 text-sm leading-5">
+                                            <span className="font-medium text-[var(--brand-text)]">{slot.label}</span>
+                                            <span className="text-[#667085]"> ({slot.range})</span>
+                                        </span>
+                                        <RadioDot checked={on} />
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -127,8 +142,8 @@ export function ClassesFilterModal({
                                         key={i.id}
                                         type="button"
                                         onClick={() => toggle("instructorIds", i.id)}
-                                        className={`flex items-center gap-3 rounded-md border px-4 py-2 transition-colors ${
-                                            on ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border-[#e4e7ec] bg-white"
+                                        className={`flex items-center gap-3 rounded-md px-4 py-2 transition-colors ${
+                                            on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                         }`}
                                     >
                                         <InstructorAvatar imageUrl={i.imageUrl} initials={i.initials} size={20} />

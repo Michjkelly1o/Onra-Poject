@@ -10,18 +10,20 @@
 // inline error. Social buttons are simulated (Google/Apple log in as the demo
 // member; Facebook toasts "coming soon"). Full-screen (nav hidden).
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { loginCustomer } from "@/lib/customer/auth";
-import { authDraft, isValidEmail, resetAuthDraft } from "@/lib/customer/auth-flow";
+import { setCustomerPassword } from "@/lib/customer/customer-password";
+import { authDraft, isValidEmail, resetAuthDraft, safeReturnTo } from "@/lib/customer/auth-flow";
 import { DEMO_MEMBER_ID } from "@/lib/customer/context";
-import { AuthHeader } from "@/components/customer/auth/AuthHeader";
+import { AuthHeader, AUTH_CONTENT_OFFSET } from "@/components/customer/auth/AuthHeader";
 import { SocialAuthButtons, type SocialProvider } from "@/components/customer/auth/SocialAuthButtons";
 import { Button } from "@/components/ui/button";
 
-export default function AuthEmailPage() {
+function AuthEmailInner() {
     const router = useRouter();
+    const returnTo = safeReturnTo(useSearchParams().get("returnTo"));
     const customers = useAppStore((s) => s.customers);
     const showToast = useAppStore((s) => s.showToast);
 
@@ -38,6 +40,7 @@ export default function AuthEmailPage() {
         setError(null);
         resetAuthDraft();
         authDraft.email = email.trim();
+        authDraft.returnTo = returnTo;
         const match = customers.find(
             (c) => c.email?.trim().toLowerCase() === email.trim().toLowerCase(),
         );
@@ -45,11 +48,11 @@ export default function AuthEmailPage() {
             // Returning member → OTP (login) carrying the matched id.
             authDraft.mode = "login";
             authDraft.loginCustomerId = match.id;
-            router.push("/customer/auth/otp");
+            router.push("/customer/auth/login-password");
         } else {
             // Valid, unregistered → sign up (email prefilled). Not an error.
             authDraft.mode = "signup";
-            router.push("/customer/auth/signup");
+            router.push("/customer/auth/create-password");
         }
     }
 
@@ -58,7 +61,10 @@ export default function AuthEmailPage() {
             showToast("Coming soon", "Facebook sign-in isn't available yet.", "success");
             return;
         }
-        // Google / Apple — simulate a returning login as the demo member.
+        // Google / Apple — sign in with the social account, profile auto-filled.
+        // No password is set (social sign-up) → Profile shows "Create password".
+        authDraft.returnTo = returnTo;
+        setCustomerPassword("");
         loginCustomer(DEMO_MEMBER_ID);
         showToast("Welcome back!", "You're now signed in.", "success", "check");
         router.replace("/customer/auth/loading");
@@ -68,7 +74,7 @@ export default function AuthEmailPage() {
         <div className="relative flex min-h-full flex-col">
             <AuthHeader onClose={() => router.back()} />
 
-            <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-8 pt-[118px]">
+            <div className={`flex flex-1 flex-col items-center gap-6 px-4 pb-8 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Log in or sign up</h1>
                     <p className="text-base leading-6 text-[#667085]">
@@ -119,5 +125,15 @@ export default function AuthEmailPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function AuthEmailPage() {
+    // useSearchParams (returnTo) must sit under a Suspense boundary for the
+    // App Router prerender pass.
+    return (
+        <Suspense fallback={<div className="min-h-full" />}>
+            <AuthEmailInner />
+        </Suspense>
     );
 }

@@ -7,15 +7,18 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { resetAuthDraft } from "@/lib/customer/auth-flow";
+import { authDraft, resetAuthDraft } from "@/lib/customer/auth-flow";
 import { AuthProcessing } from "@/components/customer/auth/AuthProcessing";
 
 export default function AuthLoadingPage() {
     const router = useRouter();
     useEffect(() => {
+        // Return the member to the page they were on before logging in (guest
+        // deep-link / "Log in to book"), else Home. Captured before the draft reset.
+        const dest = authDraft.returnTo ?? "/customer";
         const t = setTimeout(() => {
             resetAuthDraft();
-            router.replace("/customer");
+            router.replace(dest);
         }, 1300);
         return () => clearTimeout(t);
     }, [router]);

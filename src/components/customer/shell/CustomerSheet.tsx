@@ -26,12 +26,15 @@ export interface CustomerSheetProps {
     children: ReactNode;
     /** Fixed, consistent height (viewport minus the ~80px header + 16px gap) so the
      *  sheet reveals the page header behind it and doesn't grow/shrink with content
-     *  — e.g. the branch selector + address pickers. Children become a flex column
-     *  so an inner list can scroll (`flex-1`). Defaults to hug-content. */
+     *  — e.g. the address pickers. Children become a flex column so an inner list
+     *  can scroll (`flex-1`). Defaults to hug-content. */
     tall?: boolean;
+    /** Override the height with a custom class (e.g. "h-[52dvh]") for a fixed,
+     *  smaller sheet. Also makes children a scrollable flex column. */
+    heightClass?: string;
 }
 
-export function CustomerSheet({ open, onClose, children, tall = false }: CustomerSheetProps) {
+export function CustomerSheet({ open, onClose, children, tall = false, heightClass }: CustomerSheetProps) {
     // Portal target is only available on the client.
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
@@ -82,7 +85,7 @@ export function CustomerSheet({ open, onClose, children, tall = false }: Custome
             />
             <div
                 className={`relative z-10 w-full max-w-[500px] rounded-t-3xl bg-white px-4 pb-5 pt-3 shadow-[0_-8px_40px_rgba(16,24,40,0.12)] will-change-transform ${
-                    tall ? "flex h-[calc(100dvh-96px)] flex-col" : ""
+                    heightClass ? `flex flex-col ${heightClass}` : tall ? "flex h-[calc(100dvh-96px)] flex-col" : ""
                 }`}
                 style={{
                     transform: shown ? "translateY(0)" : "translateY(100%)",
@@ -90,7 +93,7 @@ export function CustomerSheet({ open, onClose, children, tall = false }: Custome
                 }}
             >
                 <div className="mx-auto mb-4 h-1.5 w-9 shrink-0 rounded-full bg-[#e4e7ec]" />
-                {tall ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
+                {tall || heightClass ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
             </div>
         </div>,
         document.body,

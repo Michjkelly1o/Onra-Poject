@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { ChevronLeft, ChevronSelectorVertical } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
@@ -35,6 +36,7 @@ const FIELD_ERR = "border-[#fda29b] focus:border-[#fda29b]";
 
 export default function GiftCardInfoPage() {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/products");
     const { designId } = useParams<{ designId: string }>();
     const giftCardDesigns = useAppStore((s) => s.giftCardDesigns);
     const customers = useAppStore((s) => s.customers);
@@ -54,7 +56,7 @@ export default function GiftCardInfoPage() {
         return (
             <button
                 type="button"
-                onClick={() => router.push("/customer/products")}
+                onClick={goBack}
                 aria-label="Back"
                 className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
             >

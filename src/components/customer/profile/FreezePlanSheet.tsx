@@ -104,8 +104,8 @@ export function FreezePlanSheet({
                                 key={r}
                                 type="button"
                                 onClick={() => setReason(r)}
-                                className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
-                                    reason === r ? "border-[var(--brand-primary)] bg-[#fbfdfc] ring-1 ring-inset ring-[var(--brand-primary)]" : "border-[#e4e7ec]"
+                                className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors ${
+                                    reason === r ? "border-2 border-[var(--brand-primary)] bg-[#fbfdfc]" : "border border-[#e4e7ec]"
                                 }`}
                             >
                                 <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{r}</span>

@@ -20,6 +20,7 @@ import {
     ensurePurchaseCart,
     lastOrder,
     purchaseCart,
+    TAX_RATE_PCT,
     usePromo,
 } from "@/lib/customer/purchase";
 import { addPaymentRecord, methodKind } from "@/lib/customer/payment-history";
@@ -45,9 +46,13 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
 
     const { member } = useCurrentCustomerContext();
     const applyPurchase = useAppStore((s) => s.applyPurchase);
-    // Live wallet balance drives the "Use my account credit" toggle. Reading
+    // Live wallet balance drives the "Redeem Account Credit" toggle. Reading
     // it once at mount is sufficient — the write is a one-shot on mount.
-    const walletTransactions = useAppStore((s) => s.walletTransactions);
+    // NOTE: no separate `debitWallet` selector — `applyPurchase` handles the
+    // debit in the same tick when we pass the credit as its 5th arg (Jul 2026
+    // merge — friend's version imported `debitWallet` for a manual debit call
+    // that has been dropped to prevent double-debiting the wallet).
+    const walletTxns = useAppStore((s) => s.walletTransactions);
     const promo = usePromo(purchaseCart.promoId);
     const [step, setStep] = useState(0);
     const wroteRef = useRef(false);
@@ -60,12 +65,12 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
 
             const items = purchaseCart.items;
             const totalItems = cartCount();
-            // Account credit — feed the customer's live wallet balance into
-            // `computeTotals` when the toggle is on; the helper caps at the
-            // post-discount total so it can never over-apply.
-            const walletBalance = walletBalanceAed(walletTransactions, member.id);
-            const requestedCredit = purchaseCart.useAccountCredit ? walletBalance : 0;
-            const totals = computeTotals(cartTotal(), promo, undefined, requestedCredit);
+            // Account Credit applied (order: subtotal → tax → discount → credit).
+            // The store's `applyPurchase` (5th arg below) also debits the
+            // wallet ledger + stamps the credit on the transaction so a later
+            // refund can restore it — no separate `debitWallet` call needed.
+            const balance = walletBalanceAed(walletTxns, member.id);
+            const totals = computeTotals(cartTotal(), promo, TAX_RATE_PCT, purchaseCart.redeemAccountCredit ? balance : 0);
             const kinds = Array.from(new Set(items.map((it) => it.kind)));
 
             applyPurchase(
@@ -82,7 +87,7 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                 // stay unattributed, so no staff earns commission on them.
                 "customer_portal",
                 undefined,
-                totals.accountCreditApplied > 0 ? totals.accountCreditApplied : undefined,
+                totals.accountCredit > 0 ? totals.accountCredit : undefined,
             );
 
             const now = new Date();
@@ -98,6 +103,12 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                 dateLabel: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
                 timeLabel: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             };
+
+            // NOTE: `applyPurchase` above already debited the wallet ledger
+            // (with `referenceType: "pos_sale"` on the same tick) and stamped
+            // `accountCreditAppliedAed` on the first sale transaction, so a
+            // later refund can restore it. Do NOT add a separate
+            // `debitWallet` call here — it would double-debit the balance.
 
             // Record the payment in the customer's Payment history (Products flow).
             const pad = (n: number) => String(n).padStart(2, "0");
@@ -115,12 +126,13 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                 subtotal: totals.subtotal,
                 discount: totals.discount,
                 tax: totals.tax,
+                accountCredit: totals.accountCredit,
             });
 
             purchaseCart.classId = null;
             purchaseCart.items = [];
             purchaseCart.promoId = null;
-            purchaseCart.useAccountCredit = false;
+            purchaseCart.redeemAccountCredit = false;
         }
 
         const t1 = setTimeout(() => setStep(1), STEP_MS);

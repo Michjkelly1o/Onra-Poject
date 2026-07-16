@@ -11,6 +11,7 @@
 // the cover and show no action.
 
 import { useParams, useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { ChevronLeft } from "@untitledui/icons";
 import { BOOKING_STATUS, useBookingDetail, useClassReviews, useHasRated } from "@/lib/customer/bookings-data";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 
 export default function BookingDetailPage() {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/bookings/upcoming");
     const { bookingId } = useParams<{ bookingId: string }>();
     const vm = useBookingDetail(bookingId);
     const reviews = useClassReviews(vm?.detail.id ?? "");
@@ -33,7 +35,7 @@ export default function BookingDetailPage() {
                 <CustomerHeader>
                     <button
                         type="button"
-                        onClick={() => router.push("/customer/bookings")}
+                        onClick={goBack}
                         aria-label="Go back"
                         className="flex size-10 shrink-0 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
                     >
@@ -104,7 +106,7 @@ export default function BookingDetailPage() {
         <ClassDetailLayout
             detail={detail}
             mutedCover={p.mutedCover}
-            onBack={() => router.push("/customer/bookings")}
+            onBack={goBack}
             heroBadge={
                 <span
                     className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${p.heroClass}`}

@@ -9,6 +9,7 @@
 // Join waitlist / Full / Manage in Bookings. Reads the live class detail VM.
 
 import { useParams, useRouter } from "next/navigation";
+import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronLeft, Hourglass03, Users01 } from "@untitledui/icons";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail } from "@/lib/customer/search-data";
@@ -101,7 +102,7 @@ export default function ClassDetailPage() {
                                     size="xl"
                                     className="rounded-full"
                                     onClick={() =>
-                                        router.push(member ? `/customer/classes/${detail.id}/book` : "/customer/auth")
+                                        router.push(member ? `/customer/classes/${detail.id}/book` : loginHref(`/customer/classes/${detail.id}`))
                                     }
                                 >
                                     {member ? "Book class" : "Log in to book"}
@@ -115,7 +116,7 @@ export default function ClassDetailPage() {
                                         router.push(
                                             member
                                                 ? `/customer/classes/${detail.id}/book?mode=waitlist`
-                                                : "/customer/auth",
+                                                : loginHref(`/customer/classes/${detail.id}`),
                                         )
                                     }
                                 >

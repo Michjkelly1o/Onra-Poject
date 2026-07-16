@@ -10,7 +10,9 @@
 // filter (date range · payment type · payment method) narrows the list.
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
+import { loginHref } from "@/lib/customer/auth-flow";
 import { CheckCircle, ChevronLeft, FilterLines, Package, CalendarCheck02, XCircle } from "@untitledui/icons";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
@@ -76,9 +78,11 @@ function PaymentRow({ r, onClick }: { r: PaymentRecord; onClick: () => void }) {
 
 export default function PaymentHistoryPage() {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile");
+    const pathname = usePathname();
     const isAuth = useIsAuthenticated();
     useEffect(() => {
-        if (!isAuth) router.replace("/customer/auth");
+        if (!isAuth) router.replace(loginHref(pathname));
     }, [isAuth, router]);
 
     const records = usePaymentHistory();
@@ -107,7 +111,7 @@ export default function PaymentHistoryPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/profile")}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >

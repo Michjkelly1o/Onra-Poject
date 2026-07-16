@@ -15,6 +15,11 @@ import { XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { usePreviewBrand } from "@/components/customer/shell/BrandTokens";
 
+/** Top padding every auth-flow screen leaves to clear the fixed AuthHeader.
+ *  Single source of truth so the flow never jumps between steps (matches the
+ *  Figma auth layout, node 3228-22616). */
+export const AUTH_CONTENT_OFFSET = "pt-[118px]";
+
 export function AuthHeader({ onClose }: { onClose?: () => void }) {
     // Preview override wins over store — see BrandTokens for the bridge.
     const preview          = usePreviewBrand();

@@ -5,7 +5,9 @@
 // — they're always available directly at checkout.
 
 import { useState } from "react";
+import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { Camera01, ChevronLeft, ChevronRight, Edit05, Plus } from "@untitledui/icons";
 import { usePaymentMethods } from "@/lib/customer/payment-methods";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
@@ -29,7 +31,9 @@ function PaymentMark({ kind }: { kind: "visa" | "mastercard" }) {
 }
 
 export default function PaymentSettingsPage() {
+    useRequireCustomerAuth();
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile");
     const { cards } = usePaymentMethods();
     const [methodOpen, setMethodOpen] = useState(false);
 
@@ -38,7 +42,7 @@ export default function PaymentSettingsPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/profile")}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >

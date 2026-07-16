@@ -17,8 +17,10 @@ import { TimezonePill } from "@/components/customer/shell/TimezonePill";
 export interface ScheduleDateBarProps {
     selectedISO: string;
     onSelect: (iso: string) => void;
+    /** Display timezone city (for the compact pill). */
     timezone: string;
     onMonthClick: () => void;
+    /** Opens the Time Zone sheet. */
     onTimezoneClick: () => void;
     bookingOpenDays?: number;
 }

@@ -6,10 +6,11 @@
 //
 // App icon + name + version, a device/app info card (OS version · device model ·
 // app developer — read from the device), and a Privacy policy link. A level-2
-// profile page (back → Profile). The privacy link is a placeholder (404) for now.
+// profile page (back → Profile). Privacy policy opens /customer/profile/privacy-policy.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { ChevronLeft, ChevronRight, FileShield02 } from "@untitledui/icons";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 
@@ -51,6 +52,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export default function AboutPage() {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile");
     // Read the device after mount to avoid an SSR/CSR mismatch.
     const [device, setDevice] = useState<{ os: string; model: string }>({ os: "—", model: "—" });
     useEffect(() => setDevice(readDevice()), []);
@@ -60,7 +62,7 @@ export default function AboutPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/profile")}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
@@ -95,7 +97,7 @@ export default function AboutPage() {
                     <InfoRow label="App developer" value={APP_DEVELOPER} />
                 </div>
 
-                {/* Privacy policy — placeholder link (404 for now) */}
+                {/* Privacy policy → dedicated policy page */}
                 <button
                     type="button"
                     onClick={() => router.push("/customer/profile/privacy-policy")}

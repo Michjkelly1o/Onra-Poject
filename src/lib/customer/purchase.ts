@@ -55,17 +55,17 @@ export const purchaseCart: {
     promoId: string | null;
     /** Selected payment method id — persists across the "Add gift card" round-trip. */
     paymentMethod: string;
-    /** "Use my account credit" toggle (customer-side UI wires here) — when
-     *  true, `computeTotals` receives the customer's live wallet balance as
-     *  the requested credit amount. Applied AFTER discount + tax, capped at
-     *  the post-discount total. Default off. */
-    useAccountCredit: boolean;
+    /** "Redeem Account Credit" toggle — when true, `computeTotals` receives
+     *  the customer's live wallet balance as the requested credit amount.
+     *  Applied AFTER tax + discount, capped at the amount due. Default off.
+     *  Wired by the customer checkout UI (CheckoutCart). */
+    redeemAccountCredit: boolean;
 } = {
     classId: null,
     items: [],
     promoId: null,
     paymentMethod: "apple",
-    useAccountCredit: false,
+    redeemAccountCredit: false,
 };
 
 export function ensurePurchaseCart(classId: string): void {
@@ -74,7 +74,7 @@ export function ensurePurchaseCart(classId: string): void {
         purchaseCart.items = [];
         purchaseCart.promoId = null;
         purchaseCart.paymentMethod = "apple";
-        purchaseCart.useAccountCredit = false;
+        purchaseCart.redeemAccountCredit = false;
     }
 }
 
@@ -335,32 +335,27 @@ export interface CartTotals {
     subtotal: number;
     discount: number;
     tax: number;
-    /** Account credit AED applied to this sale — resolved from the requested
-     *  amount (capped at the post-discount total so it can never over-apply). */
-    accountCreditApplied: number;
+    /** Account Credit (AED) applied — clamped so it never exceeds the amount due. */
+    accountCredit: number;
     total: number;
 }
 
-/** Subtotal → + tax on raw subtotal → − discount → − account credit → total.
- *
- *  `accountCreditRequestedAed` — the customer's "Use my balance" toggle input
- *  (0 when off / no balance). Auto-capped at the post-discount total. Existing
- *  callers that don't pass it get 0 credit applied — no behaviour change. The
- *  order (tax BEFORE discount + credit) matches the admin POS as of Jul 2026. */
+/** Payment order: subtotal → + tax on raw subtotal → − promo discount →
+ *  − account credit → total. `accountCredit` is the AED balance the customer
+ *  chose to redeem; it's clamped so it never exceeds the amount due and never
+ *  makes the total negative. Existing callers that don't pass it get 0
+ *  credit applied — no behaviour change. */
 export function computeTotals(
     subtotal: number,
     promo: PromoVM | null,
     taxRatePct: number = TAX_RATE_PCT,
-    accountCreditRequestedAed: number = 0,
+    accountCredit: number = 0,
 ): CartTotals {
+    const discount = promoDiscount(subtotal, promo);
     const tax = Math.round((subtotal * taxRatePct) / 100);
-    const preDiscount = subtotal + tax;
-    const discount = Math.min(preDiscount, promoDiscount(subtotal, promo));
-    const postDiscount = Math.max(0, preDiscount - discount);
-    const requestedCredit = Math.max(0, Math.round(accountCreditRequestedAed));
-    const accountCreditApplied = Math.min(postDiscount, requestedCredit);
-    const total = Math.max(0, postDiscount - accountCreditApplied);
-    return { subtotal, discount, tax, accountCreditApplied, total };
+    const beforeCredit = subtotal + tax - discount;
+    const credit = Math.min(Math.max(0, Math.round(accountCredit)), beforeCredit);
+    return { subtotal, discount, tax, accountCredit: credit, total: beforeCredit - credit };
 }
 
 // ─── Order snapshot (carried from Pay now → processing → success) ────────────
