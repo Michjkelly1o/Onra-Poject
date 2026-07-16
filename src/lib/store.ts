@@ -3690,6 +3690,13 @@ export interface AppState {
      *  per-row "Mark as paid" action). If `payrollRunId` is supplied the
      *  entries are stamped with it; otherwise just status flips. */
     setPayrollEntriesStatus: (ids: string[], status: PayrollEntryStatus, payrollRunId?: string) => void;
+    /** Materialise payroll entries for staff that don't have one yet — used by
+     *  the Run Payroll flow so non-instructor staff (Front Desk, Branch Admin,
+     *  Operator) can actually be paid. Instructors have entries seeded up
+     *  front; non-instructor staff don't, and this closes that gap on demand.
+     *  Returns the newly-created entry ids so the caller can pipe them into
+     *  `setPayrollEntriesStatus(..., "paid")` in the same run. */
+    createPayrollEntries: (specs: Array<Omit<PayrollEntry, "id" | "status" | "createdAt"> & { status?: PayrollEntryStatus }>) => string[];
     /** Apply an adjustment to a single entry — used in the Run Payroll review
      *  step. Recomputes `totalEarnings` automatically. */
     setPayrollEntryAdjustment: (id: string, amount: number, reason?: string) => void;
@@ -6335,6 +6342,22 @@ export const useAppStore = create<AppState>()(persist(
         if (status === "paid") {
             get().recordAudit("Ran payroll", "payroll", payrollRunId ?? "run", `${ids.length} entries`, { entries: ids.length });
         }
+    },
+    createPayrollEntries: (specs) => {
+        // Deterministic id shape so audits + logs read cleanly. Non-instructor
+        // staff entries land here at Run Payroll confirm time so their row can
+        // be marked Paid alongside the instructor rows.
+        const stamp = Date.now();
+        const created: PayrollEntry[] = specs.map((spec, i) => ({
+            ...spec,
+            id: `pe_run_${stamp}_${i}`,
+            status: spec.status ?? "pending",
+            createdAt: new Date(stamp).toISOString(),
+        }));
+        set((state) => ({
+            payrollEntries: [...state.payrollEntries, ...created],
+        }));
+        return created.map((e) => e.id);
     },
     setPayrollEntryAdjustment: (id, amount, reason) => {
         set(state => ({
