@@ -213,11 +213,15 @@ function PerformanceTab({
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
     return (
-        // `[grid-auto-rows:1fr]` forces every row to match the tallest card in
-        // that row — client Jul 2026: the Payments-collected card had a
-        // header chip/total block above its chart that made it taller than
-        // its row-mate (funnel) and left visible white space. With this + the
-        // `h-full` cascade below every card stretches to the same height.
+        // The widget grid + the "Add widget" placeholder live in two separate
+        // containers so `grid-auto-rows: 1fr` on the widget grid can force
+        // real cards to match row heights WITHOUT dragging the placeholder
+        // into the same 1fr row-height rule (client Jul 2026 — the placeholder
+        // was stretching to the tallest widget row and rendering as an empty
+        // 500px+ box). The placeholder now sits below the grid at its own
+        // fit-content height, still full-width so it visually completes the
+        // dashboard column.
+        <div className="flex flex-col gap-6">
         <div className="grid grid-cols-2 gap-6 [grid-auto-rows:1fr]">
             {activeWidgets.map((id, idx) => (
                 <div
@@ -296,25 +300,28 @@ function PerformanceTab({
                 </div>
             ))}
 
-            {/* Add widget placeholder entry — unchanged at bottom of grid.
-                The MODAL that opens on click is what's centered on screen
-                (see AddWidgetModal). Hidden once every catalogue widget is
-                already active (would open an empty picker). */}
-            {!allWidgetsActive && (
-                <button
-                    type="button"
-                    onClick={onOpenModal}
-                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
-                >
-                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
-                    </div>
-                    <div className="text-center">
-                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
-                    </div>
-                </button>
-            )}
+        </div>
+
+        {/* Add widget placeholder — lives OUTSIDE the widget grid so the
+            grid's `[grid-auto-rows:1fr]` row-height rule can't stretch this
+            dashed tile to match the tallest widget row (client Jul 2026 —
+            was rendering as a 500px+ empty box). Fit-content only. Full
+            width so it visually completes the dashboard column. */}
+        {!allWidgetsActive && (
+            <button
+                type="button"
+                onClick={onOpenModal}
+                className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+            >
+                <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                    <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                </div>
+                <div className="text-center">
+                    <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                    <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                </div>
+            </button>
+        )}
         </div>
     );
 }
