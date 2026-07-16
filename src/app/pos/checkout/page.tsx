@@ -60,6 +60,14 @@ function POSCheckoutInner() {
     // now applied as a reduction toggle before payment method. `applyPurchase`
     // debits the wallet in the same tick, so no separate `debitWallet` call.
     const walletTransactions = useAppStore(s => s.walletTransactions);
+    // Tax module wiring (Phase 4) — same shape as the schedule-flow checkout.
+    // Was `undefined` before Jul 2026, which quietly zeroed the tax row on
+    // the receipt while the transaction on the Payments tab still stored the
+    // real tax. Now the receipt agrees with the transaction record.
+    const taxRules         = useAppStore(s => s.taxRules);
+    const taxRates         = useAppStore(s => s.taxRates);
+    const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
+    const roundingMode     = useAppStore(s => s.taxSettings.roundingMode);
     // Phase 3 — POS subscribes to the live Payments-Settings store so that
     // toggling Stripe / Apple Pay / Google Pay (or disconnecting Stripe and
     // cascading the wallets off) hides their cards from the picker grid in
@@ -109,10 +117,12 @@ function POSCheckoutInner() {
     const walletBalance = walletBalanceAed(walletTransactions, customer.id);
     // Pass the toggle-driven credit request into `computeTotals`; the helper
     // caps the applied credit at the post-discount total and returns the
-    // resolved figure alongside the new total.
-    const { subtotal, discountAmount, taxRate, taxAmount, accountCreditApplied, total } = computeTotals(
+    // resolved figure alongside the new total. `taxContext` was previously
+    // `undefined` (Jul 2026 fix) — the receipt showed no tax while the
+    // transaction record stored real tax; both surfaces now agree.
+    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, total } = computeTotals(
         pendingPurchase.items, pendingPurchase.discountPercent, pendingPurchase.promoDiscountAed ?? 0,
-        undefined,
+        { taxRules, taxRates, pricesIncludeTax, roundingMode },
         useAccountCredit ? walletBalance : 0,
     );
     const cashReceivedNum = Number(cashReceived) || 0;
@@ -182,6 +192,7 @@ function POSCheckoutInner() {
                 promoCode={pendingPurchase.promoCode}
                 taxRate={taxRate}
                 taxAmount={taxAmount}
+                taxIncluded={taxIncluded}
                 accountCreditApplied={accountCreditApplied}
                 total={total}
                 paymentMethod={paymentMethod}
@@ -212,6 +223,7 @@ function POSCheckoutInner() {
             promoCode={pendingPurchase.promoCode}
             taxRate={taxRate}
             taxAmount={taxAmount}
+            taxIncluded={taxIncluded}
             accountCreditApplied={accountCreditApplied}
             total={total}
             paymentMethodLabel={paymentMethodLabel}

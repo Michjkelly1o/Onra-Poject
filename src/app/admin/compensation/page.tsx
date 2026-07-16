@@ -325,6 +325,13 @@ export default function CompensationPage() {
             .map(st => {
                 const payRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
                 const { total } = totalEarningsForStaff(st.id, payRate, undefined, sources, fromISO, toISO);
+                // Look up the materialised payroll entry for this staff member
+                // (created at Run Payroll confirm time) so the row's Status +
+                // period columns reflect the actual paid/pending state
+                // (client Jul 2026 audit fix — was hardcoded "pending" and the
+                // CSV Status column stayed "Pending" after payment, disagreeing
+                // with the Run Payroll table).
+                const entry = entriesByInstructor.get(st.id);
                 const identity: CompRowIdentity = {
                     id: st.id,
                     name: st.fullName,
@@ -336,16 +343,16 @@ export default function CompensationPage() {
                     payRateId: st.payRateId,
                 };
                 return {
-                    entryId: `staff_${st.id}`,
+                    entryId: entry?.id ?? `staff_${st.id}`,
                     instructor: identity,
                     branchId: st.branchId ?? "",
                     payRateName: payRate?.name ?? "—",
                     classesCount: 0,
                     grossRevenue: 0,
                     earnings: total,
-                    status: "pending",
-                    periodStart: "",
-                    periodEnd: "",
+                    status: entry?.status ?? "pending",
+                    periodStart: entry?.periodStart ?? "",
+                    periodEnd: entry?.periodEnd ?? "",
                 } satisfies CompRow;
             });
 

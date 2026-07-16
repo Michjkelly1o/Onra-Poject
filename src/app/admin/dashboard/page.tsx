@@ -839,21 +839,39 @@ export default function AdminDashboard() {
     const comingMetrics: DashboardMetric[] = useMemo(() => {
         const now = Date.now();
         const DAY = 24 * 60 * 60 * 1000;
-        const horizonMs = now + comingRange * DAY;
+        // Timezone-safe range check (client Jul 2026 audit fix). Before this,
+        // `inRange` did `new Date(iso).getTime() >= Date.now()`, which parses
+        // date-only strings ("YYYY-MM-DD") as UTC midnight — so any row dated
+        // today would fall below `now` once the local wall clock ticked past
+        // 00:00 UTC (i.e. all day long, everywhere outside UTC), silently
+        // dropping today's rows from EVERY Coming-up card. Meanwhile
+        // `UnderFilledModal` used string-prefix comparison and correctly
+        // included today, so the card count could disagree with the modal.
+        // Fix: compare on the yyyy-mm-dd date prefix (both for date-only
+        // fields like `expiryISO` / `dateISO` and for timestamp fields like
+        // `createdAtISO` — first 10 chars is the date either way).
+        const isoDate = (d: Date): string => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+        };
+        const todayLocalISO   = isoDate(new Date(now));
+        const horizonLocalISO = isoDate(new Date(now + comingRange * DAY));
+        const pastStartLocalISO = isoDate(new Date(now - comingRange * DAY));
         // Forward window — future events (bookings, renewals, expiring
-        // credits/memberships/trials, occupancy).
-        const inRange = (iso: string) => {
-            const t = new Date(iso).getTime();
-            if (Number.isNaN(t)) return false;
-            return t >= now && t <= horizonMs;
+        // credits/memberships/trials, occupancy). Includes today.
+        const inRange = (iso: string): boolean => {
+            if (!iso) return false;
+            const day = iso.slice(0, 10);
+            return day >= todayLocalISO && day <= horizonLocalISO;
         };
         // Backward window — projection base for Revenue. Same window size as
         // the pill so the Revenue estimate scales with Next 7 / 30.
-        const pastStartMs = now - comingRange * DAY;
-        const inPastRange = (iso: string) => {
-            const t = new Date(iso).getTime();
-            if (Number.isNaN(t)) return false;
-            return t >= pastStartMs && t <= now;
+        const inPastRange = (iso: string): boolean => {
+            if (!iso) return false;
+            const day = iso.slice(0, 10);
+            return day >= pastStartLocalISO && day < todayLocalISO;
         };
 
         // ── Products ────────────────────────────────────────────────────────

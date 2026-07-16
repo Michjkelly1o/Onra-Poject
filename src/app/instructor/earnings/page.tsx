@@ -65,6 +65,22 @@ function aed(n: number): string {
 // ────────────────────────────────────────────────────────────────────────────
 const DEFAULT_PERIOD: DateFilter = { type: "week", label: "This week" };
 
+/** Delta caption for the KPI cards — matches the admin dashboard's
+ *  `deltaSuffixFor` so a period-picker change re-labels the "vs …" line
+ *  in the same render. Falls back to "vs previous period". */
+function deltaSuffixFor(filter: DateFilter): string {
+    const l = filter.label.toLowerCase();
+    if (l.includes("last 7"))    return "vs last 7 days";
+    if (l.includes("last 30"))   return "vs last 30 days";
+    if (l.includes("last 90"))   return "vs last 90 days";
+    if (l.includes("this week")) return "vs last week";
+    if (l.includes("this month") || l.includes("month to date")) return "vs last month";
+    if (l.includes("this year")  || l.includes("year to date"))  return "vs last year";
+    if (l === "today")     return "vs yesterday";
+    if (l === "yesterday") return "vs 2 days ago";
+    return "vs previous period";
+}
+
 type ClassTypeFilter = "all" | "Group" | "Private";
 type StatusFilter    = "all" | "Completed" | "Cancelled";
 
@@ -298,12 +314,14 @@ export default function InstructorEarningsPage() {
                     label="Total earnings"
                     value={fmtAed(kpis.totalEarnings)}
                     deltaPercent={kpis.earningsDelta}
+                    deltaSuffix={deltaSuffixFor(period)}
                 />
                 <KpiCard
                     icon={CheckCircle}
                     label="Class taught"
                     value={String(kpis.classesTaught)}
                     deltaPercent={kpis.classesDelta}
+                    deltaSuffix={deltaSuffixFor(period)}
                 />
             </div>
 
@@ -467,8 +485,12 @@ interface KpiCardProps {
     label: string;
     value: string;
     deltaPercent: number;
+    /** "vs last week" / "vs last month" / etc — dynamic to the active period
+     *  filter so a KPI captioned "This month" doesn't still say "vs last
+     *  week". Defaults to "vs previous period" for safety. */
+    deltaSuffix?: string;
 }
-function KpiCard({ icon: Icon, label, value, deltaPercent }: KpiCardProps) {
+function KpiCard({ icon: Icon, label, value, deltaPercent, deltaSuffix = "vs previous period" }: KpiCardProps) {
     const isPositive = deltaPercent >= 0;
     const ArrowIcon = isPositive ? ArrowUp : ArrowDown;
     const deltaColor = isPositive ? "text-[#067647]" : "text-[#b42318]";
@@ -484,7 +506,7 @@ function KpiCard({ icon: Icon, label, value, deltaPercent }: KpiCardProps) {
                             {Math.abs(deltaPercent)}%
                         </p>
                     </div>
-                    <p className="text-[14px] text-[#667085] leading-5 whitespace-nowrap">vs last week</p>
+                    <p className="text-[14px] text-[#667085] leading-5 whitespace-nowrap">{deltaSuffix}</p>
                 </div>
             </div>
             <div className="bg-[#f1f2ed] rounded-full size-10 shrink-0 flex items-center justify-center">

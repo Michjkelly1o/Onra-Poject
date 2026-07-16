@@ -5807,6 +5807,13 @@ export const useAppStore = create<AppState>()(persist(
                         status: "refunded" as const,
                         refundedAtISO: new Date().toISOString(),
                         refundMethod: method,
+                        // `transactionType: "refund"` is what
+                        // `commissionForPeriod`'s `categoryStats` uses to net
+                        // this row out of the seller's commission base
+                        // (client Jul 2026 audit fix — was left as "sale" or
+                        // undefined, so live UI refunds never clawed back
+                        // commission from the crediting staff).
+                        transactionType: "refund" as const,
                     }
                     : t,
             ),
