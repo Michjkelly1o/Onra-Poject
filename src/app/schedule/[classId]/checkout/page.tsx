@@ -46,9 +46,10 @@ function ScheduleCheckoutInner() {
     const roles = useAppStore(s => s.roles);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
-    // Member Wallet payment path — mirrors /admin/pos/checkout.
+    // Account credit — same shape as /admin/pos/checkout. No longer a
+    // standalone payment method; applied via a reduction toggle above the
+    // payment picker. `applyPurchase` debits the wallet in the same tick.
     const walletTransactions = useAppStore(s => s.walletTransactions);
-    const debitWallet = useAppStore(s => s.debitWallet);
     // Tax module wiring (Phase 4) — same shape as /admin/pos so the
     // schedule-flow checkout honours archived rates + the global toggle.
     const taxRules = useAppStore(s => s.taxRules);
@@ -84,6 +85,9 @@ function ScheduleCheckoutInner() {
         [staff, roles]);
     const [cashReceived, setCashReceived] = useState<string>("");
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+    // "Use account credit" toggle — when on, the customer's balance is
+    // applied as a reduction (capped at the post-discount total).
+    const [useAccountCredit, setUseAccountCredit] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
     const [receiptNumber] = useState(() => `R-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0")}`);
     const [transactionId] = useState(() => Math.random().toString(36).slice(2, 10));
@@ -117,26 +121,28 @@ function ScheduleCheckoutInner() {
     );
 
     if (!pendingPurchase || !customer) return null;
-    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, total } = computeTotals(
+    const walletBalance = walletBalanceAed(walletTransactions, customer.id);
+    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, total } = computeTotals(
         pendingPurchase.items,
         pendingPurchase.discountPercent,
         pendingPurchase.promoDiscountAed,
         { taxRules, taxRates, pricesIncludeTax, roundingMode, branchId },
+        useAccountCredit ? walletBalance : 0,
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
-    const walletBalance = walletBalanceAed(walletTransactions, customer.id);
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
         if (sellerStaffId === null) return false;
+        // Account credit alone can cover a sale — no payment method needed
+        // when the credit fully zeroes the total.
+        if (total === 0) return true;
         if (paymentMethod === null) return false;
         if (paymentMethod === "cash") return cashReceivedNum >= total;
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
         if (paymentMethod === "googlepay") return true;
-        // Member Wallet can only cover the sale in full (no split payment).
-        if (paymentMethod === "wallet") return walletBalance >= total;
         return false;
     }
 
@@ -154,21 +160,13 @@ function ScheduleCheckoutInner() {
      *  paymentSuccess handler clears pendingPurchase after the modal re-opens. */
     function handleComplete() {
         if (!customer || !pendingPurchase) return;
-        // Member Wallet — debit the account credit for the sale total before
-        // recording the purchase (silent: the schedule page fires its own
-        // success flow). The ledger + balance reflect on the same cycle.
-        if (paymentMethod === "wallet") {
-            debitWallet({
-                customerId: customer.id,
-                amountAed: total,
-                reason: "POS purchase",
-                referenceType: "pos_sale",
-                referenceId: transactionId,
-                createdBy: "POS",
-                silent: true,
-            });
-        }
-        applyPurchase(customer.id, pendingPurchase.items, "pos", sellerStaffId ?? undefined);
+        // Account credit debit rides inside `applyPurchase` now — same store
+        // path as /admin/pos so the ledger + balance stay in sync.
+        applyPurchase(
+            customer.id, pendingPurchase.items, "pos",
+            sellerStaffId ?? undefined,
+            accountCreditApplied > 0 ? accountCreditApplied : undefined,
+        );
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }
 
@@ -190,6 +188,7 @@ function ScheduleCheckoutInner() {
                 taxRate={taxRate}
                 taxAmount={taxAmount}
                 taxIncluded={taxIncluded}
+                accountCreditApplied={accountCreditApplied}
                 total={total}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -202,6 +201,8 @@ function ScheduleCheckoutInner() {
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
                 walletBalance={walletBalance}
+                useAccountCredit={useAccountCredit}
+                setUseAccountCredit={setUseAccountCredit}
                 sellerStaffId={sellerStaffId}
                 setSellerStaffId={setSellerStaffId}
                 sellerOptions={sellerOptions}

@@ -23,7 +23,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { useAppStore, type CustomerReferral } from "@/lib/store";
+import { useAppStore, walletBalanceAed, type CustomerReferral } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -143,6 +143,11 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const customerReferrals = useAppStore(s => s.customerReferrals);
     const branches = useAppStore(s => s.branches);
+    // Live account credit balance — this is the SPENDABLE figure, netting any
+    // debits from POS (client Jul 2026 the wallet is applied as a checkout
+    // reduction toggle). Previously the tab surfaced lifetime AED earned from
+    // referrals; that was misleading once the customer started using it.
+    const walletTransactions = useAppStore(s => s.walletTransactions);
     // Cross-module sync (Phase 4) — when the admin deactivates the referral
     // program in Settings → Referral, the customer-facing share affordance
     // disappears here and a banner surfaces so anyone reviewing the tab can
@@ -195,9 +200,10 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
     const totalClassCredits = rows
         .filter(r => r.benefitType === "free_credits")
         .reduce((s, r) => s + r.benefitAmount, 0);
-    const totalAccountCreditsAed = rows
-        .filter(r => r.benefitType === "wallet_credit")
-        .reduce((s, r) => s + r.benefitAmount, 0);
+    // Live spendable balance (credits − debits). Reflects any account credit
+    // the customer has already applied at POS checkout, so the number a POS
+    // cashier sees on the toggle matches what the referral tab shows.
+    const spendableAccountCreditAed = walletBalanceAed(walletTransactions, customerId);
 
     // ─── Filtering + pagination ─────────────────────────────────────────────
     const filtered = useMemo(() => {
@@ -303,7 +309,7 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Account credit</p>
                             <p className="text-[16px] font-medium text-[#101828]">
-                                AED {totalAccountCreditsAed.toLocaleString("en-US")}
+                                AED {spendableAccountCreditAed.toLocaleString("en-US")}
                             </p>
                         </div>
                     </div>

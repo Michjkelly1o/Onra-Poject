@@ -3964,6 +3964,13 @@ export interface AppState {
          *  the POS UI (no auto-cashier fallback). Ignored for customer-portal
          *  sales (self-service → unattributed). Commission refactor Phase 2. */
         sellerStaffId?: string,
+        /** Account credit (AED) applied to this sale — the "Use my balance"
+         *  toggle in POS + customer checkout. When > 0, the store debits the
+         *  same amount from the customer's wallet ledger in the same tick, so
+         *  the account balance stays consistent with what the receipt shows.
+         *  Callers pass min(walletBalance, orderTotalPostDiscount) so the debit
+         *  never exceeds the sale or the balance. */
+        accountCreditAppliedAed?: number,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -7420,7 +7427,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -7719,6 +7726,28 @@ export const useAppStore = create<AppState>()(persist(
                 customerId: buyerSnapshot.id,
                 branchId: buyerSnapshot.branchId,
             });
+        }
+
+        // Account credit debit — when the customer used their balance at
+        // checkout, subtract it from the wallet ledger AFTER the sale posts
+        // so `walletBalanceAed` on the same render already sees the reduction.
+        // Guarded to never debit past the current balance (belt-and-braces —
+        // callers already cap it, but a bad caller can't push the balance
+        // negative). Uses the existing `debitWallet` action so history + audit
+        // read consistently with every other debit surface.
+        if (accountCreditAppliedAed && accountCreditAppliedAed > 0) {
+            const balance = walletBalanceAed(get().walletTransactions, customerId);
+            const debitAed = Math.min(accountCreditAppliedAed, balance);
+            if (debitAed > 0) {
+                get().debitWallet({
+                    customerId,
+                    amountAed: debitAed,
+                    reason: "Applied at checkout",
+                    referenceType: "pos_sale",
+                    referenceId: firstTxnId,
+                    silent: true,
+                });
+            }
         }
     },
 

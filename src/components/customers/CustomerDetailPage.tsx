@@ -39,7 +39,8 @@ import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore, type Customer, type CustomerPlan } from "@/lib/store";
 import { CustomerBookingsTab } from "./CustomerBookingsTab";
 import { CustomerPaymentsTab } from "./CustomerPaymentsTab";
-import { CustomerWalletTab } from "./CustomerWalletTab";
+// CustomerWalletTab removed alongside the "Wallet" tab (client Jul 2026 —
+// balance now lives on the Referrals tab; see CustomerReferralsTab).
 import { CustomerDetailsTab } from "./CustomerDetailsTab";
 import { CustomerAgreementsTab } from "./CustomerAgreementsTab";
 import { CustomerReferralsTab } from "./CustomerReferralsTab";
@@ -49,7 +50,10 @@ import { derivePlanBalances } from "@/lib/plan-credits";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TABS = ["Plan", "Bookings", "Payments", "Wallet", "Details", "Agreements", "Referrals"] as const;
+// "Wallet" tab removed (client Jul 2026 — the referral account credit is now
+// surfaced on the Referrals tab, and the wallet ceased to be a standalone
+// payment method in POS; the balance is applied via a toggle on checkout).
+const TABS = ["Plan", "Bookings", "Payments", "Details", "Agreements", "Referrals"] as const;
 type TabId = typeof TABS[number];
 
 type PlanStatus = CustomerPlan["status"];
@@ -1277,8 +1281,6 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             <CustomerBookingsTab customerId={customerId} />
                         ) : tab === "Payments" ? (
                             <CustomerPaymentsTab customerId={customerId} />
-                        ) : tab === "Wallet" ? (
-                            <CustomerWalletTab customerId={customerId} />
                         ) : tab === "Details" ? (
                             <CustomerDetailsTab customerId={customerId} />
                         ) : tab === "Agreements" ? (
