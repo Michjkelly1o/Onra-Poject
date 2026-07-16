@@ -1849,6 +1849,12 @@ export interface CustomerTransaction {
     /** Member's stated reason for the refund request — shown in the
      *  Refund-requests modal. */
     refundRequestReason?: string;
+    /** Account-credit AED applied to this sale via the checkout toggle
+     *  (client Jul 2026 — the wallet is no longer a standalone payment
+     *  method). Remembered on the transaction so refund flows can restore
+     *  the credit to the customer's wallet. Absent / 0 = no credit was
+     *  used and refunds don't touch the wallet. */
+    accountCreditAppliedAed?: number;
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -5809,6 +5815,20 @@ export const useAppStore = create<AppState>()(persist(
             const targetCustomer = get().customers.find(c => c.id === target.customerId);
             const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
             get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
+            // Restore any account credit that was applied to this sale so the
+            // customer's balance returns to what it was before the checkout.
+            // Skipped on rows that didn't use credit (undefined / 0). Silent
+            // credit-back — the refund toast is the user-facing signal.
+            if (target.accountCreditAppliedAed && target.accountCreditAppliedAed > 0) {
+                get().creditWallet({
+                    customerId: target.customerId,
+                    amountAed: target.accountCreditAppliedAed,
+                    reason: "Refunded from checkout",
+                    referenceType: "refund",
+                    referenceId: target.id,
+                    silent: true,
+                });
+            }
         }
     },
 
@@ -7631,6 +7651,13 @@ export const useAppStore = create<AppState>()(persist(
                 const source = paymentSource ?? "pos";
                 const cashierStaffId =
                     source === "customer_portal" ? undefined : sellerStaffId;
+                // Attach the account credit stamp to the FIRST membership/
+                // package line so a subsequent refund of that line restores
+                // the credit to the wallet (see `refundTransaction`). Most
+                // sales are single-line so this covers the common path; a
+                // partial refund on a rare multi-line sale that only targets
+                // a later line is a documented edge case for the prototype.
+                const isFirstSaleLine = idx === firstSaleIdx;
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
@@ -7648,6 +7675,9 @@ export const useAppStore = create<AppState>()(persist(
                     transactionType: "sale",
                     staffId: cashierStaffId,
                     createdAtISO: nowISO,
+                    ...(isFirstSaleLine && accountCreditAppliedAed && accountCreditAppliedAed > 0
+                        ? { accountCreditAppliedAed }
+                        : {}),
                 });
             });
 
@@ -8182,7 +8212,11 @@ export const useAppStore = create<AppState>()(persist(
         //   the earnings figure agrees across the compensation list, run
         //   payroll + staff detail (all now go through one shared helper). Bump
         //   reseeds payroll entries.
-        version: 66,
+        // v67 (2026-07-16): Account credit becomes a checkout reduction toggle
+        //   (was standalone "Member Wallet" payment method). CustomerTransaction
+        //   gains `accountCreditAppliedAed` so refunds can restore the balance.
+        //   Bump discards old persisted transactions to avoid a mixed shape.
+        version: 67,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

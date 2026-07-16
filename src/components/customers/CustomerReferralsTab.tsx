@@ -297,17 +297,19 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                 <div className="flex-[1.5] min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     {/* Title style matches sibling card labels ("Referral
                         code", "Total referrals") — 14px muted `#667085`,
-                        no font-medium. */}
-                    <p className="text-[14px] text-[#667085]">Rewards earned</p>
+                        no font-medium. Renamed from "Rewards earned" (Jul
+                        2026) — Account credit now shows the LIVE spendable
+                        balance (nets POS debits), so "earned" was misleading. */}
+                    <p className="text-[14px] text-[#667085]">Referral benefits</p>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class credit</p>
+                            <p className="text-[14px] text-[#667085]">Class credit earned</p>
                             <p className="text-[16px] font-medium text-[#101828]">
                                 {totalClassCredits} {totalClassCredits === 1 ? "credit" : "credits"}
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Account credit</p>
+                            <p className="text-[14px] text-[#667085]">Account credit available</p>
                             <p className="text-[16px] font-medium text-[#101828]">
                                 AED {spendableAccountCreditAed.toLocaleString("en-US")}
                             </p>
