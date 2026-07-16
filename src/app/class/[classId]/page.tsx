@@ -75,8 +75,9 @@ import { TableAvatar } from "@/components/ui/avatar";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 // Badges:
 //   • PresentBadge — shows once the instructor marks the booking present
-//   • NoShowBadge  — admin can also mark no-show on an Ongoing class;
-//                    we render that state in case it's already set
+//   • NoShowBadge  — the system auto-flags a no-show (no explicit button
+//                    on either admin or instructor); we render this state
+//                    in the Status column whenever the flag is set
 //   • BookingStatusBadge + cancellationBadgeKind — Cancelled TAB on an
 //     Ongoing/Upcoming class still shows per-booking cancellation timing
 //     (early / late / no-charge)

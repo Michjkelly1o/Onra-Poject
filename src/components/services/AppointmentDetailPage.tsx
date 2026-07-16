@@ -16,13 +16,17 @@
 //                 whole roster when the appointment itself is Cancelled
 //                 (cascaded via cancelAppointment).
 //
-// ROW ACTIONS — status × service-type matrix (from the brief):
+// ROW ACTIONS — status × service-type matrix:
 //
 //                       OPEN SESSION                        PRIVATE
 //   Upcoming            Cancel customer · Remove customer   (none — single customer)
-//   Ongoing             Mark Present / No-show              Mark Present / No-show
-//   Completed           (none)                              (none)
+//   Ongoing             Present (inline button in row)      Present (inline button in row)
+//   Completed           (none — retrospective badges only)  (none)
 //   Cancelled           (none)                              (none)
+//
+// A no-show is auto-flagged by the system — no explicit button. When the
+// system flags one the Status column renders a NoShowBadge in place of
+// the inline Present button.
 //
 // Bulk-action bar appears on the Booked tab for Open session whenever ≥1
 // row is selected — actions match the per-row matrix above for the
