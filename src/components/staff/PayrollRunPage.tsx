@@ -367,7 +367,7 @@ interface RunRow {
     /** Sales commission credited for the period — appended as its own CSV
      *  line so components reconcile to `payout`. */
     commission: CommissionBreakdown;
-    /** base + commission — the "Instructor payout" column + run totals. */
+    /** base + commission — the "Staff payout" column + run totals. */
     payout: number;
     status: PayrollEntryStatus;
 }
@@ -633,10 +633,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         () => allRows.filter(r => !branchId || r.branchId === branchId),
         [allRows, branchId],
     );
-    const totalPayouts     = metricRows.reduce((s, r) => s + r.payout, 0);
-    const totalClasses     = metricRows.reduce((s, r) => s + r.classesCount, 0);
-    const grossRevenue     = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
-    const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
+    const totalPayouts = metricRows.reduce((s, r) => s + r.payout, 0);
+    const totalClasses = metricRows.reduce((s, r) => s + r.classesCount, 0);
+    const grossRevenue = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
+    // Payroll reopened to all staff — average is over the whole payroll pool
+    // (instructors + non-instructor staff both), matching the compensation list.
+    const avgPerStaff  = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
 
     // Payroll withholding rate — live-joined from the Tax module. Owner
     // edits Settings → Tax → Pay rate rule → this recomputes without a
@@ -737,7 +739,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         // sees both the persistent receipt (toast) and the inline export CTA.
         showToast(
             "Payroll processed successfully",
-            `${aed(totalForRun)} paid to ${countForRun} ${countForRun === 1 ? "instructor" : "instructors"} for ${periodLabel}.`,
+            `${aed(totalForRun)} paid to ${countForRun} ${countForRun === 1 ? "staff member" : "staff"} for ${periodLabel}.`,
             "success", "check",
         );
         setSubmittedOpen(true);
@@ -785,7 +787,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={monthYearLabel(range.from)} Icon={CoinsStacked01} />
                     <MetricCard label="Total payouts"      value={aed(totalPayouts)}     period={monthYearLabel(range.from)} Icon={CoinsHand} />
                     <MetricCard label="Classes completed"  value={totalClasses.toLocaleString("en-US")} period={monthYearLabel(range.from)} Icon={CheckCircle} />
-                    <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={monthYearLabel(range.from)} Icon={Users01} />
+                    <MetricCard label="Avg per staff" value={aed(avgPerStaff)} period={monthYearLabel(range.from)} Icon={Users01} />
                 </div>
 
                 {/* Toolbar */}
@@ -818,7 +820,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     {pageRows.length === 0 ? (
                         <div className="relative" style={{ minHeight: 400 }}>
                             <EmptyState
-                                title="No instructors"
+                                title="No staff"
                                 subtitle="Try adjusting the branch or status filter."
                             />
                         </div>
@@ -853,7 +855,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                         <th className={cn(TH, "w-[140px]")}>
                                             <SortableHeader sortKey="payout" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span>Instructor payout</span>
+                                                    <span>Staff payout</span>
                                                     {showPayrollTax && (
                                                         <TaxSuffix
                                                             category="pay_rate"

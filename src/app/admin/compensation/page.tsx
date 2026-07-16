@@ -147,6 +147,11 @@ interface CompRow {
     branchId: string;
     payRateName: string;
     classesCount: number;
+    /** Real studio-side revenue for the row's period, from the payroll entry
+     *  (0 for non-instructor staff — they don't teach classes). Powers the
+     *  "Class revenue base" metric card so it stops using the placeholder
+     *  `totalPayouts × 6` multiplier. */
+    grossRevenue: number;
     earnings: number;
     status: PayrollEntry["status"];
     periodStart: string;
@@ -303,6 +308,7 @@ export default function CompensationPage() {
                     branchId: instructor.branchId,
                     payRateName,
                     classesCount: entry?.classesCount ?? 0,
+                    grossRevenue: entry?.grossRevenue ?? 0,
                     earnings: total,
                     status: entry?.status ?? "pending",
                     periodStart: entry?.periodStart ?? "",
@@ -335,6 +341,7 @@ export default function CompensationPage() {
                     branchId: st.branchId ?? "",
                     payRateName: payRate?.name ?? "—",
                     classesCount: 0,
+                    grossRevenue: 0,
                     earnings: total,
                     status: "pending",
                     periodStart: "",
@@ -366,11 +373,13 @@ export default function CompensationPage() {
 
     const totalPayouts = metricRows.reduce((s, r) => s + r.earnings, 0);
     const totalClasses = metricRows.reduce((s, r) => s + r.classesCount, 0);
-    const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
-    // Gross revenue isn't tracked per entry yet — use payouts × 6 as a
-    // placeholder demo multiplier. Real value derives from transactions in
-    // phase 2 (joining payroll period × class_schedule × transactions).
-    const grossRevenue = totalPayouts * 6;
+    // Payroll covers all staff, so the average is over the whole pool.
+    const avgPerStaff  = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
+    // Real studio revenue for the period — sum of grossRevenue from payroll
+    // entries. Non-instructor staff have no entries (grossRevenue = 0) and
+    // don't skew the total. Replaces the earlier `totalPayouts × 6` demo
+    // placeholder, so the "Class revenue base" card matches Run payroll.
+    const grossRevenue = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
 
     // Period chip label for the metric cards ("Apr 2026", "This week", etc.)
     const metricPeriodLabel = (() => {
@@ -430,7 +439,7 @@ export default function CompensationPage() {
                 <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
                 <MetricCard label="Total payouts"     value={aed(totalPayouts)}     period={metricPeriodLabel} Icon={CoinsHand} />
                 <MetricCard label="Classes completed" value={totalClasses.toLocaleString("en-US")} period={metricPeriodLabel} Icon={CheckCircle} />
-                <MetricCard label="Avg per staff" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
+                <MetricCard label="Avg per staff" value={aed(avgPerStaff)} period={metricPeriodLabel} Icon={Users01} />
             </div>
 
             {/* Toolbar */}

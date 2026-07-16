@@ -1246,6 +1246,10 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
         | { kind: "remove-booking"; bookingId: string }
         | { kind: "bulk-cancel"; ids: string[] }
         | { kind: "bulk-remove"; ids: string[] }
+        // Bulk mark-present now goes through a confirmation modal to match
+        // the class detail (client feedback Jul 2026 — parity between class
+        // and appointment attendance flows).
+        | { kind: "bulk-mark"; ids: string[] }
         | { kind: "delete-review"; ratingId: string }
         | { kind: "bulk-delete-review"; ids: string[] };
     const [modalTarget, setModalTarget] = useState<ModalTarget | null>(null);
@@ -1306,14 +1310,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                         }}
                         onBulkCancel={(ids) => setModalTarget({ kind: "bulk-cancel", ids })}
                         onBulkRemove={(ids) => setModalTarget({ kind: "bulk-remove", ids })}
-                        onBulkMark={(ids) => {
-                            markPresentBulk(ids);
-                            showToast(
-                                "Customers marked present",
-                                `${ids.length} customer${ids.length === 1 ? "" : "s"} updated.`,
-                                "success", "check",
-                            );
-                        }}
+                        onBulkMark={(ids) => setModalTarget({ kind: "bulk-mark", ids })}
                         onDeleteReviewOne={(id) => setModalTarget({ kind: "delete-review", ratingId: id })}
                         onDeleteReviewBulk={(ids) => setModalTarget({ kind: "bulk-delete-review", ids })}
                     />
@@ -1335,6 +1332,52 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                         setModalTarget(null);
                     }}
                 />
+            )}
+
+            {/* Bulk mark-present confirmation — parity with the class detail
+                bulk flow. Same chrome, same copy shape, same DS primary button
+                (pale-mint `var(--brand-tertiary)` — no color override). */}
+            {modalTarget?.kind === "bulk-mark" && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-[#0c111d]/60" onClick={() => setModalTarget(null)} />
+                    <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                        <button type="button" onClick={() => setModalTarget(null)}
+                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
+                            <XClose className="w-6 h-6 text-[#667085]" />
+                        </button>
+                        <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-6 h-6 text-[#067647]" />
+                            </div>
+                            <div className="flex flex-col gap-1 text-center w-full">
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                                    Mark {modalTarget.ids.length} customer{modalTarget.ids.length === 1 ? "" : "s"} as present?
+                                </h3>
+                                <p className="text-[14px] text-[#475467] leading-[20px]">
+                                    The selected customers will be marked as present for this appointment.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 pt-6 pb-6">
+                            <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setModalTarget(null)}>
+                                Cancel
+                            </Button>
+                            <Button variant="primary" size="lg" className="flex-1"
+                                onClick={() => {
+                                    const ids = modalTarget.ids;
+                                    markPresentBulk(ids);
+                                    showToast(
+                                        "Customers marked present",
+                                        `${ids.length} customer${ids.length === 1 ? "" : "s"} updated.`,
+                                        "success", "check",
+                                    );
+                                    setModalTarget(null);
+                                }}>
+                                Yes, mark present
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
             <CancelBookingModal
                 open={modalTarget?.kind === "cancel-booking" || modalTarget?.kind === "bulk-cancel"}
