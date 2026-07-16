@@ -2859,7 +2859,7 @@ export default function ClassDetailPage() {
                             <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setBulkPresentOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button variant="primary" size="lg" className="flex-1 bg-[#658774] text-white hover:bg-[#3b5446] active:bg-[#3b5446]" onClick={handleBulkPresent}>
+                            <Button variant="primary" size="lg" className="flex-1" onClick={handleBulkPresent}>
                                 Yes, mark present
                             </Button>
                         </div>
