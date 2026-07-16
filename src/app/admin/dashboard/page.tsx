@@ -212,14 +212,18 @@ function PerformanceTab({
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
+    // Dynamic Add-widget placement (client Jul 2026):
+    //   • Odd widget count → placeholder BESIDE the lone widget on the last
+    //     row (inside the widget grid). `self-start` keeps it at fit height
+    //     while its 1fr row cell absorbs the leftover space — invisibly, since
+    //     the neighbouring widget already occupies the full row height.
+    //   • Even widget count (incl. zero) → placeholder on its OWN row BELOW
+    //     the widget grid, in a separate `grid-cols-2` container that has
+    //     NO `1fr` row rule. Zero visible gap beneath the tile.
+    const placeholderInGrid   = !allWidgetsActive && activeWidgets.length % 2 === 1;
+    const placeholderStandalone = !allWidgetsActive && activeWidgets.length % 2 === 0;
     return (
-        // `[grid-auto-rows:1fr]` forces every widget row to match the tallest
-        // card in the row (no visible white gap between siblings). The Add
-        // widget placeholder lives INSIDE this grid so it fills the next
-        // empty slot on the last widget row dynamically — beside a lone
-        // widget when the count is odd, on its own new row when even. Its
-        // `self-start` override lets it escape the 1fr row-stretch and
-        // render at fit-content height (client Jul 2026).
+        <div className="flex flex-col gap-6">
         <div className="grid grid-cols-2 gap-6 [grid-auto-rows:1fr]">
             {activeWidgets.map((id, idx) => (
                 <div
@@ -298,13 +302,13 @@ function PerformanceTab({
                 </div>
             ))}
 
-            {/* Add widget placeholder — lives inside the widget grid so it
-                fills the next open slot dynamically (beside a lone widget on
-                the last row when the widget count is odd, on its own new row
-                when even). `self-start` overrides the grid's `1fr` row-stretch
-                so ONLY this tile renders at fit-content height — real widget
-                cards still match their row's tallest sibling. */}
-            {!allWidgetsActive && (
+            {/* Placeholder INSIDE the widget grid — only rendered on odd
+                widget counts, so it fills the empty slot beside the last
+                widget on the last row. `self-start` keeps it at fit-content
+                height; its 1fr cell absorbs the leftover row height invisibly
+                (the neighbouring widget already dictates the row height, so
+                no visible gap below the tile). */}
+            {placeholderInGrid && (
                 <button
                     type="button"
                     onClick={onOpenModal}
@@ -319,6 +323,31 @@ function PerformanceTab({
                     </div>
                 </button>
             )}
+        </div>
+
+        {/* Placeholder in its OWN grid — only rendered on even widget counts
+            (incl. zero), so it starts a fresh row below the widget grid
+            without inheriting that grid's `[grid-auto-rows:1fr]` row-stretch.
+            The wrapper is a `grid grid-cols-2` so the tile keeps its 1-column
+            width (same slot size as a widget card), and the row is auto
+            height so nothing pads out below the button. */}
+        {placeholderStandalone && (
+            <div className="grid grid-cols-2 gap-6">
+                <button
+                    type="button"
+                    onClick={onOpenModal}
+                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                    </div>
+                </button>
+            </div>
+        )}
         </div>
     );
 }
