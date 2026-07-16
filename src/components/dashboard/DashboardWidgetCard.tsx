@@ -897,13 +897,14 @@ function renderChart(
             const rows = data as { stage: string; sublabel: string; count: number }[];
             const top = rows[0]?.count ?? 0;
             const stepCaption = ["came back", "converted"];
-            // Fill the same card body height every other widget uses (`h`,
-            // 240 on the dashboard). The funnel is a fixed-count layout, so
-            // without this wrapper it hugs its content and leaves a big
-            // white gap beneath the last bar (client Jul 2026). Vertically
-            // centering the funnel keeps the rhythm with the sibling widget.
+            // Fill the card body — the parent uses `flex-1 flex flex-col` +
+            // the dashboard grid uses `grid-auto-rows: 1fr`, so this widget
+            // stretches to match the tallest sibling in the row (usually
+            // Payments collected). `justify-center` keeps the three bars
+            // vertically centered so there's no visible white space beneath
+            // the last bar (client Jul 2026).
             return (
-                <div className="flex flex-col justify-center gap-3" style={{ height: h }}>
+                <div className="flex-1 flex flex-col justify-center gap-3 min-h-[240px]">
                     {rows.map((row, i) => {
                         const pctOfTop = top > 0 ? Math.round((row.count / top) * 100) : 0;
                         const barWidth = top > 0 ? Math.max(4, (row.count / top) * 100) : 0;
@@ -1085,8 +1086,14 @@ export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd,
                     <WidgetKebabMenu onRemove={onRemove} />
                 )}
             </div>
-            {/* Chart */}
-            <div className="min-w-0">
+            {/* Chart — `flex-1` so it fills any leftover space when the card
+                is stretched to the row's tallest sibling (dashboard grid uses
+                `grid-auto-rows: 1fr`). Widgets that render a fixed-height
+                container (ResponsiveContainer at h=240) still sit at the top
+                of this area, but the "chart-only" widgets that DO know how to
+                fill (e.g. the intro funnel's `h-full flex justify-center`)
+                will stretch to close the gap and prevent visible white space. */}
+            <div className="min-w-0 flex-1 flex flex-col">
                 {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments)}
             </div>
         </div>

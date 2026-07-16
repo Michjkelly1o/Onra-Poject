@@ -213,7 +213,12 @@ function PerformanceTab({
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
     return (
-        <div className="grid grid-cols-2 gap-6">
+        // `[grid-auto-rows:1fr]` forces every row to match the tallest card in
+        // that row — client Jul 2026: the Payments-collected card had a
+        // header chip/total block above its chart that made it taller than
+        // its row-mate (funnel) and left visible white space. With this + the
+        // `h-full` cascade below every card stretches to the same height.
+        <div className="grid grid-cols-2 gap-6 [grid-auto-rows:1fr]">
             {activeWidgets.map((id, idx) => (
                 <div
                     key={id}
@@ -246,7 +251,10 @@ function PerformanceTab({
                         setHoverIndex(null);
                     }}
                     className={cn(
-                        "transition-all",
+                        // `h-full` propagates the row's stretched height so
+                        // the card underneath fills the tallest sibling's
+                        // height (no bottom gap).
+                        "transition-all h-full",
                         dragIndex === idx && "opacity-40",
                         hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
                         "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
@@ -258,6 +266,7 @@ function PerformanceTab({
                         branchId={branchId ?? undefined}
                         action="kebab"
                         dragHandle
+                        className="h-full"
                         onOpenFailedPayments={onOpenFailedPayments}
                         onDragStart={(e) => {
                             setDragIndex(idx);
