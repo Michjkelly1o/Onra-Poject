@@ -302,25 +302,28 @@ function PerformanceTab({
 
         </div>
 
-        {/* Add widget placeholder — lives OUTSIDE the widget grid so the
-            grid's `[grid-auto-rows:1fr]` row-height rule can't stretch this
-            dashed tile to match the tallest widget row (client Jul 2026 —
-            was rendering as a 500px+ empty box). Fit-content only. Full
-            width so it visually completes the dashboard column. */}
+        {/* Add widget placeholder — lives in its OWN grid below the widget
+            grid so it inherits the 2-col slot width (1 column) but escapes
+            the widget grid's `[grid-auto-rows:1fr]` row-height rule that was
+            stretching this tile to match the tallest widget row (client Jul
+            2026 — was rendering as a 500px+ empty box). Same column width as
+            a widget card, fit-content height. */}
         {!allWidgetsActive && (
-            <button
-                type="button"
-                onClick={onOpenModal}
-                className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
-            >
-                <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                    <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
-                </div>
-                <div className="text-center">
-                    <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                    <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
-                </div>
-            </button>
+            <div className="grid grid-cols-2 gap-6">
+                <button
+                    type="button"
+                    onClick={onOpenModal}
+                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                    </div>
+                </button>
+            </div>
         )}
         </div>
     );
