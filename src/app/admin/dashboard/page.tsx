@@ -213,15 +213,13 @@ function PerformanceTab({
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
     return (
-        // The widget grid + the "Add widget" placeholder live in two separate
-        // containers so `grid-auto-rows: 1fr` on the widget grid can force
-        // real cards to match row heights WITHOUT dragging the placeholder
-        // into the same 1fr row-height rule (client Jul 2026 — the placeholder
-        // was stretching to the tallest widget row and rendering as an empty
-        // 500px+ box). The placeholder now sits below the grid at its own
-        // fit-content height, still full-width so it visually completes the
-        // dashboard column.
-        <div className="flex flex-col gap-6">
+        // `[grid-auto-rows:1fr]` forces every widget row to match the tallest
+        // card in the row (no visible white gap between siblings). The Add
+        // widget placeholder lives INSIDE this grid so it fills the next
+        // empty slot on the last widget row dynamically — beside a lone
+        // widget when the count is odd, on its own new row when even. Its
+        // `self-start` override lets it escape the 1fr row-stretch and
+        // render at fit-content height (client Jul 2026).
         <div className="grid grid-cols-2 gap-6 [grid-auto-rows:1fr]">
             {activeWidgets.map((id, idx) => (
                 <div
@@ -300,20 +298,17 @@ function PerformanceTab({
                 </div>
             ))}
 
-        </div>
-
-        {/* Add widget placeholder — lives in its OWN grid below the widget
-            grid so it inherits the 2-col slot width (1 column) but escapes
-            the widget grid's `[grid-auto-rows:1fr]` row-height rule that was
-            stretching this tile to match the tallest widget row (client Jul
-            2026 — was rendering as a 500px+ empty box). Same column width as
-            a widget card, fit-content height. */}
-        {!allWidgetsActive && (
-            <div className="grid grid-cols-2 gap-6">
+            {/* Add widget placeholder — lives inside the widget grid so it
+                fills the next open slot dynamically (beside a lone widget on
+                the last row when the widget count is odd, on its own new row
+                when even). `self-start` overrides the grid's `1fr` row-stretch
+                so ONLY this tile renders at fit-content height — real widget
+                cards still match their row's tallest sibling. */}
+            {!allWidgetsActive && (
                 <button
                     type="button"
                     onClick={onOpenModal}
-                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                    className="self-start border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
                 >
                     <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
                         <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
@@ -323,8 +318,7 @@ function PerformanceTab({
                         <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
                     </div>
                 </button>
-            </div>
-        )}
+            )}
         </div>
     );
 }
