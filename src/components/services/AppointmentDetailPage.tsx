@@ -32,7 +32,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check,
+    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
     FilterLines,
 } from "@untitledui/icons";
@@ -319,6 +319,31 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
 // ─── Roster row actions ─────────────────────────────────────────────────────
 
 type RowActionKind = "cancel" | "remove" | "present";
+
+// ─── Inline Present button — mirrors the class detail
+//     ([/schedule/[classId]/page.tsx](src/app/schedule/[classId]/page.tsx)) +
+//     instructor variant ([/class/[classId]/page.tsx](src/app/class/[classId]/page.tsx#L344)).
+//
+// Renders in the Status column for Ongoing roster rows that haven't been
+// marked yet. Same DS `secondary-gray` chrome + `#067647` green
+// text/icon + `#ecfdf3` hover tint as the bulk "Mark present" button —
+// one attendance language across every detail page. Clicking flips the
+// cell to a `PresentBadge`. A no-show is auto-flagged by the system —
+// no explicit button.
+
+function PresentButton({ onClick }: { onClick: () => void }) {
+    return (
+        <Button
+            variant="secondary-gray"
+            size="sm"
+            onClick={onClick}
+            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+        >
+            Present
+        </Button>
+    );
+}
 
 // ─── Bulk action bar (Open session only) ────────────────────────────────────
 
@@ -1097,10 +1122,12 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                             {showStatusColumn && (
                                                 <td className={TD}>
                                                     {/* Mirrors /schedule/[classId] booked-tab badge logic 1:1:
-                                                        - Ongoing / Completed → render Present / No-show badges
-                                                          (same components class schedule uses) only when
-                                                          attendance has been marked. Unmarked rows stay
-                                                          empty so the admin sees what's left to process.
+                                                        - Ongoing → PresentBadge / NoShowBadge when marked,
+                                                          else an INLINE Present BUTTON (client feedback Jul
+                                                          2026 — same chrome as the instructor variant).
+                                                          A no-show is auto-flagged by the system; there's
+                                                          no explicit button for it.
+                                                        - Completed → keep the badge-only readout (retrospective).
                                                         - Cancelled tab → keep the existing appointment-booking
                                                           status badge (Booked / Cancelled / etc). */}
                                                     {tab === "booked" && (appointment.status === "Ongoing" || appointment.status === "Completed")
@@ -1108,27 +1135,18 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                             ? <PresentBadge />
                                                             : r.status === "NoShow"
                                                                 ? <NoShowBadge />
-                                                                : null)
+                                                                : appointment.status === "Ongoing"
+                                                                    ? <PresentButton onClick={() => actions.onMarkOne(r.id)} />
+                                                                    : null)
                                                         : <StatusBadge type="appointment-booking" status={r.status} />}
                                                 </td>
                                             )}
                                             <td className={TD}>
                                                 {r.status !== "Cancelled" && (() => {
-                                                    const isOngoing       = appointment.status === "Ongoing";
                                                     const isUpcoming      = appointment.status === "Upcoming";
-                                                    const presentDisabled = isOngoing && r.status === "Attended";
                                                     return (
                                                         <RowActions
                                                             items={[
-                                                                {
-                                                                    label: presentDisabled ? "Already present" : "Present",
-                                                                    icon: Check,
-                                                                    success: true,
-                                                                    successText: true,
-                                                                    disabled: presentDisabled,
-                                                                    hidden: !isOngoing,
-                                                                    onClick: () => actions.onMarkOne(r.id),
-                                                                },
                                                                 {
                                                                     label: "Cancel customer",
                                                                     icon: SlashCircle01,
