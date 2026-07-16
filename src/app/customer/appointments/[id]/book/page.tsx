@@ -15,7 +15,6 @@ import { useAppStore } from "@/lib/store";
 import { to12h } from "@/lib/customer/dates";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
-import { branchTzLabel } from "@/lib/branch-time";
 import { appointmentDraft } from "@/lib/customer/booking-flow";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { CheckoutCart } from "@/components/customer/checkout/CheckoutCart";
@@ -78,9 +77,6 @@ export default function AppointmentReviewPage() {
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{appointment.name}</p>
                     <p className="text-sm font-normal leading-5 text-[#475467]">{fullDate} at {timeInZoneLabel(appointmentDraft.slotISO ?? "", appointmentDraft.slotTime, branch, timezone)}</p>
-                    {branch && (
-                        <p className="text-xs font-normal leading-4 text-[#98a2b3]">{branchTzLabel(branch)}</p>
-                    )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[#475467]">
                             <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />

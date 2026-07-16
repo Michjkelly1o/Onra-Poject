@@ -5,15 +5,17 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { ProductDetailScreen } from "@/components/customer/products/ProductDetailScreen";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 
 export default function ProductDetailPage() {
     const router = useRouter();
     const { productId } = useParams<{ productId: string }>();
+    const goBack = useCustomerBack("/customer/products");
     return (
         <ProductDetailScreen
             productId={productId}
             originId="products"
-            onBack={() => router.push("/customer/products")}
+            onBack={goBack}
             afterAdd={() => router.push("/customer/products")}
         />
     );

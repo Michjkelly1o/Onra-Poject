@@ -240,9 +240,11 @@ export function cardPresentation(vm: SearchClassVM): {
                 ctaDisabled: false,
             };
         case "booked":
-            return { badgeLabel: "Booked", badgeTone: "neutral", badgeIcon: null, ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
+            // Keep the same capacity badge as the default (available) state — a
+            // booked card shows the class fill, not a "Booked" pill.
+            return { badgeLabel: `${vm.booked}/${vm.capacity}`, badgeTone: "success", badgeIcon: "users", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
         case "waitlisted":
-            return { badgeLabel: "Waitlisted", badgeTone: "neutral", badgeIcon: null, ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
+            return { badgeLabel: `${vm.waitlistCount}/${vm.maxWaitlist}`, badgeTone: "neutral", badgeIcon: "hourglass", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
         case "closed":
             return { badgeLabel: "Closed", badgeTone: "neutral", badgeIcon: null, ctaLabel: "Closed", ctaVariant: "secondary", ctaDisabled: true };
         case "full":

@@ -330,13 +330,15 @@ export function buildHomeViewModel(
         .map((c) => ({ id: c.id, name: c.name, colorHex: c.color_hex, imageUrl: c.image_url }));
 
     // ── What's on (active, this branch or all, not expired) ──
-    // Expiry is checked against the seed's reference date (DEMO_TODAY), not the
-    // live clock, so the demo carousel keeps its full campaign set even though the
-    // metrics above are anchored to the real current month.
+    // What's on shows ONLY currently-active campaigns — mirrors the admin's
+    // effective status exactly: status must be "active" AND not past its expiry
+    // (checked against the live clock, same as the admin list's "Expired" badge).
+    // Inactive / archived / expired campaigns never surface to the customer.
+    const nowMs = Date.now();
     const whatsOn: HomeWhatsOnVM[] = marketingItems
         .filter((m) => m.status === "active")
         .filter((m) => isAllBranches || m.multi_location || m.branch_ids.includes(branchId))
-        .filter((m) => !m.expiry_date || m.expiry_date >= DEMO_TODAY_ISO)
+        .filter((m) => !m.expiry_date || new Date(m.expiry_date).getTime() >= nowMs)
         .map((m) => ({
             id: m.id,
             title: m.title,

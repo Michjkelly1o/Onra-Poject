@@ -139,8 +139,8 @@ export function BookingsFilterModal({
                                     key={i.id}
                                     type="button"
                                     onClick={() => toggleInstructor(i.id)}
-                                    className={`flex items-center gap-3 rounded-md border px-4 py-2 transition-colors ${
-                                        on ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border-[#e4e7ec] bg-white"
+                                    className={`flex items-center gap-3 rounded-md px-4 py-2 transition-colors ${
+                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
                                     <InstructorAvatar imageUrl={i.imageUrl} initials={i.initials} size={20} />
@@ -164,8 +164,8 @@ export function BookingsFilterModal({
                                     key={c}
                                     type="button"
                                     onClick={() => toggleCategory(c)}
-                                    className={`rounded-lg border px-4 py-2 text-sm font-medium leading-5 transition-colors ${
-                                        on ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]" : "border-[#e4e7ec] bg-white text-[#344054]"
+                                    className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 transition-colors ${
+                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]" : "border border-[#e4e7ec] bg-white text-[#344054]"
                                     }`}
                                 >
                                     {c}

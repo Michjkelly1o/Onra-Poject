@@ -54,6 +54,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         pathname.startsWith("/customer/search/") ||
         pathname.startsWith("/customer/products/") ||
         pathname.startsWith("/customer/profile/") ||
+        pathname.startsWith("/customer/marketing/") ||
         pathname.startsWith("/customer/notifications");
 
     return (

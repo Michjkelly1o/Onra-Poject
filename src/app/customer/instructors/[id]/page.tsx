@@ -13,22 +13,24 @@
 // so the sticky header + fixed background behave like every other member screen.
 // Figma: 9ByGNc4N7Vw3BLMHyaWJ1j nodes 3244-65717 (Details) + 3244-65853 (Classes).
 
-import { useMemo, useState, type ComponentType, type SVGProps } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Briefcase01, ChevronLeft, Cryptocurrency04, Maximize01, MarkerPin01, Phone, Share02, UserCircle } from "@untitledui/icons";
+import { Briefcase01, ChevronLeft, Mail01, Phone, Share02, Sun } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCustomerInstructors } from "@/lib/customer/instructors";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
-import { firstOfMonthISO, monthYearOf, REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
+import { firstOfMonthISO, monthYearOf, REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { cardPresentation, useInstructorDayClasses } from "@/lib/customer/search-data";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ScheduleDateBar } from "@/components/customer/classes/ScheduleDateBar";
+import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
+import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassScheduleCard } from "@/components/customer/classes/ClassScheduleCard";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { Button } from "@/components/ui/button";
-
-type IconType = ComponentType<SVGProps<SVGSVGElement>>;
+import { InfoRow } from "@/components/customer/classes/ClassDetailLayout";
+import { BranchLocationCard } from "@/components/customer/branch/BranchLocationCard";
 
 // ── pure helpers ──────────────────────────────────────────────────────────────
 // Date helpers (to12h / durationMins / REAL_TODAY_ISO …) are shared in
@@ -61,37 +63,6 @@ function introduction(name: string, primaryCategory: string, years: number): str
 
 // ── small presentational pieces ────────────────────────────────────────────────
 
-function InfoRow({
-    icon: Icon,
-    label,
-    value,
-    multiline = false,
-}: {
-    icon: IconType;
-    label: string;
-    value: string;
-    /** Top-align the icon and let the value wrap (used by the Introduction bio). */
-    multiline?: boolean;
-}) {
-    return (
-        <div className={`flex w-full gap-3 ${multiline ? "items-start" : "items-center"}`}>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <Icon className="size-5 text-[#344054]" aria-hidden />
-            </span>
-            <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-xs font-normal leading-[18px] text-[#667085]">{label}</span>
-                <span
-                    className={`text-sm text-[var(--brand-text)] ${
-                        multiline ? "font-normal leading-[22px]" : "truncate font-medium leading-5"
-                    }`}
-                >
-                    {value}
-                </span>
-            </div>
-        </div>
-    );
-}
-
 // Last selected schedule date per instructor — preserved for the session (in-memory,
 // resets on a full reload) so revisiting the screen restores the member's choice.
 const lastSelectedByInstructor = new Map<string, string>();
@@ -106,9 +77,11 @@ export default function InstructorDetailPage() {
     const schedules = useAppStore((s) => s.classSchedules);
     const showToast = useAppStore((s) => s.showToast);
 
-    const { timezone } = useCurrentCustomerContext();
+    const { timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
     const [tab, setTab] = useState<"details" | "schedule">("details");
     const [monthOpen, setMonthOpen] = useState(false);
+    const [tzOpen, setTzOpen] = useState(false);
+    const [descOpen, setDescOpen] = useState(false);
     // Default to today; restore the session's last pick for this instructor if any.
     const [selectedDate, setSelectedDate] = useState<string>(
         () => lastSelectedByInstructor.get(id) ?? REAL_TODAY_ISO,
@@ -158,7 +131,6 @@ export default function InstructorDetailPage() {
     }
 
     const branch = branches.find((b) => b.id === instructor.branchId) ?? null;
-    const branchAddress = branch ? [branch.address, branch.country].filter(Boolean).join(", ") : "";
 
     const primaryCategory = categories[0] ?? "fitness";
     const introText = introduction(instructor.name, primaryCategory, experienceYears(instructor.id));
@@ -238,40 +210,41 @@ export default function InstructorDetailPage() {
 
                 {tab === "details" ? (
                     <div className="flex w-full flex-col gap-6">
-                        <div className="flex w-full flex-col gap-3">
-                            <InfoRow icon={UserCircle} label="Introduction" value={introText} multiline />
-                            <InfoRow icon={Phone} label="Phone" value={instructor.phone} />
-                            <InfoRow icon={Briefcase01} label="Work experience" value={workExperience(instructor.joinedDate)} />
-                            <InfoRow icon={Cryptocurrency04} label="Categories" value={categoriesText} />
+                        {/* Introduction — description with See more (matches Class details) */}
+                        <section className="flex w-full flex-col gap-2">
+                            <p className={`text-sm font-normal leading-5 text-[#475467] ${descOpen ? "" : "line-clamp-3"}`}>
+                                {introText}
+                            </p>
+                            {introText.length > 120 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setDescOpen((v) => !v)}
+                                    className="self-start text-sm font-semibold text-[var(--brand-text)]"
+                                >
+                                    {descOpen ? "See less" : "See more"}
+                                </button>
+                            )}
+                        </section>
+
+                        {/* Info list — single-column inline rows (matches Class details) */}
+                        <div className="flex w-full flex-col gap-4">
+                            <InfoRow icon={Mail01}>
+                                <span className="truncate">{instructor.email}</span>
+                            </InfoRow>
+                            <InfoRow icon={Phone}>
+                                <span>{instructor.phone}</span>
+                            </InfoRow>
+                            <InfoRow icon={Briefcase01}>
+                                <span>{workExperience(instructor.joinedDate)} work experience</span>
+                            </InfoRow>
+                            <InfoRow icon={Sun}>
+                                <span>{categoriesText}</span>
+                            </InfoRow>
                         </div>
 
                         <div className="h-px w-full bg-[#e4e7ec]" />
 
-                        <div className="flex w-full flex-col gap-3">
-                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Branch location</p>
-                            <div className="relative h-[160px] w-full overflow-hidden rounded-xl bg-white">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src="/images/customer/branch-map.png" alt="" className="absolute inset-0 size-full object-cover" />
-                                <span className="absolute left-1/2 top-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-black/20 bg-[var(--brand-text)]">
-                                    <MarkerPin01 className="size-5 text-white" aria-hidden />
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => showToast("Map", "Full map view is coming soon.", "success")}
-                                    aria-label="Expand map"
-                                    className="absolute right-4 top-4 flex items-center justify-center rounded-full border border-[#f2f4f7] bg-white p-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                >
-                                    <Maximize01 className="size-5 text-[#344054]" aria-hidden />
-                                </button>
-                            </div>
-                            <div className="flex w-full items-start gap-2">
-                                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                    <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{branch?.name ?? "—"}</p>
-                                    <p className="text-sm font-normal leading-5 text-[#475467]">{branchAddress}</p>
-                                </div>
-                            </div>
-                        </div>
+                        <BranchLocationCard branch={branch} heading="Branch location" />
                     </div>
                 ) : (
                     <div className="flex w-full flex-col gap-6">
@@ -280,7 +253,7 @@ export default function InstructorDetailPage() {
                             onSelect={selectDate}
                             timezone={timezone}
                             onMonthClick={() => setMonthOpen(true)}
-                            onTimezoneClick={() => router.push("/customer/search/timezone")}
+                            onTimezoneClick={() => setTzOpen(true)}
                         />
 
                         {dayClasses.length > 0 ? (
@@ -296,7 +269,7 @@ export default function InstructorDetailPage() {
                                             coverColor={c.coverColor}
                                             room={c.room}
                                             branch={c.branchName}
-                                            timeLabel={`${to12h(c.startTime)} • ${c.durationMins} mins`}
+                                            timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), timezone)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
                                             badgeIcon={p.badgeIcon}
@@ -330,6 +303,18 @@ export default function InstructorDetailPage() {
                 onApply={(m, y) => {
                     const first = firstOfMonthISO(m, y);
                     selectDate(first < REAL_TODAY_ISO ? REAL_TODAY_ISO : first);
+                }}
+            />
+
+            <TimeZoneSheet
+                open={tzOpen}
+                onClose={() => setTzOpen(false)}
+                branch={branches.find((b) => b.status === "active") ?? branches[0]}
+                localCity={localTimezone}
+                value={timezone}
+                onSelect={(city) => {
+                    setTimezone(city);
+                    setTzOpen(false);
                 }}
             />
         </div>

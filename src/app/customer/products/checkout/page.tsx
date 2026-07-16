@@ -5,14 +5,16 @@
 
 import { useRouter } from "next/navigation";
 import { CheckoutCart } from "@/components/customer/checkout/CheckoutCart";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 
 export default function ProductsCheckoutPage() {
     const router = useRouter();
     const base = "/customer/products/checkout";
+    const goBack = useCustomerBack("/customer/products");
     return (
         <CheckoutCart
             originId="products"
-            onBack={() => router.push("/customer/products")}
+            onBack={goBack}
             promoHref={`${base}/promo`}
             processingHref={`${base}/processing`}
         />

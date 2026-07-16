@@ -30,6 +30,8 @@ export interface PaymentReceiptCardProps {
     totalItems: number;
     discount: number;
     tax: number;
+    /** Account Credit (AED) redeemed on this payment. */
+    accountCredit?: number;
     total: number;
     status: "success" | "failed";
 }
@@ -43,6 +45,7 @@ export function PaymentReceiptCard({
     totalItems,
     discount,
     tax,
+    accountCredit = 0,
     total,
     status,
 }: PaymentReceiptCardProps) {
@@ -83,6 +86,9 @@ export function PaymentReceiptCard({
                     <Row label="Discount" value={<span className="text-[var(--brand-primary)]">−AED {discount}</span>} />
                 )}
                 <Row label={`Tax rate (${TAX_RATE_PCT}%)`} value={`AED ${tax}`} />
+                {accountCredit > 0 && (
+                    <Row label="Account credit" value={<span className="text-[var(--brand-primary)]">−AED {accountCredit}</span>} />
+                )}
                 <Row label="Total" value={`AED ${total}`} />
                 <div className="flex items-center justify-between">
                     <span className="text-sm font-normal leading-5 text-[#475467]">Status</span>

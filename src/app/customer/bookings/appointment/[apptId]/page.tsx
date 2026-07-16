@@ -12,6 +12,7 @@
 // appointment-bookings store.
 
 import { useParams, useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { RefreshCcw01, CheckCircle, ChevronLeft, ClockFastForward, Coins01, SlashCircle01, UserCheck01, Users01 } from "@untitledui/icons";
 import { to12h } from "@/lib/customer/dates";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
@@ -30,8 +31,12 @@ const CANCEL_BTN =
 
 export default function AppointmentBookingDetailPage() {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/bookings/upcoming");
     const { apptId } = useParams<{ apptId: string }>();
     const booking = useAppointmentBookingById(apptId);
+    // Hooks must run every render (before any early return) — Rules of Hooks.
+    const branches = useAppStore(s => s.branches);
+    const { timezone } = useCurrentCustomerContext();
 
     if (!booking) {
         return (
@@ -39,7 +44,7 @@ export default function AppointmentBookingDetailPage() {
                 <CustomerHeader>
                     <button
                         type="button"
-                        onClick={() => router.push("/customer/bookings")}
+                        onClick={goBack}
                         aria-label="Go back"
                         className="flex size-10 shrink-0 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
                     >
@@ -65,9 +70,7 @@ export default function AppointmentBookingDetailPage() {
     // Resolve the appointment's branch (by name — the UI-only booking store
     // carries branchName only) → its TZ label. Stacked on its own line under
     // the subtitle so members with cross-city bookings never have to guess.
-    const branches = useAppStore(s => s.branches);
     const branch = branches.find(b => b.name === booking.branchName);
-    const { timezone } = useCurrentCustomerContext();
     // Dual-timezone Date & time for the info grid — same as the class detail.
     const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, timezone);
 
@@ -241,7 +244,7 @@ export default function AppointmentBookingDetailPage() {
             statusBlock={statusBlock}
             heroBadge={heroBadge}
             afterLocation={refundLines ? <RefundDetailsSection lines={refundLines} /> : undefined}
-            onBack={() => router.push("/customer/bookings")}
+            onBack={goBack}
             actionZone={actionZone}
         />
     );

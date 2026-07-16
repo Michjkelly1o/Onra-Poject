@@ -20,9 +20,11 @@ import {
     ensurePurchaseCart,
     lastOrder,
     purchaseCart,
+    TAX_RATE_PCT,
     usePromo,
 } from "@/lib/customer/purchase";
 import { addPaymentRecord, methodKind } from "@/lib/customer/payment-history";
+import { walletBalanceAed } from "@/lib/store";
 
 const STEPS = ["Processing payment", "Securing your payment", "Confirming your purchase"];
 const STEP_MS = 900;
@@ -45,6 +47,8 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
 
     const { member } = useCurrentCustomerContext();
     const applyPurchase = useAppStore((s) => s.applyPurchase);
+    const debitWallet = useAppStore((s) => s.debitWallet);
+    const walletTxns = useAppStore((s) => s.walletTransactions);
     const promo = usePromo(purchaseCart.promoId);
     const [step, setStep] = useState(0);
     const wroteRef = useRef(false);
@@ -57,7 +61,9 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
 
             const items = purchaseCart.items;
             const totalItems = cartCount();
-            const totals = computeTotals(cartTotal(), promo);
+            // Account Credit applied (order: subtotal → tax → discount → credit).
+            const balance = walletBalanceAed(walletTxns, member.id);
+            const totals = computeTotals(cartTotal(), promo, TAX_RATE_PCT, purchaseCart.redeemAccountCredit ? balance : 0);
             const kinds = Array.from(new Set(items.map((it) => it.kind)));
 
             applyPurchase(
@@ -89,6 +95,19 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                 timeLabel: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             };
 
+            // Redeem Account Credit — debit the shared wallet ledger (never negative).
+            if (totals.accountCredit > 0) {
+                debitWallet({
+                    customerId: member.id,
+                    amountAed: totals.accountCredit,
+                    reason: "Checkout — Account Credit redeemed",
+                    referenceType: "pos_sale",
+                    referenceId: txnId,
+                    createdBy: "customer_portal",
+                    silent: true,
+                });
+            }
+
             // Record the payment in the customer's Payment history (Products flow).
             const pad = (n: number) => String(n).padStart(2, "0");
             addPaymentRecord({
@@ -105,11 +124,13 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                 subtotal: totals.subtotal,
                 discount: totals.discount,
                 tax: totals.tax,
+                accountCredit: totals.accountCredit,
             });
 
             purchaseCart.classId = null;
             purchaseCart.items = [];
             purchaseCart.promoId = null;
+            purchaseCart.redeemAccountCredit = false;
         }
 
         const t1 = setTimeout(() => setStep(1), STEP_MS);

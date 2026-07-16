@@ -13,6 +13,7 @@
 // Hidden when there are no active campaigns for the studio.
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MarketingBanner } from "@/components/customer/home/MarketingBanner";
 import type { HomeWhatsOnVM } from "@/lib/customer/home-data";
 
@@ -21,12 +22,16 @@ const AUTO_MS = 5000;
 const DISSOLVE = "opacity 600ms cubic-bezier(0, 0, 0.58, 1)";
 
 export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
+    const router = useRouter();
     const count = items.length;
     const loop = count > 1;
     const [active, setActive] = useState(0);
 
     const ref = useRef<HTMLDivElement>(null);
     const drag = useRef({ startX: 0, active: false });
+    // Set true when a pointer gesture ends as a swipe, so the trailing synthetic
+    // click on the banner is swallowed instead of opening the campaign detail.
+    const swiped = useRef(false);
 
     // Auto-advance: dwell 5s on the current campaign, then dissolve to the next.
     useEffect(() => {
@@ -42,17 +47,31 @@ export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
     }
 
     function onPointerDown(e: React.PointerEvent) {
+        swiped.current = false;
+        // Single campaign → no swipe; let the banner tap open its detail.
         if (!loop) return;
+        // Track the gesture WITHOUT capturing the pointer — pointer capture
+        // reroutes the follow-up click away from the banner and breaks the tap.
         drag.current = { startX: e.clientX, active: true };
-        ref.current?.setPointerCapture?.(e.pointerId);
     }
     function onPointerUp(e: React.PointerEvent) {
         if (!drag.current.active) return;
         drag.current.active = false;
-        ref.current?.releasePointerCapture?.(e.pointerId);
         const dx = e.clientX - drag.current.startX;
-        // A decisive swipe dissolves to the next / previous campaign.
-        if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+        // A decisive swipe dissolves to the next / previous campaign; a small
+        // movement counts as a tap and falls through to the banner's onClick.
+        if (Math.abs(dx) > 40) {
+            swiped.current = true;
+            go(dx < 0 ? 1 : -1);
+        }
+    }
+    // Swallow the click that follows a swipe so it doesn't also open the detail.
+    function onClickCapture(e: React.MouseEvent) {
+        if (swiped.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            swiped.current = false;
+        }
     }
 
     return (
@@ -62,10 +81,11 @@ export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
             <div className="flex w-full flex-col gap-3">
                 <div
                     ref={ref}
-                    className="relative h-[140px] w-full touch-pan-y select-none"
+                    className="relative aspect-[343/140] w-full touch-pan-y select-none"
                     onPointerDown={onPointerDown}
                     onPointerUp={onPointerUp}
                     onPointerCancel={() => (drag.current.active = false)}
+                    onClickCapture={onClickCapture}
                 >
                     {items.map((it, i) => (
                         <div
@@ -83,6 +103,7 @@ export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
                                 image={it.image}
                                 countdown={it.countdown}
                                 expiryISO={it.expiryISO}
+                                onClick={() => router.push(`/customer/marketing/${it.id}`)}
                             />
                         </div>
                     ))}

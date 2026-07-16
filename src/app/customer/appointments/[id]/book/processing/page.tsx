@@ -10,7 +10,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, walletBalanceAed } from "@/lib/store";
+import { useCurrentCustomer } from "@/lib/customer/context";
+import { purchaseCart } from "@/lib/customer/purchase";
 import { appointmentDraft } from "@/lib/customer/booking-flow";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { addAppointmentBooking } from "@/lib/customer/appointment-bookings";
@@ -37,6 +39,9 @@ export default function AppointmentProcessingPage() {
     const appointment = useAppointment(id);
     const instructors = useAppStore((s) => s.instructors);
     const branches = useAppStore((s) => s.branches);
+    const member = useCurrentCustomer();
+    const debitWallet = useAppStore((s) => s.debitWallet);
+    const walletTxns = useAppStore((s) => s.walletTransactions);
     const [step, setStep] = useState(0);
     const wroteRef = useRef(false);
 
@@ -87,6 +92,22 @@ export default function AppointmentProcessingPage() {
                 relatedType: "appointment",
                 relatedId: bookingId,
             });
+            // Redeem Account Credit toward this AED appointment (never negative).
+            if (purchaseCart.redeemAccountCredit && member) {
+                const applied = Math.min(walletBalanceAed(walletTxns, member.id), appointment.price);
+                if (applied > 0) {
+                    debitWallet({
+                        customerId: member.id,
+                        amountAed: applied,
+                        reason: "Appointment payment — Account Credit redeemed",
+                        referenceType: "pos_sale",
+                        referenceId: bookingId,
+                        createdBy: "customer_portal",
+                        silent: true,
+                    });
+                }
+            }
+            purchaseCart.redeemAccountCredit = false;
         }
         const t1 = setTimeout(() => setStep(1), STEP_MS);
         const t2 = setTimeout(() => setStep(2), STEP_MS * 2);

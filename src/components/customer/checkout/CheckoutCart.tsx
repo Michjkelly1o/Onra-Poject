@@ -12,7 +12,7 @@
 
 import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Minus, Plus, Ticket01 } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, HelpCircle, Minus, Plus, Ticket01, Wallet02 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import {
@@ -32,6 +32,8 @@ import { ProductCreditTile } from "@/components/customer/products/ProductCreditT
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
 import { useRedeemedGiftCards } from "@/lib/customer/gift-cards";
 import { usePaymentMethods } from "@/lib/customer/payment-methods";
+import { useAccountCreditBalance } from "@/lib/customer/account-credit";
+import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
 import { GiftCardMark } from "@/components/customer/products/GiftCardArt";
 import { Button } from "@/components/ui/button";
 
@@ -107,7 +109,18 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
 
     const promo = usePromo(purchaseCart.promoId);
     const taxPct = taxRatePct ?? TAX_RATE_PCT;
-    const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct);
+    // Account Credit — an ADDITIONAL balance applied after promo (never a payment
+    // method). Toggle persists on the cart; the amount is clamped in computeTotals.
+    const accountCredit = useAccountCreditBalance();
+    const canRedeem = accountCredit > 0;
+    const [redeem, setRedeemState] = useState(purchaseCart.redeemAccountCredit);
+    const redeemOn = redeem && canRedeem;
+    const setRedeem = (v: boolean) => {
+        purchaseCart.redeemAccountCredit = v;
+        setRedeemState(v);
+    };
+    const [creditInfoOpen, setCreditInfoOpen] = useState(false);
+    const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct, redeemOn ? accountCredit : 0);
 
     // Gift-card payment reflects the customer's currently-redeemed cards: a single
     // "Forma gift card" method carrying the COMBINED balance. Hidden when none.
@@ -311,16 +324,22 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                         <span className="font-normal text-[#475467]">Subtotal</span>
                         <span className="font-medium text-[var(--brand-text)]">AED {totals.subtotal}</span>
                     </div>
+                    {taxPct > 0 && (
+                        <div className="flex items-center justify-between text-sm leading-5">
+                            <span className="font-normal text-[#475467]">Tax rate ({taxPct}%)</span>
+                            <span className="font-medium text-[var(--brand-text)]">AED {totals.tax}</span>
+                        </div>
+                    )}
                     {promo && totals.discount > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
                             <span className="font-normal text-[#475467]">Discount ({promo.label})</span>
                             <span className="font-medium text-[var(--brand-primary)]">−AED {totals.discount}</span>
                         </div>
                     )}
-                    {taxPct > 0 && (
+                    {totals.accountCredit > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[#475467]">Tax rate ({taxPct}%)</span>
-                            <span className="font-medium text-[var(--brand-text)]">AED {totals.tax}</span>
+                            <span className="font-normal text-[#475467]">Account credit</span>
+                            <span className="font-medium text-[var(--brand-primary)]">−AED {totals.accountCredit}</span>
                         </div>
                     )}
                     <div className="flex items-center justify-between text-sm leading-5">
@@ -337,7 +356,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                     onClick={() => router.push(promoHref)}
                     className="flex w-full items-center gap-2 border-b border-[#f2f4f7] px-4 py-4 text-left"
                 >
-                    <Ticket01 className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                    <Ticket01 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                     {promo ? (
                         <span className="flex flex-1 items-center">
                             <span className="rounded border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
@@ -350,6 +369,33 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                     <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
                 </button>
 
+                {canRedeem && (
+                    <div className="flex w-full items-center gap-2 border-b border-[#f2f4f7] px-4 py-4">
+                        <Wallet02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+                        <span className="flex flex-1 items-center gap-1.5 text-sm font-normal leading-5 text-[#344054]">
+                            Redeem AED {accountCredit} credits
+                            <button type="button" onClick={() => setCreditInfoOpen(true)} aria-label="What is account credit?">
+                                <HelpCircle className="size-4 text-[#98a2b3]" aria-hidden />
+                            </button>
+                        </span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={redeemOn}
+                            onClick={() => setRedeem(!redeemOn)}
+                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                                redeemOn ? "bg-[var(--brand-primary)]" : "bg-[#e4e7ec]"
+                            }`}
+                        >
+                            <span
+                                className={`inline-block size-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.1)] transition-transform ${
+                                    redeemOn ? "translate-x-[22px]" : "translate-x-0.5"
+                                }`}
+                            />
+                        </button>
+                    </div>
+                )}
+
                 <div className="flex items-center gap-4 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))]">
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="text-sm font-normal leading-5 text-[#344054]">Total</span>
@@ -360,6 +406,8 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                     </Button>
                 </div>
             </div>
+
+            <AccountCreditInfoSheet open={creditInfoOpen} onClose={() => setCreditInfoOpen(false)} />
         </div>
     );
 }

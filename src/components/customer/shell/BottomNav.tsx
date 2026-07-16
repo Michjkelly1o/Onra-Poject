@@ -15,7 +15,8 @@
 import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, HomeSmile, ShoppingBag03, UserCircle } from "@untitledui/icons";
+import { Calendar, ShoppingBag03, UserCircle } from "@untitledui/icons";
+import { HomeGlyph } from "@/components/customer/shell/HomeGlyph";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useIsAuthenticated } from "@/lib/customer/auth";
 
@@ -38,7 +39,7 @@ interface NavItem {
 // Products → /customer/packages re-homes the existing route (PRD 13 §18.1); rename
 // to /customer/products when that module ships. Search → /customer/search (built).
 const NAV_ITEMS: NavItem[] = [
-    { label: "Home", href: "/customer", exact: true, icon: HomeSmile },
+    { label: "Home", href: "/customer", exact: true, icon: HomeGlyph },
     { label: "Search", href: "/customer/search", icon: Calendar },
     { label: "Products", href: "/customer/products", icon: ShoppingBag03 },
     { label: "Profile", href: "/customer/profile", avatar: true },
@@ -46,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
 
 function NavAvatar({ imageUrl, initials }: { imageUrl?: string; initials?: string }) {
     return (
-        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-[#e0e0e0] ring-[0.5px] ring-black/[0.08]">
+        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7] ring-[0.5px] ring-black/[0.08]">
             {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" className="size-full object-cover" />

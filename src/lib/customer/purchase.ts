@@ -55,11 +55,14 @@ export const purchaseCart: {
     promoId: string | null;
     /** Selected payment method id — persists across the "Add gift card" round-trip. */
     paymentMethod: string;
+    /** Whether the customer chose to apply their Account Credit (AED) balance. */
+    redeemAccountCredit: boolean;
 } = {
     classId: null,
     items: [],
     promoId: null,
     paymentMethod: "apple",
+    redeemAccountCredit: false,
 };
 
 export function ensurePurchaseCart(classId: string): void {
@@ -68,6 +71,7 @@ export function ensurePurchaseCart(classId: string): void {
         purchaseCart.items = [];
         purchaseCart.promoId = null;
         purchaseCart.paymentMethod = "apple";
+        purchaseCart.redeemAccountCredit = false;
     }
 }
 
@@ -328,14 +332,25 @@ export interface CartTotals {
     subtotal: number;
     discount: number;
     tax: number;
+    /** Account Credit (AED) applied — clamped so it never exceeds the amount due. */
+    accountCredit: number;
     total: number;
 }
 
-/** Subtotal + 10% tax − promo discount (tax is charged on the subtotal). */
-export function computeTotals(subtotal: number, promo: PromoVM | null, taxRatePct: number = TAX_RATE_PCT): CartTotals {
+/** Payment order: subtotal → +tax → −promo discount → −account credit → total.
+ *  `accountCredit` is the AED balance the customer chose to redeem; it's clamped
+ *  so it never exceeds the amount due and never makes the total negative. */
+export function computeTotals(
+    subtotal: number,
+    promo: PromoVM | null,
+    taxRatePct: number = TAX_RATE_PCT,
+    accountCredit: number = 0,
+): CartTotals {
     const discount = promoDiscount(subtotal, promo);
     const tax = Math.round((subtotal * taxRatePct) / 100);
-    return { subtotal, discount, tax, total: subtotal + tax - discount };
+    const beforeCredit = subtotal + tax - discount;
+    const credit = Math.min(Math.max(0, Math.round(accountCredit)), beforeCredit);
+    return { subtotal, discount, tax, accountCredit: credit, total: beforeCredit - credit };
 }
 
 // ─── Order snapshot (carried from Pay now → processing → success) ────────────

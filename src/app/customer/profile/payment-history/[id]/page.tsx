@@ -9,6 +9,7 @@
 // same Share / Download / Done actions as the post-purchase receipt.
 
 import { useParams, useRouter } from "next/navigation";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { Check, ChevronLeft, XClose } from "@untitledui/icons";
 import { usePaymentHistory, PAYMENT_TYPE_LABEL } from "@/lib/customer/payment-history";
 import { PaymentReceiptCard } from "@/components/customer/checkout/PaymentReceiptCard";
@@ -23,6 +24,7 @@ function longDate(iso: string): string {
 
 export default function PaymentDetailPage() {
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile/payment-history");
     const { id } = useParams<{ id: string }>();
     const record = usePaymentHistory().find((r) => r.id === id);
 
@@ -32,7 +34,7 @@ export default function PaymentDetailPage() {
                 <CustomerHeader>
                     <button
                         type="button"
-                        onClick={() => router.push("/customer/profile/payment-history")}
+                        onClick={goBack}
                         aria-label="Go back"
                         className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                     >
@@ -43,7 +45,7 @@ export default function PaymentDetailPage() {
                 </CustomerHeader>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pt-[80px] text-center">
                     <p className="text-base font-semibold text-[var(--brand-text)]">This payment is no longer available</p>
-                    <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/profile/payment-history")}>
+                    <Button variant="secondary" size="sm" className="rounded-full" onClick={goBack}>
                         Back to Payment history
                     </Button>
                 </div>
@@ -58,7 +60,7 @@ export default function PaymentDetailPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.push("/customer/profile/payment-history")}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
@@ -96,6 +98,7 @@ export default function PaymentDetailPage() {
                     totalItems={record.totalItems}
                     discount={record.discount}
                     tax={record.tax}
+                    accountCredit={record.accountCredit ?? 0}
                     total={record.amount}
                     status={record.status}
                 />
@@ -117,7 +120,7 @@ export default function PaymentDetailPage() {
                     variant="primary"
                     size="xl"
                     className="w-full rounded-full"
-                    onClick={() => router.push("/customer/profile/payment-history")}
+                    onClick={goBack}
                 >
                     Done
                 </Button>

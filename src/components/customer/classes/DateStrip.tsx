@@ -56,8 +56,8 @@ export function DateStrip({ selectedISO, onSelect, bookingOpenDays }: DateStripP
                                 disabled={disabled}
                                 onClick={() => onSelect(iso)}
                                 aria-pressed={selected}
-                                className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl border bg-white px-1 py-2 transition-colors ${
-                                    selected ? "border-[var(--brand-primary)]" : "border-[#e4e7ec]"
+                                className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl bg-white px-1 py-2 transition-colors ${
+                                    selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
                                 } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                             >
                                 <span

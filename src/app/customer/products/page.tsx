@@ -11,7 +11,8 @@
 // membership → Checkout; a package/gift card → stays on the list + Floating Cart.
 
 import { useReducer, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { loginHref } from "@/lib/customer/auth-flow";
 import { useAppStore } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
 import {
@@ -42,6 +43,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function ProductsPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const { selectedBranchId, member } = useCurrentCustomerContext();
     const branches = useAppStore((s) => s.branches);
     const memberships = useAppStore((s) => s.memberships);
@@ -144,7 +146,7 @@ export default function ProductsPage() {
         setSheetPlan(null);
         // Guests can't purchase — any add-to-cart routes to the login front door.
         if (!member) {
-            router.push("/customer/auth");
+            router.push(loginHref(pathname));
             return;
         }
         // Gift cards are configured per-recipient on the Gift Card Information page;

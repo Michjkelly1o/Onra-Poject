@@ -4,11 +4,14 @@
 // Referral code + copy/share, the program steps, metrics, and referred customers.
 
 import { useState, type ComponentType, type SVGProps } from "react";
+import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Copy01, HeartHand, ShoppingCart01, Stars02, Upload01 } from "@untitledui/icons";
+import { ChevronLeft, Copy01, CurrencyDollarCircle, HeartHand, HelpCircle, ShoppingCart01, Stars02, Upload01, Wallet02 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { rewardSummary, substituteReferralVariables, triggerProse } from "@/lib/referral-helpers";
 import { useCurrentCustomer } from "@/lib/customer/context";
+import { useAccountCreditBalance } from "@/lib/customer/account-credit";
+import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ShareSheet } from "@/components/customer/shell/ShareSheet";
 import { FeaturedIconHero } from "@/components/customer/profile/FeaturedIconHero";
@@ -34,36 +37,42 @@ function ddmmyyyy(iso?: string): string {
 }
 
 export default function ReferralsPage() {
+    useRequireCustomerAuth();
     const router = useRouter();
     const member = useCurrentCustomer();
     const showToast = useAppStore((s) => s.showToast);
     const referralSettings = useAppStore((s) => s.referralSettings);
     const referrals = useAppStore((s) => s.customerReferrals).filter((r) => r.referrerCustomerId === member?.id);
     const [shareOpen, setShareOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
+    const accountCredit = useAccountCreditBalance();
 
     const code = member?.referralCode ?? "";
     const maxReferrals = referralSettings.maxReferralsPerMember || 10;
 
     // All reward copy reflects the admin Referral settings (amounts, reward type,
     // unlock trigger) rather than hard-coded values.
-    const referrerReward = rewardSummary(referralSettings.referrerEarnType, referralSettings.referrerEarnAmount);
     const friendReward = rewardSummary(referralSettings.friendEarnType, referralSettings.friendEarnAmount);
     const trigger = referralSettings.rewardUnlockTrigger;
     const step2Text =
         trigger === "friend_signup"
             ? "Your friend signs up using your referral code."
             : `Your friend signs up and ${triggerProse(trigger).replace(/^make /, "makes ").replace(/^attend /, "attends ")}.`;
+    // Reward-timing/terms is left general — each studio may configure a different
+    // rule, so we don't name specific amounts here.
     const steps = [
         "Share your unique link with friends to join the program.",
         step2Text,
-        `Once your friend qualifies, you get ${referrerReward} and they get ${friendReward}.`,
+        "1 day after the purchase, you and your friend will both receive the reward.",
     ];
     // A referral is "successful" once the referrer's full reward has been granted.
     const rewardThreshold = Math.max(1, referralSettings.referrerEarnAmount);
     const isSuccessful = (benefitCredits: number) => benefitCredits >= rewardThreshold;
-    const successfulRefs = referrals.filter((r) => isSuccessful(r.benefitCredits));
-    const successful = successfulRefs.length;
-    const totalBonus = successfulRefs.reduce((n, r) => n + (r.benefitCredits || 0), 0);
+    // Metric split (admin data): total class credits earned from free-credit
+    // referral rewards + the customer's Account Credit (AED) balance.
+    const classCreditTotal = referrals.reduce((n, r) => n + (r.benefitType === "free_credits" ? r.benefitAmount || 0 : 0), 0);
+    const totalReferrals = referrals.length;
+    const referralPct = maxReferrals > 0 ? Math.min(100, Math.round((totalReferrals / maxReferrals) * 100)) : 0;
 
     // The admin-authored referral message with its {{variables}} resolved, plus
     // the sign-up deep link (new users enter the code during sign-up).
@@ -160,17 +169,48 @@ export default function ReferralsPage() {
                     })}
                 </div>
 
-                {/* Metrics */}
-                <div className="relative grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
-                        <p className="text-sm leading-5 text-[#475467]">Total bonus credit</p>
-                        <p className="mt-1 text-xl font-semibold leading-7 text-[var(--brand-text)]">{totalBonus} credit</p>
+                {/* Metrics — Class credit + Account credit + Total referrals progress (Figma 4502-45661) */}
+                <div className="relative flex flex-col gap-4 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                    <div className="flex items-center gap-5">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
+                                <CurrencyDollarCircle className="size-5 text-[#344054]" aria-hidden />
+                            </span>
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                                <p className="text-xs font-normal leading-[18px] text-[#667085]">Class credit</p>
+                                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{classCreditTotal} credits</p>
+                            </div>
+                        </div>
+                        <div className="h-10 w-px shrink-0 bg-[#e4e7ec]" />
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
+                                <Wallet02 className="size-5 text-[#344054]" aria-hidden />
+                            </span>
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                                <span className="flex items-center gap-1">
+                                    <span className="text-xs font-normal leading-[18px] text-[#667085]">Account credit</span>
+                                    <button type="button" onClick={() => setInfoOpen(true)} aria-label="What is account credit?">
+                                        <HelpCircle className="size-3.5 text-[#98a2b3]" aria-hidden />
+                                    </button>
+                                </span>
+                                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">AED {accountCredit}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="rounded-2xl border border-[#eaecf0] bg-white p-4">
-                        <p className="text-sm leading-5 text-[#475467]">Successful referrals</p>
-                        <p className="mt-1 text-xl font-semibold leading-7 text-[var(--brand-text)]">
-                            {successful}/{maxReferrals}
-                        </p>
+                    <div className="flex flex-col gap-2">
+                        <p className="text-xs font-normal leading-[18px] text-[#667085]">Total referrals</p>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[#7ba08c]"
+                                style={{ width: `${referralPct}%` }}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">
+                                {totalReferrals}/{maxReferrals} <span className="text-xs font-normal text-[#667085]">referrals</span>
+                            </p>
+                            <p className="text-xs font-medium leading-[18px] text-[#344054]">{referralPct}%</p>
+                        </div>
                     </div>
                 </div>
 
@@ -186,7 +226,7 @@ export default function ReferralsPage() {
                                         key={r.id}
                                         className="flex items-center gap-3 rounded-2xl border border-[#eaecf0] bg-white p-3"
                                     >
-                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e0e0e0] text-sm font-semibold text-[#475467]">
+                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-sm font-semibold text-[#475467]">
                                             {initialsOf(r.referredName)}
                                         </div>
                                         <div className="min-w-0 flex-1">
@@ -220,6 +260,8 @@ export default function ReferralsPage() {
                     )}
                 </div>
             </div>
+
+            <AccountCreditInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)} />
 
             <ShareSheet
                 open={shareOpen}

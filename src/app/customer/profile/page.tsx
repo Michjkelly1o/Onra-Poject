@@ -9,7 +9,8 @@
 // Bottom nav stays visible (the landing is NOT in the layout's isFullScreen set).
 
 import { useState, type ComponentType, type SVGProps } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { loginHref } from "@/lib/customer/auth-flow";
 import {
     Bell01,
     Calendar,
@@ -22,10 +23,8 @@ import {
     InfoCircle,
     Link01,
     LogOut01,
-    PhoneCall01,
     User01,
     Users01,
-    Wallet04,
 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import type { BookingTab } from "@/lib/customer/bookings-data";
@@ -40,12 +39,10 @@ import { Button } from "@/components/ui/button";
 type Row = { icon: ComponentType<SVGProps<SVGSVGElement>>; label: string; href: string };
 
 const GROUP_A: Row[] = [
-    { icon: Wallet04, label: "Wallet", href: "/customer/profile/wallet" },
     { icon: BankNote01, label: "Payment history", href: "/customer/profile/payment-history" },
     { icon: Link01, label: "Integrations", href: "/customer/profile/integrations" },
     { icon: Bell01, label: "Notifications", href: "/customer/profile/notifications" },
     { icon: CreditCard02, label: "Payment methods", href: "/customer/profile/payment-methods" },
-    { icon: PhoneCall01, label: "Emergency contact", href: "/customer/profile/emergency" },
     { icon: Globe01, label: "Timezone", href: "/customer/profile/timezone" },
 ];
 const GROUP_B: Row[] = [
@@ -72,6 +69,7 @@ function CardArcs() {
 
 export default function ProfilePage() {
     const router = useRouter();
+    const pathname = usePathname();
     const member = useCurrentCustomer();
     const showToast = useAppStore((st) => st.showToast);
     const [logoutOpen, setLogoutOpen] = useState(false);
@@ -144,7 +142,7 @@ export default function ProfilePage() {
                             variant="primary"
                             size="lg"
                             className="mt-1 w-full rounded-full"
-                            onClick={() => router.push("/customer/auth")}
+                            onClick={() => router.push(loginHref(pathname))}
                         >
                             Log in or sign up
                         </Button>
@@ -166,7 +164,7 @@ export default function ProfilePage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={member.imageUrl} alt="" className="size-11 shrink-0 rounded-full object-cover" />
                 ) : (
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#e0e0e0] text-base font-semibold text-[#475467]">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-base font-semibold text-[#475467]">
                         {member?.initials}
                     </div>
                 )}

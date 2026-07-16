@@ -173,25 +173,16 @@ function MarketingSidebarBanner({ vm }: { vm: MarketingDetailVM }) {
         ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
         : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
     return (
-        <div className={cn("relative h-[155px] flex flex-col justify-between p-3 shrink-0 overflow-hidden", bannerClass)}>
+        <div className={cn("relative h-[155px] shrink-0 overflow-hidden", bannerClass)}>
+            {/* Image-only banner — the campaign artwork carries all copy */}
             {vm.coverImageUrl && (
-                <img src={vm.coverImageUrl} alt=""
+                <img src={vm.coverImageUrl} alt={vm.title}
                     className={cn("absolute inset-0 w-full h-full object-cover", !isActive && "grayscale")} />
             )}
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
+            {/* Status badge — top right (system status, not campaign copy) */}
             <div className="absolute top-3 right-3 z-10">
                 <StatusBadge type="marketing" status={vm.effectiveStatus} size="lg" label={vm.effectiveStatus === "archived" ? "Archive" : undefined} />
             </div>
-            {/* Type badge — top left */}
-            <div className="relative z-10">
-                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium text-white bg-black/40 backdrop-blur-[8px] whitespace-nowrap">
-                    {TYPE_LABEL[vm.type]}
-                </span>
-            </div>
-            <p className="relative z-10 text-[20px] font-semibold text-white leading-[30px] uppercase line-clamp-2 break-words">
-                {vm.title}
-            </p>
-            <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
         </div>
     );
 }

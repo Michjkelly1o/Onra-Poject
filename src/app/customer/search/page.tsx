@@ -13,7 +13,8 @@
 // Appointments filter = Categories only (same modal, sections hidden).
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronDown, FilterLines, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
@@ -28,8 +29,6 @@ import {
     type SearchFilters,
 } from "@/lib/customer/search-data";
 import { useAppointments } from "@/lib/customer/appointments-data";
-import { timeInZoneLabel } from "@/lib/customer/class-time";
-import { tzPickerCtx } from "@/lib/customer/timezones";
 import { useUnreadNotifCount } from "@/lib/customer/notifications-feed";
 import { useIsAuthenticated } from "@/lib/customer/auth";
 import { useFilterInstructors } from "@/lib/customer/instructors";
@@ -42,13 +41,16 @@ import { resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassesFilterModal } from "@/components/customer/home/ClassesFilterModal";
 import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
+import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
+import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
 type Tab = "classes" | "appointments";
 
 export default function SearchPage() {
     const router = useRouter();
-    const { selectedBranchId, timezone } = useCurrentCustomerContext();
+    const pathname = usePathname();
+    const { selectedBranchId, timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
     const branches = useAppStore((s) => s.branches);
     const categories = useAppStore((s) => s.classCategories);
     const showToast = useAppStore((s) => s.showToast);
@@ -72,6 +74,7 @@ export default function SearchPage() {
     const [filterOpen, setFilterOpenState] = useState<boolean>(() => searchUi.filterOpen);
     const [monthOpen, setMonthOpen] = useState(false);
     const [branchSheet, setBranchSheet] = useState(false);
+    const [tzOpen, setTzOpen] = useState(false);
 
     function setTab(t: Tab) {
         searchUi.tab = t;
@@ -192,10 +195,7 @@ export default function SearchPage() {
                             onSelect={setSelectedISO}
                             timezone={timezone}
                             onMonthClick={() => setMonthOpen(true)}
-                            onTimezoneClick={() => {
-                                tzPickerCtx.branchCity = null;
-                                router.push("/customer/search/timezone");
-                            }}
+                            onTimezoneClick={() => setTzOpen(true)}
                             bookingOpenDays={bookingOpenDays}
                         />
 
@@ -247,7 +247,7 @@ export default function SearchPage() {
                                 onBook={() => {
                                     // Guests must log in before starting a booking flow.
                                     if (!isAuth) {
-                                        router.push("/customer/auth");
+                                        router.push(loginHref(pathname));
                                         return;
                                     }
                                     // Fresh entry — clear any abandoned instructor/slot pick.
@@ -272,6 +272,18 @@ export default function SearchPage() {
             </div>
 
             <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
+
+            <TimeZoneSheet
+                open={tzOpen}
+                onClose={() => setTzOpen(false)}
+                branch={branches.find((b) => b.id === selectedBranchId) ?? branches.find((b) => b.status === "active") ?? branches[0]}
+                localCity={localTimezone}
+                value={timezone}
+                onSelect={(city) => {
+                    setTimezone(city);
+                    setTzOpen(false);
+                }}
+            />
 
             <MonthPickerSheet
                 open={monthOpen}

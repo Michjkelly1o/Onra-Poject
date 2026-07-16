@@ -9,11 +9,11 @@
 // #344054). Tapping opens the Time Zone Selector.
 
 import { Globe04 } from "@untitledui/icons";
-import { offsetForCity } from "@/lib/customer/timezones";
+import { compactOffsetForCity } from "@/lib/customer/timezones";
 
 /** `tz` is the selected timezone CITY (e.g. "Abu Dhabi"); the pill shows its live UTC offset. */
 export function TimezonePill({ tz, onClick }: { tz: string; onClick: () => void }) {
-    const offset = offsetForCity(tz);
+    const offset = compactOffsetForCity(tz);
     return (
         <button
             type="button"

@@ -108,12 +108,6 @@ function formatValidUntil(iso?: string): string {
     return `${dd}/${mo}/${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
 }
 
-const TYPE_LABEL: Record<MarketingItem["type"], string> = {
-    new_class: "New class",
-    announcement: "Announcement",
-    event: "Event",
-};
-
 const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
     book_event: "Book an event",
     buy_ticket: "Buy a ticket",
@@ -126,17 +120,6 @@ function branchLabel(branchIds: string[] | undefined, totalBranches: number): st
     const n = branchIds?.length ?? 0;
     if (n === 0 || n >= totalBranches) return "All branches";
     return `${n} ${n === 1 ? "branch" : "branches"}`;
-}
-
-// ─── Badges ──────────────────────────────────────────────────────────────────
-
-/** Marketing-type badge — translucent dark pill on the banner top-left. */
-function TypeBadge({ type }: { type: MarketingItem["type"] }) {
-    return (
-        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium text-white bg-black/40 backdrop-blur-[8px] whitespace-nowrap">
-            {TYPE_LABEL[type]}
-        </span>
-    );
 }
 
 // ─── Marketing card (Figma 6160:197552) ──────────────────────────────────────
@@ -227,27 +210,17 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
             )}>
             {/* Banner — fixed 4:3 so the cover art stays the same shape at
                 every screen width instead of stretching wide on large monitors. */}
-            <div className={cn("relative aspect-[4/3] flex flex-col justify-between p-3 shrink-0 overflow-hidden", bannerClass)}>
-                {/* Cover artwork — inactive / archived / expired render grayscale */}
+            <div className={cn("relative aspect-[4/3] shrink-0 overflow-hidden", bannerClass)}>
+                {/* Image-only banner — the campaign artwork carries all copy.
+                    Inactive / archived / expired render grayscale. */}
                 {item.cover_image_url && (
-                    <img src={item.cover_image_url} alt=""
+                    <img src={item.cover_image_url} alt={item.title}
                         className={cn("absolute inset-0 w-full h-full object-cover", status !== "active" && "grayscale")} />
                 )}
-                {/* Dark vignette so the white text stays legible on any banner */}
-                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(12,17,29,0.1)_0%,rgba(12,17,29,0.72)_100%)]" />
-                {/* Status badge — top right */}
+                {/* Status badge — top right (admin status indicator, not campaign copy) */}
                 <div className="absolute top-3 right-3 z-10">
                     <StatusBadge type="marketing" status={status} size="lg" />
                 </div>
-                {/* Type badge — top left, in flow */}
-                <div className="relative z-10">
-                    <TypeBadge type={item.type} />
-                </div>
-                {/* Title */}
-                <p className="relative z-10 text-[20px] font-semibold text-white leading-[30px] uppercase line-clamp-2">
-                    {item.title}
-                </p>
-                <p className="relative z-10 text-[12px] text-[#d0d5dd] leading-[18px]">*T&amp;Cs Apply</p>
             </div>
 
             {/* Content */}

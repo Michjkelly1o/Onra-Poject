@@ -4,6 +4,7 @@
 // Redeem a code → opens the redeem modal; lists previously-redeemed cards.
 
 import { useEffect, useState } from "react";
+import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Gift01 } from "@untitledui/icons";
 import { isRedeemed, lookupGift, useRedeemedGiftCards, type RedeemedGiftCard } from "@/lib/customer/gift-cards";
@@ -24,6 +25,7 @@ function validityLabel(r: RedeemedGiftCard): string {
 }
 
 export default function GiftCardPage() {
+    useRequireCustomerAuth();
     const router = useRouter();
     const redeemed = useRedeemedGiftCards();
     const [code, setCode] = useState("");

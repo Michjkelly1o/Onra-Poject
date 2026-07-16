@@ -16,7 +16,7 @@ import { Check, ChevronDown } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { authDraft } from "@/lib/customer/auth-flow";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
-import { AuthHeader } from "@/components/customer/auth/AuthHeader";
+import { AuthHeader, AUTH_CONTENT_OFFSET } from "@/components/customer/auth/AuthHeader";
 import { Button } from "@/components/ui/button";
 import { DobSheet } from "@/components/customer/profile/DobSheet";
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
@@ -109,7 +109,7 @@ export default function AuthSignupPage() {
         <div className="relative flex min-h-full flex-col">
             <AuthHeader onClose={() => router.back()} />
 
-            <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-4 pt-[118px]">
+            <div className={`flex flex-1 flex-col items-center gap-6 px-4 pb-4 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Create an account</h1>
                     <p className="text-base leading-6 text-[#667085]">
