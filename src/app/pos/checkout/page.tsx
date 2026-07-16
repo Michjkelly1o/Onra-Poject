@@ -212,6 +212,7 @@ function POSCheckoutInner() {
             promoCode={pendingPurchase.promoCode}
             taxRate={taxRate}
             taxAmount={taxAmount}
+            accountCreditApplied={accountCreditApplied}
             total={total}
             paymentMethodLabel={paymentMethodLabel}
             chargedTo={chargedTo}

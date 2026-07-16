@@ -219,6 +219,7 @@ function ScheduleCheckoutInner() {
             taxRate={taxRate}
             taxAmount={taxAmount}
             taxIncluded={taxIncluded}
+            accountCreditApplied={accountCreditApplied}
             total={total}
             paymentMethodLabel={paymentMethodLabel}
             chargedTo={chargedTo}

@@ -448,11 +448,14 @@ function AccountCreditSection({ balance, applied, enabled, onToggle }: {
         <div className="flex flex-col gap-3">
             <p className="text-[18px] font-semibold text-[#101828]">Account credit</p>
             <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
-                <div className="w-10 h-10 rounded-[8px] bg-[#f1f2ed] flex items-center justify-center shrink-0">
-                    <Wallet01 className="w-5 h-5 text-[#475467]" />
+                {/* Icon container matches the featured icon on PaymentMethodCard
+                    (32×32, `bg-[#f9fafb]` + 1px border) so the two sections
+                    read as one visual language above the payment picker. */}
+                <div className="w-8 h-8 rounded-[6px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
+                    <Wallet01 className="w-4 h-4 text-[#475467]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828]">Available balance</p>
+                    <p className="text-[14px] font-medium text-[#344054]">Available balance</p>
                     <p className="text-[14px] text-[#475467]">
                         {enabled && applied > 0
                             ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
@@ -685,6 +688,10 @@ export interface ReceiptStepProps {
     /** Phase 4 — pass through from the global "Prices include tax" toggle.
      *  Affects the receipt's tax-row label. */
     taxIncluded?: boolean;
+    /** Account-credit AED applied to this sale via the checkout toggle.
+     *  Renders as a red reduction line between Discount and Total when > 0,
+     *  matching the PaymentInformation summary shape. */
+    accountCreditApplied?: number;
     total: number;
     paymentMethodLabel: string;
     chargedTo: string;
@@ -739,6 +746,21 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <p className="text-[14px] text-[#667085]">Subtotal</p>
                             <p className="text-[16px] font-medium text-[#101828]">AED {p.subtotal.toLocaleString()}</p>
                         </div>
+                        {/* Order (client Jul 2026): Subtotal → Tax → Discount →
+                            Account credit → Total. Same shape as the
+                            PaymentInformation summary in step 1 so what the
+                            cashier confirmed matches the printed receipt. */}
+                        {p.taxRate > 0 && (
+                            <div className="flex items-center justify-between">
+                                <p className="text-[14px] text-[#667085]">
+                                    {p.taxIncluded
+                                        ? <>Tax (<span className="font-medium text-[#101828]">{p.taxRate}% included</span>)</>
+                                        : <>Tax rate (<span className="font-medium text-[#101828]">{p.taxRate}%</span>)</>
+                                    }
+                                </p>
+                                <p className="text-[16px] font-medium text-[#101828]">AED {p.taxAmount.toLocaleString()}</p>
+                            </div>
+                        )}
                         {p.discountAmount > 0 && (
                             <div className="flex items-center justify-between">
                                 <p className="text-[14px] text-[#667085]">
@@ -750,18 +772,10 @@ export function ReceiptStep(p: ReceiptStepProps) {
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {p.discountAmount.toLocaleString()}</p>
                             </div>
                         )}
-                        {/* Tax row — labelled per the global "Prices include
-                            tax" toggle. Exclusive: "Tax rate (X%)" added on
-                            top. Inclusive: "Tax (X% included)" informational. */}
-                        {p.taxRate > 0 && (
+                        {(p.accountCreditApplied ?? 0) > 0 && (
                             <div className="flex items-center justify-between">
-                                <p className="text-[14px] text-[#667085]">
-                                    {p.taxIncluded
-                                        ? <>Tax (<span className="font-medium text-[#101828]">{p.taxRate}% included</span>)</>
-                                        : <>Tax rate (<span className="font-medium text-[#101828]">{p.taxRate}%</span>)</>
-                                    }
-                                </p>
-                                <p className="text-[16px] font-medium text-[#101828]">AED {p.taxAmount.toLocaleString()}</p>
+                                <p className="text-[14px] text-[#667085]">Account credit</p>
+                                <p className="text-[16px] font-medium text-[#d92d20]">-AED {(p.accountCreditApplied ?? 0).toLocaleString()}</p>
                             </div>
                         )}
                         <div className="flex items-center justify-between">
