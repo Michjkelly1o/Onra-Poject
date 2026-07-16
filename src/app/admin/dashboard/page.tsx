@@ -908,6 +908,25 @@ export default function AdminDashboard() {
         }, 0);
         const revenueAed = recurringRevenueAed + pastNonRecurringSalesAed;
 
+        // ── Prior-period actuals (drive the real % change deltas) ───────────
+        // For each of the 3 "change chip" cards (Revenue, Recurring, Bookings)
+        // we compare the CURRENT metric against the last N days' ACTUAL
+        // value so the green +N% / red -N% chip carries real meaning.
+        // Client Jul 2026 — was hardcoded to +3% before.
+        const pastAllRevenueAed = scopedTransactions.reduce((sum, t) => {
+            if (t.status !== "complete") return sum;
+            if (!inPastRange(t.createdAtISO)) return sum;
+            const isSale = (t.transactionType ?? "sale") === "sale";
+            return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;
+        }, 0);
+        const pastRecurringRevenueAed = scopedTransactions.reduce((sum, t) => {
+            if (t.status !== "complete") return sum;
+            if (t.paymentType !== "recurring") return sum;
+            if (!inPastRange(t.createdAtISO)) return sum;
+            const isSale = (t.transactionType ?? "sale") === "sale";
+            return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;
+        }, 0);
+
         // ── Bookings ────────────────────────────────────────────────────────
         // Class bookings — confirmed future bookings for schedules in range.
         const scheduleIdsInRange = new Set(
@@ -932,6 +951,39 @@ export default function AdminDashboard() {
         const bookingsAllCount = classBookingsCount
             + bookingsCountByType("private")
             + bookingsCountByType("recovery");
+
+        // PAST-window bookings — same shape but scoped to the previous N days.
+        // For classes we still include status="booked" (row's status doesn't
+        // flip after the class runs — attendance is on `attendanceStatus`); for
+        // appointment bookings we accept Booked | Attended | NoShow (i.e. any
+        // non-cancelled row) so held-past bookings still count.
+        const pastScheduleIds = new Set(
+            scopedSchedules.filter(s => inPastRange(`${s.dateISO}T00:00:00Z`)).map(s => s.id),
+        );
+        const pastClassBookings = scopedBookings.filter(b =>
+            b.status === "booked" && pastScheduleIds.has(b.classScheduleId),
+        ).length;
+        const pastAppointments = scopedAppointments.filter(a => inPastRange(`${a.dateISO}T00:00:00Z`));
+        const pastApptIds = new Set(pastAppointments.map(a => a.id));
+        const pastApptById = new Map(pastAppointments.map(a => [a.id, a] as const));
+        const pastActiveApptBookings = appointmentBookings.filter(b =>
+            b.status !== "Cancelled" && pastApptIds.has(b.appointmentId),
+        );
+        const pastBookingsCountByType = (t: "private" | "recovery"): number =>
+            pastActiveApptBookings.filter(b => (pastApptById.get(b.appointmentId)?.type ?? "") === t).length;
+        const pastBookingsAllCount = pastClassBookings
+            + pastBookingsCountByType("private")
+            + pastBookingsCountByType("recovery");
+
+        // Delta helper — real % change from prior to current.
+        //   prior 0 + current 0 → 0% (nothing to compare, flat).
+        //   prior 0 + current > 0 → +100% (new activity).
+        //   otherwise → rounded % of change; sign drives the arrow colour.
+        const pctChange = (current: number, prior: number): { change: number; positive: boolean } => {
+            if (prior === 0) return { change: current === 0 ? 0 : 100, positive: current >= 0 };
+            const delta = ((current - prior) / prior) * 100;
+            return { change: Math.abs(Math.round(delta)), positive: delta >= 0 };
+        };
 
         // ── At-risk clients (14-30 day silent window) ───────────────────────
         // Range-independent — always the same silent-window bucket.
@@ -976,24 +1028,40 @@ export default function AdminDashboard() {
             o.capacity > 0 ? Math.round((o.booked / o.capacity) * 100) : 0;
 
         // ── Build cards per type ────────────────────────────────────────────
+        // Real % change vs the prior N-day window (client Jul 2026 — was
+        // hardcoded +3% before). Sign drives the arrow colour + magnitude.
+        const revenueDelta   = pctChange(revenueAed, pastAllRevenueAed);
+        const recurringDelta = pctChange(recurringRevenueAed, pastRecurringRevenueAed);
         const revenueCard: DashboardMetric = {
             label: "Revenue",
             value: `AED ${revenueAed.toLocaleString("en-US")}`,
-            change: 3, positive: true, comparison: "expected vs last month",
+            change: revenueDelta.change,
+            positive: revenueDelta.positive,
+            comparison: `vs prior ${comingRange} days`,
             icon: CurrencyDollar,
         };
         const recurringRevenueCard: DashboardMetric = {
             label: "Recurring revenue",
             value: `AED ${recurringRevenueAed.toLocaleString("en-US")}`,
-            change: 3, positive: true, comparison: "expected vs last month",
+            change: recurringDelta.change,
+            positive: recurringDelta.positive,
+            comparison: `vs prior ${comingRange} days`,
             icon: CurrencyDollar,
         };
-        const bookingsCard = (n: number): DashboardMetric => ({
-            label: "Bookings",
-            value: `${n.toLocaleString("en-US")} booked`,
-            change: 3, positive: true, comparison: `pace vs prior ${comingRange} days`,
-            icon: Calendar,
-        });
+        // Bookings uses different prior values per type — helper closes over
+        // the per-type past count so All / Classes / Private / Recovery all
+        // compare like-for-like.
+        const bookingsCard = (n: number, prior: number): DashboardMetric => {
+            const d = pctChange(n, prior);
+            return {
+                label: "Bookings",
+                value: `${n.toLocaleString("en-US")} booked`,
+                change: d.change,
+                positive: d.positive,
+                comparison: `pace vs prior ${comingRange} days`,
+                icon: Calendar,
+            };
+        };
         const expiringMembershipsCard: DashboardMetric = {
             label: "Expiring memberships",
             value: `${expiringMembershipsCount} ${expiringMembershipsCount === 1 ? "member" : "members"}`,
@@ -1040,28 +1108,32 @@ export default function AdminDashboard() {
         switch (comingType) {
             case "class":
                 return [
-                    revenueCard, recurringRevenueCard, bookingsCard(classBookingsCount),
+                    revenueCard, recurringRevenueCard,
+                    bookingsCard(classBookingsCount, pastClassBookings),
                     expiringMembershipsCard, atRiskCard, underFilledCard,
                     expiringCreditsCard, trialsEndingCard,
                     occupancyCard(classOccupancy, "spot"),
                 ];
             case "private":
                 return [
-                    revenueCard, bookingsCard(bookingsCountByType("private")),
+                    revenueCard,
+                    bookingsCard(bookingsCountByType("private"), pastBookingsCountByType("private")),
                     expiringMembershipsCard, atRiskCard,
                     expiringCreditsCard,
                     occupancyCard(privateOccupancy, "slot"),
                 ];
             case "recovery":
                 return [
-                    revenueCard, bookingsCard(bookingsCountByType("recovery")),
+                    revenueCard,
+                    bookingsCard(bookingsCountByType("recovery"), pastBookingsCountByType("recovery")),
                     atRiskCard, expiringCreditsCard,
                     occupancyCard(recoveryOccupancy, "slot"),
                 ];
             case "":
             default:
                 return [
-                    revenueCard, bookingsCard(bookingsAllCount),
+                    revenueCard,
+                    bookingsCard(bookingsAllCount, pastBookingsAllCount),
                     atRiskCard, expiringCreditsCard,
                 ];
         }
