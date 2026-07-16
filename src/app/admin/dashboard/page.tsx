@@ -1099,21 +1099,14 @@ export default function AdminDashboard() {
                     {activeTab === "today" ? `Welcome, ${studioDisplayName}` : ""}
                 </p>
 
-                {/* Location picker — always visible */}
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
-                    placeholder="Select location"
-                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                    value={location}
-                    onChange={setLocation}
-                    width="w-[220px]"
-                />
-
                 {/* Session-type picker — Today tab only. Pills row (client
                     Jul 2026 — was a SelectInput dropdown). Selected pill uses
                     the multi-select mint palette (`#e9fff3` / `#7ba08c`) the
                     filter panels use so the whole app's filter language reads
-                    consistently. Sits beside the location dropdown. */}
+                    consistently. Sits BEFORE the location dropdown so the
+                    row reads as [pills | All locations]. Pills locked to the
+                    same h-10 (40px) height as the SelectInput trigger so the
+                    row aligns cleanly. */}
                 {activeTab === "today" && (
                     <div className="flex items-center gap-2 h-10">
                         {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
@@ -1126,10 +1119,10 @@ export default function AdminDashboard() {
                                     onClick={() => setTypeFilter(t as SessionType | "")}
                                     aria-pressed={active}
                                     className={cn(
-                                        "h-8 px-3 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap",
+                                        "h-10 px-3.5 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                                         active
                                             ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                            : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
                                     )}
                                 >
                                     {label}
@@ -1138,6 +1131,18 @@ export default function AdminDashboard() {
                         })}
                     </div>
                 )}
+
+                {/* Location picker — always visible. Placed AFTER the pills so
+                    the Today-tab row reads as [pills | All locations] (client
+                    Jul 2026). */}
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                    value={location}
+                    onChange={setLocation}
+                    width="w-[220px]"
+                />
 
                 {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
                     7823:53746). Height locked to h-10 (40px) to match the

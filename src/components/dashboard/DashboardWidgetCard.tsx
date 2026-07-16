@@ -25,11 +25,11 @@ import { ArrowRight } from "@untitledui/icons";
 
 const SEEDS: Record<string, Record<string, number[]>> = {
     // `payments-collected` merges the old `payments-status` failed series in
-    // (client Jul 2026). `v` = collected AED, `failed` = attempt count,
-    // `failedAmount` = failed AED. The renderer overlays failed as small red
-    // bars underneath the collected area chart + surfaces a red chip in the
-    // header with the failed totals.
-    "payments-collected":  { v: [220, 195, 240, 250, 235, 265, 280], failed: [1, 2, 1, 2, 1, 1, 1], failedAmount: [180, 320, 140, 220, 190, 130, 60] },
+    // (client Jul 2026). Seed only carries `v` (collected AED); the failed
+    // count is derived from the live `customerTransactions` slice at render
+    // time (see `computeFailedPaymentsStats`) so the chip, bars, and the
+    // shared FailedPaymentsModal always agree.
+    "payments-collected":  { v: [220, 195, 240, 250, 235, 265, 280] },
     "payments-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
     "revenue-overview":    { revenue: [480, 540, 600, 680, 760, 830, 910], lastWeek: [640, 610, 630, 615, 595, 605, 610] },
     // Values are AED sales revenue per day (not unit counts) — client Jul 2026:
@@ -251,7 +251,10 @@ export function getWidgetCsvSection(
  *  `SEEDS` / `STATIC` above (case-sensitive). When a widget is added, drop
  *  its column meta here OR pass it in from the catalog later. */
 const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> = {
-    "payments-collected":   { headers: ["Date", "Payments (AED)", "Failed count", "Failed (AED)"], fields: ["date", "v", "failed", "failedAmount"] },
+    // CSV carries only the collected series — failed-payment aggregates live
+    // in the FailedPaymentsModal (which has its own list export path). Keeps
+    // the seed and the exporter aligned (Jul 2026).
+    "payments-collected":   { headers: ["Date", "Payments (AED)"], fields: ["date", "v"] },
     "payments-by-source":   { headers: ["Date", "CRM", "Customer App", "Website"], fields: ["date", "crm", "app", "web"] },
     "revenue-overview":     { headers: ["Date", "Revenue", "Last week"],          fields: ["date", "revenue", "lastWeek"] },
     "sales-by-product":     { headers: ["Date", "Membership (AED)", "Class package (AED)"], fields: ["date", "membership", "package"] },
@@ -377,19 +380,29 @@ function branchScaleFor(branchId: string | undefined, activeBranchIds: string[])
 }
 
 /** Aggregate failed customer transactions for the payments-collected widget's
- *  header chip. Filters by branch + selected period, matching the shape the
- *  FailedPaymentsModal uses so the chip's "N failed · AED X" and the modal's
- *  list always show the same numbers. */
+ *  header chip AND its per-day chart bars. Filters by branch + selected
+ *  period, matching the shape the FailedPaymentsModal uses so the chip's
+ *  "N failed · AED X", the chart bars, and the modal's list ALL show the
+ *  same numbers.
+ *
+ *  Returns:
+ *    • `count`, `amountAed` — period totals for the chip.
+ *    • `perDay` — `Map<dateLabel, count>` keyed by the same `fmtMMMD` label
+ *      the chart's X-axis uses ("Jul 13", "Jul 14", …). Renderer looks up
+ *      each row's count from this map, so the bars ALWAYS reflect real
+ *      per-day failures. When the filter has zero real failures, every
+ *      lookup returns 0 → the bars vanish alongside the chip. */
 function computeFailedPaymentsStats(
     transactions: Array<import("@/lib/store").CustomerTransaction>,
     branchId: string | undefined,
     period: DateFilter,
-): { count: number; amountAed: number } {
+): { count: number; amountAed: number; perDay: Map<string, number> } {
     const range = dateFilterToRange(period);
     const from = range.from.getTime();
     const to   = range.to.getTime();
     let count = 0;
     let amountAed = 0;
+    const perDay = new Map<string, number>();
     for (const t of transactions) {
         if (t.status !== "failed") continue;
         if (branchId && t.branchId !== branchId) continue;
@@ -397,8 +410,12 @@ function computeFailedPaymentsStats(
         if (Number.isNaN(ts) || ts < from || ts > to) continue;
         count += 1;
         amountAed += Math.abs(t.amountAed);
+        // Bucket by MMMD so the map key matches the chart's per-day X labels.
+        const d = new Date(t.createdAtISO);
+        const key = `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;
+        perDay.set(key, (perDay.get(key) ?? 0) + 1);
     }
-    return { count, amountAed };
+    return { count, amountAed, perDay };
 }
 
 /** Scale every numeric field in a chart-ready row by `factor`, leave strings
@@ -427,9 +444,9 @@ function renderChart(
     period: DateFilter = DEFAULT_PERIOD,
     branchScale: number = 1,
     /** Payments-collected widget only — real failed-payments count + AED for
-     *  the header chip, sourced from the store so the chip and the modal
-     *  never disagree. */
-    failedStats: { count: number; amountAed: number } | null = null,
+     *  the header chip AND a per-day count map for the chart bars, sourced
+     *  from the store so the chip, bars, and modal never disagree. */
+    failedStats: { count: number; amountAed: number; perDay: Map<string, number> } | null = null,
     /** Payments-collected widget only — click handler for the failed chip. */
     onOpenFailedPayments?: () => void,
 ): React.ReactNode {
@@ -453,7 +470,14 @@ function renderChart(
             // the seed's per-day `failed` array only drives the tiny bar
             // silhouette in the chart. That way the chip's numbers always
             // agree with what the FailedPaymentsModal will list on click.
-            const rows = data as Array<{ date: string; v: number; failed?: number; failedAmount?: number }>;
+            // Rebuild each row's `failed` count from the live per-day map so
+            // the bars, the chip, and the FailedPaymentsModal always share the
+            // same source. Old code piped the seed's static [1,2,1,2,…] array
+            // into the bars, which drifted from reality on any period change
+            // (chip = 0 but bars still showed "1 failed" on hover).
+            const perDay = failedStats?.perDay;
+            const rows = (data as Array<{ date: string; v: number; failed?: number; failedAmount?: number }>)
+                .map(r => ({ ...r, failed: perDay?.get(r.date) ?? 0 }));
             const totalCollected = rows.reduce((s, r) => s + (r.v ?? 0), 0);
             const failedCount    = failedStats?.count     ?? 0;
             const failedAmount   = failedStats?.amountAed ?? 0;
@@ -873,8 +897,13 @@ function renderChart(
             const rows = data as { stage: string; sublabel: string; count: number }[];
             const top = rows[0]?.count ?? 0;
             const stepCaption = ["came back", "converted"];
+            // Fill the same card body height every other widget uses (`h`,
+            // 240 on the dashboard). The funnel is a fixed-count layout, so
+            // without this wrapper it hugs its content and leaves a big
+            // white gap beneath the last bar (client Jul 2026). Vertically
+            // centering the funnel keeps the rhythm with the sibling widget.
             return (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col justify-center gap-3" style={{ height: h }}>
                     {rows.map((row, i) => {
                         const pctOfTop = top > 0 ? Math.round((row.count / top) * 100) : 0;
                         const barWidth = top > 0 ? Math.max(4, (row.count / top) * 100) : 0;
