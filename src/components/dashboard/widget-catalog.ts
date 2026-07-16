@@ -14,11 +14,11 @@ export interface WidgetMeta {
 }
 
 export const WIDGET_CATALOG: WidgetMeta[] = [
-    // Finance
-    { id: "payments-collected",  title: "Payments collected over time",     description: "Total payments received across the selected period.",          category: "Finance" },
-    { id: "payments-status",     title: "Payments over time with status",    description: "Overview of paid and failed payments over time.",              category: "Finance" },
-    { id: "payments-by-method",  title: "Payments collected by method",      description: "Breakdown of payments by payment method.",                    category: "Finance" },
-    { id: "payments-by-source",  title: "Payments collected by source",      description: "Revenue grouped by sales source or purchase channel.",        category: "Finance" },
+    // Finance — client Jul 2026: collapsed to two payment widgets. Failed
+    // payments now overlay on Payments collected (bars underneath), so the
+    // separate `payments-status` and `payments-by-method` widgets are retired.
+    { id: "payments-collected",  title: "Payments collected over time",     description: "Total collected across the selected period.",                 category: "Finance" },
+    { id: "payments-by-source",  title: "Payments by source",               description: "Payments grouped by sales source or purchase channel.",       category: "Finance" },
     { id: "revenue-overview",    title: "Revenue overview",                  description: "Total revenue overtime",                                      category: "Finance" },
     { id: "sales-by-product",    title: "Sales by product",                  description: "Total sales by product overtime",                             category: "Finance" },
     // Memberships

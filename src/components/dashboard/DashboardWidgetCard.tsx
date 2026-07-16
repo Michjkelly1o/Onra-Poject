@@ -7,10 +7,11 @@ import { WIDGET_CATALOG } from "./widget-catalog";
 import { useAppStore } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 import {
-    LineChart, Line, BarChart, Bar,
+    LineChart, Line, BarChart, Bar, ComposedChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer,
 } from "recharts";
+import { ArrowRight } from "@untitledui/icons";
 
 // ─── Shared chart data ────────────────────────────────────────────────────────
 //
@@ -22,9 +23,12 @@ import {
 // live in `STATIC` and are period-agnostic.
 
 const SEEDS: Record<string, Record<string, number[]>> = {
-    "payments-collected":  { v: [220, 195, 240, 250, 235, 265, 280] },
-    "payments-status":     { paid: [38, 12, 22, 28, 35, 30, 25], failed: [8, 12, 6, 10, 4, 8, 5] },
-    "payments-by-method":  { card: [25, 18, 22, 35, 28, 32, 20], cash: [8, 5, 6, 5, 9, 7, 4], apple: [5, 3, 4, 4, 6, 5, 3] },
+    // `payments-collected` merges the old `payments-status` failed series in
+    // (client Jul 2026). `v` = collected AED, `failed` = attempt count,
+    // `failedAmount` = failed AED. The renderer overlays failed as small red
+    // bars underneath the collected area chart + surfaces a red chip in the
+    // header with the failed totals.
+    "payments-collected":  { v: [220, 195, 240, 250, 235, 265, 280], failed: [1, 2, 1, 2, 1, 1, 1], failedAmount: [180, 320, 140, 220, 190, 130, 60] },
     "payments-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
     "revenue-overview":    { revenue: [480, 540, 600, 680, 760, 830, 910], lastWeek: [640, 610, 630, 615, 595, 605, 610] },
     // Values are AED sales revenue per day (not unit counts) — client Jul 2026:
@@ -240,9 +244,7 @@ export function getWidgetCsvSection(
  *  `SEEDS` / `STATIC` above (case-sensitive). When a widget is added, drop
  *  its column meta here OR pass it in from the catalog later. */
 const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> = {
-    "payments-collected":   { headers: ["Date", "Payments (AED)"],                fields: ["date", "v"] },
-    "payments-status":      { headers: ["Date", "Paid", "Failed"],                fields: ["date", "paid", "failed"] },
-    "payments-by-method":   { headers: ["Date", "Card", "Cash", "Apple pay"],     fields: ["date", "card", "cash", "apple"] },
+    "payments-collected":   { headers: ["Date", "Payments (AED)", "Failed count", "Failed (AED)"], fields: ["date", "v", "failed", "failedAmount"] },
     "payments-by-source":   { headers: ["Date", "CRM", "Customer App", "Website"], fields: ["date", "crm", "app", "web"] },
     "revenue-overview":     { headers: ["Date", "Revenue", "Last week"],          fields: ["date", "revenue", "lastWeek"] },
     "sales-by-product":     { headers: ["Date", "Membership (AED)", "Class package (AED)"], fields: ["date", "membership", "package"] },
@@ -397,53 +399,60 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
     };
 
     switch (id) {
-        case "payments-collected":
+        case "payments-collected": {
+            // Merged widget (client Jul 2026 — retired the separate
+            // `payments-status` widget). Header carries a red chip with the
+            // failed totals + a "this period" AED headline; chart overlays a
+            // collected AED area with small red failed-count bars underneath
+            // (bars share the axis but sit low so the line's silhouette
+            // stays readable).
+            //
+            // The chip acts as the widget's action affordance — clicking it
+            // opens the failed-payments list; wire-up is deferred until the
+            // failed-payments modal is refactored (dashboard router change).
+            const rows = data as Array<{ date: string; v: number; failed?: number; failedAmount?: number }>;
+            const totalCollected = rows.reduce((s, r) => s + (r.v ?? 0), 0);
+            const failedCount    = rows.reduce((s, r) => s + (r.failed ?? 0), 0);
+            const failedAmount   = rows.reduce((s, r) => s + (r.failedAmount ?? 0), 0);
             return (
-                <ResponsiveContainer width="100%" height={h}>
-                    <LineChart data={data}>
-                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                        <XAxis dataKey="date" {...axisProps} interval={interval} />
-                        <YAxis {...axisProps} width={32} />
-                        <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} />
-                        <Line type="monotone" dataKey="v" name="Payments" stroke="#92d1de" strokeWidth={2} dot={false} />
-                    </LineChart>
-                </ResponsiveContainer>
-            );
-
-        case "payments-status":
-            return (
-                <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#92baa4", label: "Paid" }, { color: "#f97066", label: "Failed" }]} />
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        {failedCount > 0 ? (
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-1.5 bg-[#fef3f2] border-1 border-[#fecdca] rounded-full px-3 py-1 hover:bg-[#fee4e2] transition-colors"
+                            >
+                                <span className="text-[13px] font-medium text-[#b42318]">
+                                    {failedCount} failed · {aedMoney(failedAmount)}
+                                </span>
+                                <ArrowRight className="w-3.5 h-3.5 text-[#b42318]" />
+                            </button>
+                        ) : <span />}
+                        <div className="text-right">
+                            <p className="text-[20px] font-semibold text-[#101828] leading-tight">{aedMoney(totalCollected)}</p>
+                            <p className="text-[12px] text-[#667085]">this period</p>
+                        </div>
+                    </div>
                     <ResponsiveContainer width="100%" height={h}>
-                        <BarChart data={data} barCategoryGap="30%">
+                        <ComposedChart data={rows}>
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
-                            <YAxis {...axisProps} width={28} />
-                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                            <Bar dataKey="paid" name="Paid" fill="#92baa4" radius={[3,3,0,0]} maxBarSize={10} />
-                            <Bar dataKey="failed" name="Failed" fill="#f97066" radius={[3,3,0,0]} maxBarSize={10} />
-                        </BarChart>
+                            <YAxis {...axisProps} width={32} />
+                            <Tooltip content={<ChartTooltip valueFormatter={(p) => {
+                                // Mixed tooltip — collected renders in AED, the
+                                // failed-count series in plain integers.
+                                if (p.dataKey === "failed") return `${p.value ?? 0}`;
+                                return aedMoney(p.value);
+                            }} />} />
+                            <Area type="monotone" dataKey="v" name="Collected"
+                                stroke="#658774" fill="#dcefe4" strokeWidth={2} dot={false} />
+                            <Bar dataKey="failed" name="Failed"
+                                fill="#d47862" radius={[2,2,0,0]} maxBarSize={6} />
+                        </ComposedChart>
                     </ResponsiveContainer>
                 </div>
             );
-
-        case "payments-by-method":
-            return (
-                <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#b892ba", label: "Card" }, { color: "#92d1de", label: "Cash" }, { color: "#92baa4", label: "Apple pay" }]} />
-                    <ResponsiveContainer width="100%" height={h}>
-                        <BarChart data={data} barCategoryGap="30%">
-                            <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                            <XAxis dataKey="date" {...axisProps} interval={interval} />
-                            <YAxis {...axisProps} width={28} />
-                            <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                            <Bar dataKey="card"  name="Card"      fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
-                            <Bar dataKey="cash"  name="Cash"      fill="#92d1de" radius={[3,3,0,0]} maxBarSize={8} />
-                            <Bar dataKey="apple" name="Apple pay" fill="#92baa4" radius={[3,3,0,0]} maxBarSize={8} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            );
+        }
 
         case "payments-by-source":
         case "bookings-by-source":
