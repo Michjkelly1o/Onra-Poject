@@ -579,6 +579,10 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<"today" | "coming" | "performance">("today");
     // Coming-up tab range — 7 or 30 days (Figma 7823:53746 segmented pill).
     const [comingRange, setComingRange] = useState<7 | 30>(7);
+    // Coming-up tab session-type filter (client Jul 2026). "" = All. Gates
+    // which metric cards render (each type has its own card set per the
+    // client brief — see `comingMetrics` below).
+    const [comingType, setComingType] = useState<SessionType | "">("");
     // "" = "All locations" — dashboard opens on the aggregate view so
     // KPIs read like the full studio on first paint.
     const [location, setLocation] = useState<string>("");
@@ -590,7 +594,11 @@ export default function AdminDashboard() {
     // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
     // 245665 / 246710). Renewal + Expire cards share the Renewal-due
     // modal per client Jul 2026.
-    type NeedsAttentionModal = "renewal" | "failed" | "failedComing" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
+    // `failedComing` retired Jul 2026 — the Coming-up "Failed payments" card
+    // was dropped from the per-type card matrix. The widget-triggered
+    // FailedPaymentsModal (`failedWidget`) still lives on the Performance
+    // tab's Payments-collected chip.
+    type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -607,6 +615,11 @@ export default function AdminDashboard() {
     // buckets, while `today.classes` come from `classBookings` /
     // `classSchedules` already scoped.
     const customerPlans = useAppStore(s => s.customerPlans);
+    // Extra slices used by the Coming-up per-type card set (client Jul 2026):
+    //   • appointmentBookings — occupancy count for private + recovery
+    //   • packages — is_intro_offer flag for the Trials-ending card
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
+    const packages            = useAppStore(s => s.packages);
 
     // Live "Recent activity" feed — derived from bookings, transactions,
     // and customer signups across every surface (customer portal / POS /
@@ -678,6 +691,11 @@ export default function AdminDashboard() {
         const inScope = new Set(scopedCustomers.map(c => c.id));
         return customerPlans.filter(p => inScope.has(p.customerId));
     }, [customerPlans, scopedCustomers, branchScopeId]);
+    // Coming-up occupancy cards (private + recovery) read from these.
+    const scopedAppointments = useMemo(
+        () => branchScopeId ? appointments.filter(a => a.branchId === branchScopeId) : appointments,
+        [appointments, branchScopeId],
+    );
 
     // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
     // for Today, 7799:109180 for Performance). Each tab surfaces its own
@@ -822,15 +840,15 @@ export default function AdminDashboard() {
         const now = Date.now();
         const DAY = 24 * 60 * 60 * 1000;
         const horizonMs = now + comingRange * DAY;
-        // Forward window — future events (bookings, renewals, upcoming
-        // revenue, under-filled schedules).
+        // Forward window — future events (bookings, renewals, expiring
+        // credits/memberships/trials, occupancy).
         const inRange = (iso: string) => {
             const t = new Date(iso).getTime();
             if (Number.isNaN(t)) return false;
             return t >= now && t <= horizonMs;
         };
-        // Backward window — past events still open (failed payments). Same
-        // window size as the pill so the Failed card reacts to Next 7 / 30.
+        // Backward window — projection base for Revenue. Same window size as
+        // the pill so the Revenue estimate scales with Next 7 / 30.
         const pastStartMs = now - comingRange * DAY;
         const inPastRange = (iso: string) => {
             const t = new Date(iso).getTime();
@@ -838,43 +856,85 @@ export default function AdminDashboard() {
             return t >= pastStartMs && t <= now;
         };
 
+        // ── Products ────────────────────────────────────────────────────────
+        const introPackageIds = new Set(
+            packages.filter(p => p.is_intro_offer === true).map(p => p.id),
+        );
+
+        // ── Memberships (kind=membership) ───────────────────────────────────
         const heldMemberships = scopedCustomerPlans.filter(p =>
             p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
         );
-        // 1. Upcoming recurring revenue — sum next-billing AED across
-        //    auto-renewing memberships whose next cycle lands in range.
+        // Recurring revenue — auto-renewals landing in range.
         const upcomingBillingPlans = heldMemberships.filter(p => (p.autoRenew ?? false) && inRange(p.expiryISO ?? ""));
-        const upcomingRevenueAed = upcomingBillingPlans.reduce(
+        const recurringRevenueAed = upcomingBillingPlans.reduce(
+            (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
+        );
+        // Expiring memberships — held memberships whose expiry lands in range
+        // (whether auto-renew or not). Includes their next-billing AED so the
+        // subtitle carries a sense of the recurring value at stake.
+        const expiringMembershipPlans = heldMemberships.filter(p => inRange(p.expiryISO ?? ""));
+        const expiringMembershipsCount = expiringMembershipPlans.length;
+        const expiringMembershipsAed = expiringMembershipPlans.reduce(
             (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
         );
 
-        // 2. Bookings ahead — confirmed future bookings for schedules in range.
+        // ── Credit packages (kind=package) ──────────────────────────────────
+        const heldPackages = scopedCustomerPlans.filter(p =>
+            p.kind === "package" && (p.status === "active" || p.status === "frozen"),
+        );
+        // Expiring credits — package plans whose expiry lands in range.
+        const expiringCreditsCount = heldPackages.filter(p => inRange(p.expiryISO ?? "")).length;
+        // Trials ending — package plans on an intro-flagged package (as defined
+        // by the products module's `is_intro_offer` toggle) whose expiry lands
+        // in range. Reads from the LIVE packages slice so a studio toggling
+        // the intro flag on another SKU changes this card the same render.
+        const trialsEndingCount = heldPackages.filter(p =>
+            p.productId && introPackageIds.has(p.productId) && inRange(p.expiryISO ?? ""),
+        ).length;
+
+        // ── Revenue projection (client Jul 2026 spec) ───────────────────────
+        // Total expected revenue = recurring auto-renewals + past-window
+        // non-recurring sales (as a proxy for the next window's one-off
+        // revenue). The past-window transactions are all `sale`-status
+        // customer_transactions, minus any refund reversal, and NOT the
+        // auto-renewal renewals themselves (would double-count).
+        const pastNonRecurringSalesAed = scopedTransactions.reduce((sum, t) => {
+            if (t.status !== "complete") return sum;
+            if (t.paymentType === "recurring") return sum;
+            if (!inPastRange(t.createdAtISO)) return sum;
+            const isSale = (t.transactionType ?? "sale") === "sale";
+            return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;
+        }, 0);
+        const revenueAed = recurringRevenueAed + pastNonRecurringSalesAed;
+
+        // ── Bookings ────────────────────────────────────────────────────────
+        // Class bookings — confirmed future bookings for schedules in range.
         const scheduleIdsInRange = new Set(
             scopedSchedules.filter(s => inRange(`${s.dateISO}T00:00:00Z`)).map(s => s.id),
         );
-        const bookingsAhead = scopedBookings.filter(b =>
+        const classBookingsCount = scopedBookings.filter(b =>
             b.status === "booked" && scheduleIdsInRange.has(b.classScheduleId),
         ).length;
-
-        // 3. Renewals due — held memberships expiring in range (auto-renew
-        //    or not), plus their recurring value.
-        const renewalsDuePlans = heldMemberships.filter(p => inRange(p.expiryISO ?? ""));
-        const renewalsDueCount = renewalsDuePlans.length;
-        const renewalsDueAed = renewalsDuePlans.reduce(
-            (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
+        // Appointment bookings — split by type for private / recovery slots.
+        // Match by `appointmentId` → appointment.type so we only count bookings
+        // whose parent appointment lands in the coming window.
+        const appointmentsInRange = scopedAppointments.filter(a => inRange(`${a.dateISO}T00:00:00Z`));
+        const apptIdsInRange = new Set(appointmentsInRange.map(a => a.id));
+        const apptById = new Map(scopedAppointments.map(a => [a.id, a] as const));
+        const activeApptBookings = appointmentBookings.filter(b =>
+            b.status === "Booked" && apptIdsInRange.has(b.appointmentId),
         );
+        const bookingsCountByType = (t: "private" | "recovery"): number =>
+            activeApptBookings.filter(b => (apptById.get(b.appointmentId)?.type ?? "") === t).length;
+        // Total bookings for the "All" card = classes + private + recovery
+        // appointment bookings in the coming window.
+        const bookingsAllCount = classBookingsCount
+            + bookingsCountByType("private")
+            + bookingsCountByType("recovery");
 
-        // 4. Failed payments — failed transactions in the past N-day window
-        //    (rolling with the pill). Opens its own "failedComing" modal so
-        //    the Coming-up window (comingRange) stays independent of the
-        //    Today tab's Needs-attention 24h failed row.
-        const failedTxns = scopedTransactions.filter(t =>
-            t.status === "failed" && inPastRange(t.createdAtISO),
-        );
-        const failedAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
-
-        // At-risk clients — same 14-30 day silent-window as Needs-attention.
-        //    Range-independent (it's a bucket, not a horizon).
+        // ── At-risk clients (14-30 day silent window) ───────────────────────
+        // Range-independent — always the same silent-window bucket.
         const clientsAtRisk = scopedCustomers.filter(c => {
             if (c.status !== "active") return false;
             if (!c.lastVisitISO) return false;
@@ -884,9 +944,8 @@ export default function AdminDashboard() {
             return daysAgo >= 14 && daysAgo <= 30;
         }).length;
 
-        // 6. Under-filled classes — schedules in range with < 50% capacity.
-        //    Matches the UnderFilledModal filter (status Upcoming|Ongoing +
-        //    same date window) so count + list agree at both pill settings.
+        // ── Under-filled classes ────────────────────────────────────────────
+        // Same filter as UnderFilledModal so the count + list agree.
         const underFilledInRange = scopedSchedules.filter(s =>
             (s.status === "Upcoming" || s.status === "Ongoing")
             && inRange(`${s.dateISO}T00:00:00Z`)
@@ -894,49 +953,119 @@ export default function AdminDashboard() {
             && (s.booked / s.capacity) < 0.5,
         ).length;
 
-        return [
-            {
-                label: "Upcoming recurring revenue",
-                value: `AED ${upcomingRevenueAed.toLocaleString("en-US")}`,
-                change: 3, positive: true, comparison: "expected vs last month",
-                icon: CurrencyDollar,
-            },
-            {
-                label: "Bookings ahead",
-                value: `${bookingsAhead.toLocaleString("en-US")} booked`,
-                change: 3, positive: true, comparison: `pace vs prior ${comingRange} days`,
-                icon: Calendar,
-            },
-            {
-                label: "Renewals due",
-                value: `${renewalsDueCount} ${renewalsDueCount === 1 ? "member" : "members"}`,
-                comparison: `AED ${renewalsDueAed.toLocaleString("en-US")} recurring`,
-                icon: RefreshCw01,
-                onClick: () => setAttentionModal("renewal"),
-            },
-            {
-                label: "Failed payments",
-                value: `${failedTxns.length} · AED ${failedAed.toLocaleString("en-US")}`,
-                comparison: "Recoverable now",
-                icon: CreditCard01,
-                onClick: () => setAttentionModal("failedComing"),
-            },
-            {
-                label: "At-risk clients",
-                value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
-                comparison: "no visit 14-30 days",
-                icon: UserX01,
-                onClick: () => setAttentionModal("atrisk"),
-            },
-            {
-                label: "Under filled classes",
-                value: `${underFilledInRange} ${underFilledInRange === 1 ? "class" : "classes"}`,
-                comparison: "below 50% capacity",
-                icon: CalendarCheck01,
-                onClick: () => setAttentionModal("underfilled"),
-            },
-        ];
-    }, [comingRange, scopedCustomerPlans, scopedSchedules, scopedBookings, scopedTransactions, scopedCustomers]);
+        // ── Occupancy per type ─────────────────────────────────────────────
+        // Sum booked / capacity across the sessions of that type in range.
+        const classSchedulesInRange = scopedSchedules.filter(s =>
+            inRange(`${s.dateISO}T00:00:00Z`),
+        );
+        const classOccupancy = {
+            booked:   classSchedulesInRange.reduce((s, x) => s + (x.booked ?? 0), 0),
+            capacity: classSchedulesInRange.reduce((s, x) => s + (x.capacity ?? 0), 0),
+        };
+        const privateApptsInRange = appointmentsInRange.filter(a => a.type === "private");
+        const privateOccupancy = {
+            booked:   privateApptsInRange.reduce((s, x) => s + (x.booked ?? 0), 0),
+            capacity: privateApptsInRange.reduce((s, x) => s + (x.capacity ?? 0), 0),
+        };
+        const recoveryApptsInRange = appointmentsInRange.filter(a => a.type === "recovery");
+        const recoveryOccupancy = {
+            booked:   recoveryApptsInRange.reduce((s, x) => s + (x.booked ?? 0), 0),
+            capacity: recoveryApptsInRange.reduce((s, x) => s + (x.capacity ?? 0), 0),
+        };
+        const occupancyPct = (o: { booked: number; capacity: number }): number =>
+            o.capacity > 0 ? Math.round((o.booked / o.capacity) * 100) : 0;
+
+        // ── Build cards per type ────────────────────────────────────────────
+        const revenueCard: DashboardMetric = {
+            label: "Revenue",
+            value: `AED ${revenueAed.toLocaleString("en-US")}`,
+            change: 3, positive: true, comparison: "expected vs last month",
+            icon: CurrencyDollar,
+        };
+        const recurringRevenueCard: DashboardMetric = {
+            label: "Recurring revenue",
+            value: `AED ${recurringRevenueAed.toLocaleString("en-US")}`,
+            change: 3, positive: true, comparison: "expected vs last month",
+            icon: CurrencyDollar,
+        };
+        const bookingsCard = (n: number): DashboardMetric => ({
+            label: "Bookings",
+            value: `${n.toLocaleString("en-US")} booked`,
+            change: 3, positive: true, comparison: `pace vs prior ${comingRange} days`,
+            icon: Calendar,
+        });
+        const expiringMembershipsCard: DashboardMetric = {
+            label: "Expiring memberships",
+            value: `${expiringMembershipsCount} ${expiringMembershipsCount === 1 ? "member" : "members"}`,
+            comparison: `AED ${expiringMembershipsAed.toLocaleString("en-US")} recurring`,
+            icon: RefreshCw01,
+            onClick: () => setAttentionModal("renewal"),
+        };
+        const atRiskCard: DashboardMetric = {
+            label: "At-risk clients",
+            value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
+            comparison: "no visit 14-30 days",
+            icon: UserX01,
+            onClick: () => setAttentionModal("atrisk"),
+        };
+        const underFilledCard: DashboardMetric = {
+            label: "Under filled classes",
+            value: `${underFilledInRange} ${underFilledInRange === 1 ? "class" : "classes"}`,
+            comparison: "below 50% capacity",
+            icon: CalendarCheck01,
+            onClick: () => setAttentionModal("underfilled"),
+        };
+        const expiringCreditsCard: DashboardMetric = {
+            label: "Expiring credits",
+            value: `${expiringCreditsCount} ${expiringCreditsCount === 1 ? "package" : "packages"}`,
+            comparison: `within next ${comingRange} days`,
+            icon: CreditCard01,
+        };
+        const trialsEndingCard: DashboardMetric = {
+            label: "Trials ending",
+            value: `${trialsEndingCount} ${trialsEndingCount === 1 ? "client" : "clients"}`,
+            comparison: `within next ${comingRange} days`,
+            icon: UserX01,
+        };
+        const occupancyCard = (
+            occ: { booked: number; capacity: number },
+            unit: "spot" | "slot",
+        ): DashboardMetric => ({
+            label: "Occupancy",
+            value: `${occ.booked}/${occ.capacity} ${occ.capacity === 1 ? unit : `${unit}s`}`,
+            comparison: `${occupancyPct(occ)}% filled`,
+            icon: CalendarCheck01,
+        });
+
+        switch (comingType) {
+            case "class":
+                return [
+                    revenueCard, recurringRevenueCard, bookingsCard(classBookingsCount),
+                    expiringMembershipsCard, atRiskCard, underFilledCard,
+                    expiringCreditsCard, trialsEndingCard,
+                    occupancyCard(classOccupancy, "spot"),
+                ];
+            case "private":
+                return [
+                    revenueCard, bookingsCard(bookingsCountByType("private")),
+                    expiringMembershipsCard, atRiskCard,
+                    expiringCreditsCard,
+                    occupancyCard(privateOccupancy, "slot"),
+                ];
+            case "recovery":
+                return [
+                    revenueCard, bookingsCard(bookingsCountByType("recovery")),
+                    atRiskCard, expiringCreditsCard,
+                    occupancyCard(recoveryOccupancy, "slot"),
+                ];
+            case "":
+            default:
+                return [
+                    revenueCard, bookingsCard(bookingsAllCount),
+                    atRiskCard, expiringCreditsCard,
+                ];
+        }
+    }, [comingRange, comingType, scopedCustomerPlans, scopedSchedules, scopedBookings, scopedTransactions, scopedCustomers, scopedAppointments, appointmentBookings, packages]);
 
     // Pick the strip that matches the active tab. `metrics` stays the
     // stable public name (used by CSV export + a couple of downstream
@@ -1159,6 +1288,35 @@ export default function AdminDashboard() {
                                     key={t || "all"}
                                     type="button"
                                     onClick={() => setTypeFilter(t as SessionType | "")}
+                                    aria-pressed={active}
+                                    className={cn(
+                                        "h-10 px-3.5 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                                        active
+                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                            : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Coming-up session-type pills — same chrome as the Today
+                    pills so the whole app's filter language reads consistently
+                    (client Jul 2026). Wired to `comingType` so each type has
+                    its own metric-card set per the brief. */}
+                {activeTab === "coming" && (
+                    <div className="flex items-center gap-2 h-10">
+                        {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
+                            const label = t === "" ? "All" : SESSION_TYPE_LABEL[t];
+                            const active = comingType === t;
+                            return (
+                                <button
+                                    key={t || "all"}
+                                    type="button"
+                                    onClick={() => setComingType(t as SessionType | "")}
                                     aria-pressed={active}
                                     className={cn(
                                         "h-10 px-3.5 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
@@ -1541,14 +1699,9 @@ export default function AdminDashboard() {
                    payments recoverable now" row's rolling 24h count. */
                 pastRangeDays={1}
             />
-            <FailedPaymentsModal
-                open={attentionModal === "failedComing"}
-                onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
-                /* Coming-up window — matches the Coming-up "Failed payments"
-                   card's rolling Next 7 / 30 day count. */
-                pastRangeDays={comingRange}
-            />
+            {/* `failedComing` FailedPaymentsModal removed Jul 2026 — the
+                Coming-up "Failed payments" card was dropped from the per-type
+                card matrix, and no other surface routes to it. */}
             <FailedPaymentsModal
                 open={attentionModal === "failedWidget"}
                 onClose={() => setAttentionModal(null)}
