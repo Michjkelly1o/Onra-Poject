@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG } from "./widget-catalog";
 import { useAppStore } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
+import { dateFilterToRange } from "@/lib/period-filter";
 import {
     LineChart, Line, BarChart, Bar, ComposedChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip,
@@ -81,12 +82,18 @@ const STATIC: Record<string, object[]> = {
         { band: "PM",  Mon: 60, Tue: 60, Wed: 10, Thu: 50, Fri: 40, Sat: 30, Sun: 80 },
         { band: "EVE", Mon: 80, Tue: 50, Wed:  5, Thu: 30, Fri: 10, Sat: 40, Sun: 90 },
     ],
-    // Intro → member funnel (Jul 2026, Figma 19073:15583 series) —
-    // 3-bar % funnel showing trial → return → plan progression.
+    // Intro → member funnel — horizontal labeled bars sized by CLIENT COUNT
+    // (client Jul 2026 — the % model let later stages exceed earlier ones,
+    // which is impossible for a funnel). Data model: `count` is the number
+    // of unique clients that hit each stage. Each stage is a strict subset
+    // of the previous stage, so `Returned ≤ Tried an intro` and `Bought a
+    // plan ≤ Returned` by construction. Percentages are derived at render
+    // time as `count / count[0] × 100`; the intermediate "% came back / %
+    // converted" captions between bars come from `count[i] / count[i-1]`.
     "intro-member-funnel": [
-        { stage: "Bought intro",  sublabel: "trial / drop-in",       v: 66 },
-        { stage: "Returned",      sublabel: "came back 2nd+ time",   v: 32 },
-        { stage: "Bought a plan", sublabel: "membership or pack",    v: 77 },
+        { stage: "Tried an intro", sublabel: "trial / drop-in",   count: 120 },
+        { stage: "Returned",       sublabel: "booked a 2nd+ visit", count: 46 },
+        { stage: "Bought a plan",  sublabel: "membership or pack", count: 28 },
     ],
 };
 
@@ -259,7 +266,7 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "attendance-overview":  { headers: ["Date", "Visits", "Cancellations", "No-show"], fields: ["date", "visits", "cancellations", "noShow"] },
     "class-by-popularity":  { headers: ["Class", "Instructor", "Bookings", "Occupancy (%)"], fields: ["name", "instructor", "bookings", "occupancy"] },
     "attendance-heatmap":   { headers: ["Time band", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], fields: ["band", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] },
-    "intro-member-funnel":  { headers: ["Stage", "Sublabel", "Percentage"], fields: ["stage", "sublabel", "v"] },
+    "intro-member-funnel":  { headers: ["Stage", "Sublabel", "Count", "% of top"], fields: ["stage", "sublabel", "count", "pctOfTop"] },
 };
 
 function buildSeries(id: string, period: DateFilter): object[] {
@@ -369,6 +376,31 @@ function branchScaleFor(branchId: string | undefined, activeBranchIds: string[])
     return weights[idx] / sum;
 }
 
+/** Aggregate failed customer transactions for the payments-collected widget's
+ *  header chip. Filters by branch + selected period, matching the shape the
+ *  FailedPaymentsModal uses so the chip's "N failed · AED X" and the modal's
+ *  list always show the same numbers. */
+function computeFailedPaymentsStats(
+    transactions: Array<import("@/lib/store").CustomerTransaction>,
+    branchId: string | undefined,
+    period: DateFilter,
+): { count: number; amountAed: number } {
+    const range = dateFilterToRange(period);
+    const from = range.from.getTime();
+    const to   = range.to.getTime();
+    let count = 0;
+    let amountAed = 0;
+    for (const t of transactions) {
+        if (t.status !== "failed") continue;
+        if (branchId && t.branchId !== branchId) continue;
+        const ts = new Date(t.createdAtISO).getTime();
+        if (Number.isNaN(ts) || ts < from || ts > to) continue;
+        count += 1;
+        amountAed += Math.abs(t.amountAed);
+    }
+    return { count, amountAed };
+}
+
 /** Scale every numeric field in a chart-ready row by `factor`, leave strings
  *  (labels, dates, colors) untouched. Returns the same row when factor is 1. */
 function scaleRows(rows: object[], factor: number): object[] {
@@ -389,7 +421,18 @@ function scaleRows(rows: object[], factor: number): object[] {
     });
 }
 
-function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_PERIOD, branchScale: number = 1): React.ReactNode {
+function renderChart(
+    id: string,
+    size: ChartSize,
+    period: DateFilter = DEFAULT_PERIOD,
+    branchScale: number = 1,
+    /** Payments-collected widget only — real failed-payments count + AED for
+     *  the header chip, sourced from the store so the chip and the modal
+     *  never disagree. */
+    failedStats: { count: number; amountAed: number } | null = null,
+    /** Payments-collected widget only — click handler for the failed chip. */
+    onOpenFailedPayments?: () => void,
+): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
     const data = scaleRows(STATIC[id] ?? buildSeries(id, period), branchScale);
@@ -401,36 +444,42 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
     switch (id) {
         case "payments-collected": {
             // Merged widget (client Jul 2026 — retired the separate
-            // `payments-status` widget). Header carries a red chip with the
-            // failed totals + a "this period" AED headline; chart overlays a
-            // collected AED area with small red failed-count bars underneath
-            // (bars share the axis but sit low so the line's silhouette
-            // stays readable).
+            // `payments-status` widget). Header carries a small red chip with
+            // the failed totals (clickable → FailedPaymentsModal) + a compact
+            // "this period" AED headline; chart overlays a collected AED area
+            // with small red failed-count bars underneath.
             //
-            // The chip acts as the widget's action affordance — clicking it
-            // opens the failed-payments list; wire-up is deferred until the
-            // failed-payments modal is refactored (dashboard router change).
+            // Failed count + AED come from the LIVE store (`failedStats`) —
+            // the seed's per-day `failed` array only drives the tiny bar
+            // silhouette in the chart. That way the chip's numbers always
+            // agree with what the FailedPaymentsModal will list on click.
             const rows = data as Array<{ date: string; v: number; failed?: number; failedAmount?: number }>;
             const totalCollected = rows.reduce((s, r) => s + (r.v ?? 0), 0);
-            const failedCount    = rows.reduce((s, r) => s + (r.failed ?? 0), 0);
-            const failedAmount   = rows.reduce((s, r) => s + (r.failedAmount ?? 0), 0);
+            const failedCount    = failedStats?.count     ?? 0;
+            const failedAmount   = failedStats?.amountAed ?? 0;
+            const ChipTag = onOpenFailedPayments ? "button" : "div";
             return (
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         {failedCount > 0 ? (
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-1.5 bg-[#fef3f2] border-1 border-[#fecdca] rounded-full px-3 py-1 hover:bg-[#fee4e2] transition-colors"
+                            <ChipTag
+                                {...(onOpenFailedPayments ? { type: "button" as const, onClick: onOpenFailedPayments } : {})}
+                                className={cn(
+                                    "inline-flex items-center gap-1 bg-[#fef3f2] border-1 border-[#fecdca] rounded-full px-2.5 py-0.5 transition-colors",
+                                    onOpenFailedPayments && "hover:bg-[#fee4e2] cursor-pointer",
+                                )}
                             >
-                                <span className="text-[13px] font-medium text-[#b42318]">
+                                <span className="text-[12px] font-medium text-[#b42318]">
                                     {failedCount} failed · {aedMoney(failedAmount)}
                                 </span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[#b42318]" />
-                            </button>
+                                {onOpenFailedPayments && (
+                                    <ArrowRight className="w-3 h-3 text-[#b42318]" />
+                                )}
+                            </ChipTag>
                         ) : <span />}
                         <div className="text-right">
-                            <p className="text-[20px] font-semibold text-[#101828] leading-tight">{aedMoney(totalCollected)}</p>
-                            <p className="text-[12px] text-[#667085]">this period</p>
+                            <p className="text-[16px] font-semibold text-[#101828] leading-tight">{aedMoney(totalCollected)}</p>
+                            <p className="text-[11px] text-[#667085]">this period</p>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={h}>
@@ -813,62 +862,57 @@ function renderChart(id: string, size: ChartSize, period: DateFilter = DEFAULT_P
 
         // ── Intro → member funnel (Memberships) ──────────────────────
         //
-        // 3-bar Recharts BarChart tinted sage-green, percentage Y-axis,
-        // two-line X-axis labels (title over sublabel) driven by a
-        // custom tick renderer.
+        // Client Jul 2026 rewrite — the old Recharts % bars let later stages
+        // exceed earlier ones (impossible for a funnel). New layout: three
+        // horizontal labeled bars sized proportionally to CLIENT COUNTS so
+        // Returned ≤ Tried and Bought ≤ Returned by construction. Between
+        // stages, small pill captions surface the step-to-step conversion
+        // ("38% came back", "61% converted") — matches the Figma
+        // 19073:15583 series.
         case "intro-member-funnel": {
-            const rows = data as { stage: string; sublabel: string; v: number }[];
+            const rows = data as { stage: string; sublabel: string; count: number }[];
+            const top = rows[0]?.count ?? 0;
+            const stepCaption = ["came back", "converted"];
             return (
-                <ResponsiveContainer width="100%" height={h}>
-                    <BarChart data={rows} barCategoryGap="35%" margin={{ top: 8, right: 8, bottom: 24, left: 0 }}>
-                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
-                        <XAxis
-                            dataKey="stage"
-                            {...axisProps}
-                            interval={0}
-                            tick={(props) => {
-                                const { x, y, payload } = props as { x: number; y: number; payload: { value: string } };
-                                const row = rows.find(r => r.stage === payload.value);
-                                return (
-                                    <g transform={`translate(${x},${y})`}>
-                                        <text x={0} y={0} dy={12} textAnchor="middle" fill="#475467" fontSize={12} fontWeight={500}>
-                                            {payload.value}
-                                        </text>
-                                        {row?.sublabel && (
-                                            <text x={0} y={0} dy={28} textAnchor="middle" fill="#98a2b3" fontSize={11}>
-                                                {row.sublabel}
-                                            </text>
-                                        )}
-                                    </g>
-                                );
-                            }}
-                        />
-                        <YAxis
-                            {...axisProps}
-                            width={40}
-                            domain={[0, 100]}
-                            ticks={[0, 20, 40, 60, 80, 100]}
-                            tickFormatter={(v: number) => `${v}%`}
-                        />
-                        <Tooltip
-                            content={({ active, payload }) => {
-                                if (!active || !payload?.length) return null;
-                                const row = payload[0].payload as { stage: string; v: number };
-                                return (
-                                    <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[140px]">
-                                        <p className="font-semibold text-[#101828] mb-1">{row.stage}</p>
-                                        <p className="flex items-center gap-1.5">
-                                            <span className="text-[#475467]">Total percentage</span>
-                                            <span className="font-medium text-[#101828]">{row.v}%</span>
-                                        </p>
+                <div className="flex flex-col gap-3">
+                    {rows.map((row, i) => {
+                        const pctOfTop = top > 0 ? Math.round((row.count / top) * 100) : 0;
+                        const barWidth = top > 0 ? Math.max(4, (row.count / top) * 100) : 0;
+                        const prev = rows[i - 1];
+                        const stepPct = prev && prev.count > 0
+                            ? Math.round((row.count / prev.count) * 100)
+                            : 0;
+                        return (
+                            <div key={row.stage} className="flex flex-col gap-2">
+                                {/* Between-stage caption — arrow + mint pill */}
+                                {i > 0 && (
+                                    <div className="flex items-center gap-2 pl-[180px]">
+                                        <span className="text-[#98a2b3] text-[13px]">↓</span>
+                                        <span className="inline-flex items-center bg-[#f1f5f0] border-1 border-[#e4e7ec] rounded-full px-2.5 py-0.5 text-[12px] font-medium text-[#475467]">
+                                            {stepPct}% {stepCaption[i - 1] ?? ""}
+                                        </span>
                                     </div>
-                                );
-                            }}
-                            cursor={{ fill: "#f9fafb" }}
-                        />
-                        <Bar dataKey="v" name="Percentage" fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={48} />
-                    </BarChart>
-                </ResponsiveContainer>
+                                )}
+                                {/* Stage row — label left, bar right */}
+                                <div className="flex items-center gap-4">
+                                    <div className="w-[168px] shrink-0">
+                                        <p className="text-[14px] font-semibold text-[#101828] leading-tight">{row.stage}</p>
+                                        <p className="text-[12px] text-[#98a2b3] leading-tight mt-0.5">{row.sublabel}</p>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div
+                                            className="h-9 rounded-[8px] bg-[#dcefe4] flex items-center px-3 gap-2"
+                                            style={{ width: `${barWidth}%` }}
+                                        >
+                                            <span className="text-[14px] font-semibold text-[#194b30]">{row.count}</span>
+                                            <span className="text-[12px] text-[#658774]">{pctOfTop}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             );
         }
 
@@ -931,6 +975,11 @@ interface DashboardWidgetCardProps {
     action?: "add" | "kebab";
     onAdd?: () => void;
     onRemove?: () => void;
+    /** Payments-collected widget only — click handler for the red "N failed"
+     *  chip in the header. Wired by the dashboard page to open the shared
+     *  FailedPaymentsModal. When omitted, the chip renders as a static badge
+     *  (still displays the count + AED figures). */
+    onOpenFailedPayments?: () => void;
     /** Show a `DotsGrid` drag handle to the left of the title — same icon
      *  the Branding portal preferences menu-bar uses (see
      *  `CustomizePortalPanel`). Communicates "this card can be dragged to
@@ -944,7 +993,7 @@ interface DashboardWidgetCardProps {
     className?: string;
 }
 
-export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd, onRemove, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
+export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd, onRemove, onOpenFailedPayments, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
     const meta = WIDGET_CATALOG.find(w => w.id === widgetId);
     // Every active branch's id, in stable seed order — feeds the deterministic
     // per-branch share used by `branchScaleFor(...)`. Inactive / archived
@@ -953,6 +1002,16 @@ export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd,
         s.branches.filter(b => b.status === "active").map(b => b.id),
     );
     const branchScale = branchScaleFor(branchId, activeBranchIds);
+    // Real failed-payments figures for the payments-collected chip. Reads from
+    // the same slice + filter shape the FailedPaymentsModal uses so the chip
+    // and the modal always agree on "N failed · AED X". Only computed on the
+    // payments-collected widget — every other id skips the read entirely.
+    const customerTransactions = useAppStore(s =>
+        widgetId === "payments-collected" ? s.customerTransactions : null,
+    );
+    const failedStats = widgetId === "payments-collected" && customerTransactions
+        ? computeFailedPaymentsStats(customerTransactions, branchId, period ?? DEFAULT_PERIOD)
+        : null;
     if (!meta) return null;
 
     return (
@@ -999,7 +1058,7 @@ export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd,
             </div>
             {/* Chart */}
             <div className="min-w-0">
-                {renderChart(widgetId, "full", period, branchScale)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments)}
             </div>
         </div>
     );

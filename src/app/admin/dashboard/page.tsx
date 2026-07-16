@@ -8,7 +8,6 @@ import {
     ArrowUp,
     ArrowDown,
     MarkerPin01,
-    Tag01,
     CalendarCheck01,
     BarChartSquare01,
     Plus,
@@ -35,6 +34,7 @@ import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS, SESSION_TYPE_TAG_LABEL } from "@/lib/session-type";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { dateFilterToRange } from "@/lib/period-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
 import {
     RenewalDueModal,
@@ -178,19 +178,29 @@ function exportPerformanceCsv(
 function PerformanceTab({
     activeWidgets,
     period,
+    branchId,
     onRemoveWidget,
     onReorderWidgets,
     onOpenModal,
+    onOpenFailedPayments,
     allWidgetsActive,
 }: {
     activeWidgets: string[];
     period: DateFilter;
+    /** Branch scope — threaded through so widgets like Payments collected can
+     *  filter their failed-payments chip to the active branch. `null` = "All
+     *  locations" (aggregate across every branch). */
+    branchId: string | null;
     onRemoveWidget: (id: string) => void;
     /** Swap widgets at `fromIndex` and `toIndex` in the active list.
      *  Called by the native HTML5 drag-and-drop handlers below — no
      *  external dnd library required. */
     onReorderWidgets: (fromIndex: number, toIndex: number) => void;
     onOpenModal: () => void;
+    /** Click handler for the payments-collected widget's failed chip —
+     *  opens the shared FailedPaymentsModal so the chip and modal always
+     *  read the same numbers. */
+    onOpenFailedPayments: () => void;
     /** When every widget in the catalogue is already on the
      *  dashboard, hide the dashed "Add widget" tile — clicking it
      *  would open an empty picker. Client review Jul 2026. */
@@ -245,8 +255,10 @@ function PerformanceTab({
                     <DashboardWidgetCard
                         widgetId={id}
                         period={period}
+                        branchId={branchId ?? undefined}
                         action="kebab"
                         dragHandle
+                        onOpenFailedPayments={onOpenFailedPayments}
                         onDragStart={(e) => {
                             setDragIndex(idx);
                             // Some browsers require dataTransfer to be set
@@ -536,7 +548,7 @@ export default function AdminDashboard() {
     // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
     // 245665 / 246710). Renewal + Expire cards share the Renewal-due
     // modal per client Jul 2026.
-    type NeedsAttentionModal = "renewal" | "failed" | "failedComing" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
+    type NeedsAttentionModal = "renewal" | "failed" | "failedComing" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -1097,21 +1109,34 @@ export default function AdminDashboard() {
                     width="w-[220px]"
                 />
 
-                {/* Session-type picker — Today tab only. Sits beside the
-                    location dropdown. Re-scopes the session-based tiles
-                    (Bookings, Occupancy) + the Today's-sessions list. */}
+                {/* Session-type picker — Today tab only. Pills row (client
+                    Jul 2026 — was a SelectInput dropdown). Selected pill uses
+                    the multi-select mint palette (`#e9fff3` / `#7ba08c`) the
+                    filter panels use so the whole app's filter language reads
+                    consistently. Sits beside the location dropdown. */}
                 {activeTab === "today" && (
-                    <SelectInput
-                        triggerIcon={<Tag01 className="w-5 h-5" />}
-                        placeholder="All types"
-                        options={[
-                            { value: "", label: "All types" },
-                            ...SESSION_TYPE_ORDER.map(t => ({ value: t, label: SESSION_TYPE_LABEL[t] })),
-                        ]}
-                        value={typeFilter}
-                        onChange={(v) => setTypeFilter(v as SessionType | "")}
-                        width="w-[200px]"
-                    />
+                    <div className="flex items-center gap-2 h-10">
+                        {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
+                            const label = t === "" ? "All" : SESSION_TYPE_LABEL[t];
+                            const active = typeFilter === t;
+                            return (
+                                <button
+                                    key={t || "all"}
+                                    type="button"
+                                    onClick={() => setTypeFilter(t as SessionType | "")}
+                                    aria-pressed={active}
+                                    className={cn(
+                                        "h-8 px-3 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap",
+                                        active
+                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 )}
 
                 {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
@@ -1200,6 +1225,8 @@ export default function AdminDashboard() {
                 <PerformanceTab
                     activeWidgets={activeWidgets}
                     period={period}
+                    branchId={branchScopeId}
+                    onOpenFailedPayments={() => setAttentionModal("failedWidget")}
                     onRemoveWidget={handleRemoveWidget}
                     onReorderWidgets={(fromIndex, toIndex) => {
                         // Reorder via splice + setState — same semantics as
@@ -1474,6 +1501,17 @@ export default function AdminDashboard() {
                 /* Coming-up window — matches the Coming-up "Failed payments"
                    card's rolling Next 7 / 30 day count. */
                 pastRangeDays={comingRange}
+            />
+            <FailedPaymentsModal
+                open={attentionModal === "failedWidget"}
+                onClose={() => setAttentionModal(null)}
+                branchId={branchScopeId}
+                /* Payments-collected widget window — scope the modal to the
+                   same period bounds the widget's chip aggregates over so the
+                   list count and the chip's number always agree. Widget
+                   period is week/month/etc; we approximate by using its span
+                   in whole days (min 1). */
+                pastRangeDays={Math.max(1, Math.round((dateFilterToRange(period).to.getTime() - dateFilterToRange(period).from.getTime()) / 86400000))}
             />
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}
