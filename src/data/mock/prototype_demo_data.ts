@@ -1231,31 +1231,18 @@ const REF_SPECS: RefSpec[] = [
     { referrerIdx: 5, referredName: "Hannah Mitchell", referredEmail: "hannah.m@example.com",  daysAgo: 45, benefitCredits: 0 },
 ];
 
-// v56 — alternating reward-kind stamp so the customer-detail Referrals
-// tab's new "Rewards earned" card always demos BOTH lines populated:
-// odd-indexed rows pay class credits (free_credits), even-indexed rows
-// pay account credits (wallet_credit @ AED 50 per class credit
-// equivalent). Zero-credit rows keep the default (free_credits, 0) — no
-// reward paid means no line contribution.
-const REWARD_TYPES: Array<"free_credits" | "wallet_credit"> = [
-    "free_credits", "wallet_credit", "free_credits",
-    "wallet_credit", "free_credits", "wallet_credit",
-];
-
+// Studio-single-type invariant (client Jul 2026): the studio's referral is
+// Class Credit only, so every historical referral row also pays class
+// credits — no more mixed types. Was an alternating class/wallet stamp
+// under the v56 model; retired.
 export const DEMO_NOW_REFERRALS: CustomerReferral[] = REF_SPECS.map((r, idx) => ({
     id: `ref_demo_${String(idx + 1).padStart(3, "0")}`,
     referrer_customer_id: CUSTOMERS[r.referrerIdx],
     referred_name: r.referredName,
     referred_email: r.referredEmail,
     benefit_credits: r.benefitCredits,
-    benefit_type: REWARD_TYPES[idx],
-    // Amount rule: class-credit rows use benefitCredits directly (spec's
-    // credit count). Account-credit rows convert to AED at AED 50 per
-    // credit — matches the sample referrer-earn amount in the seed
-    // referral settings so class + account totals feel balanced.
-    benefit_amount: REWARD_TYPES[idx] === "wallet_credit"
-        ? r.benefitCredits * 50
-        : r.benefitCredits,
+    benefit_type: "free_credits" as const,
+    benefit_amount: r.benefitCredits,
     referred_at: isoStamp(daysAgo(r.daysAgo)),
     // Expiry = referred_at + 90 days (the seeded
     // referral_settings.earned_reward_expiry_days). Demo rows aren't
