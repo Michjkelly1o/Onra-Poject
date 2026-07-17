@@ -484,7 +484,7 @@ function OccupancyCard({ byType, selected, typeFilter }: {
             {typeFilter ? (
                 <>
                     <p className="font-semibold text-xl text-[#101828] leading-[28px]">{selected}%</p>
-                    <p className="font-normal text-xs text-[#667085]">avg fill today</p>
+                    <p className="font-normal text-xs text-[#667085]">avg fill</p>
                 </>
             ) : (
                 <div className="flex flex-col gap-1 w-full">
@@ -795,11 +795,14 @@ export default function AdminDashboard() {
                 change: 2, positive: false, comparison: "vs yesterday",
                 icon: UserPlus01,
             },
-            // Bookings today — type-aware (from the merged session feed), so
+            // Bookings — type-aware (from the merged session feed), so
             // picking a type filter recomputes it. Occupancy is rendered as a
             // dedicated OccupancyCard (3-way split on All) below the strip.
+            // Label drops the "today" prefix (client Jul 2026 audit —
+            // metric titles don't carry the tab's time scope, which the tab
+            // context already provides).
             {
-                label: "Bookings today",
+                label: "Bookings",
                 value: sessionMetrics.bookingsToday.toLocaleString("en-US"),
                 change: 1, positive: false, comparison: "vs yesterday",
                 icon: TrendUp01,
