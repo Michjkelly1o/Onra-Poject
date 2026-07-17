@@ -11,7 +11,11 @@
 //
 //   Business    → Business & locations · Branding
 //   Operations  → Booking rules · Tax · Integrations
-//   Customer    → Customer notifications · Freeze policy · Agreements
+//   Customer    → Customer notifications · Agreements
+//
+// Freeze policy retired Jul 2026 — the summary card moved under Booking
+// rules (alongside Cancellation policy). Same `freezePolicy` store slice
+// + same `FreezePolicyPanel` — only the entry point moved.
 //
 // Two pages stay OUT of the groups (per client):
 //   • Referral program (`/admin/settings/referral`) — lives in the Marketing
@@ -69,7 +73,8 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
         icon: Users01,
         tabs: [
             { label: "Customer notifications", href: "/admin/settings/notifications"  },
-            { label: "Freeze policy",          href: "/admin/settings/freeze-policy"   },
+            // Freeze policy tab retired Jul 2026 — the settings card moved
+            // under Booking rules (alongside Cancellation policy).
             { label: "Agreements",             href: "/admin/settings/agreements"      },
         ],
     },
