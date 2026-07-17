@@ -10,15 +10,19 @@
 // action zone (Cancel booking / Rate class / none). Cancelled & No-show grayscale
 // the cover and show no action.
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { ChevronLeft } from "@untitledui/icons";
+import { useAppStore } from "@/lib/store";
+import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { BOOKING_STATUS, useBookingDetail, useClassReviews, useHasRated } from "@/lib/customer/bookings-data";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { BookingStatusCard } from "@/components/customer/bookings/BookingStatusCard";
 import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
 import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
+import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
 import { Button } from "@/components/ui/button";
 
 export default function BookingDetailPage() {
@@ -28,6 +32,10 @@ export default function BookingDetailPage() {
     const vm = useBookingDetail(bookingId);
     const reviews = useClassReviews(vm?.detail.id ?? "");
     const hasRated = useHasRated(vm?.detail.id ?? "");
+    const [cancelOpen, setCancelOpen] = useState(false);
+    const cancelClassBooking = useAppStore((st) => st.cancelClassBooking);
+    const updateAttendance = useAppStore((st) => st.updateAttendance);
+    const showToast = useAppStore((st) => st.showToast);
 
     if (!vm) {
         return (
@@ -54,6 +62,32 @@ export default function BookingDetailPage() {
     }
 
     const { detail, viewStatus, tab, spot, booking } = vm;
+
+    // Cancel outcome: waitlist (no credit) · on-time ≥24h (credit refunded) ·
+    // late <24h (credit forfeited). Confirmed via the bottom sheet, then → Past.
+    const isWaitlist = viewStatus === "waitlisted";
+    const startMs = new Date(`${detail.dateISO}T${detail.startTime}:00`).getTime();
+    const nowMs = new Date(`${REAL_TODAY_ISO}T00:00:00`).getTime();
+    const isLate = !isWaitlist && (startMs - nowMs) / 3_600_000 < 24;
+    const cancelCopy = isWaitlist
+        ? { title: "Leave this class?", description: "This will remove you from the waitlist.", confirmLabel: "Yes, leave waitlist", refundNote: undefined as string | undefined }
+        : isLate
+          ? { title: "Cancel this class?", description: "This cancellation is within 24 hours. Your credit will not be returned to your package.", confirmLabel: "Yes, cancel booking", refundNote: undefined as string | undefined }
+          : { title: "Cancel this class?", description: "This will cancel your booking and free up your spot.", confirmLabel: "Yes, cancel booking", refundNote: "1 credit refunded to your account" };
+    function confirmCancel() {
+        if (isWaitlist) {
+            cancelClassBooking(bookingId, "Left the waitlist", true, "customer_portal");
+            showToast("Left the waitlist", "You've been removed from the waitlist.", "success", "slash");
+        } else if (isLate) {
+            cancelClassBooking(bookingId, "Cancelled within 24 hours", false, "customer_portal");
+            updateAttendance(bookingId, "late_cancel");
+            showToast("Booking cancelled", "No credit was returned — cancelled within 24 hours.", "success", "refresh");
+        } else {
+            cancelClassBooking(bookingId, "Cancelled by member", true, "customer_portal");
+            showToast("Booking cancelled", "Your credit has been returned to your account.", "success", "refresh");
+        }
+        router.replace("/customer/bookings/past");
+    }
     const p = BOOKING_STATUS[viewStatus];
     const HeroIcon = p.heroIcon;
     const isAttended = viewStatus === "attended";
@@ -87,7 +121,7 @@ export default function BookingDetailPage() {
                 variant="secondary"
                 size="xl"
                 className="w-full rounded-full border-[#fda29b] bg-[#fef3f2] text-[#b42318] hover:bg-[#fee4e2] hover:text-[#912018] active:bg-[#fee4e2] active:text-[#912018]"
-                onClick={() => router.push(`/customer/bookings/${bookingId}/cancel`)}
+                onClick={() => setCancelOpen(true)}
             >
                 {viewStatus === "waitlisted" ? "Leave waitlist" : "Cancel booking"}
             </Button>
@@ -103,6 +137,7 @@ export default function BookingDetailPage() {
         ) : undefined;
 
     return (
+        <>
         <ClassDetailLayout
             detail={detail}
             mutedCover={p.mutedCover}
@@ -128,5 +163,15 @@ export default function BookingDetailPage() {
             }
             actionZone={actionZone}
         />
+        <CancelConfirmSheet
+            open={cancelOpen}
+            onClose={() => setCancelOpen(false)}
+            title={cancelCopy.title}
+            description={cancelCopy.description}
+            refundNote={cancelCopy.refundNote}
+            confirmLabel={cancelCopy.confirmLabel}
+            onConfirm={confirmCancel}
+        />
+        </>
     );
 }

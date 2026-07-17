@@ -9,14 +9,14 @@
 // booking") is passed as children. Used by the purchase success screen AND the
 // Payment history detail page.
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import { Download01, Share01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 import { ShareSheet } from "@/components/customer/shell/ShareSheet";
-import { downloadReceiptPng, composeReceiptShareText, type ReceiptData } from "@/lib/customer/receipt-download";
+import { downloadReceiptNode, composeReceiptShareText, type ReceiptData } from "@/lib/customer/receipt-download";
 
-export function ReceiptActions({ receipt, children }: { receipt: ReceiptData; children: ReactNode }) {
+export function ReceiptActions({ receipt, captureRef, children }: { receipt: ReceiptData; captureRef: RefObject<HTMLDivElement | null>; children: ReactNode }) {
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
     const [shareOpen, setShareOpen] = useState(false);
@@ -35,9 +35,15 @@ export function ReceiptActions({ receipt, children }: { receipt: ReceiptData; ch
                 </button>
                 <button
                     type="button"
-                    onClick={() => {
-                        downloadReceiptPng(receipt);
-                        showToast("Receipt downloaded", "Your receipt has been saved as a PNG.", "success");
+                    onClick={async () => {
+                        const node = captureRef.current;
+                        if (!node) return;
+                        try {
+                            await downloadReceiptNode(node, receipt.txnId);
+                            showToast("Receipt downloaded", "Your receipt has been saved as a PNG.", "success");
+                        } catch {
+                            showToast("Download failed", "Couldn't save the receipt. Please try again.", "error");
+                        }
                     }}
                     aria-label="Download receipt"
                     className={iconBtn}

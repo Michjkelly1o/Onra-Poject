@@ -77,7 +77,7 @@ export default function InstructorDetailPage() {
     const schedules = useAppStore((s) => s.classSchedules);
     const showToast = useAppStore((s) => s.showToast);
 
-    const { timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
+    const { setTimezone, localTimezone } = useCurrentCustomerContext();
     const [tab, setTab] = useState<"details" | "schedule">("details");
     const [monthOpen, setMonthOpen] = useState(false);
     const [tzOpen, setTzOpen] = useState(false);
@@ -251,7 +251,7 @@ export default function InstructorDetailPage() {
                         <ScheduleDateBar
                             selectedISO={selectedDate}
                             onSelect={selectDate}
-                            timezone={timezone}
+                            timezone={localTimezone}
                             onMonthClick={() => setMonthOpen(true)}
                             onTimezoneClick={() => setTzOpen(true)}
                         />
@@ -269,10 +269,11 @@ export default function InstructorDetailPage() {
                                             coverColor={c.coverColor}
                                             room={c.room}
                                             branch={c.branchName}
-                                            timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), timezone)} • ${c.durationMins} mins`}
+                                            timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), localTimezone)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
                                             badgeIcon={p.badgeIcon}
+                                            statusPill={p.statusPill}
                                             ctaLabel={p.ctaLabel}
                                             ctaVariant={p.ctaVariant}
                                             ctaDisabled={false}
@@ -311,7 +312,7 @@ export default function InstructorDetailPage() {
                 onClose={() => setTzOpen(false)}
                 branch={branches.find((b) => b.status === "active") ?? branches[0]}
                 localCity={localTimezone}
-                value={timezone}
+                value={localTimezone}
                 onSelect={(city) => {
                     setTimezone(city);
                     setTzOpen(false);

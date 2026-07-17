@@ -33,6 +33,14 @@ function isoOf(y: number, m: number, d: number): string {
     return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+/** Parse an ISO day → Date, falling back when it's empty / missing / invalid.
+ *  Guards the calendar against a "" value (?? doesn't catch it) that would make
+ *  every cell NaN. */
+function parseDay(raw: string | null | undefined, fallback: string): Date {
+    const d = raw ? new Date(`${raw}T00:00:00`) : new Date(NaN);
+    return Number.isNaN(d.getTime()) ? new Date(`${fallback}T00:00:00`) : d;
+}
+
 export interface DateRange {
     from: string | null;
     to: string | null;
@@ -71,8 +79,7 @@ export function DatePickerSheet({
     rangeValue?: DateRange;
     onSelectRange?: (from: string, to: string) => void;
 }) {
-    const anchorISO = (range ? rangeValue?.from : value) ?? defaultISO;
-    const start = new Date(`${anchorISO}T00:00:00`);
+    const start = parseDay(range ? rangeValue?.from : value, defaultISO);
     const [viewY, setViewY] = useState(start.getFullYear());
     const [viewM, setViewM] = useState(start.getMonth());
     const [sel, setSel] = useState<string | null>(value ?? null);
@@ -83,11 +90,10 @@ export function DatePickerSheet({
 
     useEffect(() => {
         if (!open) return;
-        const a = (range ? rangeValue?.from : value) ?? defaultISO;
-        const d = new Date(`${a}T00:00:00`);
+        const d = parseDay(range ? rangeValue?.from : value, defaultISO);
         setViewY(d.getFullYear());
         setViewM(d.getMonth());
-        setSel(value ?? null);
+        setSel(value || null);
         setRFrom(rangeValue?.from ?? null);
         setRTo(rangeValue?.to ?? null);
         setMode("calendar");

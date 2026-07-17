@@ -11,17 +11,20 @@
 // Cancel-appointment action for upcoming bookings. Backed by the UI-only
 // appointment-bookings store.
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { RefreshCcw01, CheckCircle, ChevronLeft, ClockFastForward, Coins01, SlashCircle01, UserCheck01, Users01 } from "@untitledui/icons";
 import { to12h } from "@/lib/customer/dates";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { classTimeDisplay } from "@/lib/customer/class-time";
-import { useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
+import { cancelAppointmentBooking, useAppointmentBookingById } from "@/lib/customer/appointment-bookings";
+import { addCustomerNotification } from "@/lib/customer/notifications-feed";
 import { useAppStore } from "@/lib/store";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
 import { ClassDetailLayout, DetailTimeRow, InfoRow } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
+import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
 import { Button } from "@/components/ui/button";
 import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
 
@@ -36,7 +39,9 @@ export default function AppointmentBookingDetailPage() {
     const booking = useAppointmentBookingById(apptId);
     // Hooks must run every render (before any early return) — Rules of Hooks.
     const branches = useAppStore(s => s.branches);
-    const { timezone } = useCurrentCustomerContext();
+    const showToast = useAppStore(s => s.showToast);
+    const { localTimezone } = useCurrentCustomerContext();
+    const [cancelOpen, setCancelOpen] = useState(false);
 
     if (!booking) {
         return (
@@ -72,7 +77,35 @@ export default function AppointmentBookingDetailPage() {
     // the subtitle so members with cross-city bookings never have to guess.
     const branch = branches.find(b => b.name === booking.branchName);
     // Dual-timezone Date & time for the info grid — same as the class detail.
-    const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, timezone);
+    const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, localTimezone);
+
+    // Cancel outcome — on-time (≥24h → full AED refund) vs late (<24h → forfeited).
+    const isLate = (startMs - Date.now()) / 3_600_000 < 24;
+    const cancelFullDate = new Date(`${booking.slotISO}T00:00:00`).toLocaleDateString("en-US", {
+        weekday: "long", day: "numeric", month: "short", year: "numeric",
+    });
+    const cancelCopy = isLate
+        ? { title: "Cancel this appointment?", description: "This cancellation is within 24 hours. No refund will be issued.", confirmLabel: "Yes, cancel appointment", refundNote: undefined as string | undefined }
+        : { title: "Cancel this appointment?", description: "This will cancel your appointment.", confirmLabel: "Yes, cancel appointment", refundNote: `AED ${booking.price} refunded to your account` };
+    function confirmCancel() {
+        if (!booking) return;
+        cancelAppointmentBooking(apptId, isLate);
+        addCustomerNotification({
+            tab: "bookings",
+            event: "appointment_cancelled",
+            title: "Appointment cancelled",
+            message: `Your ${booking.name} appointment on ${cancelFullDate} has been cancelled.`,
+            relatedType: "appointment",
+            relatedId: apptId,
+        });
+        showToast(
+            "Appointment cancelled",
+            isLate ? "No refund was issued — cancelled within 24 hours." : `AED ${booking.price} has been refunded to your account.`,
+            "success",
+            isLate ? "slash" : "check",
+        );
+        router.replace("/customer/bookings/past");
+    }
 
     // Map the appointment booking onto the class detail view-model. Fields the
     // appointment grid/location don't use are given safe placeholders; equipment
@@ -229,13 +262,14 @@ export default function AppointmentBookingDetailPage() {
             variant="secondary"
             size="xl"
             className={`w-full rounded-full ${CANCEL_BTN}`}
-            onClick={() => router.push(`/customer/bookings/appointment/${apptId}/cancel`)}
+            onClick={() => setCancelOpen(true)}
         >
             Cancel appointment
         </Button>
     ) : undefined;
 
     return (
+        <>
         <ClassDetailLayout
             detail={detail}
             mutedCover={isCancelled}
@@ -247,5 +281,15 @@ export default function AppointmentBookingDetailPage() {
             onBack={goBack}
             actionZone={actionZone}
         />
+        <CancelConfirmSheet
+            open={cancelOpen}
+            onClose={() => setCancelOpen(false)}
+            title={cancelCopy.title}
+            description={cancelCopy.description}
+            refundNote={cancelCopy.refundNote}
+            confirmLabel={cancelCopy.confirmLabel}
+            onConfirm={confirmCancel}
+        />
+        </>
     );
 }

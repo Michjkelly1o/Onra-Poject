@@ -13,7 +13,6 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronLeft, FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
 import {
@@ -49,7 +48,6 @@ function dayLabelOf(dateISO: string): string {
 
 export function BookingsView({ tab }: { tab: BookingTab }) {
     const router = useRouter();
-    const goBack = useCustomerBack("/customer/profile");
     const pathname = usePathname();
     // Bookings is auth-only — a guest (reachable by deep link) is redirected to
     // the login front door.
@@ -147,7 +145,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
             el: (
                 <BookingCard
                     key={b.bookingId}
-                    name={b.name}
+                    name={b.guestName ? `${b.name} · Guest: ${b.guestName}` : b.name}
                     date={b.dateShort}
                     time={b.time}
                     location={b.location}
@@ -194,7 +192,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                                 <button
                                     key={t}
                                     type="button"
-                                    onClick={() => router.push(`/customer/bookings/${t}`)}
+                                    onClick={() => router.replace(`/customer/bookings/${t}`)}
                                     className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
@@ -210,7 +208,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
             >
                 <button
                     type="button"
-                    onClick={goBack}
+                    onClick={() => router.push("/customer/profile")}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >

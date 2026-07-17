@@ -42,6 +42,8 @@ import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassesFilterModal } from "@/components/customer/home/ClassesFilterModal";
 import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
 import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
+import { branchTimezone } from "@/lib/branch-time";
+import { offsetForCity, offsetLabel, tzGate } from "@/lib/customer/timezones";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
@@ -50,7 +52,7 @@ type Tab = "classes" | "appointments";
 export default function SearchPage() {
     const router = useRouter();
     const pathname = usePathname();
-    const { selectedBranchId, timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
+    const { selectedBranchId, setTimezone, localTimezone } = useCurrentCustomerContext();
     const branches = useAppStore((s) => s.branches);
     const categories = useAppStore((s) => s.classCategories);
     const showToast = useAppStore((s) => s.showToast);
@@ -75,6 +77,21 @@ export default function SearchPage() {
     const [monthOpen, setMonthOpen] = useState(false);
     const [branchSheet, setBranchSheet] = useState(false);
     const [tzOpen, setTzOpen] = useState(false);
+    // Out-of-zone gate: when the customer's device zone differs from the branch,
+    // show the Time Zone sheet ONCE on entry (their local zone pre-selected as
+    // "Your time") so they confirm before browsing class times.
+    const tzBranch = branches.find((b) => b.id === selectedBranchId) ?? branches.find((b) => b.status === "active") ?? branches[0];
+    const outOfZone = tzBranch ? offsetLabel(branchTimezone(tzBranch)) !== offsetForCity(localTimezone) : false;
+    useEffect(() => {
+        // Show ONCE per session the moment the out-of-zone flow is first entered —
+        // mark it seen immediately so returning to Search (e.g. from Class Details)
+        // never re-opens it, whether or not the customer tapped Confirm.
+        if (outOfZone && !tzGate.confirmed) {
+            tzGate.confirmed = true;
+            setTzOpen(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [outOfZone]);
 
     function setTab(t: Tab) {
         searchUi.tab = t;
@@ -127,7 +144,7 @@ export default function SearchPage() {
     const todayYear = monthYearOf(REAL_TODAY_ISO).year;
 
     return (
-        <div className="flex min-h-[100dvh] flex-col">
+        <div className="flex min-h-full flex-col">
             <CustomerHeader
                 overlap
                 subBar={
@@ -193,7 +210,7 @@ export default function SearchPage() {
                         <ScheduleDateBar
                             selectedISO={selectedISO}
                             onSelect={setSelectedISO}
-                            timezone={timezone}
+                            timezone={localTimezone}
                             onMonthClick={() => setMonthOpen(true)}
                             onTimezoneClick={() => setTzOpen(true)}
                             bookingOpenDays={bookingOpenDays}
@@ -212,10 +229,11 @@ export default function SearchPage() {
                                             coverColor={c.coverColor}
                                             room={c.room}
                                             branch={c.branchName}
-                                            timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), timezone)} • ${c.durationMins} mins`}
+                                            timeLabel={`${timeInZoneLabel(c.dateISO, c.startTime, branches.find((b) => b.id === c.branchId), localTimezone)} • ${c.durationMins} mins`}
                                             badgeLabel={p.badgeLabel}
                                             badgeTone={p.badgeTone}
                                             badgeIcon={p.badgeIcon}
+                                            statusPill={p.statusPill}
                                             ctaLabel={p.ctaLabel}
                                             ctaVariant={p.ctaVariant}
                                             ctaDisabled={false}
@@ -275,13 +293,19 @@ export default function SearchPage() {
 
             <TimeZoneSheet
                 open={tzOpen}
-                onClose={() => setTzOpen(false)}
+                onClose={() => {
+                    tzGate.confirmed = true;
+                    setTzOpen(false);
+                }}
                 branch={branches.find((b) => b.id === selectedBranchId) ?? branches.find((b) => b.status === "active") ?? branches[0]}
                 localCity={localTimezone}
-                value={timezone}
+                value={localTimezone}
                 onSelect={(city) => {
                     setTimezone(city);
                     setTzOpen(false);
+                }}
+                onConfirm={() => {
+                    tzGate.confirmed = true;
                 }}
             />
 

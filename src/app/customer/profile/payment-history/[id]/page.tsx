@@ -8,6 +8,7 @@
 // A status hero (Success / Failed) + the shared <PaymentReceiptCard>, with the
 // same Share / Download / Done actions as the post-purchase receipt.
 
+import { useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { Check, ChevronLeft, XClose } from "@untitledui/icons";
@@ -25,6 +26,7 @@ function longDate(iso: string): string {
 export default function PaymentDetailPage() {
     const router = useRouter();
     const goBack = useCustomerBack("/customer/profile/payment-history");
+    const receiptRef = useRef<HTMLDivElement>(null);
     const { id } = useParams<{ id: string }>();
     const record = usePaymentHistory().find((r) => r.id === id);
 
@@ -70,7 +72,9 @@ export default function PaymentDetailPage() {
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
-            <div className="flex flex-1 flex-col items-center gap-6 px-4 pb-6 pt-[88px]">
+            <div className="flex flex-1 flex-col items-center px-4 pb-6 pt-[88px]">
+                {/* Capture target — the exact receipt (badge · title · card) saved to PNG */}
+                <div ref={receiptRef} className="flex w-full flex-col items-center gap-6 bg-white px-1 pt-5 pb-1">
                 {/* Status hero */}
                 <div className="relative flex size-12 shrink-0 items-center justify-center">
                     <span className={`absolute -inset-[7px] rounded-full border-2 opacity-30 ${ok ? "border-[var(--brand-primary)]" : "border-[#d92d20]"}`} aria-hidden />
@@ -102,18 +106,24 @@ export default function PaymentDetailPage() {
                     total={record.amount}
                     status={record.status}
                 />
+                </div>
             </div>
 
             <ReceiptActions
+                captureRef={receiptRef}
                 receipt={{
                     title: "Payment receipt",
                     txnId: record.txnId,
                     dateLabel: longDate(record.dateISO),
                     timeLabel: record.timeLabel,
                     methodLabel: record.methodLabel,
+                    items: record.items,
+                    totalItems: record.totalItems,
+                    discount: record.discount,
+                    tax: record.tax,
+                    accountCredit: record.accountCredit ?? 0,
                     total: record.amount,
                     status: record.status,
-                    items: record.items,
                 }}
             >
                 <Button

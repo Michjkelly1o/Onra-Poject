@@ -53,14 +53,27 @@ function BookingProcessing() {
         // Perform the write once (synchronous), then sequence the steps over it.
         if (!wroteRef.current && member) {
             wroteRef.current = true;
-            addClassBooking({
-                classScheduleId: id,
-                customerId: member.id,
-                status: mode === "waitlist" ? "waitlisted" : "booked",
-                spot,
+            const status = mode === "waitlist" ? "waitlisted" : "booked";
+            // Spot per seat: index 0 = the member, 1 = the guest (empty → auto-assign).
+            const spots = bookingDraft.spots;
+            // Book the member's own seat, then one seat per brought-along guest.
+            if (bookingDraft.bookSelf) {
+                addClassBooking({ classScheduleId: id, customerId: member.id, status, spot: spots[0] ?? spot });
+            }
+            bookingDraft.guests.forEach((g, i) => {
+                addClassBooking({
+                    classScheduleId: id,
+                    customerId: member.id,
+                    status,
+                    spot: spots[i + 1],
+                    guestName: g.name,
+                    chargeBookerCredit: g.payment === "booker_credit",
+                });
             });
             bookingDraft.classId = null;
             bookingDraft.guests = [];
+            bookingDraft.bookSelf = true;
+            bookingDraft.spots = [];
         }
         const t1 = setTimeout(() => setStep(1), STEP_MS);
         const t2 = setTimeout(() => setStep(2), STEP_MS * 2);

@@ -69,8 +69,8 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 settings reflect here after Save; DRAFT edits reflect inside
                 the panel's iframe preview live, before Save. */}
             <BrandTokens>
-            <div data-brand-scope="customer" className="flex h-[100dvh] w-full justify-center overflow-hidden bg-[#f2f4f7]">
-                <div className="relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden bg-[var(--brand-background)]">
+            <div data-brand-scope="customer" className="fixed inset-0 flex justify-center overflow-hidden bg-[#f2f4f7]">
+                <div className="relative flex h-full w-full max-w-[500px] flex-col overflow-hidden bg-[var(--brand-background)]">
                     {/* Shared decorative background — MAIN pages only (§3); level-2
                         pages omit it for a cleaner plain-background look. */}
                     {showBackground && <CustomerBackground />}

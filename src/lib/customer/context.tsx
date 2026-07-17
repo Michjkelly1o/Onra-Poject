@@ -127,21 +127,23 @@ export function CurrentCustomerProvider({ children }: { children: ReactNode }) {
     const [storedTz, setStoredTz] = useState<string | null>(null);
     const [detectedTz, setDetectedTz] = useState<string | null>(null);
     useEffect(() => {
-        try {
-            const v = window.localStorage.getItem(TIMEZONE_STORAGE_KEY);
-            if (v) {
-                setStoredTz(v);
-                return; // an explicit pick always wins over device detection
-            }
-        } catch {
-            /* localStorage unavailable */
-        }
+        // ALWAYS detect the device zone first — it drives "Your time" and the
+        // default rendering. (Previously a stored pick made this return early, so
+        // an out-of-zone customer never got their local zone.)
         try {
             const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             const city = zone ? cityForZone(zone) : undefined;
             if (city) setDetectedTz(city);
         } catch {
             /* Intl unavailable */
+        }
+        // Restore a previous explicit display pick (informational only — rendering
+        // uses the detected device zone).
+        try {
+            const v = window.localStorage.getItem(TIMEZONE_STORAGE_KEY);
+            if (v) setStoredTz(v);
+        } catch {
+            /* localStorage unavailable */
         }
     }, []);
     const setTimezone = useCallback((tz: string) => {

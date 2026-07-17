@@ -13,7 +13,7 @@
 // the shared Timezone screen. Picking a slot records it on the draft and advances
 // (with a gentle fade) to Review and book.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronDown, Users01 } from "@untitledui/icons";
 import { addDaysISO, dayNum, formatMonth, REAL_TODAY_ISO, to12h, weekdayAbbr } from "@/lib/customer/dates";
@@ -27,13 +27,15 @@ import { AppointmentFlowHeader } from "@/components/customer/appointments/Appoin
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { TimezonePill } from "@/components/customer/shell/TimezonePill";
 import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
+import { branchTimezone } from "@/lib/branch-time";
+import { offsetForCity, offsetLabel, tzGate } from "@/lib/customer/timezones";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
 export default function SelectSlotPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const appointment = useAppointment(id);
-    const { timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
+    const { setTimezone, localTimezone } = useCurrentCustomerContext();
     const branch = useAppStore((st) => st.branches).find((b) => b.id === appointment?.branchId);
 
     ensureAppointmentDraft(id);
@@ -45,6 +47,18 @@ export default function SelectSlotPage() {
     );
     const [monthOpen, setMonthOpen] = useState(false);
     const [tzOpen, setTzOpen] = useState(false);
+    // Out-of-zone gate — show the Time Zone sheet once on entry (Appointments).
+    const outOfZone = branch ? offsetLabel(branchTimezone(branch)) !== offsetForCity(localTimezone) : false;
+    useEffect(() => {
+        // Show ONCE per session the moment the out-of-zone flow is first entered —
+        // mark it seen immediately so returning to Search (e.g. from Class Details)
+        // never re-opens it, whether or not the customer tapped Confirm.
+        if (outOfZone && !tzGate.confirmed) {
+            tzGate.confirmed = true;
+            setTzOpen(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [outOfZone]);
     const [fading, setFading] = useState(false);
     const advancingRef = useRef(false);
 
@@ -103,7 +117,7 @@ export default function SelectSlotPage() {
                         <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{formatMonth(weekStartISO)}</span>
                         <ChevronDown className="size-5 text-[var(--brand-text)]" aria-hidden />
                     </button>
-                    <TimezonePill tz={timezone} onClick={() => setTzOpen(true)} />
+                    <TimezonePill tz={localTimezone} onClick={() => setTzOpen(true)} />
                 </div>
 
                 {/* Date strip — a week anchored to the chosen month */}
@@ -162,7 +176,7 @@ export default function SelectSlotPage() {
                                         isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
-                                    <span className="text-sm font-medium leading-5 text-[#344054]">{timeInZoneLabel(dateISO, s.time, branch, timezone, true)}</span>
+                                    <span className="text-sm font-medium leading-5 text-[#344054]">{timeInZoneLabel(dateISO, s.time, branch, localTimezone, true)}</span>
                                     {/* Open sessions surface remaining capacity; Private is 1:1 (no badge). */}
                                     {isOpen && s.spotsLeft != null && (
                                         <span
@@ -195,13 +209,19 @@ export default function SelectSlotPage() {
 
             <TimeZoneSheet
                 open={tzOpen}
-                onClose={() => setTzOpen(false)}
+                onClose={() => {
+                    tzGate.confirmed = true;
+                    setTzOpen(false);
+                }}
                 branch={branch}
                 localCity={localTimezone}
-                value={timezone}
+                value={localTimezone}
                 onSelect={(city) => {
                     setTimezone(city);
                     setTzOpen(false);
+                }}
+                onConfirm={() => {
+                    tzGate.confirmed = true;
                 }}
             />
         </div>

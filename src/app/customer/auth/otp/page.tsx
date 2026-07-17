@@ -74,7 +74,7 @@ export default function AuthOtpPage() {
             marketingTopicPromoCodeOffers: optIn,
         });
         authDraft.newCustomerId = id;
-        setCustomerPassword(authDraft.password);
+        setCustomerPassword(id, authDraft.password);
         loginCustomer(id);
         router.replace("/customer/auth/loading");
     }

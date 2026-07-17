@@ -9,7 +9,7 @@
 // `searchUi`: a plain singleton, reset whenever the class being booked changes.
 // (Per-tab only; not persisted — a fresh booking starts clean.)
 
-export type GuestPayment = "drop_in" | "guest_package" | "invite_link";
+export type GuestPayment = "drop_in" | "guest_package" | "invite_link" | "booker_credit";
 
 export interface BookingGuest {
     name: string;
@@ -20,9 +20,18 @@ export interface BookingGuest {
 /** Seeded "Single drop-in class" rate (packages.ts → pkg_1_class_intro). */
 export const DROP_IN_PRICE_AED = 170;
 
-export const bookingDraft: { classId: string | null; guests: BookingGuest[] } = {
+export const bookingDraft: {
+    classId: string | null;
+    guests: BookingGuest[];
+    bookSelf: boolean;
+    /** Selected spots (index 0 = the member, 1 = the guest) when the class has
+     *  spot selection enabled. Empty when the class auto-assigns. */
+    spots: string[];
+} = {
     classId: null,
     guests: [],
+    bookSelf: true,
+    spots: [],
 };
 
 /** Reset the draft when a new class enters the booking flow. */
@@ -30,6 +39,8 @@ export function ensureBookingDraft(classId: string): void {
     if (bookingDraft.classId !== classId) {
         bookingDraft.classId = classId;
         bookingDraft.guests = [];
+        bookingDraft.bookSelf = true;
+        bookingDraft.spots = [];
     }
 }
 

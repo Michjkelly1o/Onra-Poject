@@ -30,7 +30,8 @@ export function TrendingClasses() {
                         coverImage={c.coverImage}
                         coverColor={c.coverColor}
                         title={c.name}
-                        subtitle={`with ${c.instructorName}`}
+                        subtitle={c.instructorName}
+                        avatar={c.instructorName ? { imageUrl: c.instructorImageUrl, initials: c.instructorInitials } : undefined}
                         onClick={() => router.push(`/customer/classes/${c.id}`)}
                     />
                 ))}

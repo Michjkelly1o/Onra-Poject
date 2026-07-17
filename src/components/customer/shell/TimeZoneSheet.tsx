@@ -16,6 +16,7 @@ import { cityForZone, offsetLabel, offsetForCity } from "@/lib/customer/timezone
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { SheetToolbar } from "@/components/customer/shell/SheetToolbar";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
+import { Button } from "@/components/ui/button";
 
 function ZoneRow({
     city,
@@ -53,6 +54,8 @@ export function TimeZoneSheet({
     localCity,
     value,
     onSelect,
+    onConfirm,
+    confirmLabel = "Confirm",
 }: {
     open: boolean;
     onClose: () => void;
@@ -62,6 +65,9 @@ export function TimeZoneSheet({
     /** Current display timezone city. */
     value: string;
     onSelect: (city: string) => void;
+    /** When set, a Confirm button is shown; tapping it runs this then closes. */
+    onConfirm?: () => void;
+    confirmLabel?: string;
 }) {
     const branchZone = branchTimezone(branch);
     const branchCity = cityForZone(branchZone) ?? "Branch";
@@ -97,6 +103,19 @@ export function TimeZoneSheet({
                     </>
                 )}
             </div>
+            {onConfirm && (
+                <Button
+                    variant="primary"
+                    size="xl"
+                    className="mt-5 w-full rounded-full"
+                    onClick={() => {
+                        onConfirm();
+                        onClose();
+                    }}
+                >
+                    {confirmLabel}
+                </Button>
+            )}
         </CustomerSheet>
     );
 }
