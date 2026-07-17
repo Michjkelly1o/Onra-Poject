@@ -268,9 +268,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                         <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                             <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
                             <p className="text-[14px] text-[#475467] leading-[20px]">
-                                A studio uses one reward type at a time. Switching between
-                                Class Credit and Account Credit resets both amounts so a
-                                credit value can&apos;t accidentally save as an AED value.
+                                Studios use one reward type at a time — switching resets both amounts.
                             </p>
                         </div>
                         {/* 3-column grid: dropdown → arrow → Amount.
