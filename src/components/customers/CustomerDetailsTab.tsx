@@ -23,15 +23,9 @@
 // phase; the fields exist now so the display is real.
 
 import { useState } from "react";
-import { CheckCircle, XCircle, Eye, EyeOff, XClose } from "@untitledui/icons";
+import { CheckCircle, XCircle, Eye, EyeOff } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
-import {
-    setCustomerPassword,
-    useCustomerPassword,
-} from "@/lib/customer/customer-password";
-import { checkPassword, PASSWORD_RULES, passwordValid } from "@/lib/customer/password-rules";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useCustomerPassword } from "@/lib/customer/customer-password";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,16 +89,12 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const customer = customers.find(c => c.id === customerId);
     // Customer sign-in password — reactive read from the same localStorage-
-    // backed store the customer app uses (`useCustomerPassword`). Editing here
-    // fans out via `setCustomerPassword`, so any customer session in another
-    // tab sees the change the same render cycle (client Jul 2026 — admin
-    // sync-to-customer). Prototype note: `customer-password.ts` is a single
-    // global demo password today, not per-customer; changing it on one
-    // profile updates the shared demo password.
+    // backed store the customer app uses (`useCustomerPassword`). View-only
+    // on admin per client Jul 2026 (no "Change" affordance here); the
+    // customer edits it themselves in the customer app, and the display
+    // updates on the next render.
     const password = useCustomerPassword();
-    const showToast = useAppStore(s => s.showToast);
     const [revealPassword, setRevealPassword] = useState(false);
-    const [changeOpen, setChangeOpen]     = useState(false);
     if (!customer) return null;
 
     const fullName = `${customer.firstName} ${customer.lastName}`.trim();
@@ -140,13 +130,18 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                     <DetailField label="Phone" value={orDash(customer.phone)} />
                     <DetailField label="Google account"
                         value={<StatusValue ok={!!customer.googleConnected} onLabel="Connected" offLabel="Not connected" />} />
-                    {/* Password — masked with reveal toggle; "Change" opens
-                        a modal that fans out through `setCustomerPassword`
-                        so the customer's login stays in sync. */}
+                    {/* Password — view-only for admin. Masked with an Eye
+                        reveal toggle; there is intentionally NO "Change"
+                        affordance (client Jul 2026 — admin cannot rewrite a
+                        customer's sign-in password; that stays a
+                        self-service action on the customer side). Reads the
+                        same `useCustomerPassword` slice the customer app
+                        uses so any customer-side change reflects here on
+                        the next render. */}
                     <DetailField
                         label="Password"
                         value={
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                                 <span className="font-mono">
                                     {password
                                         ? (revealPassword ? password : "•".repeat(Math.min(password.length, 10)))
@@ -164,38 +159,11 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                                             : <Eye className="w-4 h-4" />}
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => setChangeOpen(true)}
-                                    className="text-[14px] font-medium text-[#658774] hover:text-[#3b5446] transition-colors shrink-0"
-                                >
-                                    Change
-                                </button>
                             </div>
                         }
                     />
                 </div>
             </div>
-
-            {/* Change-password modal — mirrors the customer-side
-                /customer/profile/change-password flow (same validation
-                rules, same store write). Admin has full override, so we
-                skip the "current password" gate a member would face. */}
-            {changeOpen && (
-                <ChangePasswordModal
-                    customerName={fullName}
-                    onClose={() => setChangeOpen(false)}
-                    onSave={(next) => {
-                        setCustomerPassword(next);
-                        setChangeOpen(false);
-                        showToast(
-                            "Password updated",
-                            `${fullName}'s sign-in password has been changed.`,
-                            "success", "check",
-                        );
-                    }}
-                />
-            )}
 
             <Divider />
 
@@ -246,127 +214,3 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
     );
 }
 
-// ─── Change-password modal ────────────────────────────────────────────────────
-//
-// Small centered modal — new + confirm fields, live PASSWORD_RULES checklist,
-// "Update password" primary button. Validation is the same `passwordValid`
-// helper the customer-side change-password page uses, so an entry that would
-// pass the customer's own flow will pass here too. Admin skips the "enter
-// current password" gate — this is an override.
-
-function ChangePasswordModal({ customerName, onClose, onSave }: {
-    customerName: string;
-    onClose: () => void;
-    onSave: (next: string) => void;
-}) {
-    const [next, setNext]       = useState("");
-    const [confirm, setConfirm] = useState("");
-    const [showNew, setShowNew]         = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
-
-    const checks   = checkPassword(next);
-    const matches  = confirm.length > 0 && confirm === next;
-    const canSave  = passwordValid(next) && matches;
-
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
-            <div className="relative bg-white rounded-[12px] w-[520px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label="Close"
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10"
-                >
-                    <XClose className="w-6 h-6 text-[#667085]" />
-                </button>
-
-                <div className="flex flex-col gap-1 pt-6 px-6">
-                    <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Change password</h3>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
-                        Set a new sign-in password for {customerName || "this member"}.
-                    </p>
-                </div>
-
-                <div className="flex flex-col gap-4 px-6 pt-6">
-                    <PwField
-                        label="New password"
-                        value={next}
-                        onChange={setNext}
-                        show={showNew}
-                        onToggle={() => setShowNew(v => !v)}
-                        autoFocus
-                    />
-
-                    <div className="flex flex-col gap-1.5">
-                        {PASSWORD_RULES.map(rule => {
-                            const ok = checks[rule.key];
-                            return (
-                                <div key={rule.key} className="flex items-center gap-2">
-                                    {ok
-                                        ? <CheckCircle className="w-4 h-4 text-[#039855]" />
-                                        : <XCircle className="w-4 h-4 text-[#98a2b3]" />}
-                                    <span className={cn("text-[13px]", ok ? "text-[#344054]" : "text-[#667085]")}>{rule.label}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <PwField
-                        label="Confirm password"
-                        value={confirm}
-                        onChange={setConfirm}
-                        show={showConfirm}
-                        onToggle={() => setShowConfirm(v => !v)}
-                    />
-                    {confirm.length > 0 && !matches && (
-                        <p className="text-[13px] text-[#b42318]">Passwords don&apos;t match.</p>
-                    )}
-                </div>
-
-                <div className="flex gap-3 px-6 pt-6 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
-                    <Button
-                        variant="primary" size="lg" className="flex-1"
-                        disabled={!canSave}
-                        onClick={() => canSave && onSave(next)}
-                    >
-                        Update password
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function PwField({ label, value, onChange, show, onToggle, autoFocus }: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    show: boolean;
-    onToggle: () => void;
-    autoFocus?: boolean;
-}) {
-    return (
-        <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
-            <div className="relative">
-                <input
-                    type={show ? "text" : "password"}
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
-                    autoFocus={autoFocus}
-                    className="h-11 w-full pl-[14px] pr-[44px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                />
-                <button
-                    type="button"
-                    onClick={onToggle}
-                    aria-label={show ? "Hide password" : "Show password"}
-                    className="absolute right-[12px] top-1/2 -translate-y-1/2 text-[#667085] hover:text-[#344054] transition-colors"
-                >
-                    {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-            </div>
-        </div>
-    );
-}
