@@ -640,6 +640,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                                 <ImageBannerUpload
                                     preview={form.bannerPreview || null}
                                     onChange={url => patch({ bannerPreview: url ?? "" })}
+                                    sizeGuide="Recommended: 1029 × 420 px (ratio ~2.45:1). Off-ratio images are cropped — keep key content centered."
                                 />
                                 <FormField label="Display name">
                                     <TextInput value={form.name} onChange={v => patch({ name: v })}

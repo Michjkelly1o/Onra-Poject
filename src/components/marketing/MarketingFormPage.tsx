@@ -799,7 +799,11 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                         }>
                             {/* ── Marketing details ── */}
                             <Section title="Campaign details">
-                                <ImageBannerUpload preview={form.bannerPreview || null} onChange={url => patch({ bannerPreview: url ?? "" })} />
+                                <ImageBannerUpload
+                                    preview={form.bannerPreview || null}
+                                    onChange={url => patch({ bannerPreview: url ?? "" })}
+                                    sizeGuide="Recommended: 1029 × 420 px (ratio ~2.45:1). Off-ratio images are cropped — keep key content centered."
+                                />
                                 <div className="flex gap-4 items-start w-full">
                                     <div className="flex-1 min-w-0">
                                         <FormField label="Display name">

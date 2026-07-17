@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Image01, UploadCloud01 } from "@untitledui/icons";
+import { HelpCircle, Image01, UploadCloud01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 /** Two-column image banner uploader — 4:3 tile on the left, label + copy +
@@ -18,6 +18,7 @@ export function ImageBannerUpload({
     subtitle = "PNG or JPEG · Up to 2 MB",
     accept = "image/png,image/jpeg",
     tileClassName,
+    sizeGuide,
 }: {
     preview: string | null;
     onChange: (url: string | null, file: File | null) => void;
@@ -29,6 +30,10 @@ export function ImageBannerUpload({
     accept?: string;
     /** Extra classes for the tile (e.g. override the width cap). */
     tileClassName?: string;
+    /** Optional recommendation text shown on hover of the "Image size guide"
+     *  label. Only rendered when set — consumers whose customer-side render
+     *  ratio isn't specified (e.g. class templates) can leave it undefined. */
+    sizeGuide?: string;
 }) {
     const ref = useRef<HTMLInputElement>(null);
 
@@ -60,11 +65,44 @@ export function ImageBannerUpload({
                     : <Image01 className="w-13 h-13 text-[#98a2b3]" style={{ width: 52, height: 52 }} />}
             </div>
 
-            {/* Right column — label / copy / button stack. */}
+            {/* Right column — label / copy / size-guide / button stack. */}
             <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
                     <p className="text-[16px] leading-[24px] font-medium text-[#101828]">{title}</p>
                     <p className="text-[14px] leading-[20px] text-[#475467]">{subtitle}</p>
+                    {/* Size guide — opt-in via `sizeGuide` prop. Semibold
+                        label draws the admin's eye; the HelpCircle icon
+                        opens a dark floating tooltip on hover / focus with
+                        the exact recommended dimensions so the uploaded
+                        thumbnail lands crisp on the customer side. Uses
+                        the same tooltip pattern as InsightMetricCard. */}
+                    {sizeGuide ? (
+                        <div className="relative inline-flex items-center gap-1.5 self-start group/tip">
+                            <span className="text-[14px] leading-[20px] font-semibold text-[#344054]">
+                                Image size guide
+                            </span>
+                            <button
+                                type="button"
+                                aria-label="Image size guide"
+                                className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
+                            >
+                                <HelpCircle className="w-4 h-4 text-[#98a2b3]" />
+                            </button>
+                            <div
+                                role="tooltip"
+                                className={cn(
+                                    "pointer-events-none absolute z-20 left-0 top-full mt-2 w-[280px]",
+                                    "rounded-[8px] bg-[#101828] px-3 py-2 text-[12px] leading-[18px] text-white",
+                                    "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
+                                    "opacity-0 translate-y-[-2px] transition-all duration-150",
+                                    "group-hover/tip:opacity-100 group-hover/tip:translate-y-0",
+                                    "group-focus-within/tip:opacity-100 group-focus-within/tip:translate-y-0",
+                                )}
+                            >
+                                {sizeGuide}
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
                 <button
                     type="button"
