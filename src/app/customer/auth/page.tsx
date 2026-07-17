@@ -64,7 +64,7 @@ function AuthEmailInner() {
         // Google / Apple — sign in with the social account, profile auto-filled.
         // No password is set (social sign-up) → Profile shows "Create password".
         authDraft.returnTo = returnTo;
-        setCustomerPassword("");
+        setCustomerPassword(DEMO_MEMBER_ID, "");
         loginCustomer(DEMO_MEMBER_ID);
         showToast("Welcome back!", "You're now signed in.", "success", "check");
         router.replace("/customer/auth/loading");

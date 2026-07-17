@@ -53,7 +53,7 @@ export default function ProfileInformationPage() {
     const updateCustomer = useAppStore((s) => s.updateCustomer);
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
-    const hasPassword = useHasCustomerPassword();
+    const hasPassword = useHasCustomerPassword(member?.id ?? "");
 
     const initialPhone = splitPhone(member?.phone);
     const [firstName, setFirstName] = useState(member?.firstName ?? "");

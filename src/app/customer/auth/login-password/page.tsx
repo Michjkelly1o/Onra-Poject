@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { authDraft } from "@/lib/customer/auth-flow";
-import { getCustomerPassword, DEMO_CUSTOMER_PASSWORD } from "@/lib/customer/customer-password";
+import { getCustomerPassword } from "@/lib/customer/customer-password";
 import { AuthHeader, AUTH_CONTENT_OFFSET } from "@/components/customer/auth/AuthHeader";
 import { PasswordInput } from "@/components/customer/auth/PasswordInput";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export default function LoginPasswordPage() {
     }, [router]);
 
     function onContinue() {
-        const expected = getCustomerPassword() || DEMO_CUSTOMER_PASSWORD;
+        const expected = getCustomerPassword(authDraft.loginCustomerId ?? "");
         if (pw !== expected) {
             setError("Incorrect password. Please try again.");
             return;

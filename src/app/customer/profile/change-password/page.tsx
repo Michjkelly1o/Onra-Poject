@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
+import { useCurrentCustomer } from "@/lib/customer/context";
 import { getCustomerPassword, setCustomerPassword, useHasCustomerPassword } from "@/lib/customer/customer-password";
 import { passwordValid } from "@/lib/customer/password-rules";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
@@ -21,7 +22,8 @@ export default function ChangePasswordPage() {
     const router = useRouter();
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
-    const hasPassword = useHasCustomerPassword();
+    const member = useCurrentCustomer();
+    const hasPassword = useHasCustomerPassword(member?.id ?? "");
 
     const [current, setCurrent] = useState("");
     const [next, setNext] = useState("");
@@ -31,7 +33,7 @@ export default function ChangePasswordPage() {
     const canSave = (!hasPassword || current.length > 0) && passwordValid(next) && confirm === next;
 
     function save() {
-        if (hasPassword && current !== getCustomerPassword()) {
+        if (hasPassword && current !== getCustomerPassword(member?.id ?? "")) {
             showToast("Incorrect password", "Your current password doesn't match.", "error");
             return;
         }
@@ -43,7 +45,7 @@ export default function ChangePasswordPage() {
             showToast("Passwords don't match", "Re-enter your new password.", "error");
             return;
         }
-        setCustomerPassword(next);
+        setCustomerPassword(member?.id ?? "", next);
         showToast(hasPassword ? "Password changed" : "Password created", "Your password has been updated.", "success");
         router.back();
     }

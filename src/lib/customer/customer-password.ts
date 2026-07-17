@@ -1,21 +1,26 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — demo account password (for the Change-password flow)
+// Customer — per-account passwords (localStorage-backed)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The customer app logs in passwordless (email → OTP), so there's no real
-// password on the account. This tiny localStorage-backed store gives the
-// Profile → Change password flow something to validate against + update, seeded
-// with a known demo value.
+// Each customer account carries its OWN password, so multiple sign-ups can each
+// log back in with distinct credentials. Stored as a `{ [customerId]: password }`
+// map under a single localStorage key. Seeded demo accounts that were never given
+// a password fall back to DEMO_CUSTOMER_PASSWORD, so their logins keep working.
+// An explicit empty string (a social sign-up) means "no password yet" → Profile
+// shows "Create password".
+//
+// Prototype-only: plaintext, per-browser. A real deployment moves this to
+// server-side auth (Supabase). Persistence survives refresh via localStorage.
 
 import { useSyncExternalStore } from "react";
 
-const KEY = "onra-customer-password";
-/** The seeded demo password (shown to testers). */
+const KEY = "onra-customer-passwords";
+/** The seeded demo password (shown to testers; used by every seeded account). */
 export const DEMO_CUSTOMER_PASSWORD = "Demo1234!";
 
-let password = DEMO_CUSTOMER_PASSWORD;
+let passwords: Record<string, string> = {};
 let hydrated = false;
 const listeners = new Set<() => void>();
 
@@ -24,43 +29,58 @@ function hydrate() {
     hydrated = true;
     try {
         const raw = window.localStorage.getItem(KEY);
-        if (raw) password = raw;
+        if (raw) passwords = JSON.parse(raw) as Record<string, string>;
     } catch {
         /* keep default */
     }
 }
 function persist() {
     try {
-        window.localStorage.setItem(KEY, password);
+        window.localStorage.setItem(KEY, JSON.stringify(passwords));
     } catch {
         /* ignore */
     }
 }
 
-export function getCustomerPassword(): string {
+/** The effective password for an account: its stored value, or the demo default
+ *  for a seeded account that never set one. A stored "" means "no password". */
+function effectivePassword(customerId: string): string {
     hydrate();
-    return password;
+    return Object.prototype.hasOwnProperty.call(passwords, customerId)
+        ? passwords[customerId]
+        : DEMO_CUSTOMER_PASSWORD;
 }
-export function setCustomerPassword(next: string): void {
+
+/** The password to validate a login against for this account. */
+export function getCustomerPassword(customerId: string): string {
+    return effectivePassword(customerId);
+}
+
+/** Set (or clear, with "") this account's password. */
+export function setCustomerPassword(customerId: string, next: string): void {
     hydrate();
-    password = next;
+    passwords[customerId] = next;
     persist();
     listeners.forEach((l) => l());
 }
-/** Whether a password is set (empty = social/no-password signup → "Create password"). */
-export function hasCustomerPassword(): boolean {
-    hydrate();
-    return password.length > 0;
+
+/** Whether this account has a usable password (false = social / no-password → "Create password"). */
+export function hasCustomerPassword(customerId: string): boolean {
+    return effectivePassword(customerId).length > 0;
 }
-export function useHasCustomerPassword(): boolean {
-    return useCustomerPassword().length > 0;
-}
+
 function subscribe(cb: () => void) {
     listeners.add(cb);
     return () => {
         listeners.delete(cb);
     };
 }
-export function useCustomerPassword(): string {
-    return useSyncExternalStore(subscribe, () => { hydrate(); return password; }, () => DEMO_CUSTOMER_PASSWORD);
+
+/** Reactive `hasCustomerPassword` for the Profile "Change / Create password" label. */
+export function useHasCustomerPassword(customerId: string): boolean {
+    return useSyncExternalStore(
+        subscribe,
+        () => effectivePassword(customerId).length > 0,
+        () => true,
+    );
 }
