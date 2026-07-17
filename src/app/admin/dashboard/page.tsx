@@ -573,6 +573,23 @@ function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     );
 }
 
+/** Delta caption for the Performance-tab metric cards — flips "vs …" to
+ *  match the active period picker so a "This month" card reads "vs last
+ *  month", not "vs yesterday". Mirrors the instructor dashboard helper
+ *  (kept module-local so `page.tsx` stays self-contained). */
+function dashDeltaSuffix(filter: DateFilter): string {
+    const l = filter.label.toLowerCase();
+    if (l.includes("last 7"))    return "vs last 7 days";
+    if (l.includes("last 30"))   return "vs last 30 days";
+    if (l.includes("last 90"))   return "vs last 90 days";
+    if (l.includes("this week")) return "vs last week";
+    if (l.includes("this month") || l.includes("month to date")) return "vs last month";
+    if (l.includes("this year")  || l.includes("year to date"))  return "vs last year";
+    if (l === "today")     return "vs yesterday";
+    if (l === "yesterday") return "vs 2 days ago";
+    return "vs previous period";
+}
+
 // ── Main Dashboard ──
 export default function AdminDashboard() {
     const router = useRouter();
@@ -734,7 +751,7 @@ export default function AdminDashboard() {
         };
     }, [scopedSessions, typeFilter, todayISO]);
 
-    const { todayMetrics, performanceMetrics } = useMemo(() => {
+    const { todayMetrics } = useMemo(() => {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
         // void / write-off rows so the two totals stay honest.
@@ -753,22 +770,11 @@ export default function AdminDashboard() {
             (c.createdAt ?? "").startsWith(todayISO),
         ).length;
 
-        // Active members — all-time count of customers with status "active"
-        // in scope. Performance-tab only.
-        const activeMembers = scopedCustomers.filter(c => c.status === "active").length;
-
-        // Classes scheduled today — kept for the Avg occupancy calc
-        // below. Cancelled classes still take a slot the front desk saw
-        // arriving, so they count for scheduling density.
-        const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
-        const classesTodayCount = todaySchedules.length;
-        // Bookings today — count of `booked` rows whose schedule is
-        // today's. Waitlist + cancelled bookings excluded so the number
-        // reads as "committed activity on the floor today".
-        const todayScheduleIdSet = new Set(todaySchedules.map(s => s.id));
-        const bookingsToday = scopedBookings.filter(b =>
-            b.status === "booked" && todayScheduleIdSet.has(b.classScheduleId),
-        ).length;
+        // `activeMembers`, `classesTodayCount`, `bookingsToday` used to be
+        // computed here for the Performance strip; that strip moved to its
+        // own period-scoped useMemo below (client Jul 2026), so those
+        // vars — along with the intermediate `todaySchedules` /
+        // `todayScheduleIdSet` — are gone.
 
         const today: DashboardMetric[] = [
             {
@@ -800,36 +806,135 @@ export default function AdminDashboard() {
             },
         ];
 
-        // Performance-tab metrics — 4 cards per Figma 7799:109180.
-        const performance: DashboardMetric[] = [
+        return { todayMetrics: today };
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
+
+    // ── Performance-tab metrics — 4 cards, PERIOD-scoped ──
+    //
+    // Client Jul 2026 — the tab is picker-scoped (This week / This month /
+    // etc.) but the old cards hardcoded "today" values + "vs yesterday" delta
+    // captions. Now values compute against the selected DateRangeFilter
+    // period and the delta captions read "vs last week" / "vs last month"
+    // via `dashDeltaSuffix`. Prior-period actuals drive the delta chip.
+    const performanceMetrics: DashboardMetric[] = useMemo(() => {
+        const { from, to } = dateFilterToRange(period);
+        const fromMs = from.getTime();
+        const toMs   = to.getTime();
+        const spanMs = toMs - fromMs;
+        // Previous same-length window ends the instant before `from`.
+        const prevToMs   = fromMs - 1;
+        const prevFromMs = fromMs - (spanMs + 1);
+
+        const isoDay = (d: Date): string => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+        };
+        const fromISO = isoDay(from);
+        const toISO   = isoDay(to);
+        const prevFromISO = isoDay(new Date(prevFromMs));
+        const prevToISO   = isoDay(new Date(prevToMs));
+        const inRangeDay = (iso: string): boolean => {
+            const d = iso.slice(0, 10);
+            return d >= fromISO && d <= toISO;
+        };
+        const inPrevRangeDay = (iso: string): boolean => {
+            const d = iso.slice(0, 10);
+            return d >= prevFromISO && d <= prevToISO;
+        };
+        const inRangeMs = (iso: string): boolean => {
+            const t = new Date(iso).getTime();
+            return !Number.isNaN(t) && t >= fromMs && t <= toMs;
+        };
+        const inPrevRangeMs = (iso: string): boolean => {
+            const t = new Date(iso).getTime();
+            return !Number.isNaN(t) && t >= prevFromMs && t <= prevToMs;
+        };
+
+        // Revenue (period AED) — complete `sale` transactions, exclude
+        // penalty / freeze-fee rows so the total matches the Payments tab.
+        const isBillableSale = (t: typeof scopedTransactions[number]): boolean =>
+            t.status === "complete"
+            && (t.transactionType === undefined || t.transactionType === "sale")
+            && t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee";
+        const revenuePeriod = scopedTransactions
+            .filter(t => isBillableSale(t) && inRangeMs(t.createdAtISO))
+            .reduce((sum, t) => sum + t.amountAed, 0);
+        const revenuePrior = scopedTransactions
+            .filter(t => isBillableSale(t) && inPrevRangeMs(t.createdAtISO))
+            .reduce((sum, t) => sum + t.amountAed, 0);
+
+        // Members — active members that JOINED in the period (a period-
+        // scoped acquisition metric, comparable across weeks/months). Prior
+        // window = joined in the previous same-length window.
+        const membersPeriod = scopedCustomers.filter(c =>
+            c.status === "active" && inRangeMs(c.createdAt ?? ""),
+        ).length;
+        const membersPrior = scopedCustomers.filter(c =>
+            c.status === "active" && inPrevRangeMs(c.createdAt ?? ""),
+        ).length;
+
+        // Classes — schedules whose date falls in the period (date-only
+        // fields, so use the day-string helper for TZ safety).
+        const classesPeriod = scopedSchedules.filter(s => inRangeDay(s.dateISO)).length;
+        const classesPrior  = scopedSchedules.filter(s => inRangeDay(s.dateISO) === false && inPrevRangeDay(s.dateISO)).length;
+
+        // Bookings — booked rows on schedules whose date lands in the period.
+        const scheduleIdsInRange = new Set(
+            scopedSchedules.filter(s => inRangeDay(s.dateISO)).map(s => s.id),
+        );
+        const scheduleIdsInPrev = new Set(
+            scopedSchedules.filter(s => inPrevRangeDay(s.dateISO)).map(s => s.id),
+        );
+        const bookingsPeriod = scopedBookings.filter(b =>
+            b.status === "booked" && scheduleIdsInRange.has(b.classScheduleId),
+        ).length;
+        const bookingsPrior = scopedBookings.filter(b =>
+            b.status === "booked" && scheduleIdsInPrev.has(b.classScheduleId),
+        ).length;
+
+        // Delta helper — real % change vs the prior same-length window.
+        const pct = (current: number, prior: number): { change: number; positive: boolean } => {
+            if (prior === 0) return { change: current === 0 ? 0 : 100, positive: current >= 0 };
+            const d = ((current - prior) / prior) * 100;
+            return { change: Math.abs(Math.round(d)), positive: d >= 0 };
+        };
+        const suffix = dashDeltaSuffix(period);
+
+        const revD = pct(revenuePeriod, revenuePrior);
+        const memD = pct(membersPeriod, membersPrior);
+        const clsD = pct(classesPeriod, classesPrior);
+        const bkgD = pct(bookingsPeriod, bookingsPrior);
+
+        return [
             {
-                label: "Today's revenue",
-                value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
-                change: 3, positive: true, comparison: "vs yesterday",
+                label: "Revenue",
+                value: `AED ${revenuePeriod.toLocaleString("en-US")}`,
+                change: revD.change, positive: revD.positive, comparison: suffix,
                 icon: CurrencyDollar,
             },
             {
-                label: "Active members",
-                value: activeMembers.toLocaleString("en-US"),
-                change: 3, positive: true, comparison: "vs yesterday",
+                label: "Members",
+                value: membersPeriod.toLocaleString("en-US"),
+                change: memD.change, positive: memD.positive, comparison: suffix,
                 icon: UserCheck01,
             },
             {
-                label: "Classes today",
-                value: classesTodayCount.toLocaleString("en-US"),
-                change: 2, positive: false, comparison: "vs yesterday",
+                label: "Classes",
+                value: classesPeriod.toLocaleString("en-US"),
+                change: clsD.change, positive: clsD.positive, comparison: suffix,
                 icon: CalendarCheck01,
             },
             {
-                label: "Bookings today",
-                value: bookingsToday.toLocaleString("en-US"),
-                change: 1, positive: false, comparison: "vs yesterday",
+                label: "Bookings",
+                value: bookingsPeriod.toLocaleString("en-US"),
+                change: bkgD.change, positive: bkgD.positive, comparison: suffix,
                 icon: TrendUp01,
             },
         ];
-
-        return { todayMetrics: today, performanceMetrics: performance };
-    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
+    }, [period, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings]);
 
     // ── Coming-up metrics — 6 KPI cards per Figma 7823:53746 ──
     //
