@@ -25,7 +25,7 @@
 import { useState } from "react";
 import { CheckCircle, XCircle, Eye, EyeOff } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
-import { useCustomerPassword } from "@/lib/customer/customer-password";
+import { getCustomerPassword, useHasCustomerPassword } from "@/lib/customer/customer-password";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,11 +89,14 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const customer = customers.find(c => c.id === customerId);
     // Customer sign-in password — reactive read from the same localStorage-
-    // backed store the customer app uses (`useCustomerPassword`). View-only
-    // on admin per client Jul 2026 (no "Change" affordance here); the
-    // customer edits it themselves in the customer app, and the display
-    // updates on the next render.
-    const password = useCustomerPassword();
+    // backed per-account map the customer app uses. `useHasCustomerPassword`
+    // subscribes to changes so a customer-side edit re-renders this tab;
+    // `getCustomerPassword` returns the effective value (per-account override
+    // or the seeded demo default). View-only on admin per client Jul 2026 (no
+    // "Change" affordance — that stays a self-service action on the
+    // customer side).
+    const hasPassword = useHasCustomerPassword(customerId);
+    const password = hasPassword ? getCustomerPassword(customerId) : "";
     const [revealPassword, setRevealPassword] = useState(false);
     if (!customer) return null;
 
@@ -135,9 +138,9 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                         affordance (client Jul 2026 — admin cannot rewrite a
                         customer's sign-in password; that stays a
                         self-service action on the customer side). Reads the
-                        same `useCustomerPassword` slice the customer app
-                        uses so any customer-side change reflects here on
-                        the next render. */}
+                        same per-account password map the customer app uses
+                        so any customer-side change reflects here on the
+                        next render. */}
                     <DetailField
                         label="Password"
                         value={
