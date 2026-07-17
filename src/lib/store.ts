@@ -8228,7 +8228,14 @@ export const useAppStore = create<AppState>()(persist(
         //   `wallet_transactions` seed emptied; `customer_referrals`
         //   `wallet_credit` overrides removed. Bump reseeds so existing
         //   testers drop the stale referral wallet balances.
-        version: 68,
+        // v69 (2026-07-17): Follow-up — retired the alternating
+        //   `REWARD_TYPES` array on `DEMO_NOW_REFERRALS` (was still
+        //   stamping half the demo referrals as `wallet_credit` @ AED 50
+        //   × credits, e.g. "Liam Carter — AED 100"). Every DEMO_NOW row
+        //   now stamps `free_credits` with the row's benefit_credits
+        //   count. Bump reseeds so testers who already refreshed under
+        //   v68 pick up the corrected shape.
+        version: 69,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
