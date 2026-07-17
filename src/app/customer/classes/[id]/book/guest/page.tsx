@@ -13,8 +13,9 @@
 
 import { Suspense, useState, type ComponentType, type SVGProps } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { BankNote01, ChevronLeft, CoinsStacked03, Link03, Trash01 } from "@untitledui/icons";
+import { BankNote01, ChevronLeft, CoinsStacked03, Link03, Ticket02, Trash01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { useCurrentCustomer } from "@/lib/customer/context";
 import { bookingDraft, DROP_IN_PRICE_AED, ensureBookingDraft, type GuestPayment } from "@/lib/customer/booking-flow";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
@@ -46,6 +47,7 @@ function AddGuest() {
     const { id } = useParams<{ id: string }>();
     const search = useSearchParams();
     const customers = useAppStore((s) => s.customers);
+    const member = useCurrentCustomer();
     const showToast = useAppStore((s) => s.showToast);
     const scrollable = useMainScrollable();
     const scrolled = useMainScrolled();
@@ -67,9 +69,17 @@ function AddGuest() {
     );
     const guestHasCredits =
         !!guestMember && typeof guestMember.creditsRemaining === "number" && guestMember.creditsRemaining > 0;
+    // The booker can also cover the guest with their OWN class credits (needs one
+    // spare beyond their own seat).
+    const bookerCredits = typeof member?.creditsRemaining === "number" ? member.creditsRemaining : null;
+    const bookerCanCoverGuest = bookerCredits === null || bookerCredits >= 2;
     // If the package option was picked but the email no longer qualifies, void it.
     const effectivePayment: GuestPayment | null =
-        payment === "guest_package" && !guestHasCredits ? null : payment;
+        payment === "guest_package" && !guestHasCredits
+            ? null
+            : payment === "booker_credit" && !bookerCanCoverGuest
+              ? null
+              : payment;
 
     const canSave = detailsDone && !!effectivePayment;
 
@@ -97,6 +107,13 @@ function AddGuest() {
             label: "Use from their package",
             sub: guestHasCredits ? "1 credit deducted" : "No eligible package for this email",
             disabled: !guestHasCredits,
+        },
+        {
+            value: "booker_credit",
+            icon: Ticket02,
+            label: "Use my class credits",
+            sub: bookerCanCoverGuest ? "1 of your credits covers this guest" : "Not enough credits for a guest",
+            disabled: !bookerCanCoverGuest,
         },
         { value: "invite_link", icon: Link03, label: "Send invite link", sub: "Friend pays & books themselves" },
     ];

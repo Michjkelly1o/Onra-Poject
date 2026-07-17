@@ -84,6 +84,11 @@ const ZONE_BY_CITY = new Map(TIMEZONES.map((t) => [t.city, t.zone]));
  *  The Classes flow clears it (null → no branch badge). */
 export const tzPickerCtx: { branchCity: string | null } = { branchCity: null };
 
+/** One-shot per-session flag: the out-of-zone Time Zone sheet is shown once when
+ *  the customer enters Search / Appointments, then not auto-shown again. Resets
+ *  on a full reload. */
+export const tzGate: { confirmed: boolean } = { confirmed: false };
+
 /** The current UTC offset of an IANA zone, e.g. "UTC+04:00" / "UTC±00:00". */
 export function offsetLabel(zone: string): string {
     try {

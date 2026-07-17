@@ -15,7 +15,6 @@ import type { FilterInstructor } from "@/lib/customer/instructors";
 import { FullScreenFilterModal } from "@/components/customer/shell/FullScreenFilterModal";
 import { InstructorAvatar } from "@/components/customer/instructors/InstructorAvatar";
 import { FilterPill } from "@/components/customer/shell/FilterPill";
-import { RadioDot } from "@/components/customer/shell/SelectIndicators";
 import { Sun, Sunrise, Sunset } from "@untitledui/icons";
 import { SegmentedControl } from "@/components/customer/shell/SegmentedControl";
 
@@ -95,7 +94,8 @@ export function ClassesFilterModal({
                 {showTime && (
                     <div className="flex flex-col gap-2">
                         <span className="text-sm font-medium leading-5 text-[#344054]">Time</span>
-                        <div className="flex flex-col gap-3">
+                        {/* Horizontal — one column per slot, illustration on top */}
+                        <div className="grid grid-cols-3 gap-2">
                             {TIME_SLOTS.map((slot) => {
                                 const on = activeSlotId === slot.id;
                                 const Icon = slot.icon;
@@ -104,16 +104,18 @@ export function ClassesFilterModal({
                                         key={slot.id}
                                         type="button"
                                         onClick={() => toggleSlot(slot)}
-                                        className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
+                                        className={`flex flex-col items-center gap-2 rounded-xl p-3 text-center transition-colors ${
                                             on ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
                                         }`}
                                     >
-                                        <Icon className="size-5 shrink-0 text-[#344054]" aria-hidden />
-                                        <span className="flex-1 text-sm leading-5">
-                                            <span className="font-medium text-[var(--brand-text)]">{slot.label}</span>
-                                            <span className="text-[#667085]"> ({slot.range})</span>
+                                        <Icon
+                                            className={`size-6 shrink-0 ${on ? "text-[var(--brand-primary)]" : "text-[#344054]"}`}
+                                            aria-hidden
+                                        />
+                                        <span className="flex flex-col items-center gap-0.5">
+                                            <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{slot.label}</span>
+                                            <span className="text-[11px] leading-4 text-[#667085]">({slot.range})</span>
                                         </span>
-                                        <RadioDot checked={on} />
                                     </button>
                                 );
                             })}

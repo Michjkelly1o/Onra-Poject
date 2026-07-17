@@ -12,7 +12,7 @@
 // notifications — so the admin roster, the customer profile, and the member's
 // Bookings list all update before we route back to the (now "Booked") detail.
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ChevronRight, Clock, CoinsStacked03, Lightbulb02, MarkerPin01, ShoppingBag03, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
@@ -22,7 +22,7 @@ import { formatLongDate, to12h } from "@/lib/customer/dates";
 import { bookingDraft, ensureBookingDraft, type BookingGuest } from "@/lib/customer/booking-flow";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { Button } from "@/components/ui/button";
-import { SpotPicker, spotId } from "@/components/customer/classes/SpotPicker";
+import { SpotPicker } from "@/components/customer/classes/SpotPicker";
 
 export default function ClassBookingConfirmationPage() {
     // useSearchParams (read inside) must sit under a Suspense boundary for the
@@ -47,39 +47,13 @@ function BookingConfirmation() {
     const scrollable = useMainScrollable();
     const scrolled = useMainScrolled();
     const needsWaiver = useNeedsWaiver();
-    const [selectedSpot, setSelectedSpot] = useState<string | null>(null);
+    const [selectedSpots, setSelectedSpots] = useState<(string | undefined)[]>([]);
 
     // Guests survive the Add Guest sub-route round-trip via the shared draft.
     ensureBookingDraft(id);
     const [guests] = useState<BookingGuest[]>(() => bookingDraft.guests);
-
-    // Auto-select the first available spot when the class has spot selection on —
-    // the member can still change it. Guards null detail (rules-of-hooks order)
-    // and re-runs once the class resolves after hydration.
-    useEffect(() => {
-        const layout = detail?.spotSelectionEnabled ? detail.spotLayout : undefined;
-        if (!detail || !layout || selectedSpot !== null) return;
-        const taken = new Set([
-            ...layout.blockedSpots,
-            ...allBookings
-                .filter(
-                    (b) =>
-                        b.classScheduleId === detail.id &&
-                        (b.status === "booked" || b.status === "waitlisted") &&
-                        b.spot,
-                )
-                .map((b) => b.spot as string),
-        ]);
-        for (let r = 0; r < layout.rows; r++) {
-            for (let c = 0; c < layout.cols; c++) {
-                const sid = spotId(r, c);
-                if (!taken.has(sid)) {
-                    setSelectedSpot(sid);
-                    return;
-                }
-            }
-        }
-    }, [detail, allBookings, selectedSpot]);
+    // Self is ALWAYS booked — a guest is brought ALONG (never booked instead of you).
+    bookingDraft.bookSelf = true;
 
     if (!detail) {
         return (
@@ -101,13 +75,13 @@ function BookingConfirmation() {
     });
     const credits = member?.creditsRemaining;
     const hasCredits = typeof credits === "number";
-    const creditsAfter = hasCredits ? Math.max(0, credits - 1) : null;
+    const memberCreditSeats = 1 + guests.filter((g) => g.payment === "booker_credit").length;
+    const creditsAfter = hasCredits ? Math.max(0, credits - memberCreditSeats) : null;
     // Eligible = holds a plan that still has credit (or an unlimited membership).
     // No eligible plan → the footer offers Purchase Product instead of Confirm.
     const hasEligiblePlan = !!member?.planKind && (!hasCredits || credits > 0);
-    // Booking for a guest = booking a friend in (they pay drop-in / their own
-    // package), so the member's own plan isn't required to confirm.
-    const needsPurchase = mode === "book" && !hasEligiblePlan && guests.length === 0;
+    // A plan/credit is needed for your own seat — guests pay their own way.
+    const needsPurchase = mode === "book" && !hasEligiblePlan;
     // Today's classes whose start time has passed are closed — no booking action.
     const isClosed = detail.state === "closed";
 
@@ -133,7 +107,16 @@ function BookingConfirmation() {
           ]
         : [];
     const spotRequired = !!spotLayout && mode === "book";
-    const spotMissing = spotRequired && !selectedSpot;
+    // Seats to place: yourself + each guest (index-aligned with selectedSpots).
+    const spotSeats = [
+        { initials: member?.initials ?? "You", label: "You" },
+        ...guests.map((g, i) => ({
+            initials: (g.name.trim().slice(0, 1) || "G").toUpperCase() + (guests.length > 1 ? String(i + 1) : ""),
+            label: guests.length > 1 ? `Guest ${i + 1}` : "Guest",
+        })),
+    ];
+    // Every seat needs its own chosen spot (nothing is auto-selected).
+    const spotMissing = spotRequired && spotSeats.some((_, i) => !selectedSpots[i]);
 
     // ── Conflict check — does the member already hold a booking that overlaps
     // this class's time on the same day? (Soft warning, mirrors the admin rule.)
@@ -164,7 +147,8 @@ function BookingConfirmation() {
         // Hand off to the Processing screen, which performs the write then routes
         // to Success. Selections travel as query params.
         const params = new URLSearchParams({ mode });
-        if (spotRequired && selectedSpot) params.set("spot", selectedSpot);
+        bookingDraft.spots = spotRequired ? (spotSeats.map((_, i) => selectedSpots[i] ?? "").filter(Boolean)) : [];
+        if (spotRequired && selectedSpots[0]) params.set("spot", selectedSpots[0]);
         // First-timers sign the waiver before the booking goes through.
         const next = needsWaiver ? "waiver" : "processing";
         router.push(`/customer/classes/${detail.id}/book/${next}?${params.toString()}`);
@@ -265,15 +249,16 @@ function BookingConfirmation() {
                     auto-assign note. */}
                 <section className="flex w-full flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
-                        {spotLayout ? "Select spot" : "Spot"}
+                        {spotLayout ? (spotSeats.length > 1 ? "Select spots" : "Select spot") : "Spot"}
                     </p>
                     {spotLayout ? (
                         <SpotPicker
                             cols={spotLayout.cols}
                             rows={spotLayout.rows}
                             unavailable={takenSpots}
-                            selected={selectedSpot}
-                            onSelect={setSelectedSpot}
+                            selected={selectedSpots}
+                            seats={spotSeats}
+                            onChange={setSelectedSpots}
                         />
                     ) : (
                         <div className="flex w-full items-center gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
@@ -287,32 +272,56 @@ function BookingConfirmation() {
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
 
-                {/* Guest */}
+                {/* Guest — you're always booked; bring ALONG up to one guest. */}
                 <section className="flex w-full flex-col gap-3">
                     <div className="flex w-full items-center justify-between">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Guest</p>
-                        <button
-                            type="button"
-                            onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=${guests.length}`)}
-                            className="text-sm font-semibold leading-5 text-[var(--brand-primary)]"
-                        >
-                            Add guest
-                        </button>
+                        {guests.length === 0 && (
+                            <button
+                                type="button"
+                                onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=0`)}
+                                className="text-sm font-semibold leading-5 text-[var(--brand-primary)]"
+                            >
+                                Add guest
+                            </button>
+                        )}
                     </div>
-                    {guests.length === 0 ? (
-                        <p className="text-sm font-normal leading-5 text-[#475467]">No guest added.</p>
-                    ) : (
+
+                    {/* Your own account — always included (you can't book without yourself). */}
+                    {member && (
+                        <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                            <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                {member.imageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={member.imageUrl} alt="" className="size-full object-cover" />
+                                ) : (
+                                    <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
+                                )}
+                            </span>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
+                                    {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[#667085]">(You)</span>
+                                </span>
+                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* One guest, brought along */}
+                    {guests.length > 0 && (
                         <div className="flex w-full flex-col gap-2">
                             {guests.map((g, i) => (
                                 <div
                                     key={i}
                                     className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4"
                                 >
+                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-xs font-semibold text-[#667085]">
+                                        {g.name.trim().slice(0, 1).toUpperCase() || "G"}
+                                    </span>
                                     <div className="flex min-w-0 flex-1 flex-col">
                                         <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{g.name}</span>
                                         <span className="truncate text-sm font-normal leading-5 text-[#667085]">{g.email}</span>
                                     </div>
-                                    {/* Remove a guest from inside the Edit screen (trash icon), not here. */}
                                     <button
                                         type="button"
                                         onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=${i}`)}

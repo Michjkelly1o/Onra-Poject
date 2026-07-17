@@ -13,11 +13,14 @@
 import { useMemo } from "react";
 import { useAppStore, type ClassSchedule } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "./context";
+import { useCustomerInstructors } from "./instructors";
 
 export interface DiscoverClassVM {
     id: string;
     name: string;
     instructorName: string;
+    instructorImageUrl?: string;
+    instructorInitials?: string;
     coverImage?: string;
     coverColor: string;
 }
@@ -26,9 +29,11 @@ export interface DiscoverClassVM {
 export function useTrendingClasses(limit = 8): DiscoverClassVM[] {
     const { selectedBranchId } = useCurrentCustomerContext();
     const classSchedules = useAppStore((s) => s.classSchedules);
+    const instructors = useCustomerInstructors();
 
     return useMemo(() => {
         const isAll = selectedBranchId === ALL_BRANCHES;
+        const imageById = new Map(instructors.map((i) => [i.id, i.imageUrl]));
         const score = (s: ClassSchedule) => (s.rating ?? 0) * 1000 + (s.booked ?? 0);
 
         // Keep one instance per class name — the best-rated / most-booked one.
@@ -46,9 +51,11 @@ export function useTrendingClasses(limit = 8): DiscoverClassVM[] {
             .map((s) => ({
                 id: s.id,
                 name: s.name,
-                instructorName: s.instructorName,
+                instructorName: s.instructorName ?? "",
+                instructorImageUrl: s.instructorId ? imageById.get(s.instructorId) : undefined,
+                instructorInitials: s.instructorInitials,
                 coverImage: s.coverImage,
                 coverColor: s.coverColor,
             }));
-    }, [selectedBranchId, classSchedules, limit]);
+    }, [selectedBranchId, classSchedules, instructors, limit]);
 }

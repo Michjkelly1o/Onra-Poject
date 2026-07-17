@@ -219,6 +219,7 @@ export function cardPresentation(vm: SearchClassVM): {
     ctaLabel: string;
     ctaVariant: "primary" | "secondary";
     ctaDisabled: boolean;
+    statusPill?: { label: string; tone: "booked" | "waitlisted" };
 } {
     switch (vm.state) {
         case "available":
@@ -240,11 +241,11 @@ export function cardPresentation(vm: SearchClassVM): {
                 ctaDisabled: false,
             };
         case "booked":
-            // Keep the same capacity badge as the default (available) state — a
-            // booked card shows the class fill, not a "Booked" pill.
-            return { badgeLabel: `${vm.booked}/${vm.capacity}`, badgeTone: "success", badgeIcon: "users", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
+            // Keep the capacity badge (class fill) AND add a "Booked" pill next to
+            // the instructor so the member's own state is clear without losing info.
+            return { badgeLabel: `${vm.booked}/${vm.capacity}`, badgeTone: "success", badgeIcon: "users", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: "Booked", tone: "booked" } };
         case "waitlisted":
-            return { badgeLabel: `${vm.waitlistCount}/${vm.maxWaitlist}`, badgeTone: "neutral", badgeIcon: "hourglass", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false };
+            return { badgeLabel: `${vm.waitlistCount}/${vm.maxWaitlist}`, badgeTone: "neutral", badgeIcon: "hourglass", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: "Waitlist", tone: "waitlisted" } };
         case "closed":
             return { badgeLabel: "Closed", badgeTone: "neutral", badgeIcon: null, ctaLabel: "Closed", ctaVariant: "secondary", ctaDisabled: true };
         case "full":
@@ -342,27 +343,26 @@ function memberAge(dob: string | undefined): number | null {
     return age;
 }
 
-/** True when the member must (re-)sign the booking waiver before booking. The
- *  waiver is a ONE-TIME agreement — once signed it is never asked again for a
- *  later booking — EXCEPT:
- *   • any not-yet-signed agreement (never_signed / re_accept_due), OR
- *   • the member's minor/adult status no longer matches how the waiver was
- *     signed (adult→under-18 OR under-18→adult). An adult signs without
- *     guardian consent; a minor signs WITH it — so a change across the 18
- *     boundary in EITHER direction requires a fresh, correct waiver. */
+/** True when the member must sign the booking waiver before booking.
+ *  Rules (2026-07-17):
+ *   • Adults (18+) NEVER sign — the waiver is under-18 only.
+ *   • A minor (<18) signs a GUARDIAN-consent waiver on their FIRST booking; once
+ *     a guardian-signed agreement is on file it is never asked again.
+ *   • If the member's DOB later changes ADULT→MINOR they must sign afresh (no
+ *     guardian agreement on file yet); MINOR→ADULT drops the requirement.
+ *   Same age group → never re-asked. */
 export function useNeedsWaiver(): boolean {
     const { member } = useCurrentCustomerContext();
     const customerAgreements = useAppStore((s) => s.customerAgreements);
     return useMemo(() => {
         if (!member) return false;
-        const mine = customerAgreements.filter((ca) => ca.customerId === member.id);
-        if (mine.length === 0) return false;
-        if (mine.some((ca) => ca.status !== "signed")) return true;
-        // Signed already (one-time). Re-sign only when the member's minor/adult
-        // status no longer matches how the waiver was signed — either direction.
         const age = memberAge(member.dateOfBirth);
         const isMinor = age !== null && age < 18;
-        const signedAsGuardian = mine.some((ca) => ca.status === "signed" && ca.guardianConsent);
-        return isMinor !== signedAsGuardian;
+        if (!isMinor) return false; // adults are never required to sign
+        // Minor → require a guardian-signed waiver unless one already exists.
+        const hasGuardianSigned = customerAgreements.some(
+            (ca) => ca.customerId === member.id && ca.status === "signed" && ca.guardianConsent,
+        );
+        return !hasGuardianSigned;
     }, [member, customerAgreements]);
 }

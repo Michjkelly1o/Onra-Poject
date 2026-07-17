@@ -50,7 +50,7 @@ export default function AppointmentReviewPage() {
 
     const isPrivate = appointment.type === "private";
     const branch = branches.find((b) => b.id === appointment.branchId) ?? null;
-    const { timezone } = useCurrentCustomerContext();
+    const { localTimezone } = useCurrentCustomerContext();
     const addressLine = branch
         ? [branch.address, branch.city, branch.country].filter(Boolean).join(", ")
         : "";
@@ -76,7 +76,7 @@ export default function AppointmentReviewPage() {
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{appointment.name}</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">{fullDate} at {timeInZoneLabel(appointmentDraft.slotISO ?? "", appointmentDraft.slotTime, branch, timezone)}</p>
+                    <p className="text-sm font-normal leading-5 text-[#475467]">{fullDate} at {timeInZoneLabel(appointmentDraft.slotISO ?? "", appointmentDraft.slotTime, branch, localTimezone)}</p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[#475467]">
                             <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />

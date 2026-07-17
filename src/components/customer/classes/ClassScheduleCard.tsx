@@ -10,7 +10,7 @@
 // branch, start time + duration, and a state-driven CTA. The whole card and the
 // CTA both open Class Details (the booking happens there). Built from scratch.
 
-import { Clock, Hourglass03, MarkerPin01, Users01 } from "@untitledui/icons";
+import { CheckCircle, Clock, Hourglass03, MarkerPin01, Users01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 
 export type BadgeTone = "success" | "neutral" | "error";
@@ -30,6 +30,10 @@ export interface ClassScheduleCardProps {
     badgeTone: BadgeTone;
     /** Leading badge icon — Users (open spots) / Hourglass (waitlist) / none. */
     badgeIcon?: "users" | "hourglass" | null;
+    /** Small pill next to the instructor showing the member's own state — added
+     *  ALONGSIDE the capacity badge (never replaces it). Booked = filled green
+     *  with a check; Waitlisted = subtle tint. */
+    statusPill?: { label: string; tone: "booked" | "waitlisted" };
     ctaLabel: string;
     ctaVariant?: "primary" | "secondary";
     ctaDisabled?: boolean;
@@ -53,6 +57,7 @@ export function ClassScheduleCard({
     badgeLabel,
     badgeTone,
     badgeIcon = null,
+    statusPill,
     ctaLabel,
     ctaVariant = "primary",
     ctaDisabled = false,
@@ -88,7 +93,19 @@ export function ClassScheduleCard({
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
-                    <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">with {instructorName}</p>
+                    <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">with {instructorName}</p>
+                        {statusPill && (() => {
+                            // Gray status pill — matches the card's neutral badge family.
+                            const PillIcon = statusPill.tone === "booked" ? CheckCircle : Hourglass03;
+                            return (
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5">
+                                    <PillIcon className="size-3 shrink-0 text-[#667085]" aria-hidden />
+                                    <span className="text-xs font-medium leading-[18px] text-[#344054]">{statusPill.label}</span>
+                                </span>
+                            );
+                        })()}
+                    </div>
                 </div>
 
                 <span

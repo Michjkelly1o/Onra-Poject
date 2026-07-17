@@ -19,7 +19,6 @@ import {
     CreditCard02,
     Gift01,
     BankNote01,
-    Globe01,
     InfoCircle,
     Link01,
     LogOut01,
@@ -43,7 +42,6 @@ const GROUP_A: Row[] = [
     { icon: Link01, label: "Integrations", href: "/customer/profile/integrations" },
     { icon: Bell01, label: "Notifications", href: "/customer/profile/notifications" },
     { icon: CreditCard02, label: "Payment methods", href: "/customer/profile/payment-methods" },
-    { icon: Globe01, label: "Timezone", href: "/customer/profile/timezone" },
 ];
 const GROUP_B: Row[] = [
     { icon: Gift01, label: "Gift card", href: "/customer/profile/gift-cards" },
@@ -254,7 +252,7 @@ export default function ProfilePage() {
                             <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
                                 <Icon className="size-4 text-[#344054]" aria-hidden />
                             </span>
-                            <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{label}</span>
+                            <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">{label}</span>
                         </button>
                     ))}
                 </div>

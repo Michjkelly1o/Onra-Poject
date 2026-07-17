@@ -8,7 +8,7 @@
 // detail. The footer action(s) are caller-supplied — "Continue booking" for the
 // booking flow, "View plan" / "View gift card" for the Products flow.
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Check, XClose } from "@untitledui/icons";
 import { lastOrder } from "@/lib/customer/purchase";
 import { PaymentReceiptCard } from "@/components/customer/checkout/PaymentReceiptCard";
@@ -16,6 +16,7 @@ import { ReceiptActions } from "@/components/customer/checkout/ReceiptActions";
 
 export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose?: () => void }) {
     const order = lastOrder.value;
+    const receiptRef = useRef<HTMLDivElement>(null);
 
     return (
         <div className="flex min-h-full flex-col">
@@ -31,7 +32,9 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                     </button>
                 </header>
             )}
-            <div className={`flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-6 ${onClose ? "pt-2" : "pt-16"}`}>
+            <div className={`flex flex-1 flex-col items-center justify-center px-4 pb-6 ${onClose ? "pt-2" : "pt-16"}`}>
+                {/* Capture target — the exact receipt (badge · title · card) saved to PNG */}
+                <div ref={receiptRef} className="flex w-full flex-col items-center gap-6 bg-white px-1 pt-5 pb-1">
                 {/* Ringed check */}
                 <div className="relative flex size-12 shrink-0 items-center justify-center">
                     <span className="absolute -inset-[7px] rounded-full border-2 border-[var(--brand-primary)] opacity-30" aria-hidden />
@@ -62,18 +65,24 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                     total={order?.total ?? 0}
                     status="success"
                 />
+                </div>
             </div>
 
             <ReceiptActions
+                captureRef={receiptRef}
                 receipt={{
                     title: "Payment receipt",
                     txnId: order?.txnId ?? "—",
                     dateLabel: order?.dateLabel ?? "—",
                     timeLabel: order?.timeLabel ?? "—",
                     methodLabel: order?.method ?? "—",
+                    items: order?.items ?? [],
+                    totalItems: order?.totalItems ?? 0,
+                    discount: order?.discount ?? 0,
+                    tax: order?.tax ?? 0,
+                    accountCredit: order?.accountCredit ?? 0,
                     total: order?.total ?? 0,
                     status: "success",
-                    items: order?.items ?? [],
                 }}
             >
                 {footer}

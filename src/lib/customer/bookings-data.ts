@@ -131,6 +131,8 @@ export interface BookingListItemVM {
     bookingId: string;
     scheduleId: string;
     name: string;
+    /** Set when this seat was booked for a guest (not the member). */
+    guestName?: string;
     /** Raw class date (ISO `YYYY-MM-DD`) — drives the filter's date range. */
     dateISO: string;
     dateShort: string;
@@ -170,6 +172,7 @@ export function useMemberBookings(): { upcoming: BookingListItemVM[]; past: Book
                 bookingId: b.id,
                 scheduleId: sched.id,
                 name: sched.name,
+                guestName: b.guestName,
                 dateISO: sched.dateISO,
                 dateShort: formatShortDate(sched.dateISO),
                 time: formatTime12(sched.startTime),

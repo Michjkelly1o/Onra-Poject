@@ -1021,6 +1021,9 @@ export interface ClassBooking {
     id: string;
     classScheduleId: string;
     customerId: string;
+    /** Set when this seat was booked by `customerId` FOR another person (a guest
+     *  without their own account). The seat still bumps the class count. */
+    guestName?: string;
     branchId: string;
     /** Plan id used to pay (FK to memberships or packages). Empty string if no plan. */
     planId: string;
@@ -2150,10 +2153,14 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         capacity: s.capacity,
         classType: s.class_type ?? "Group",
         equipment: s.equipment ?? "",
-        spotSelectionEnabled: s.spot_selection_enabled ?? false,
+        // Demo: Reformer Pilates classes get spot selection so the flow is testable
+        // (adapter default — the mock seed rows are untouched).
+        spotSelectionEnabled: s.spot_selection_enabled ?? s.template_id === "tpl_reformer_pilates",
         spotLayout: s.spot_layout
             ? { cols: s.spot_layout.cols, rows: s.spot_layout.rows, blockedSpots: s.spot_layout.blocked_spots }
-            : undefined,
+            : s.template_id === "tpl_reformer_pilates"
+              ? { cols: 4, rows: 3, blockedSpots: ["C4"] }
+              : undefined,
         waitlistEnabled: s.waitlist_enabled ?? true,
         rating: s.rating,
         ratingCount: s.rating_count,
@@ -3535,7 +3542,7 @@ export interface AppState {
      *  row propagates to the admin roster, the customer profile, the member's
      *  Bookings list, and the class detail state in the same render cycle.
      *  Returns the new booking id. */
-    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string }) => string;
+    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; chargeBookerCredit?: boolean }) => string;
     /** Member-portal: mark this customer's outstanding (unsigned) booking-waiver
      *  agreements as signed — the first-time waiver gate. */
     signWaiver: (customerId: string, guardianConsent?: boolean) => void;
@@ -4983,17 +4990,22 @@ export const useAppStore = create<AppState>()(persist(
             }
         },
 
-    addClassBooking: ({ classScheduleId, customerId, status, spot }) => {
+    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, chargeBookerCredit }) => {
         const s0 = get();
         const schedule = s0.classSchedules.find(x => x.id === classScheduleId);
         const customer = s0.customers.find(c => c.id === customerId);
         const id = `bk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-        const planKindUsed = customer?.planKind ?? undefined;
-        const planId =
-            customer?.planKind === "membership"
-                ? customer.membershipId ?? ""
-                : customer?.packageIds?.[0] ?? "";
+        // A guest seat is normally paid by the guest (drop-in / their own package /
+        // invite) — no member plan, no member credit. EXCEPT when the booker chose
+        // "use my class credits" (chargeBookerCredit), then it's on the booker's plan.
+        const usesBookerPlan = !guestName || !!chargeBookerCredit;
+        const planKindUsed = usesBookerPlan ? (customer?.planKind ?? undefined) : undefined;
+        const planId = !usesBookerPlan
+            ? ""
+            : customer?.planKind === "membership"
+              ? customer.membershipId ?? ""
+              : customer?.packageIds?.[0] ?? "";
         const waitlistPosition =
             status === "waitlisted"
                 ? s0.classBookings.filter(b => b.classScheduleId === classScheduleId && b.status === "waitlisted").length + 1
@@ -5003,9 +5015,10 @@ export const useAppStore = create<AppState>()(persist(
             id,
             classScheduleId,
             customerId,
+            guestName,
             branchId: schedule?.branchId ?? customer?.branchId ?? "",
             planId,
-            planName: customer?.planName ?? "",
+            planName: usesBookerPlan ? (customer?.planName ?? "") : "",
             planKindUsed,
             spot,
             bookingTime: new Date().toISOString(),
@@ -5025,7 +5038,7 @@ export const useAppStore = create<AppState>()(persist(
             // Spend one class credit on a confirmed booking (package plans only —
             // unlimited memberships carry no creditsRemaining).
             customers:
-                status === "booked"
+                status === "booked" && usesBookerPlan
                     ? state.customers.map(c =>
                           c.id === customerId && typeof c.creditsRemaining === "number"
                               ? { ...c, creditsRemaining: Math.max(0, c.creditsRemaining - 1) }
@@ -5070,17 +5083,43 @@ export const useAppStore = create<AppState>()(persist(
 
         return id;
     },
-    signWaiver: (customerId, guardianConsent = false) => set((state) => ({
-        // Signs BOTH terminal not-signed states — a customer coming back to sign
-        // either a never-signed agreement OR a re-accept-due agreement flips to
-        // "signed". Also RE-signs an already-signed waiver (e.g. an adult who
-        // later became a minor), recording whether guardian consent was captured.
-        customerAgreements: state.customerAgreements.map((ca) =>
-            ca.customerId === customerId
-                ? { ...ca, status: "signed" as const, signedAtISO: new Date().toISOString(), guardianConsent }
-                : ca,
-        ),
-    })),
+    signWaiver: (customerId, guardianConsent = false) => set((state) => {
+        const mine = state.customerAgreements.filter((ca) => ca.customerId === customerId);
+        // Existing rows (seeded members): flip every not-signed/re-accept-due row
+        // to signed; also re-sign an already-signed waiver (age crossed 18),
+        // recording whether guardian consent was captured.
+        if (mine.length > 0) {
+            return {
+                customerAgreements: state.customerAgreements.map((ca) =>
+                    ca.customerId === customerId
+                        ? { ...ca, status: "signed" as const, signedAtISO: new Date().toISOString(), guardianConsent }
+                        : ca,
+                ),
+            };
+        }
+        // New signups have NO seeded agreement row — insert a signed one so the
+        // waiver isn't asked again on the next booking (first-booking-only).
+        const customer = state.customers.find((c) => c.id === customerId);
+        const branchId = customer?.branchId ?? "";
+        const forBranch = (a: Agreement) => a.allLocations || a.locationIds.includes(branchId);
+        const ref =
+            state.agreements.find((a) => a.status === "active" && forBranch(a)) ??
+            state.agreements.find((a) => a.status === "active") ??
+            state.agreements[0];
+        const row: CustomerAgreement = {
+            id: `ca-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            customerId,
+            guardianConsent,
+            agreementId: ref?.id ?? "",
+            title: ref?.name ?? "Waiver & Liability Agreement",
+            version: ref?.currentVersion ?? 1,
+            branchId,
+            classTemplateIds: [],
+            status: "signed",
+            signedAtISO: new Date().toISOString(),
+        };
+        return { customerAgreements: [...state.customerAgreements, row] };
+    }),
     cancelClassBooking: (id, reason, refund, source) => {
         const stateBefore = get();
         const booking = stateBefore.classBookings.find(b => b.id === id);

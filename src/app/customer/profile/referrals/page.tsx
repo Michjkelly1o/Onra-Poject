@@ -6,12 +6,10 @@
 import { useState, type ComponentType, type SVGProps } from "react";
 import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Copy01, CurrencyDollarCircle, HeartHand, HelpCircle, ShoppingCart01, Stars02, Upload01, Wallet02 } from "@untitledui/icons";
+import { ChevronLeft, Copy01, CurrencyDollarCircle, HeartHand, ShoppingCart01, Stars02, Upload01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { rewardSummary, substituteReferralVariables, triggerProse } from "@/lib/referral-helpers";
 import { useCurrentCustomer } from "@/lib/customer/context";
-import { useAccountCreditBalance } from "@/lib/customer/account-credit";
-import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ShareSheet } from "@/components/customer/shell/ShareSheet";
 import { FeaturedIconHero } from "@/components/customer/profile/FeaturedIconHero";
@@ -44,8 +42,6 @@ export default function ReferralsPage() {
     const referralSettings = useAppStore((s) => s.referralSettings);
     const referrals = useAppStore((s) => s.customerReferrals).filter((r) => r.referrerCustomerId === member?.id);
     const [shareOpen, setShareOpen] = useState(false);
-    const [infoOpen, setInfoOpen] = useState(false);
-    const accountCredit = useAccountCreditBalance();
 
     const code = member?.referralCode ?? "";
     const maxReferrals = referralSettings.maxReferralsPerMember || 10;
@@ -169,7 +165,7 @@ export default function ReferralsPage() {
                     })}
                 </div>
 
-                {/* Metrics — Class credit + Account credit + Total referrals progress (Figma 4502-45661) */}
+                {/* Metrics — Class credit + Total referrals progress (studio uses class-credit rewards only) */}
                 <div className="relative flex flex-col gap-4 rounded-xl border border-[#e4e7ec] bg-white p-4">
                     <div className="flex items-center gap-5">
                         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -179,21 +175,6 @@ export default function ReferralsPage() {
                             <div className="flex min-w-0 flex-col gap-0.5">
                                 <p className="text-xs font-normal leading-[18px] text-[#667085]">Class credit</p>
                                 <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{classCreditTotal} credits</p>
-                            </div>
-                        </div>
-                        <div className="h-10 w-px shrink-0 bg-[#e4e7ec]" />
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
-                                <Wallet02 className="size-5 text-[#344054]" aria-hidden />
-                            </span>
-                            <div className="flex min-w-0 flex-col gap-0.5">
-                                <span className="flex items-center gap-1">
-                                    <span className="text-xs font-normal leading-[18px] text-[#667085]">Account credit</span>
-                                    <button type="button" onClick={() => setInfoOpen(true)} aria-label="What is account credit?">
-                                        <HelpCircle className="size-3.5 text-[#98a2b3]" aria-hidden />
-                                    </button>
-                                </span>
-                                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">AED {accountCredit}</p>
                             </div>
                         </div>
                     </div>
@@ -261,7 +242,6 @@ export default function ReferralsPage() {
                 </div>
             </div>
 
-            <AccountCreditInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)} />
 
             <ShareSheet
                 open={shareOpen}

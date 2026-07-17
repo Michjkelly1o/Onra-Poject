@@ -118,9 +118,9 @@ export function ClassDetailLayout({
     const scrollable = useMainScrollable();
     // Dual-timezone class time (Branch time + Your time) for the default grid.
     const branches = useAppStore((st) => st.branches);
-    const { timezone } = useCurrentCustomerContext();
+    const { localTimezone } = useCurrentCustomerContext();
     const branch = branches.find((b) => b.id === detail.branchId);
-    const classTime = classTimeDisplay(detail.dateISO, detail.startTime, branch, timezone);
+    const classTime = classTimeDisplay(detail.dateISO, detail.startTime, branch, localTimezone);
     const [expanded, setExpanded] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
 
