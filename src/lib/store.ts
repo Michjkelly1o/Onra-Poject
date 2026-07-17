@@ -8223,7 +8223,12 @@ export const useAppStore = create<AppState>()(persist(
         //   (was standalone "Member Wallet" payment method). CustomerTransaction
         //   gains `accountCreditAppliedAed` so refunds can restore the balance.
         //   Bump discards old persisted transactions to avoid a mixed shape.
-        version: 67,
+        // v68 (2026-07-17): Studio's referral is Class Credit only (client rule
+        //   — no mixed class + account credit histories per customer).
+        //   `wallet_transactions` seed emptied; `customer_referrals`
+        //   `wallet_credit` overrides removed. Bump reseeds so existing
+        //   testers drop the stale referral wallet balances.
+        version: 68,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

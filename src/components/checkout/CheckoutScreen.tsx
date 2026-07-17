@@ -203,15 +203,17 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     any manual grants). Applied AFTER discount + tax, capped at
                     the post-discount total (client Jul 2026: no longer a
                     standalone payment method — surfaced as a reduction toggle
-                    above the payment picker so it composes with any method). */}
-                {(p.walletBalance ?? 0) > 0 && (
-                    <AccountCreditSection
-                        balance={p.walletBalance ?? 0}
-                        applied={p.accountCreditApplied ?? 0}
-                        enabled={!!p.useAccountCredit}
-                        onToggle={(next) => p.setUseAccountCredit?.(next)}
-                    />
-                )}
+                    above the payment picker so it composes with any method).
+                    Always renders (client Jul 2026 audit) — when the customer
+                    has no balance, the section still shows "AED 0 available"
+                    with the toggle disabled, so the checkout layout stays
+                    consistent regardless of balance. */}
+                <AccountCreditSection
+                    balance={p.walletBalance ?? 0}
+                    applied={p.accountCreditApplied ?? 0}
+                    enabled={!!p.useAccountCredit}
+                    onToggle={(next) => p.setUseAccountCredit?.(next)}
+                />
 
                 <div className="flex flex-col gap-4">
                     <p className="text-[18px] font-semibold text-[#101828]">Payment method</p>
@@ -444,10 +446,19 @@ function AccountCreditSection({ balance, applied, enabled, onToggle }: {
     enabled: boolean;
     onToggle: (next: boolean) => void;
 }) {
+    // Zero-balance state renders the same section chrome but the toggle is
+    // disabled (nothing to apply) and the balance line reads "AED 0
+    // available". Client Jul 2026 — always show the section so the checkout
+    // layout stays consistent regardless of whether the customer has any
+    // balance today.
+    const hasBalance = balance > 0;
     return (
         <div className="flex flex-col gap-3">
             <p className="text-[18px] font-semibold text-[#101828]">Account credit</p>
-            <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+            <div className={cn(
+                "flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                !hasBalance && "opacity-70",
+            )}>
                 {/* Icon container matches the featured icon on PaymentMethodCard
                     (32×32, `bg-[#f9fafb]` + 1px border) so the two sections
                     read as one visual language above the payment picker. */}
@@ -467,16 +478,17 @@ function AccountCreditSection({ balance, applied, enabled, onToggle }: {
                     type="button"
                     role="switch"
                     aria-checked={enabled}
-                    onClick={() => onToggle(!enabled)}
+                    disabled={!hasBalance}
+                    onClick={() => hasBalance && onToggle(!enabled)}
                     className={cn(
                         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                        enabled ? "bg-[#658774]" : "bg-[#e4e7ec]",
+                        hasBalance ? (enabled ? "bg-[#658774]" : "bg-[#e4e7ec]") : "bg-[#e4e7ec] cursor-not-allowed",
                     )}
                 >
                     <span
                         className={cn(
                             "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                            enabled ? "translate-x-[22px]" : "translate-x-[2px]",
+                            enabled && hasBalance ? "translate-x-[22px]" : "translate-x-[2px]",
                         )}
                     />
                 </button>
