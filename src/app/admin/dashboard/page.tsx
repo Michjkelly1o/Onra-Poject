@@ -1380,7 +1380,7 @@ export default function AdminDashboard() {
                                     onClick={() => setTypeFilter(t as SessionType | "")}
                                     aria-pressed={active}
                                     className={cn(
-                                        "h-10 px-3.5 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                                        "h-10 px-4 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                                         active
                                             ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
                                             : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
@@ -1409,7 +1409,7 @@ export default function AdminDashboard() {
                                     onClick={() => setComingType(t as SessionType | "")}
                                     aria-pressed={active}
                                     className={cn(
-                                        "h-10 px-3.5 rounded-[8px] text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                                        "h-10 px-4 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                                         active
                                             ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
                                             : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
