@@ -7,7 +7,7 @@ import {
     ChevronLeft, ChevronRight, Eye, Edit02, Trash01,
     Download01, MarkerPin01, Clock, Users01, AlignLeft, XClose,
     Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
-    ChevronDown,
+    ChevronDown, HelpCircle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { buildMonthGrid } from "@/lib/calendar-utils";
@@ -1598,13 +1598,28 @@ function SchedulePage() {
                     width="w-[220px]"
                 />
                 {/* Custom width — schedule list uses w-[200px] not the
-                    canonical 240px to leave room for the Export + Add buttons. */}
+                    canonical 240px to leave room for the Filter + Export + Add
+                    buttons in the same row. */}
                 <ToolbarSearch
                     value={search}
                     onChange={v => { setSearch(v); setPage(1); }}
-                    placeholder="Search class..."
+                    placeholder="Search"
                     widthClass="w-[200px]"
                 />
+                {/* Filter — moved out of the view-card header into the toolbar
+                    (client 2026-07-20) so all filtering controls (Location,
+                    Search, Filter) live in the same row. Same button element as
+                    before; the green dot marks any active filter. */}
+                <Button variant="secondary-gray" size="md"
+                    leftIcon={
+                        <div className="relative">
+                            <FilterLines className="w-4 h-4" />
+                            {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
+                        </div>
+                    }
+                    onClick={() => setFilterOpen(true)}>
+                    Filter
+                </Button>
                 <ExportDropdown
                     onExportCsv={() => {
                         exportScheduleCsv(filteredClasses);
@@ -1615,7 +1630,38 @@ function SchedulePage() {
                         );
                     }}
                 />
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add Class</Button>
+                {/* Add — button relabelled from "Add Class" to just "Add" so it
+                    reads correctly next to the small help icon that explains
+                    the Private / Recovery flow lives on a different page.
+                    Clicking still routes to the class-create form; Private +
+                    Recovery are authored under /admin/services. */}
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add</Button>
+                {/* Hover hint — dark tooltip matches the pattern already used on
+                    the campaign / promotion image-size guide + insight metric
+                    cards. Stays out of the way; the "?" reads as an obvious
+                    "why is this button just 'Add' and not 'Add class'". */}
+                <div className="relative inline-flex items-center group/tip">
+                    <button
+                        type="button"
+                        aria-label="Where do I add a Private or Recovery session?"
+                        className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
+                    >
+                        <HelpCircle className="w-4 h-4 text-[#98a2b3]" />
+                    </button>
+                    <div
+                        role="tooltip"
+                        className={cn(
+                            "pointer-events-none absolute z-20 right-0 top-full mt-2 w-[240px]",
+                            "rounded-[8px] bg-[#101828] px-3 py-2 text-[12px] leading-[18px] text-white",
+                            "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
+                            "opacity-0 translate-y-[-2px] transition-all duration-150",
+                            "group-hover/tip:opacity-100 group-hover/tip:translate-y-0",
+                            "group-focus-within/tip:opacity-100 group-focus-within/tip:translate-y-0",
+                        )}
+                    >
+                        Add creates a class here. Private and Recovery sessions are added from the Services menu.
+                    </div>
+                </div>
             </div>
 
             {/* ── View card ── Fills the remaining viewport height (was a fixed 760px
@@ -1654,19 +1700,11 @@ function SchedulePage() {
                         </DateNav>
                     )}
 
-                    {/* Right: filter */}
-                    <div className="ml-auto">
-                        <Button variant="secondary-gray" size="md"
-                            leftIcon={
-                                <div className="relative">
-                                    <FilterLines className="w-4 h-4" />
-                                    {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                                </div>
-                            }
-                            onClick={() => setFilterOpen(true)}>
-                            Filter
-                        </Button>
-                    </div>
+                    {/* Filter button was here before — moved into the top
+                        toolbar (client 2026-07-20) so all filter controls
+                        (Location, Search, Filter) sit in one row. The date
+                        navigator stays centered via its own absolute
+                        positioning; the tab pills stay left-aligned. */}
                 </div>
 
                 {/* ── Content (no extra border — views have their own header separators) ── */}
