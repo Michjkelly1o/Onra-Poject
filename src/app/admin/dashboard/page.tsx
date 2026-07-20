@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
     CurrencyDollar,
-    Users01,
     ShoppingBag01,
     ArrowUp,
     ArrowDown,
@@ -469,47 +468,11 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
     );
 }
 
-// ─── Occupancy card — the one metric that can't collapse into a single number ─
-//
-// Class fill, private-slot utilisation and recovery capacity have different
-// denominators, so averaging them would mislead. On "All" the tile shows a
-// three-way split (mini bars per type); a selected type shows that type's
-// single %. Matches the MetricCard chrome so it sits cleanly in the strip.
-function OccupancyCard({ byType, selected, typeFilter }: {
-    byType: Record<SessionType, { pct: number; count: number }>;
-    selected: number;
-    typeFilter: SessionType | "";
-}) {
-    return (
-        <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col justify-center gap-1.5 min-w-0 p-4 rounded-2xl min-w-[220px]">
-            <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
-                {typeFilter ? `Occupancy · ${SESSION_TYPE_TAG_LABEL[typeFilter]}` : "Occupancy"}
-            </p>
-            {typeFilter ? (
-                <>
-                    <p className="font-semibold text-xl text-[#101828] leading-[28px]">{selected}%</p>
-                    <p className="font-normal text-xs text-[#667085]">avg fill</p>
-                </>
-            ) : (
-                <div className="flex flex-col gap-1 w-full">
-                    {SESSION_TYPE_ORDER.map(t => {
-                        const { pct } = byType[t];
-                        const c = SESSION_TYPE_TAG_COLORS[t];
-                        return (
-                            <div key={t} className="flex items-center gap-2">
-                                <span className="text-[11px] text-[#667085] w-[56px] shrink-0">{SESSION_TYPE_TAG_LABEL[t]}</span>
-                                <div className="flex-1 h-1.5 bg-[#f2f4f7] rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: c.bar }} />
-                                </div>
-                                <span className="text-[11px] font-medium text-[#344054] w-[32px] text-right shrink-0">{pct}%</span>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-}
+// OccupancyCard was removed 2026-07-20 — Occupancy moved from Today to
+// Coming Up (renamed "Capacity used") per client feedback, so this
+// standalone card had no render site. Audit 2026-07-20 flagged it as
+// dead code; deleted here. If Occupancy on Today ever comes back, the
+// component lives in git history at 09bfc522.
 
 function ActivityRow({ item }: { item: TeamActivityItem }) {
     const Icon = item.icon;
@@ -781,12 +744,13 @@ export default function AdminDashboard() {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
         // void / write-off rows so the two totals stay honest.
-        const todaySales = scopedTransactions.filter(t =>
+        const isBillableSaleToday = (t: typeof scopedTransactions[number]): boolean =>
             t.status === "complete"
-            && t.createdAtISO.startsWith(todayISO)
             && (t.transactionType === undefined || t.transactionType === "sale")
             && t.kind !== "cancellation_penalty"
-            && t.kind !== "freeze_fee"
+            && t.kind !== "freeze_fee";
+        const todaySales = scopedTransactions.filter(t =>
+            isBillableSaleToday(t) && t.createdAtISO.startsWith(todayISO),
         );
         const totalSalesCount = todaySales.length;
         const totalRevenueAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);
@@ -796,41 +760,66 @@ export default function AdminDashboard() {
             (c.createdAt ?? "").startsWith(todayISO),
         ).length;
 
-        // `activeMembers`, `classesTodayCount`, `bookingsToday` used to be
-        // computed here for the Performance strip; that strip moved to its
-        // own period-scoped useMemo below (client Jul 2026), so those
-        // vars — along with the intermediate `todaySchedules` /
-        // `todayScheduleIdSet` — are gone.
+        // ── Yesterday's actuals — drive the "vs yesterday" delta chips ──
+        // Client audit 2026-07-20 flagged the Today strip's hardcoded
+        // change: 3 / 2 / 1 literals. Same predicate as today, one day
+        // earlier so like-for-like compare.
+        const yDate = new Date();
+        yDate.setDate(yDate.getDate() - 1);
+        const yISO = format(yDate, "yyyy-MM-dd");
+        const yesterdaySales = scopedTransactions.filter(t =>
+            isBillableSaleToday(t) && t.createdAtISO.startsWith(yISO),
+        );
+        const ySalesCount = yesterdaySales.length;
+        const yRevenueAed = yesterdaySales.reduce((sum, t) => sum + t.amountAed, 0);
+        const yNewCustomers = scopedCustomers.filter(c =>
+            (c.createdAt ?? "").startsWith(yISO),
+        ).length;
+        // Bookings yesterday — booked seats on schedules dated yesterday
+        // (mirrors sessionMetrics.bookingsToday which reads today-dated
+        // schedules from the merged session feed).
+        const yBookings = scopedBookings.filter(b => {
+            if (b.status !== "booked") return false;
+            const sched = scopedSchedules.find(s => s.id === b.classScheduleId);
+            return sched?.dateISO === yISO;
+        }).length;
+
+        const pctToday = (current: number, prior: number): { change: number; positive: boolean } => {
+            if (prior === 0) return { change: current === 0 ? 0 : 100, positive: current >= 0 };
+            const d = ((current - prior) / prior) * 100;
+            return { change: Math.abs(Math.round(d)), positive: d >= 0 };
+        };
+        const salesD    = pctToday(totalSalesCount, ySalesCount);
+        const revenueD  = pctToday(totalRevenueAed, yRevenueAed);
+        const customersD = pctToday(newCustomers,   yNewCustomers);
+        const bookingsD  = pctToday(sessionMetrics.bookingsToday, yBookings);
 
         const today: DashboardMetric[] = [
             {
                 label: "Total sales",
                 value: totalSalesCount.toLocaleString("en-US"),
-                change: 3, positive: true, comparison: "vs yesterday",
+                change: salesD.change, positive: salesD.positive, comparison: "vs yesterday",
                 icon: CurrencyDollar,
             },
             {
                 label: "Total revenue",
                 value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
-                change: 3, positive: true, comparison: "vs yesterday",
+                change: revenueD.change, positive: revenueD.positive, comparison: "vs yesterday",
                 icon: CoinsStacked01,
             },
             {
                 label: "New customers",
                 value: newCustomers.toLocaleString("en-US"),
-                change: 2, positive: false, comparison: "vs yesterday",
+                change: customersD.change, positive: customersD.positive, comparison: "vs yesterday",
                 icon: UserPlus01,
             },
             // Bookings — type-aware (from the merged session feed), so
-            // picking a type filter recomputes it. Occupancy is rendered as a
-            // dedicated OccupancyCard (3-way split on All) below the strip.
-            // Label drops the "today" prefix (client Jul 2026 audit —
-            // metric titles don't carry the tab's time scope, which the tab
-            // context already provides).
+            // picking a type filter recomputes it. Delta compares against
+            // yesterday's bookings on yesterday-dated schedules.
             {
                 label: "Bookings",
                 value: sessionMetrics.bookingsToday.toLocaleString("en-US"),
-                change: 1, positive: false, comparison: "vs yesterday",
+                change: bookingsD.change, positive: bookingsD.positive, comparison: "vs yesterday",
                 icon: TrendUp01,
             },
         ];
@@ -1960,12 +1949,14 @@ export default function AdminDashboard() {
                 open={attentionModal === "failedWidget"}
                 onClose={() => setAttentionModal(null)}
                 branchIds={branchScopeIds}
-                /* Payments-collected widget window — scope the modal to the
-                   same period bounds the widget's chip aggregates over so the
-                   list count and the chip's number always agree. Widget
-                   period is week/month/etc; we approximate by using its span
-                   in whole days (min 1). */
-                pastRangeDays={Math.max(1, Math.round((dateFilterToRange(period).to.getTime() - dateFilterToRange(period).from.getTime()) / 86400000))}
+                /* Payments-collected widget window — pass the CALENDAR bounds
+                   the widget's chip uses, not a rolling span-day proxy. The
+                   audit (2026-07-20) caught that a rolling `now - N * DAY`
+                   drifted from the chip on non-today periods (Last week /
+                   Last month / etc). rangeFromMs + rangeToMs override the
+                   pastRangeDays rolling window inside the modal. */
+                rangeFromMs={dateFilterToRange(period).from.getTime()}
+                rangeToMs={dateFilterToRange(period).to.getTime()}
             />
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}

@@ -350,7 +350,8 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "intro-member-funnel":  { headers: ["Stage", "Sublabel", "Count", "% of top"], fields: ["stage", "sublabel", "count", "pctOfTop"] },
     // KPI-only widgets — CSV headers backfilled 2026-07-20 (pre-existing
     // gap surfaced by the widget audit). Without these, the KPI page's
-    // CSV export returned null for these three widgets.
+    // CSV export returned null for these widgets.
+    "kpi-leads-by-source":     { headers: ["Date", "Instagram", "Google", "Referral", "Website"],       fields: ["date", "instagram", "google", "referral", "website"] },
     "kpi-lead-funnel":         { headers: ["Stage", "Count"],                                          fields: ["stage", "v"] },
     "kpi-campaign-perf":       { headers: ["Date", "Sends", "Opens", "Clicks"],                        fields: ["date", "sends", "opens", "clicks"] },
     "kpi-marketing-efficiency":{ headers: ["Date", "CPL (AED)", "CAC (AED)", "ROAS"],                  fields: ["date", "cpl", "cac", "roas"] },
@@ -518,6 +519,34 @@ function branchScaleFor(branchIds: string[] | undefined, activeBranchIds: string
  *      each row's count from this map, so the bars ALWAYS reflect real
  *      per-day failures. When the filter has zero real failures, every
  *      lookup returns 0 → the bars vanish alongside the chip. */
+/** Convert a date → the exact axis label string `pointsForPeriod` emits
+ *  for the current period. The Payments-collected chart looks bar counts
+ *  up by axis-label string, so any bucketing that uses a DIFFERENT format
+ *  (audit finding 2026-07-20: was "Jul 26" for every period, but Day
+ *  renders "00:00", Year renders "Jul", Last 12 months renders "Jul 25")
+ *  silently loses the failed-count bars while the header chip still shows
+ *  a non-zero count. This helper collapses that mismatch. */
+function periodLabelForDate(d: Date, period: DateFilter): string {
+    const label = period.type !== "custom" ? period.label.toLowerCase() : "";
+    switch (period.type) {
+        case "day":
+            // Day view: 24 hourly ticks "00:00" … "23:00".
+            return `${String(d.getHours()).padStart(2, "0")}:00`;
+        case "year":
+            // Year view: 12 monthly ticks "Jan" … "Dec".
+            return MONTH_LABELS[d.getMonth()];
+        case "month":
+            // "Last 12 months" view: 12 ticks "Jul 25" … "Jun 26".
+            if (label.includes("last 12")) {
+                return `${MONTH_LABELS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+            }
+            return fmtMMMD(d);
+        default:
+            // Week + Custom + everything else = per-day fmtMMMD "Jul 26".
+            return fmtMMMD(d);
+    }
+}
+
 function computeFailedPaymentsStats(
     transactions: Array<import("@/lib/store").CustomerTransaction>,
     branchIds: string[] | undefined,
@@ -539,9 +568,10 @@ function computeFailedPaymentsStats(
         if (Number.isNaN(ts) || ts < from || ts > to) continue;
         count += 1;
         amountAed += Math.abs(t.amountAed);
-        // Bucket by MMMD so the map key matches the chart's per-day X labels.
-        const d = new Date(t.createdAtISO);
-        const key = `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;
+        // Bucket key MUST match the axis label pointsForPeriod emits for
+        // the same date under this period — so the chart's per-day bars
+        // find their counts on Day / Year / Last-12-months views too.
+        const key = periodLabelForDate(new Date(t.createdAtISO), period);
         perDay.set(key, (perDay.get(key) ?? 0) + 1);
     }
     return { count, amountAed, perDay };

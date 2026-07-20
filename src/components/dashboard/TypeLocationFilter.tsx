@@ -12,22 +12,25 @@
 //
 // Panel layout — two columns, matching the client's design:
 //   • LEFT · TYPE       — single-select row list. "All types" plus one row
-//                          per SessionType. Active row bolds + shows a Check
-//                          on the right. Each specific type carries its
-//                          session-type-colored dot so the palette is
-//                          consistent with schedule tag chips.
-//   • RIGHT · LOCATIONS — checkbox visual but SINGLE-SELECT semantics
-//                          (radio-under-checkbox) so downstream widget props
-//                          (all typed `branchId: string | null`) don't need
-//                          to change. "All locations" checkbox clears the
-//                          branch scope; picking a branch replaces the
-//                          previous selection.
+//                          per SessionType. Active row highlights (grey
+//                          bg + Check on the right). Each specific type
+//                          carries its session-type-colored dot so the
+//                          palette stays consistent with schedule tag chips.
+//   • RIGHT · LOCATIONS — TRUE multi-select checkboxes. "All locations"
+//                          is a master toggle that checks / unchecks every
+//                          branch; individual branches toggle in / out of
+//                          the `locations` array. Downstream widgets +
+//                          modals consume `branchIds: string[] | null`
+//                          (converted in the dashboard's `branchScopeIds`
+//                          derivation, which treats empty-array AND
+//                          all-branches-selected as identical no-filter
+//                          state).
 //
-// Multi-branch scoping is intentionally NOT wired here — every downstream
-// dashboard widget still receives a single `branchId` prop. If the client
-// later confirms they want true multi-branch dashboards, promoting this
-// component to real multi-select is a one-file follow-up + widget prop
-// refactor; the visual affordance already fits it.
+// Multi-branch scoping IS wired end-to-end as of the 2026-07-20 audit
+// pass — every dashboard scope memo (schedules, sessions, bookings,
+// customers, transactions, plans, appointments) filters by Set-based
+// `branchIds.includes(...)`, and every Needs-Attention modal + the
+// DashboardWidgetCard's branchScale accept a `branchIds` array.
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "@untitledui/icons";

@@ -441,7 +441,7 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                     <span className="font-semibold text-[#101828]">
                         {totalRows} membership{totalRows === 1 ? "" : "s"}
                     </span>{" "}
-                    renew in the next 30 days ·{" "}
+                    renew in the next {forwardRangeDays ?? 30} days ·{" "}
                     <span className="font-semibold text-[#101828]">
                         AED {totalAtStake.toLocaleString("en-US")}
                     </span>{" "}
@@ -546,7 +546,7 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                         {paged.length === 0 && (
                             <tr>
                                 <td colSpan={6} className="py-16 text-center text-[14px] text-[#667085]">
-                                    No memberships due in the next 30 days.
+                                    No memberships due in the next {forwardRangeDays ?? 30} days.
                                 </td>
                             </tr>
                         )}
@@ -569,12 +569,22 @@ export interface FailedPaymentsModalProps {
     open: boolean;
     onClose: () => void;
     branchIds?: string[] | null;
-    /** Past-N-day window (matches the dashboard Coming-up pill).
-     *  Omit / undefined = show all failed rows regardless of date. */
+    /** Past-N-day ROLLING window (matches the dashboard Needs-attention
+     *  "recoverable now" row = 1). Omit / undefined = show all failed rows
+     *  regardless of date. Ignored when `rangeFromMs`/`rangeToMs` are set. */
     pastRangeDays?: number;
+    /** CALENDAR window override — takes precedence over `pastRangeDays`
+     *  when both bounds are set. The Payments-collected widget's chip
+     *  aggregates over `dateFilterToRange(period)` calendar bounds; the
+     *  modal must use the same bounds so the chip count and modal list
+     *  count agree exactly (audit finding 2026-07-20 — previously the
+     *  modal computed a rolling `now - N * DAY` from a span-day proxy
+     *  and drifted from the chip on "Last week" / "Last month" / etc). */
+    rangeFromMs?: number;
+    rangeToMs?: number;
 }
 
-export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays }: FailedPaymentsModalProps) {
+export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays, rangeFromMs, rangeToMs }: FailedPaymentsModalProps) {
     const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const customerTransactions = useAppStore(s => s.customerTransactions);
@@ -594,9 +604,15 @@ export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays }:
     const rows = useMemo(() => {
         const now = Date.now();
         const DAY = 24 * 60 * 60 * 1000;
-        const pastStartMs = typeof pastRangeDays === "number"
-            ? now - pastRangeDays * DAY
-            : null;
+        // Calendar-range override wins when both bounds are supplied.
+        // Otherwise fall back to the pastRangeDays rolling window.
+        const useCalendar = typeof rangeFromMs === "number" && typeof rangeToMs === "number";
+        const pastStartMs = useCalendar
+            ? rangeFromMs!
+            : typeof pastRangeDays === "number"
+                ? now - pastRangeDays * DAY
+                : null;
+        const pastEndMs = useCalendar ? rangeToMs! : now;
         return customerTransactions
             // "Failed payments" means truly failed only. Pending rows were
             // included previously + painted with a red "Failed" chip — but
@@ -614,7 +630,7 @@ export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays }:
                 if (pastStartMs === null) return true;
                 const ts = new Date(t.createdAtISO).getTime();
                 if (Number.isNaN(ts)) return false;
-                return ts >= pastStartMs && ts <= now;
+                return ts >= pastStartMs && ts <= pastEndMs;
             })
             .map(t => {
                 const c = customers.find(cx => cx.id === t.customerId);
@@ -622,7 +638,7 @@ export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays }:
                 return { txn: t, customer: c };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerTransactions, customers, branchIds, pastRangeDays]);
+    }, [customerTransactions, customers, branchIds, pastRangeDays, rangeFromMs, rangeToMs]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -1037,7 +1053,7 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
             open={open}
             onClose={onClose}
             title="Under filled"
-            subtitle={<>{totalRows} classes below 50% capacity in the next 30 days</>}
+            subtitle={<>{totalRows} classes below 50% capacity in the next {forwardRangeDays ?? 30} days</>}
             width={1128}
             footer={
                 <Pagination
@@ -1135,7 +1151,7 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                         {paged.length === 0 && (
                             <tr>
                                 <td colSpan={6} className="py-16 text-center text-[14px] text-[#667085]">
-                                    No under-filled classes in the next 30 days.
+                                    No under-filled classes in the next {forwardRangeDays ?? 30} days.
                                 </td>
                             </tr>
                         )}
