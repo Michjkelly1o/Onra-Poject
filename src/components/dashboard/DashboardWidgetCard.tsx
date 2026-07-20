@@ -123,13 +123,12 @@ const STATIC: Record<string, object[]> = {
         { name: "Priya Nair",     v: 19 },
         { name: "Dan Rivera",     v: 14 },
     ],
-    "recovery-top-services": [
-        { name: "Ice bath",       v: 58 },
-        { name: "Sauna",          v: 41 },
-        { name: "Massage",        v: 34 },
-        { name: "Cryo",           v: 22 },
-        { name: "Compression",    v: 15 },
-    ],
+    // recovery-top-services: live-derived from services + appointments,
+    // see `computeTopServices()` below. STATIC entry retired 2026-07-20
+    // (was invented names like "Ice bath" / "Cryo" that didn't match the
+    // studio's actual services). Live derivation ranks the studio's real
+    // recovery services (Massage / Sauna / Breathwork / IV therapy / …)
+    // by booked-seat count in the picked period + branch scope.
     "new-customers-source": [
         { name: "Instagram",  v: 38, color: "#b892ba" },
         { name: "Google",     v: 24, color: "#92baa4" },
@@ -635,6 +634,48 @@ function computeAttendanceHeatmap(
     });
 }
 
+/** Top recovery services ranked by total booked seats in period + branch
+ *  scope. Reads live from the `services` slice (so any service the studio
+ *  toggles Active / Inactive via /admin/services shows up correctly) and
+ *  the `appointments` slice (source of truth for booking counts). Returns
+ *  up to the top 5. Client 2026-07-20 flag — was static invented names. */
+function computeTopServices(
+    services: Array<import("@/lib/store").Service>,
+    appointments: Array<import("@/lib/store").Appointment>,
+    branchIds: string[] | undefined,
+    period: DateFilter,
+): Array<{ name: string; v: number }> {
+    const { from, to } = period.type === "custom"
+        ? { from: period.from, to: period.to }
+        : resolvePresetBounds(period);
+    const fromMs = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+    const toMs   = new Date(to.getFullYear(),   to.getMonth(),   to.getDate(),   23, 59, 59).getTime();
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+
+    // Recovery services only. Preserve real names + stable order.
+    const recoverySvcIds = new Set(
+        services.filter(s => s.type === "recovery").map(s => s.id),
+    );
+    const nameOf = new Map(services.map(s => [s.id, s.name] as const));
+
+    const totals = new Map<string, number>();
+    for (const a of appointments) {
+        if (!recoverySvcIds.has(a.serviceId)) continue;
+        if (scoped && !scoped.includes(a.branchId)) continue;
+        const t = new Date(`${a.dateISO}T00:00:00`).getTime();
+        if (Number.isNaN(t) || t < fromMs || t > toMs) continue;
+        totals.set(a.serviceId, (totals.get(a.serviceId) ?? 0) + (a.booked ?? 0));
+    }
+    // Include zero-booking services too so a studio with no recovery
+    // bookings still sees its Active services (each at 0) instead of an
+    // empty card — matches the intent of "does it reflect what we have".
+    recoverySvcIds.forEach(id => { if (!totals.has(id)) totals.set(id, 0); });
+
+    const ranked: Array<{ name: string; v: number }> = [];
+    totals.forEach((v, id) => { ranked.push({ name: nameOf.get(id) ?? id, v }); });
+    return ranked.sort((a, b) => b.v - a.v).slice(0, 5);
+}
+
 /** Scale every numeric field in a chart-ready row by `factor`, leave strings
  *  (labels, dates, colors) untouched. Returns the same row when factor is 1. */
 function scaleRows(rows: object[], factor: number): object[] {
@@ -669,6 +710,9 @@ function renderChart(
     /** Attendance-heatmap widget only — 4×7 grid derived live from bookings
      *  scoped to the picked branch(es) + period. Null on every other widget. */
     heatmapRows: HeatmapRow[] | null = null,
+    /** Recovery Top-services widget only — live-derived ranked list of
+     *  recovery services by booked-seat count. Null on every other widget. */
+    topServicesRows: Array<{ name: string; v: number }> | null = null,
 ): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
@@ -680,7 +724,9 @@ function renderChart(
     const effBranchScale = PCT_WIDGET_IDS.has(id) ? 1 : branchScale;
     const data = id === "attendance-heatmap" && heatmapRows
         ? (heatmapRows as unknown as object[])
-        : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
+        : id === "recovery-top-services" && topServicesRows
+            ? (topServicesRows as unknown as object[])
+            : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -971,7 +1017,7 @@ function renderChart(
             const rows = data as { stage: string; v: number; color: string }[];
             const maxV = Math.max(1, ...rows.map(r => r.v));
             return (
-                <div className="flex flex-col gap-3 mt-1">
+                <div className="flex-1 flex flex-col justify-around gap-3 mt-1 min-h-0">
                     {rows.map(row => (
                         <div key={row.stage} className="flex items-center gap-3">
                             <p className="text-sm text-[#344054] w-32 flex-shrink-0">{row.stage}</p>
@@ -1289,7 +1335,7 @@ function renderChart(
             const rows = data as { name: string; v: number }[];
             const maxV = Math.max(...rows.map(r => r.v), 1);
             return (
-                <div className="flex flex-col gap-3 mt-2">
+                <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
                             <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
@@ -1309,7 +1355,7 @@ function renderChart(
             const rows = data as { name: string; v: number }[];
             const maxV = Math.max(...rows.map(r => r.v), 1);
             return (
-                <div className="flex flex-col gap-3 mt-2">
+                <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
                             <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
@@ -1357,7 +1403,7 @@ function renderChart(
             const rows = data as { name: string; v: number; color: string }[];
             const maxV = Math.max(...rows.map(r => r.v), 1);
             return (
-                <div className="flex flex-col gap-3 mt-2">
+                <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
                             <span className="w-24 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
@@ -1381,7 +1427,11 @@ function renderChart(
                         <CartesianGrid vertical={false} stroke="#f2f4f7" />
                         <XAxis dataKey="name" {...axisProps} interval={0} />
                         <YAxis {...axisProps} width={40} />
+                        {/* cursor={{ fill: "#f9fafb" }} matches every other Recharts
+                            bar widget so the hover overlay reads the same across
+                            the dashboard (client 2026-07-20 flag). */}
                         <Tooltip
+                            cursor={{ fill: "#f9fafb" }}
                             content={<ChartTooltip valueFormatter={(p) =>
                                 p.dataKey === "revenueAed" ? aedMoney(p.value) : String(p.value ?? "")
                             } />}
@@ -1400,7 +1450,7 @@ function renderChart(
             const rows = data as { name: string; v: number }[];
             const maxV = Math.max(...rows.map(r => r.v), 1);
             return (
-                <div className="flex flex-col gap-3 mt-2">
+                <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
                             <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
@@ -1421,7 +1471,7 @@ function renderChart(
             const rows = data as { name: string; v: number; revenueAed: number }[];
             const maxV = Math.max(...rows.map(r => r.v), 1);
             return (
-                <div className="flex flex-col gap-3 mt-2">
+                <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-start gap-3">
                             <div className="w-24 shrink-0 flex flex-col">
@@ -1551,6 +1601,21 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
         widgetId === "attendance-heatmap" && heatBookings && heatSchedules
             ? computeAttendanceHeatmap(heatBookings, heatSchedules, branchIds, period ?? DEFAULT_PERIOD)
             : null;
+
+    // Top services — derive live from `services` + `appointments`. Client
+    // 2026-07-20 asked "does it reflect what we have right now?" — yes,
+    // it does now. Ranks recovery services by booked-seat count scoped to
+    // the picked branch(es) + period. Only reads on this widget.
+    const svcAll = useAppStore(s =>
+        widgetId === "recovery-top-services" ? s.services : null,
+    );
+    const svcAppts = useAppStore(s =>
+        widgetId === "recovery-top-services" ? s.appointments : null,
+    );
+    const topServicesRows =
+        widgetId === "recovery-top-services" && svcAll && svcAppts
+            ? computeTopServices(svcAll, svcAppts, branchIds, period ?? DEFAULT_PERIOD)
+            : null;
     if (!meta) return null;
 
     return (
@@ -1609,7 +1674,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapRows)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapRows, topServicesRows)}
             </div>
         </div>
     );
