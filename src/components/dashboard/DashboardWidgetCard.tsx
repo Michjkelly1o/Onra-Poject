@@ -337,7 +337,8 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "revenue-overview":     { headers: ["Date", "Revenue", "Last week"],          fields: ["date", "revenue", "lastWeek"] },
     "sales-by-product":     { headers: ["Date", "Membership (AED)", "Class package (AED)"], fields: ["date", "membership", "package"] },
     "active-memberships":   { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
-    "active-subscriptions": { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
+    // active-subscriptions row retired 2026-07-20 (widget removed from
+    // catalog + render case — dead SEED_FIELDS row cleaned up here).
     "active-credits":       { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
     "top-memberships":      { headers: ["Plan", "Total sales"],                   fields: ["name", "v"] },
     "memberships-sold":     { headers: ["Date", "Beginner", "Advanced", "Unlimited"], fields: ["date", "beginner", "advanced", "unlimited"] },
@@ -348,6 +349,12 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "class-by-popularity":  { headers: ["Class", "Instructor", "Bookings", "Occupancy (%)"], fields: ["name", "instructor", "bookings", "occupancy"] },
     "attendance-heatmap":   { headers: ["Time band", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], fields: ["band", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] },
     "intro-member-funnel":  { headers: ["Stage", "Sublabel", "Count", "% of top"], fields: ["stage", "sublabel", "count", "pctOfTop"] },
+    // KPI-only widgets — CSV headers backfilled 2026-07-20 (pre-existing
+    // gap surfaced by the widget audit). Without these, the KPI page's
+    // CSV export returned null for these three widgets.
+    "kpi-lead-funnel":         { headers: ["Stage", "Count"],                                          fields: ["stage", "v"] },
+    "kpi-campaign-perf":       { headers: ["Date", "Sends", "Opens", "Clicks"],                        fields: ["date", "sends", "opens", "clicks"] },
+    "kpi-marketing-efficiency":{ headers: ["Date", "CPL (AED)", "CAC (AED)", "ROAS"],                  fields: ["date", "cpl", "cac", "roas"] },
     // ── Client (9) new widgets — CSV headers ──────────────────────────
     "revenue-by-type":         { headers: ["Date", "Classes (AED)", "Private (AED)", "Recovery (AED)"], fields: ["date", "classes", "private", "recovery"] },
     "returning-vs-new":        { headers: ["Date", "Returning", "New"],                                 fields: ["date", "returning", "new"] },
@@ -365,10 +372,26 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "promo-redemptions":       { headers: ["Promo code", "Redemptions", "Revenue (AED)"],                fields: ["name", "v", "revenueAed"] },
 };
 
+/** Widgets whose values are RATES / PERCENTAGES (0-100), not counts. These
+ *  MUST bypass both `pointsForPeriod` scaling (which multiplies by 6× on
+ *  "Last 12 months" and 0.15 on Day) AND the per-branch `scaleRows` scale.
+ *  Without this, e.g. Utilization = 70% shoots to 420% on the year view
+ *  and clips flat at 100%, or shrinks to 28% when a single branch is
+ *  picked (a rate at one location shouldn't shrink with the branch
+ *  filter — that's what a rate MEANS). Audit finding 2026-07-20. */
+const PCT_WIDGET_IDS: ReadonlySet<string> = new Set([
+    "no-show-rate",
+    "private-utilization",
+    "private-rebooking",
+    "recovery-attach-rate",
+]);
+
 function buildSeries(id: string, period: DateFilter): object[] {
     const seed = SEEDS[id];
     if (!seed) return [];
     const { labels, scale } = pointsForPeriod(period);
+    // Rate widgets keep raw seed values — see PCT_WIDGET_IDS above.
+    const effScale = PCT_WIDGET_IDS.has(id) ? 1 : scale;
     return labels.map((date, i) => {
         const point: Record<string, string | number> = { date };
         for (const key of Object.keys(seed)) {
@@ -379,7 +402,7 @@ function buildSeries(id: string, period: DateFilter): object[] {
             // round small values down). Floor at 1 when the seed was positive
             // so tooltips never read "AED 0" / "0×" for real data; a genuine
             // seeded zero stays zero.
-            const scaled = Math.round(raw * scale);
+            const scaled = Math.round(raw * effScale);
             point[key] = raw > 0 ? Math.max(1, scaled) : Math.max(0, scaled);
         }
         return point;
@@ -650,10 +673,14 @@ function renderChart(
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
     // Heatmap has its own live-derived data (`heatmapRows`) — override the
-    // static seed so it respects the date filter.
+    // static seed so it respects the date filter. Rate/percentage widgets
+    // (PCT_WIDGET_IDS) also bypass branchScale — a rate at ONE branch
+    // shouldn't shrink when you filter to that branch; it should stay the
+    // rate. Audit finding 2026-07-20.
+    const effBranchScale = PCT_WIDGET_IDS.has(id) ? 1 : branchScale;
     const data = id === "attendance-heatmap" && heatmapRows
         ? (heatmapRows as unknown as object[])
-        : scaleRows(STATIC[id] ?? buildSeries(id, period), branchScale);
+        : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
