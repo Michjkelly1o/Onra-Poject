@@ -48,6 +48,10 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     { id: "payments-by-source",  title: "Payments by source",               description: "", category: "Financial" },
     { id: "revenue-overview",    title: "Revenue overview",                  description: "", category: "Financial" },
     { id: "sales-by-product",    title: "Sales by product",                  description: "", category: "Financial" },
+    // Revenue by type — client (9a). Stacked area over the period so the
+    // Classes / Private / Recovery revenue split AND its trend both read
+    // from one card.
+    { id: "revenue-by-type",     title: "Revenue by type",                   description: "", category: "Financial" },
     // ─── Customer ───────────────────────────────────────────────────────
     { id: "active-memberships",  title: "Active memberships",                description: "", category: "Customer" },
     { id: "active-credits",      title: "Active credit packages",            description: "", category: "Customer" },
@@ -56,6 +60,8 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // Intro → membership funnel — 3 horizontal bars sized by client count
     // (Tried → Returned → Bought).
     { id: "intro-member-funnel", title: "Intro → membership funnel",         description: "", category: "Customer" },
+    // Returning vs new customers — client (9b). Two-series line.
+    { id: "returning-vs-new",    title: "Returning vs new customers",        description: "", category: "Customer" },
     // ─── Class ──────────────────────────────────────────────────────────
     { id: "class-bookings",      title: "Class bookings",                    description: "", category: "Class" },
     { id: "bookings-by-source",  title: "Bookings by source",                description: "", category: "Class" },
@@ -63,12 +69,36 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     { id: "attendance-overview", title: "Attendance overview",               description: "", category: "Class" },
     { id: "class-by-popularity", title: "Class by popularity",               description: "", category: "Class" },
     // Attendance heatmap — 4 time-of-day rows × 7 weekday cols, cells
-    // shaded by attendance %. Now respects the header date filter.
+    // shaded by attendance %. Respects the header date filter.
     { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "", category: "Class" },
+    // No-show rate — client (9e). Single line, y-axis %.
+    { id: "no-show-rate",        title: "No-show rate",                      description: "", category: "Class" },
+    // Under-filled classes trend — client (9e). Single line, count.
+    { id: "underfilled-trend",   title: "Under-filled classes trend",        description: "", category: "Class" },
+    // ─── Private sessions ──────────────────────────────────────────────
+    // All 3 land under client (9c). Utilization = booked/available %,
+    // Rebooking rate = % of session customers who booked again,
+    // Top trainers = ranked bar of trainer names.
+    { id: "private-utilization", title: "Utilization",                       description: "", category: "Private sessions" },
+    { id: "private-rebooking",   title: "Rebooking rate",                    description: "", category: "Private sessions" },
+    { id: "private-top-trainers",title: "Top trainers by private bookings",  description: "", category: "Private sessions" },
+    // ─── Recovery ──────────────────────────────────────────────────────
+    // All 3 land under client (9d). Top services = ranked bar,
+    // Recovery bookings over time = single line, Attach rate = %.
+    { id: "recovery-top-services", title: "Top services",                    description: "", category: "Recovery" },
+    { id: "recovery-bookings",     title: "Recovery bookings over time",     description: "", category: "Recovery" },
+    { id: "recovery-attach-rate",  title: "Attach rate",                     description: "", category: "Recovery" },
+    // ─── Marketing ─────────────────────────────────────────────────────
+    // Client (9f) — 4 widgets. Also keeps the 4 KPI-tab exclusive widgets
+    // below so the KPI grid still has content.
+    { id: "new-customers-source",  title: "New customers by source",         description: "", category: "Marketing" },
+    { id: "campaign-performance",  title: "Campaign performance",            description: "", category: "Marketing" },
+    { id: "referral-program",      title: "Referral program",                description: "", category: "Marketing" },
+    { id: "promo-redemptions",     title: "Promo code redemptions",          description: "", category: "Marketing" },
     // ─── Marketing (KPI-tab exclusive; kept for KPI grid) ───────────────
     { id: "kpi-leads-by-source",      title: "Leads by source",             description: "", category: "Marketing" },
     { id: "kpi-lead-funnel",          title: "Lead conversion funnel",      description: "", category: "Marketing" },
-    { id: "kpi-campaign-perf",        title: "Campaign performance",        description: "", category: "Marketing" },
+    { id: "kpi-campaign-perf",        title: "Campaign performance (leads)",description: "", category: "Marketing" },
     { id: "kpi-marketing-efficiency", title: "Marketing efficiency",        description: "", category: "Marketing" },
 ];
 

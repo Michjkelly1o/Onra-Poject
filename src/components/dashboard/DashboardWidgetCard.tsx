@@ -8,7 +8,7 @@ import { useAppStore } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
 import {
-    LineChart, Line, BarChart, Bar, ComposedChart, Area,
+    LineChart, Line, BarChart, Bar, ComposedChart, Area, AreaChart,
     XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer,
 } from "recharts";
@@ -48,6 +48,20 @@ const SEEDS: Record<string, Record<string, number[]>> = {
     "kpi-leads-by-source":     { instagram: [6, 4, 5, 7, 6, 5, 8], google: [4, 3, 5, 3, 4, 5, 4], referral: [2, 3, 2, 4, 3, 2, 3], website: [3, 2, 4, 3, 5, 3, 4] },
     "kpi-campaign-perf":       { sends: [1200, 950, 1420, 1310, 1180, 1100, 1230], opens: [670, 520, 800, 720, 640, 590, 680], clicks: [110, 75, 145, 120, 105, 95, 118] },
     "kpi-marketing-efficiency": { cpl: [65, 58, 62, 60, 55, 63, 58], cac: [280, 260, 275, 265, 250, 285, 270], roas: [3.2, 2.9, 3.4, 3.1, 3.5, 3.0, 3.3] },
+    // ── Client (9) new widgets — 2026-07-20 ─────────────────────────────
+    // Every seed key is per-period-point (7 for This week etc.) and gets
+    // tiled + scaled through the same buildSeries path the existing seeds
+    // use, so period changes (Day → Month → Last 12 months) automatically
+    // reshape each chart's x-axis. Values sized to sit next to the other
+    // widgets without dominating the y-axis.
+    "revenue-by-type":        { classes: [1800, 1650, 2100, 2300, 2050, 2600, 2800], private: [900, 750, 1100, 1200, 950, 1300, 1450], recovery: [400, 350, 550, 500, 450, 620, 700] },
+    "returning-vs-new":       { returning: [12, 10, 14, 16, 15, 18, 20], new: [4, 3, 5, 6, 5, 7, 8] },
+    "no-show-rate":           { rate: [8, 12, 6, 9, 5, 7, 10] },
+    "underfilled-trend":      { count: [3, 5, 4, 2, 6, 3, 4] },
+    "private-utilization":    { pct: [62, 70, 58, 75, 68, 72, 80] },
+    "private-rebooking":      { pct: [45, 52, 48, 55, 58, 60, 62] },
+    "recovery-bookings":      { count: [8, 6, 10, 12, 9, 14, 16] },
+    "recovery-attach-rate":   { pct: [18, 22, 20, 24, 26, 25, 28] },
 };
 
 const STATIC: Record<string, object[]> = {
@@ -94,6 +108,54 @@ const STATIC: Record<string, object[]> = {
         { stage: "Tried an intro", sublabel: "trial / drop-in",   count: 120 },
         { stage: "Returned",       sublabel: "booked a 2nd+ visit", count: 46 },
         { stage: "Bought a plan",  sublabel: "membership or pack", count: 28 },
+    ],
+    // ── Client (9) — ranked / static widgets ─────────────────────────────
+    // These are the "leaderboard" widgets (Top trainers, Top services,
+    // Top promo codes, Top referrers) and the source-split ones. They stay
+    // static (no period tiling) because rankings read as a snapshot — a
+    // future pass can period-scope them if the client wants trailing-N-day
+    // leaderboards. Colours picked from the existing widget palette so
+    // charts read as one visual family.
+    "private-top-trainers": [
+        { name: "Sara Al-Rashid", v: 42 },
+        { name: "Liam Chen",      v: 36 },
+        { name: "Maya Johnson",   v: 28 },
+        { name: "Priya Nair",     v: 19 },
+        { name: "Dan Rivera",     v: 14 },
+    ],
+    "recovery-top-services": [
+        { name: "Ice bath",       v: 58 },
+        { name: "Sauna",          v: 41 },
+        { name: "Massage",        v: 34 },
+        { name: "Cryo",           v: 22 },
+        { name: "Compression",    v: 15 },
+    ],
+    "new-customers-source": [
+        { name: "Instagram",  v: 38, color: "#b892ba" },
+        { name: "Google",     v: 24, color: "#92baa4" },
+        { name: "Referral",   v: 18, color: "#92d1de" },
+        { name: "Walk-in",    v: 11, color: "#f7b955" },
+        { name: "Intro offer", v: 9,  color: "#aad4bd" },
+    ],
+    "campaign-performance": [
+        { name: "Summer Reload",    sent: 1200, opened: 620, booked: 84, revenueAed: 12400 },
+        { name: "Reformer Rebook",  sent: 950,  opened: 480, booked: 65, revenueAed: 8900 },
+        { name: "Recovery Launch",  sent: 780,  opened: 340, booked: 41, revenueAed: 5600 },
+        { name: "Refer a Friend",   sent: 640,  opened: 290, booked: 28, revenueAed: 3200 },
+    ],
+    "referral-program": [
+        // Top 5 referrers by unique new-customer sign-ups this period.
+        { name: "Ahmed Zayn",    v: 6 },
+        { name: "Ava Wright",    v: 4 },
+        { name: "Sophia Lee",    v: 3 },
+        { name: "Fatima A.",     v: 2 },
+        { name: "Rosale Martin", v: 1 },
+    ],
+    "promo-redemptions": [
+        { name: "WELCOME15", v: 34, revenueAed: 4200 },
+        { name: "FRIEND20",  v: 22, revenueAed: 2900 },
+        { name: "SUMMER10",  v: 18, revenueAed: 2100 },
+        { name: "REBOOK5",   v: 11, revenueAed: 1300 },
     ],
 };
 
@@ -286,6 +348,21 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "class-by-popularity":  { headers: ["Class", "Instructor", "Bookings", "Occupancy (%)"], fields: ["name", "instructor", "bookings", "occupancy"] },
     "attendance-heatmap":   { headers: ["Time band", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], fields: ["band", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] },
     "intro-member-funnel":  { headers: ["Stage", "Sublabel", "Count", "% of top"], fields: ["stage", "sublabel", "count", "pctOfTop"] },
+    // ── Client (9) new widgets — CSV headers ──────────────────────────
+    "revenue-by-type":         { headers: ["Date", "Classes (AED)", "Private (AED)", "Recovery (AED)"], fields: ["date", "classes", "private", "recovery"] },
+    "returning-vs-new":        { headers: ["Date", "Returning", "New"],                                 fields: ["date", "returning", "new"] },
+    "no-show-rate":            { headers: ["Date", "No-show rate (%)"],                                 fields: ["date", "rate"] },
+    "underfilled-trend":       { headers: ["Date", "Under-filled classes"],                             fields: ["date", "count"] },
+    "private-utilization":     { headers: ["Date", "Utilization (%)"],                                  fields: ["date", "pct"] },
+    "private-rebooking":       { headers: ["Date", "Rebooking rate (%)"],                               fields: ["date", "pct"] },
+    "private-top-trainers":    { headers: ["Trainer", "Private bookings"],                              fields: ["name", "v"] },
+    "recovery-top-services":   { headers: ["Service", "Bookings"],                                      fields: ["name", "v"] },
+    "recovery-bookings":       { headers: ["Date", "Recovery bookings"],                                fields: ["date", "count"] },
+    "recovery-attach-rate":    { headers: ["Date", "Attach rate (%)"],                                  fields: ["date", "pct"] },
+    "new-customers-source":    { headers: ["Source", "New customers"],                                  fields: ["name", "v"] },
+    "campaign-performance":    { headers: ["Campaign", "Sent", "Opened", "Booked", "Revenue (AED)"],    fields: ["name", "sent", "opened", "booked", "revenueAed"] },
+    "referral-program":        { headers: ["Referrer", "New customers referred"],                        fields: ["name", "v"] },
+    "promo-redemptions":       { headers: ["Promo code", "Redemptions", "Revenue (AED)"],                fields: ["name", "v", "revenueAed"] },
 };
 
 function buildSeries(id: string, period: DateFilter): object[] {
@@ -1068,6 +1145,268 @@ function renderChart(
                             </div>
                         );
                     })}
+                </div>
+            );
+        }
+
+        // ═════════════════════════════════════════════════════════════════
+        // Client (9) new widgets — 2026-07-20
+        // ═════════════════════════════════════════════════════════════════
+        //
+        // Every time-series case below reads `data` (which the top of
+        // renderChart already routed through buildSeries + branch scale),
+        // so period changes (Week → Month → Last 12 months) and the
+        // location filter both flow through automatically. Ranked / static
+        // widgets read from STATIC via the same routing so they don't
+        // re-scale by period — matches the existing "Top 5 plans" pattern.
+
+        // ── Financial ────────────────────────────────────────────────────
+        // Revenue by type — stacked area, AED. Classes / Private / Recovery
+        // stack from the axis up so you see BOTH the total (top edge) and
+        // the per-type split (bands) at a glance.
+        case "revenue-by-type":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <AreaChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={40} tickFormatter={aedAxisTick} />
+                        <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} />
+                        <Area type="monotone" dataKey="classes"  name="Classes"  stackId="rev" stroke="#92baa4" fill="#92baa4" fillOpacity={0.85} />
+                        <Area type="monotone" dataKey="private"  name="Private"  stackId="rev" stroke="#b892ba" fill="#b892ba" fillOpacity={0.85} />
+                        <Area type="monotone" dataKey="recovery" name="Recovery" stackId="rev" stroke="#f7b955" fill="#f7b955" fillOpacity={0.85} />
+                    </AreaChart>
+                </ResponsiveContainer>
+            );
+
+        // ── Customer ─────────────────────────────────────────────────────
+        // Returning vs new — two-series line. "Returning" = repeat visitors
+        // this period; "New" = customers whose first visit is this period.
+        case "returning-vs-new":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Line type="monotone" dataKey="returning" name="Returning" stroke="#92baa4" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="new"       name="New"       stroke="#b892ba" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // ── Class ────────────────────────────────────────────────────────
+        // No-show rate % — single line, y-axis pinned to 0-100.
+        case "no-show-rate":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip content={<ChartTooltip valueFormatter={(p) => `${p.value}%`} />} />
+                        <Line type="monotone" dataKey="rate" name="No-show rate" stroke="#f04438" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // Under-filled classes trend — count of classes below 50% capacity
+        // that landed on each day of the period.
+        case "underfilled-trend":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Line type="monotone" dataKey="count" name="Under-filled classes" stroke="#f7b955" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // ── Private sessions ─────────────────────────────────────────────
+        // Utilization — booked / available slots ×100. Line, 0-100.
+        case "private-utilization":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip content={<ChartTooltip valueFormatter={(p) => `${p.value}%`} />} />
+                        <Line type="monotone" dataKey="pct" name="Utilization" stroke="#b892ba" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // Rebooking rate — % of customers who booked another session
+        // within N days. Pairs with the Coming-up "due to rebook" signal.
+        case "private-rebooking":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip content={<ChartTooltip valueFormatter={(p) => `${p.value}%`} />} />
+                        <Line type="monotone" dataKey="pct" name="Rebooking rate" stroke="#92d1de" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // Top trainers by private bookings — horizontal ranked bar. Same
+        // chart shape as "Top 5 plans" for visual consistency.
+        case "private-top-trainers": {
+            const rows = data as { name: string; v: number }[];
+            const maxV = Math.max(...rows.map(r => r.v), 1);
+            return (
+                <div className="flex flex-col gap-3 mt-2">
+                    {rows.map(r => (
+                        <div key={r.name} className="flex items-center gap-3">
+                            <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-[#b892ba]" style={{ width: `${(r.v / maxV) * 100}%` }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // ── Recovery ─────────────────────────────────────────────────────
+        // Top services — same ranked-bar shape as Top trainers, orange tint.
+        case "recovery-top-services": {
+            const rows = data as { name: string; v: number }[];
+            const maxV = Math.max(...rows.map(r => r.v), 1);
+            return (
+                <div className="flex flex-col gap-3 mt-2">
+                    {rows.map(r => (
+                        <div key={r.name} className="flex items-center gap-3">
+                            <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-[#f7b955]" style={{ width: `${(r.v / maxV) * 100}%` }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // Recovery bookings over time — single line.
+        case "recovery-bookings":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Line type="monotone" dataKey="count" name="Recovery bookings" stroke="#f7b955" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // Attach rate — % of class customers who also book recovery.
+        case "recovery-attach-rate":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={data}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="date" {...axisProps} interval={interval} />
+                        <YAxis {...axisProps} width={28} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip content={<ChartTooltip valueFormatter={(p) => `${p.value}%`} />} />
+                        <Line type="monotone" dataKey="pct" name="Attach rate" stroke="#92baa4" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            );
+
+        // ── Marketing ────────────────────────────────────────────────────
+        // New customers by source — coloured ranked bars, one per source.
+        case "new-customers-source": {
+            const rows = data as { name: string; v: number; color: string }[];
+            const maxV = Math.max(...rows.map(r => r.v), 1);
+            return (
+                <div className="flex flex-col gap-3 mt-2">
+                    {rows.map(r => (
+                        <div key={r.name} className="flex items-center gap-3">
+                            <span className="w-24 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${(r.v / maxV) * 100}%`, backgroundColor: r.color }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // Campaign performance — per-campaign grouped bar: sent / opened /
+        // booked. Revenue attributed shown in the tooltip so the chart
+        // stays readable at small heights.
+        case "campaign-performance":
+            return (
+                <ResponsiveContainer width="100%" height={h}>
+                    <BarChart data={data as { name: string; sent: number; opened: number; booked: number; revenueAed: number }[]}>
+                        <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                        <XAxis dataKey="name" {...axisProps} interval={0} />
+                        <YAxis {...axisProps} width={40} />
+                        <Tooltip
+                            content={<ChartTooltip valueFormatter={(p) =>
+                                p.dataKey === "revenueAed" ? aedMoney(p.value) : String(p.value ?? "")
+                            } />}
+                        />
+                        <Bar dataKey="sent"   name="Sent"   fill="#aad4bd" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="opened" name="Opened" fill="#92d1de" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="booked" name="Booked" fill="#b892ba" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            );
+
+        // Referral program — top referrers ranked bar. Adjacent to the
+        // customer's Referrals tab so the "who's driving sign-ups" signal
+        // is one click from the drill-through.
+        case "referral-program": {
+            const rows = data as { name: string; v: number }[];
+            const maxV = Math.max(...rows.map(r => r.v), 1);
+            return (
+                <div className="flex flex-col gap-3 mt-2">
+                    {rows.map(r => (
+                        <div key={r.name} className="flex items-center gap-3">
+                            <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-[#92baa4]" style={{ width: `${(r.v / maxV) * 100}%` }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // Promo code redemptions — code → uses + revenue attributed. Small
+        // secondary "AED X" line under each code so both signals surface
+        // without a second chart.
+        case "promo-redemptions": {
+            const rows = data as { name: string; v: number; revenueAed: number }[];
+            const maxV = Math.max(...rows.map(r => r.v), 1);
+            return (
+                <div className="flex flex-col gap-3 mt-2">
+                    {rows.map(r => (
+                        <div key={r.name} className="flex items-start gap-3">
+                            <div className="w-24 shrink-0 flex flex-col">
+                                <span className="text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
+                                <span className="text-[11px] text-[#667085]">{aedMoney(r.revenueAed)}</span>
+                            </div>
+                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden mt-1">
+                                <div className="h-full rounded-full bg-[#7ba08c]" style={{ width: `${(r.v / maxV) * 100}%` }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold mt-1">{r.v}</span>
+                        </div>
+                    ))}
                 </div>
             );
         }
