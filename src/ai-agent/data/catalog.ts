@@ -27,6 +27,12 @@ import {
     readLeads,
     readCampaigns,
     readSpend,
+    // Phase 8 datasets:
+    readAppointments,
+    readServices,
+    readWalletTransactions,
+    readPayrollEntries,
+    readPromoCodes,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -170,6 +176,101 @@ export function buildCatalog(state: AppState): Catalog {
                 month:     { row: "month",    type: "string", label: "month" },
                 spend_aed: { row: "spend_aed", type: "number", label: "spend (AED)" },
                 branch:    branchField,
+            },
+        },
+
+        // ─── Phase 8 datasets ────────────────────────────────────────────
+
+        appointments: {
+            key: "appointments",
+            label: "private + recovery session bookings (opposite of classes)",
+            rows: readAppointments(state),
+            fields: {
+                type:             { row: "type",             type: "enum",   label: "session type", values: ["private", "recovery"] },
+                status:           { row: "status",           type: "enum",   label: "status",       values: ["Completed", "Cancelled", "Ongoing", "Upcoming"] },
+                open_session:     { row: "open_session",     type: "enum",   label: "open session", values: ["true", "false"] },
+                booked:           { row: "booked",           type: "number", label: "bookings" },
+                capacity:         { row: "capacity",         type: "number", label: "capacity" },
+                rating:           { row: "rating",           type: "number", label: "rating" },
+                service:          { row: "service_id",       type: "ref",    label: "service",     ref: refs.serviceName },
+                service_name:     { row: "service_name",     type: "string", label: "service name" },
+                service_category: { row: "service_category", type: "string", label: "category" },
+                instructor:       { row: "instructor_id",    type: "ref",    label: "instructor",  ref: refs.instructorName },
+                branch:           branchField,
+                date:             { row: "date_iso",         type: "date",   label: "date" },
+            },
+        },
+
+        services: {
+            key: "services",
+            label: "private + recovery service catalog (what admin configures)",
+            rows: readServices(state),
+            fields: {
+                type:         { row: "type",         type: "enum",   label: "session type", values: ["private", "recovery"] },
+                status:       { row: "status",       type: "enum",   label: "status",       values: ["active", "inactive", "archived"] },
+                open_session: { row: "open_session", type: "enum",   label: "open session", values: ["true", "false"] },
+                price:        { row: "price",        type: "number", label: "price (AED)" },
+                duration_min: { row: "duration_min", type: "number", label: "duration (min)" },
+                capacity:     { row: "capacity",     type: "number", label: "capacity" },
+                name:         { row: "name",         type: "string", label: "service" },
+                category:     { row: "category",     type: "string", label: "category" },
+                branch:       branchField,
+            },
+        },
+
+        wallet_transactions: {
+            key: "wallet_transactions",
+            label: "customer account-credit ledger (AED — credit/debit)",
+            rows: readWalletTransactions(state),
+            fields: {
+                type:            { row: "type",            type: "enum",   label: "type",           values: ["credit", "debit"] },
+                reference_type:  { row: "reference_type",  type: "enum",   label: "reference type", values: ["referral", "pos_sale", "refund", "manual"] },
+                amount_aed:      { row: "amount_aed",      type: "number", label: "amount (AED)" },
+                customer:        { row: "customer_id",     type: "ref",    label: "customer",       ref: refs.customerName },
+                reason:          { row: "reason",          type: "string", label: "reason" },
+                branch:          branchField,
+                created_at:      { row: "created_at",      type: "date",   label: "date" },
+            },
+        },
+
+        payroll_entries: {
+            key: "payroll_entries",
+            label: "instructor payroll — one row per (instructor, period)",
+            rows: readPayrollEntries(state),
+            fields: {
+                status:                 { row: "status",              type: "enum",   label: "status",           values: ["draft", "confirmed"] },
+                classes_count:          { row: "classes_count",       type: "number", label: "classes taught" },
+                total_attendees:        { row: "total_attendees",     type: "number", label: "attendees" },
+                total_hours:            { row: "total_hours",         type: "number", label: "hours" },
+                gross_revenue:          { row: "gross_revenue",       type: "number", label: "gross revenue (AED)" },
+                base_earnings:          { row: "base_earnings",       type: "number", label: "base earnings (AED)" },
+                commission_amount:      { row: "commission_amount",   type: "number", label: "commission (AED)" },
+                total_earnings:         { row: "total_earnings",      type: "number", label: "total earnings (AED)" },
+                instructor:             { row: "instructor_id",       type: "ref",    label: "instructor",       ref: refs.instructorName },
+                pay_rate:               { row: "pay_rate_name",       type: "string", label: "pay rate" },
+                branch:                 branchField,
+                period_start:           { row: "period_start",        type: "date",   label: "period start" },
+                period_end:              { row: "period_end",          type: "date",   label: "period end" },
+            },
+        },
+
+        promo_codes: {
+            key: "promo_codes",
+            label: "promo codes (marketing discounts, POS redemption)",
+            rows: readPromoCodes(state),
+            fields: {
+                status:           { row: "status",           type: "enum",   label: "status",          values: ["active", "inactive", "archived"] },
+                discount_type:    { row: "discount_type",    type: "enum",   label: "discount type",   values: ["percentage", "fixed"] },
+                offer_type:       { row: "offer_type",       type: "enum",   label: "offer type",      values: ["free_class", "free_trial", "percentage", "fixed_amount"] },
+                action:           { row: "action",           type: "enum",   label: "action",          values: ["book_class", "buy_package"] },
+                discount_value:   { row: "discount_value",   type: "number", label: "discount value" },
+                usage_count:      { row: "usage_count",      type: "number", label: "uses so far" },
+                usage_limit:      { row: "usage_limit",      type: "number", label: "usage limit" },
+                min_purchase_aed: { row: "min_purchase_aed", type: "number", label: "min purchase (AED)" },
+                code:             { row: "code",             type: "string", label: "code" },
+                name:             { row: "name",             type: "string", label: "promo name" },
+                valid_from:       { row: "valid_from",       type: "date",   label: "valid from" },
+                valid_until:      { row: "valid_until",      type: "date",   label: "expires" },
             },
         },
     };

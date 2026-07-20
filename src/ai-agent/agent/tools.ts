@@ -32,7 +32,22 @@ import type { Row } from "@/ai-agent/data/store-readers";
 import type { InsightCard } from "@/ai-agent/agent/cards";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 
-const DATASETS = ["transactions", "customers", "classes", "bookings", "leads", "campaigns", "spend"] as const;
+const DATASETS = [
+    // Phase 2 — original 7:
+    "transactions",
+    "customers",
+    "classes",
+    "bookings",
+    "leads",
+    "campaigns",
+    "spend",
+    // Phase 8 — extended catalog:
+    "appointments",
+    "services",
+    "wallet_transactions",
+    "payroll_entries",
+    "promo_codes",
+] as const;
 
 const filter = z.object({
     field: z.string(),

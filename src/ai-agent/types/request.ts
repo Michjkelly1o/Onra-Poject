@@ -17,9 +17,13 @@ import type { ParsedFile } from "@/ai-agent/migration/migration-cards";
 
 /** Slices the AI Agent's data layer reads. Narrower than AppState so the
  *  wire payload stays as small as possible; every field here MUST match
- *  a real key on `AppState` or `buildCatalog` won't compile. */
+ *  a real key on `AppState` or `buildCatalog` won't compile.
+ *
+ *  Phase 8 (2026-07-20): +5 slices to extend catalog coverage. Every
+ *  entry the AI can query in analyze()/list_records() lives here. */
 export type AiAgentStateSnapshot = Pick<
     AppState,
+    // Phase 2 — original 10:
     | "branches"
     | "customers"
     | "customerTransactions"
@@ -30,6 +34,13 @@ export type AiAgentStateSnapshot = Pick<
     | "leads"
     | "marketingCampaignStats"
     | "marketingSpend"
+    // Phase 8 — private/recovery sessions, wallet ledger, service catalog,
+    // payroll history, promo codes:
+    | "appointments"
+    | "services"
+    | "walletTransactions"
+    | "payrollEntries"
+    | "promoCodes"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step wizard. */

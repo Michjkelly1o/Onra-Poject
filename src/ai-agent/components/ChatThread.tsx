@@ -73,10 +73,14 @@ const ParticleOrb = dynamic(
 const DM_SANS_STACK =
     "var(--font-brand-dm-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
-/** Snapshot exactly the 10 store slices `buildCatalog` reads. Any wider
- *  and the request payload balloons for nothing; any narrower and the
- *  server can't build the catalog. Kept in sync with
- *  src/ai-agent/types/request.ts `AiAgentStateSnapshot`. */
+/** Snapshot exactly the store slices `buildCatalog` reads. Any wider and
+ *  the request payload balloons for nothing; any narrower and the server
+ *  can't build the catalog. Kept in sync with
+ *  src/ai-agent/types/request.ts `AiAgentStateSnapshot`.
+ *
+ *  Phase 8: +5 slices (appointments, services, walletTransactions,
+ *  payrollEntries, promoCodes). Payload grows a few KB per request but
+ *  still well under any practical limit. */
 function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
     return {
         branches:                state.branches,
@@ -89,6 +93,12 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         leads:                   state.leads,
         marketingCampaignStats:  state.marketingCampaignStats,
         marketingSpend:          state.marketingSpend,
+        // Phase 8:
+        appointments:            state.appointments,
+        services:                state.services,
+        walletTransactions:      state.walletTransactions,
+        payrollEntries:          state.payrollEntries,
+        promoCodes:              state.promoCodes,
     };
 }
 
