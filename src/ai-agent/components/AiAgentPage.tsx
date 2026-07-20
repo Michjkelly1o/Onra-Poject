@@ -1,25 +1,33 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra AI Agent · Full-viewport page (Figma node 405:455789)
+// Onra AI Agent · Full-viewport page (Figma nodes 405:455789 / 802 / 839 / 795)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Renders as the entire viewport (no admin sidebar/header wrapping — this
-// route lives at /ai-agent, not /admin/ai-agent). Layout mirrors the Figma:
+// Layout mirrors the Figma exactly. Renders as the entire viewport (no admin
+// sidebar/header wrapping — this route lives at /ai-agent, not
+// /admin/ai-agent). Uses DM Sans throughout via the site-wide
+// `--font-brand-dm-sans` CSS variable already loaded in
+// src/app/branding-fonts.ts; that variable is available on <body> so any
+// descendant can pin it with `fontFamily: 'var(--font-brand-dm-sans), …'`.
 //
-//   • Header row (72px, sticky, white)
-//       ├─ Close (X) at far left
-//       └─ Onra logo mark + "AI Agent" title
-//   • Section (below header, 24px horizontal padding, 24px gap)
-//       ├─ Left sidebar (288px, rounded-3xl, border):
-//       │     search input · General chat / Studio setup / Migrate data
-//       │     · flex spacer · Archive at bottom
-//       └─ Right chat surface (flex-1, max-w 1080px, rounded-3xl, border):
-//             mint gradient background + centered empty state
-//             (orb + heading + subtitle + ask-anything input + 3 cards)
+// Structure:
+//   Header (72px, sticky, white)
+//     ├─ close (X) — navigates to ?returnTo or /admin/dashboard
+//     └─ "O" logomark (24px, rounded-[6px], --brand-tertiary bg) + "AI Agent"
+//   Section (below header, 24px horizontal padding, 24px gap, LEFT-aligned)
+//     ├─ Sidebar (288px, rounded-3xl, border): search input + 3 threads
+//     │     (General chat active; Studio setup / Migrate data 'Soon') +
+//     │     Archive footer separated by border-top.
+//     └─ Chat surface (flex-1, max 1080px, rounded-3xl, border):
+//           subtle mint gradient bg (transparent → #e9fff3), decorative
+//           concentric rounded-squares pattern rotated -32° at the bottom
+//           with a radial mask that fades quickly. Empty state centered:
+//           orb + gradient heading "How can I assist you today?" + subtitle
+//           + ask-anything composer + 3 suggestion cards.
 //
 // Phase 4 scope: shell + empty state ONLY. The message list / streaming
 // ChatThread + card renderers (MetricGroup / RankedList / BarChart etc.)
-// land in Phase 5. Suggestion cards ("Create", "Insight", "Customer") are
-// visible-but-inert until the input is wired up.
+// land in Phase 5. The composer input + suggestion cards are visible-but-
+// inert until then.
 
 "use client";
 
@@ -56,6 +64,13 @@ const THREADS: readonly ThreadDef[] = [
     { key: "migrate_data",  label: "Migrate data", icon: UploadCloud02,     enabled: false },
 ];
 
+/** DM Sans stack — pinned at the page root so every descendant inherits it.
+ *  The CSS variable is set on <body> in src/app/layout.tsx via
+ *  BRAND_FONT_VARIABLES; using the variable (not the raw font name) keeps
+ *  the "customize brand typeface" feature intact. */
+const DM_SANS_STACK =
+    "var(--font-brand-dm-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 export function AiAgentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -69,7 +84,10 @@ export function AiAgentPage() {
     const handleClose = () => router.push(returnTo);
 
     return (
-        <div className="flex flex-col h-screen w-screen bg-white">
+        <div
+            className="flex flex-col h-screen w-screen bg-white text-[#101828]"
+            style={{ fontFamily: DM_SANS_STACK }}
+        >
             {/* ── Header ─────────────────────────────────────────────────── */}
             <header className="sticky top-0 z-10 h-[72px] flex items-center px-6 bg-white">
                 <div className="flex items-center gap-3">
@@ -83,10 +101,10 @@ export function AiAgentPage() {
                         <X className="size-5" />
                     </button>
 
-                    {/* Logo mark + title */}
+                    {/* Logomark + title */}
                     <div className="flex items-center gap-2">
-                        <div className="size-6 rounded-md border border-[#d0d5dd] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                            <span className="text-[11px] font-semibold text-[#0c2d34]">O</span>
+                        <div className="size-6 rounded-[6px] border border-[#d0d5dd] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                            <span className="text-[11px] font-semibold text-[#0c2d34] leading-none">O</span>
                         </div>
                         <span className="text-[18px] font-semibold text-[#344054] leading-7">
                             AI Agent
@@ -95,8 +113,10 @@ export function AiAgentPage() {
                 </div>
             </header>
 
-            {/* ── Section: sidebar + chat pane ─────────────────────────── */}
-            <section className="flex-1 min-h-0 flex gap-6 px-6 pb-6 justify-center">
+            {/* ── Section: sidebar + chat pane. LEFT-aligned per Figma
+                (sidebar at 24px from viewport edge, canvas grows to 1080px,
+                any extra viewport width sits empty on the right). ────── */}
+            <section className="flex-1 min-h-0 flex gap-6 px-6 pb-6 items-start">
                 <AgentSidebar
                     activeThread={activeThread}
                     onSelectThread={setActiveThread}
@@ -119,21 +139,21 @@ function AgentSidebar({
     onSelectThread: (key: ThreadKey) => void;
 }) {
     return (
-        <aside className="w-[288px] flex-shrink-0 self-start h-full bg-white border border-[#e4e7ec] rounded-3xl flex flex-col overflow-hidden">
+        <aside className="w-[288px] flex-shrink-0 h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
             {/* Search input */}
             <div className="p-4 border-b border-[#e4e7ec]">
-                <div className="flex items-center gap-2 h-9 px-3 rounded-lg border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                    <SearchLg className="size-4 text-[#667085] flex-shrink-0" />
+                <div className="flex items-center gap-2 h-10 px-4 rounded-lg border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <SearchLg className="size-5 text-[#667085] flex-shrink-0" />
                     <input
                         type="text"
                         placeholder="Search chat..."
-                        className="flex-1 min-w-0 text-[14px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none"
+                        className="flex-1 min-w-0 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6"
                     />
                 </div>
             </div>
 
             {/* Thread list */}
-            <nav className="flex flex-col gap-1 p-2 py-3">
+            <nav className="flex flex-col gap-1 px-2 py-3">
                 {THREADS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.enabled && t.key === activeThread;
@@ -144,14 +164,14 @@ function AgentSidebar({
                             disabled={!t.enabled}
                             onClick={() => t.enabled && onSelectThread(t.key)}
                             className={cn(
-                                "flex items-center gap-2 px-2 py-3 rounded-md text-left transition-colors",
+                                "flex items-center gap-3 px-2 py-3 rounded-md text-left transition-colors",
                                 isActive && "bg-[#f9fafb]",
                                 !isActive && t.enabled && "hover:bg-[#f9fafb]",
                                 !t.enabled && "cursor-not-allowed",
                             )}
                         >
                             <Icon className="size-4 flex-shrink-0 text-[#182230]" />
-                            <span className="flex-1 text-[14px] font-medium text-[#182230] truncate">
+                            <span className="flex-1 text-[14px] font-medium text-[#182230] leading-5 truncate">
                                 {t.label}
                             </span>
                             {!t.enabled && (
@@ -169,10 +189,10 @@ function AgentSidebar({
             <div className="p-4 border-t border-[#e4e7ec]">
                 <button
                     type="button"
-                    className="w-full flex items-center gap-2 px-2 py-3 rounded-md hover:bg-[#f9fafb] transition-colors"
+                    className="w-full flex items-center gap-3 px-2 py-3 rounded-md hover:bg-[#f9fafb] transition-colors"
                 >
                     <Archive className="size-4 flex-shrink-0 text-[#182230]" />
-                    <span className="flex-1 text-[14px] font-medium text-[#182230] text-left">
+                    <span className="flex-1 text-[14px] font-medium text-[#182230] leading-5 text-left">
                         Archive
                     </span>
                 </button>
@@ -189,27 +209,27 @@ function AgentChatSurface() {
     return (
         <div
             className={cn(
-                "flex-1 min-w-0 max-w-[1080px] self-start h-full",
-                "bg-white border border-[#e4e7ec] rounded-3xl overflow-hidden relative",
+                "flex-1 min-w-0 max-w-[1080px] h-full",
+                "bg-white border border-[#e4e7ec] rounded-[24px] overflow-hidden relative",
             )}
         >
-            {/* Mint gradient background — subtle, from transparent (top)
-                to brand-50 #e9fff3 (bottom). Layered behind everything with
-                pointer-events-none so it can't intercept clicks. */}
-            <div
-                aria-hidden
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                    background:
-                        "linear-gradient(to bottom, rgba(233,255,243,0) 0%, #e9fff3 100%)",
-                }}
-            />
-            {/* Decorative concentric rounded squares — masked with a radial
-                gradient so the pattern fades at the edges. Rotated -32deg
-                to match the Figma. */}
-            <ConcentricSquaresDecoration />
+            {/* Mint gradient bg + concentric squares — grouped in one
+                aria-hidden layer so nothing decorative can intercept clicks. */}
+            <div aria-hidden className="absolute inset-0 pointer-events-none">
+                {/* Gradient: from transparent (top) to brand-50 #e9fff3
+                    (bottom). Extends across the full chat pane. */}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background:
+                            "linear-gradient(to bottom, rgba(233,255,243,0) 40%, #e9fff3 100%)",
+                    }}
+                />
+                <ConcentricSquaresDecoration />
+            </div>
 
-            {/* Content — centered, both axes. */}
+            {/* Content — centered on both axes. Scrolls inside the pane
+                (never pushes the page's chrome). */}
             <div className="relative h-full overflow-y-auto flex items-center justify-center p-6">
                 <AgentEmptyState />
             </div>
@@ -217,29 +237,33 @@ function AgentChatSurface() {
     );
 }
 
-/** Decorative concentric rounded squares. Reproduces the Figma's
- *  "Background pattern decorative" without pulling in the asset PNG. Uses
- *  a radial-gradient mask so the pattern fades at the container edges. */
+/** Decorative concentric rounded squares — reproduces the Figma's
+ *  "Background pattern decorative" without pulling in the asset PNG.
+ *
+ *  Positioned so the pattern peeks in from the BOTTOM of the pane, rotated
+ *  -32° to match the Figma. A radial-gradient mask focused at the bottom
+ *  centre fades the pattern out quickly toward the top and edges, matching
+ *  the Figma's mask asset (which used a small circular gradient). Overall
+ *  opacity is kept low so the pattern reads as texture, never as content. */
 function ConcentricSquaresDecoration() {
     const sizes = [228, 342, 457, 571, 685, 800];
     return (
         <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none flex items-end justify-center overflow-hidden"
+            className="absolute inset-0 overflow-hidden"
             style={{
-                opacity: 0.4,
-                maskImage:
-                    "radial-gradient(circle at 50% 90%, black 0%, transparent 60%)",
+                opacity: 0.35,
                 WebkitMaskImage:
-                    "radial-gradient(circle at 50% 90%, black 0%, transparent 60%)",
+                    "radial-gradient(ellipse 55% 45% at 50% 100%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 75%)",
+                maskImage:
+                    "radial-gradient(ellipse 55% 45% at 50% 100%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 75%)",
             }}
         >
             <div
-                className="relative"
+                className="absolute left-1/2 bottom-0"
                 style={{
-                    transform: "translateY(45%) rotate(-32deg)",
                     width: 800,
                     height: 800,
+                    transform: "translate(-50%, 35%) rotate(-32deg)",
                 }}
             >
                 {sizes.map((size) => (
@@ -268,17 +292,33 @@ function AgentEmptyState() {
             {/* Orb + copy */}
             <div className="flex flex-col gap-4 items-center w-full">
                 <AgentOrb />
-                <div className="flex flex-col gap-1 text-center w-full">
+                <div className="flex flex-col gap-1 text-center w-full items-center">
+                    {/* Gradient heading — inline-block so the gradient only
+                        stretches under the text glyphs; explicit -webkit-*
+                        prefixes because Chrome/Safari require them for
+                        background-clip:text (Tailwind's bg-clip-text alone
+                        isn't reliably clipping in this project's build).
+                        `-webkit-text-fill-color: transparent` is the modern
+                        equivalent of `color: transparent` — either works;
+                        we set BOTH so no other stylesheet can win. */}
                     <h1
-                        className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] bg-clip-text text-transparent"
+                        className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] inline-block"
                         style={{
+                            fontFamily: DM_SANS_STACK,
                             backgroundImage:
                                 "linear-gradient(90deg, #658774 0%, #7ba08c 100%)",
+                            WebkitBackgroundClip: "text",
+                            backgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            color: "transparent",
                         }}
                     >
                         How can I assist you today?
                     </h1>
-                    <p className="text-[16px] leading-6 text-[#667085]">
+                    <p
+                        className="text-[16px] leading-6 text-[#667085]"
+                        style={{ fontFamily: DM_SANS_STACK }}
+                    >
                         Manage bookings, customers, and schedules with ease.
                     </p>
                 </div>
@@ -294,8 +334,8 @@ function AgentEmptyState() {
 }
 
 /** The green sphere / orb. Phase 4 is a CSS radial-gradient placeholder;
- *  the three.js particle version lands Phase 5.5. Same look-and-feel as
- *  the design's central sphere at this size. */
+ *  the three.js particle version lands Phase 5.5. Sized 72×72 to match
+ *  the Figma. */
 function AgentOrb() {
     return (
         <div
@@ -319,7 +359,7 @@ function AskAnythingInput() {
         <form
             onSubmit={(e) => e.preventDefault()}
             className={cn(
-                "flex items-end gap-2 p-2.5 bg-white border border-[#d0d5dd] rounded-xl",
+                "flex items-center gap-2 p-2.5 bg-white border border-[#d0d5dd] rounded-xl",
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
             )}
         >
@@ -342,7 +382,8 @@ function AskAnythingInput() {
                 type="text"
                 placeholder="Ask me anything"
                 disabled
-                className="flex-1 min-w-0 h-9 px-2 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none"
+                className="flex-1 min-w-0 h-9 px-2 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6"
+                style={{ fontFamily: DM_SANS_STACK }}
             />
 
             {/* Send (primary mint) */}
@@ -410,7 +451,7 @@ function SuggestionCard({
                 {/* Featured-icon square */}
                 <div
                     className={cn(
-                        "size-8 flex items-center justify-center rounded-md",
+                        "size-8 flex items-center justify-center rounded-[6px]",
                         "bg-white border border-[#e4e7ec]",
                         "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
                     )}
