@@ -1589,17 +1589,8 @@ function SchedulePage() {
                     entitySingular="classes"
                     entityPlural="classes"
                 />
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                    placeholder="Select location"
-                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                    value={location}
-                    onChange={setLocation}
-                    width="w-[220px]"
-                />
-                {/* Filter — sits directly next to Location so the two
-                    scoping controls are visually paired, with Search after.
-                    Green dot marks any active filter. */}
+                {/* Filter — leads the scoping controls (Filter · Location ·
+                    Search). Green dot marks any active filter. */}
                 <Button variant="secondary-gray" size="md"
                     leftIcon={
                         <div className="relative">
@@ -1610,6 +1601,14 @@ function SchedulePage() {
                     onClick={() => setFilterOpen(true)}>
                     Filter
                 </Button>
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                    value={location}
+                    onChange={setLocation}
+                    width="w-[220px]"
+                />
                 {/* Custom width — schedule list uses w-[200px] not the
                     canonical 240px to leave room for the Export + Add buttons
                     in the same row. */}
