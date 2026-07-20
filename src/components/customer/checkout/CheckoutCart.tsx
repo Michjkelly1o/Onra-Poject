@@ -32,7 +32,7 @@ import { ProductCreditTile } from "@/components/customer/products/ProductCreditT
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
 import { useRedeemedGiftCards } from "@/lib/customer/gift-cards";
 import { usePaymentMethods } from "@/lib/customer/payment-methods";
-import { useAccountCreditBalance } from "@/lib/customer/account-credit";
+import { useAccountCreditBalance, useAccountCreditEnabled } from "@/lib/customer/account-credit";
 import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
 import { GiftCardMark } from "@/components/customer/products/GiftCardArt";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,10 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
     // Account Credit — an ADDITIONAL balance applied after promo (never a payment
     // method). Toggle persists on the cart; the amount is clamped in computeTotals.
     const accountCredit = useAccountCreditBalance();
-    const canRedeem = accountCredit > 0;
+    // Hidden when the customer has no balance OR the studio rewards class
+    // credits only — Account Credit is a referral-programme concept.
+    const creditEnabled = useAccountCreditEnabled();
+    const canRedeem = creditEnabled && accountCredit > 0;
     const [redeem, setRedeemState] = useState(purchaseCart.redeemAccountCredit);
     const redeemOn = redeem && canRedeem;
     const setRedeem = (v: boolean) => {

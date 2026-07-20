@@ -15,10 +15,11 @@
 import { useState } from "react";
 import { Minus, Plus, User01 } from "@untitledui/icons";
 
-/** Admin scheme: row 0 → "A", column 0 → "1" → "A1". */
-export function spotId(row: number, col: number): string {
-    return `${String.fromCharCode(65 + row)}${col + 1}`;
-}
+import { spotIdFor } from "@/lib/spot-layout";
+
+/** Admin scheme: row 0 → "A", column 0 → "1" → "A1". Re-exported so callers
+ *  keep importing it from here; the definition lives in `lib/spot-layout`. */
+export const spotId = spotIdFor;
 
 export interface SpotSeat {
     initials: string;

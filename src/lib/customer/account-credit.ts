@@ -19,3 +19,12 @@ export function useAccountCreditBalance(): number {
     const transactions = useAppStore((s) => s.walletTransactions);
     return member ? walletBalanceAed(transactions, member.id) : 0;
 }
+
+/** Whether the studio's referral programme pays ACCOUNT CREDIT (AED) at all.
+ *  When it rewards class credits only there is no account credit to redeem, so
+ *  the checkout row is hidden entirely rather than shown as "AED 0". */
+export function useAccountCreditEnabled(): boolean {
+    return useAppStore(
+        (s) => s.referralSettings.referrerEarnType === "wallet_credit" || s.referralSettings.friendEarnType === "wallet_credit",
+    );
+}

@@ -14,7 +14,6 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { loginCustomer } from "@/lib/customer/auth";
-import { setCustomerPassword } from "@/lib/customer/customer-password";
 import { authDraft, isValidEmail, resetAuthDraft, safeReturnTo } from "@/lib/customer/auth-flow";
 import { DEMO_MEMBER_ID } from "@/lib/customer/context";
 import { AuthHeader, AUTH_CONTENT_OFFSET } from "@/components/customer/auth/AuthHeader";
@@ -62,9 +61,10 @@ function AuthEmailInner() {
             return;
         }
         // Google / Apple — sign in with the social account, profile auto-filled.
-        // No password is set (social sign-up) → Profile shows "Create password".
+        // The account KEEPS whatever password it already has (seeded accounts
+        // fall back to DEMO_CUSTOMER_PASSWORD), so the demo member can sign in
+        // with Google OR the password, and Profile reads "Change password".
         authDraft.returnTo = returnTo;
-        setCustomerPassword(DEMO_MEMBER_ID, "");
         loginCustomer(DEMO_MEMBER_ID);
         showToast("Welcome back!", "You're now signed in.", "success", "check");
         router.replace("/customer/auth/loading");

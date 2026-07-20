@@ -2603,9 +2603,14 @@ export default function ClassDetailPage() {
                                                 </thead>
                                                 <tbody>
                                                     {paginatedRows.map(b => {
-                                                        const spotLabel = ci.spotSelectionEnabled
-                                                            ? spotForIndex(bookedIndexById.get(b.id) ?? 0)
-                                                            : "—";
+                                                        // Prefer the STORED spot — the same value the
+                                                        // customer picker reads and `reconcileBookingSpots`
+                                                        // backfills from the configured grid. The positional
+                                                        // fallback only covers a row that has no spot yet
+                                                        // (e.g. a grid smaller than its booking count).
+                                                        const spotLabel = !ci.spotSelectionEnabled
+                                                            ? "—"
+                                                            : (b.spot ?? spotForIndex(bookedIndexById.get(b.id) ?? 0));
                                                         const isSelected = selectedIds.has(b.id);
                                                         return (
                                                             <tr key={b.id} className="hover:bg-[#f9fafb] transition-colors">

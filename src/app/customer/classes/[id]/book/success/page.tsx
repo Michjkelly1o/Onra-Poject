@@ -169,7 +169,13 @@ function BookingSuccess() {
                     variant="primary"
                     size="xl"
                     className="w-full rounded-full"
-                    onClick={() => router.push(myBooking ? `/customer/bookings/${myBooking.id}` : "/customer/bookings")}
+                    onClick={() =>
+                        router.replace(
+                            myBooking
+                                ? `/customer/bookings/${myBooking.id}?back=/customer/bookings/upcoming`
+                                : "/customer/bookings/upcoming",
+                        )
+                    }
                 >
                     View bookings
                 </Button>

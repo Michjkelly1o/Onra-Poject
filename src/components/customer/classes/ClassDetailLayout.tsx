@@ -51,7 +51,15 @@ export function InfoRow({
 
 /** Date & time row — Branch time (always) + Your time (only when it differs from
  *  the branch). Reused by class + appointment details. */
-export function DetailTimeRow({ time }: { time: { branchTime: string; yourTime: string | null } }) {
+export function DetailTimeRow({
+    time,
+    label = "Your time",
+}: {
+    time: { branchTime: string; yourTime: string | null };
+    /** Badge on the second line — "Your time" for the device zone, otherwise the
+     *  picked city (the customer can display times in ANY zone). */
+    label?: string;
+}) {
     return (
         <InfoRow icon={Calendar}>
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -66,7 +74,7 @@ export function DetailTimeRow({ time }: { time: { branchTime: string; yourTime: 
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span>{time.yourTime}</span>
                     <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
-                        Your time
+                        {label}
                     </span>
                 </span>
             )}
@@ -118,9 +126,9 @@ export function ClassDetailLayout({
     const scrollable = useMainScrollable();
     // Dual-timezone class time (Branch time + Your time) for the default grid.
     const branches = useAppStore((st) => st.branches);
-    const { localTimezone } = useCurrentCustomerContext();
+    const { timezone, localTimezone } = useCurrentCustomerContext();
     const branch = branches.find((b) => b.id === detail.branchId);
-    const classTime = classTimeDisplay(detail.dateISO, detail.startTime, branch, localTimezone);
+    const classTime = classTimeDisplay(detail.dateISO, detail.startTime, branch, timezone);
     const [expanded, setExpanded] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
 
@@ -198,7 +206,7 @@ export function ClassDetailLayout({
                     grid (appointments). A clean single-column list: leading icon + value. */}
                 {infoGrid ?? (
                 <div className="flex flex-col gap-4">
-                    <DetailTimeRow time={classTime} />
+                    <DetailTimeRow time={classTime} label={timezone === localTimezone ? "Your time" : timezone} />
                     <InfoRow icon={ClockFastForward}>
                         <span>{detail.durationMins} minutes</span>
                     </InfoRow>

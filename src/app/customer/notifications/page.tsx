@@ -100,6 +100,7 @@ export default function NotificationsPage() {
     const router = useRouter();
     const showToast = useAppStore((s) => s.showToast);
     const all = useCustomerNotifications();
+    const bookings = useAppStore((st) => st.classBookings);
     const [, force] = useReducer((x) => x + 1, 0);
     const [tab, setTabState] = useState<Tab>(notifUi.tab);
     const setTab = (t: Tab) => {
@@ -117,6 +118,16 @@ export default function NotificationsPage() {
 
     function open(n: CustomerNotification) {
         markNotifRead(n.id);
+        // A "spot is available" offer must land on the CLASS, not the booking —
+        // that page presents the Claim / Decline sheet. `relatedId` is the
+        // waitlisted booking, so resolve its class first.
+        if (n.event === "spot_available" && n.relatedId) {
+            const booking = bookings.find((b) => b.id === n.relatedId);
+            if (booking) {
+                router.push(`/customer/classes/${booking.classScheduleId}`);
+                return;
+            }
+        }
         router.push(routeFor(n));
     }
     function markAll() {
@@ -127,7 +138,33 @@ export default function NotificationsPage() {
 
     return (
         <div className="flex min-h-[100dvh] flex-col">
-            <CustomerHeader>
+            <CustomerHeader
+                overlap
+                subBar={
+                    <div className="flex w-full gap-3 pt-1">
+                        {TABS.map((t) => {
+                            const active = tab === t.id;
+                            return (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => setTab(t.id)}
+                                    className={`flex h-8 flex-1 items-center justify-center gap-2 px-2 pb-3 text-sm leading-5 transition-colors ${
+                                        active
+                                            ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
+                                            : "font-medium text-[#667085]"
+                                    }`}
+                                >
+                                    {t.label}
+                                    <span className="flex items-center rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
+                                        {countFor(t.id)}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                }
+            >
                 <button
                     type="button"
                     onClick={() => router.back()}
@@ -152,31 +189,7 @@ export default function NotificationsPage() {
                 )}
             </CustomerHeader>
 
-            <div className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-[80px]">
-                {/* Tabs */}
-                <div className="flex w-full gap-3">
-                    {TABS.map((t) => {
-                        const active = tab === t.id;
-                        return (
-                            <button
-                                key={t.id}
-                                type="button"
-                                onClick={() => setTab(t.id)}
-                                className={`flex h-8 flex-1 items-center justify-center gap-2 px-2 pb-3 text-sm leading-5 transition-colors ${
-                                    active
-                                        ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
-                                        : "font-medium text-[#667085]"
-                                }`}
-                            >
-                                {t.label}
-                                <span className="flex items-center rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
-                                    {countFor(t.id)}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-
+            <div className="flex flex-1 flex-col gap-6 px-4 pb-8 pt-[116px]">
                 {visible.length === 0 ? (
                     <div className="flex flex-1 items-center justify-center">
                         <SearchEmptyState

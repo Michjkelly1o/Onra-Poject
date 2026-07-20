@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Gift01 } from "@untitledui/icons";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { isRedeemed, lookupGift, useRedeemedGiftCards, type RedeemedGiftCard } from "@/lib/customer/gift-cards";
 import { consumeGiftCardPickMode, requestGiftCardPayment } from "@/lib/customer/purchase";
 import { aed, shortDate } from "@/lib/customer/profile-format";
@@ -27,6 +28,7 @@ function validityLabel(r: RedeemedGiftCard): string {
 export default function GiftCardPage() {
     useRequireCustomerAuth();
     const router = useRouter();
+    const goBack = useCustomerBack("/customer/profile");
     const redeemed = useRedeemedGiftCards();
     const [code, setCode] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export default function GiftCardPage() {
         if (pickMode) {
             // Apply the (combined) gift-card balance as the checkout payment method.
             requestGiftCardPayment();
-            router.back();
+            goBack();
         } else {
             router.push("/customer/products");
         }
@@ -65,7 +67,7 @@ export default function GiftCardPage() {
             <CustomerHeader>
                 <button
                     type="button"
-                    onClick={() => router.back()}
+                    onClick={goBack}
                     aria-label="Go back"
                     className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >

@@ -67,6 +67,8 @@ export interface PaymentHistoryFilterModalProps {
     onDraftChange: (f: PaymentHistoryFilters) => void;
     onReset: () => void;
     onApply: () => void;
+    /** Rows the current draft selection would return — drives "Show N results". */
+    resultCount?: number;
 }
 
 export function PaymentHistoryFilterModal({
@@ -76,6 +78,7 @@ export function PaymentHistoryFilterModal({
     onDraftChange,
     onReset,
     onApply,
+    resultCount,
 }: PaymentHistoryFilterModalProps) {
     const disabled = paymentFilterCount(draft) === 0;
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -94,6 +97,7 @@ export function PaymentHistoryFilterModal({
             onClose={onClose}
             onReset={onReset}
             onApply={onApply}
+            resultCount={resultCount}
             resetDisabled={disabled}
             applyDisabled={disabled}
         >

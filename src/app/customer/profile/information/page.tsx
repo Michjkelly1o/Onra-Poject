@@ -97,17 +97,21 @@ export default function ProfileInformationPage() {
 
     const stateLabel = stateLabelForCountry(country);
     const stateOptions = country ? statesForCountry(country).map((s) => s.name) : undefined;
-    const showCityPostal = country ? hasCityForCountry(country) && hasPostalCodeForCountry(country) : true;
+    // Gated INDEPENDENTLY — same as the admin customer form. Coupling them with
+    // `&&` hid the City input for any country that has cities but no postal
+    // system, so the two sides disagreed on the same address model.
+    const showCity = country ? hasCityForCountry(country) : true;
+    const showPostal = country ? hasPostalCodeForCountry(country) : true;
 
     useEffect(() => {
         if (stateRegion && stateOptions && !stateOptions.includes(stateRegion)) setStateRegion("");
     }, [stateOptions, stateRegion]);
     useEffect(() => {
-        if (!showCityPostal) {
-            if (city) setCity("");
-            if (postalCode) setPostalCode("");
-        }
-    }, [showCityPostal, city, postalCode]);
+        if (!showCity && city) setCity("");
+    }, [showCity, city]);
+    useEffect(() => {
+        if (!showPostal && postalCode) setPostalCode("");
+    }, [showPostal, postalCode]);
 
     function save() {
         if (!member) return;
@@ -271,23 +275,23 @@ export default function ProfileInformationPage() {
                         />
                     )}
                 </div>
-                {showCityPostal && (
-                    <>
-                        <label className="flex flex-col gap-1.5">
-                            <span className={LABEL}>City</span>
-                            <input value={city} onChange={(e) => touch(setCity)(e.target.value)} placeholder="Enter city..." className={FIELD} />
-                        </label>
-                        <label className="flex flex-col gap-1.5">
-                            <span className={LABEL}>Postal code</span>
-                            <input
-                                value={postalCode}
-                                onChange={(e) => touch(setPostalCode)(e.target.value.replace(/\D/g, ""))}
-                                placeholder="Enter postal code"
-                                inputMode="numeric"
-                                className={FIELD}
-                            />
-                        </label>
-                    </>
+                {showCity && (
+                    <label className="flex flex-col gap-1.5">
+                        <span className={LABEL}>City</span>
+                        <input value={city} onChange={(e) => touch(setCity)(e.target.value)} placeholder="Enter city..." className={FIELD} />
+                    </label>
+                )}
+                {showPostal && (
+                    <label className="flex flex-col gap-1.5">
+                        <span className={LABEL}>Postal code</span>
+                        <input
+                            value={postalCode}
+                            onChange={(e) => touch(setPostalCode)(e.target.value.replace(/\D/g, ""))}
+                            placeholder="Enter postal code"
+                            inputMode="numeric"
+                            className={FIELD}
+                        />
+                    </label>
                 )}
                 <label className="flex flex-col gap-1.5">
                     <span className={LABEL}>Street address</span>

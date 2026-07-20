@@ -94,12 +94,18 @@ export default function MyPlanPage() {
     // has held (active / frozen / cancelled / expired), newest-active first.
     // Complimentary free-credit grants are surfaced elsewhere.
     const statusOrder: Record<string, number> = { active: 0, frozen: 1, cancelled: 2, expired: 3 };
-    const rawPlans = useAppStore((s) => s.customerPlans).filter(
+    const myPlans = useAppStore((s) => s.customerPlans).filter(
         (p) =>
             p.customerId === member?.id &&
-            p.kind !== "complimentary" &&
             (p.status === "active" || p.status === "frozen" || p.status === "cancelled" || p.status === "expired"),
     );
+    // Purchased plans only — the one-membership-OR-packages invariant below
+    // applies to what the customer BOUGHT, never to complimentary grants.
+    const rawPlans = myPlans.filter((p) => p.kind !== "complimentary");
+    // Free-credit grants render as their own cards, reusing the same PlanCard
+    // layout (it already hides Cancel/Freeze for non-memberships, which is
+    // correct — a grant isn't a subscription the member can manage).
+    const freeCreditPlans = myPlans.filter((p) => p.kind === "complimentary");
     // Invariant projection (belt-and-suspenders with the layout self-heal): a
     // customer can hold only ONE active membership OR one-or-more packages — never
     // two memberships and never a membership + package. If corrupt state violates
@@ -147,8 +153,8 @@ export default function MyPlanPage() {
 
     // Grouped for display: live plans on top ("Active plan"), history below
     // ("Expired plan") — same section style as the Notifications list.
-    const activePlans = plans.filter((p) => p.status === "active" || p.status === "frozen");
-    const pastPlans = plans.filter((p) => p.status === "cancelled" || p.status === "expired");
+    const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen");
+    const pastPlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "cancelled" || p.status === "expired");
     const renderCard = (p: CustomerPlan) => (
         <PlanCard
             key={p.id}
