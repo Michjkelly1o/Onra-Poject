@@ -324,13 +324,18 @@ export default function MigrationsImportsPage() {
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search data..." />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
-                {/* +Import — routes to a placeholder page for now. Later this
-                    button opens the ONRA AI Agent import flow (client
-                    2026-07-20 — the agent hosts source pick → upload →
-                    mapping → preview → commit; every commit writes a row
-                    into `importHistory` and the admin lands back here). */}
+                {/* +Import — opens the AI Agent Migration thread with a
+                    returnTo pointing back here. Every commit_import the
+                    agent runs adds a new row to importHistory (via
+                    store.addImportHistory) so the admin lands back on
+                    this page with the fresh row already at the top. */}
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/admin/settings/migrations-imports/new")}>
+                    onClick={() =>
+                        router.push(
+                            "/ai-agent?thread=migrate_data&returnTo=" +
+                                encodeURIComponent("/admin/settings/migrations-imports"),
+                        )
+                    }>
                     Import
                 </Button>
             </div>

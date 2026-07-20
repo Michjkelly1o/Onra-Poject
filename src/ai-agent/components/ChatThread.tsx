@@ -225,6 +225,92 @@ export function ChatThread({
         }
     }, [messages, mode]);
 
+    // Migration audit-row hook: when the model's `commit_import` tool
+    // returns a non-trivial result (any of created/skipped/failed > 0),
+    // append a row to the Zustand `importHistory` slice so the row
+    // appears at the top of /admin/settings/migrations-imports the next
+    // time the admin visits. The set of recorded toolCallIds is
+    // initialised from `initialMessages` — so a hydrated message from a
+    // previous session (already recorded then) can't double-post.
+    const recordedImportsRef = useRef<Set<string>>(new Set());
+    // Seed the set on mount with every commit_import tool-call id that
+    // already came in from localStorage — those were audit-logged in
+    // their original session.
+    useEffect(() => {
+        if (mode !== "migration") return;
+        for (const m of initialMessages.current) {
+            if (m.role !== "assistant" || !m.toolInvocations) continue;
+            for (const ti of m.toolInvocations) {
+                if (
+                    ti.state === "result" &&
+                    ti.toolName === "commit_import"
+                ) {
+                    recordedImportsRef.current.add(ti.toolCallId);
+                }
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode]);
+
+    useEffect(() => {
+        if (mode !== "migration") return;
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "assistant" || !last.toolInvocations)
+            return;
+        for (const ti of last.toolInvocations) {
+            if (
+                ti.state !== "result" ||
+                ti.toolName !== "commit_import" ||
+                recordedImportsRef.current.has(ti.toolCallId)
+            ) {
+                continue;
+            }
+            const result = ti.result as {
+                card?: string;
+                entity?: string;
+                created?: number;
+                skipped?: number;
+                failed?: number;
+            };
+            if (result?.card !== "import_result") continue;
+            const created = result.created ?? 0;
+            const skipped = result.skipped ?? 0;
+            const failed = result.failed ?? 0;
+            const totalRows = created + skipped + failed;
+            if (totalRows === 0) {
+                // Nothing meaningful happened — still mark as recorded
+                // so we don't rescan the same invocation next render.
+                recordedImportsRef.current.add(ti.toolCallId);
+                continue;
+            }
+            const file = parsedFileRef.current;
+            const state = useAppStore.getState();
+            const branchId =
+                (state.currentUser?.branch_id as string | undefined) ||
+                state.branches[0]?.id ||
+                "";
+            const dataType = (result.entity ??
+                "customers") as import("@/data/mock/_types").ImportHistorySeed["data_type"];
+            const status: "imported" | "partial" | "failed" =
+                failed === 0
+                    ? "imported"
+                    : created === 0
+                      ? "failed"
+                      : "partial";
+            state.addImportHistory({
+                data_type: dataType,
+                file_name: file?.filename ?? "upload.csv",
+                file_type: "csv",
+                total_rows: totalRows,
+                imported_rows: created,
+                invalid_rows: failed,
+                status,
+                branch_id: branchId,
+            });
+            recordedImportsRef.current.add(ti.toolCallId);
+        }
+    }, [messages, mode]);
+
 
     const send = (text: string) => {
         if (!text.trim() || isBusy) return;

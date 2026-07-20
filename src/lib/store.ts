@@ -3799,6 +3799,17 @@ export interface AppState {
      *  Auto-generates id + issued_at when not supplied. Returns the id. */
     addIssuedGiftCard: (input: Omit<IssuedGiftCard, "id"> & { id?: string }) => string;
 
+    // ── Import history (Migration & imports audit trail) ────────────────────
+    /** Append a completed-import row. Fires when the AI Agent's Migration
+     *  thread commits an import (see src/ai-agent/components/ChatThread.tsx
+     *  `onFinish` handler). Auto-generates id + imported_at. Returns id. */
+    addImportHistory: (
+        input: Omit<ImportHistorySeed, "id" | "imported_at"> & {
+            id?: string;
+            imported_at?: string;
+        },
+    ) => string;
+
     // ── Promo codes ─────────────────────────────────────────────────────────
     /** Append a new promo. Auto-generates id + created_at. Returns the id. */
     addPromoCode: (input: Omit<PromoCode, "id"> & { id?: string }) => string;
@@ -6549,6 +6560,29 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     // ── Promo codes ────────────────────────────────────────────────────────
+
+    addImportHistory: (input) => {
+        const id =
+            input.id ?? `imp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next: ImportHistorySeed = {
+            ...input,
+            id,
+            imported_at: input.imported_at ?? new Date().toISOString(),
+        };
+        // Newest first — matches how the /admin/settings/migrations-imports
+        // table sorts by default (most recent import at the top).
+        set(state => ({ importHistory: [next, ...state.importHistory] }));
+        // targetType "settings" is the closest fit — the import runs from
+        // Settings → Operations → Migration & imports. The audit surface
+        // doesn't have a dedicated "import" bucket yet.
+        get().recordAudit(
+            "Imported data via AI Agent",
+            "settings",
+            id,
+            `${next.data_type} · ${next.imported_rows} rows`,
+        );
+        return id;
+    },
 
     addPromoCode: (input) => {
         const id = input.id ?? `promo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

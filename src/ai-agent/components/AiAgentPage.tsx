@@ -67,6 +67,21 @@ const THREADS: readonly ThreadDef[] = [
 const DM_SANS_STACK =
     "var(--font-brand-dm-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
+/** Parse a `?thread=` URL param into a valid ThreadKey. Callers can
+ *  land the tester directly on a specific thread — the Migration &
+ *  imports "+ Import" button uses this to open the Migrate data thread
+ *  with a returnTo back to the imports list. */
+function readThreadFromUrl(raw: string | null): ThreadKey {
+    if (
+        raw === "general" ||
+        raw === "studio_setup" ||
+        raw === "migrate_data"
+    ) {
+        return raw;
+    }
+    return "general";
+}
+
 export function AiAgentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -76,7 +91,12 @@ export function AiAgentPage() {
         [searchParams],
     );
 
-    const [activeThread, setActiveThread] = useState<ThreadKey>("general");
+    // Phase 12 audit: honour ?thread= for deep links from other admin
+    // pages (Migration & imports "+ Import" → thread=migrate_data).
+    // Only reads at mount — subsequent switches use the sidebar.
+    const [activeThread, setActiveThread] = useState<ThreadKey>(() =>
+        readThreadFromUrl(searchParams.get("thread")),
+    );
 
     const handleClose = () => router.push(returnTo);
     const roleAllowed = isAiAgentEnabled(currentRole);

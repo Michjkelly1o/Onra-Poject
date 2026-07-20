@@ -21,11 +21,11 @@
 //
 // FK: `branch_id` → branches.id
 //
-// Related module: the ONRA AI-Agent sibling project at
-// `ONRA AI-Agent/lib/migration/MigrationStore.ts` — its `commit()` path
-// is what will eventually write these rows in production. Until then the
-// module renders from this seed + any pending rows admins add through
-// the (still-unbuilt) /migrations-imports/new placeholder route.
+// Related module: the ONRA AI Agent's Migration thread (see
+// src/ai-agent/migration/*). Every completed commit_import fires the
+// store's `addImportHistory` action and prepends a fresh row here —
+// wiring lives in src/ai-agent/components/ChatThread.tsx (the audit-
+// row useEffect that watches the Migration thread's messages).
 
 import type { ImportHistorySeed } from "./_types";
 
