@@ -8294,7 +8294,13 @@ export const useAppStore = create<AppState>()(persist(
         //   powers the Settings → Operations → "Migration & imports"
         //   table. Bump so cached testers pick up the new slice on
         //   refresh instead of rendering an empty state.
-        version: 71,
+        // v72 (2026-07-20): Follow-up — all `importHistory` seed rows
+        //   normalised to file_type: "csv" (client: "keep to be CSV for
+        //   now"). Runtime + icon system still handle xlsx / xls when
+        //   real AI-Agent-driven imports land; only the demo data is
+        //   CSV-only. Bump reseeds so testers who picked up v71 don't
+        //   still see the stray xlsx rows.
+        version: 72,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

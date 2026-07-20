@@ -7,10 +7,17 @@
 //
 // Seed mix (client 2026-07-20): 6 rows spanning the four core entity
 // types the AI Agent supports today (customers / staff / memberships /
-// packages). Rows land across two active branches (South + East) so the
-// location filter in the toolbar has real data to slice on. One row has
-// invalid_rows > 0 to demonstrate the error-report link + red "Invalid
-// rows" cell; the others are clean full imports.
+// packages / class_templates). Rows land across two active branches
+// (South + East) so the location filter in the toolbar has real data
+// to slice on. Two rows have invalid_rows > 0 (imp_001 + imp_005 +
+// imp_006) to demonstrate the error-report link + red "Invalid rows"
+// cell; the rest are clean full imports.
+//
+// File-type note: every row uses `csv` for the demo (client 2026-07-20).
+// The runtime + icon system still support xlsx / xls (SVGs shipped in
+// `public/`) so real AI-Agent-driven imports of Excel exports will
+// render correctly the moment a non-CSV row lands. Only the DEMO data
+// is CSV-only.
 //
 // FK: `branch_id` → branches.id
 //
@@ -36,7 +43,7 @@ export const import_history: ImportHistorySeed[] = [
         total_rows: 250,
         imported_rows: 230,
         invalid_rows: 20,
-        invalid_rows_file_name: "Invalid rows data report.xlsx",
+        invalid_rows_file_name: "Invalid rows data report.csv",
         status: "imported",
         imported_at: "2026-02-01T09:14:00Z",
         branch_id: SOUTH,
@@ -83,12 +90,12 @@ export const import_history: ImportHistorySeed[] = [
     {
         id: "imp_005",
         data_type: "customers",
-        file_name: "east_customers_march.xlsx",
-        file_type: "xlsx",
+        file_name: "east_customers_march.csv",
+        file_type: "csv",
         total_rows: 88,
         imported_rows: 71,
         invalid_rows: 17,
-        invalid_rows_file_name: "east_customers_march-errors.xlsx",
+        invalid_rows_file_name: "east_customers_march-errors.csv",
         status: "partial",
         imported_at: "2026-03-04T11:18:00Z",
         branch_id: EAST,
@@ -101,7 +108,7 @@ export const import_history: ImportHistorySeed[] = [
         total_rows: 18,
         imported_rows: 0,
         invalid_rows: 18,
-        invalid_rows_file_name: "class_templates_v3-errors.xlsx",
+        invalid_rows_file_name: "class_templates_v3-errors.csv",
         status: "failed",
         imported_at: "2026-03-10T16:45:00Z",
         branch_id: SOUTH,
