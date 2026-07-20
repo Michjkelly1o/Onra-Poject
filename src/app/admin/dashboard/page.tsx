@@ -567,9 +567,15 @@ export default function AdminDashboard() {
     // which metric cards render (each type has its own card set per the
     // client brief — see `comingMetrics` below).
     const [comingType, setComingType] = useState<SessionType | "">("");
-    // "" = "All locations" — dashboard opens on the aggregate view so
-    // KPIs read like the full studio on first paint.
+    // Multi-branch location picker state. Starts empty and gets seeded
+    // with every active branch id on first mount via the effect below
+    // (client 2026-07-20, Option A) so the checkboxes visibly reflect
+    // the "All locations" default instead of an empty picker. Downstream
+    // `branchScopeIds` treats "empty" and "all active branches" as
+    // identical no-filter state, so behavior on first paint is unchanged
+    // — only the picker visuals differ.
     const [locations, setLocations] = useState<string[]>([]);
+    const locationsInitializedRef = useRef(false);
     // Session-type filter (Today tab) — "" = All. Re-scopes the session-based
     // tiles (occupancy, bookings, sessions count) + the Today's-sessions list.
     const [typeFilter, setTypeFilter] = useState<SessionType | "">("");
@@ -604,6 +610,19 @@ export default function AdminDashboard() {
     //   • packages — is_intro_offer flag for the Trials-ending card
     const appointmentBookings = useAppStore(s => s.appointmentBookings);
     const packages            = useAppStore(s => s.packages);
+
+    // One-shot init of the location picker (client 2026-07-20, Option A) —
+    // as soon as the `branches` slice hydrates, seed `locations` with every
+    // active branch id so every checkbox is visibly checked on first paint.
+    // The ref guards against re-running: if the admin later unchecks the
+    // last branch, we do NOT auto-refill — that's their explicit choice.
+    useEffect(() => {
+        if (locationsInitializedRef.current) return;
+        const activeIds = branches.filter(b => b.status === "active").map(b => b.id);
+        if (activeIds.length === 0) return; // branches not hydrated yet, wait
+        setLocations(activeIds);
+        locationsInitializedRef.current = true;
+    }, [branches]);
 
     // Live "Recent activity" feed — derived from bookings, transactions,
     // and customer signups across every surface (customer portal / POS /
