@@ -252,6 +252,13 @@ const REGISTRY: StatusRegistry = {
         active:   { palette: "green", label: "Active" },
         archived: { palette: "gray",  label: "Archived" },
     },
+    // ── AI Agent migration & imports (2026-07-20) ────────────────────────
+    import: {
+        imported: { palette: "green",  label: "Imported" },
+        partial:  { palette: "orange", label: "Partial"  },
+        failed:   { palette: "red",    label: "Failed"   },
+        pending:  { palette: "gray",   label: "Pending"  },
+    },
 };
 
 export type StatusBadgeType = keyof typeof REGISTRY;

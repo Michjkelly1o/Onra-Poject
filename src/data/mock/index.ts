@@ -176,3 +176,7 @@ export { leads } from "./leads";
 export { marketing_campaign_stats } from "./marketing_campaign_stats";
 export { marketing_spend } from "./marketing_spend";
 export { staff_attendance_log } from "./staff_attendance_log";
+
+// Import / migration history — audit log of AI-Agent-driven imports.
+// Feeds Settings → Operations → "Migration & imports" module (2026-07-20).
+export { import_history } from "./import_history";

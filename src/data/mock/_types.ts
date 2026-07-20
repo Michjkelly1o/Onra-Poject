@@ -2736,3 +2736,68 @@ export interface StaffAttendanceLog {
     actual_hours: number;
 }
 
+/**
+ * Import / migration history — one row per completed data-import run
+ * driven by the ONRA AI Agent. Feeds the Settings → Operations →
+ * "Migration & imports" module (Figma 196:99889 / empty 196:99868).
+ *
+ * The AI Agent runs the actual mapping + preview + commit flow (see
+ * `ONRA AI-Agent/lib/migration/MigrationStore.ts` in the sibling POC
+ * project). Each successful commit writes ONE row here so studio admins
+ * have an audit log of every migration attempt: what was imported,
+ * how many rows succeeded, how many failed, and a link back to the
+ * invalid-rows report the agent surfaced.
+ *
+ * Status semantics:
+ *   • "imported" — every non-skipped row landed (invalid_rows can still
+ *                   be > 0; those rows failed validation and were
+ *                   surfaced in the report file).
+ *   • "partial"  — some rows imported, some failed to write. Rare.
+ *   • "failed"   — nothing landed (bad file, blocked branch, etc).
+ *   • "pending"  — AI Agent staged records but the admin hasn't
+ *                   confirmed the commit yet.
+ *
+ * FK: `branch_id` → branches.id (scopes rows to the location the agent
+ * was operating on when the admin ran the import).
+ */
+export interface ImportHistorySeed {
+    id: string;
+    /** Target entity the AI Agent mapped rows into. Snake-case for
+     *  parity with Onra table names (customers, staff_profiles, etc).
+     *  Rendered in the UI as a Title-Case label ("Customer" / "Staff"
+     *  / "Membership") via a display helper. */
+    data_type:
+        | "customers"
+        | "staff"
+        | "memberships"
+        | "packages"
+        | "customer_plans"
+        | "class_templates"
+        | "class_schedule"
+        | "leads";
+    /** Original filename the admin uploaded — surfaced in the "Imported
+     *  file" column with a matching CSV/XLSX chip. */
+    file_name: string;
+    file_type: "csv" | "xlsx" | "xls";
+    /** Total row count in the uploaded source file. */
+    total_rows: number;
+    /** Rows that passed validation AND landed in the destination table. */
+    imported_rows: number;
+    /** Rows that failed validation and were surfaced in the report file
+     *  below. `0` renders as an em-dash "-" in the UI. */
+    invalid_rows: number;
+    /** Filename of the auto-generated invalid-rows XLSX report the AI
+     *  Agent produces at commit time. Optional — only present when
+     *  invalid_rows > 0; otherwise the "Invalid rows data" column
+     *  renders an em-dash. */
+    invalid_rows_file_name?: string;
+    status: "imported" | "partial" | "failed" | "pending";
+    /** ISO date-time when the AI Agent committed the import. Feeds the
+     *  "Imported {date}" subtitle on the Data type cell and the
+     *  Date-range filter. */
+    imported_at: string;
+    /** Branch the agent was operating on when the import ran. Feeds
+     *  the location dropdown filter in the toolbar. */
+    branch_id: string;
+}
+

@@ -149,10 +149,12 @@ import {
     leads as SEED_LEADS,
     marketing_campaign_stats as SEED_MARKETING_CAMPAIGN_STATS,
     marketing_spend as SEED_MARKETING_SPEND,
+    import_history as SEED_IMPORT_HISTORY,
     type Lead,
     type MarketingCampaignStat,
     type MarketingSpend,
     type StaffAttendanceLog,
+    type ImportHistorySeed,
     type Customer as SeedCustomer,
     type CustomerPlan as SeedCustomerPlan,
     type CustomerTransaction as SeedCustomerTransaction,
@@ -251,6 +253,8 @@ export type {
     CommissionCategory, CommissionValueType,
     // Reports v33 — new seed types the selectors reach into
     Lead, MarketingCampaignStat, MarketingSpend, StaffAttendanceLog,
+    // Migration & imports (2026-07-20) — audit log of AI-Agent imports
+    ImportHistorySeed,
 };
 
 // Also re-export the raw arrays for screens that filter against the entire table.
@@ -3315,6 +3319,13 @@ export interface AppState {
      *  variance columns. Derived from `classSchedules` at store-init time
      *  since clock-in/out data doesn't have a source module yet. */
     staffAttendanceLog: StaffAttendanceLog[];
+    /** AI Agent import audit log (client 2026-07-20). One row per
+     *  completed migration/import run — powers the Settings → Operations
+     *  → "Migration & imports" table. New rows will land here when the
+     *  ONRA AI Agent integration (sibling project) commits an import;
+     *  for now the slice is seeded from `import_history.ts`. Snake-case
+     *  fields, matching the leads / marketingCampaignStats convention. */
+    importHistory: ImportHistorySeed[];
     /** Live pay rates — powers /admin/staff/pay-rate list/detail/payroll (PRD 10 §6). */
     payRates: PayRate[];
     /** Live instructors — the pay rate detail page's "Assigned instructor" tab
@@ -4117,6 +4128,7 @@ export const useAppStore = create<AppState>()(persist(
     marketingCampaignStats: [...SEED_MARKETING_CAMPAIGN_STATS],
     marketingSpend: [...SEED_MARKETING_SPEND],
     staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
+    importHistory: [...SEED_IMPORT_HISTORY],
     payRates: [...INITIAL_PAY_RATES],
     instructors: [...INITIAL_INSTRUCTORS],
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
@@ -8278,7 +8290,11 @@ export const useAppStore = create<AppState>()(persist(
         //   rows added to DEMO_NOW_PLANS (intro package on cust 4, 3-class
         //   trial on cust 7) so the Today Needs Attention "Trials end"
         //   row renders out of the box. Bump reseeds cached testers.
-        version: 70,
+        // v71 (2026-07-20): New `importHistory` slice (6 seeded rows) —
+        //   powers the Settings → Operations → "Migration & imports"
+        //   table. Bump so cached testers pick up the new slice on
+        //   refresh instead of rendering an empty state.
+        version: 71,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

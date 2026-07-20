@@ -62,9 +62,13 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
         label: "Operations",
         icon: Settings03,
         tabs: [
-            { label: "Booking rules", href: "/admin/settings/booking-rules" },
-            { label: "Tax",           href: "/admin/settings/tax"           },
-            { label: "Integrations",  href: "/admin/settings/integrations"  },
+            { label: "Booking rules",        href: "/admin/settings/booking-rules"       },
+            { label: "Tax",                  href: "/admin/settings/tax"                 },
+            { label: "Integrations",         href: "/admin/settings/integrations"        },
+            // Migration & imports (client 2026-07-20) — audit log of every
+            // ONRA AI-Agent-driven import. Sits next to Integrations because
+            // both are "operational plumbing" tabs.
+            { label: "Migration & imports",  href: "/admin/settings/migrations-imports"  },
         ],
     },
     {
