@@ -22,7 +22,8 @@
 // widgets render their own mock period internally; live filtering arrives
 // when the data layer is wired.
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { SearchMd } from "@untitledui/icons";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
@@ -90,9 +91,34 @@ const TABS: TabConfig[] = [
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+//
+// Wrapped in <Suspense> because InsightsInner reads useSearchParams (for
+// the ?tab= AI-Agent deep-link pre-filter). Without the boundary, Next
+// opts every /admin/insights render out of static prerendering.
 
 export default function InsightsPage() {
-    const [tab, setTab] = useState<TabKey>("finance");
+    return (
+        <Suspense fallback={null}>
+            <InsightsInner />
+        </Suspense>
+    );
+}
+
+/** Valid TabKey (or fallback to finance) parsed from the `?tab=` URL
+ *  param. The AI Agent's "Go to insight" chip navigates here with the
+ *  tab pre-selected — see engine.ts `insightsDeepLink()`. */
+function readTabFromUrl(raw: string | null): TabKey {
+    if (raw === "finance" || raw === "memberships" || raw === "classes") {
+        return raw;
+    }
+    return "finance";
+}
+
+function InsightsInner() {
+    const searchParams = useSearchParams();
+    const [tab, setTab] = useState<TabKey>(() =>
+        readTabFromUrl(searchParams.get("tab")),
+    );
     const [search, setSearch] = useState("");
     const [period, setPeriod] = useState<DateFilter>({ type: "week", label: "This week" });
 

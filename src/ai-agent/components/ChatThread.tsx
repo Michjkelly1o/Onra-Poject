@@ -102,6 +102,26 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
     };
 }
 
+/** localStorage key for a thread's persisted chat history. One key per
+ *  mode so Insight + Migration histories don't collide. Bumped when the
+ *  message shape changes to force a clean reseed. */
+const CHAT_HISTORY_KEY = (mode: AiAgentMode) =>
+    `onra-ai-agent-messages-v1-${mode}`;
+
+/** SSR-safe read of the persisted chat history. `typeof window` guard
+ *  because Next.js will call this during static prerender. */
+function loadPersistedMessages(mode: AiAgentMode): UIMessage[] {
+    if (typeof window === "undefined") return [];
+    try {
+        const raw = window.localStorage.getItem(CHAT_HISTORY_KEY(mode));
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? (parsed as UIMessage[]) : [];
+    } catch {
+        return [];
+    }
+}
+
 export function ChatThread({
     mode = "insight",
     visible = true,
@@ -124,6 +144,11 @@ export function ChatThread({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
 
+    // Phase 10 — persist chat history to localStorage per thread. Hydrate
+    // ONCE on mount (initialMessages is a stable snapshot); the persist
+    // effect below writes on every change.
+    const initialMessages = useRef<UIMessage[]>(loadPersistedMessages(mode));
+
     const {
         messages,
         input,
@@ -137,6 +162,7 @@ export function ChatThread({
         // Distinct id per mode → two mounted instances, two histories.
         id: `onra-agent-${mode}`,
         api: "/api/ai-agent",
+        initialMessages: initialMessages.current,
         maxSteps: 3, // matches AI_AGENT_MAX_STEPS in flags.ts (Hobby 10s cap)
         // Per-request body: grab a fresh Zustand snapshot every time so the
         // model sees whatever the admin just created/edited seconds ago.
@@ -171,6 +197,29 @@ export function ChatThread({
             endRef.current?.scrollIntoView({ behavior: "smooth" });
         }
     }, [messages, visible]);
+
+    // Persist chat history to localStorage on every messages change so a
+    // refresh returns the tester to the same conversation — matches
+    // Syncfit's demo-persistence convention (see CLAUDE.md § Demo State
+    // Persistence). Skipped when messages is empty to avoid writing an
+    // empty array on mount before hydration completes.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        try {
+            if (messages.length === 0) {
+                window.localStorage.removeItem(CHAT_HISTORY_KEY(mode));
+            } else {
+                window.localStorage.setItem(
+                    CHAT_HISTORY_KEY(mode),
+                    JSON.stringify(messages),
+                );
+            }
+        } catch {
+            // localStorage can throw (quota, disabled, private mode) —
+            // swallow and continue; persistence is best-effort.
+        }
+    }, [messages, mode]);
+
 
     const send = (text: string) => {
         if (!text.trim() || isBusy) return;

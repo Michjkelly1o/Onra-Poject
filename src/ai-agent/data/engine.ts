@@ -14,9 +14,47 @@
 
 import type { AuthContext } from "@/ai-agent/agent/auth";
 import { branchFilter } from "@/ai-agent/data/scope";
-import { AED, type InsightCard } from "@/ai-agent/agent/cards";
+import { AED, type DeepLink, type InsightCard } from "@/ai-agent/agent/cards";
 import type { Catalog, Dataset, FieldMeta } from "@/ai-agent/data/catalog";
 import type { Row } from "@/ai-agent/data/store-readers";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deep-link routing table (Phase 10)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Maps each catalog dataset to a `/admin/insights` tab pre-filter query
+// string. The Insights page reads `?tab=` (Phase 10 wiring) to select
+// the corresponding metric grid + widget list. Unknown datasets default
+// to Finance since that's where new admin metrics tend to land first.
+//
+// If a card doesn't fit any tab (e.g. leads, spend) we still return a
+// href to /admin/insights?tab=finance — clicking "Go to insight" always
+// lands the tester somewhere meaningful.
+
+const DATASET_TO_INSIGHTS_TAB: Record<string, "finance" | "memberships" | "classes"> = {
+    transactions:        "finance",
+    customers:           "memberships",
+    classes:             "classes",
+    bookings:            "classes",
+    leads:               "finance",
+    campaigns:           "finance",
+    spend:               "finance",
+    appointments:        "classes",
+    services:            "classes",
+    wallet_transactions: "finance",
+    payroll_entries:     "finance",
+    promo_codes:         "finance",
+};
+
+/** Build the deep-link chip a chart/list card carries. Every returned
+ *  href is a valid Next.js route the /admin/insights page can render. */
+function insightsDeepLink(dataset: string): DeepLink {
+    const tab = DATASET_TO_INSIGHTS_TAB[dataset] ?? "finance";
+    return {
+        label: "Go to insight",
+        href: `/admin/insights?tab=${tab}`,
+    };
+}
 
 export type FilterOp = "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "contains";
 export interface Filter {
@@ -207,14 +245,14 @@ export function runAnalyze(ctx: AuthContext, catalog: Catalog, spec: AnalyzeSpec
         if (viz === "donut" && (points.length > 5 || unit === "AED")) viz = "bar";
 
         if (viz === "line")
-            return { card: "line_chart", title, series: points.map((p) => ({ label: p.label, value: p.value })), unit: unit === "AED" ? "AED" : "count", valueLabel: title, deepLink: "Go to insight" };
+            return { card: "line_chart", title, series: points.map((p) => ({ label: p.label, value: p.value })), unit: unit === "AED" ? "AED" : "count", valueLabel: title, deepLink: insightsDeepLink(spec.dataset) };
         if (viz === "donut") {
             const sum = points.reduce((a, p) => a + p.value, 0);
             return { card: "donut", title, unit: unit === "AED" ? "AED" : "count", segments: points.map((p) => ({ label: p.label, value: p.value })), centerValue: Math.round(sum).toLocaleString("en-US"), centerLabel: unit === "AED" ? "AED total" : "total" };
         }
         if (viz === "table")
             return { card: "data_table", columns: [gm.label, metricLabel(metric, spec, ds)], rows: points.map((p) => [p.label, fmtVal(p.value, unit)]) };
-        return { card: "bar_chart", title, unit: unit === "rating" ? "rating" : unit === "AED" ? "AED" : "count", maxValue: unit === "rating" ? 5 : undefined, bars: points.map((p) => ({ label: p.label, value: p.value })), deepLink: "Go to insight" };
+        return { card: "bar_chart", title, unit: unit === "rating" ? "rating" : unit === "AED" ? "AED" : "count", maxValue: unit === "rating" ? 5 : undefined, bars: points.map((p) => ({ label: p.label, value: p.value })), deepLink: insightsDeepLink(spec.dataset) };
     }
 
     // ── single scalar ────────────────────────────────────────────────────────

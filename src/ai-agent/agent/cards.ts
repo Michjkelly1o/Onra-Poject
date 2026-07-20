@@ -19,6 +19,15 @@ export type RankedRow = {
     right2?: string; // e.g. "89% occupancy"
 };
 
+/** Phase 10 — every card can carry an optional deep link. Clicking the
+ *  chip navigates the tester to the matching /admin/insights tab (or
+ *  any other admin route). `label` is the CTA text; `href` is a Next.js
+ *  route (client-side navigation via `router.push`). */
+export type DeepLink = {
+    label: string;
+    href: string;
+};
+
 export type TableCard = {
     card: "data_table";
     columns: string[];
@@ -29,8 +38,8 @@ export type TableCard = {
 export type SeriesPoint = { label: string; value: number };
 
 export type InsightCard =
-    | { card: "metric_group"; title?: string; tiles: MetricTile[]; note?: string; deepLink?: string }
-    | { card: "ranked_list"; title: string; rows: RankedRow[]; note?: string; deepLink?: string }
+    | { card: "metric_group"; title?: string; tiles: MetricTile[]; note?: string; deepLink?: DeepLink }
+    | { card: "ranked_list"; title: string; rows: RankedRow[]; note?: string; deepLink?: DeepLink }
     | {
           card: "line_chart";
           title: string;
@@ -38,7 +47,7 @@ export type InsightCard =
           unit?: "AED" | "count";
           valueLabel?: string; // tooltip label, e.g. "Total bookings"
           note?: string;
-          deepLink?: string;
+          deepLink?: DeepLink;
       }
     | {
           card: "bar_chart";
@@ -47,7 +56,7 @@ export type InsightCard =
           bars: { label: string; sublabel?: string; value: number }[];
           maxValue?: number; // override scaling (e.g. 5 for ratings)
           note?: string;
-          deepLink?: string;
+          deepLink?: DeepLink;
       }
     | {
           card: "donut";
@@ -57,9 +66,9 @@ export type InsightCard =
           centerLabel?: string;
           centerValue?: string;
           note?: string;
-          deepLink?: string;
+          deepLink?: DeepLink;
       }
-    | (TableCard & { deepLink?: string })
+    | (TableCard & { deepLink?: DeepLink })
     | {
           card: "export";
           exportId: string;

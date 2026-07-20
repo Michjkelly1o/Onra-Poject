@@ -15,7 +15,8 @@
 
 "use client";
 
-import type { InsightCard } from "@/ai-agent/agent/cards";
+import { useRouter } from "next/navigation";
+import type { DeepLink as DeepLinkData, InsightCard } from "@/ai-agent/agent/cards";
 import { ArrowUpRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { BarChart } from "@/ai-agent/components/charts/BarChart";
@@ -59,15 +60,21 @@ function CardNote({ children }: { children?: React.ReactNode }) {
     );
 }
 
-function DeepLink({ label }: { label?: string }) {
-    if (!label) return null;
+/** Phase 10 — the deep-link chip. If `link.href` is present, clicking
+ *  navigates the tester to that route via Next.js's client-side router
+ *  (no full page reload). Backwards-compat: still accepts nothing (chip
+ *  hidden). */
+function DeepLink({ link }: { link?: DeepLinkData }) {
+    const router = useRouter();
+    if (!link || !link.label) return null;
     return (
         <button
             type="button"
+            onClick={() => router.push(link.href)}
             className="self-start inline-flex items-center gap-1 text-[13px] font-medium text-[#4b8c9a] hover:text-[#306b78] hover:underline underline-offset-4"
         >
             <ArrowUpRight className="size-3.5" />
-            {label}
+            {link.label}
         </button>
     );
 }
@@ -81,7 +88,7 @@ export function Card({ data }: { data: InsightCard }) {
                 <CardTitle>{data.title}</CardTitle>
                 <LineChart series={data.series} unit={data.unit} valueLabel={data.valueLabel} />
                 <CardNote>{data.note}</CardNote>
-                <DeepLink label={data.deepLink} />
+                <DeepLink link={data.deepLink} />
             </CardShell>
         );
     }
@@ -92,7 +99,7 @@ export function Card({ data }: { data: InsightCard }) {
                 <CardTitle>{data.title}</CardTitle>
                 <BarChart bars={data.bars} unit={data.unit} maxValue={data.maxValue} />
                 <CardNote>{data.note}</CardNote>
-                <DeepLink label={data.deepLink} />
+                <DeepLink link={data.deepLink} />
             </CardShell>
         );
     }
@@ -108,7 +115,7 @@ export function Card({ data }: { data: InsightCard }) {
                     centerValue={data.centerValue}
                 />
                 <CardNote>{data.note}</CardNote>
-                <DeepLink label={data.deepLink} />
+                <DeepLink link={data.deepLink} />
             </CardShell>
         );
     }
@@ -133,7 +140,7 @@ export function Card({ data }: { data: InsightCard }) {
                     ))}
                 </div>
                 <CardNote>{data.note}</CardNote>
-                <DeepLink label={data.deepLink} />
+                <DeepLink link={data.deepLink} />
             </CardShell>
         );
     }
@@ -174,7 +181,7 @@ export function Card({ data }: { data: InsightCard }) {
                     ))}
                 </div>
                 <CardNote>{data.note}</CardNote>
-                <DeepLink label={data.deepLink} />
+                <DeepLink link={data.deepLink} />
             </CardShell>
         );
     }
