@@ -1,47 +1,66 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard widget catalogue — client 2026-07-20 restructure.
+//
+// Sections were reorganised into 6 categories (Financial · Customer · Class
+// · Private sessions · Recovery · Marketing) so widget grouping matches the
+// studio's mental model of "areas of the business" instead of the earlier
+// mix of Finance / Memberships / Classes / Marketing.
+//
+// Client-driven changes in this pass:
+//   • Retired the duplicate `active-subscriptions` widget — same signal as
+//     `active-memberships`, dropped.
+//   • Renamed `top-memberships` → "Top 5 plans" (product-agnostic name so
+//     memberships + packages share the same tile).
+//   • Renamed `intro-member-funnel` → "Intro → membership funnel".
+//   • Every time-series widget's `description` is now an empty string —
+//     the card renderer hides the subtitle line when description is empty
+//     so "Revenue over time" / "Class popularity" etc. no longer carry a
+//     redundant sub-caption that just repeated the title.
+//   • Added the 6-category "Private sessions" and "Recovery" categories;
+//     widgets under them ship in commits B + C.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type WidgetCategory =
-    // Existing dashboard + insights categories
-    | "Finance" | "Memberships" | "Classes"
-    // KPI module categories — Onra_KPI_Catalogue.pdf sections. Widgets
-    // under these categories get populated during KPI phases 2-5. The
-    // KPI page's widget grid stays empty until entries land here.
-    | "Financial" | "Client" | "Class" | "Marketing";
+    // Live 6-category set — client 2026-07-20.
+    | "Financial" | "Customer" | "Class" | "Private sessions" | "Recovery" | "Marketing"
+    // Legacy KPI-page categories kept for backwards compatibility with the
+    // KPI module's own widget grid. KPI-only widgets still declare these.
+    | "Finance" | "Memberships" | "Classes" | "Client";
 
 export interface WidgetMeta {
     id: string;
     title: string;
+    /** Subtitle line under the title. Empty string hides the subtitle — the
+     *  widget card treats "" the same as omitted so time-series widgets
+     *  render title-only per client 2026-07-20. */
     description: string;
     category: WidgetCategory;
 }
 
 export const WIDGET_CATALOG: WidgetMeta[] = [
-    // Finance — client Jul 2026: collapsed to two payment widgets. Failed
-    // payments now overlay on Payments collected (bars underneath), so the
-    // separate `payments-status` and `payments-by-method` widgets are retired.
-    { id: "payments-collected",  title: "Payments collected over time",     description: "Total collected across the selected period.",                 category: "Finance" },
-    { id: "payments-by-source",  title: "Payments by source",               description: "Payments grouped by sales source or purchase channel.",       category: "Finance" },
-    { id: "revenue-overview",    title: "Revenue overview",                  description: "Total revenue overtime",                                      category: "Finance" },
-    { id: "sales-by-product",    title: "Sales by product",                  description: "Total sales by product overtime",                             category: "Finance" },
-    // Memberships
-    { id: "active-memberships",  title: "Active memberships",                description: "Total customers with valid packages or remaining credits.",    category: "Memberships" },
-    { id: "active-subscriptions",title: "Active subscriptions",              description: "Total customers with ongoing auto-renew plans.",               category: "Memberships" },
-    { id: "active-credits",      title: "Active credit packages",            description: "Total customers with remaining class credits.",                category: "Memberships" },
-    { id: "top-memberships",     title: "Top 5 memberships & packages",      description: "Best-selling plans based on total purchases.",                 category: "Memberships" },
-    { id: "memberships-sold",    title: "Membership & packages unit sold",   description: "Total units sold across all plans.",                           category: "Memberships" },
-    // Intro → member funnel (Figma 19073:15583/15707/15831/15955) —
-    // 3-bar % funnel: bought intro → returned → bought a plan.
-    { id: "intro-member-funnel", title: "Intro → member funnel",             description: "See how trial clients progress to memberships.",              category: "Memberships" },
-    // Classes
-    { id: "class-bookings",      title: "Class bookings",                    description: "Total bookings over time",                                    category: "Classes" },
-    { id: "bookings-by-source",  title: "Bookings by source",                description: "See where your bookings are coming from.",                    category: "Classes" },
-    { id: "bookings-vs-visits",  title: "Bookings vs visits",                description: "Compare total bookings with actual visits over time.",        category: "Classes" },
-    { id: "attendance-overview", title: "Attendance overview",               description: "Track attendance rate, cancellations, and no-shows.",         category: "Classes" },
-    { id: "class-by-popularity", title: "Class by popularity",               description: "Class popularity overtime",                                   category: "Classes" },
-    // Attendance heatmap (Figma 19073:13455/13560/13665/13770) —
-    // 4 time-of-day rows × 7 weekday cols, cells shaded by attendance %.
-    { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "Identify your busiest days and time slots.",                  category: "Classes" },
-    // Marketing (KPI-tab exclusive) — added in Phase 5. Follow the same
-    // SEEDS/renderChart convention as the existing widgets so the shell
-    // treats them identically.
+    // ─── Financial ──────────────────────────────────────────────────────
+    { id: "payments-collected",  title: "Payments collected over time",     description: "",                                                             category: "Financial" },
+    { id: "payments-by-source",  title: "Payments by source",               description: "Payments grouped by sales source or purchase channel.",       category: "Financial" },
+    { id: "revenue-overview",    title: "Revenue overview",                  description: "",                                                             category: "Financial" },
+    { id: "sales-by-product",    title: "Sales by product",                  description: "",                                                             category: "Financial" },
+    // ─── Customer ───────────────────────────────────────────────────────
+    { id: "active-memberships",  title: "Active memberships",                description: "Total customers with valid memberships or remaining credits.", category: "Customer" },
+    { id: "active-credits",      title: "Active credit packages",            description: "Total customers with remaining class credits.",                category: "Customer" },
+    { id: "top-memberships",     title: "Top 5 plans",                       description: "Best-selling plans based on total purchases.",                 category: "Customer" },
+    { id: "memberships-sold",    title: "Membership & packages unit sold",   description: "",                                                             category: "Customer" },
+    // Intro → membership funnel — 3 horizontal bars sized by client count
+    // (Tried → Returned → Bought).
+    { id: "intro-member-funnel", title: "Intro → membership funnel",         description: "Trial clients progressing to memberships.",                    category: "Customer" },
+    // ─── Class ──────────────────────────────────────────────────────────
+    { id: "class-bookings",      title: "Class bookings",                    description: "",                                                             category: "Class" },
+    { id: "bookings-by-source",  title: "Bookings by source",                description: "Where your class bookings originate.",                         category: "Class" },
+    { id: "bookings-vs-visits",  title: "Bookings vs visits",                description: "",                                                             category: "Class" },
+    { id: "attendance-overview", title: "Attendance overview",               description: "Attendance rate, cancellations, and no-shows.",                category: "Class" },
+    { id: "class-by-popularity", title: "Class by popularity",               description: "",                                                             category: "Class" },
+    // Attendance heatmap — 4 time-of-day rows × 7 weekday cols, cells
+    // shaded by attendance %. Now respects the header date filter.
+    { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "Busiest days and time slots in the selected range.",           category: "Class" },
+    // ─── Marketing (KPI-tab exclusive; kept for KPI grid) ───────────────
     { id: "kpi-leads-by-source",    title: "Leads by source",              description: "Acquisition mix across sources over time.",                   category: "Marketing" },
     { id: "kpi-lead-funnel",        title: "Lead conversion funnel",       description: "New → Trial → Paid across the acquisition funnel.",           category: "Marketing" },
     { id: "kpi-campaign-perf",      title: "Campaign performance",         description: "Sends, opens, clicks, and attributed bookings by campaign.",  category: "Marketing" },

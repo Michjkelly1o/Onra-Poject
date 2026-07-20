@@ -36,7 +36,7 @@ const SEEDS: Record<string, Record<string, number[]>> = {
     // tooltip must read as sales, not quantity.
     "sales-by-product":    { membership: [8400, 5600, 4500, 3200, 9800, 12500, 2400], package: [2400, 3600, 1500, 2400, 3200, 14200, 1500] },
     "active-memberships":  { v: [28, 30, 32, 35, 34, 38, 42] },
-    "active-subscriptions":{ v: [32, 33, 35, 34, 37, 40, 44] },
+    // active-subscriptions seed dropped 2026-07-20 (retired duplicate).
     "active-credits":      { v: [30, 32, 35, 33, 36, 38, 40] },
     "memberships-sold":    { beginner: [10, 8, 12, 9, 14, 11, 13], advanced: [15, 10, 13, 15, 12, 18, 16], unlimited: [7, 6, 8, 7, 9, 8, 10] },
     "class-bookings":      { v: [32, 28, 35, 30, 40, 38, 45] },
@@ -192,6 +192,22 @@ function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number;
             return { labels, scale: 1, interval: 0 };
         }
         case "month": {
+            // "Last 12 months" needs MONTH ticks, not day-per-day (client
+            // 2026-07-20 flag — was rendering 365 daily points on the x-axis
+            // which is unreadable). Anchored to today so the last label is
+            // the CURRENT month; scale mirrors the "year" case (6× per
+            // month) so seed magnitudes read sensibly.
+            const label = period.label.toLowerCase();
+            if (label.includes("last 12")) {
+                const today = new Date();
+                today.setDate(1); today.setHours(0, 0, 0, 0);
+                const labels = Array.from({ length: 12 }, (_, i) => {
+                    const d = new Date(today);
+                    d.setMonth(d.getMonth() - (11 - i));
+                    return `${MONTH_LABELS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+                });
+                return { labels, scale: 6, interval: 0 };
+            }
             const { from, to } = resolvePresetBounds(period);
             const days = Math.max(
                 1,
@@ -432,6 +448,93 @@ function computeFailedPaymentsStats(
     return { count, amountAed, perDay };
 }
 
+// ─── Attendance heatmap — live derivation ────────────────────────────────────
+//
+// Build the 4-row × 7-column attendance grid (AM / MID / PM / EVE × Mon-Sun)
+// from live class_bookings joined to their class_schedules, scoped to the
+// picked branches + period. Client 2026-07-20 fix: the heatmap was static
+// seed data and DID NOT respond to the date filter. Now it does.
+//
+// Cell value = attendance rate = present / (present + no_show + booked),
+// rounded to whole %. When a slot has no bookings in the period, we return
+// 0% so the tint drops to the palette's lowest step (visually "quiet slot").
+
+type HeatmapRow = {
+    band: "AM" | "MID" | "PM" | "EVE";
+    Mon: number; Tue: number; Wed: number; Thu: number; Fri: number; Sat: number; Sun: number;
+};
+
+/** Map an ISO time (`HH:MM`) → time-of-day band. AM = 05:00-10:59,
+ *  MID = 11:00-14:59, PM = 15:00-17:59, EVE = 18:00+. Outside 05:00-24:00
+ *  falls into AM (studio hours don't usually cross midnight but the
+ *  fallback keeps totals sane). */
+function timeBand(startTime: string): HeatmapRow["band"] {
+    const hh = Number((startTime ?? "").slice(0, 2));
+    if (Number.isNaN(hh)) return "AM";
+    if (hh >= 5 && hh < 11) return "AM";
+    if (hh >= 11 && hh < 15) return "MID";
+    if (hh >= 15 && hh < 18) return "PM";
+    return "EVE";
+}
+
+/** Map a JS getDay() (0=Sun) → the weekday key on HeatmapRow. */
+function dayKey(dow: number): keyof Omit<HeatmapRow, "band"> {
+    return (["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const)[dow] as keyof Omit<HeatmapRow, "band">;
+}
+
+function computeAttendanceHeatmap(
+    bookings: Array<import("@/lib/store").ClassBooking>,
+    schedules: Array<import("@/lib/store").ClassSchedule>,
+    branchIds: string[] | undefined,
+    period: DateFilter,
+): HeatmapRow[] {
+    const { from, to } = period.type === "custom"
+        ? { from: period.from, to: period.to }
+        : resolvePresetBounds(period);
+    const fromMs = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+    const toMs   = new Date(to.getFullYear(),   to.getMonth(),   to.getDate(),   23, 59, 59).getTime();
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+
+    // Only schedules within the period + branch scope are considered. Building
+    // a quick id → schedule map so the per-booking lookup stays O(1).
+    const scheduleMap = new Map<string, import("@/lib/store").ClassSchedule>();
+    for (const s of schedules) {
+        if (scoped && !scoped.includes(s.branchId)) continue;
+        const t = new Date(`${s.dateISO}T00:00:00`).getTime();
+        if (Number.isNaN(t) || t < fromMs || t > toMs) continue;
+        scheduleMap.set(s.id, s);
+    }
+
+    // present / total buckets per (band, day) so we can compute the rate at
+    // the end without holding every booking in memory twice.
+    const present: Record<string, number> = {};
+    const total: Record<string, number> = {};
+    const key = (band: string, day: string) => `${band}|${day}`;
+
+    for (const b of bookings) {
+        const s = scheduleMap.get(b.classScheduleId);
+        if (!s) continue;
+        const d = new Date(`${s.dateISO}T00:00:00`);
+        const band = timeBand(s.startTime);
+        const day  = dayKey(d.getDay());
+        const k = key(band, day);
+        total[k] = (total[k] ?? 0) + 1;
+        if (b.attendanceStatus === "present") present[k] = (present[k] ?? 0) + 1;
+    }
+
+    const days: Array<keyof Omit<HeatmapRow, "band">> = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const bands: HeatmapRow["band"][] = ["AM", "MID", "PM", "EVE"];
+    return bands.map(band => {
+        const row: HeatmapRow = { band, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+        for (const day of days) {
+            const tot = total[key(band, day)] ?? 0;
+            const pre = present[key(band, day)] ?? 0;
+            row[day] = tot === 0 ? 0 : Math.round((pre / tot) * 100);
+        }
+        return row;
+    });
+}
+
 /** Scale every numeric field in a chart-ready row by `factor`, leave strings
  *  (labels, dates, colors) untouched. Returns the same row when factor is 1. */
 function scaleRows(rows: object[], factor: number): object[] {
@@ -463,10 +566,17 @@ function renderChart(
     failedStats: { count: number; amountAed: number; perDay: Map<string, number> } | null = null,
     /** Payments-collected widget only — click handler for the failed chip. */
     onOpenFailedPayments?: () => void,
+    /** Attendance-heatmap widget only — 4×7 grid derived live from bookings
+     *  scoped to the picked branch(es) + period. Null on every other widget. */
+    heatmapRows: HeatmapRow[] | null = null,
 ): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
-    const data = scaleRows(STATIC[id] ?? buildSeries(id, period), branchScale);
+    // Heatmap has its own live-derived data (`heatmapRows`) — override the
+    // static seed so it respects the date filter.
+    const data = id === "attendance-heatmap" && heatmapRows
+        ? (heatmapRows as unknown as object[])
+        : scaleRows(STATIC[id] ?? buildSeries(id, period), branchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -594,8 +704,10 @@ function renderChart(
                 </div>
             );
 
+        // active-subscriptions was retired 2026-07-20 (duplicate of
+        // active-memberships per client). Case removed; only active-memberships
+        // renders now.
         case "active-memberships":
-        case "active-subscriptions":
             return (
                 <ResponsiveContainer width="100%" height={h}>
                     <LineChart data={data}>
@@ -603,7 +715,7 @@ function renderChart(
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Line type="monotone" dataKey="v" name={id === "active-memberships" ? "Active memberships" : "Active subscriptions"} stroke="#92d1de" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="v" name="Active memberships" stroke="#92d1de" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             );
@@ -1057,6 +1169,22 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
     const failedStats = widgetId === "payments-collected" && customerTransactions
         ? computeFailedPaymentsStats(customerTransactions, branchIds, period ?? DEFAULT_PERIOD)
         : null;
+
+    // Attendance heatmap — client 2026-07-20 flag: the heatmap did NOT
+    // respond to the date filter (static 4×7 seed). Now derived live from
+    // `classBookings` × `classSchedules` inside the picked period + branch,
+    // so switching Week → Month → Last 12 months re-shades the grid.
+    // Only computed on this widget; every other id skips the reads.
+    const heatBookings = useAppStore(s =>
+        widgetId === "attendance-heatmap" ? s.classBookings : null,
+    );
+    const heatSchedules = useAppStore(s =>
+        widgetId === "attendance-heatmap" ? s.classSchedules : null,
+    );
+    const heatmapRows =
+        widgetId === "attendance-heatmap" && heatBookings && heatSchedules
+            ? computeAttendanceHeatmap(heatBookings, heatSchedules, branchIds, period ?? DEFAULT_PERIOD)
+            : null;
     if (!meta) return null;
 
     return (
@@ -1085,7 +1213,13 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                     )}
                     <div className="min-w-0">
                         <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">{meta.title}</p>
-                        <p className="text-[14px] text-[#6e776f] truncate mt-0.5">{meta.description}</p>
+                        {/* Hide the subtitle row when the catalogue entry sets
+                            description to "" — client 2026-07-20 asked to drop
+                            the redundant sub-caption on the time-series widgets
+                            ("Revenue over time" / "Class popularity" / etc). */}
+                        {meta.description && (
+                            <p className="text-[14px] text-[#6e776f] truncate mt-0.5">{meta.description}</p>
+                        )}
                     </div>
                 </div>
                 {action === "add" && (
@@ -1109,7 +1243,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapRows)}
             </div>
         </div>
     );

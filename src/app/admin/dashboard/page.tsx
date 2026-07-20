@@ -881,34 +881,32 @@ export default function AdminDashboard() {
             return !Number.isNaN(t) && t >= prevFromMs && t <= prevToMs;
         };
 
-        // Revenue (period AED) — complete `sale` transactions, exclude
-        // penalty / freeze-fee rows so the total matches the Payments tab.
+        // Sales — COUNT of completed billable-sale transactions in the
+        // period (client 2026-07-20 asked for a Sales tile alongside
+        // Revenue — same predicate, different reducer).
         const isBillableSale = (t: typeof scopedTransactions[number]): boolean =>
             t.status === "complete"
             && (t.transactionType === undefined || t.transactionType === "sale")
             && t.kind !== "cancellation_penalty"
             && t.kind !== "freeze_fee";
-        const revenuePeriod = scopedTransactions
-            .filter(t => isBillableSale(t) && inRangeMs(t.createdAtISO))
-            .reduce((sum, t) => sum + t.amountAed, 0);
-        const revenuePrior = scopedTransactions
-            .filter(t => isBillableSale(t) && inPrevRangeMs(t.createdAtISO))
-            .reduce((sum, t) => sum + t.amountAed, 0);
+        const salesInPeriod = scopedTransactions.filter(t => isBillableSale(t) && inRangeMs(t.createdAtISO));
+        const salesInPrior  = scopedTransactions.filter(t => isBillableSale(t) && inPrevRangeMs(t.createdAtISO));
+        const salesPeriod = salesInPeriod.length;
+        const salesPrior  = salesInPrior.length;
+        // Revenue = AED total of that same set. Sums stay in sync with the
+        // count above so a filter change moves both tiles in lockstep.
+        const revenuePeriod = salesInPeriod.reduce((sum, t) => sum + t.amountAed, 0);
+        const revenuePrior  = salesInPrior.reduce((sum, t) => sum + t.amountAed, 0);
 
-        // Members — active members that JOINED in the period (a period-
-        // scoped acquisition metric, comparable across weeks/months). Prior
-        // window = joined in the previous same-length window.
-        const membersPeriod = scopedCustomers.filter(c =>
+        // New customers — active customers that JOINED in the period. Client
+        // 2026-07-20 clarified label to "New customers" (was ambiguous
+        // "Members" / "Customers" — question was "new or total?").
+        const newCustomersPeriod = scopedCustomers.filter(c =>
             c.status === "active" && inRangeMs(c.createdAt ?? ""),
         ).length;
-        const membersPrior = scopedCustomers.filter(c =>
+        const newCustomersPrior = scopedCustomers.filter(c =>
             c.status === "active" && inPrevRangeMs(c.createdAt ?? ""),
         ).length;
-
-        // Classes — schedules whose date falls in the period (date-only
-        // fields, so use the day-string helper for TZ safety).
-        const classesPeriod = scopedSchedules.filter(s => inRangeDay(s.dateISO)).length;
-        const classesPrior  = scopedSchedules.filter(s => inRangeDay(s.dateISO) === false && inPrevRangeDay(s.dateISO)).length;
 
         // Bookings — booked rows on schedules whose date lands in the period.
         const scheduleIdsInRange = new Set(
@@ -932,12 +930,22 @@ export default function AdminDashboard() {
         };
         const suffix = dashDeltaSuffix(period);
 
+        const salD = pct(salesPeriod, salesPrior);
         const revD = pct(revenuePeriod, revenuePrior);
-        const memD = pct(membersPeriod, membersPrior);
-        const clsD = pct(classesPeriod, classesPrior);
+        const custD = pct(newCustomersPeriod, newCustomersPrior);
         const bkgD = pct(bookingsPeriod, bookingsPrior);
 
+        // Client 2026-07-20 — box order + set: Sales · Revenue · New customers
+        // · Bookings. Classes was retired (redundant with Bookings for the
+        // "how active is the studio" read). New customers replaces the
+        // ambiguous "Customers" label.
         return [
+            {
+                label: "Sales",
+                value: salesPeriod.toLocaleString("en-US"),
+                change: salD.change, positive: salD.positive, comparison: suffix,
+                icon: ShoppingBag01,
+            },
             {
                 label: "Revenue",
                 value: `AED ${revenuePeriod.toLocaleString("en-US")}`,
@@ -945,16 +953,10 @@ export default function AdminDashboard() {
                 icon: CurrencyDollar,
             },
             {
-                label: "Customers",
-                value: membersPeriod.toLocaleString("en-US"),
-                change: memD.change, positive: memD.positive, comparison: suffix,
+                label: "New customers",
+                value: newCustomersPeriod.toLocaleString("en-US"),
+                change: custD.change, positive: custD.positive, comparison: suffix,
                 icon: UserCheck01,
-            },
-            {
-                label: "Classes",
-                value: classesPeriod.toLocaleString("en-US"),
-                change: clsD.change, positive: clsD.positive, comparison: suffix,
-                icon: CalendarCheck01,
             },
             {
                 label: "Bookings",
