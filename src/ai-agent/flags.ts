@@ -39,3 +39,19 @@ export const AI_AGENT_MAX_STEPS = 3;
 
 /** Model id. Pinned so an SDK upgrade doesn't silently swap models. */
 export const AI_AGENT_MODEL_ID = "claude-sonnet-5";
+
+// ─── UI visibility gate ──────────────────────────────────────────────────────
+//
+// Independent of `isAiAgentEnabled(role)`. The role gate says "is this user
+// allowed to use the agent?"; this flag says "should the admin UI even
+// EXPOSE the entry point?"
+//
+// Client 2026-07-20: today's push ships every other update but keeps the
+// AI Agent invisible in the admin chrome. FloatingAiButton renders null
+// while this is `false`. Access still works via the URL entry at
+// `/admin/ai-agent` (mounts + auto-opens the modal), and the API route is
+// live — the button is the only surface that's hidden.
+//
+// Flip to `true` on the day the client is ready to see the button, and
+// the entry point appears everywhere admin without any other change.
+export const AI_AGENT_UI_VISIBLE = false;
