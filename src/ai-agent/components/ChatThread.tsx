@@ -38,6 +38,8 @@ import {
     PencilLine,
     Stars02,
     User01,
+    AlertCircle,
+    RefreshCw01,
 } from "@untitledui/icons";
 import Image from "next/image";
 import { useAppStore, type AppState } from "@/lib/store";
@@ -93,6 +95,8 @@ export function ChatThread() {
         handleSubmit,
         append,
         status,
+        error,
+        reload,
     } = useChat({
         api: "/api/ai-agent",
         maxSteps: 3, // matches AI_AGENT_MAX_STEPS in flags.ts (Hobby 10s cap)
@@ -145,6 +149,15 @@ export function ChatThread() {
                                 <AssistantAvatar />
                                 <TypingDots />
                             </div>
+                        )}
+                        {/* Error banner — visible on 400/403/500 from
+                            /api/ai-agent. Includes a Retry button so the
+                            user can re-run without retyping. */}
+                        {error && !isBusy && (
+                            <ErrorBanner
+                                message={error.message}
+                                onRetry={() => reload()}
+                            />
                         )}
                         <div ref={endRef} />
                     </div>
@@ -330,6 +343,53 @@ function MessageRow({ message: m }: { message: UIMessage }) {
     }
 
     return null;
+}
+
+function ErrorBanner({
+    message,
+    onRetry,
+}: {
+    message: string;
+    onRetry: () => void;
+}) {
+    // Trim the raw error to something a client can read. Server responses
+    // like "AI Agent is admin-only." pass through; server timeouts show as
+    // "Failed to fetch" — surface a friendlier line for those.
+    const friendly = /failed to fetch|network/i.test(message)
+        ? "Network hiccup — the assistant couldn't reach the server."
+        : message.trim();
+    return (
+        <div
+            role="alert"
+            className={cn(
+                "flex items-start gap-3 p-3 rounded-lg",
+                "bg-[#fef3f2] border border-[#fecdca]",
+            )}
+        >
+            <AlertCircle className="size-5 text-[#b42318] shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-medium text-[#b42318] leading-5">
+                    Something went wrong
+                </div>
+                <div className="text-[13px] text-[#7a271a] leading-5 break-words">
+                    {friendly}
+                </div>
+            </div>
+            <button
+                type="button"
+                onClick={onRetry}
+                className={cn(
+                    "shrink-0 h-8 px-3 inline-flex items-center gap-1.5 rounded-md",
+                    "bg-white text-[#344054] text-[13px] font-medium border border-[#d0d5dd]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#f9fafb] transition-colors",
+                )}
+            >
+                <RefreshCw01 className="size-3.5" />
+                Retry
+            </button>
+        </div>
+    );
 }
 
 function AssistantAvatar() {

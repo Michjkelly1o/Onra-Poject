@@ -40,8 +40,11 @@ import {
     Building01,
     UploadCloud02,
     Archive,
+    Lock01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
+import { isAiAgentEnabled } from "@/ai-agent/flags";
 import { ChatThread } from "@/ai-agent/components/ChatThread";
 
 type ThreadKey = "general" | "studio_setup" | "migrate_data";
@@ -66,6 +69,7 @@ const DM_SANS_STACK =
 export function AiAgentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const currentRole = useAppStore((s) => s.currentRole);
     const returnTo = useMemo(
         () => searchParams.get("returnTo") ?? "/admin/dashboard",
         [searchParams],
@@ -74,6 +78,7 @@ export function AiAgentPage() {
     const [activeThread, setActiveThread] = useState<ThreadKey>("general");
 
     const handleClose = () => router.push(returnTo);
+    const roleAllowed = isAiAgentEnabled(currentRole);
 
     return (
         <div
@@ -113,14 +118,62 @@ export function AiAgentPage() {
                 </div>
             </header>
 
-            {/* ── Section: sidebar + chat pane ────────────────────────── */}
+            {/* ── Section: sidebar + chat pane ──────────────────────────
+                Role-gated. Non-admin (instructor/member) who somehow
+                lands here — direct URL, shared link, browser back —
+                gets a friendly "not available" state INSTEAD of a
+                broken chat. Belt-and-suspenders with the server 403:
+                if this gate ever leaks, the API still refuses. */}
             <section className="flex-1 min-h-0 flex gap-6 px-6 pb-6 items-start">
-                <AgentSidebar
-                    activeThread={activeThread}
-                    onSelectThread={setActiveThread}
-                />
-                <AgentChatSurface />
+                {roleAllowed ? (
+                    <>
+                        <AgentSidebar
+                            activeThread={activeThread}
+                            onSelectThread={setActiveThread}
+                        />
+                        <AgentChatSurface />
+                    </>
+                ) : (
+                    <NotAvailableForRoleState onClose={handleClose} />
+                )}
             </section>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fallback state — non-admin persona reached /ai-agent somehow
+// ─────────────────────────────────────────────────────────────────────────────
+
+function NotAvailableForRoleState({ onClose }: { onClose: () => void }) {
+    return (
+        <div className="flex-1 h-full bg-white border border-[#e4e7ec] rounded-[24px] flex items-center justify-center px-6">
+            <div className="flex flex-col items-center gap-4 max-w-md text-center">
+                <div className="size-12 rounded-full bg-[#f9fafb] border border-[#eaecf0] flex items-center justify-center">
+                    <Lock01 className="size-6 text-[#667085]" />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <div className="text-[18px] font-semibold text-[#101828]">
+                        Onra Agent isn&apos;t available for this role.
+                    </div>
+                    <div className="text-[14px] text-[#475467]">
+                        The AI assistant is admin-only. Switch to an admin
+                        persona to open it.
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className={cn(
+                        "h-9 px-4 rounded-md",
+                        "bg-white text-[#344054] text-[14px] font-medium border border-[#d0d5dd]",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                        "hover:bg-[#f9fafb] transition-colors",
+                    )}
+                >
+                    Go back
+                </button>
+            </div>
         </div>
     );
 }
