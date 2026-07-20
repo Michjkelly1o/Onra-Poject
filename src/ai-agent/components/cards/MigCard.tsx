@@ -27,6 +27,17 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import type { MigrationCard } from "@/ai-agent/migration/migration-cards";
+import { ENTITIES, type EntityKey } from "@/ai-agent/migration/entities";
+
+/** Lookup the plural user-facing name ("customers", "memberships") for a
+ *  card's entity string. Falls back to the raw key if the entity isn't
+ *  in the registry (shouldn't happen but keeps rendering safe). */
+function labelOf(entityKey: string): string {
+    return (
+        ENTITIES[entityKey as EntityKey]?.label ??
+        entityKey.replace(/_/g, " ")
+    );
+}
 
 /** Callbacks the cards trigger. `send(text)` pushes a user message into
  *  the thread (which drives the model's next tool call); `openUpload()`
@@ -421,7 +432,12 @@ export function MigCard({
         const t = data.totals;
         return (
             <CardShell>
-                <StepBadge step={data.step} />
+                <div className="flex items-center gap-2 flex-wrap">
+                    <StepBadge step={data.step} />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#f9fafb] border border-[#eaecf0] text-[11px] font-medium text-[#475467] capitalize">
+                        {labelOf(data.entity)}
+                    </span>
+                </div>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle>Summary</CardTitle>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[11px] font-medium text-[#067647]">
@@ -501,8 +517,8 @@ export function MigCard({
             return (
                 <CardShell>
                     <CardBody>
-                        Nothing to import yet — upload your customer export
-                        to begin.
+                        Nothing to import yet — upload your {labelOf(data.entity)}{" "}
+                        export to begin.
                     </CardBody>
                 </CardShell>
             );

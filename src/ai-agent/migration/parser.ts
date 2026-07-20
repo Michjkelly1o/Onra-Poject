@@ -17,7 +17,11 @@
 // warm-container assumption, no cold-start data loss). Same pattern as
 // storeSnapshot for the Insight flow — client owns state, server is pure.
 //
-// Ported from the pure parts of ONRA AI-Agent/lib/migration/MigrationStore.ts.
+// Phase 9 (2026-07-20): every planning fn now takes an `entity` arg and
+// routes to the matching EntityDef via `ENTITIES[entity]` for field
+// list, synonym dict, validator, and dedupe key. Adding a new entity is
+// one new file under `entities/` + one line in `entities/index.ts` —
+// this file doesn't need to change.
 
 import type { AuthContext } from "@/ai-agent/agent/auth";
 import type {
@@ -27,12 +31,10 @@ import type {
     MappingPreview,
 } from "@/ai-agent/migration/migration-cards";
 import {
-    CUSTOMER_FIELDS,
-    DICT,
+    ENTITIES,
     normHeader,
-} from "@/ai-agent/migration/customer-schema";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    type EntityKey,
+} from "@/ai-agent/migration/entities";
 
 /** Minimal CSV parser — same one the POC ships. Handles `\r` and blank
  *  lines. Doesn't do quoted-comma or escaped-quote parsing (fine for the
@@ -57,18 +59,27 @@ export function parseCsv(text: string): {
 }
 
 /** Branch detection: find a branch column and count rows per known branch.
- *  Falls back to `status: "none"` when no branch column is found. */
+ *  Falls back to `status: "none"` when no branch column is found. Uses
+ *  the ACTIVE entity's dict — since every entity's dict maps "branch" /
+ *  "location" / "club" → the entity's own branch field key. */
 export function branchAssignment(
     ctx: AuthContext,
+    entity: EntityKey,
     file: ParsedFile,
     knownBranches: { id: string; name: string; status: string }[],
 ): BranchAssignment {
+    const def = ENTITIES[entity];
     const allowed = knownBranches.filter(
         (b) => ctx.branchScope === "all" || ctx.branchScope.includes(b.id),
     );
-    const branchCol = file.columns.find(
-        (c) => DICT[normHeader(c)] === "branch_id",
-    );
+    // Find the source column that maps to this entity's branch field.
+    // The branch field key varies by entity (customers use branch_id;
+    // most others too — but the lookup goes through the entity's dict
+    // regardless, keeping this fn generic).
+    const branchCol = file.columns.find((c) => {
+        const target = def.dict[normHeader(c)];
+        return target === "branch_id";
+    });
     if (!branchCol) {
         if (allowed.length === 0) {
             return {
@@ -93,18 +104,23 @@ export function branchAssignment(
     };
 }
 
-/** Auto-map source columns to Onra target fields via DICT. Any header not
- *  in the dictionary comes back as `needs_review` (target=null). Returns
- *  BOTH the row-level mapping array (for the card) AND the invertible
- *  source→target lookup (for the preview step). */
-export function proposeMapping(file: ParsedFile): {
+/** Auto-map source columns to the entity's target fields via that
+ *  entity's dict. Any header not in the dictionary comes back as
+ *  `needs_review` (target=null). Returns BOTH the row-level mapping
+ *  array (for the card) AND the invertible source→target lookup (for
+ *  the preview step). */
+export function proposeMapping(
+    entity: EntityKey,
+    file: ParsedFile,
+): {
     mappings: MappingRow[];
     mapping: Record<string, string | null>;
     summary: { mapped: number; needs_review: number };
 } {
+    const def = ENTITIES[entity];
     const mapping: Record<string, string | null> = {};
     const mappings: MappingRow[] = file.columns.map((col) => {
-        const target = DICT[normHeader(col)] ?? null;
+        const target = def.dict[normHeader(col)] ?? null;
         mapping[col] = target;
         return {
             source: col,
@@ -123,46 +139,38 @@ export function proposeMapping(file: ParsedFile): {
     };
 }
 
-/** Dry-run: apply the mapping, validate every row, count valid / invalid /
- *  duplicate. Never mutates anything. `mapping` defaults to the auto-
- *  proposal so callers that skip explicit-mapping still get the demo
- *  numbers.
- *
- *  Validation rules (v1, matches POC):
- *    • first_name, last_name, email must all be mapped + non-empty
- *    • email must match a simple email regex
- *    • duplicate emails (case-insensitive) count as duplicates, not valid
- */
+/** Dry-run: apply the mapping, validate every row, count valid /
+ *  invalid / duplicate. Never mutates anything. Validation + dedupe
+ *  rules come from the entity's EntityDef. */
 export function preview(
+    entity: EntityKey,
     file: ParsedFile,
     mapping?: Record<string, string | null>,
 ): MappingPreview {
-    const effectiveMapping = mapping ?? proposeMapping(file).mapping;
+    const def = ENTITIES[entity];
+    const effectiveMapping = mapping ?? proposeMapping(entity, file).mapping;
     const inv: Record<string, string> = {};
     for (const [src, tgt] of Object.entries(effectiveMapping)) {
         if (tgt) inv[tgt] = src;
     }
 
-    const seenEmail = new Set<string>();
+    const seen = new Set<string>();
     let valid = 0;
     let invalid = 0;
     let duplicate = 0;
     for (const r of file.rows) {
-        const email = inv.email ? r[inv.email]?.trim().toLowerCase() : "";
-        const firstOk = inv.first_name
-            ? !!r[inv.first_name]?.trim()
-            : false;
-        const lastOk = inv.last_name ? !!r[inv.last_name]?.trim() : false;
-        const emailOk = !!email && EMAIL_RE.test(email);
-        if (!firstOk || !lastOk || !emailOk) {
+        if (!def.validate(r, inv)) {
             invalid++;
             continue;
         }
-        if (seenEmail.has(email)) {
-            duplicate++;
-            continue;
+        const key = def.dedupeKey?.(r, inv);
+        if (key) {
+            if (seen.has(key)) {
+                duplicate++;
+                continue;
+            }
+            seen.add(key);
         }
-        seenEmail.add(email);
         valid++;
     }
 
@@ -172,7 +180,7 @@ export function preview(
         .map(([src, t]) => ({
             source: src,
             target:
-                CUSTOMER_FIELDS.find((f) => f.key === t)?.label ?? String(t),
+                def.fields.find((f) => f.key === t)?.label ?? String(t),
         }));
     return {
         totals: { total: file.rows.length, valid, invalid, duplicate },
@@ -182,15 +190,16 @@ export function preview(
 }
 
 /** Commit — v1 returns the preview counts without actually writing to
- *  the customers store. That matches the POC's demo behaviour (the
- *  MigrationStore keeps a `committed` tally but doesn't create real
- *  customers). Wiring commits into the live Zustand store lands with
- *  Phase 9 when we add write-back for memberships / packages / etc. too. */
+ *  the corresponding Zustand store. That matches the POC's demo
+ *  behaviour (the MigrationStore keeps a `committed` tally but doesn't
+ *  create real rows). Wiring commits into the live Zustand store lands
+ *  in a later phase alongside proper audit + undo support. */
 export function commit(
+    entity: EntityKey,
     file: ParsedFile,
     mapping?: Record<string, string | null>,
 ): { created: number; skipped: number; failed: number } {
-    const p = preview(file, mapping);
+    const p = preview(entity, file, mapping);
     return {
         created: p.totals.valid,
         skipped: p.totals.duplicate,

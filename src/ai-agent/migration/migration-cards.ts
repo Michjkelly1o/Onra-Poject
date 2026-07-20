@@ -51,8 +51,11 @@ export type MigrationCard =
           platforms: Platform[];
       }
     | {
+          // Phase 9: `entity` now carried through from step 2 onward so
+          // MigCard can label ("15 customers", "8 memberships", etc.).
           card: "branch_assignment";
           step: number;
+          entity: string;
           status: "detected" | "none";
           rows: { branch_name: string; count: number }[];
           blocked?: { reason: "no_branches" };
