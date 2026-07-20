@@ -2,44 +2,50 @@
 // Onra AI Agent · Floating trigger button (fixed bottom-right)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The bottom-right entry point that opens the AI Agent modal. Three gates
-// stack — every one MUST pass, or the button renders null:
+// The bottom-right entry point that navigates to the AI Agent page. Three
+// gates stack — every one MUST pass, or the button renders null:
 //
 //   1. `AI_AGENT_UI_VISIBLE` (flags.ts) — a master switch. Currently `false`
 //      because today's push ships every other update but keeps the AI Agent
-//      hidden in the admin chrome. URL access via `/admin/ai-agent` still
-//      works while this is off (see that page's bootstrap useEffect).
+//      hidden in the admin chrome. URL access via `/ai-agent` still works
+//      while this is off.
 //   2. `isAiAgentEnabled(role)` (flags.ts) — role gate. Admin only.
-//   3. `!isOpen` — while the modal is showing there's no reason to display
-//      the trigger; hiding it also avoids z-index/click-through weirdness.
+//   3. `pathname === "/ai-agent"` — hide the trigger while the user is
+//      already on the agent page; no reason to nudge them somewhere they
+//      already are, and avoids the button floating over its own content.
 //
-// Styling matches the DS "primary" button (sage `--brand-tertiary`, black
-// text, DS shadow stack) so it feels native without a special palette.
+// On click, navigates to `/ai-agent?returnTo=<current path>` so the page's
+// close (X) can put the user back exactly where they came from.
 
 "use client";
 
 import { Stars02 } from "@untitledui/icons";
+import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import {
     AI_AGENT_UI_VISIBLE,
     isAiAgentEnabled,
 } from "@/ai-agent/flags";
-import { useAiAgentStore } from "@/ai-agent/state";
 
 export function FloatingAiButton() {
+    const router = useRouter();
+    const pathname = usePathname();
     const role = useAppStore((s) => s.currentRole);
-    const isOpen = useAiAgentStore((s) => s.isOpen);
-    const open = useAiAgentStore((s) => s.open);
 
     if (!AI_AGENT_UI_VISIBLE) return null;
     if (!isAiAgentEnabled(role)) return null;
-    if (isOpen) return null;
+    if (pathname === "/ai-agent") return null;
+
+    const handleClick = () => {
+        const returnTo = pathname || "/admin/dashboard";
+        router.push(`/ai-agent?returnTo=${encodeURIComponent(returnTo)}`);
+    };
 
     return (
         <button
             type="button"
             aria-label="Open Onra Agent"
-            onClick={() => open()}
+            onClick={handleClick}
             className={[
                 "fixed bottom-6 right-6 z-[60]",
                 "h-14 w-14 rounded-full flex items-center justify-center",

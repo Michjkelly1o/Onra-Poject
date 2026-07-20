@@ -7,13 +7,12 @@ import { Toast } from "@/components/ui/Toast";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { account_profile } from "@/data/mock/account_profile";
-// Onra AI Agent — Phase 4 mount points. Both components are self-gating:
-// FloatingAiButton renders null unless AI_AGENT_UI_VISIBLE + admin role, and
-// AiAgentModal renders null unless the store's `isOpen` flag is true. So
-// while today's client push has the UI flag OFF, both stay invisible until
-// a tester visits /admin/ai-agent (which flips the store flag).
+// Onra AI Agent — floating trigger, self-gated. Renders null unless
+// AI_AGENT_UI_VISIBLE + admin role. Navigates to /ai-agent (full-viewport
+// page outside admin chrome, per the Figma). While today's client push has
+// AI_AGENT_UI_VISIBLE off, the button never appears; testers reach the
+// agent by typing /ai-agent in the URL.
 import { FloatingAiButton } from "@/ai-agent/components/FloatingAiButton";
-import { AiAgentModal } from "@/ai-agent/components/AiAgentModal";
 
 export default function AdminLayout({
     children,
@@ -71,7 +70,6 @@ export default function AdminLayout({
             </div>
             <Toast />
             <FloatingAiButton />
-            <AiAgentModal />
         </>
     );
 }
