@@ -465,8 +465,6 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">
                         {/* ─── Customer details ─── */}
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[#101828]">Customer details</p>
-
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="First name">
                                     <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
@@ -513,8 +511,6 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
 
                         {/* ─── Address details ─── */}
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[#101828]">Address details</p>
-
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Country">
                                     {/* Flag icon per option (matches the phone
