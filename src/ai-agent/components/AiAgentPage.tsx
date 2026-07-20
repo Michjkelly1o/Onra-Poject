@@ -31,10 +31,11 @@
 
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-    X,
+    XClose,
     SearchLg,
     MessageChatCircle,
     Building01,
@@ -89,22 +90,34 @@ export function AiAgentPage() {
             style={{ fontFamily: DM_SANS_STACK }}
         >
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <header className="sticky top-0 z-10 h-[72px] flex items-center px-6 bg-white">
+            <header className="sticky top-0 z-10 h-[72px] flex items-center px-6 bg-white shrink-0">
                 <div className="flex items-center gap-3">
-                    {/* Close (X) — returns to `returnTo` or /admin/dashboard */}
+                    {/* Close (X) — matches the app's detail-page pattern
+                        (see CustomerDetailPage:1020-1023): XClose icon,
+                        w-9 h-9 rounded-[8px], text-#667085, hover:bg-#f9fafb.
+                        No text-color hover so it stays a pure surface hover. */}
                     <button
                         type="button"
                         aria-label="Close AI Agent"
                         onClick={handleClose}
-                        className="size-9 rounded-md flex items-center justify-center text-[#475467] hover:bg-[#f9fafb] hover:text-[#101828] transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                     >
-                        <X className="size-5" />
+                        <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
 
-                    {/* Logomark + title */}
+                    {/* Logomark + title. Real Onra logo mark (public/
+                        Logomark.webp) inside a 24×24 white bordered box —
+                        matches the Figma's Logomark component. */}
                     <div className="flex items-center gap-2">
-                        <div className="size-6 rounded-[6px] border border-[#d0d5dd] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                            <span className="text-[11px] font-semibold text-[#0c2d34] leading-none">O</span>
+                        <div className="size-6 rounded-[6px] border border-[#d0d5dd] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
+                            <Image
+                                src="/Logomark.webp"
+                                alt="Onra"
+                                width={18}
+                                height={18}
+                                className="block object-contain"
+                                priority
+                            />
                         </div>
                         <span className="text-[18px] font-semibold text-[#344054] leading-7">
                             AI Agent
@@ -214,15 +227,20 @@ function AgentChatSurface() {
             )}
         >
             {/* Mint gradient bg + concentric squares — grouped in one
-                aria-hidden layer so nothing decorative can intercept clicks. */}
+                aria-hidden layer so nothing decorative can intercept clicks.
+                Client 2026-07-20: the decorative squares point UPWARD from
+                the middle of the canvas (so the "tips" of the chevrons rise
+                toward the composer + empty state), NOT downward. */}
             <div aria-hidden className="absolute inset-0 pointer-events-none">
-                {/* Gradient: from transparent (top) to brand-50 #e9fff3
-                    (bottom). Extends across the full chat pane. */}
+                {/* Gradient: from brand-50 #e9fff3 at the TOP down to
+                    transparent — anchors the pattern at the top of the
+                    canvas so it feels like the chevrons rise out of a mint
+                    field. */}
                 <div
                     className="absolute inset-0"
                     style={{
                         background:
-                            "linear-gradient(to bottom, rgba(233,255,243,0) 40%, #e9fff3 100%)",
+                            "linear-gradient(to top, rgba(233,255,243,0) 40%, #e9fff3 100%)",
                     }}
                 />
                 <ConcentricSquaresDecoration />
@@ -240,11 +258,12 @@ function AgentChatSurface() {
 /** Decorative concentric rounded squares — reproduces the Figma's
  *  "Background pattern decorative" without pulling in the asset PNG.
  *
- *  Positioned so the pattern peeks in from the BOTTOM of the pane, rotated
- *  -32° to match the Figma. A radial-gradient mask focused at the bottom
- *  centre fades the pattern out quickly toward the top and edges, matching
- *  the Figma's mask asset (which used a small circular gradient). Overall
- *  opacity is kept low so the pattern reads as texture, never as content. */
+ *  Client 2026-07-20: pattern moved to the TOP of the canvas (previously
+ *  bottom). The concentric squares peek in from ABOVE the empty state so
+ *  the chevron tips point downward toward the content — matches the
+ *  "upward" direction the client wants (mint field flowing from the top,
+ *  chevrons emerging from it). Overall opacity 0.35 so it reads as
+ *  texture, never as content. */
 function ConcentricSquaresDecoration() {
     const sizes = [228, 342, 457, 571, 685, 800];
     return (
@@ -253,17 +272,17 @@ function ConcentricSquaresDecoration() {
             style={{
                 opacity: 0.35,
                 WebkitMaskImage:
-                    "radial-gradient(ellipse 55% 45% at 50% 100%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 75%)",
+                    "radial-gradient(ellipse 55% 45% at 50% 0%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 75%)",
                 maskImage:
-                    "radial-gradient(ellipse 55% 45% at 50% 100%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 75%)",
+                    "radial-gradient(ellipse 55% 45% at 50% 0%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 75%)",
             }}
         >
             <div
-                className="absolute left-1/2 bottom-0"
+                className="absolute left-1/2 top-0"
                 style={{
                     width: 800,
                     height: 800,
-                    transform: "translate(-50%, 35%) rotate(-32deg)",
+                    transform: "translate(-50%, -35%) rotate(-32deg)",
                 }}
             >
                 {sizes.map((size) => (
