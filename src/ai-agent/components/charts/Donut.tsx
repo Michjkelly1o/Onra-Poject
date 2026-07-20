@@ -1,15 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra AI Agent · Donut (Phase 5 — static, no gsap)
+// Onra AI Agent · Donut (Phase 5.5 — gsap draw-in animation)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Small-N part-to-whole share, ≤5 slices. Model chooses `visualize_as:
 // "donut"` in analyze() when the percentage IS the point (gender split,
 // plan mix). NEVER for money — that's a bar chart.
 //
-// Ported from ONRA AI-Agent/components/Donut.tsx (SVG geometry + palette
-// kept; gsap dash-offset animation stripped; class names → Tailwind).
+// Phase 5.5: each arc's `strokeDashoffset` tweens from `pct` to 0 so the
+// ring draws itself in around the circle. Stable-string key so streaming
+// re-renders don't restart mid-draw.
 
 "use client";
+
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
 
 type Unit = "AED" | "count";
 type Seg = { label: string; value: number };
@@ -31,7 +35,27 @@ export function Donut({
     centerLabel?: string;
     centerValue?: string;
 }) {
+    const svgRef = useRef<SVGSVGElement>(null);
     const total = segments.reduce((a, s) => a + s.value, 0) || 1;
+    const stableKey = segments.map((s) => `${s.label}:${s.value}`).join("|");
+
+    useEffect(() => {
+        const el = svgRef.current;
+        if (!el) return;
+        const ctx = gsap.context(() => {
+            const circles = el.querySelectorAll<SVGCircleElement>("[data-arc]");
+            circles.forEach((c) => {
+                const pct = Number(c.dataset.pct);
+                gsap.fromTo(
+                    c,
+                    { strokeDashoffset: pct },
+                    { strokeDashoffset: 0, duration: 1.0, ease: "power2.out" },
+                );
+            });
+        }, el);
+        return () => ctx.revert();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stableKey]);
 
     // Build cumulative arcs (pathLength = 100 normalises the circle).
     let acc = 0;
@@ -47,7 +71,7 @@ export function Donut({
 
     return (
         <div className="flex items-center gap-6 flex-wrap">
-            <svg viewBox="0 0 120 120" width={132} height={132} className="shrink-0">
+            <svg ref={svgRef} viewBox="0 0 120 120" width={132} height={132} className="shrink-0">
                 <circle
                     cx={CX}
                     cy={CX}
@@ -59,6 +83,8 @@ export function Donut({
                 {arcs.map((a, i) => (
                     <circle
                         key={i}
+                        data-arc
+                        data-pct={a.pct}
                         cx={CX}
                         cy={CX}
                         r={R}
@@ -67,6 +93,7 @@ export function Donut({
                         strokeWidth={14}
                         pathLength={100}
                         strokeDasharray={`${a.pct} ${100 - a.pct}`}
+                        strokeDashoffset={a.pct}
                         transform={`rotate(${-90 + a.start * 3.6} ${CX} ${CX})`}
                     />
                 ))}

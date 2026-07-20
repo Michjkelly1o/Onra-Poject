@@ -1,20 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra AI Agent · LineChart (Phase 5 — static, no gsap draw-in)
+// Onra AI Agent · LineChart (Phase 5.5 — gsap draw-in animation)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Time-series only. Model chooses `visualize_as: "line"` in analyze() when
 // grouping by a date field ("revenue over time", "bookings per day"). Never
 // used for magnitude comparison — that's a bar chart.
 //
-// Phase 5 renders static — no gsap dash-offset draw animation (that's
-// Phase 5.5). Hover interaction stays (React state, no gsap needed).
-//
-// Ported from ONRA AI-Agent/components/LineChart.tsx (SVG geometry +
-// gradient defs + palette kept; gsap timeline in useEffect removed).
+// Phase 5.5: gsap timeline draws the line via stroke-dashoffset, then
+// fades the area fill up, then pops the dots in with a back.out ease.
+// Total ~1.4s. Key off a stable string of path coords so streaming
+// re-renders don't restart the animation.
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import type { SeriesPoint } from "@/ai-agent/agent/cards";
 
 type Props = {
@@ -34,6 +34,9 @@ const fmt = (v: number, unit?: "AED" | "count") =>
 
 export function LineChart({ series, unit, valueLabel }: Props) {
     const [hover, setHover] = useState<number | null>(null);
+    const lineRef = useRef<SVGPathElement>(null);
+    const areaRef = useRef<SVGPathElement>(null);
+    const dotsRef = useRef<SVGGElement>(null);
 
     if (series.length === 0) return null;
 
@@ -61,6 +64,38 @@ export function LineChart({ series, unit, valueLabel }: Props) {
     const step = Math.max(1, Math.ceil(series.length / 6));
 
     const hp = hover != null ? pts[hover] : null;
+
+    // Animation timeline — draw the line via stroke-dashoffset, fade the
+    // area, pop the dots. Keyed off the stable linePath string so
+    // streaming re-renders that produce a new series array don't restart.
+    useEffect(() => {
+        const line = lineRef.current;
+        if (!line) return;
+        const len = line.getTotalLength();
+        const ctx = gsap.context(() => {
+            gsap.set(line, { strokeDasharray: len, strokeDashoffset: len });
+            const tl = gsap.timeline();
+            tl.to(line, { strokeDashoffset: 0, duration: 1.1, ease: "power2.out" })
+                .fromTo(
+                    areaRef.current,
+                    { opacity: 0 },
+                    { opacity: 1, duration: 0.6 },
+                    0.3,
+                )
+                .fromTo(
+                    dotsRef.current?.children ?? [],
+                    { scale: 0, transformOrigin: "center" },
+                    {
+                        scale: 1,
+                        duration: 0.35,
+                        stagger: 0.04,
+                        ease: "back.out(2)",
+                    },
+                    0.5,
+                );
+        });
+        return () => ctx.revert();
+    }, [linePath]);
 
     return (
         <div className="relative w-full">
@@ -118,8 +153,9 @@ export function LineChart({ series, unit, valueLabel }: Props) {
                     ) : null,
                 )}
 
-                <path d={areaPath} fill="url(#onra-area-fill)" />
+                <path ref={areaRef} d={areaPath} fill="url(#onra-area-fill)" />
                 <path
+                    ref={lineRef}
                     d={linePath}
                     fill="none"
                     stroke="#658774"
@@ -142,7 +178,7 @@ export function LineChart({ series, unit, valueLabel }: Props) {
                 )}
 
                 {/* dots */}
-                <g>
+                <g ref={dotsRef}>
                     {pts.map((p, i) => (
                         <circle
                             key={i}

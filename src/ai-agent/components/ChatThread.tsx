@@ -29,6 +29,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import type { UIMessage } from "@ai-sdk/ui-utils";
 import { useChat } from "@ai-sdk/react";
 import {
@@ -46,6 +47,18 @@ import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
+
+// three.js is ~600KB — dynamic import so it only ships when the empty
+// state is actually rendered (i.e. before the user's first message).
+// `ssr: false` avoids "document is not defined" during prerender.
+const ParticleOrb = dynamic(
+    () =>
+        import("@/ai-agent/components/ParticleOrb").then((m) => m.ParticleOrb),
+    {
+        ssr: false,
+        loading: () => <div aria-hidden className="size-[72px]" />,
+    },
+);
 
 const DM_SANS_STACK =
     "var(--font-brand-dm-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -163,7 +176,7 @@ function EmptyState({ onSend }: { onSend: (t: string) => void }) {
             <div className="flex flex-col gap-8 items-center w-full">
                 {/* Orb + copy */}
                 <div className="flex flex-col gap-4 items-center w-full">
-                    <AgentOrb />
+                    <ParticleOrb size={72} />
                     <div className="flex flex-col gap-1 text-center w-full items-center">
                         <h1
                             className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] inline-block"
@@ -220,21 +233,6 @@ function EmptyState({ onSend }: { onSend: (t: string) => void }) {
                 </div>
             </div>
         </div>
-    );
-}
-
-function AgentOrb() {
-    return (
-        <div
-            aria-hidden
-            className="size-[72px] rounded-full"
-            style={{
-                background:
-                    "radial-gradient(circle at 32% 30%, #eaf7ee 0%, #b7dcc4 35%, #7ba08c 68%, #4c6a5a 100%)",
-                boxShadow:
-                    "0 18px 32px -10px rgba(75, 140, 90, 0.35), inset 0 -6px 20px rgba(12, 45, 22, 0.25)",
-            }}
-        />
     );
 }
 
