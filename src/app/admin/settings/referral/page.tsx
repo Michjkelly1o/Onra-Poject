@@ -133,7 +133,7 @@ export default function ReferralSettingsPage() {
                 )}>
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[14px] font-semibold text-[#101828]">Referral program is active</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">Members can share a link and earn rewards when join.</p>
+                        <p className="text-[14px] text-[#667085] leading-[20px]">Customers can share a link and earn rewards when join.</p>
                     </div>
                     <Toggle on={settings.programActive} onChange={next => setPendingToggle({ next })} ariaLabel="Referral program master switch" />
                 </div>

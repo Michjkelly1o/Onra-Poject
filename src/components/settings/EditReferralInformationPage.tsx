@@ -172,7 +172,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                                 ref={editorRef}
                                 value={description}
                                 onChange={setDescription}
-                                placeholder="Write the referral information... drag a variable chip above into this field to personalize per-member values."
+                                placeholder="Write the referral information... drag a variable chip above into this field to personalize per-customer values."
                                 rows={12}
                                 className="flex-1 min-h-0"
                             />

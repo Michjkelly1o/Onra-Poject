@@ -74,7 +74,7 @@ function roleLabel(role: string | undefined): string {
     switch (role) {
         case "admin":      return "Owner";
         case "instructor": return "Instructor";
-        case "member":     return "Member";
+        case "member":     return "Customer";
         default:           return "Owner";
     }
 }

@@ -151,7 +151,7 @@ export function ReferralOverviewTab() {
     }
 
     const metricCards = [
-        { label: "New members",    value: String(metrics.newMembers) },
+        { label: "New customers",    value: String(metrics.newMembers) },
         { label: "Referrals sent", value: String(metrics.referralsSent) },
         { label: "Credits issued", value: `${metrics.creditsIssued} ${metrics.creditsIssued === 1 ? "credit" : "credits"}` },
         { label: "Est. revenue",   value: fmtAed(metrics.estRevenueAed) },
@@ -225,14 +225,14 @@ export function ReferralOverviewTab() {
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex flex-col gap-1 p-6 pb-4">
                     <p className="text-[16px] font-semibold text-[#101828]">Top referrers</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">Members driving the most sign-ups.</p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">Customers driving the most sign-ups.</p>
                 </div>
 
                 {ranked.length === 0 ? (
                     <div className="px-6 pb-8 pt-2">
                         <div className="border-1 border-dashed border-[#e4e7ec] rounded-[12px] py-10 flex flex-col items-center gap-1">
                             <p className="text-[14px] font-medium text-[#344054]">No referrers yet</p>
-                            <p className="text-[13px] text-[#667085]">Referrers appear here once members start sharing their link.</p>
+                            <p className="text-[13px] text-[#667085]">Referrers appear here once customers start sharing their link.</p>
                         </div>
                     </div>
                 ) : (
@@ -241,7 +241,7 @@ export function ReferralOverviewTab() {
                             <thead>
                                 <tr>
                                     <th className={cn(TH, "w-[48px] text-center")}>#</th>
-                                    <th className={TH}><SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggle}>Member</SortableHeader></th>
+                                    <th className={TH}><SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggle}>Customer</SortableHeader></th>
                                     <th className={TH}>Branch</th>
                                     <th className={TH}><SortableHeader sortKey="referrals" currentSort={sortKey} dir={sortDir} onSort={toggle}>Referrals</SortableHeader></th>
                                     <th className={TH}><SortableHeader sortKey="credits"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Credits earned</SortableHeader></th>

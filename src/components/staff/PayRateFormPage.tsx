@@ -1124,13 +1124,13 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                                         <div className="flex flex-col gap-4 w-full">
                                             <ToggleCard
                                                 title="Only count checked-in customers"
-                                                subtitle="Pay only for members marked Present (not just booked)."
+                                                subtitle="Pay only for customers marked Present (not just booked)."
                                                 value={form.onlyCheckedIn}
                                                 onChange={v => set({ onlyCheckedIn: v })}
                                             />
                                             <ToggleCard
                                                 title="Include late-cancelled customers"
-                                                subtitle="Counts late-cancel members toward pay."
+                                                subtitle="Counts late-cancel customers toward pay."
                                                 value={form.includeLateCancelled}
                                                 onChange={v => set({ includeLateCancelled: v })}
                                             />

@@ -339,7 +339,7 @@ export function WaitlistPanel({ open, onClose }: {
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="font-semibold text-[18px] text-[#101828]">Waitlist</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
-                            When a booked member cancels, the spot is offered to the waitlist in order.
+                            When a booked customer cancels, the spot is offered to the waitlist in order.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}

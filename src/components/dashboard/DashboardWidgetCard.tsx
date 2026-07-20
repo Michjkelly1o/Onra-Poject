@@ -366,17 +366,28 @@ function Legend({ items }: { items: { color: string; label: string }[] }) {
  *  the charts feel "location-aware" without wiring each widget's real data
  *  source individually. Returns 1.0 when no branch is picked (aggregate).
  *  Front-loaded weights favour the earliest branch (flagship / main). */
-function branchScaleFor(branchId: string | undefined, activeBranchIds: string[]): number {
-    if (!branchId) return 1;
-    const idx = activeBranchIds.indexOf(branchId);
-    if (idx === -1) return 0.5;
+function branchScaleFor(branchIds: string[] | undefined, activeBranchIds: string[]): number {
+    // No filter, empty selection, or every branch selected → full aggregate.
+    if (!branchIds || branchIds.length === 0 || branchIds.length >= activeBranchIds.length) return 1;
+    // Multi-branch scale = sum of each picked branch's own share, so
+    // picking 2 of 3 branches sums those two shares (both individually
+    // weighted 1/(i+1.4) and normalised over the full active set).
     const n = activeBranchIds.length;
     if (n <= 1) return 1;
-    if (n === 2) return idx === 0 ? 0.60 : 0.40;
-    // 3+ branches → weights 1/(i+1.4), normalized to sum to 1.
+    if (n === 2) {
+        return branchIds.reduce((acc, id) => {
+            const idx = activeBranchIds.indexOf(id);
+            if (idx === -1) return acc + 0.5;
+            return acc + (idx === 0 ? 0.60 : 0.40);
+        }, 0);
+    }
     const weights = activeBranchIds.map((_, i) => 1 / (i + 1.4));
     const sum = weights.reduce((a, b) => a + b, 0);
-    return weights[idx] / sum;
+    return branchIds.reduce((acc, id) => {
+        const idx = activeBranchIds.indexOf(id);
+        if (idx === -1) return acc + 0.5 / n;
+        return acc + weights[idx] / sum;
+    }, 0);
 }
 
 /** Aggregate failed customer transactions for the payments-collected widget's
@@ -394,7 +405,7 @@ function branchScaleFor(branchId: string | undefined, activeBranchIds: string[])
  *      lookup returns 0 → the bars vanish alongside the chip. */
 function computeFailedPaymentsStats(
     transactions: Array<import("@/lib/store").CustomerTransaction>,
-    branchId: string | undefined,
+    branchIds: string[] | undefined,
     period: DateFilter,
 ): { count: number; amountAed: number; perDay: Map<string, number> } {
     const range = dateFilterToRange(period);
@@ -403,9 +414,12 @@ function computeFailedPaymentsStats(
     let count = 0;
     let amountAed = 0;
     const perDay = new Map<string, number>();
+    // Empty array is treated as "no filter" so branchless / studio-wide
+    // aggregation still works when the picker is cleared to defaults.
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
     for (const t of transactions) {
         if (t.status !== "failed") continue;
-        if (branchId && t.branchId !== branchId) continue;
+        if (scoped && !scoped.includes(t.branchId)) continue;
         const ts = new Date(t.createdAtISO).getTime();
         if (Number.isNaN(ts) || ts < from || ts > to) continue;
         count += 1;
@@ -997,10 +1011,11 @@ interface DashboardWidgetCardProps {
     /** Date-range filter driving the chart's data length, labels and scale.
      *  Defaults to "This week" for backward compatibility. */
     period?: DateFilter;
-    /** Branch id to scope the widget's numbers. Empty / undefined = aggregate
-     *  across every active branch (the "All locations" state). Scales every
-     *  numeric field on the chart data via `branchScaleFor(...)`. */
-    branchId?: string;
+    /** Branch ids to scope the widget's numbers. Empty / undefined = aggregate
+     *  across every active branch (the "All locations" state). Passing every
+     *  active branch id is treated the same as empty. Scales every numeric
+     *  field on the chart data via `branchScaleFor(...)`. */
+    branchIds?: string[];
     /** undefined = no action button; "add" = + button; "kebab" = ··· remove menu */
     action?: "add" | "kebab";
     onAdd?: () => void;
@@ -1023,7 +1038,7 @@ interface DashboardWidgetCardProps {
     className?: string;
 }
 
-export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd, onRemove, onOpenFailedPayments, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
+export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd, onRemove, onOpenFailedPayments, dragHandle, onDragStart, className }: DashboardWidgetCardProps) {
     const meta = WIDGET_CATALOG.find(w => w.id === widgetId);
     // Every active branch's id, in stable seed order — feeds the deterministic
     // per-branch share used by `branchScaleFor(...)`. Inactive / archived
@@ -1031,7 +1046,7 @@ export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd,
     const activeBranchIds = useAppStore(s =>
         s.branches.filter(b => b.status === "active").map(b => b.id),
     );
-    const branchScale = branchScaleFor(branchId, activeBranchIds);
+    const branchScale = branchScaleFor(branchIds, activeBranchIds);
     // Real failed-payments figures for the payments-collected chip. Reads from
     // the same slice + filter shape the FailedPaymentsModal uses so the chip
     // and the modal always agree on "N failed · AED X". Only computed on the
@@ -1040,7 +1055,7 @@ export function DashboardWidgetCard({ widgetId, period, branchId, action, onAdd,
         widgetId === "payments-collected" ? s.customerTransactions : null,
     );
     const failedStats = widgetId === "payments-collected" && customerTransactions
-        ? computeFailedPaymentsStats(customerTransactions, branchId, period ?? DEFAULT_PERIOD)
+        ? computeFailedPaymentsStats(customerTransactions, branchIds, period ?? DEFAULT_PERIOD)
         : null;
     if (!meta) return null;
 

@@ -752,12 +752,12 @@ function AdditionalSettingsTab({ payRate }: { payRate: PayRate }) {
         <div className="flex flex-col px-6 pb-6 divide-y divide-[#f2f4f7]">
             <SettingRow
                 title="Only count checked-in customers"
-                subtitle="Excludes booked-but-absent members from pay calculation"
+                subtitle="Excludes booked-but-absent customers from pay calculation"
                 on={!!payRate.onlyCheckedIn}
             />
             <SettingRow
                 title="Include late-cancelled customers"
-                subtitle="Counts late-cancel members toward pay"
+                subtitle="Counts late-cancel customers toward pay"
                 on={!!payRate.includeLateCancelled}
             />
         </div>

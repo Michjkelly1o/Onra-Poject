@@ -370,11 +370,11 @@ export function ReferralRewardsPanel({ open, onClose }: {
                     {/* ── Caps & limits ──────────────────────────────── */}
                     <Section title="Caps & limits">
                         <div className="grid grid-cols-2 gap-4">
-                            <Field label="Max referrals per member">
+                            <Field label="Max referrals per customer">
                                 <NumberField
                                     value={maxReferrals}
                                     onChange={setMaxReferrals}
-                                    ariaLabel="Max referrals per member"
+                                    ariaLabel="Max referrals per customer"
                                     suffixSlot={
                                         <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
                                             friends

@@ -281,7 +281,7 @@ export default function KpiPage() {
             {filteredWidgets.length > 0 && (
                 <div className="grid grid-cols-2 gap-6">
                     {filteredWidgets.map(w => (
-                        <DashboardWidgetCard key={w.id} widgetId={w.id} period={period} branchId={location || undefined} />
+                        <DashboardWidgetCard key={w.id} widgetId={w.id} period={period} branchIds={location ? [location] : undefined} />
                     ))}
                 </div>
             )}

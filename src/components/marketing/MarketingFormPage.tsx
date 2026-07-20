@@ -879,7 +879,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                         )}
                                         {form.action === "external_link" && (
                                             <FormField label="External link"
-                                                hint="The link opens in a new tab when a member taps the CTA.">
+                                                hint="The link opens in a new tab when a customer taps the CTA.">
                                                 <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] h-10">
                                                     <div className="flex items-center px-[14px] text-[16px] text-[#667085] border-r-1 border-[#d0d5dd] bg-[#f9fafb]">http://</div>
                                                     <input type="text" value={form.externalUrl}

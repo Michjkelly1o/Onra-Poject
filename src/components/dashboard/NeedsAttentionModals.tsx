@@ -23,6 +23,13 @@
 //   attendance-mark elsewhere in the app immediately re-flows the tables.
 //   Every filter honours the caller-supplied branch scope so the modals stay
 //   consistent with the header branch picker.
+//
+// Branch scope prop shape (client 2026-07-20):
+//   `branchIds?: string[] | null` — array of branch ids the caller wants to
+//   include. `null`, `undefined`, and `[]` all mean "no filter — include
+//   every branch" (the "All locations" state). Any non-empty array narrows
+//   the modal to only those branches. Multi-branch selection is real — the
+//   modal shows the union of rows across the picked branches.
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -68,6 +75,16 @@ interface ModalShellProps {
  *  mockups' visible body height plus header + footer chrome. Falls back
  *  to viewport minus 48px gutter on smaller screens. */
 const MODAL_FIXED_HEIGHT = 780;
+
+/** Shared branch-scope predicate for the modals. Treats an unset / empty /
+ *  fully-populated array as "no scope" (include every branch). Any non-
+ *  empty subset narrows to the picked branches. Matches the invariant the
+ *  dashboard's TypeLocationFilter emits — the `locations` state can be
+ *  `[]`, `[oneId]`, or `[multipleIds]`, and this helper reads all three
+ *  consistently so every modal filters the same way. */
+function branchInScope(rowBranchId: string, scoped: string[] | null | undefined): boolean {
+    return !scoped || scoped.length === 0 || scoped.includes(rowBranchId);
+}
 
 function ModalShell({
     open, onClose, title, subtitle, children, footer, width = 900,
@@ -304,13 +321,13 @@ function fmtDateTime(iso: string | undefined): string {
 export interface RenewalDueModalProps {
     open: boolean;
     onClose: () => void;
-    branchId?: string | null;
+    branchIds?: string[] | null;
     /** Forward-N-day window (matches the dashboard Coming-up pill).
      *  Omit / undefined = defaults to 30 days (legacy behaviour). */
     forwardRangeDays?: number;
 }
 
-export function RenewalDueModal({ open, onClose, branchId, forwardRangeDays }: RenewalDueModalProps) {
+export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: RenewalDueModalProps) {
     const router         = useRouter();
     const customers      = useAppStore(s => s.customers);
     const customerPlans  = useAppStore(s => s.customerPlans);
@@ -349,12 +366,12 @@ export function RenewalDueModal({ open, onClose, branchId, forwardRangeDays }: R
             .map(p => {
                 const c = customers.find(cx => cx.id === p.customerId);
                 if (!c) return null;
-                if (branchId && c.branchId !== branchId) return null;
+                if (!branchInScope(c.branchId, branchIds)) return null;
                 const expiryDate = (p.expiryISO ?? "").slice(0, 10);
                 return { plan: p, customer: c, expiryDate, isExpired: false };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerPlans, customers, branchId, forwardRangeDays]);
+    }, [customerPlans, customers, branchIds, forwardRangeDays]);
 
     // Sortable columns — Customer / Membership / Status / Renews.
     // Sorting cycles desc → asc → off just like every other admin table.
@@ -394,7 +411,7 @@ export function RenewalDueModal({ open, onClose, branchId, forwardRangeDays }: R
     function sendReminderBulk() {
         showToast(
             "Reminders queued",
-            `${selected.size} member${selected.size === 1 ? "" : "s"} will receive a renewal reminder.`,
+            `${selected.size} customer${selected.size === 1 ? "" : "s"} will receive a renewal reminder.`,
             "success", "check",
         );
         setSelected(new Set());
@@ -551,13 +568,13 @@ export function RenewalDueModal({ open, onClose, branchId, forwardRangeDays }: R
 export interface FailedPaymentsModalProps {
     open: boolean;
     onClose: () => void;
-    branchId?: string | null;
+    branchIds?: string[] | null;
     /** Past-N-day window (matches the dashboard Coming-up pill).
      *  Omit / undefined = show all failed rows regardless of date. */
     pastRangeDays?: number;
 }
 
-export function FailedPaymentsModal({ open, onClose, branchId, pastRangeDays }: FailedPaymentsModalProps) {
+export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays }: FailedPaymentsModalProps) {
     const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const customerTransactions = useAppStore(s => s.customerTransactions);
@@ -588,7 +605,7 @@ export function FailedPaymentsModal({ open, onClose, branchId, pastRangeDays }: 
             // Restrict to `failed` so the modal, its badge, and the tab
             // all mean the same thing (client-flagged Jul 2026).
             .filter(t => t.status === "failed")
-            .filter(t => !branchId || t.branchId === branchId)
+            .filter(t => branchInScope(t.branchId, branchIds))
             // Optional past-window scope — set by the dashboard's Coming-up
             // pill so the modal list matches the metric count. When the
             // modal is opened outside the dashboard, `pastRangeDays` stays
@@ -605,7 +622,7 @@ export function FailedPaymentsModal({ open, onClose, branchId, pastRangeDays }: 
                 return { txn: t, customer: c };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerTransactions, customers, branchId, pastRangeDays]);
+    }, [customerTransactions, customers, branchIds, pastRangeDays]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -709,9 +726,9 @@ export function FailedPaymentsModal({ open, onClose, branchId, pastRangeDays }: 
 // Pattern column = "3 bookings/week" — computed from the customer's total
 // bookings ÷ weeks since their first booking, capped at 5.
 
-export interface AtRiskClientsModalProps { open: boolean; onClose: () => void; branchId?: string | null }
+export interface AtRiskClientsModalProps { open: boolean; onClose: () => void; branchIds?: string[] | null }
 
-export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsModalProps) {
+export function AtRiskClientsModal({ open, onClose, branchIds }: AtRiskClientsModalProps) {
     const router = useRouter();
     const customers    = useAppStore(s => s.customers);
     const memberships  = useAppStore(s => s.memberships);
@@ -735,7 +752,7 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
         const DAY = 24 * 60 * 60 * 1000;
         return customers
             .filter(c => c.status === "active")
-            .filter(c => !branchId || c.branchId === branchId)
+            .filter(c => branchInScope(c.branchId, branchIds))
             .filter(c => !!c.lastVisitISO)
             .map(c => {
                 const d = new Date(c.lastVisitISO!).getTime();
@@ -764,7 +781,7 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
                 return { customer: c, planLabel, pattern, daysAgo };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customers, memberships, packages, classBookings, branchId]);
+    }, [customers, memberships, packages, classBookings, branchIds]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -918,13 +935,13 @@ export function AtRiskClientsModal({ open, onClose, branchId }: AtRiskClientsMod
 export interface UnderFilledModalProps {
     open: boolean;
     onClose: () => void;
-    branchId?: string | null;
+    branchIds?: string[] | null;
     /** Forward-N-day window (matches the dashboard Coming-up pill).
      *  Omit / undefined = defaults to 30 days (legacy behaviour). */
     forwardRangeDays?: number;
 }
 
-export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: UnderFilledModalProps) {
+export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }: UnderFilledModalProps) {
     const router = useRouter();
     const classSchedules = useAppStore(s => s.classSchedules);
     const classBookings  = useAppStore(s => s.classBookings);
@@ -952,8 +969,8 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
             .filter(s => s.status === "Upcoming" || s.status === "Ongoing")
             .filter(s => s.dateISO >= todayISO && s.dateISO <= horizonISO)
             .filter(s => s.capacity > 0 && (s.booked / s.capacity) < 0.5)
-            .filter(s => !branchId || s.branchId === branchId);
-    }, [classSchedules, branchId, forwardRangeDays]);
+            .filter(s => branchInScope(s.branchId, branchIds));
+    }, [classSchedules, branchIds, forwardRangeDays]);
 
     // Rating column removed per client Jul 2026: every row here is Upcoming or
     // Ongoing, so rating is meaningless (class hasn't happened yet). Sort key
@@ -986,7 +1003,7 @@ export function UnderFilledModal({ open, onClose, branchId, forwardRangeDays }: 
         cancelClassSchedule(pendingCancel.id, true, "Cancelled from dashboard needs-attention");
         showToast(
             "Class cancelled",
-            `${pendingCancel.name} on ${fmtDate(pendingCancel.dateISO)} has been cancelled. Booked members will be refunded.`,
+            `${pendingCancel.name} on ${fmtDate(pendingCancel.dateISO)} has been cancelled. Booked customers will be refunded.`,
             "success", "check",
         );
         setPendingCancel(null);
@@ -1404,10 +1421,10 @@ function CancelClassConfirmModal({
 export interface RefundRequestsModalProps {
     open: boolean;
     onClose: () => void;
-    branchId?: string | null;
+    branchIds?: string[] | null;
 }
 
-export function RefundRequestsModal({ open, onClose, branchId }: RefundRequestsModalProps) {
+export function RefundRequestsModal({ open, onClose, branchIds }: RefundRequestsModalProps) {
     const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const customerTransactions = useAppStore(s => s.customerTransactions);
@@ -1427,13 +1444,13 @@ export function RefundRequestsModal({ open, onClose, branchId }: RefundRequestsM
     const rows = useMemo(() => {
         return customerTransactions
             .filter(t => t.status === "complete" && !!t.refundRequestedAtISO)
-            .filter(t => !branchId || t.branchId === branchId)
+            .filter(t => branchInScope(t.branchId, branchIds))
             .map(t => {
                 const c = customers.find(cx => cx.id === t.customerId);
                 return c ? { txn: t, customer: c } : null;
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerTransactions, customers, branchId]);
+    }, [customerTransactions, customers, branchIds]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -1535,10 +1552,10 @@ export function RefundRequestsModal({ open, onClose, branchId }: RefundRequestsM
 export interface WaitlistConfirmModalProps {
     open: boolean;
     onClose: () => void;
-    branchId?: string | null;
+    branchIds?: string[] | null;
 }
 
-export function WaitlistConfirmModal({ open, onClose, branchId }: WaitlistConfirmModalProps) {
+export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfirmModalProps) {
     const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const classBookings = useAppStore(s => s.classBookings);
@@ -1562,7 +1579,7 @@ export function WaitlistConfirmModal({ open, onClose, branchId }: WaitlistConfir
         const openTodaySchedIds = new Set(
             classSchedules
                 .filter(s => s.dateISO === todayISO && s.capacity > 0 && s.booked < s.capacity)
-                .filter(s => !branchId || s.branchId === branchId)
+                .filter(s => branchInScope(s.branchId, branchIds))
                 .map(s => s.id),
         );
         return classBookings
@@ -1573,7 +1590,7 @@ export function WaitlistConfirmModal({ open, onClose, branchId }: WaitlistConfir
                 return c && sched ? { booking: b, customer: c, sched } : null;
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [classBookings, classSchedules, customers, branchId, todayISO]);
+    }, [classBookings, classSchedules, customers, branchIds, todayISO]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -1664,10 +1681,10 @@ export function WaitlistConfirmModal({ open, onClose, branchId }: WaitlistConfir
 export interface NewSignupsModalProps {
     open: boolean;
     onClose: () => void;
-    branchId?: string | null;
+    branchIds?: string[] | null;
 }
 
-export function NewSignupsModal({ open, onClose, branchId }: NewSignupsModalProps) {
+export function NewSignupsModal({ open, onClose, branchIds }: NewSignupsModalProps) {
     const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const classBookings = useAppStore(s => s.classBookings);
@@ -1688,11 +1705,11 @@ export function NewSignupsModal({ open, onClose, branchId }: NewSignupsModalProp
         const bookedCustomerIds = new Set(classBookings.map(b => b.customerId));
         return customers
             .filter(c => c.status === "active")
-            .filter(c => !branchId || c.branchId === branchId)
+            .filter(c => branchInScope(c.branchId, branchIds))
             .filter(c => (c.createdAt ?? "").slice(0, 10) === todayISO)
             .filter(c => !bookedCustomerIds.has(c.id))
             .map(c => ({ customer: c }));
-    }, [customers, classBookings, branchId, todayISO]);
+    }, [customers, classBookings, branchIds, todayISO]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
         useSort<(typeof rows)[number]>(rows, {
@@ -1715,7 +1732,7 @@ export function NewSignupsModal({ open, onClose, branchId }: NewSignupsModalProp
             subtitle={
                 <>
                     <span className="font-semibold text-[#101828]">
-                        {totalRows} member{totalRows === 1 ? "" : "s"}
+                        {totalRows} customer{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     signed up today with no first booking yet
                 </>

@@ -1170,7 +1170,7 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                                     <RichTextEditor
                                         value={content.text}
                                         onChange={v => setContent(p => ({ ...p, text: v }))}
-                                        placeholder="Write the agreement text members will see..."
+                                        placeholder="Write the agreement text customers will see..."
                                         rows={10}
                                     />
                                 ) : (

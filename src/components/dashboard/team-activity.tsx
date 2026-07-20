@@ -311,7 +311,7 @@ export function useTeamActivity(limit: number = MAX_TEAM_ACTIVITY): TeamActivity
                 id: `cs_${c.id}`,
                 name: `${c.firstName} ${c.lastName}`.trim(),
                 timeAgo: relativeTime(c.createdAt),
-                description: "Signed up as a new member",
+                description: "Signed up as a new customer",
                 icon: Users01,
                 createdAt: c.createdAt,
             });

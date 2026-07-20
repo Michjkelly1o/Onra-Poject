@@ -22,6 +22,7 @@ import {
     CreditCard01,
     UserX01,
     UserCheck01,
+    ClockFastForward,
 } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -179,7 +180,7 @@ function exportPerformanceCsv(
 function PerformanceTab({
     activeWidgets,
     period,
-    branchId,
+    branchIds,
     onRemoveWidget,
     onReorderWidgets,
     onOpenModal,
@@ -189,9 +190,10 @@ function PerformanceTab({
     activeWidgets: string[];
     period: DateFilter;
     /** Branch scope — threaded through so widgets like Payments collected can
-     *  filter their failed-payments chip to the active branch. `null` = "All
-     *  locations" (aggregate across every branch). */
-    branchId: string | null;
+     *  filter their failed-payments chip to the active branches. `null` /
+     *  empty / all-selected all mean "All locations" (aggregate across every
+     *  branch). Multi-branch selection is real. */
+    branchIds: string[] | null;
     onRemoveWidget: (id: string) => void;
     /** Swap widgets at `fromIndex` and `toIndex` in the active list.
      *  Called by the native HTML5 drag-and-drop handlers below — no
@@ -270,7 +272,7 @@ function PerformanceTab({
                     <DashboardWidgetCard
                         widgetId={id}
                         period={period}
-                        branchId={branchId ?? undefined}
+                        branchIds={branchIds ?? undefined}
                         action="kebab"
                         dragHandle
                         className="h-full"
@@ -603,7 +605,7 @@ export default function AdminDashboard() {
     const [comingType, setComingType] = useState<SessionType | "">("");
     // "" = "All locations" — dashboard opens on the aggregate view so
     // KPIs read like the full studio on first paint.
-    const [location, setLocation] = useState<string>("");
+    const [locations, setLocations] = useState<string[]>([]);
     // Session-type filter (Today tab) — "" = All. Re-scopes the session-based
     // tiles (occupancy, bookings, sessions count) + the Today's-sessions list.
     const [typeFilter, setTypeFilter] = useState<SessionType | "">("");
@@ -669,15 +671,23 @@ export default function AdminDashboard() {
     // funnels through this so picking a branch in the header flows into the
     // KPI cards, the schedule list, the revenue trend and the activity feed
     // in the same render cycle.
-    const branchScopeId = location || null;
+    // Real multi-branch scope: pass the picked location array straight to
+    // every downstream widget/modal. Convention: null (or an empty array)
+    // means "no filter — every branch"; a non-empty array narrows to only
+    // those branches. All 7 needs-attention modals + DashboardWidgetCard
+    // now consume this shape (2026-07-20 refactor).
+    const branchScopeIds = locations.length === 0 ? null : locations;
     const todayISO = format(today, "yyyy-MM-dd");
 
-    // Branch-scoped slices. When no branch is picked we keep the global lists
-    // so "All locations" continues to show aggregate numbers.
-    const scopedSchedules = useMemo(
-        () => branchScopeId ? classSchedules.filter(s => s.branchId === branchScopeId) : classSchedules,
-        [classSchedules, branchScopeId],
-    );
+    // Branch-scoped slices. `branchScopeIds` is either null (no filter — every
+    // branch) or a non-empty array of branch ids to include. The Set here is
+    // built once per memo so per-row `.includes` is O(1) instead of O(N)
+    // even when many branches are picked.
+    const scopedSchedules = useMemo(() => {
+        if (!branchScopeIds) return classSchedules;
+        const allowed = new Set(branchScopeIds);
+        return classSchedules.filter(s => allowed.has(s.branchId));
+    }, [classSchedules, branchScopeIds]);
     // Merged session feed — class schedules + appointments (private + recovery)
     // projected into the same ClassInstance shape so the Today tab's session
     // metrics + list see all three types. Appointments join the grid once they
@@ -688,32 +698,39 @@ export default function AdminDashboard() {
             .filter(a => a.booked > 0 || a.status === "Cancelled")
             .map(appointmentToClassInstance);
         const merged = [...classSchedules, ...apptInstances];
-        return branchScopeId ? merged.filter(s => s.branchId === branchScopeId) : merged;
-    }, [classSchedules, appointments, branchScopeId]);
-    const scopedBookings = useMemo(
-        () => branchScopeId ? classBookings.filter(b => b.branchId === branchScopeId) : classBookings,
-        [classBookings, branchScopeId],
-    );
-    const scopedCustomers = useMemo(
-        () => branchScopeId ? customers.filter(c => c.branchId === branchScopeId) : customers,
-        [customers, branchScopeId],
-    );
-    const scopedTransactions = useMemo(
-        () => branchScopeId ? customerTransactions.filter(t => t.branchId === branchScopeId) : customerTransactions,
-        [customerTransactions, branchScopeId],
-    );
+        if (!branchScopeIds) return merged;
+        const allowed = new Set(branchScopeIds);
+        return merged.filter(s => allowed.has(s.branchId));
+    }, [classSchedules, appointments, branchScopeIds]);
+    const scopedBookings = useMemo(() => {
+        if (!branchScopeIds) return classBookings;
+        const allowed = new Set(branchScopeIds);
+        return classBookings.filter(b => allowed.has(b.branchId));
+    }, [classBookings, branchScopeIds]);
+    const scopedCustomers = useMemo(() => {
+        if (!branchScopeIds) return customers;
+        const allowed = new Set(branchScopeIds);
+        return customers.filter(c => allowed.has(c.branchId));
+    }, [customers, branchScopeIds]);
+    const scopedTransactions = useMemo(() => {
+        if (!branchScopeIds) return customerTransactions;
+        const allowed = new Set(branchScopeIds);
+        return customerTransactions.filter(t => allowed.has(t.branchId));
+    }, [customerTransactions, branchScopeIds]);
     // customer_plans has no branch column — filter via the plan's customer's
-    // branch. Same "" = All locations sentinel.
+    // branch. `scopedCustomers` is already restricted so the id-set derived
+    // from it naturally reflects the multi-branch pick.
     const scopedCustomerPlans = useMemo(() => {
-        if (!branchScopeId) return customerPlans;
+        if (!branchScopeIds) return customerPlans;
         const inScope = new Set(scopedCustomers.map(c => c.id));
         return customerPlans.filter(p => inScope.has(p.customerId));
-    }, [customerPlans, scopedCustomers, branchScopeId]);
+    }, [customerPlans, scopedCustomers, branchScopeIds]);
     // Coming-up occupancy cards (private + recovery) read from these.
-    const scopedAppointments = useMemo(
-        () => branchScopeId ? appointments.filter(a => a.branchId === branchScopeId) : appointments,
-        [appointments, branchScopeId],
-    );
+    const scopedAppointments = useMemo(() => {
+        if (!branchScopeIds) return appointments;
+        const allowed = new Set(branchScopeIds);
+        return appointments.filter(a => allowed.has(a.branchId));
+    }, [appointments, branchScopeIds]);
 
     // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
     // for Today, 7799:109180 for Performance). Each tab surfaces its own
@@ -920,7 +937,7 @@ export default function AdminDashboard() {
                 icon: CurrencyDollar,
             },
             {
-                label: "Members",
+                label: "Customers",
                 value: membersPeriod.toLocaleString("en-US"),
                 change: memD.change, positive: memD.positive, comparison: suffix,
                 icon: UserCheck01,
@@ -1191,18 +1208,15 @@ export default function AdminDashboard() {
         };
         const expiringMembershipsCard: DashboardMetric = {
             label: "Expiring memberships",
-            value: `${expiringMembershipsCount} ${expiringMembershipsCount === 1 ? "member" : "members"}`,
+            value: `${expiringMembershipsCount} ${expiringMembershipsCount === 1 ? "customer" : "customers"}`,
             comparison: `AED ${expiringMembershipsAed.toLocaleString("en-US")} recurring`,
             icon: RefreshCw01,
             onClick: () => setAttentionModal("renewal"),
         };
-        const atRiskCard: DashboardMetric = {
-            label: "At-risk clients",
-            value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
-            comparison: "no visit 14-30 days",
-            icon: UserX01,
-            onClick: () => setAttentionModal("atrisk"),
-        };
+        // At-risk clients + Trials-ending cards were removed from Coming-up
+        // (client 2026-07-20) and rehomed on the Today tab's Needs Attention
+        // list. The at-risk + trials data still compute inside the Today
+        // `needsAttention` useMemo. `underFilledCard` stays here.
         const underFilledCard: DashboardMetric = {
             label: "Under filled classes",
             value: `${underFilledInRange} ${underFilledInRange === 1 ? "class" : "classes"}`,
@@ -1216,17 +1230,13 @@ export default function AdminDashboard() {
             comparison: `within next ${comingRange} days`,
             icon: CreditCard01,
         };
-        const trialsEndingCard: DashboardMetric = {
-            label: "Trials ending",
-            value: `${trialsEndingCount} ${trialsEndingCount === 1 ? "client" : "clients"}`,
-            comparison: `within next ${comingRange} days`,
-            icon: UserX01,
-        };
+        // Coming-up occupancy card — renamed "Occupancy" → "Capacity used"
+        // per client 2026-07-20. Same numbers, clearer label.
         const occupancyCard = (
             occ: { booked: number; capacity: number },
             unit: "spot" | "slot",
         ): DashboardMetric => ({
-            label: "Occupancy",
+            label: "Capacity used",
             value: `${occ.booked}/${occ.capacity} ${occ.capacity === 1 ? unit : `${unit}s`}`,
             comparison: `${occupancyPct(occ)}% filled`,
             icon: CalendarCheck01,
@@ -1237,15 +1247,15 @@ export default function AdminDashboard() {
                 return [
                     revenueCard, recurringRevenueCard,
                     bookingsCard(classBookingsCount, pastClassBookings),
-                    expiringMembershipsCard, atRiskCard, underFilledCard,
-                    expiringCreditsCard, trialsEndingCard,
+                    expiringMembershipsCard, underFilledCard,
+                    expiringCreditsCard,
                     occupancyCard(classOccupancy, "spot"),
                 ];
             case "private":
                 return [
                     revenueCard,
                     bookingsCard(bookingsCountByType("private"), pastBookingsCountByType("private")),
-                    expiringMembershipsCard, atRiskCard,
+                    expiringMembershipsCard,
                     expiringCreditsCard,
                     occupancyCard(privateOccupancy, "slot"),
                 ];
@@ -1253,7 +1263,7 @@ export default function AdminDashboard() {
                 return [
                     revenueCard,
                     bookingsCard(bookingsCountByType("recovery"), pastBookingsCountByType("recovery")),
-                    atRiskCard, expiringCreditsCard,
+                    expiringCreditsCard,
                     occupancyCard(recoveryOccupancy, "slot"),
                 ];
             case "":
@@ -1261,7 +1271,7 @@ export default function AdminDashboard() {
                 return [
                     revenueCard,
                     bookingsCard(bookingsAllCount, pastBookingsAllCount),
-                    atRiskCard, expiringCreditsCard,
+                    expiringCreditsCard,
                 ];
         }
     }, [comingRange, comingType, scopedCustomerPlans, scopedSchedules, scopedBookings, scopedTransactions, scopedCustomers, scopedAppointments, appointmentBookings, packages]);
@@ -1390,6 +1400,41 @@ export default function AdminDashboard() {
             && !bookedCustomerIds.has(c.id),
         ).length;
 
+        // At-risk clients — customers whose last visit lands in the 14-30 day
+        // silent window (client 2026-07-20 — moved OUT of the Coming-up card
+        // set into the Today Needs Attention list because "at-risk" is a
+        // needs-action-now signal, not a forward-looking metric). Definition
+        // identical to the AtRiskClientsModal + the retired Coming-up card so
+        // the count and the drill-down list agree.
+        const nowAtRiskMs = Date.now();
+        const DAY_MS_AR = 24 * 60 * 60 * 1000;
+        const atRiskCount = scopedCustomers.filter(c => {
+            if (c.status !== "active") return false;
+            if (!c.lastVisitISO) return false;
+            const d = new Date(c.lastVisitISO).getTime();
+            if (Number.isNaN(d)) return false;
+            const daysAgo = Math.floor((nowAtRiskMs - d) / DAY_MS_AR);
+            return daysAgo >= 14 && daysAgo <= 30;
+        }).length;
+
+        // Trials ending — held package plans on an intro-flagged package
+        // whose expiry lands in the next 7 days (client 2026-07-20 — moved
+        // to Today Needs Attention with a short static window; 7 days keeps
+        // the row "action now" without leaning on the Coming-up range pill).
+        const introPackageIdSet = new Set(
+            packages.filter(p => p.is_intro_offer === true).map(p => p.id),
+        );
+        const nowMsTrials = Date.now();
+        const horizonMsTrials = nowMsTrials + 7 * DAY_MS_AR;
+        const trialsEndingCount = scopedCustomerPlans.filter(p => {
+            if (p.kind !== "package") return false;
+            if (p.status !== "active" && p.status !== "frozen") return false;
+            if (!p.productId || !introPackageIdSet.has(p.productId)) return false;
+            if (!p.expiryISO) return false;
+            const t = new Date(p.expiryISO).getTime();
+            return !Number.isNaN(t) && t >= nowMsTrials && t <= horizonMsTrials;
+        }).length;
+
         return {
             renewTodayCount: renewToday.length,
             renewTotalAed,
@@ -1400,8 +1445,10 @@ export default function AdminDashboard() {
             refundReqTotalAed,
             waitlistConfirmCount,
             newSignupsNoBooking,
+            atRiskCount,
+            trialsEndingCount,
         };
-    }, [scopedCustomerPlans, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO]);
+    }, [scopedCustomerPlans, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, packages]);
 
     function handleAddWidget(id: string) {
         if (activeWidgets.includes(id)) return;
@@ -1480,8 +1527,8 @@ export default function AdminDashboard() {
                     <TypeLocationFilter
                         type={typeFilter}
                         onTypeChange={setTypeFilter}
-                        location={location}
-                        onLocationChange={setLocation}
+                        locations={locations}
+                        onLocationsChange={setLocations}
                         options={branches
                             .filter(b => b.status === "active")
                             .map(b => ({ id: b.id, name: b.name }))}
@@ -1498,8 +1545,8 @@ export default function AdminDashboard() {
                     <TypeLocationFilter
                         type={comingType}
                         onTypeChange={setComingType}
-                        location={location}
-                        onLocationChange={setLocation}
+                        locations={locations}
+                        onLocationsChange={setLocations}
                         options={branches
                             .filter(b => b.status === "active")
                             .map(b => ({ id: b.id, name: b.name }))}
@@ -1516,8 +1563,8 @@ export default function AdminDashboard() {
                         triggerIcon={<MarkerPin01 className="w-5 h-5" />}
                         placeholder="Select location"
                         options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                        value={location}
-                        onChange={setLocation}
+                        value={locations.length === 1 ? locations[0] : ""}
+                        onChange={(v) => setLocations(v ? [v] : [])}
                         width="w-[220px]"
                     />
                 )}
@@ -1592,15 +1639,9 @@ export default function AdminDashboard() {
                 {metrics.map((metric) => (
                     <MetricCard key={metric.label} metric={metric} />
                 ))}
-                {/* Occupancy — Today tab only. The one metric that shows a
-                    three-way split on "All" (can't be averaged across types). */}
-                {activeTab === "today" && (
-                    <OccupancyCard
-                        byType={sessionMetrics.occupancyByType}
-                        selected={sessionMetrics.occupancySelected}
-                        typeFilter={typeFilter}
-                    />
-                )}
+                {/* Occupancy (Today) was removed 2026-07-20 per client feedback
+                    — the occupancy signal now lives on the Coming-up tab as
+                    "Capacity used" per session type. */}
             </div>
 
             {/* Performance tab */}
@@ -1608,7 +1649,7 @@ export default function AdminDashboard() {
                 <PerformanceTab
                     activeWidgets={activeWidgets}
                     period={period}
-                    branchId={branchScopeId}
+                    branchIds={branchScopeIds}
                     onOpenFailedPayments={() => setAttentionModal("failedWidget")}
                     onRemoveWidget={handleRemoveWidget}
                     onReorderWidgets={(fromIndex, toIndex) => {
@@ -1789,7 +1830,7 @@ export default function AdminDashboard() {
                         show: needsAttention.refundReqCount > 0,
                         icon: CoinsStacked01, iconBg: "bg-[#fff6ed]", iconFg: "text-[#c4320a]",
                         title: `${needsAttention.refundReqCount} refund ${needsAttention.refundReqCount === 1 ? "request" : "requests"} awaiting your decision`,
-                        subtitle: `A member is waiting on you · AED ${needsAttention.refundReqTotalAed.toLocaleString("en-US")} at stake`,
+                        subtitle: `A customer is waiting on you · AED ${needsAttention.refundReqTotalAed.toLocaleString("en-US")} at stake`,
                         onView: () => setAttentionModal("refund"),
                     },
                     {
@@ -1824,6 +1865,31 @@ export default function AdminDashboard() {
                         subtitle: "Nudge them while intent is warm",
                         onView: () => setAttentionModal("signups"),
                     },
+                    // At-risk clients — moved from Coming-up to Today
+                    // Needs Attention (client 2026-07-20). 14-30 day silent
+                    // window = "reach out now before we lose them" signal.
+                    {
+                        key: "atrisk",
+                        show: needsAttention.atRiskCount > 0,
+                        icon: UserX01, iconBg: "bg-[#fef3f2]", iconFg: "text-[#b42318]",
+                        title: `${needsAttention.atRiskCount} at-risk ${needsAttention.atRiskCount === 1 ? "customer" : "customers"}`,
+                        subtitle: "No visit in the last 14-30 days — reach out today",
+                        onView: () => setAttentionModal("atrisk"),
+                    },
+                    // Trials ending — moved from Coming-up to Today Needs
+                    // Attention (client 2026-07-20). Intro-package plans
+                    // expiring within the next 7 days = "convert now" window.
+                    {
+                        key: "trials",
+                        show: needsAttention.trialsEndingCount > 0,
+                        icon: ClockFastForward, iconBg: "bg-[#fff6ed]", iconFg: "text-[#c4320a]",
+                        title: `${needsAttention.trialsEndingCount} ${needsAttention.trialsEndingCount === 1 ? "trial ends" : "trials end"} within 7 days`,
+                        subtitle: "Follow up before the intro window closes",
+                        // No dedicated modal yet — reuse the coming-up
+                        // "Expiring credits" narrative via a generic wallet
+                        // deep link. Wire to a Trials modal in a follow-up.
+                        onView: () => setAttentionModal(null),
+                    },
                 ].filter(r => r.show);
 
                 // Nothing relevant today → hide the whole card.
@@ -1831,7 +1897,7 @@ export default function AdminDashboard() {
 
                 return (
                     <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                        <p className="font-semibold text-lg text-[#101828]">Needs attention today</p>
+                        <p className="font-semibold text-lg text-[#101828]">Needs Attention</p>
                         <div className="flex flex-col">
                             {rows.map((r, i) => (
                                 <NeedsAttentionRow
@@ -1864,7 +1930,7 @@ export default function AdminDashboard() {
             <RenewalDueModal
                 open={attentionModal === "renewal"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
                 /* Forward-N-day window — matches the Coming-up "Renewals
                    due" metric so count + list agree at both pill settings. */
                 forwardRangeDays={comingRange}
@@ -1872,7 +1938,7 @@ export default function AdminDashboard() {
             <FailedPaymentsModal
                 open={attentionModal === "failed"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
                 /* Last-24h window — matches the Needs-attention "Failed
                    payments recoverable now" row's rolling 24h count. */
                 pastRangeDays={1}
@@ -1883,7 +1949,7 @@ export default function AdminDashboard() {
             <FailedPaymentsModal
                 open={attentionModal === "failedWidget"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
                 /* Payments-collected widget window — scope the modal to the
                    same period bounds the widget's chip aggregates over so the
                    list count and the chip's number always agree. Widget
@@ -1894,12 +1960,12 @@ export default function AdminDashboard() {
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
             />
             <UnderFilledModal
                 open={attentionModal === "underfilled"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
                 /* Forward-N-day window — matches the Coming-up "Under
                    filled classes" metric so count + list agree at both
                    pill settings. */
@@ -1910,17 +1976,17 @@ export default function AdminDashboard() {
             <RefundRequestsModal
                 open={attentionModal === "refund"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
             />
             <WaitlistConfirmModal
                 open={attentionModal === "waitlist"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
             />
             <NewSignupsModal
                 open={attentionModal === "signups"}
                 onClose={() => setAttentionModal(null)}
-                branchId={branchScopeId}
+                branchIds={branchScopeIds}
             />
 
             <Toast />

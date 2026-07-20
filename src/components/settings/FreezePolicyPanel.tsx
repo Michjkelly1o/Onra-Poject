@@ -321,7 +321,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                             <Section title="Freeze reasons">
                                 <ToggleCard
                                     title="Allow exceptions"
-                                    subtitle="Require members to pick a reason when freezing."
+                                    subtitle="Require customers to pick a reason when freezing."
                                     on={form.allow_exceptions}
                                     onChange={v => patch({ allow_exceptions: v })}
                                     helpIcon
@@ -334,7 +334,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                                         <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
                                             <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
                                             <p className="text-[14px] text-[#475467] leading-[20px]">
-                                                Members will only see the reasons enabled below.
+                                                Customers will only see the reasons enabled below.
                                             </p>
                                         </div>
 

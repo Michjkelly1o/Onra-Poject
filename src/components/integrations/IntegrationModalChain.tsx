@@ -98,7 +98,7 @@ export const INTEGRATION_CONFIG: Record<IntegrationSlug, IntegrationConfig> = {
             "Class booking conversion funnel",
             "User session duration",
             "Top performing pages",
-            "Member acquisition source",
+            "Customer acquisition source",
         ],
         accountFields: [
             { label: "Account",  value: "studio@example.com" },
@@ -150,10 +150,10 @@ export const INTEGRATION_CONFIG: Record<IntegrationSlug, IntegrationConfig> = {
     mailchimp: {
         logo: "https://api.iconify.design/logos:mailchimp-freddie.svg",
         providerName: "Mailchimp",
-        connectSubtitle: "Sync members and run campaigns & newsletters",
+        connectSubtitle: "Sync customers and run campaigns & newsletters",
         listHeader: "What will be synced:",
         listItems: [
-            "Member contact details",
+            "Customer contact details",
             "Membership status",
             "Booking history",
             "Campaign engagement metrics",

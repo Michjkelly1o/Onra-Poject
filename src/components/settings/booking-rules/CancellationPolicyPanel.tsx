@@ -390,7 +390,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-8 select-text">
                     {/* ── Credit & package members (Figma 7714:17242) ── */}
-                    <Section title="Credit & package members">
+                    <Section title="Credit & package customers">
                         <CreditWindowRow
                             windowLabel="Cancel window – before class start"
                             windowValue={beforeValue}
@@ -461,7 +461,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                                     !penaltyOn && "opacity-50",
                                 )}>
                                     <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge a late cancel fee</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">For unlimited members.</p>
+                                    <p className="text-[14px] text-[#667085] leading-[20px]">For unlimited customers.</p>
                                 </div>
                                 <Toggle
                                     on={lateFeeOn}
@@ -536,7 +536,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                         <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
                             <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
                             <p className="text-[14px] text-[#475467] leading-[20px]">
-                                Members will only see the reasons enabled below when they cancel a plan.
+                                Customers will only see the reasons enabled below when they cancel a plan.
                             </p>
                         </div>
 

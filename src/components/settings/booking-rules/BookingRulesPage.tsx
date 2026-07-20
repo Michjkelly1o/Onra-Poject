@@ -130,7 +130,7 @@ export default function BookingRulesPage() {
         showToast(
             next ? "Waitlist enabled" : "Waitlist disabled",
             next
-                ? "Members can now join the waitlist when a class is full."
+                ? "Customers can now join the waitlist when a class is full."
                 : "The waitlist offer is paused for every class.",
             next ? "success" : "error",
             next ? "check"   : "slash",
@@ -169,7 +169,7 @@ export default function BookingRulesPage() {
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[16px] font-semibold text-[#101828]">Waitlist</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
-                            When a booked member cancels, the spot is offered to the waitlist in order (oldest first).
+                            When a booked customer cancels, the spot is offered to the waitlist in order (oldest first).
                         </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
@@ -352,7 +352,7 @@ function Toggle({ on, onChange, ariaLabel }: {
 function CancellationRuleSummary({ policy }: { policy: CancellationPolicy }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Credit &amp; package members</p>
+            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Credit &amp; package customers</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                 <SummaryField
                     label="Cancel window – before class start"

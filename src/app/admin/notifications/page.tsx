@@ -154,7 +154,7 @@ const TAB_EMPTY_COPY: Record<TabKey, { title: string; subtitle: string }> = {
     },
     team: {
         title: "No team activity yet",
-        subtitle: "Member bookings, purchases, and check-ins will appear here as they happen.",
+        subtitle: "Customer bookings, purchases, and check-ins will appear here as they happen.",
     },
 };
 

@@ -30,7 +30,7 @@
 // refactor; the visual affordance already fits it.
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, MarkerPin01 } from "@untitledui/icons";
+import { Check, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import {
     SESSION_TYPE_LABEL,
@@ -40,24 +40,18 @@ import {
 import type { SessionType } from "@/lib/store";
 
 export interface LocationOption {
-    /** Empty string means "All locations" — kept out of `options`; rendered
-     *  as a fixed leading row so callers only pass real branches. */
     id: string;
     name: string;
 }
 
 export interface TypeLocationFilterProps {
-    /** "" = All types. Any specific SessionType filters both the trigger
-     *  label and the sub-lists downstream consumers scope by. */
+    /** "" = All types. Single-select. */
     type: SessionType | "";
     onTypeChange: (next: SessionType | "") => void;
-    /** "" = All locations (no branch scope). Any non-empty string is a
-     *  `branches[].id`. Single-select — picking a branch replaces the prior
-     *  selection instead of adding to it. */
-    location: string;
-    onLocationChange: (next: string) => void;
-    /** Real branches only (no "All locations" entry — the panel renders
-     *  that row itself as a fixed leading option). */
+    /** Multi-select branch ids. Empty array = "All locations". */
+    locations: string[];
+    onLocationsChange: (next: string[]) => void;
+    /** Real branches only. The panel renders "All locations" itself. */
     options: LocationOption[];
     className?: string;
 }
@@ -72,16 +66,14 @@ function typeDotColor(t: SessionType): string {
 export function TypeLocationFilter({
     type,
     onTypeChange,
-    location,
-    onLocationChange,
+    locations,
+    onLocationsChange,
     options,
     className,
 }: TypeLocationFilterProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
-    // Outside-click closes — same pattern as DateRangeFilter so the two
-    // popovers behave identically on the header row.
     useEffect(() => {
         function handler(e: MouseEvent) {
             if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -92,22 +84,34 @@ export function TypeLocationFilter({
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    // ── Trigger label ────────────────────────────────────────────────────────
-    // "All types" / SessionType label · "All locations" / branch name.
+    // Trigger label — type · location(s).
     const typeLabel = type === "" ? "All types" : SESSION_TYPE_LABEL[type];
+    // "All locations" is CHECKED only when every branch is in the array.
+    // Empty array is treated as "no filter" downstream, and the label falls
+    // back to "All locations" so the trigger reads sensibly on a fresh load.
+    const allChecked = options.length > 0 && locations.length === options.length;
     const locationLabel =
-        location === ""
+        locations.length === 0 || allChecked
             ? "All locations"
-            : options.find((o) => o.id === location)?.name ?? "All locations";
+            : locations.length === 1
+              ? options.find((o) => o.id === locations[0])?.name ?? "1 location"
+              : `${locations.length} locations`;
+
+    function toggleLocation(id: string) {
+        if (locations.includes(id)) onLocationsChange(locations.filter((x) => x !== id));
+        else onLocationsChange([...locations, id]);
+    }
+
+    // Master checkbox — clicking "All locations" fills or clears the array.
+    // Individual branch clicks feed this back automatically: unchecking any
+    // one branch drops `allChecked` false and unchecks the master.
+    function toggleAll() {
+        if (allChecked) onLocationsChange([]);
+        else onLocationsChange(options.map((o) => o.id));
+    }
 
     return (
         <div ref={ref} className={cn("relative", className)}>
-            {/* ── Trigger ──────────────────────────────────────────────────
-                Matches DateRangeFilter's h-40 pill spec (px-14, rounded-8,
-                same shadow) so the two controls read as one visual set on
-                the header row. Type dot on the left renders only when a
-                specific type is picked — the "All types" state stays
-                dotless to match the neutral-header convention. */}
             <button
                 type="button"
                 onClick={() => setOpen((p) => !p)}
@@ -118,14 +122,12 @@ export function TypeLocationFilter({
                     "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
                 )}
             >
-                {type !== "" ? (
+                {type !== "" && (
                     <span
                         className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: typeDotColor(type) }}
                         aria-hidden
                     />
-                ) : (
-                    <MarkerPin01 className="w-5 h-5 text-[#667085] shrink-0" />
                 )}
                 <span className="text-[14px] font-semibold text-[#344054]">
                     {typeLabel} · {locationLabel}
@@ -169,26 +171,25 @@ export function TypeLocationFilter({
                         ))}
                     </div>
 
-                    {/* ─── Locations column ─── */}
+                    {/* ─── Locations column ─── multi-select checkboxes */}
                     <div className="flex flex-col gap-[4px] px-[16px] py-[12px] shrink-0 min-w-[220px]">
                         <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
                             Locations
                         </p>
+                        {/* Master checkbox — clicking fills or clears every
+                            branch. Reflects checked only when every branch is
+                            individually in the array. */}
                         <LocationRow
-                            active={location === ""}
+                            active={allChecked}
                             label="All locations"
-                            onClick={() => onLocationChange("")}
+                            onClick={toggleAll}
                         />
                         {options.map((o) => (
                             <LocationRow
                                 key={o.id}
-                                active={location === o.id}
+                                active={locations.includes(o.id)}
                                 label={o.name}
-                                // Radio-under-checkbox: picking a branch REPLACES
-                                // the current selection. Clicking the already-
-                                // active branch is a no-op (matches the UX of the
-                                // Type column above).
-                                onClick={() => onLocationChange(o.id)}
+                                onClick={() => toggleLocation(o.id)}
                             />
                         ))}
                     </div>
@@ -226,7 +227,9 @@ function TypeRow({
             className={cn(
                 "w-full h-[36px] px-[8px] flex items-center gap-[10px] rounded-[6px]",
                 "text-[14px] text-left transition-colors",
-                active ? "text-[#101828] font-semibold" : "text-[#344054] hover:bg-[#f9fafb]",
+                active
+                    ? "bg-[#f9fafb] text-[#101828] font-semibold"
+                    : "text-[#344054] hover:bg-[#f9fafb]",
             )}
         >
             {dot ? (
@@ -264,7 +267,9 @@ function LocationRow({
             className={cn(
                 "w-full h-[36px] px-[8px] flex items-center gap-[10px] rounded-[6px]",
                 "text-[14px] text-left transition-colors",
-                active ? "text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                active
+                    ? "bg-[#f9fafb] text-[#101828]"
+                    : "text-[#344054] hover:bg-[#f9fafb]",
             )}
         >
             <span

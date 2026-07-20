@@ -503,7 +503,7 @@ export default function MarketingListPage() {
                     <EmptyState
                         title={marketingItems.length === 0 ? "No campaigns yet" : "No campaigns found"}
                         subtitle={marketingItems.length === 0
-                            ? "Create your first campaign to engage your members."
+                            ? "Create your first campaign to engage your customers."
                             : "Try adjusting your search or filters."}
                     />
                 </div>

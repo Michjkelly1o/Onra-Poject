@@ -55,7 +55,7 @@ import {
 function roleDisplayName(role: User["role"]): string {
     if (role === "admin") return "Owner";
     if (role === "instructor") return "Instructor";
-    return "Member";
+    return "Customer";
 }
 
 function fullNameOf(user: User): string {

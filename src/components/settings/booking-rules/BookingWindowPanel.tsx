@@ -219,7 +219,7 @@ export function BookingWindowPanel({ open, onClose }: {
                                     Allow bookings until the class starts
                                 </p>
                                 <p className="text-[14px] text-[#667085] leading-[20px]">
-                                    Member can book right up to the last minute.
+                                    Customer can book right up to the last minute.
                                 </p>
                             </div>
                             <Toggle

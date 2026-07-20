@@ -560,7 +560,7 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                             {tab === "condition" ? (
                                 "Manage when we push the reminder."
                             ) : (
-                                <>Customize the copy sent to members for this event. Variables in <span className="text-[#6941c6]">{"{curly_braces}"}</span> are replaced at send time.</>
+                                <>Customize the copy sent to customers for this event. Variables in <span className="text-[#6941c6]">{"{curly_braces}"}</span> are replaced at send time.</>
                             )}
                         </p>
                     </div>
@@ -1339,7 +1339,7 @@ export default function CustomerNotificationsPage() {
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[16px] font-semibold text-[#101828]">Customer notifications</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
-                            Choose which channels each message goes out on, and edit the copy your members receive.
+                            Choose which channels each message goes out on, and edit the copy your customers receive.
                         </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">

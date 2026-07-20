@@ -111,7 +111,7 @@ const CATEGORIES: ReportCategory[] = [
         icon: User01,
         items: [
             { slug: "customer-data",       label: "Customer Data (Active vs Inactive)"      },
-            { slug: "member-movement",     label: "Member Movement (Sign-ups & Net Change)" },
+            { slug: "member-movement",     label: "Customer Movement (Sign-ups & Net Change)" },
             { slug: "retention-churn",     label: "Retention & Churn"                       },
             { slug: "win-back",            label: "Win-back"                                },
         ],

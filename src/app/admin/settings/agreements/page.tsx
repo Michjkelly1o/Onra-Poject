@@ -718,7 +718,7 @@ export default function AgreementsPage() {
                         <EmptyState
                             title={isTrulyEmpty ? "No agreements yet" : "No agreements found"}
                             subtitle={isTrulyEmpty
-                                ? "Create your first agreement to start collecting member signatures."
+                                ? "Create your first agreement to start collecting customer signatures."
                                 : hasActiveFilter
                                     ? "Try adjusting your search or filters."
                                     : "Try clearing the filter to see all agreements."}

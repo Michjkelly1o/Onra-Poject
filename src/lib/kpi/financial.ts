@@ -190,7 +190,7 @@ export function computeFinancialKpis(
           description: "Monthly recurring revenue from active subscriptions.",
           drillTo: "/reports/mrr" },
         { label: "Avg revenue per member (ARPM)", value: aed(arpmCur),             change: delta(arpmCur, arpmPrior),                     period,
-          description: "Net revenue ÷ active members.",
+          description: "Net revenue ÷ active customers.",
           drillTo: "/reports/arpm" },
         { label: "Revenue per class",            value: aed(revPerClassCur),       change: delta(revPerClassCur, revPerClassPrior),       period,
           description: "Revenue attributed ÷ sessions run.",
