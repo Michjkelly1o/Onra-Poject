@@ -129,13 +129,14 @@ export default function ClassDetailPage() {
                         </>
                     ) : (
                         <>
-                            {/* Credit balance + what this class costs (4px apart). */}
+                            {/* What this class costs leads (prominent); the running
+                                balance sits under it, muted. 4px apart. */}
                             <span className="flex min-w-0 flex-col gap-1">
                                 <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
-                                    {typeof credits === "number" ? `${credits} credits left` : " "}
+                                    {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"}
                                 </span>
                                 <span className="text-sm font-normal leading-5 text-[#475467]">
-                                    {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"} used
+                                    {typeof credits === "number" ? `${credits} credits left` : " "}
                                 </span>
                             </span>
                             {detail.state === "available" ? (

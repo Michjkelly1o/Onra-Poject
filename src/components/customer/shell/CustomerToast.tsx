@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
-import { Archive, Check, RefreshCcw01, SlashCircle01, Trash01 } from "@untitledui/icons";
+import { Archive, Bell01, Check, RefreshCcw01, SlashCircle01, Trash01 } from "@untitledui/icons";
 import { useAppStore, type ToastData } from "@/lib/store";
 
 const SUCCESS = "var(--brand-primary)";
@@ -38,6 +38,8 @@ function resolveIcon(icon: ToastData["icon"], type: ToastData["type"]): {
             return { Icon: Archive, color: NEUTRAL };
         case "check":
             return { Icon: Check, color: SUCCESS };
+        case "bell":
+            return { Icon: Bell01, color: NEUTRAL };
         default:
             return { Icon: Check, color: type === "error" ? DANGER : SUCCESS };
     }

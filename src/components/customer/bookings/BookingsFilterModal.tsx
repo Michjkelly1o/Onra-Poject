@@ -47,6 +47,8 @@ export interface BookingsFilterModalProps {
     onSeeAll: () => void;
     onReset: () => void;
     onApply: () => void;
+    /** Rows the current draft selection would return — drives "Show N results". */
+    resultCount?: number;
 }
 
 export function BookingsFilterModal({
@@ -59,6 +61,7 @@ export function BookingsFilterModal({
     onSeeAll,
     onReset,
     onApply,
+    resultCount,
 }: BookingsFilterModalProps) {
     const disabled = bookingFilterCount(draft) === 0;
     const pillInstructors = instructors.slice(0, 5);
@@ -87,6 +90,7 @@ export function BookingsFilterModal({
             onClose={onClose}
             onReset={onReset}
             onApply={onApply}
+            resultCount={resultCount}
             resetDisabled={disabled}
             applyDisabled={disabled}
         >

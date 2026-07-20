@@ -45,6 +45,8 @@ export interface ClassesFilterModalProps {
     showInstructor?: boolean;
     /** Show the session Type section (Appointments filter: Private / Recovery). */
     showType?: boolean;
+    /** Rows the current draft selection would return — drives "Show N results". */
+    resultCount?: number;
 }
 
 export function ClassesFilterModal({
@@ -57,6 +59,7 @@ export function ClassesFilterModal({
     onSeeAll,
     onReset,
     onApply,
+    resultCount,
     showTime = true,
     showInstructor = true,
     showType = false,
@@ -88,6 +91,7 @@ export function ClassesFilterModal({
             applyDisabled={!active}
             onReset={onReset}
             onApply={onApply}
+            resultCount={resultCount}
         >
             <div className="flex flex-col gap-6">
                 {/* Time of day — three predefined pills (reuses the Categories chip). */}

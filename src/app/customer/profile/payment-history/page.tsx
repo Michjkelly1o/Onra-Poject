@@ -103,6 +103,9 @@ export default function PaymentHistoryPage() {
     }, [records, applied]);
 
     const fcount = paymentFilterCount(applied);
+    // Live count for the draft selection — same predicate as the applied list.
+    const draftResultCount = applyFilters(records, draft).length;
+    const filteredCount = applyFilters(records, applied).length;
 
     if (!isAuth) return null;
 
@@ -137,6 +140,12 @@ export default function PaymentHistoryPage() {
             </CustomerHeader>
 
             <div className="flex flex-1 flex-col px-4 pb-8 pt-[80px]">
+                {/* Result total — shown whenever a filter narrows the list. */}
+                {fcount > 0 && (
+                    <p className="pb-3 text-sm font-normal leading-5 text-[#475467]">
+                        {filteredCount} result{filteredCount === 1 ? "" : "s"}
+                    </p>
+                )}
                 {groups.length === 0 ? (
                     <div className="flex flex-1 items-center justify-center">
                         <SearchEmptyState
@@ -173,6 +182,7 @@ export default function PaymentHistoryPage() {
                 onClose={() => setFilterOpen(false)}
                 draft={draft}
                 onDraftChange={setDraft}
+                resultCount={draftResultCount}
                 onReset={() => {
                     setDraft(EMPTY_PAYMENT_FILTERS);
                     setApplied(EMPTY_PAYMENT_FILTERS);

@@ -96,19 +96,25 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
     // can split Private vs Recovery appointments.
     const services = useAppStore((s) => s.services);
     const serviceType = useMemo(() => new Map(services.map((s) => [s.id, s.type])), [services]);
-    const filteredAppts = showAppts.filter((a) => {
-        if (applied.type === "Classes") return false;
+    // Shared predicate so the applied list and the filter modal's live
+    // "Show N results" count can never disagree about what a filter means.
+    const matchesApptFilters = (a: (typeof showAppts)[number], f: BookingFilters) => {
+        if (f.type === "Classes") return false;
         const sType = serviceType.get(a.appointmentId) ?? (a.type === "open" ? "recovery" : "private");
-        if (applied.type === "Private" && sType !== "private") return false;
-        if (applied.type === "Recovery" && sType !== "recovery") return false;
+        if (f.type === "Private" && sType !== "private") return false;
+        if (f.type === "Recovery" && sType !== "recovery") return false;
         return (
-            (applied.instructorIds.length === 0 ||
-                (a.instructorId != null && applied.instructorIds.includes(a.instructorId))) &&
-            (applied.categories.length === 0 || applied.categories.includes(a.category)) &&
-            (!applied.dateFrom || a.slotISO >= applied.dateFrom) &&
-            (!applied.dateTo || a.slotISO <= applied.dateTo)
+            (f.instructorIds.length === 0 || (a.instructorId != null && f.instructorIds.includes(a.instructorId))) &&
+            (f.categories.length === 0 || f.categories.includes(a.category)) &&
+            (!f.dateFrom || a.slotISO >= f.dateFrom) &&
+            (!f.dateTo || a.slotISO <= f.dateTo)
         );
-    });
+    };
+    const filteredAppts = showAppts.filter((a) => matchesApptFilters(a, applied));
+    // Live count for the DRAFT selection — classes + appointments, same as the
+    // merged list the customer is about to see.
+    const draftResultCount =
+        applyBookingFilters(baseList, draft).length + showAppts.filter((a) => matchesApptFilters(a, draft)).length;
 
     // Merge appointments + class bookings into ONE list sorted by date/time —
     // Upcoming = soonest first, Past = most recent first.
@@ -234,6 +240,12 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
             </CustomerHeader>
 
             <div className="flex flex-1 flex-col px-4 pb-4 pt-[116px]">
+                {/* Result total — shown whenever a filter narrows the list. */}
+                {fcount > 0 && (
+                    <p className="pb-3 text-sm font-normal leading-5 text-[#475467]">
+                        {list.length + filteredAppts.length} result{list.length + filteredAppts.length === 1 ? "" : "s"}
+                    </p>
+                )}
                 {list.length === 0 && showAppts.length === 0 ? (
                     fcount > 0 ? (
                         <div className="flex flex-1 items-center justify-center">
@@ -272,6 +284,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                 onClose={() => setFilterOpen(false)}
                 draft={draft}
                 onDraftChange={setDraft}
+                resultCount={draftResultCount}
                 instructors={instructors}
                 categories={categories}
                 onSeeAll={() => router.push("/customer/bookings/instructors")}

@@ -24,6 +24,11 @@ export interface FullScreenFilterModalProps {
     resetDisabled?: boolean;
     applyDisabled?: boolean;
     applyLabel?: string;
+    /** Live count of rows the CURRENT (draft) filter selection would return.
+     *  When supplied the primary action reads "Show N results" and updates as
+     *  the selection changes, so the effect of a filter is visible before it is
+     *  applied. Overrides `applyLabel`. */
+    resultCount?: number;
 }
 
 export function FullScreenFilterModal({
@@ -36,7 +41,10 @@ export function FullScreenFilterModal({
     resetDisabled = false,
     applyDisabled = false,
     applyLabel = "Set filter",
+    resultCount,
 }: FullScreenFilterModalProps) {
+    const countLabel =
+        resultCount === undefined ? applyLabel : `Show ${resultCount} result${resultCount === 1 ? "" : "s"}`;
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
@@ -85,11 +93,11 @@ export function FullScreenFilterModal({
                     <Button
                         variant="primary"
                         size="xl"
-                        disabled={applyDisabled}
+                        disabled={applyDisabled || resultCount === 0}
                         onClick={onApply}
                         className="min-w-[106px] rounded-full"
                     >
-                        {applyLabel}
+                        {countLabel}
                     </Button>
                 </div>
             </div>

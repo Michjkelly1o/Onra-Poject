@@ -8,7 +8,7 @@
 // a profile header card, a credit-balance card, two grouped menu lists, and Logout.
 // Bottom nav stays visible (the landing is NOT in the layout's isFullScreen set).
 
-import { useState, type ComponentType, type SVGProps } from "react";
+import { useMemo, useState, type ComponentType, type SVGProps } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
 import {
@@ -26,6 +26,7 @@ import {
     Users01,
 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { derivePlanBalances } from "@/lib/plan-credits";
 import type { BookingTab } from "@/lib/customer/bookings-data";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { logoutCustomer } from "@/lib/customer/auth";
@@ -88,7 +89,18 @@ export default function ProfilePage() {
     // Column 1: plan TYPE (Membership / Credit package) + the total credits held.
     const planTypeLabel = bal?.typeLabel ?? "Membership";
     const totalCreditsValue = bal ? (bal.unlimited ? "Unlimited" : `${bal.total} credits`) : "—";
-    const expiresValue = bal?.expiryISO ? longDate(bal.expiryISO) : "—";
+    // Complimentary ("Free credit") grants live as their own plans — admin shows
+    // them under that exact label. Summed through the SAME `derivePlanBalances`
+    // helper the admin customer-detail widget uses, so both sides always report
+    // the same number.
+    const allPlans = useAppStore((st) => st.customerPlans);
+    const freeCredits = useMemo(() => {
+        const mine = allPlans.filter((pl) => pl.customerId === member?.id);
+        const balances = derivePlanBalances(mine, member?.creditsRemaining);
+        return mine
+            .filter((pl) => pl.kind === "complimentary" && (pl.status === "active" || pl.status === "frozen"))
+            .reduce((n, pl) => n + (balances.get(pl.id)?.left ?? 0), 0);
+    }, [allPlans, member?.id, member?.creditsRemaining]);
 
     function MenuGroup({ rows }: { rows: Row[] }) {
         return (
@@ -194,10 +206,14 @@ export default function ProfilePage() {
                                 <p className="text-xs font-normal leading-[18px] text-[#667085]">{planTypeLabel}</p>
                                 <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">{totalCreditsValue}</p>
                             </div>
-                            <div className="flex min-w-0 flex-1 flex-col">
-                                <p className="text-xs font-normal leading-[18px] text-[#667085]">Expires on</p>
-                                <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">{expiresValue}</p>
-                            </div>
+                            {freeCredits > 0 && (
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <p className="text-xs font-normal leading-[18px] text-[#667085]">Free credit</p>
+                                    <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">
+                                        {freeCredits} credit{freeCredits === 1 ? "" : "s"}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </button>

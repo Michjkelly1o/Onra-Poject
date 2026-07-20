@@ -123,7 +123,9 @@ function BookingConfirmation() {
                   .filter(
                       (b) =>
                           b.classScheduleId === detail.id &&
-                          (b.status === "booked" || b.status === "waitlisted") &&
+                          // BOOKED only — a waitlist entry holds no spot until it
+                          // is promoted, so it must not reserve one.
+                          b.status === "booked" &&
                           b.spot,
                   )
                   .map((b) => b.spot as string),
@@ -272,9 +274,12 @@ function BookingConfirmation() {
                     auto-assign note. */}
                 <section className="flex w-full flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
-                        {spotLayout ? (spotSeats.length > 1 ? "Select spots" : "Select spot") : "Spot"}
+                        {spotRequired ? (spotSeats.length > 1 ? "Select spots" : "Select spot") : "Spot"}
                     </p>
-                    {spotLayout ? (
+                    {/* `spotRequired` (not `spotLayout`) — a WAITLIST join never
+                        picks a spot; one is auto-assigned on promotion, because
+                        the free spot isn't known until someone cancels. */}
+                    {spotRequired && spotLayout ? (
                         <SpotPicker
                             cols={spotLayout.cols}
                             rows={spotLayout.rows}
@@ -287,7 +292,9 @@ function BookingConfirmation() {
                         <div className="flex w-full items-center gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="size-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                             <p className="text-sm font-normal leading-5 text-[#3f5b4c]">
-                                A spot will be auto assigned to you.
+                                {mode === "waitlist"
+                                    ? "A spot will be assigned automatically when you're moved off the waitlist."
+                                    : "A spot will be auto assigned to you."}
                             </p>
                         </div>
                     )}
@@ -360,11 +367,20 @@ function BookingConfirmation() {
 
                 {/* Detail payment — mirrors the checkout breakdown (CheckoutCart),
                     in credits instead of AED. Waitlist joins charge nothing. */}
-                {mode === "book" && (
+                {(mode === "book" || mode === "waitlist") && (
                     <>
                         <div className="h-px w-full bg-[#e4e7ec]" />
                         <section className="flex w-full flex-col gap-3">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
+                            {mode === "waitlist" && (
+                                <div className="flex w-full items-start gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
+                                    <Lightbulb02 className="mt-0.5 size-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+                                    <p className="text-sm font-normal leading-5 text-[#3f5b4c]">
+                                        Nothing is charged now. Your credit is only used once a spot opens up and
+                                        you&apos;re moved to booked.
+                                    </p>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between gap-3 text-sm leading-5">
                                 <span className="min-w-0 truncate font-normal text-[#475467]">
                                     {detail.name} x{memberCreditSeats}

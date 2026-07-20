@@ -135,8 +135,13 @@ export default function SearchPage() {
     const activeApplied = isClasses ? applied : apptApplied;
     const setActiveApplied = isClasses ? setApplied : setApptApplied;
 
-    const dayClasses = applyFilters(useDayClasses(selectedISO), applied);
+    const allDayClasses = useDayClasses(selectedISO);
+    const dayClasses = applyFilters(allDayClasses, applied);
     const appointments = useAppointments(apptApplied);
+    // What the DRAFT selection would return — recomputed on every toggle so the
+    // filter's primary action reads "Show N results" live.
+    const draftAppointments = useAppointments(apptDraft);
+    const draftResultCount = isClasses ? applyFilters(allDayClasses, draft).length : draftAppointments.length;
     const unreadNotifs = useUnreadNotifCount();
     const isAuth = useIsAuthenticated();
     const fcount = filterCount(activeApplied);
@@ -216,6 +221,12 @@ export default function SearchPage() {
                             bookingOpenDays={bookingOpenDays}
                         />
 
+                        {/* Result total — shown whenever a filter narrows the list. */}
+                        {fcount > 0 && (
+                            <p className="text-sm font-normal leading-5 text-[#475467]">
+                                {dayClasses.length} result{dayClasses.length === 1 ? "" : "s"}
+                            </p>
+                        )}
                         {dayClasses.length > 0 ? (
                             <div className="flex flex-col gap-4">
                                 {dayClasses.map((c) => {
@@ -333,6 +344,7 @@ export default function SearchPage() {
                 categories={activeCategories}
                 instructors={activeInstructors}
                 onSeeAll={() => router.push("/customer/search/instructors")}
+                resultCount={draftResultCount}
                 onReset={() => {
                     setActiveDraft(EMPTY_FILTERS);
                     setActiveApplied(EMPTY_FILTERS);

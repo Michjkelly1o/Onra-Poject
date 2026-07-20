@@ -25,6 +25,7 @@ import { useReconcileMemberPlans } from "@/lib/customer/products-catalog";
 import { CustomerBottomNav } from "@/components/customer/shell/BottomNav";
 import { CustomerBackground } from "@/components/customer/shell/Background";
 import { CustomerToastHost } from "@/components/customer/shell/CustomerToast";
+import { PushNotificationToasts } from "@/components/customer/shell/PushNotificationToasts";
 import { BookNowButton } from "@/components/customer/appointments/BookNowButton";
 import { ScrollRestoration } from "@/components/customer/shell/ScrollRestoration";
 import { BrandTokens } from "@/components/customer/shell/BrandTokens";
@@ -102,6 +103,8 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
                     {/* Shared success/feedback toast — top-anchored, above all chrome. */}
                     <CustomerToastHost />
+                    {/* Surfaces new notifications as toasts when push is enabled. */}
+                    <PushNotificationToasts />
                 </div>
             </div>
             </BrandTokens>

@@ -75,6 +75,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { create } from "zustand";
+import { defaultSpotLayout, firstFreeSpot } from "@/lib/spot-layout";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
@@ -1951,7 +1952,7 @@ export interface ToastData {
      *  soft-block guidance ("this action is critical, keep at least one
      *  channel on"). Distinct from "error" which is a hard failure. */
     type: "success" | "error" | "warning";
-    icon?: "check" | "trash" | "archive" | "slash" | "refresh" | "alert";
+    icon?: "check" | "trash" | "archive" | "slash" | "refresh" | "alert" | "bell";
 }
 
 /**
@@ -2249,10 +2250,14 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         // Demo: Reformer Pilates classes get spot selection so the flow is testable
         // (adapter default — the mock seed rows are untouched).
         spotSelectionEnabled: s.spot_selection_enabled ?? s.template_id === "tpl_reformer_pilates",
+        // Admin config wins. Otherwise fall back to the SAME best-fit grid the
+        // admin's "Customize area" editor defaults to for this capacity — a
+        // hardcoded grid here made the customer show a different room (and a
+        // blocked spot the studio never set).
         spotLayout: s.spot_layout
             ? { cols: s.spot_layout.cols, rows: s.spot_layout.rows, blockedSpots: s.spot_layout.blocked_spots }
             : s.template_id === "tpl_reformer_pilates"
-              ? { cols: 4, rows: 3, blockedSpots: ["C4"] }
+              ? { ...defaultSpotLayout(), blockedSpots: [] }
               : undefined,
         waitlistEnabled: s.waitlist_enabled ?? true,
         rating: s.rating,
@@ -3611,6 +3616,12 @@ export interface AppState {
     claimWaitlistSpot: (bookingId: string) => boolean;
     /** Member declined the offer — the spot passes to the next person in line. */
     declineWaitlistSpot: (bookingId: string) => void;
+    /** Give every BOOKED seat on a spot-selection class a concrete stored spot.
+     *  Seeded bookings carry none, and the admin roster used to derive a label
+     *  positionally from a fixed 4-column grid — so admin and customer disagreed
+     *  about which spots were occupied. Assigns in the CONFIGURED grid's reading
+     *  order, skipping blocked spots and any already held. Idempotent. */
+    reconcileBookingSpots: () => void;
     /** Sweep every upcoming class that has room AND a waitlist, and run the
      *  Booking Rules offer on it. Cancellation is not the only way a spot can be
      *  free — seeded demo data, an admin capacity increase, or a cancellation
@@ -5315,11 +5326,24 @@ export const useAppStore = create<AppState>()(persist(
         if (!schedule || schedule.booked >= schedule.capacity) return;
         const customer = state.customers.find(c => c.id === booking.customerId);
 
+        // A waitlist join never picked a spot (the free one isn't known until a
+        // cancellation), so assign the first available one now — same grid the
+        // admin configured, skipping blocked spots and seats already taken.
+        const takenSpots = state.classBookings
+            .filter(b => b.classScheduleId === booking.classScheduleId && b.status === "booked" && b.spot)
+            .map(b => b.spot as string);
+        const assignedSpot =
+            booking.spot ??
+            (schedule.spotSelectionEnabled
+                ? firstFreeSpot(schedule.spotLayout, takenSpots)
+                : undefined);
+
         set(state2 => ({
             classBookings: state2.classBookings.map(b => {
                 if (b.id === bookingId) {
                     return {
                         ...b,
+                        spot: assignedSpot,
                         status: "booked" as const,
                         waitlistPosition: undefined,
                         waitlistClaimOfferedAt: undefined,
@@ -5413,6 +5437,33 @@ export const useAppStore = create<AppState>()(persist(
         }));
         // Pass it straight down the queue.
         get().offerFreedWaitlistSpot(booking.classScheduleId);
+    },
+
+    reconcileBookingSpots: () => {
+        const state = get();
+        const targets = state.classSchedules.filter(sc => sc.spotSelectionEnabled && sc.spotLayout);
+        if (targets.length === 0) return;
+        const assignments = new Map<string, string>();
+        for (const sc of targets) {
+            const rows = state.classBookings.filter(b => b.classScheduleId === sc.id && b.status === "booked");
+            const used = new Set(rows.map(b => b.spot).filter(Boolean) as string[]);
+            // Oldest booking first, so the order is stable across reloads.
+            const needing = rows
+                .filter(b => !b.spot)
+                .sort((a, b) => a.bookingTime.localeCompare(b.bookingTime));
+            for (const b of needing) {
+                const next = firstFreeSpot(sc.spotLayout, Array.from(used));
+                if (!next) break; // grid full — leave the rest unassigned
+                used.add(next);
+                assignments.set(b.id, next);
+            }
+        }
+        if (assignments.size === 0) return;
+        set(state2 => ({
+            classBookings: state2.classBookings.map(b =>
+                assignments.has(b.id) ? { ...b, spot: assignments.get(b.id) } : b
+            ),
+        }));
     },
 
     reconcileWaitlistOffers: () => {
@@ -8612,7 +8663,15 @@ export const useAppStore = create<AppState>()(persist(
         //   waitlist claim-offer fields to ClassBooking (`waitlistClaimOfferedAt`
         //   / `ExpiresAt` / `DeclinedAt`) for the "Notify to accept" flow. Bump
         //   reseeds so testers pick both up.
-        version: 70,
+        // v71 (2026-07-20): spot layout + occupancy unified. The v70 payload was
+        //   written while the adapter still hardcoded a 4x3 grid with C4
+        //   blocked, so persisted classes disagreed with the admin's 4x2
+        //   "Customize area" default. Default is now the admin form's own 4x2
+        //   with nothing blocked, the grid is never truncated to class capacity
+        //   (an 8-spot room stays 8 spots for a capacity-6 class), and booked
+        //   seats get a STORED spot via `reconcileBookingSpots` so the admin
+        //   roster and the customer picker read the same value. Bump reseeds.
+        version: 71,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -8634,6 +8693,7 @@ export const useAppStore = create<AppState>()(persist(
             // so admin and customer open on the same reconciled state.
             setTimeout(() => {
                 try {
+                    useAppStore.getState().reconcileBookingSpots();
                     useAppStore.getState().expireWaitlistClaims();
                     useAppStore.getState().reconcileWaitlistOffers();
                 } catch {
