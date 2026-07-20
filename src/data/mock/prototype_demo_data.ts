@@ -1157,6 +1157,13 @@ const PLAN_SPECS: PlanSpec[] = [
     { customerIdx: 8, kind: "membership", productKey: "mem_advanced_monthly",  purchasedDaysAgo: 60, expiryDaysAhead: -28, status: "expired" },
     { customerIdx: 3, kind: "package",    productKey: "pkg_1_class_intro",     purchasedDaysAgo: 33, expiryDaysAhead: -26, status: "expired" },
     { customerIdx: 5, kind: "package",    productKey: "pkg_3_class_trial",     purchasedDaysAgo: 28, expiryDaysAhead: -7,  status: "expired" },
+    // ── Live trials ending within 7 days ────────────────────────────────
+    // These held (status="active") intro-package plans feed the Today
+    // Needs Attention "Trials end within 7 days" row (client 2026-07-20).
+    // Two plans on different customers so the count > 0 out of the box
+    // and the row renders — one intro pack, one 3-class trial.
+    { customerIdx: 4, kind: "package",    productKey: "pkg_1_class_intro",     purchasedDaysAgo: 5,  expiryDaysAhead: 2,   status: "active" },
+    { customerIdx: 7, kind: "package",    productKey: "pkg_3_class_trial",     purchasedDaysAgo: 8,  expiryDaysAhead: 6,   status: "active" },
 ];
 
 export const DEMO_NOW_PLANS: CustomerPlan[] = PLAN_SPECS.map((p, idx) => {

@@ -8274,7 +8274,11 @@ export const useAppStore = create<AppState>()(persist(
         //   now stamps `free_credits` with the row's benefit_credits
         //   count. Bump reseeds so testers who already refreshed under
         //   v68 pick up the corrected shape.
-        version: 69,
+        // v70 (2026-07-20): Two live "trials ending within 7 days" plan
+        //   rows added to DEMO_NOW_PLANS (intro package on cust 4, 3-class
+        //   trial on cust 7) so the Today Needs Attention "Trials end"
+        //   row renders out of the box. Bump reseeds cached testers.
+        version: 70,
         storage: createJSONStorage(() => localStorage),
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped

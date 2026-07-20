@@ -666,17 +666,24 @@ export default function AdminDashboard() {
         [branches],
     );
 
-    // Branch-scope sentinel — empty string means "All locations" (no scoping).
-    // Any non-empty value is a real `branches[].id`. Every downstream aggregate
-    // funnels through this so picking a branch in the header flows into the
-    // KPI cards, the schedule list, the revenue trend and the activity feed
-    // in the same render cycle.
-    // Real multi-branch scope: pass the picked location array straight to
-    // every downstream widget/modal. Convention: null (or an empty array)
-    // means "no filter — every branch"; a non-empty array narrows to only
-    // those branches. All 7 needs-attention modals + DashboardWidgetCard
-    // now consume this shape (2026-07-20 refactor).
-    const branchScopeIds = locations.length === 0 ? null : locations;
+    // Branch-scope derivation — the invariant here IS load-bearing:
+    // "no locations picked" (`[]`) AND "every active location picked" MUST
+    // produce identical downstream data. Without this, checking All-locations
+    // silently drops any row whose branchId isn't in the active-branches set
+    // (studio-wide rows, or historical rows on now-archived branches), while
+    // unchecking All-locations keeps them — the same trigger label ("All
+    // locations") ends up rendering two different totals.
+    //
+    // Rule: return `null` (== no filter) when the pick is empty OR contains
+    // every active branch. Any strict subset narrows.
+    const activeBranchCount = useMemo(
+        () => branches.filter(b => b.status === "active").length,
+        [branches],
+    );
+    const branchScopeIds =
+        locations.length === 0 || locations.length >= activeBranchCount
+            ? null
+            : locations;
     const todayISO = format(today, "yyyy-MM-dd");
 
     // Branch-scoped slices. `branchScopeIds` is either null (no filter — every
