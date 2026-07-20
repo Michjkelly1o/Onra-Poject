@@ -1678,6 +1678,200 @@ export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfi
 // yet. Row click / View → customer detail. Nudge → a toast (stand-in for
 // the eventual reminder-send integration).
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Trials ending — held intro-package plans expiring within the next 7 days.
+// Opens from the Today Needs Attention "N trials end within 7 days" row.
+// Same shape as the other single-list needs-attention modals so the family
+// reads consistently — CustomerCell rows, sortable columns, RowActions
+// kebab, ModalShell footer with Pagination.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface TrialsEndingModalProps {
+    open: boolean;
+    onClose: () => void;
+    branchIds?: string[] | null;
+    /** Forward window in days. Defaults to 7 to match the Today Needs
+     *  Attention row's static window; kept configurable so a future
+     *  Coming-up drill-through can pass 30 without a code change. */
+    forwardRangeDays?: number;
+}
+
+export function TrialsEndingModal({ open, onClose, branchIds, forwardRangeDays }: TrialsEndingModalProps) {
+    const router = useRouter();
+    const customers = useAppStore(s => s.customers);
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const packages = useAppStore(s => s.packages);
+    const showToast = useAppStore(s => s.showToast);
+
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    useEffect(() => { if (open) setPage(1); }, [open]);
+
+    function viewCustomer(id: string) {
+        onClose();
+        router.push(`/customers/${id}?returnTo=${encodeURIComponent("/admin/dashboard")}`);
+    }
+
+    // Filter identical to the Today Needs Attention row's count computation
+    // (see `needsAttention.trialsEndingCount` on dashboard/page.tsx) so
+    // the row's number and the modal's list always agree.
+    const rows = useMemo(() => {
+        const rangeDays = forwardRangeDays ?? 7;
+        const now = new Date();
+        const horizon = new Date(now); horizon.setDate(horizon.getDate() + rangeDays);
+        const nowMs = now.getTime();
+        const horizonMs = horizon.getTime();
+        const introPackageIds = new Set(
+            packages.filter(p => p.is_intro_offer === true).map(p => p.id),
+        );
+        return customerPlans
+            .filter(p => p.kind === "package")
+            .filter(p => p.status === "active" || p.status === "frozen")
+            .filter(p => !!p.productId && introPackageIds.has(p.productId))
+            .filter(p => {
+                if (!p.expiryISO) return false;
+                const t = new Date(p.expiryISO).getTime();
+                return !Number.isNaN(t) && t >= nowMs && t <= horizonMs;
+            })
+            .map(p => {
+                const c = customers.find(cx => cx.id === p.customerId);
+                if (!c) return null;
+                if (!branchInScope(c.branchId, branchIds)) return null;
+                const expiryDate = (p.expiryISO ?? "").slice(0, 10);
+                const daysLeft = Math.max(
+                    0,
+                    Math.ceil((new Date(expiryDate + "T00:00:00Z").getTime() - nowMs) / (24 * 60 * 60 * 1000)),
+                );
+                return { plan: p, customer: c, expiryDate, daysLeft };
+            })
+            .filter((r): r is NonNullable<typeof r> => !!r);
+    }, [customerPlans, customers, packages, branchIds, forwardRangeDays]);
+
+    // Credits remaining = totalCredits − creditsUsed (both live on the
+    // CustomerPlan for reports). Falls back to parsing the label like
+    // "3 credits" → 3 for older seed rows that don't carry the numeric
+    // pair, so the column reads sensibly across the whole dataset.
+    function creditsRemainingFor(plan: CustomerPlan): number | undefined {
+        if (typeof plan.totalCredits === "number" && typeof plan.creditsUsed === "number") {
+            return Math.max(0, plan.totalCredits - plan.creditsUsed);
+        }
+        const label = plan.creditsLabel ?? "";
+        const match = /(\d+)/.exec(label);
+        return match ? Number(match[1]) : undefined;
+    }
+
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } =
+        useSort<(typeof rows)[number]>(rows, {
+            customer: (a, b) => `${a.customer.firstName} ${a.customer.lastName}`.localeCompare(`${b.customer.firstName} ${b.customer.lastName}`),
+            trial:    (a, b) => a.plan.name.localeCompare(b.plan.name),
+            credits:  (a, b) => (creditsRemainingFor(a.plan) ?? 0) - (creditsRemainingFor(b.plan) ?? 0),
+            expires:  (a, b) => a.expiryDate.localeCompare(b.expiryDate),
+        });
+
+    const totalRows = sortedRows.length;
+    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+
+    function nudge(name: string) {
+        showToast(
+            "Reminder sent",
+            `A "convert your trial" nudge was sent to ${name}.`,
+            "success", "check",
+        );
+    }
+
+    return (
+        <ModalShell
+            open={open}
+            onClose={onClose}
+            title="Trials ending soon"
+            subtitle={
+                <>
+                    <span className="font-semibold text-[#101828]">
+                        {totalRows} trial{totalRows === 1 ? "" : "s"}
+                    </span>{" "}
+                    end within {forwardRangeDays ?? 7} days — follow up before the intro window closes
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact"
+                    page={page}
+                    total={totalRows}
+                    pageSize={pageSize}
+                    onPage={setPage}
+                    onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
+        >
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TH}>
+                                <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="trial" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Trial package</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Credits left</SortableHeader>
+                            </th>
+                            <th className={TH}>
+                                <SortableHeader sortKey="expires" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Expires</SortableHeader>
+                            </th>
+                            <th className={cn(TH, "w-14")} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => {
+                            const name = `${r.customer.firstName} ${r.customer.lastName}`.trim();
+                            const credits = creditsRemainingFor(r.plan);
+                            const creditsLabel =
+                                typeof credits === "number"
+                                    ? `${credits} credit${credits === 1 ? "" : "s"}`
+                                    : r.plan.creditsLabel || "—";
+                            const expiresLabel =
+                                r.daysLeft === 0
+                                    ? "Today"
+                                    : r.daysLeft === 1
+                                      ? "Tomorrow"
+                                      : `in ${r.daysLeft} days`;
+                            return (
+                                <tr key={r.plan.id}
+                                    onClick={() => viewCustomer(r.customer.id)}
+                                    className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                    <td className={TD}><CustomerCell c={r.customer} /></td>
+                                    <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.plan.name}</td>
+                                    <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{creditsLabel}</td>
+                                    <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}
+                                        title={fmtDate(r.expiryDate)}>
+                                        {expiresLabel}
+                                    </td>
+                                    <td className={TD} onClick={e => e.stopPropagation()}>
+                                        <RowActions
+                                            items={[
+                                                { label: "Nudge to convert", icon: Bell01, onClick: () => nudge(name) },
+                                                { label: "View", icon: Eye, onClick: () => viewCustomer(r.customer.id) },
+                                            ]}
+                                        />
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="py-16 text-center text-[14px] text-[#667085]">
+                                    No trials ending in the next {forwardRangeDays ?? 7} days.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </ModalShell>
+    );
+}
+
 export interface NewSignupsModalProps {
     open: boolean;
     onClose: () => void;

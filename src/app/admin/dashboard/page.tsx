@@ -46,6 +46,7 @@ import {
     RefundRequestsModal,
     WaitlistConfirmModal,
     NewSignupsModal,
+    TrialsEndingModal,
 } from "@/components/dashboard/NeedsAttentionModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
@@ -618,7 +619,7 @@ export default function AdminDashboard() {
     // was dropped from the per-type card matrix. The widget-triggered
     // FailedPaymentsModal (`failedWidget`) still lives on the Performance
     // tab's Payments-collected chip.
-    type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
+    type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | "trials" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -1892,10 +1893,7 @@ export default function AdminDashboard() {
                         icon: ClockFastForward, iconBg: "bg-[#fff6ed]", iconFg: "text-[#c4320a]",
                         title: `${needsAttention.trialsEndingCount} ${needsAttention.trialsEndingCount === 1 ? "trial ends" : "trials end"} within 7 days`,
                         subtitle: "Follow up before the intro window closes",
-                        // No dedicated modal yet — reuse the coming-up
-                        // "Expiring credits" narrative via a generic wallet
-                        // deep link. Wire to a Trials modal in a follow-up.
-                        onView: () => setAttentionModal(null),
+                        onView: () => setAttentionModal("trials"),
                     },
                 ].filter(r => r.show);
 
@@ -1994,6 +1992,14 @@ export default function AdminDashboard() {
                 open={attentionModal === "signups"}
                 onClose={() => setAttentionModal(null)}
                 branchIds={branchScopeIds}
+            />
+            {/* Trials ending — matches the Today Needs Attention row's 7-day
+                static window so the count and the modal list agree. */}
+            <TrialsEndingModal
+                open={attentionModal === "trials"}
+                onClose={() => setAttentionModal(null)}
+                branchIds={branchScopeIds}
+                forwardRangeDays={7}
             />
 
             <Toast />
