@@ -41,10 +41,19 @@ export type AiAgentStateSnapshot = Pick<
     | "walletTransactions"
     | "payrollEntries"
     | "promoCodes"
+    // Phase 11 — read-only counts the studio-setup thread reports
+    // ("you have 2 branches, 6 rooms, 4 class categories…"). Not used by
+    // Insight or Migration threads.
+    | "rooms"
+    | "classCategories"
+    | "memberships"
+    | "packages"
 >;
 
-/** Thread mode. Insight = analytics chat; migration = 4-step wizard. */
-export type AiAgentMode = "insight" | "migration";
+/** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;
+ *  studio_setup = onboarding-status advisor (reads current config, links
+ *  to the matching /admin/settings/* pages). */
+export type AiAgentMode = "insight" | "migration" | "studio_setup";
 
 /** POST /api/ai-agent body. */
 export interface AiAgentRequestBody {

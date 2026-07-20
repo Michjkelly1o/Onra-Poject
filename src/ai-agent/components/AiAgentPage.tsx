@@ -57,11 +57,11 @@ interface ThreadDef {
     enabled: boolean;
 }
 
-// Phase 7 enables migrate_data. Studio setup is still Phase 11.
+// Phase 11 enables studio_setup — all three threads are live.
 const THREADS: readonly ThreadDef[] = [
-    { key: "general",       label: "General chat", icon: MessageChatCircle, enabled: true  },
-    { key: "studio_setup",  label: "Studio setup", icon: Building01,        enabled: false },
-    { key: "migrate_data",  label: "Migrate data", icon: UploadCloud02,     enabled: true  },
+    { key: "general",       label: "General chat", icon: MessageChatCircle, enabled: true },
+    { key: "studio_setup",  label: "Studio setup", icon: Building01,        enabled: true },
+    { key: "migrate_data",  label: "Migrate data", icon: UploadCloud02,     enabled: true },
 ];
 
 const DM_SANS_STACK =
@@ -280,14 +280,18 @@ function AgentChatSurface({ activeThread }: { activeThread: ThreadKey }) {
                 <ConcentricSquaresDecoration />
             </div>
 
-            {/* Both ChatThreads stay MOUNTED (one per mode) so each keeps
-                its own message history when the user switches threads —
-                same pattern as the POC. `visible` toggles display but
-                the useChat state under each survives. */}
+            {/* All three ChatThreads stay MOUNTED (one per mode) so each
+                keeps its own message history when the user switches
+                threads — same pattern as the POC. `visible` toggles
+                display but the useChat state under each survives. */}
             <div className="relative h-full">
                 <ChatThread
                     mode="insight"
                     visible={activeThread === "general"}
+                />
+                <ChatThread
+                    mode="studio_setup"
+                    visible={activeThread === "studio_setup"}
                 />
                 <ChatThread
                     mode="migration"

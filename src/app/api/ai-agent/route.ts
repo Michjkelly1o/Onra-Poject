@@ -14,10 +14,13 @@
 // Vercel Hobby: hard 10s serverless timeout. `maxDuration` and `maxSteps` come
 // from `flags.ts` so the whole request-plus-tool-chain fits inside that budget.
 //
-// Phase 7 update: the route branches on `mode` in the body.
+// Phase 11 update: three modes now, chosen by `mode` in the body.
 //   mode === "insight" (default): Insight tools + Insight prompt
 //   mode === "migration":         Migration tools + Migration prompt +
 //                                 client's `parsedFile` threaded through
+//   mode === "studio_setup":      Setup advisor tools (read-only) + setup
+//                                 prompt. Never writes; deep-links to
+//                                 /admin/settings/* pages.
 
 import { streamText } from "ai";
 import {
@@ -30,9 +33,11 @@ import { resolveAuthContext } from "@/ai-agent/agent/auth";
 import {
     buildInsightPrompt,
     buildMigrationPrompt,
+    buildStudioSetupPrompt,
 } from "@/ai-agent/agent/prompt";
 import { insightTools } from "@/ai-agent/agent/tools";
 import { migrationTools } from "@/ai-agent/migration/migration-tools";
+import { setupTools } from "@/ai-agent/studio-setup/setup-tools";
 import { buildCatalog } from "@/ai-agent/data/catalog";
 import type { AiAgentRequestBody } from "@/ai-agent/types/request";
 import type { AppState } from "@/lib/store";
@@ -88,20 +93,28 @@ export async function POST(req: Request) {
     // every field the function reads is present.
     const catalog = buildCatalog(storeSnapshot as unknown as AppState);
 
-    // Mode branch — Insight (analytics) vs Migration (4-step wizard).
-    // Insight tools read the live catalog; Migration tools read the
-    // client-supplied parsedFile (upload) + branches list from the
-    // snapshot. The two tool sets are DELIBERATELY exclusive — an
-    // insight turn cannot call migration tools and vice-versa, so the
-    // model can't accidentally cross-contaminate write vs read intent.
-    const tools =
-        activeMode === "migration"
-            ? migrationTools(ctx, parsedFile ?? null, storeSnapshot.branches)
-            : insightTools(ctx, catalog, storeSnapshot);
-    const system =
-        activeMode === "migration"
-            ? buildMigrationPrompt(ctx, today)
-            : buildInsightPrompt(ctx, today, catalog);
+    // Mode branch — Insight (analytics) vs Migration (4-step wizard)
+    // vs Studio setup (read-only onboarding advisor). The three tool
+    // sets are DELIBERATELY exclusive — a thread cannot cross-invoke
+    // the others' tools, so the model can't accidentally mix write
+    // vs read intent. `activeMode` was set from the request body
+    // above (defaults to "insight").
+    let tools;
+    let system: string;
+    if (activeMode === "migration") {
+        tools = migrationTools(
+            ctx,
+            parsedFile ?? null,
+            storeSnapshot.branches,
+        );
+        system = buildMigrationPrompt(ctx, today);
+    } else if (activeMode === "studio_setup") {
+        tools = setupTools(ctx, storeSnapshot);
+        system = buildStudioSetupPrompt(ctx, today);
+    } else {
+        tools = insightTools(ctx, catalog, storeSnapshot);
+        system = buildInsightPrompt(ctx, today, catalog);
+    }
 
     const result = streamText({
         model: claude(AI_AGENT_MODEL_ID),

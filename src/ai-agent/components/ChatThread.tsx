@@ -99,6 +99,11 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         walletTransactions:      state.walletTransactions,
         payrollEntries:          state.payrollEntries,
         promoCodes:              state.promoCodes,
+        // Phase 11 — studio-setup counts:
+        rooms:                   state.rooms,
+        classCategories:         state.classCategories,
+        memberships:             state.memberships,
+        packages:                state.packages,
     };
 }
 
@@ -288,6 +293,8 @@ export function ChatThread({
                 {empty ? (
                     mode === "migration" ? (
                         <MigrationEmptyState onStart={send} />
+                    ) : mode === "studio_setup" ? (
+                        <StudioSetupEmptyState onStart={send} />
                     ) : (
                         <InsightEmptyState onSend={send} />
                     )
@@ -405,6 +412,54 @@ function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
                         }
                     />
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function StudioSetupEmptyState({ onStart }: { onStart: (t: string) => void }) {
+    return (
+        <div className="w-full max-w-[560px] mx-auto px-6 h-full flex items-center justify-center py-12">
+            <div className="flex flex-col gap-6 items-center w-full">
+                <ParticleOrb size={72} />
+                <div className="flex flex-col gap-1 text-center w-full items-center">
+                    <h1
+                        className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] inline-block"
+                        style={{
+                            fontFamily: DM_SANS_STACK,
+                            backgroundImage:
+                                "linear-gradient(90deg, #658774 0%, #7ba08c 100%)",
+                            WebkitBackgroundClip: "text",
+                            backgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            color: "transparent",
+                        }}
+                    >
+                        Set up your studio
+                    </h1>
+                    <p className="text-[15px] leading-6 text-[#667085]">
+                        I&apos;ll walk you through branches, rooms, classes,
+                        memberships, and the rest — step by step. I can
+                        also show you what&apos;s already configured.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() =>
+                        onStart(
+                            "What's set up in my studio and what should I do next?",
+                        )
+                    }
+                    className={cn(
+                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
+                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                        "hover:bg-[#aad4bd] transition-colors",
+                    )}
+                >
+                    <Stars02 className="size-4" />
+                    Show me what&apos;s missing
+                </button>
             </div>
         </div>
     );
