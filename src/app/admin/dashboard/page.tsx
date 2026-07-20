@@ -50,7 +50,7 @@ import {
 } from "@/components/dashboard/NeedsAttentionModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
-import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
+import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
 import { Toast } from "@/components/ui/Toast";
 
 // ── Types ──
@@ -1680,19 +1680,22 @@ export default function AdminDashboard() {
                     }}
                     onOpenModal={() => setWidgetModalOpen(true)}
                     allWidgetsActive={
-                        // Only compare against categories the dashboard's
-                        // AddWidgetModal actually surfaces (Finance +
-                        // Memberships + Classes). KPI-only widgets
-                        // (Financial / Client / Class / Marketing) are
-                        // reachable ONLY from /admin/kpi and don't count
-                        // toward the dashboard's "all widgets added" state.
+                        // Compare against the 6-category set the dashboard's
+                        // AddWidgetModal now surfaces (client 2026-07-20
+                        // restructure: Financial / Customer / Class /
+                        // Private sessions / Recovery / Marketing). Every
+                        // catalog entry currently belongs to one of these,
+                        // so the "add-widget" placeholder tile hides only
+                        // once EVERY dashboard widget is on the grid.
                         (() => {
-                            const eligible = WIDGET_CATALOG.filter(w =>
-                                w.category === "Finance"
-                                || w.category === "Memberships"
-                                || w.category === "Classes"
-                            ).map(w => w.id);
-                            return eligible.every(id => activeWidgets.includes(id));
+                            const DASHBOARD_CATS: WidgetCategory[] = [
+                                "Financial", "Customer", "Class",
+                                "Private sessions", "Recovery", "Marketing",
+                            ];
+                            const eligible = WIDGET_CATALOG
+                                .filter(w => DASHBOARD_CATS.includes(w.category))
+                                .map(w => w.id);
+                            return eligible.length > 0 && eligible.every(id => activeWidgets.includes(id));
                         })()
                     }
                 />

@@ -6,7 +6,19 @@ import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG, type WidgetCategory } from "./widget-catalog";
 import { DashboardWidgetCard } from "./DashboardWidgetCard";
 
-const TABS: WidgetCategory[] = ["Finance", "Memberships", "Classes"];
+// Tabs match the 6-category restructure (client 2026-07-20). Order is
+// load-bearing — it's what the admin sees along the top of the picker.
+// "Private sessions" + "Recovery" ship empty in commit A; their widgets
+// land in commits B + C but the tabs stay clickable so the admin knows
+// the sections exist.
+const TABS: WidgetCategory[] = [
+    "Financial",
+    "Customer",
+    "Class",
+    "Private sessions",
+    "Recovery",
+    "Marketing",
+];
 
 export interface AddWidgetModalProps {
     open: boolean;
@@ -23,7 +35,7 @@ export function AddWidgetModal({
     onAdd,
     onRemove,
 }: AddWidgetModalProps) {
-    const [activeTab, setActiveTab] = useState<WidgetCategory>("Finance");
+    const [activeTab, setActiveTab] = useState<WidgetCategory>("Financial");
     const [search, setSearch] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -114,8 +126,16 @@ export function AddWidgetModal({
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
                     {visible.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-2">
-                            <p className="text-[15px] font-medium text-[#344054]">No widgets found</p>
-                            <p className="text-[14px] text-[#667085]">Try a different search term or category</p>
+                            <p className="text-[15px] font-medium text-[#344054]">
+                                {search.trim()
+                                    ? "No widgets found"
+                                    : `${activeTab} widgets coming soon`}
+                            </p>
+                            <p className="text-[14px] text-[#667085]">
+                                {search.trim()
+                                    ? "Try a different search term or category"
+                                    : "This section is scheduled for an upcoming release."}
+                            </p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 gap-6">
