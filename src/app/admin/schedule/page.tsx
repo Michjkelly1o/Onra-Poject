@@ -1597,19 +1597,9 @@ function SchedulePage() {
                     onChange={setLocation}
                     width="w-[220px]"
                 />
-                {/* Custom width — schedule list uses w-[200px] not the
-                    canonical 240px to leave room for the Filter + Export + Add
-                    buttons in the same row. */}
-                <ToolbarSearch
-                    value={search}
-                    onChange={v => { setSearch(v); setPage(1); }}
-                    placeholder="Search"
-                    widthClass="w-[200px]"
-                />
-                {/* Filter — moved out of the view-card header into the toolbar
-                    (client 2026-07-20) so all filtering controls (Location,
-                    Search, Filter) live in the same row. Same button element as
-                    before; the green dot marks any active filter. */}
+                {/* Filter — sits directly next to Location so the two
+                    scoping controls are visually paired, with Search after.
+                    Green dot marks any active filter. */}
                 <Button variant="secondary-gray" size="md"
                     leftIcon={
                         <div className="relative">
@@ -1620,6 +1610,15 @@ function SchedulePage() {
                     onClick={() => setFilterOpen(true)}>
                     Filter
                 </Button>
+                {/* Custom width — schedule list uses w-[200px] not the
+                    canonical 240px to leave room for the Export + Add buttons
+                    in the same row. */}
+                <ToolbarSearch
+                    value={search}
+                    onChange={v => { setSearch(v); setPage(1); }}
+                    placeholder="Search"
+                    widthClass="w-[200px]"
+                />
                 <ExportDropdown
                     onExportCsv={() => {
                         exportScheduleCsv(filteredClasses);
