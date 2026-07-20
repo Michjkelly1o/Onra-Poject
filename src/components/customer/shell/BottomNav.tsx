@@ -15,7 +15,7 @@
 import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, ShoppingBag03, UserCircle } from "@untitledui/icons";
+import { Calendar, ShoppingBag02, UserCircle } from "@untitledui/icons";
 import { HomeGlyph } from "@/components/customer/shell/HomeGlyph";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useIsAuthenticated } from "@/lib/customer/auth";
@@ -41,7 +41,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { label: "Home", href: "/customer", exact: true, icon: HomeGlyph },
     { label: "Search", href: "/customer/search", icon: Calendar },
-    { label: "Products", href: "/customer/products", icon: ShoppingBag03 },
+    { label: "Products", href: "/customer/products", icon: ShoppingBag02 },
     { label: "Profile", href: "/customer/profile", avatar: true },
 ];
 

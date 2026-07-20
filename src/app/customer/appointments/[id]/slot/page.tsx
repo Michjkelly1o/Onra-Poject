@@ -28,14 +28,14 @@ import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { TimezonePill } from "@/components/customer/shell/TimezonePill";
 import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
 import { branchTimezone } from "@/lib/branch-time";
-import { offsetForCity, offsetLabel, tzGate } from "@/lib/customer/timezones";
+import { offsetForCity, offsetLabel, shouldAutoOpenTzSheet, tzGate } from "@/lib/customer/timezones";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
 export default function SelectSlotPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const appointment = useAppointment(id);
-    const { setTimezone, localTimezone } = useCurrentCustomerContext();
+    const { timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
     const branch = useAppStore((st) => st.branches).find((b) => b.id === appointment?.branchId);
 
     ensureAppointmentDraft(id);
@@ -50,15 +50,15 @@ export default function SelectSlotPage() {
     // Out-of-zone gate — show the Time Zone sheet once on entry (Appointments).
     const outOfZone = branch ? offsetLabel(branchTimezone(branch)) !== offsetForCity(localTimezone) : false;
     useEffect(() => {
-        // Show ONCE per session the moment the out-of-zone flow is first entered —
-        // mark it seen immediately so returning to Search (e.g. from Class Details)
-        // never re-opens it, whether or not the customer tapped Confirm.
-        if (outOfZone && !tzGate.confirmed) {
-            tzGate.confirmed = true;
+        // Auto-open once per BRANCH ZONE: marked seen the moment it opens, so
+        // navigating away and back (e.g. Class Details → Search) never re-opens
+        // it, whether or not the customer tapped Confirm. Switching to a branch
+        // in a different zone prompts again — the old offset no longer applies.
+        if (outOfZone && branch && shouldAutoOpenTzSheet(branchTimezone(branch))) {
             setTzOpen(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [outOfZone]);
+    }, [outOfZone, branch?.id]);
     const [fading, setFading] = useState(false);
     const advancingRef = useRef(false);
 
@@ -117,7 +117,7 @@ export default function SelectSlotPage() {
                         <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{formatMonth(weekStartISO)}</span>
                         <ChevronDown className="size-5 text-[var(--brand-text)]" aria-hidden />
                     </button>
-                    <TimezonePill tz={localTimezone} onClick={() => setTzOpen(true)} />
+                    <TimezonePill tz={timezone} onClick={() => setTzOpen(true)} />
                 </div>
 
                 {/* Date strip — a week anchored to the chosen month */}
@@ -176,7 +176,7 @@ export default function SelectSlotPage() {
                                         isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
                                     }`}
                                 >
-                                    <span className="text-sm font-medium leading-5 text-[#344054]">{timeInZoneLabel(dateISO, s.time, branch, localTimezone, true)}</span>
+                                    <span className="text-sm font-medium leading-5 text-[#344054]">{timeInZoneLabel(dateISO, s.time, branch, timezone, true)}</span>
                                     {/* Open sessions surface remaining capacity; Private is 1:1 (no badge). */}
                                     {isOpen && s.spotsLeft != null && (
                                         <span
@@ -210,18 +210,18 @@ export default function SelectSlotPage() {
             <TimeZoneSheet
                 open={tzOpen}
                 onClose={() => {
-                    tzGate.confirmed = true;
+                    tzGate.shownForZone = branch ? branchTimezone(branch) : tzGate.shownForZone;
                     setTzOpen(false);
                 }}
                 branch={branch}
                 localCity={localTimezone}
-                value={localTimezone}
+                value={timezone}
                 onSelect={(city) => {
                     setTimezone(city);
                     setTzOpen(false);
                 }}
                 onConfirm={() => {
-                    tzGate.confirmed = true;
+                    tzGate.shownForZone = branch ? branchTimezone(branch) : tzGate.shownForZone;
                 }}
             />
         </div>

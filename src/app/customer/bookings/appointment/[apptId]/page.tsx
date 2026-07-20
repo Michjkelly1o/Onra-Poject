@@ -34,13 +34,16 @@ const CANCEL_BTN =
 
 export default function AppointmentBookingDetailPage() {
     const router = useRouter();
-    const goBack = useCustomerBack("/customer/bookings/upcoming");
     const { apptId } = useParams<{ apptId: string }>();
     const booking = useAppointmentBookingById(apptId);
+    // Cancelled appointments live in the Past tab — Back returns there.
+    const goBack = useCustomerBack(
+        booking?.status === "cancelled" ? "/customer/bookings/past" : "/customer/bookings/upcoming",
+    );
     // Hooks must run every render (before any early return) — Rules of Hooks.
     const branches = useAppStore(s => s.branches);
     const showToast = useAppStore(s => s.showToast);
-    const { localTimezone } = useCurrentCustomerContext();
+    const { timezone, localTimezone } = useCurrentCustomerContext();
     const [cancelOpen, setCancelOpen] = useState(false);
 
     if (!booking) {
@@ -77,7 +80,7 @@ export default function AppointmentBookingDetailPage() {
     // the subtitle so members with cross-city bookings never have to guess.
     const branch = branches.find(b => b.name === booking.branchName);
     // Dual-timezone Date & time for the info grid — same as the class detail.
-    const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, localTimezone);
+    const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, timezone);
 
     // Cancel outcome — on-time (≥24h → full AED refund) vs late (<24h → forfeited).
     const isLate = (startMs - Date.now()) / 3_600_000 < 24;
@@ -208,7 +211,7 @@ export default function AppointmentBookingDetailPage() {
 
     const infoGrid = (
         <div className="flex flex-col gap-4">
-            <DetailTimeRow time={apptTime} />
+            <DetailTimeRow time={apptTime} label={timezone === localTimezone ? "Your time" : timezone} />
             <InfoRow icon={ClockFastForward}>
                 <span>{booking.durationMins} minutes</span>
             </InfoRow>

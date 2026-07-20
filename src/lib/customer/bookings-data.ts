@@ -12,7 +12,7 @@
 
 import { useMemo, type ComponentType, type SVGProps } from "react";
 import { CheckCircle, Hourglass03, RefreshCcw01, SlashCircle01, XCircle } from "@untitledui/icons";
-import { useAppStore, type ClassBooking, type ClassSchedule } from "@/lib/store";
+import { useAppStore, type ClassBooking, type ClassSchedule, liveScheduleStatus } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail, type ClassDetailVM } from "@/lib/customer/search-data";
 import { formatShortDate, formatTime12 } from "@/lib/customer/format";
@@ -113,10 +113,13 @@ export function classifyBooking(b: ClassBooking, s: ClassSchedule): { viewStatus
     }
     if (b.attendanceStatus === "no_show") return { viewStatus: "no_show", tab: "past" };
     if (b.attendanceStatus === "present") return { viewStatus: "attended", tab: "past" };
-    // Upcoming = the class SCHEDULE is still "Upcoming" — status-driven, matching
-    // the admin customer-detail Bookings tab (classStatus === "Upcoming") and the
-    // admin schedule module, so the customer's Upcoming set equals the admin's.
-    const future = s.status === "Upcoming";
+    // Upcoming = the class has not finished yet, derived from the DEVICE clock
+    // (never the row's baked seed status, which goes stale as the demo runs past
+    // its dates). `liveScheduleStatus` is the same helper the admin schedule and
+    // customer-detail Bookings tab read through, so the two sides always agree.
+    // A class in progress stays Upcoming so it can't jump to Past mid-session.
+    const live = liveScheduleStatus(s.dateISO, s.startTime, s.endTime, s.status);
+    const future = live === "Upcoming" || live === "Ongoing";
     // A waitlist entry the member never got promoted from (class is over) =
     // they couldn't join → shown as Cancelled (no charge), no credit taken.
     if (b.status === "waitlisted") {

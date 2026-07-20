@@ -17,7 +17,9 @@
 // hidden (mobile-first), so it never takes space and the content width is
 // constant. The bottom nav is pinned to the foot of the column, always aligned.
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useAppStore } from "@/lib/store";
 import { CurrentCustomerProvider } from "@/lib/customer/context";
 import { useReconcileMemberPlans } from "@/lib/customer/products-catalog";
 import { CustomerBottomNav } from "@/components/customer/shell/BottomNav";
@@ -108,8 +110,19 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 }
 
 /** Runs the one-membership-OR-packages self-heal for the current member on every
- *  customer page (renders nothing). Inside the provider so it sees the member. */
+ *  customer page (renders nothing). Inside the provider so it sees the member.
+ *  Also sweeps lapsed waitlist claim offers, so a "Notify to accept" spot the
+ *  member never answered passes to the next person as soon as the app is used
+ *  again — no background timer required. */
 function PlanInvariantGuard() {
     useReconcileMemberPlans();
+    const expireWaitlistClaims = useAppStore((s) => s.expireWaitlistClaims);
+    const reconcileWaitlistOffers = useAppStore((s) => s.reconcileWaitlistOffers);
+    useEffect(() => {
+        // Order matters: lapse stale claims first so the freed spots they were
+        // holding are visible to the sweep that follows.
+        expireWaitlistClaims();
+        reconcileWaitlistOffers();
+    }, [expireWaitlistClaims, reconcileWaitlistOffers]);
     return null;
 }

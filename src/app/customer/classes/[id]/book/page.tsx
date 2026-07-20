@@ -19,7 +19,7 @@ import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useClassDetail, useNeedsWaiver } from "@/lib/customer/search-data";
 import { formatLongDate, to12h } from "@/lib/customer/dates";
-import { bookingDraft, ensureBookingDraft, type BookingGuest } from "@/lib/customer/booking-flow";
+import { bookingDraft, ensureBookingDraft, DROP_IN_PRICE_AED, type BookingGuest } from "@/lib/customer/booking-flow";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { Button } from "@/components/ui/button";
 import { SpotPicker } from "@/components/customer/classes/SpotPicker";
@@ -84,6 +84,29 @@ function BookingConfirmation() {
     const needsPurchase = mode === "book" && !hasEligiblePlan;
     // Today's classes whose start time has passed are closed — no booking action.
     const isClosed = detail.state === "closed";
+
+    // ── Detail payment — what this booking actually costs. Seats covered by MY
+    // plan spend my credits (me + any "use my credits" guest); a guest paying
+    // another way is listed on its own line so the total is never misleading.
+    const guestExtras = guests
+        .filter((g) => g.payment !== "booker_credit")
+        .map((g) => {
+            const who = g.name.trim() || "Guest";
+            if (g.payment === "drop_in") return { label: `${who} — drop-in`, value: `AED ${DROP_IN_PRICE_AED}`, aed: DROP_IN_PRICE_AED };
+            if (g.payment === "guest_package") return { label: `${who} — own package`, value: "1 credit (theirs)", aed: 0 };
+            return { label: `${who} — invite link`, value: "Pays when booking", aed: 0 };
+        });
+    const guestAed = guestExtras.reduce((sum, g) => sum + g.aed, 0);
+    const creditsLabel = `${memberCreditSeats} credit${memberCreditSeats === 1 ? "" : "s"}`;
+    // Unlimited membership → no credits are drawn down for my own seat.
+    const myLineValue = hasCredits ? creditsLabel : "Included";
+    const totalValue = hasCredits
+        ? guestAed > 0
+            ? `${creditsLabel} + AED ${guestAed}`
+            : creditsLabel
+        : guestAed > 0
+          ? `AED ${guestAed}`
+          : "Included";
 
     const planLine = !hasCredits
         ? "Included in your membership"
@@ -334,6 +357,33 @@ function BookingConfirmation() {
                         </div>
                     )}
                 </section>
+
+                {/* Detail payment — mirrors the checkout breakdown (CheckoutCart),
+                    in credits instead of AED. Waitlist joins charge nothing. */}
+                {mode === "book" && (
+                    <>
+                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <section className="flex w-full flex-col gap-3">
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
+                            <div className="flex items-center justify-between gap-3 text-sm leading-5">
+                                <span className="min-w-0 truncate font-normal text-[#475467]">
+                                    {detail.name} x{memberCreditSeats}
+                                </span>
+                                <span className="shrink-0 font-medium text-[var(--brand-text)]">{myLineValue}</span>
+                            </div>
+                            {guestExtras.map((g) => (
+                                <div key={g.label} className="flex items-center justify-between gap-3 text-sm leading-5">
+                                    <span className="min-w-0 truncate font-normal text-[#475467]">{g.label}</span>
+                                    <span className="shrink-0 font-medium text-[var(--brand-text)]">{g.value}</span>
+                                </div>
+                            ))}
+                            <div className="flex items-center justify-between gap-3 text-sm leading-5">
+                                <span className="font-normal text-[#475467]">Total</span>
+                                <span className="shrink-0 font-semibold text-[var(--brand-text)]">{totalValue}</span>
+                            </div>
+                        </section>
+                    </>
+                )}
             </div>
 
             {/* Bottom sheet — overlap warning + payment plan + confirm. */}

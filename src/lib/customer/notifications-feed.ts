@@ -13,9 +13,10 @@
 // shared seed; version-guarded (bump to re-seed).
 
 import { useSyncExternalStore } from "react";
-import { useAppStore } from "@/lib/store";
+import { customerNotificationSink, useAppStore } from "@/lib/store";
 import { to12h } from "./dates";
 import { DEMO_MEMBER_ID } from "./context";
+import { getAuthSession } from "./auth";
 
 export type NotifTab = "bookings" | "payments";
 export type NotifEvent =
@@ -243,3 +244,17 @@ export function useCustomerNotifications(): CustomerNotification[] {
 export function useUnreadNotifCount(): number {
     return useCustomerNotifications().filter((n) => !n.isRead).length;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Store bridge — waitlist promotions / claim offers
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// `store.ts` owns the waitlist rules but cannot import this module (this module
+// imports the store), so it fires through a sink registered here on load. The
+// feed is single-customer, so rows addressed to anyone else are dropped: a
+// promotion for another member must never surface in this member's bell.
+customerNotificationSink.emit = ({ customerId, event, title, message, relatedType, relatedId }) => {
+    const viewer = getAuthSession().customerId ?? DEMO_MEMBER_ID;
+    if (customerId !== viewer) return;
+    addCustomerNotification({ tab: "bookings", event, title, message, relatedType, relatedId });
+};

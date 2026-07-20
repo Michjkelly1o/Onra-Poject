@@ -25,10 +25,12 @@ export default function ProductsSuccessPage() {
                     className="w-full rounded-full"
                     onClick={() =>
                         router.replace(
+                            // ?back= → Back leaves the finished purchase flow and
+                            // returns to Profile, never to checkout/processing.
                             hasPlan
-                                ? "/customer/profile/plan"
+                                ? "/customer/profile/plan?back=/customer/profile"
                                 : hasGiftCard
-                                  ? "/customer/profile/gift-cards"
+                                  ? "/customer/profile/gift-cards?back=/customer/profile"
                                   : "/customer/products",
                         )
                     }

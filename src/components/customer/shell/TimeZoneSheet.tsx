@@ -1,13 +1,18 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — Time Zone bottom sheet (Search / Appointments)
+// Customer — Time Zone bottom sheet (Search / Appointments / Instructor)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Opened from the schedule/slot timezone pill. Shows the BRANCH's time zone and —
-// only when the customer's device zone is OUTSIDE the branch's — their local zone
-// with a "Your time" badge + a compact out-of-zone alert. Selecting a row sets the
-// display timezone. When in the same zone, only the branch row is shown.
+// Opened from the schedule/slot timezone pill. Two rows only: the ACTIVE
+// branch's zone and — when the device sits outside it — the customer's local
+// zone (badged "Your time"). Both are selectable; the pick becomes the display
+// timezone (member context) and every class time in the app re-renders in it.
+// When both zones share an offset only the branch row is shown.
+//
+// Deliberately NOT a world-timezone picker: the customer only ever needs the
+// studio's time or their own. The branch row carries no "Branch time" badge —
+// branches sit in different zones, so the label would be ambiguous.
 
 import { Lightbulb02 } from "@untitledui/icons";
 import type { Branch } from "@/data/mock/_types";
@@ -91,13 +96,13 @@ export function TimeZoneSheet({
                             city={localCity}
                             offset={localOffset}
                             yourTime
-                            selected={value !== branchCity}
+                            selected={value === localCity}
                             onClick={() => onSelect(localCity)}
                         />
                         <div className="mt-2 flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                             <p className="text-sm font-normal leading-5 text-[#475467]">
-                                You&apos;re outside the branch&apos;s time zone — times show in your local time.
+                                You&apos;re outside the branch&apos;s time zone — pick which one to show class times in.
                             </p>
                         </div>
                     </>

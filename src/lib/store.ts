@@ -1017,6 +1017,64 @@ export function isAppointmentId(id: string): boolean {
  * time — no `customerName`/`customerInitials`/`customerColor` copies live
  * on the row anymore.
  */
+
+// ─── Waitlist promotion — Booking Rules (Settings → Booking rules → Waitlist) ──
+
+/** How long a "Notify to accept" offer stays claimable. There is no admin field
+ *  for this yet, so the demo uses a short, legible window; it is always clamped
+ *  by the auto-promotion cutoff below (a claim can never outlive the cutoff). */
+export const WAITLIST_CLAIM_TTL_MINUTES = 30;
+
+/** Hours before class start at which auto-promotion stops. Mirrors the free
+ *  cancellation window when the admin ticked "Match the free cancellation
+ *  window" (so nobody is auto-booked straight into a charge), otherwise the
+ *  custom "Stop auto promoting" value. */
+export function waitlistCutoffHours(cs: ClassesSettings, policy: CancellationPolicy): number {
+    if (cs.match_free_cancellation_window) {
+        return policy.credit_before_window_unit === "minutes"
+            ? policy.credit_before_window_value / 60
+            : policy.credit_before_window_value;
+    }
+    return cs.stop_auto_promoting_unit === "minutes"
+        ? cs.stop_auto_promoting_value / 60
+        : cs.stop_auto_promoting_value;
+}
+
+/** Hours from now until a class starts, on the local wall clock (the convention
+ *  every other demo date calculation uses). Negative once the class has begun. */
+export function hoursUntilClass(dateISO: string, startTime: string): number {
+    const [y, m, d] = dateISO.split("-").map(Number);
+    const [hh, mm] = startTime.split(":").map(Number);
+    if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return Number.POSITIVE_INFINITY;
+    return (new Date(y, m - 1, d, hh, mm, 0, 0).getTime() - Date.now()) / 3_600_000;
+}
+
+/** True while `booking` holds a live, unexpired claim on a freed spot. */
+export function hasLiveWaitlistClaim(booking: ClassBooking): boolean {
+    return (
+        booking.status === "waitlisted" &&
+        !booking.waitlistClaimDeclinedAt &&
+        !!booking.waitlistClaimExpiresAt &&
+        Date.parse(booking.waitlistClaimExpiresAt) > Date.now()
+    );
+}
+
+/** Bridge for customer-facing notifications. `store.ts` must not import the
+ *  customer notification feed (that module imports the store), so the feed
+ *  registers its writer here on load and the store fires through it. */
+export const customerNotificationSink: {
+    emit:
+        | null
+        | ((n: {
+              customerId: string;
+              event: "booking_confirmed" | "spot_available";
+              title: string;
+              message: string;
+              relatedType: "booking";
+              relatedId: string;
+          }) => void);
+} = { emit: null };
+
 export interface ClassBooking {
     id: string;
     classScheduleId: string;
@@ -1040,6 +1098,15 @@ export interface ClassBooking {
     cancellationReason?: string;
     refundCreditIssued?: boolean;
     waitlistPosition?: number;
+    /** Waitlist claim offer — set on the next-in-line seat when a spot frees up
+     *  and Booking Rules are in "Notify to accept" mode. The seat stays
+     *  `waitlisted` until the member claims it; if the claim lapses or is
+     *  declined, the spot passes to the next person. */
+    waitlistClaimOfferedAt?: string;
+    waitlistClaimExpiresAt?: string;
+    /** Set when the member declined, or the claim window lapsed — the seat is
+     *  skipped when the spot is re-offered so it can't be offered twice. */
+    waitlistClaimDeclinedAt?: string;
     /** Origin surface where the booking was created (camel-case mirror
      *  of `ClassBookingSeed.booking_source`). */
     bookingSource?: "customer_portal" | "admin" | "front_desk" | "pos";
@@ -2117,6 +2184,26 @@ function appointmentBookingFromSeed(b: SeedAppointmentBooking): AppointmentBooki
     };
 }
 
+/** Live lifecycle status derived from the DEVICE clock.
+ *
+ *  Demo rows carry a status baked at seed time, which goes stale the moment the
+ *  prototype runs past that date — a 19 May class was still reporting
+ *  "Upcoming" on 20 July, so it sat in the customer's Upcoming bookings. Both
+ *  the admin and the customer read status through here, so they can never
+ *  disagree about what is Upcoming. "Cancelled" is an explicit action and
+ *  always wins over the clock. */
+export function liveScheduleStatus<T extends string>(dateISO: string, startTime: string, endTime: string, current: T): T {
+    if (current === "Cancelled") return current;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (dateISO > today) return "Upcoming" as T;
+    if (dateISO < today) return "Completed" as T;
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    if (hhmm < startTime) return "Upcoming" as T;
+    if (endTime && hhmm < endTime) return "Ongoing" as T;
+    return "Completed" as T;
+}
+
 function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): ClassSchedule {
     const tpl = templates.find(t => t.id === s.template_id);
     // Resolve the instructor's denormalized name/initials/colour. staff_profiles
@@ -2164,7 +2251,7 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         waitlistEnabled: s.waitlist_enabled ?? true,
         rating: s.rating,
         ratingCount: s.rating_count,
-        status: s.status,
+        status: liveScheduleStatus(s.date_iso, s.start_time, s.end_time, s.status),
         genderAccess: s.gender_access ?? "all",
         recurrenceGroupId: s.recurrence_group_id,
         cancelledAt: s.cancelled_at,
@@ -3504,6 +3591,31 @@ export interface AppState {
     //    existing behaviour for any caller that hasn't migrated yet.
 
     cancelClassBooking: (id: string, reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
+    /** Offer a freed spot on this class to the waitlist, honouring Settings →
+     *  Booking rules → Waitlist ("Auto add the next person" promotes #1 outright;
+     *  "Notify to accept" reserves it for #1 to claim). No-op when the waitlist is
+     *  off, the class is full, or the auto-promotion cutoff has passed. */
+    offerFreedWaitlistSpot: (classScheduleId: string) => void;
+    /** Move a waitlisted seat to booked — spends a credit, bumps the class count
+     *  and renumbers the queue. Used by auto-promotion, the member's "Claim spot"
+     *  action and any future admin manual promote. */
+    promoteWaitlistBooking: (bookingId: string) => void;
+    /** Member accepted a "Notify to accept" offer. False when the offer already
+     *  lapsed or the class filled up meanwhile. */
+    claimWaitlistSpot: (bookingId: string) => boolean;
+    /** Member declined the offer — the spot passes to the next person in line. */
+    declineWaitlistSpot: (bookingId: string) => void;
+    /** Sweep every upcoming class that has room AND a waitlist, and run the
+     *  Booking Rules offer on it. Cancellation is not the only way a spot can be
+     *  free — seeded demo data, an admin capacity increase, or a cancellation
+     *  made before this logic existed all leave a class sitting at e.g. 5/6 with
+     *  people still queued. Idempotent: `offerFreedWaitlistSpot` no-ops when a
+     *  claim is already live or nobody is eligible. */
+    reconcileWaitlistOffers: () => void;
+    /** Lapse any claim offers whose window has closed and re-offer those spots.
+     *  Called on render by the surfaces that show waitlist state, so expiry works
+     *  without a background timer. */
+    expireWaitlistClaims: () => void;
     removeClassBooking: (id: string) => void;
     removeClassBookings: (ids: string[]) => void;
     cancelClassBookings: (ids: string[], reason: string, refund: boolean, source?: ClassBooking["cancelledSource"]) => void;
@@ -5120,6 +5232,215 @@ export const useAppStore = create<AppState>()(persist(
         };
         return { customerAgreements: [...state.customerAgreements, row] };
     }),
+    offerFreedWaitlistSpot: (classScheduleId) => {
+        const state = get();
+        const cs = state.classesSettings;
+        const schedule = state.classSchedules.find(s => s.id === classScheduleId);
+        if (!schedule || !cs.waitlist_enabled) return;
+        // Only offer a spot that genuinely exists.
+        if (schedule.booked >= schedule.capacity) return;
+
+        // Past the cutoff the freed spot follows `after_cutoff_mode` instead of
+        // the waitlist order — "reopens_first_come" (anyone, incl. walk-ins) and
+        // "stays_empty" both mean: do not promote or offer.
+        const cutoff = waitlistCutoffHours(cs, state.cancellationPolicy);
+        const pastCutoff = hoursUntilClass(schedule.dateISO, schedule.startTime) < cutoff;
+        if (pastCutoff && cs.after_cutoff_mode !== "keep_auto_promoting") return;
+
+        const queue = state.classBookings
+            .filter(b => b.classScheduleId === classScheduleId && b.status === "waitlisted")
+            .sort((a, b) => (a.waitlistPosition ?? Number.MAX_SAFE_INTEGER) - (b.waitlistPosition ?? Number.MAX_SAFE_INTEGER));
+        // Someone already holds a live claim on this spot — it is reserved.
+        if (queue.some(hasLiveWaitlistClaim)) return;
+        // Next in line = never offered and never declined, so nobody is asked twice.
+        const next = queue.find(b => !b.waitlistClaimOfferedAt && !b.waitlistClaimDeclinedAt);
+        if (!next) return;
+
+        // "Auto add the next person" (or keep-auto-promoting past the cutoff).
+        if (cs.when_spot_opens_mode === "auto_add_next" || pastCutoff) {
+            get().promoteWaitlistBooking(next.id);
+            return;
+        }
+
+        // "Notify to accept" — reserve the spot and let them claim it. The claim
+        // can never outlive the auto-promotion cutoff.
+        const hoursLeftBeforeCutoff = hoursUntilClass(schedule.dateISO, schedule.startTime) - cutoff;
+        const ttlMs = Math.max(
+            60_000,
+            Math.min(WAITLIST_CLAIM_TTL_MINUTES * 60_000, hoursLeftBeforeCutoff * 3_600_000),
+        );
+        const nowISO = new Date().toISOString();
+        set(state2 => ({
+            classBookings: state2.classBookings.map(b =>
+                b.id === next.id
+                    ? { ...b, waitlistClaimOfferedAt: nowISO, waitlistClaimExpiresAt: new Date(Date.now() + ttlMs).toISOString() }
+                    : b
+            ),
+        }));
+        customerNotificationSink.emit?.({
+            customerId: next.customerId,
+            event: "spot_available",
+            title: "A spot is available 🎉",
+            message: `A spot has opened up in ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}. Claim your spot to confirm your booking before it's offered to the next person.`,
+            relatedType: "booking",
+            relatedId: next.id,
+        });
+    },
+
+    promoteWaitlistBooking: (bookingId) => {
+        const state = get();
+        const booking = state.classBookings.find(b => b.id === bookingId);
+        if (!booking || booking.status !== "waitlisted") return;
+        const schedule = state.classSchedules.find(s => s.id === booking.classScheduleId);
+        if (!schedule || schedule.booked >= schedule.capacity) return;
+        const customer = state.customers.find(c => c.id === booking.customerId);
+
+        set(state2 => ({
+            classBookings: state2.classBookings.map(b => {
+                if (b.id === bookingId) {
+                    return {
+                        ...b,
+                        status: "booked" as const,
+                        waitlistPosition: undefined,
+                        waitlistClaimOfferedAt: undefined,
+                        waitlistClaimExpiresAt: undefined,
+                        waitlistClaimDeclinedAt: undefined,
+                    };
+                }
+                // Close the gap left in the queue.
+                if (
+                    b.classScheduleId === booking.classScheduleId &&
+                    b.status === "waitlisted" &&
+                    (b.waitlistPosition ?? 0) > (booking.waitlistPosition ?? 0)
+                ) {
+                    return { ...b, waitlistPosition: (b.waitlistPosition ?? 1) - 1 };
+                }
+                return b;
+            }),
+            classSchedules: state2.classSchedules.map(s =>
+                s.id === booking.classScheduleId ? { ...s, booked: s.booked + 1 } : s
+            ),
+            // A waitlist seat costs nothing until it converts — spend the credit now
+            // (mirrors `addClassBooking`, which only charges `booked` seats).
+            customers: booking.planKindUsed
+                ? state2.customers.map(c =>
+                      c.id === booking.customerId && typeof c.creditsRemaining === "number"
+                          ? { ...c, creditsRemaining: Math.max(0, c.creditsRemaining - 1) }
+                          : c
+                  )
+                : state2.customers,
+        }));
+
+        customerNotificationSink.emit?.({
+            customerId: booking.customerId,
+            event: "booking_confirmed",
+            title: "You're booked! 🎉",
+            message: `A spot has opened up and you've been moved from the waitlist to ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
+            relatedType: "booking",
+            relatedId: booking.id,
+        });
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            const filled = (get().classSchedules.find(s => s.id === schedule.id)?.booked ?? schedule.booked);
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "waitlist_promoted",
+                    title: "Waitlist Promoted",
+                    body: `${customerName} moved from the waitlist into ${schedule.name} on ${schedule.dayOfWeek} at ${schedule.displayTime}.`,
+                    icon: "calendar-check",
+                    sourceModule: "booking",
+                    sourceId: booking.id,
+                    classScheduleId: schedule.id,
+                    customerId: customer.id,
+                    branchId: schedule.branchId,
+                },
+                instructor: {
+                    tab: "booking",
+                    event: "waitlist_promoted",
+                    title: "Waitlist Promoted",
+                    body: `${customerName} joined from the waitlist. ${filled}/${schedule.capacity} spots filled.`,
+                    icon: "calendar-check",
+                    sourceModule: "booking",
+                    sourceId: booking.id,
+                    classScheduleId: schedule.id,
+                    customerId: customer.id,
+                    branchId: schedule.branchId,
+                    targetInstructorId: schedule.instructorId,
+                },
+            });
+        }
+    },
+
+    claimWaitlistSpot: (bookingId) => {
+        const booking = get().classBookings.find(b => b.id === bookingId);
+        if (!booking || !hasLiveWaitlistClaim(booking)) return false;
+        const schedule = get().classSchedules.find(s => s.id === booking.classScheduleId);
+        if (!schedule || schedule.booked >= schedule.capacity) return false;
+        get().promoteWaitlistBooking(bookingId);
+        return get().classBookings.find(b => b.id === bookingId)?.status === "booked";
+    },
+
+    declineWaitlistSpot: (bookingId) => {
+        const booking = get().classBookings.find(b => b.id === bookingId);
+        if (!booking || booking.status !== "waitlisted") return;
+        set(state => ({
+            classBookings: state.classBookings.map(b =>
+                b.id === bookingId
+                    ? { ...b, waitlistClaimDeclinedAt: new Date().toISOString(), waitlistClaimExpiresAt: undefined }
+                    : b
+            ),
+        }));
+        // Pass it straight down the queue.
+        get().offerFreedWaitlistSpot(booking.classScheduleId);
+    },
+
+    reconcileWaitlistOffers: () => {
+        const state = get();
+        if (!state.classesSettings.waitlist_enabled) return;
+        const waiting = new Set(
+            state.classBookings.filter(b => b.status === "waitlisted").map(b => b.classScheduleId)
+        );
+        if (waiting.size === 0) return;
+        const targets = state.classSchedules.filter(
+            sc => waiting.has(sc.id) && sc.status === "Upcoming" && sc.booked < sc.capacity
+        );
+        // Each call re-reads state, so promotions inside the loop are seen by the
+        // next iteration (a class with 2 free spots offers both in auto mode).
+        for (const sc of targets) {
+            let guard = sc.capacity - sc.booked;
+            while (guard-- > 0) {
+                const before = get().classSchedules.find(x => x.id === sc.id)?.booked ?? 0;
+                get().offerFreedWaitlistSpot(sc.id);
+                const after = get().classSchedules.find(x => x.id === sc.id)?.booked ?? 0;
+                // Stop as soon as a pass changes nothing (offer made, or no-op).
+                if (after === before) break;
+            }
+        }
+    },
+
+    expireWaitlistClaims: () => {
+        const now = Date.now();
+        const lapsed = get().classBookings.filter(
+            b =>
+                b.status === "waitlisted" &&
+                !b.waitlistClaimDeclinedAt &&
+                !!b.waitlistClaimExpiresAt &&
+                Date.parse(b.waitlistClaimExpiresAt) <= now
+        );
+        if (lapsed.length === 0) return;
+        const nowISO = new Date().toISOString();
+        set(state => ({
+            classBookings: state.classBookings.map(b =>
+                lapsed.some(l => l.id === b.id)
+                    ? { ...b, waitlistClaimDeclinedAt: nowISO, waitlistClaimExpiresAt: undefined }
+                    : b
+            ),
+        }));
+        // Re-offer each affected class to the next person in line.
+        Array.from(new Set(lapsed.map(l => l.classScheduleId))).forEach(id => get().offerFreedWaitlistSpot(id));
+    },
+
     cancelClassBooking: (id, reason, refund, source) => {
         const stateBefore = get();
         const booking = stateBefore.classBookings.find(b => b.id === id);
@@ -5177,6 +5498,12 @@ export const useAppStore = create<AppState>()(persist(
                     targetInstructorId: schedule.instructorId,
                 },
             });
+        }
+        // The freed seat cascades to the waitlist per Settings → Booking rules.
+        // Only a previously BOOKED seat frees capacity — cancelling a waitlist
+        // entry does not, so it must not trigger a promotion.
+        if (booking?.status === "booked" && schedule) {
+            get().offerFreedWaitlistSpot(schedule.id);
         }
     },
     cancelClassBookings: (ids, reason, refund, source) => {
@@ -5244,6 +5571,11 @@ export const useAppStore = create<AppState>()(persist(
                 });
             }
         }
+        // Each freed seat cascades to its class's waitlist (once per class).
+        // `targets` was captured pre-cancel, so `status` is the seat's old value.
+        Array.from(new Set(targets.filter(t => t.status === "booked").map(t => t.classScheduleId))).forEach(scheduleId =>
+            get().offerFreedWaitlistSpot(scheduleId)
+        );
     },
     // ── Customer-portal cancel-with-penalty flow (Jul 2026) ────────────────
     // Kept as a SEPARATE action from `cancelClassBooking` so the existing
@@ -8115,6 +8447,11 @@ export const useAppStore = create<AppState>()(persist(
         //   types). 3 seed rows + half of DEMO_NOW_REFERRALS re-typed to
         //   `wallet_credit` so both card lines demo populated. Bump forces
         //   a reseed on next hydrate so testers pick up the new fields.
+        // v66 (2026-07-20): schedule status is derived from the DEVICE clock
+        //   (`liveScheduleStatus`) instead of the seed's baked value, so a past
+        //   class can never sit in the customer's Upcoming bookings. Also adds
+        //   waitlist claim-offer fields to ClassBooking for the "Notify to
+        //   accept" flow. Bump reseeds so testers pick both up.
         // v57 (2026-07-14): session-type dimension Phase 1. Every bookable/
         //   scheduled row gains an explicit `type` ("class" | "private" |
         //   "recovery"): ClassTemplate/ClassSchedule = "class", Service =
@@ -8164,8 +8501,35 @@ export const useAppStore = create<AppState>()(persist(
         //   (was stale pr_standard/AED 441) → month rollup = AED 8,000 salary,
         //   so the payroll staff-detail + compensation list show a real total
         //   instead of AED 0. Bump reseeds payroll entries.
-        version: 65,
+        version: 66,
         storage: createJSONStorage(() => localStorage),
+        // Persisted rows keep whatever status they had when they were written,
+        // so a demo session left open across a date boundary (or restored days
+        // later) would show past classes as Upcoming. Re-derive from the device
+        // clock on every hydrate — one place, so admin and customer agree.
+        onRehydrateStorage: () => (state) => {
+            if (!state) return;
+            state.classSchedules = state.classSchedules.map((c) => ({
+                ...c,
+                status: liveScheduleStatus(c.dateISO, c.startTime, c.endTime, c.status),
+            }));
+            state.appointments = state.appointments.map((a) => ({
+                ...a,
+                status: liveScheduleStatus(a.dateISO, a.startTime, a.endTime, a.status),
+            }));
+            // Deferred: the waitlist sweep calls set(), which must not run while
+            // the store is still rehydrating. One tick later it applies Booking
+            // Rules to any class already sitting with a free spot + a queue —
+            // so admin and customer open on the same reconciled state.
+            setTimeout(() => {
+                try {
+                    useAppStore.getState().expireWaitlistClaims();
+                    useAppStore.getState().reconcileWaitlistOffers();
+                } catch {
+                    /* store not ready (SSR / teardown) — the layout guard retries */
+                }
+            }, 0);
+        },
         // `partialize` strips per-tab + ephemeral state from the serialized
         // payload. Action functions (set / get callbacks) are dropped
         // automatically by JSON.stringify — they don't survive serialization

@@ -27,9 +27,11 @@ import { Button } from "@/components/ui/button";
 
 export default function BookingDetailPage() {
     const router = useRouter();
-    const goBack = useCustomerBack("/customer/bookings/upcoming");
     const { bookingId } = useParams<{ bookingId: string }>();
     const vm = useBookingDetail(bookingId);
+    // A cancelled / past booking lives in the Past tab — Back returns there, so
+    // it never lands on the Upcoming list the record just left.
+    const goBack = useCustomerBack(vm?.tab === "past" ? "/customer/bookings/past" : "/customer/bookings/upcoming");
     const reviews = useClassReviews(vm?.detail.id ?? "");
     const hasRated = useHasRated(vm?.detail.id ?? "");
     const [cancelOpen, setCancelOpen] = useState(false);

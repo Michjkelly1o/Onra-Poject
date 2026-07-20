@@ -8,20 +8,51 @@
 // supplies the discovery hero badge + a state-driven action zone: Book class /
 // Join waitlist / Full / Manage in Bookings. Reads the live class detail VM.
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronLeft, Hourglass03, Users01 } from "@untitledui/icons";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail } from "@/lib/customer/search-data";
+import { formatLongDate, to12h } from "@/lib/customer/dates";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
+import { WaitlistClaimSheet } from "@/components/customer/classes/WaitlistClaimSheet";
+import { hasLiveWaitlistClaim, useAppStore } from "@/lib/store";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
+
+// One class credit is spent per booked seat (see `addClassBooking`).
+const CLASS_CREDIT_COST = 1;
 
 export default function ClassDetailPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const detail = useClassDetail(id);
     const member = useCurrentCustomer();
+
+    // ── "Notify to accept" waitlist offer ──────────────────────────────────
+    // When a booked member cancels and Booking Rules say "Notify to accept",
+    // the store reserves the spot for the next person in line. If that's this
+    // member, present the claim/decline sheet the moment they open the class —
+    // whether they arrived from the notification or navigated here themselves.
+    const bookings = useAppStore((st) => st.classBookings);
+    const claimWaitlistSpot = useAppStore((st) => st.claimWaitlistSpot);
+    const declineWaitlistSpot = useAppStore((st) => st.declineWaitlistSpot);
+    const expireWaitlistClaims = useAppStore((st) => st.expireWaitlistClaims);
+    const showToast = useAppStore((st) => st.showToast);
+    // Lapse any stale offers on entry so an expired claim cascades to the next
+    // person without needing a background timer.
+    useEffect(() => {
+        expireWaitlistClaims();
+    }, [expireWaitlistClaims]);
+    const myClaim = member
+        ? bookings.find((b) => b.classScheduleId === id && b.customerId === member.id && hasLiveWaitlistClaim(b))
+        : undefined;
+    const [claimSheetOpen, setClaimSheetOpen] = useState(false);
+    const [claimDismissed, setClaimDismissed] = useState(false);
+    useEffect(() => {
+        if (myClaim && !claimDismissed) setClaimSheetOpen(true);
+    }, [myClaim, claimDismissed]);
 
     if (!detail) {
         return (
@@ -66,7 +97,12 @@ export default function ClassDetailPage() {
     const credits = member?.creditsRemaining;
     const booked = detail.state === "booked" || detail.state === "waitlisted";
 
+    const claimMinutesLeft = myClaim?.waitlistClaimExpiresAt
+        ? Math.max(1, Math.round((Date.parse(myClaim.waitlistClaimExpiresAt) - Date.now()) / 60_000))
+        : null;
+
     return (
+        <>
         <ClassDetailLayout
             detail={detail}
             heroBadge={
@@ -93,8 +129,14 @@ export default function ClassDetailPage() {
                         </>
                     ) : (
                         <>
-                            <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
-                                {typeof credits === "number" ? `${credits} credits left` : " "}
+                            {/* Credit balance + what this class costs (4px apart). */}
+                            <span className="flex min-w-0 flex-col gap-1">
+                                <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
+                                    {typeof credits === "number" ? `${credits} credits left` : " "}
+                                </span>
+                                <span className="text-sm font-normal leading-5 text-[#475467]">
+                                    {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"} used
+                                </span>
                             </span>
                             {detail.state === "available" ? (
                                 <Button
@@ -132,5 +174,34 @@ export default function ClassDetailPage() {
                 </div>
             }
         />
+        {myClaim && (
+            <WaitlistClaimSheet
+                open={claimSheetOpen}
+                onClose={() => {
+                    // Dismissing without choosing leaves the offer live — it
+                    // lapses on its own and passes to the next person.
+                    setClaimSheetOpen(false);
+                    setClaimDismissed(true);
+                }}
+                className={detail.name}
+                when={`${formatLongDate(detail.dateISO)} • ${to12h(detail.startTime)}`}
+                expiresLabel={claimMinutesLeft ? `${claimMinutesLeft} minute${claimMinutesLeft === 1 ? "" : "s"}` : undefined}
+                onClaim={() => {
+                    const ok = claimWaitlistSpot(myClaim.id);
+                    showToast(
+                        ok ? "You're booked!" : "Spot no longer available",
+                        ok
+                            ? `You've been moved from the waitlist into ${detail.name}.`
+                            : "That spot was taken or the claim window closed.",
+                        ok ? "success" : "error",
+                    );
+                }}
+                onDecline={() => {
+                    declineWaitlistSpot(myClaim.id);
+                    showToast("Spot declined", "It's been offered to the next person on the waitlist.", "success");
+                }}
+            />
+        )}
+        </>
     );
 }

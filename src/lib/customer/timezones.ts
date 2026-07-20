@@ -84,10 +84,22 @@ const ZONE_BY_CITY = new Map(TIMEZONES.map((t) => [t.city, t.zone]));
  *  The Classes flow clears it (null → no branch badge). */
 export const tzPickerCtx: { branchCity: string | null } = { branchCity: null };
 
-/** One-shot per-session flag: the out-of-zone Time Zone sheet is shown once when
- *  the customer enters Search / Appointments, then not auto-shown again. Resets
- *  on a full reload. */
-export const tzGate: { confirmed: boolean } = { confirmed: false };
+/** Per-session, per-branch-zone gate for the out-of-zone Time Zone sheet.
+ *
+ *  Holds the branch zone the sheet was last auto-shown for. Re-entering Search or
+ *  the Appointment flow for the SAME branch zone never re-opens it (that was the
+ *  "show it once" rule); switching to a branch in a DIFFERENT zone does, because
+ *  the offset the customer was told about no longer applies. Resets on reload. */
+export const tzGate: { shownForZone: string | null } = { shownForZone: null };
+
+/** True when the out-of-zone sheet should auto-open for `branchZone`, and marks
+ *  it seen. Marking on OPEN (not on confirm/dismiss) means a customer who swipes
+ *  the sheet away is not prompted again. */
+export function shouldAutoOpenTzSheet(branchZone: string): boolean {
+    if (tzGate.shownForZone === branchZone) return false;
+    tzGate.shownForZone = branchZone;
+    return true;
+}
 
 /** The current UTC offset of an IANA zone, e.g. "UTC+04:00" / "UTC±00:00". */
 export function offsetLabel(zone: string): string {
