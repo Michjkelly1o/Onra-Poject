@@ -25,7 +25,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose } from "@untitledui/icons";
+import { XClose, Lightbulb02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
@@ -129,13 +129,31 @@ export function ReferralRewardsPanel({ open, onClose }: {
     const [expiryDays, setExpiryDays] = useState<number>(settings.earnedRewardExpiryDays);
     const [budget, setBudget] = useState<number>(settings.monthlyProgramBudgetAed);
 
+    /** Cascade both dropdowns in lockstep — client Jul 2026: a studio can only
+     *  offer ONE reward type at a time (Class Credit OR Account Credit AED,
+     *  never mixed). Changing either dropdown mirrors to the other AND resets
+     *  BOTH amounts to 0 so a "5 credits" value can't accidentally save as
+     *  "5 AED" after a type switch. Both selects stay visible for clarity —
+     *  the constraint is the sync, not hiding either input. */
+    function handleTypeChange(next: ReferralRewardType) {
+        if (next === referrerType && next === friendType) return;
+        setReferrerType(next);
+        setFriendType(next);
+        setReferrerAmount(0);
+        setFriendAmount(0);
+    }
+
     // Reset every time the panel opens so the form mirrors the
     // currently-saved values (not stale local edits from a prior open).
+    // Studio-single-type invariant (client Jul 2026): if persisted state
+    // somehow diverges (mixed pre-constraint data), snap `friendType` to
+    // `referrerType` on hydrate so the form opens in a valid state.
     useEffect(() => {
         if (open) {
-            setReferrerType(settings.referrerEarnType);
+            const t = settings.referrerEarnType;
+            setReferrerType(t);
             setReferrerAmount(settings.referrerEarnAmount);
-            setFriendType(settings.friendEarnType);
+            setFriendType(t);
             setFriendAmount(settings.friendEarnAmount);
             setTrigger(settings.rewardUnlockTrigger);
             setMaxReferrals(settings.maxReferralsPerMember);
@@ -165,10 +183,17 @@ export function ReferralRewardsPanel({ open, onClose }: {
 
     function handleSave() {
         if (!formValid) return;
+        // Studio-single-type invariant (client Jul 2026) — both `referrerEarnType`
+        // and `friendEarnType` MUST equal the same value on save. The cascade
+        // handler above already keeps `friendType` in lockstep with
+        // `referrerType`, but we write `referrerType` to both fields at save
+        // time as a belt-and-braces guard for any stale mixed-type persisted
+        // state that never got touched during the session.
+        const rewardType = referrerType;
         updateReferralRewards({
-            referrerEarnType: referrerType,
+            referrerEarnType: rewardType,
             referrerEarnAmount: referrerAmount,
-            friendEarnType: friendType,
+            friendEarnType: rewardType,
             friendEarnAmount: friendAmount,
             rewardUnlockTrigger: trigger,
             maxReferralsPerMember: maxReferrals,
@@ -234,6 +259,18 @@ export function ReferralRewardsPanel({ open, onClose }: {
                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-8 select-text">
                     {/* ── Who earns what ──────────────────────────────── */}
                     <Section title="Who earns what">
+                        {/* Studio-single-type invariant (client Jul 2026) — a
+                            studio offers ONE reward type at a time. This info
+                            banner explains why changing either dropdown
+                            cascades the other AND resets both amounts. Uses
+                            the same neutral `#f1f2ed` info chrome the freeze
+                            policy panel + cancel-plan modal use. */}
+                        <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
+                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                                Studios use one reward type at a time — switching resets both amounts.
+                            </p>
+                        </div>
                         {/* 3-column grid: dropdown → arrow → Amount.
                             `minmax(0, 1fr)` forces true 50/50 columns
                             (a plain `1fr` grows the intrinsically wider
@@ -244,7 +281,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                 <Field label="Referrer earns">
                                     <SelectInput
                                         value={referrerType}
-                                        onChange={v => setReferrerType(v as ReferralRewardType)}
+                                        onChange={v => handleTypeChange(v as ReferralRewardType)}
                                         options={REWARD_TYPE_OPTIONS}
                                         width="w-full"
                                     />
@@ -272,7 +309,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                 <Field label="Friend earns">
                                     <SelectInput
                                         value={friendType}
-                                        onChange={v => setFriendType(v as ReferralRewardType)}
+                                        onChange={v => handleTypeChange(v as ReferralRewardType)}
                                         options={REWARD_TYPE_OPTIONS}
                                         width="w-full"
                                     />

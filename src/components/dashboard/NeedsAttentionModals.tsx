@@ -333,17 +333,25 @@ export function RenewalDueModal({ open, onClose, branchId, forwardRangeDays }: R
         const horizon = new Date(now); horizon.setDate(horizon.getDate() + rangeDays);
         const horizonISO = horizon.toISOString().slice(0, 10);
         const todayISO = now.toISOString().slice(0, 10);
+        // Match the dashboard Coming-up "Expiring memberships" card exactly
+        // (client Jul 2026 audit fix — was accepting `expired` status + no
+        // lower bound, so the modal list N always exceeded the card N and
+        // click-through counts disagreed):
+        //   • held memberships only (kind=membership, status active/frozen)
+        //   • expiryISO in [today, today+N days] (inclusive both ends)
         return customerPlans
             .filter(p => p.kind === "membership")
-            .filter(p => (p.expiryISO ?? "").slice(0, 10) <= horizonISO)
-            .filter(p => p.status === "active" || p.status === "frozen" || p.status === "expired")
+            .filter(p => p.status === "active" || p.status === "frozen")
+            .filter(p => {
+                const day = (p.expiryISO ?? "").slice(0, 10);
+                return day >= todayISO && day <= horizonISO;
+            })
             .map(p => {
                 const c = customers.find(cx => cx.id === p.customerId);
                 if (!c) return null;
                 if (branchId && c.branchId !== branchId) return null;
                 const expiryDate = (p.expiryISO ?? "").slice(0, 10);
-                const isExpired = expiryDate < todayISO || p.status === "expired";
-                return { plan: p, customer: c, expiryDate, isExpired };
+                return { plan: p, customer: c, expiryDate, isExpired: false };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
     }, [customerPlans, customers, branchId, forwardRangeDays]);

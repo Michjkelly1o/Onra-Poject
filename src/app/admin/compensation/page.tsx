@@ -36,7 +36,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
-import { commissionForPeriod } from "@/lib/payroll-calc";
+import { totalEarningsForStaff } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
@@ -147,6 +147,11 @@ interface CompRow {
     branchId: string;
     payRateName: string;
     classesCount: number;
+    /** Real studio-side revenue for the row's period, from the payroll entry
+     *  (0 for non-instructor staff — they don't teach classes). Powers the
+     *  "Class revenue base" metric card so it stops using the placeholder
+     *  `totalPayouts × 6` multiplier. */
+    grossRevenue: number;
     earnings: number;
     status: PayrollEntry["status"];
     periodStart: string;
@@ -236,6 +241,12 @@ export default function CompensationPage() {
     const payRates = useAppStore(s => s.payRates);
 
     const allRows = useMemo<CompRow[]>(() => {
+        // Shared inputs for the canonical earnings formula (base + commission).
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const fromISO = iso(range.from);
+        const toISO   = iso(range.to);
+
         const entriesByInstructor = new Map<string, PayrollEntry>();
         for (const e of payrollEntries) {
             if (!spanInRange(e.periodStart, e.periodEnd, range)) continue;
@@ -262,15 +273,23 @@ export default function CompensationPage() {
             }
         }
 
-        // Instructor rows — class-teaching earnings from payroll entries.
+        // Instructor rows — base pay (class teaching / monthly salary) plus any
+        // sales commission credited to them, via the shared earnings helper so
+        // the figure matches the detail + run-payroll pages exactly.
         const instructorRows: CompRow[] = instructors
             .filter(i => i.status === "active")
             .map(instructor => {
                 const entry = entriesByInstructor.get(instructor.id);
-                const liveRateName = instructor.payRateId
-                    ? payRates.find(p => p.id === instructor.payRateId)?.name
+                const livePayRate = instructor.payRateId
+                    ? payRates.find(p => p.id === instructor.payRateId)
                     : undefined;
-                const payRateName = entry?.payRateName ?? liveRateName ?? "—";
+                // "Default pay rate" is the instructor's CURRENT rate — prefer
+                // the live name over the entry's historical snapshot.
+                const payRateName = livePayRate?.name ?? entry?.payRateName ?? "—";
+
+                const { total } = totalEarningsForStaff(
+                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                );
 
                 const identity: CompRowIdentity = {
                     id: instructor.id,
@@ -289,24 +308,30 @@ export default function CompensationPage() {
                     branchId: instructor.branchId,
                     payRateName,
                     classesCount: entry?.classesCount ?? 0,
-                    earnings: entry?.totalEarnings ?? 0,
+                    grossRevenue: entry?.grossRevenue ?? 0,
+                    earnings: total,
                     status: entry?.status ?? "pending",
                     periodStart: entry?.periodStart ?? "",
                     periodEnd: entry?.periodEnd ?? "",
                 } satisfies CompRow;
             });
 
-        // Non-instructor staff rows (Phase 3B) — no class teaching, so earnings
-        // = monthly salary (if any) + categorised commission for the period.
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        // Non-instructor staff rows (Phase 3B) — no class teaching, so base pay
+        // = monthly salary (if any); commission adds on top. Same helper as the
+        // instructor rows so the earnings column is computed one way only.
         const staffRows: CompRow[] = staff
             .filter(st => st.status === "active")
             .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
             .map(st => {
                 const payRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
-                const commission = commissionForPeriod(st.id, payRate, sources, iso(range.from), iso(range.to));
-                const salary = payRate?.type === "monthly" ? payRate.fixedSalary : 0;
+                const { total } = totalEarningsForStaff(st.id, payRate, undefined, sources, fromISO, toISO);
+                // Look up the materialised payroll entry for this staff member
+                // (created at Run Payroll confirm time) so the row's Status +
+                // period columns reflect the actual paid/pending state
+                // (client Jul 2026 audit fix — was hardcoded "pending" and the
+                // CSV Status column stayed "Pending" after payment, disagreeing
+                // with the Run Payroll table).
+                const entry = entriesByInstructor.get(st.id);
                 const identity: CompRowIdentity = {
                     id: st.id,
                     name: st.fullName,
@@ -318,15 +343,16 @@ export default function CompensationPage() {
                     payRateId: st.payRateId,
                 };
                 return {
-                    entryId: `staff_${st.id}`,
+                    entryId: entry?.id ?? `staff_${st.id}`,
                     instructor: identity,
                     branchId: st.branchId ?? "",
                     payRateName: payRate?.name ?? "—",
                     classesCount: 0,
-                    earnings: salary + commission.totalCommission,
-                    status: "pending",
-                    periodStart: "",
-                    periodEnd: "",
+                    grossRevenue: 0,
+                    earnings: total,
+                    status: entry?.status ?? "pending",
+                    periodStart: entry?.periodStart ?? "",
+                    periodEnd: entry?.periodEnd ?? "",
                 } satisfies CompRow;
             });
 
@@ -354,11 +380,13 @@ export default function CompensationPage() {
 
     const totalPayouts = metricRows.reduce((s, r) => s + r.earnings, 0);
     const totalClasses = metricRows.reduce((s, r) => s + r.classesCount, 0);
-    const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
-    // Gross revenue isn't tracked per entry yet — use payouts × 6 as a
-    // placeholder demo multiplier. Real value derives from transactions in
-    // phase 2 (joining payroll period × class_schedule × transactions).
-    const grossRevenue = totalPayouts * 6;
+    // Payroll covers all staff, so the average is over the whole pool.
+    const avgPerStaff  = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
+    // Real studio revenue for the period — sum of grossRevenue from payroll
+    // entries. Non-instructor staff have no entries (grossRevenue = 0) and
+    // don't skew the total. Replaces the earlier `totalPayouts × 6` demo
+    // placeholder, so the "Class revenue base" card matches Run payroll.
+    const grossRevenue = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
 
     // Period chip label for the metric cards ("Apr 2026", "This week", etc.)
     const metricPeriodLabel = (() => {
@@ -418,7 +446,7 @@ export default function CompensationPage() {
                 <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
                 <MetricCard label="Total payouts"     value={aed(totalPayouts)}     period={metricPeriodLabel} Icon={CoinsHand} />
                 <MetricCard label="Classes completed" value={totalClasses.toLocaleString("en-US")} period={metricPeriodLabel} Icon={CheckCircle} />
-                <MetricCard label="Avg per staff" value={aed(avgPerInstructor)} period={metricPeriodLabel} Icon={Users01} />
+                <MetricCard label="Avg per staff" value={aed(avgPerStaff)} period={metricPeriodLabel} Icon={Users01} />
             </div>
 
             {/* Toolbar */}

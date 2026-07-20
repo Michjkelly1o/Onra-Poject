@@ -55,10 +55,19 @@ function POSCheckoutInner() {
         .filter(st => st.status === "active")
         .map(st => ({ value: st.id, label: `${st.fullName} — ${roles.find(r => r.id === st.roleId)?.name ?? "Staff"}` })),
         [staff, roles]);
-    // Member Wallet payment path — the customer's account-credit balance +
-    // the debit action. A wallet charge deducts `total` from the ledger.
+    // Account credit — the customer's balance (referral rewards + refunds +
+    // manual grants). No longer a standalone payment method (client Jul 2026);
+    // now applied as a reduction toggle before payment method. `applyPurchase`
+    // debits the wallet in the same tick, so no separate `debitWallet` call.
     const walletTransactions = useAppStore(s => s.walletTransactions);
-    const debitWallet = useAppStore(s => s.debitWallet);
+    // Tax module wiring (Phase 4) — same shape as the schedule-flow checkout.
+    // Was `undefined` before Jul 2026, which quietly zeroed the tax row on
+    // the receipt while the transaction on the Payments tab still stored the
+    // real tax. Now the receipt agrees with the transaction record.
+    const taxRules         = useAppStore(s => s.taxRules);
+    const taxRates         = useAppStore(s => s.taxRates);
+    const pricesIncludeTax = useAppStore(s => s.taxSettings.pricesIncludeTax);
+    const roundingMode     = useAppStore(s => s.taxSettings.roundingMode);
     // Phase 3 — POS subscribes to the live Payments-Settings store so that
     // toggling Stripe / Apple Pay / Google Pay (or disconnecting Stripe and
     // cascading the wallets off) hides their cards from the picker grid in
@@ -81,6 +90,9 @@ function POSCheckoutInner() {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [cashReceived, setCashReceived] = useState<string>("");
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+    // "Use account credit" toggle — when on, the customer's balance is
+    // applied as a reduction (capped at the post-discount total).
+    const [useAccountCredit, setUseAccountCredit] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
     const [receiptNumber] = useState(() => `R-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0")}`);
     const [transactionId] = useState(() => Math.random().toString(36).slice(2, 10));
@@ -102,24 +114,32 @@ function POSCheckoutInner() {
 
     if (!pendingPurchase || !customer) return null;
 
-    const { subtotal, discountAmount, taxRate, taxAmount, total } = computeTotals(
+    const walletBalance = walletBalanceAed(walletTransactions, customer.id);
+    // Pass the toggle-driven credit request into `computeTotals`; the helper
+    // caps the applied credit at the post-discount total and returns the
+    // resolved figure alongside the new total. `taxContext` was previously
+    // `undefined` (Jul 2026 fix) — the receipt showed no tax while the
+    // transaction record stored real tax; both surfaces now agree.
+    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, total } = computeTotals(
         pendingPurchase.items, pendingPurchase.discountPercent, pendingPurchase.promoDiscountAed ?? 0,
+        { taxRules, taxRates, pricesIncludeTax, roundingMode },
+        useAccountCredit ? walletBalance : 0,
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
-    const walletBalance = walletBalanceAed(walletTransactions, customer.id);
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
         // Sales must be credited to a staff member before completing.
         if (sellerStaffId === null) return false;
+        // Account credit alone can cover a sale — no payment method needed
+        // when the credit fully zeroes the total.
+        if (total === 0) return true;
         if (paymentMethod === null) return false;
         if (paymentMethod === "cash") return cashReceivedNum >= total;
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
         if (paymentMethod === "googlepay") return true;
-        // Member Wallet can only cover the sale in full (no split payment).
-        if (paymentMethod === "wallet") return walletBalance >= total;
         return false;
     }
 
@@ -138,22 +158,14 @@ function POSCheckoutInner() {
      *  to reset its local cart state — but the toast itself is already up. */
     function handleComplete() {
         if (!customer || !pendingPurchase) return;
-        // Member Wallet — debit the customer's account credit for the sale
-        // total before recording the purchase. Silent so only the single
-        // "Transaction complete" toast surfaces (the ledger row + audit are
-        // still written). The Wallet tab + balance reflect on the same cycle.
-        if (paymentMethod === "wallet") {
-            debitWallet({
-                customerId: customer.id,
-                amountAed: total,
-                reason: "POS purchase",
-                referenceType: "pos_sale",
-                referenceId: transactionId,
-                createdBy: "POS",
-                silent: true,
-            });
-        }
-        applyPurchase(customer.id, pendingPurchase.items, "pos", sellerStaffId ?? undefined);
+        // Account credit debit rides inside `applyPurchase` now — the store
+        // debits the wallet in the same tick, so the ledger + balance stay in
+        // sync with what the receipt shows. No separate `debitWallet` call.
+        applyPurchase(
+            customer.id, pendingPurchase.items, "pos",
+            sellerStaffId ?? undefined,
+            accountCreditApplied > 0 ? accountCreditApplied : undefined,
+        );
         setPendingPurchase(null);
         showToast(
             "Transaction complete",
@@ -180,6 +192,8 @@ function POSCheckoutInner() {
                 promoCode={pendingPurchase.promoCode}
                 taxRate={taxRate}
                 taxAmount={taxAmount}
+                taxIncluded={taxIncluded}
+                accountCreditApplied={accountCreditApplied}
                 total={total}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -192,6 +206,8 @@ function POSCheckoutInner() {
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
                 walletBalance={walletBalance}
+                useAccountCredit={useAccountCredit}
+                setUseAccountCredit={setUseAccountCredit}
                 sellerStaffId={sellerStaffId}
                 setSellerStaffId={setSellerStaffId}
                 sellerOptions={sellerOptions}
@@ -207,6 +223,8 @@ function POSCheckoutInner() {
             promoCode={pendingPurchase.promoCode}
             taxRate={taxRate}
             taxAmount={taxAmount}
+            taxIncluded={taxIncluded}
+            accountCreditApplied={accountCreditApplied}
             total={total}
             paymentMethodLabel={paymentMethodLabel}
             chargedTo={chargedTo}

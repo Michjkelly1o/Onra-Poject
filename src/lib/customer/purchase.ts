@@ -55,7 +55,10 @@ export const purchaseCart: {
     promoId: string | null;
     /** Selected payment method id — persists across the "Add gift card" round-trip. */
     paymentMethod: string;
-    /** Whether the customer chose to apply their Account Credit (AED) balance. */
+    /** "Redeem Account Credit" toggle — when true, `computeTotals` receives
+     *  the customer's live wallet balance as the requested credit amount.
+     *  Applied AFTER tax + discount, capped at the amount due. Default off.
+     *  Wired by the customer checkout UI (CheckoutCart). */
     redeemAccountCredit: boolean;
 } = {
     classId: null,
@@ -337,9 +340,11 @@ export interface CartTotals {
     total: number;
 }
 
-/** Payment order: subtotal → +tax → −promo discount → −account credit → total.
- *  `accountCredit` is the AED balance the customer chose to redeem; it's clamped
- *  so it never exceeds the amount due and never makes the total negative. */
+/** Payment order: subtotal → + tax on raw subtotal → − promo discount →
+ *  − account credit → total. `accountCredit` is the AED balance the customer
+ *  chose to redeem; it's clamped so it never exceeds the amount due and never
+ *  makes the total negative. Existing callers that don't pass it get 0
+ *  credit applied — no behaviour change. */
 export function computeTotals(
     subtotal: number,
     promo: PromoVM | null,

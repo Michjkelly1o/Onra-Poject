@@ -538,15 +538,16 @@ function POSInner() {
     // amounts cleanly; the displayed rate label uses the first matching
     // line's percentage (most carts here are single-category so it lines up).
     //
-    // Discount handling: tax is computed on each line's discount-adjusted
-    // proportion of `afterDiscounts` (tax is always on what the customer
-    // actually pays, post-discount).
+    // Order (client Jul 2026 — matches the CheckoutScreen + customer purchase
+    // flip): Subtotal → + Tax (on RAW subtotal) → − Discount → = Total.
+    // Old code taxed on the post-discount total, so the POS main-cart total
+    // disagreed with the checkout screen once any discount was applied.
     //
     // Mode (`pricesIncludeTax`):
-    //   • OFF — exclusive — tax is ADDED to total.
+    //   • OFF — exclusive — tax is ADDED on top of subtotal, THEN discount
+    //           reduces the taxed figure.
     //   • ON  — inclusive — tax is INCLUDED in the displayed line prices,
-    //           so `total` stays at `afterDiscounts` and the tax row is
-    //           informational only.
+    //           so `total` = `afterDiscounts` and the tax row is informational.
     const { taxAmount, taxRate, taxIncluded } = useMemo(() => {
         if (cart.length === 0 || subtotal <= 0) {
             return { taxAmount: 0, taxRate: 0, taxIncluded: pricesIncludeTax };
@@ -566,10 +567,10 @@ function POSInner() {
             // to 0% effective rate. Exempt also suppresses the "first rate"
             // label (Zero-rated still appears on the receipt as "0% tax").
             const effectiveRate = effectiveRatePercentage(match.rate);
+            // Tax is on the RAW line total now (client Jul 2026), not on the
+            // post-discount share. Discount reduces the taxed figure below.
             const lineRaw = line.unitPrice * line.quantity;
-            const lineShare = subtotal > 0 ? lineRaw / subtotal : 0;
-            const lineAfter = afterDiscounts * lineShare;
-            const breakdown = computeLineTax(lineAfter, effectiveRate, pricesIncludeTax, roundingMode);
+            const breakdown = computeLineTax(lineRaw, effectiveRate, pricesIncludeTax, roundingMode);
             runningTax += breakdown.taxAed;
             if (firstRate === 0 && match.rate.type !== "exempt") {
                 firstRate = effectiveRate;
@@ -579,12 +580,16 @@ function POSInner() {
         // mode already summed pre-rounded values inside the loop.
         const totalTax = roundingMode === "per_invoice" ? Math.round(runningTax) : runningTax;
         return { taxAmount: totalTax, taxRate: firstRate, taxIncluded: pricesIncludeTax };
-    }, [cart, subtotal, afterDiscounts, taxRules, taxRates, pricesIncludeTax, roundingMode, branchId]);
+    }, [cart, subtotal, taxRules, taxRates, pricesIncludeTax, roundingMode, branchId]);
 
-    // In exclusive mode the customer pays subtotal − discount + tax. In
-    // inclusive mode the tax was already inside the displayed line prices
-    // so `total` stays at `afterDiscounts` and the tax line is informational.
-    const total = taxIncluded ? afterDiscounts : afterDiscounts + taxAmount;
+    // Total math — matches the CheckoutScreen order:
+    //   Exclusive: total = subtotal + tax − discount
+    //   Inclusive: total = subtotal − discount   (tax is inside the prices)
+    // The `total` never goes negative; discount is already capped upstream
+    // at `afterPromo`, and the flip only changes WHERE tax sits in the sum.
+    const total = taxIncluded
+        ? afterDiscounts
+        : Math.max(0, subtotal + taxAmount - promoDiscount - customDiscount);
 
     // ── Proceed to payment — hand off to the existing checkout screen ──────
     function handleProceed() {

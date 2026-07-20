@@ -1445,6 +1445,30 @@ function RemoveBookingModal({ open, count, sampleName, defaultRefund = true, onC
     );
 }
 
+// ─── Inline Present button — mirrors the instructor variant at
+//     [/class/[classId]/page.tsx](src/app/class/[classId]/page.tsx#L344).
+//
+// Renders in the Status column for Ongoing rows that haven't been marked
+// yet. Same DS `secondary-gray` chrome + `#067647` green text/icon +
+// `#ecfdf3` hover tint as the bulk "Mark present" button, so the two
+// affordances read as one language. Clicking flips the cell to a
+// `PresentBadge` (see the Status column render). A no-show is auto-
+// flagged by the system — no explicit button.
+
+function PresentButton({ onClick }: { onClick: () => void }) {
+    return (
+        <Button
+            variant="secondary-gray"
+            size="sm"
+            onClick={onClick}
+            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+        >
+            Present
+        </Button>
+    );
+}
+
 // ─── Floating bulk action bar — matches Figma node 6754:152640 ────────────────
 
 type BulkVariant = "upcoming" | "ongoing" | "reviews";
@@ -2513,7 +2537,11 @@ export default function ClassDetailPage() {
                                             : tab === "waitlisted"; // waitlist also shows Spot per the design
                                         const showWaitlistPos = tab === "waitlisted";
                                         const showStatus = (tab === "booked" && (isOngoing || isCancelled || isCompleted)) || tab === "cancelled";
-                                        const showActions = tab === "booked" && (isUpcoming || isOngoing);
+                                        // Ongoing rows now expose "Present" as an INLINE button inside
+                                        // the Status column (client feedback Jul 2026 — matches the
+                                        // instructor variant). The kebab column stays only for
+                                        // Upcoming (Cancel / Remove).
+                                        const showActions = tab === "booked" && isUpcoming;
                                         return (
                                             <table className="w-full border-collapse">
                                                 <thead>
@@ -2620,7 +2648,14 @@ export default function ClassDetailPage() {
                                                                         {/* Booked tab on a Cancelled class →
                                                                             class-level "Cancelled" badge (tab-
                                                                             preservation model: rows stay in their
-                                                                            original tab; the badge tells the story). */}
+                                                                            original tab; the badge tells the story).
+                                                                            Ongoing → inline Present BUTTON when not
+                                                                            yet marked (client feedback Jul 2026 —
+                                                                            same chrome as the instructor variant);
+                                                                            flips to a PresentBadge once marked. A
+                                                                            no-show is auto-flagged by the system —
+                                                                            no explicit button. Completed rows keep
+                                                                            the badge-only readout. */}
                                                                         {tab === "booked" && isCancelled
                                                                             ? <BookingStatusBadge kind="class" />
                                                                             : tab === "booked" && (isOngoing || isCompleted)
@@ -2628,7 +2663,9 @@ export default function ClassDetailPage() {
                                                                                     ? <PresentBadge />
                                                                                     : b.attendanceStatus === "no_show"
                                                                                         ? <NoShowBadge />
-                                                                                        : null)
+                                                                                        : isOngoing
+                                                                                            ? <PresentButton onClick={() => handleMarkPresent(b)} />
+                                                                                            : null)
                                                                                 : <BookingStatusBadge kind={cancellationBadgeKind({
                                                                                     cancelledAt: b.cancelledAt,
                                                                                     classDateISO: ci.dateISO,
@@ -2638,16 +2675,10 @@ export default function ClassDetailPage() {
                                                                 )}
                                                                 {showActions && (
                                                                     <td className={TD}>
-                                                                        {isUpcoming ? (
-                                                                            <RowActions items={[
-                                                                                { label: "Cancel customer", icon: SlashCircle01, onClick: () => setCancelBookingTarget(b) },
-                                                                                { label: "Remove customer", icon: Trash01, danger: true, onClick: () => setRemoveBookingTarget(b) },
-                                                                            ]} />
-                                                                        ) : (
-                                                                            <RowActions items={[
-                                                                                { label: b.attendanceStatus === "present" ? "Already present" : "Present", icon: CheckCircle, success: true, successText: true, disabled: b.attendanceStatus === "present", onClick: () => handleMarkPresent(b) },
-                                                                            ]} />
-                                                                        )}
+                                                                        <RowActions items={[
+                                                                            { label: "Cancel customer", icon: SlashCircle01, onClick: () => setCancelBookingTarget(b) },
+                                                                            { label: "Remove customer", icon: Trash01, danger: true, onClick: () => setRemoveBookingTarget(b) },
+                                                                        ]} />
                                                                     </td>
                                                                 )}
                                                             </tr>
@@ -2828,7 +2859,7 @@ export default function ClassDetailPage() {
                             <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setBulkPresentOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button variant="primary" size="lg" className="flex-1 bg-[#658774] text-white hover:bg-[#3b5446] active:bg-[#3b5446]" onClick={handleBulkPresent}>
+                            <Button variant="primary" size="lg" className="flex-1" onClick={handleBulkPresent}>
                                 Yes, mark present
                             </Button>
                         </div>

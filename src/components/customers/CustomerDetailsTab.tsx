@@ -22,8 +22,10 @@
 // customer-facing prefs UI and the admin dispatch layer lands in a later
 // phase; the fields exist now so the display is real.
 
-import { CheckCircle, XCircle } from "@untitledui/icons";
+import { useState } from "react";
+import { CheckCircle, XCircle, Eye, EyeOff } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { getCustomerPassword, useHasCustomerPassword } from "@/lib/customer/customer-password";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,6 +88,16 @@ const GRID = "grid grid-cols-2 gap-x-4 gap-y-5";
 export function CustomerDetailsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const customer = customers.find(c => c.id === customerId);
+    // Customer sign-in password — reactive read from the same localStorage-
+    // backed per-account map the customer app uses. `useHasCustomerPassword`
+    // subscribes to changes so a customer-side edit re-renders this tab;
+    // `getCustomerPassword` returns the effective value (per-account override
+    // or the seeded demo default). View-only on admin per client Jul 2026 (no
+    // "Change" affordance — that stays a self-service action on the
+    // customer side).
+    const hasPassword = useHasCustomerPassword(customerId);
+    const password = hasPassword ? getCustomerPassword(customerId) : "";
+    const [revealPassword, setRevealPassword] = useState(false);
     if (!customer) return null;
 
     const fullName = `${customer.firstName} ${customer.lastName}`.trim();
@@ -121,6 +133,38 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                     <DetailField label="Phone" value={orDash(customer.phone)} />
                     <DetailField label="Google account"
                         value={<StatusValue ok={!!customer.googleConnected} onLabel="Connected" offLabel="Not connected" />} />
+                    {/* Password — view-only for admin. Masked with an Eye
+                        reveal toggle; there is intentionally NO "Change"
+                        affordance (client Jul 2026 — admin cannot rewrite a
+                        customer's sign-in password; that stays a
+                        self-service action on the customer side). Reads the
+                        same per-account password map the customer app uses
+                        so any customer-side change reflects here on the
+                        next render. */}
+                    <DetailField
+                        label="Password"
+                        value={
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono">
+                                    {password
+                                        ? (revealPassword ? password : "•".repeat(Math.min(password.length, 10)))
+                                        : "—"}
+                                </span>
+                                {password && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setRevealPassword(v => !v)}
+                                        aria-label={revealPassword ? "Hide password" : "Show password"}
+                                        className="text-[#667085] hover:text-[#344054] transition-colors shrink-0"
+                                    >
+                                        {revealPassword
+                                            ? <EyeOff className="w-4 h-4" />
+                                            : <Eye className="w-4 h-4" />}
+                                    </button>
+                                )}
+                            </div>
+                        }
+                    />
                 </div>
             </div>
 
@@ -172,3 +216,4 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
         </div>
     );
 }
+

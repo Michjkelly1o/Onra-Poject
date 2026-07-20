@@ -8,7 +8,6 @@ import {
     ArrowUp,
     ArrowDown,
     MarkerPin01,
-    Tag01,
     CalendarCheck01,
     BarChartSquare01,
     Plus,
@@ -35,6 +34,7 @@ import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS, SESSION_TYPE_TAG_LABEL } from "@/lib/session-type";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { dateFilterToRange } from "@/lib/period-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
 import {
     RenewalDueModal,
@@ -178,19 +178,29 @@ function exportPerformanceCsv(
 function PerformanceTab({
     activeWidgets,
     period,
+    branchId,
     onRemoveWidget,
     onReorderWidgets,
     onOpenModal,
+    onOpenFailedPayments,
     allWidgetsActive,
 }: {
     activeWidgets: string[];
     period: DateFilter;
+    /** Branch scope — threaded through so widgets like Payments collected can
+     *  filter their failed-payments chip to the active branch. `null` = "All
+     *  locations" (aggregate across every branch). */
+    branchId: string | null;
     onRemoveWidget: (id: string) => void;
     /** Swap widgets at `fromIndex` and `toIndex` in the active list.
      *  Called by the native HTML5 drag-and-drop handlers below — no
      *  external dnd library required. */
     onReorderWidgets: (fromIndex: number, toIndex: number) => void;
     onOpenModal: () => void;
+    /** Click handler for the payments-collected widget's failed chip —
+     *  opens the shared FailedPaymentsModal so the chip and modal always
+     *  read the same numbers. */
+    onOpenFailedPayments: () => void;
     /** When every widget in the catalogue is already on the
      *  dashboard, hide the dashed "Add widget" tile — clicking it
      *  would open an empty picker. Client review Jul 2026. */
@@ -202,8 +212,19 @@ function PerformanceTab({
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
+    // Dynamic Add-widget placement (client Jul 2026):
+    //   • Odd widget count → placeholder BESIDE the lone widget on the last
+    //     row (inside the widget grid). `self-start` keeps it at fit height
+    //     while its 1fr row cell absorbs the leftover space — invisibly, since
+    //     the neighbouring widget already occupies the full row height.
+    //   • Even widget count (incl. zero) → placeholder on its OWN row BELOW
+    //     the widget grid, in a separate `grid-cols-2` container that has
+    //     NO `1fr` row rule. Zero visible gap beneath the tile.
+    const placeholderInGrid   = !allWidgetsActive && activeWidgets.length % 2 === 1;
+    const placeholderStandalone = !allWidgetsActive && activeWidgets.length % 2 === 0;
     return (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-6 [grid-auto-rows:1fr]">
             {activeWidgets.map((id, idx) => (
                 <div
                     key={id}
@@ -236,7 +257,10 @@ function PerformanceTab({
                         setHoverIndex(null);
                     }}
                     className={cn(
-                        "transition-all",
+                        // `h-full` propagates the row's stretched height so
+                        // the card underneath fills the tallest sibling's
+                        // height (no bottom gap).
+                        "transition-all h-full",
                         dragIndex === idx && "opacity-40",
                         hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
                         "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
@@ -245,8 +269,11 @@ function PerformanceTab({
                     <DashboardWidgetCard
                         widgetId={id}
                         period={period}
+                        branchId={branchId ?? undefined}
                         action="kebab"
                         dragHandle
+                        className="h-full"
+                        onOpenFailedPayments={onOpenFailedPayments}
                         onDragStart={(e) => {
                             setDragIndex(idx);
                             // Some browsers require dataTransfer to be set
@@ -275,15 +302,17 @@ function PerformanceTab({
                 </div>
             ))}
 
-            {/* Add widget placeholder entry — unchanged at bottom of grid.
-                The MODAL that opens on click is what's centered on screen
-                (see AddWidgetModal). Hidden once every catalogue widget is
-                already active (would open an empty picker). */}
-            {!allWidgetsActive && (
+            {/* Placeholder INSIDE the widget grid — only rendered on odd
+                widget counts, so it fills the empty slot beside the last
+                widget on the last row. `self-start` keeps it at fit-content
+                height; its 1fr cell absorbs the leftover row height invisibly
+                (the neighbouring widget already dictates the row height, so
+                no visible gap below the tile). */}
+            {placeholderInGrid && (
                 <button
                     type="button"
                     onClick={onOpenModal}
-                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 h-full min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                    className="self-start border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
                 >
                     <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
                         <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
@@ -294,6 +323,31 @@ function PerformanceTab({
                     </div>
                 </button>
             )}
+        </div>
+
+        {/* Placeholder in its OWN grid — only rendered on even widget counts
+            (incl. zero), so it starts a fresh row below the widget grid
+            without inheriting that grid's `[grid-auto-rows:1fr]` row-stretch.
+            The wrapper is a `grid grid-cols-2` so the tile keeps its 1-column
+            width (same slot size as a widget card), and the row is auto
+            height so nothing pads out below the button. */}
+        {placeholderStandalone && (
+            <div className="grid grid-cols-2 gap-6">
+                <button
+                    type="button"
+                    onClick={onOpenModal}
+                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
+                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                    </div>
+                </button>
+            </div>
+        )}
         </div>
     );
 }
@@ -430,7 +484,7 @@ function OccupancyCard({ byType, selected, typeFilter }: {
             {typeFilter ? (
                 <>
                     <p className="font-semibold text-xl text-[#101828] leading-[28px]">{selected}%</p>
-                    <p className="font-normal text-xs text-[#667085]">avg fill today</p>
+                    <p className="font-normal text-xs text-[#667085]">avg fill</p>
                 </>
             ) : (
                 <div className="flex flex-col gap-1 w-full">
@@ -519,12 +573,33 @@ function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     );
 }
 
+/** Delta caption for the Performance-tab metric cards — flips "vs …" to
+ *  match the active period picker so a "This month" card reads "vs last
+ *  month", not "vs yesterday". Mirrors the instructor dashboard helper
+ *  (kept module-local so `page.tsx` stays self-contained). */
+function dashDeltaSuffix(filter: DateFilter): string {
+    const l = filter.label.toLowerCase();
+    if (l.includes("last 7"))    return "vs last 7 days";
+    if (l.includes("last 30"))   return "vs last 30 days";
+    if (l.includes("last 90"))   return "vs last 90 days";
+    if (l.includes("this week")) return "vs last week";
+    if (l.includes("this month") || l.includes("month to date")) return "vs last month";
+    if (l.includes("this year")  || l.includes("year to date"))  return "vs last year";
+    if (l === "today")     return "vs yesterday";
+    if (l === "yesterday") return "vs 2 days ago";
+    return "vs previous period";
+}
+
 // ── Main Dashboard ──
 export default function AdminDashboard() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"today" | "coming" | "performance">("today");
     // Coming-up tab range — 7 or 30 days (Figma 7823:53746 segmented pill).
     const [comingRange, setComingRange] = useState<7 | 30>(7);
+    // Coming-up tab session-type filter (client Jul 2026). "" = All. Gates
+    // which metric cards render (each type has its own card set per the
+    // client brief — see `comingMetrics` below).
+    const [comingType, setComingType] = useState<SessionType | "">("");
     // "" = "All locations" — dashboard opens on the aggregate view so
     // KPIs read like the full studio on first paint.
     const [location, setLocation] = useState<string>("");
@@ -536,7 +611,11 @@ export default function AdminDashboard() {
     // Needs-attention drill-down modals (Figma 7785:66057 / 227786 /
     // 245665 / 246710). Renewal + Expire cards share the Renewal-due
     // modal per client Jul 2026.
-    type NeedsAttentionModal = "renewal" | "failed" | "failedComing" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
+    // `failedComing` retired Jul 2026 — the Coming-up "Failed payments" card
+    // was dropped from the per-type card matrix. The widget-triggered
+    // FailedPaymentsModal (`failedWidget`) still lives on the Performance
+    // tab's Payments-collected chip.
+    type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -553,6 +632,11 @@ export default function AdminDashboard() {
     // buckets, while `today.classes` come from `classBookings` /
     // `classSchedules` already scoped.
     const customerPlans = useAppStore(s => s.customerPlans);
+    // Extra slices used by the Coming-up per-type card set (client Jul 2026):
+    //   • appointmentBookings — occupancy count for private + recovery
+    //   • packages — is_intro_offer flag for the Trials-ending card
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
+    const packages            = useAppStore(s => s.packages);
 
     // Live "Recent activity" feed — derived from bookings, transactions,
     // and customer signups across every surface (customer portal / POS /
@@ -624,6 +708,11 @@ export default function AdminDashboard() {
         const inScope = new Set(scopedCustomers.map(c => c.id));
         return customerPlans.filter(p => inScope.has(p.customerId));
     }, [customerPlans, scopedCustomers, branchScopeId]);
+    // Coming-up occupancy cards (private + recovery) read from these.
+    const scopedAppointments = useMemo(
+        () => branchScopeId ? appointments.filter(a => a.branchId === branchScopeId) : appointments,
+        [appointments, branchScopeId],
+    );
 
     // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
     // for Today, 7799:109180 for Performance). Each tab surfaces its own
@@ -662,7 +751,7 @@ export default function AdminDashboard() {
         };
     }, [scopedSessions, typeFilter, todayISO]);
 
-    const { todayMetrics, performanceMetrics } = useMemo(() => {
+    const { todayMetrics } = useMemo(() => {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
         // void / write-off rows so the two totals stay honest.
@@ -681,22 +770,11 @@ export default function AdminDashboard() {
             (c.createdAt ?? "").startsWith(todayISO),
         ).length;
 
-        // Active members — all-time count of customers with status "active"
-        // in scope. Performance-tab only.
-        const activeMembers = scopedCustomers.filter(c => c.status === "active").length;
-
-        // Classes scheduled today — kept for the Avg occupancy calc
-        // below. Cancelled classes still take a slot the front desk saw
-        // arriving, so they count for scheduling density.
-        const todaySchedules = scopedSchedules.filter(s => s.dateISO === todayISO);
-        const classesTodayCount = todaySchedules.length;
-        // Bookings today — count of `booked` rows whose schedule is
-        // today's. Waitlist + cancelled bookings excluded so the number
-        // reads as "committed activity on the floor today".
-        const todayScheduleIdSet = new Set(todaySchedules.map(s => s.id));
-        const bookingsToday = scopedBookings.filter(b =>
-            b.status === "booked" && todayScheduleIdSet.has(b.classScheduleId),
-        ).length;
+        // `activeMembers`, `classesTodayCount`, `bookingsToday` used to be
+        // computed here for the Performance strip; that strip moved to its
+        // own period-scoped useMemo below (client Jul 2026), so those
+        // vars — along with the intermediate `todaySchedules` /
+        // `todayScheduleIdSet` — are gone.
 
         const today: DashboardMetric[] = [
             {
@@ -717,47 +795,149 @@ export default function AdminDashboard() {
                 change: 2, positive: false, comparison: "vs yesterday",
                 icon: UserPlus01,
             },
-            // Bookings today — type-aware (from the merged session feed), so
+            // Bookings — type-aware (from the merged session feed), so
             // picking a type filter recomputes it. Occupancy is rendered as a
             // dedicated OccupancyCard (3-way split on All) below the strip.
+            // Label drops the "today" prefix (client Jul 2026 audit —
+            // metric titles don't carry the tab's time scope, which the tab
+            // context already provides).
             {
-                label: "Bookings today",
+                label: "Bookings",
                 value: sessionMetrics.bookingsToday.toLocaleString("en-US"),
                 change: 1, positive: false, comparison: "vs yesterday",
                 icon: TrendUp01,
             },
         ];
 
-        // Performance-tab metrics — 4 cards per Figma 7799:109180.
-        const performance: DashboardMetric[] = [
+        return { todayMetrics: today };
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
+
+    // ── Performance-tab metrics — 4 cards, PERIOD-scoped ──
+    //
+    // Client Jul 2026 — the tab is picker-scoped (This week / This month /
+    // etc.) but the old cards hardcoded "today" values + "vs yesterday" delta
+    // captions. Now values compute against the selected DateRangeFilter
+    // period and the delta captions read "vs last week" / "vs last month"
+    // via `dashDeltaSuffix`. Prior-period actuals drive the delta chip.
+    const performanceMetrics: DashboardMetric[] = useMemo(() => {
+        const { from, to } = dateFilterToRange(period);
+        const fromMs = from.getTime();
+        const toMs   = to.getTime();
+        const spanMs = toMs - fromMs;
+        // Previous same-length window ends the instant before `from`.
+        const prevToMs   = fromMs - 1;
+        const prevFromMs = fromMs - (spanMs + 1);
+
+        const isoDay = (d: Date): string => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+        };
+        const fromISO = isoDay(from);
+        const toISO   = isoDay(to);
+        const prevFromISO = isoDay(new Date(prevFromMs));
+        const prevToISO   = isoDay(new Date(prevToMs));
+        const inRangeDay = (iso: string): boolean => {
+            const d = iso.slice(0, 10);
+            return d >= fromISO && d <= toISO;
+        };
+        const inPrevRangeDay = (iso: string): boolean => {
+            const d = iso.slice(0, 10);
+            return d >= prevFromISO && d <= prevToISO;
+        };
+        const inRangeMs = (iso: string): boolean => {
+            const t = new Date(iso).getTime();
+            return !Number.isNaN(t) && t >= fromMs && t <= toMs;
+        };
+        const inPrevRangeMs = (iso: string): boolean => {
+            const t = new Date(iso).getTime();
+            return !Number.isNaN(t) && t >= prevFromMs && t <= prevToMs;
+        };
+
+        // Revenue (period AED) — complete `sale` transactions, exclude
+        // penalty / freeze-fee rows so the total matches the Payments tab.
+        const isBillableSale = (t: typeof scopedTransactions[number]): boolean =>
+            t.status === "complete"
+            && (t.transactionType === undefined || t.transactionType === "sale")
+            && t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee";
+        const revenuePeriod = scopedTransactions
+            .filter(t => isBillableSale(t) && inRangeMs(t.createdAtISO))
+            .reduce((sum, t) => sum + t.amountAed, 0);
+        const revenuePrior = scopedTransactions
+            .filter(t => isBillableSale(t) && inPrevRangeMs(t.createdAtISO))
+            .reduce((sum, t) => sum + t.amountAed, 0);
+
+        // Members — active members that JOINED in the period (a period-
+        // scoped acquisition metric, comparable across weeks/months). Prior
+        // window = joined in the previous same-length window.
+        const membersPeriod = scopedCustomers.filter(c =>
+            c.status === "active" && inRangeMs(c.createdAt ?? ""),
+        ).length;
+        const membersPrior = scopedCustomers.filter(c =>
+            c.status === "active" && inPrevRangeMs(c.createdAt ?? ""),
+        ).length;
+
+        // Classes — schedules whose date falls in the period (date-only
+        // fields, so use the day-string helper for TZ safety).
+        const classesPeriod = scopedSchedules.filter(s => inRangeDay(s.dateISO)).length;
+        const classesPrior  = scopedSchedules.filter(s => inRangeDay(s.dateISO) === false && inPrevRangeDay(s.dateISO)).length;
+
+        // Bookings — booked rows on schedules whose date lands in the period.
+        const scheduleIdsInRange = new Set(
+            scopedSchedules.filter(s => inRangeDay(s.dateISO)).map(s => s.id),
+        );
+        const scheduleIdsInPrev = new Set(
+            scopedSchedules.filter(s => inPrevRangeDay(s.dateISO)).map(s => s.id),
+        );
+        const bookingsPeriod = scopedBookings.filter(b =>
+            b.status === "booked" && scheduleIdsInRange.has(b.classScheduleId),
+        ).length;
+        const bookingsPrior = scopedBookings.filter(b =>
+            b.status === "booked" && scheduleIdsInPrev.has(b.classScheduleId),
+        ).length;
+
+        // Delta helper — real % change vs the prior same-length window.
+        const pct = (current: number, prior: number): { change: number; positive: boolean } => {
+            if (prior === 0) return { change: current === 0 ? 0 : 100, positive: current >= 0 };
+            const d = ((current - prior) / prior) * 100;
+            return { change: Math.abs(Math.round(d)), positive: d >= 0 };
+        };
+        const suffix = dashDeltaSuffix(period);
+
+        const revD = pct(revenuePeriod, revenuePrior);
+        const memD = pct(membersPeriod, membersPrior);
+        const clsD = pct(classesPeriod, classesPrior);
+        const bkgD = pct(bookingsPeriod, bookingsPrior);
+
+        return [
             {
-                label: "Today's revenue",
-                value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
-                change: 3, positive: true, comparison: "vs yesterday",
+                label: "Revenue",
+                value: `AED ${revenuePeriod.toLocaleString("en-US")}`,
+                change: revD.change, positive: revD.positive, comparison: suffix,
                 icon: CurrencyDollar,
             },
             {
-                label: "Active members",
-                value: activeMembers.toLocaleString("en-US"),
-                change: 3, positive: true, comparison: "vs yesterday",
+                label: "Members",
+                value: membersPeriod.toLocaleString("en-US"),
+                change: memD.change, positive: memD.positive, comparison: suffix,
                 icon: UserCheck01,
             },
             {
-                label: "Classes today",
-                value: classesTodayCount.toLocaleString("en-US"),
-                change: 2, positive: false, comparison: "vs yesterday",
+                label: "Classes",
+                value: classesPeriod.toLocaleString("en-US"),
+                change: clsD.change, positive: clsD.positive, comparison: suffix,
                 icon: CalendarCheck01,
             },
             {
-                label: "Bookings today",
-                value: bookingsToday.toLocaleString("en-US"),
-                change: 1, positive: false, comparison: "vs yesterday",
+                label: "Bookings",
+                value: bookingsPeriod.toLocaleString("en-US"),
+                change: bkgD.change, positive: bkgD.positive, comparison: suffix,
                 icon: TrendUp01,
             },
         ];
-
-        return { todayMetrics: today, performanceMetrics: performance };
-    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
+    }, [period, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings]);
 
     // ── Coming-up metrics — 6 KPI cards per Figma 7823:53746 ──
     //
@@ -767,60 +947,172 @@ export default function AdminDashboard() {
     const comingMetrics: DashboardMetric[] = useMemo(() => {
         const now = Date.now();
         const DAY = 24 * 60 * 60 * 1000;
-        const horizonMs = now + comingRange * DAY;
-        // Forward window — future events (bookings, renewals, upcoming
-        // revenue, under-filled schedules).
-        const inRange = (iso: string) => {
-            const t = new Date(iso).getTime();
-            if (Number.isNaN(t)) return false;
-            return t >= now && t <= horizonMs;
+        // Timezone-safe range check (client Jul 2026 audit fix). Before this,
+        // `inRange` did `new Date(iso).getTime() >= Date.now()`, which parses
+        // date-only strings ("YYYY-MM-DD") as UTC midnight — so any row dated
+        // today would fall below `now` once the local wall clock ticked past
+        // 00:00 UTC (i.e. all day long, everywhere outside UTC), silently
+        // dropping today's rows from EVERY Coming-up card. Meanwhile
+        // `UnderFilledModal` used string-prefix comparison and correctly
+        // included today, so the card count could disagree with the modal.
+        // Fix: compare on the yyyy-mm-dd date prefix (both for date-only
+        // fields like `expiryISO` / `dateISO` and for timestamp fields like
+        // `createdAtISO` — first 10 chars is the date either way).
+        const isoDate = (d: Date): string => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
         };
-        // Backward window — past events still open (failed payments). Same
-        // window size as the pill so the Failed card reacts to Next 7 / 30.
-        const pastStartMs = now - comingRange * DAY;
-        const inPastRange = (iso: string) => {
-            const t = new Date(iso).getTime();
-            if (Number.isNaN(t)) return false;
-            return t >= pastStartMs && t <= now;
+        const todayLocalISO   = isoDate(new Date(now));
+        const horizonLocalISO = isoDate(new Date(now + comingRange * DAY));
+        const pastStartLocalISO = isoDate(new Date(now - comingRange * DAY));
+        // Forward window — future events (bookings, renewals, expiring
+        // credits/memberships/trials, occupancy). Includes today.
+        const inRange = (iso: string): boolean => {
+            if (!iso) return false;
+            const day = iso.slice(0, 10);
+            return day >= todayLocalISO && day <= horizonLocalISO;
+        };
+        // Backward window — projection base for Revenue. Same window size as
+        // the pill so the Revenue estimate scales with Next 7 / 30.
+        const inPastRange = (iso: string): boolean => {
+            if (!iso) return false;
+            const day = iso.slice(0, 10);
+            return day >= pastStartLocalISO && day < todayLocalISO;
         };
 
+        // ── Products ────────────────────────────────────────────────────────
+        const introPackageIds = new Set(
+            packages.filter(p => p.is_intro_offer === true).map(p => p.id),
+        );
+
+        // ── Memberships (kind=membership) ───────────────────────────────────
         const heldMemberships = scopedCustomerPlans.filter(p =>
             p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
         );
-        // 1. Upcoming recurring revenue — sum next-billing AED across
-        //    auto-renewing memberships whose next cycle lands in range.
+        // Recurring revenue — auto-renewals landing in range.
         const upcomingBillingPlans = heldMemberships.filter(p => (p.autoRenew ?? false) && inRange(p.expiryISO ?? ""));
-        const upcomingRevenueAed = upcomingBillingPlans.reduce(
+        const recurringRevenueAed = upcomingBillingPlans.reduce(
+            (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
+        );
+        // Expiring memberships — held memberships whose expiry lands in range
+        // (whether auto-renew or not). Includes their next-billing AED so the
+        // subtitle carries a sense of the recurring value at stake.
+        const expiringMembershipPlans = heldMemberships.filter(p => inRange(p.expiryISO ?? ""));
+        const expiringMembershipsCount = expiringMembershipPlans.length;
+        const expiringMembershipsAed = expiringMembershipPlans.reduce(
             (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
         );
 
-        // 2. Bookings ahead — confirmed future bookings for schedules in range.
+        // ── Credit packages (kind=package) ──────────────────────────────────
+        const heldPackages = scopedCustomerPlans.filter(p =>
+            p.kind === "package" && (p.status === "active" || p.status === "frozen"),
+        );
+        // Expiring credits — package plans whose expiry lands in range.
+        const expiringCreditsCount = heldPackages.filter(p => inRange(p.expiryISO ?? "")).length;
+        // Trials ending — package plans on an intro-flagged package (as defined
+        // by the products module's `is_intro_offer` toggle) whose expiry lands
+        // in range. Reads from the LIVE packages slice so a studio toggling
+        // the intro flag on another SKU changes this card the same render.
+        const trialsEndingCount = heldPackages.filter(p =>
+            p.productId && introPackageIds.has(p.productId) && inRange(p.expiryISO ?? ""),
+        ).length;
+
+        // ── Revenue projection (client Jul 2026 spec) ───────────────────────
+        // Total expected revenue = recurring auto-renewals + past-window
+        // non-recurring sales (as a proxy for the next window's one-off
+        // revenue). The past-window transactions are all `sale`-status
+        // customer_transactions, minus any refund reversal, and NOT the
+        // auto-renewal renewals themselves (would double-count).
+        const pastNonRecurringSalesAed = scopedTransactions.reduce((sum, t) => {
+            if (t.status !== "complete") return sum;
+            if (t.paymentType === "recurring") return sum;
+            if (!inPastRange(t.createdAtISO)) return sum;
+            const isSale = (t.transactionType ?? "sale") === "sale";
+            return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;
+        }, 0);
+        const revenueAed = recurringRevenueAed + pastNonRecurringSalesAed;
+
+        // ── Prior-period actuals (drive the real % change deltas) ───────────
+        // For each of the 3 "change chip" cards (Revenue, Recurring, Bookings)
+        // we compare the CURRENT metric against the last N days' ACTUAL
+        // value so the green +N% / red -N% chip carries real meaning.
+        // Client Jul 2026 — was hardcoded to +3% before.
+        const pastAllRevenueAed = scopedTransactions.reduce((sum, t) => {
+            if (t.status !== "complete") return sum;
+            if (!inPastRange(t.createdAtISO)) return sum;
+            const isSale = (t.transactionType ?? "sale") === "sale";
+            return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;
+        }, 0);
+        const pastRecurringRevenueAed = scopedTransactions.reduce((sum, t) => {
+            if (t.status !== "complete") return sum;
+            if (t.paymentType !== "recurring") return sum;
+            if (!inPastRange(t.createdAtISO)) return sum;
+            const isSale = (t.transactionType ?? "sale") === "sale";
+            return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;
+        }, 0);
+
+        // ── Bookings ────────────────────────────────────────────────────────
+        // Class bookings — confirmed future bookings for schedules in range.
         const scheduleIdsInRange = new Set(
             scopedSchedules.filter(s => inRange(`${s.dateISO}T00:00:00Z`)).map(s => s.id),
         );
-        const bookingsAhead = scopedBookings.filter(b =>
+        const classBookingsCount = scopedBookings.filter(b =>
             b.status === "booked" && scheduleIdsInRange.has(b.classScheduleId),
         ).length;
-
-        // 3. Renewals due — held memberships expiring in range (auto-renew
-        //    or not), plus their recurring value.
-        const renewalsDuePlans = heldMemberships.filter(p => inRange(p.expiryISO ?? ""));
-        const renewalsDueCount = renewalsDuePlans.length;
-        const renewalsDueAed = renewalsDuePlans.reduce(
-            (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
+        // Appointment bookings — split by type for private / recovery slots.
+        // Match by `appointmentId` → appointment.type so we only count bookings
+        // whose parent appointment lands in the coming window.
+        const appointmentsInRange = scopedAppointments.filter(a => inRange(`${a.dateISO}T00:00:00Z`));
+        const apptIdsInRange = new Set(appointmentsInRange.map(a => a.id));
+        const apptById = new Map(scopedAppointments.map(a => [a.id, a] as const));
+        const activeApptBookings = appointmentBookings.filter(b =>
+            b.status === "Booked" && apptIdsInRange.has(b.appointmentId),
         );
+        const bookingsCountByType = (t: "private" | "recovery"): number =>
+            activeApptBookings.filter(b => (apptById.get(b.appointmentId)?.type ?? "") === t).length;
+        // Total bookings for the "All" card = classes + private + recovery
+        // appointment bookings in the coming window.
+        const bookingsAllCount = classBookingsCount
+            + bookingsCountByType("private")
+            + bookingsCountByType("recovery");
 
-        // 4. Failed payments — failed transactions in the past N-day window
-        //    (rolling with the pill). Opens its own "failedComing" modal so
-        //    the Coming-up window (comingRange) stays independent of the
-        //    Today tab's Needs-attention 24h failed row.
-        const failedTxns = scopedTransactions.filter(t =>
-            t.status === "failed" && inPastRange(t.createdAtISO),
+        // PAST-window bookings — same shape but scoped to the previous N days.
+        // For classes we still include status="booked" (row's status doesn't
+        // flip after the class runs — attendance is on `attendanceStatus`); for
+        // appointment bookings we accept Booked | Attended | NoShow (i.e. any
+        // non-cancelled row) so held-past bookings still count.
+        const pastScheduleIds = new Set(
+            scopedSchedules.filter(s => inPastRange(`${s.dateISO}T00:00:00Z`)).map(s => s.id),
         );
-        const failedAed = failedTxns.reduce((sum, t) => sum + Math.abs(t.amountAed), 0);
+        const pastClassBookings = scopedBookings.filter(b =>
+            b.status === "booked" && pastScheduleIds.has(b.classScheduleId),
+        ).length;
+        const pastAppointments = scopedAppointments.filter(a => inPastRange(`${a.dateISO}T00:00:00Z`));
+        const pastApptIds = new Set(pastAppointments.map(a => a.id));
+        const pastApptById = new Map(pastAppointments.map(a => [a.id, a] as const));
+        const pastActiveApptBookings = appointmentBookings.filter(b =>
+            b.status !== "Cancelled" && pastApptIds.has(b.appointmentId),
+        );
+        const pastBookingsCountByType = (t: "private" | "recovery"): number =>
+            pastActiveApptBookings.filter(b => (pastApptById.get(b.appointmentId)?.type ?? "") === t).length;
+        const pastBookingsAllCount = pastClassBookings
+            + pastBookingsCountByType("private")
+            + pastBookingsCountByType("recovery");
 
-        // At-risk clients — same 14-30 day silent-window as Needs-attention.
-        //    Range-independent (it's a bucket, not a horizon).
+        // Delta helper — real % change from prior to current.
+        //   prior 0 + current 0 → 0% (nothing to compare, flat).
+        //   prior 0 + current > 0 → +100% (new activity).
+        //   otherwise → rounded % of change; sign drives the arrow colour.
+        const pctChange = (current: number, prior: number): { change: number; positive: boolean } => {
+            if (prior === 0) return { change: current === 0 ? 0 : 100, positive: current >= 0 };
+            const delta = ((current - prior) / prior) * 100;
+            return { change: Math.abs(Math.round(delta)), positive: delta >= 0 };
+        };
+
+        // ── At-risk clients (14-30 day silent window) ───────────────────────
+        // Range-independent — always the same silent-window bucket.
         const clientsAtRisk = scopedCustomers.filter(c => {
             if (c.status !== "active") return false;
             if (!c.lastVisitISO) return false;
@@ -830,9 +1122,8 @@ export default function AdminDashboard() {
             return daysAgo >= 14 && daysAgo <= 30;
         }).length;
 
-        // 6. Under-filled classes — schedules in range with < 50% capacity.
-        //    Matches the UnderFilledModal filter (status Upcoming|Ongoing +
-        //    same date window) so count + list agree at both pill settings.
+        // ── Under-filled classes ────────────────────────────────────────────
+        // Same filter as UnderFilledModal so the count + list agree.
         const underFilledInRange = scopedSchedules.filter(s =>
             (s.status === "Upcoming" || s.status === "Ongoing")
             && inRange(`${s.dateISO}T00:00:00Z`)
@@ -840,49 +1131,139 @@ export default function AdminDashboard() {
             && (s.booked / s.capacity) < 0.5,
         ).length;
 
-        return [
-            {
-                label: "Upcoming recurring revenue",
-                value: `AED ${upcomingRevenueAed.toLocaleString("en-US")}`,
-                change: 3, positive: true, comparison: "expected vs last month",
-                icon: CurrencyDollar,
-            },
-            {
-                label: "Bookings ahead",
-                value: `${bookingsAhead.toLocaleString("en-US")} booked`,
-                change: 3, positive: true, comparison: `pace vs prior ${comingRange} days`,
+        // ── Occupancy per type ─────────────────────────────────────────────
+        // Sum booked / capacity across the sessions of that type in range.
+        const classSchedulesInRange = scopedSchedules.filter(s =>
+            inRange(`${s.dateISO}T00:00:00Z`),
+        );
+        const classOccupancy = {
+            booked:   classSchedulesInRange.reduce((s, x) => s + (x.booked ?? 0), 0),
+            capacity: classSchedulesInRange.reduce((s, x) => s + (x.capacity ?? 0), 0),
+        };
+        const privateApptsInRange = appointmentsInRange.filter(a => a.type === "private");
+        const privateOccupancy = {
+            booked:   privateApptsInRange.reduce((s, x) => s + (x.booked ?? 0), 0),
+            capacity: privateApptsInRange.reduce((s, x) => s + (x.capacity ?? 0), 0),
+        };
+        const recoveryApptsInRange = appointmentsInRange.filter(a => a.type === "recovery");
+        const recoveryOccupancy = {
+            booked:   recoveryApptsInRange.reduce((s, x) => s + (x.booked ?? 0), 0),
+            capacity: recoveryApptsInRange.reduce((s, x) => s + (x.capacity ?? 0), 0),
+        };
+        const occupancyPct = (o: { booked: number; capacity: number }): number =>
+            o.capacity > 0 ? Math.round((o.booked / o.capacity) * 100) : 0;
+
+        // ── Build cards per type ────────────────────────────────────────────
+        // Real % change vs the prior N-day window (client Jul 2026 — was
+        // hardcoded +3% before). Sign drives the arrow colour + magnitude.
+        const revenueDelta   = pctChange(revenueAed, pastAllRevenueAed);
+        const recurringDelta = pctChange(recurringRevenueAed, pastRecurringRevenueAed);
+        const revenueCard: DashboardMetric = {
+            label: "Revenue",
+            value: `AED ${revenueAed.toLocaleString("en-US")}`,
+            change: revenueDelta.change,
+            positive: revenueDelta.positive,
+            comparison: `vs prior ${comingRange} days`,
+            icon: CurrencyDollar,
+        };
+        const recurringRevenueCard: DashboardMetric = {
+            label: "Recurring revenue",
+            value: `AED ${recurringRevenueAed.toLocaleString("en-US")}`,
+            change: recurringDelta.change,
+            positive: recurringDelta.positive,
+            comparison: `vs prior ${comingRange} days`,
+            icon: CurrencyDollar,
+        };
+        // Bookings uses different prior values per type — helper closes over
+        // the per-type past count so All / Classes / Private / Recovery all
+        // compare like-for-like.
+        const bookingsCard = (n: number, prior: number): DashboardMetric => {
+            const d = pctChange(n, prior);
+            return {
+                label: "Bookings",
+                value: `${n.toLocaleString("en-US")} booked`,
+                change: d.change,
+                positive: d.positive,
+                comparison: `pace vs prior ${comingRange} days`,
                 icon: Calendar,
-            },
-            {
-                label: "Renewals due",
-                value: `${renewalsDueCount} ${renewalsDueCount === 1 ? "member" : "members"}`,
-                comparison: `AED ${renewalsDueAed.toLocaleString("en-US")} recurring`,
-                icon: RefreshCw01,
-                onClick: () => setAttentionModal("renewal"),
-            },
-            {
-                label: "Failed payments",
-                value: `${failedTxns.length} · AED ${failedAed.toLocaleString("en-US")}`,
-                comparison: "Recoverable now",
-                icon: CreditCard01,
-                onClick: () => setAttentionModal("failedComing"),
-            },
-            {
-                label: "At-risk clients",
-                value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
-                comparison: "no visit 14-30 days",
-                icon: UserX01,
-                onClick: () => setAttentionModal("atrisk"),
-            },
-            {
-                label: "Under filled classes",
-                value: `${underFilledInRange} ${underFilledInRange === 1 ? "class" : "classes"}`,
-                comparison: "below 50% capacity",
-                icon: CalendarCheck01,
-                onClick: () => setAttentionModal("underfilled"),
-            },
-        ];
-    }, [comingRange, scopedCustomerPlans, scopedSchedules, scopedBookings, scopedTransactions, scopedCustomers]);
+            };
+        };
+        const expiringMembershipsCard: DashboardMetric = {
+            label: "Expiring memberships",
+            value: `${expiringMembershipsCount} ${expiringMembershipsCount === 1 ? "member" : "members"}`,
+            comparison: `AED ${expiringMembershipsAed.toLocaleString("en-US")} recurring`,
+            icon: RefreshCw01,
+            onClick: () => setAttentionModal("renewal"),
+        };
+        const atRiskCard: DashboardMetric = {
+            label: "At-risk clients",
+            value: `${clientsAtRisk} ${clientsAtRisk === 1 ? "client" : "clients"}`,
+            comparison: "no visit 14-30 days",
+            icon: UserX01,
+            onClick: () => setAttentionModal("atrisk"),
+        };
+        const underFilledCard: DashboardMetric = {
+            label: "Under filled classes",
+            value: `${underFilledInRange} ${underFilledInRange === 1 ? "class" : "classes"}`,
+            comparison: "below 50% capacity",
+            icon: CalendarCheck01,
+            onClick: () => setAttentionModal("underfilled"),
+        };
+        const expiringCreditsCard: DashboardMetric = {
+            label: "Expiring credits",
+            value: `${expiringCreditsCount} ${expiringCreditsCount === 1 ? "package" : "packages"}`,
+            comparison: `within next ${comingRange} days`,
+            icon: CreditCard01,
+        };
+        const trialsEndingCard: DashboardMetric = {
+            label: "Trials ending",
+            value: `${trialsEndingCount} ${trialsEndingCount === 1 ? "client" : "clients"}`,
+            comparison: `within next ${comingRange} days`,
+            icon: UserX01,
+        };
+        const occupancyCard = (
+            occ: { booked: number; capacity: number },
+            unit: "spot" | "slot",
+        ): DashboardMetric => ({
+            label: "Occupancy",
+            value: `${occ.booked}/${occ.capacity} ${occ.capacity === 1 ? unit : `${unit}s`}`,
+            comparison: `${occupancyPct(occ)}% filled`,
+            icon: CalendarCheck01,
+        });
+
+        switch (comingType) {
+            case "class":
+                return [
+                    revenueCard, recurringRevenueCard,
+                    bookingsCard(classBookingsCount, pastClassBookings),
+                    expiringMembershipsCard, atRiskCard, underFilledCard,
+                    expiringCreditsCard, trialsEndingCard,
+                    occupancyCard(classOccupancy, "spot"),
+                ];
+            case "private":
+                return [
+                    revenueCard,
+                    bookingsCard(bookingsCountByType("private"), pastBookingsCountByType("private")),
+                    expiringMembershipsCard, atRiskCard,
+                    expiringCreditsCard,
+                    occupancyCard(privateOccupancy, "slot"),
+                ];
+            case "recovery":
+                return [
+                    revenueCard,
+                    bookingsCard(bookingsCountByType("recovery"), pastBookingsCountByType("recovery")),
+                    atRiskCard, expiringCreditsCard,
+                    occupancyCard(recoveryOccupancy, "slot"),
+                ];
+            case "":
+            default:
+                return [
+                    revenueCard,
+                    bookingsCard(bookingsAllCount, pastBookingsAllCount),
+                    atRiskCard, expiringCreditsCard,
+                ];
+        }
+    }, [comingRange, comingType, scopedCustomerPlans, scopedSchedules, scopedBookings, scopedTransactions, scopedCustomers, scopedAppointments, appointmentBookings, packages]);
 
     // Pick the strip that matches the active tab. `metrics` stays the
     // stable public name (used by CSV export + a couple of downstream
@@ -1087,7 +1468,71 @@ export default function AdminDashboard() {
                     {activeTab === "today" ? `Welcome, ${studioDisplayName}` : ""}
                 </p>
 
-                {/* Location picker — always visible */}
+                {/* Session-type picker — Today tab only. Pills row (client
+                    Jul 2026 — was a SelectInput dropdown). Selected pill uses
+                    the multi-select mint palette (`#e9fff3` / `#7ba08c`) the
+                    filter panels use so the whole app's filter language reads
+                    consistently. Sits BEFORE the location dropdown so the
+                    row reads as [pills | All locations]. Pills locked to the
+                    same h-10 (40px) height as the SelectInput trigger so the
+                    row aligns cleanly. */}
+                {activeTab === "today" && (
+                    <div className="flex items-center gap-2 h-10">
+                        {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
+                            const label = t === "" ? "All" : SESSION_TYPE_LABEL[t];
+                            const active = typeFilter === t;
+                            return (
+                                <button
+                                    key={t || "all"}
+                                    type="button"
+                                    onClick={() => setTypeFilter(t as SessionType | "")}
+                                    aria-pressed={active}
+                                    className={cn(
+                                        "h-10 px-4 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                                        active
+                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                            : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Coming-up session-type pills — same chrome as the Today
+                    pills so the whole app's filter language reads consistently
+                    (client Jul 2026). Wired to `comingType` so each type has
+                    its own metric-card set per the brief. */}
+                {activeTab === "coming" && (
+                    <div className="flex items-center gap-2 h-10">
+                        {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
+                            const label = t === "" ? "All" : SESSION_TYPE_LABEL[t];
+                            const active = comingType === t;
+                            return (
+                                <button
+                                    key={t || "all"}
+                                    type="button"
+                                    onClick={() => setComingType(t as SessionType | "")}
+                                    aria-pressed={active}
+                                    className={cn(
+                                        "h-10 px-4 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                                        active
+                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                            : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Location picker — always visible. Placed AFTER the pills so
+                    the Today-tab row reads as [pills | All locations] (client
+                    Jul 2026). */}
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
                     placeholder="Select location"
@@ -1096,23 +1541,6 @@ export default function AdminDashboard() {
                     onChange={setLocation}
                     width="w-[220px]"
                 />
-
-                {/* Session-type picker — Today tab only. Sits beside the
-                    location dropdown. Re-scopes the session-based tiles
-                    (Bookings, Occupancy) + the Today's-sessions list. */}
-                {activeTab === "today" && (
-                    <SelectInput
-                        triggerIcon={<Tag01 className="w-5 h-5" />}
-                        placeholder="All types"
-                        options={[
-                            { value: "", label: "All types" },
-                            ...SESSION_TYPE_ORDER.map(t => ({ value: t, label: SESSION_TYPE_LABEL[t] })),
-                        ]}
-                        value={typeFilter}
-                        onChange={(v) => setTypeFilter(v as SessionType | "")}
-                        width="w-[200px]"
-                    />
-                )}
 
                 {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
                     7823:53746). Height locked to h-10 (40px) to match the
@@ -1200,6 +1628,8 @@ export default function AdminDashboard() {
                 <PerformanceTab
                     activeWidgets={activeWidgets}
                     period={period}
+                    branchId={branchScopeId}
+                    onOpenFailedPayments={() => setAttentionModal("failedWidget")}
                     onRemoveWidget={handleRemoveWidget}
                     onReorderWidgets={(fromIndex, toIndex) => {
                         // Reorder via splice + setState — same semantics as
@@ -1467,13 +1897,19 @@ export default function AdminDashboard() {
                    payments recoverable now" row's rolling 24h count. */
                 pastRangeDays={1}
             />
+            {/* `failedComing` FailedPaymentsModal removed Jul 2026 — the
+                Coming-up "Failed payments" card was dropped from the per-type
+                card matrix, and no other surface routes to it. */}
             <FailedPaymentsModal
-                open={attentionModal === "failedComing"}
+                open={attentionModal === "failedWidget"}
                 onClose={() => setAttentionModal(null)}
                 branchId={branchScopeId}
-                /* Coming-up window — matches the Coming-up "Failed payments"
-                   card's rolling Next 7 / 30 day count. */
-                pastRangeDays={comingRange}
+                /* Payments-collected widget window — scope the modal to the
+                   same period bounds the widget's chip aggregates over so the
+                   list count and the chip's number always agree. Widget
+                   period is week/month/etc; we approximate by using its span
+                   in whole days (min 1). */
+                pastRangeDays={Math.max(1, Math.round((dateFilterToRange(period).to.getTime() - dateFilterToRange(period).from.getTime()) / 86400000))}
             />
             <AtRiskClientsModal
                 open={attentionModal === "atrisk"}

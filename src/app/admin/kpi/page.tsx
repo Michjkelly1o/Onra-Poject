@@ -19,7 +19,8 @@
 // Phase 2 (this file): Financial tab fully wired. 10 KPI cards computed
 // from real store data via `computeFinancialKpis`. 4 chart widgets
 // reused from the existing "Finance" widget catalog (revenue-overview,
-// sales-by-product, payments-status, payments-collected).
+// sales-by-product, payments-collected, payments-by-source). The retired
+// `payments-status` widget was folded into `payments-collected` (Jul 2026).
 //
 // Not covered per plan:
 //   • Inventory KPIs (13) — no retail module
@@ -68,9 +69,11 @@ const TABS: TabConfig[] = [
         // cleanly to the PDF's Financial charts:
         //   revenue-overview     → Net revenue vs last period (line)
         //   sales-by-product     → Sales by stream (bar)
-        //   payments-status      → Payments over time with status (bar)
-        //   payments-collected   → Revenue per class trend proxy (line)
-        widgetIds: ["revenue-overview", "sales-by-product", "payments-status", "payments-collected"],
+        //   payments-collected   → Payments collected + failed overlay
+        //                          (client Jul 2026 — the retired
+        //                           `payments-status` merged in here).
+        //   payments-by-source   → Payments by sales channel
+        widgetIds: ["revenue-overview", "sales-by-product", "payments-collected", "payments-by-source"],
     },
     {
         key: "client",

@@ -148,12 +148,20 @@ export interface PaymentConfirmationStepProps {
      *  store-derived subset so disconnecting Stripe in Settings hides
      *  Card / Apple / Google Pay from the POS in the same render. */
     enabledMethods?: PaymentMethod[];
-    /** Customer's account-credit (AED) balance. When > 0, the Member Wallet
-     *  method appears in the picker (independent of `payment_providers` —
-     *  the wallet is an internal balance, not a gateway). Charging it debits
-     *  the ledger for `total` on Complete. Omit / 0 → the wallet card is
-     *  hidden entirely. */
+    /** Customer's account-credit (AED) balance — the referral-earned balance +
+     *  any manual grants or refunded credit. When > 0, the "Apply account
+     *  credit" toggle appears above the Payment method picker. Toggling on
+     *  reduces the total by min(balance, postDiscount). Wallet is no longer a
+     *  standalone payment method (client Jul 2026). */
     walletBalance?: number;
+    /** "Apply my balance" toggle — controlled by the parent so the caller
+     *  can pipe the resolved credit amount into `applyPurchase`. */
+    useAccountCredit?: boolean;
+    setUseAccountCredit?: (next: boolean) => void;
+    /** AED credit actually applied to the sale — the resolved figure the
+     *  parent computed via `computeTotals` (capped at post-discount total).
+     *  Renders as a reduction line in the payment summary. */
+    accountCreditApplied?: number;
 }
 export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     const enabled = p.enabledMethods ?? ALL_PAYMENT_METHODS;
@@ -171,6 +179,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     taxRate={p.taxRate}
                     taxAmount={p.taxAmount}
                     taxIncluded={p.taxIncluded}
+                    accountCreditApplied={p.accountCreditApplied ?? 0}
                     total={p.total}
                 />
 
@@ -189,6 +198,22 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                         width="w-full"
                     />
                 </div>
+
+                {/* Account credit — the customer's balance (referral rewards +
+                    any manual grants). Applied AFTER discount + tax, capped at
+                    the post-discount total (client Jul 2026: no longer a
+                    standalone payment method — surfaced as a reduction toggle
+                    above the payment picker so it composes with any method).
+                    Always renders (client Jul 2026 audit) — when the customer
+                    has no balance, the section still shows "AED 0 available"
+                    with the toggle disabled, so the checkout layout stays
+                    consistent regardless of balance. */}
+                <AccountCreditSection
+                    balance={p.walletBalance ?? 0}
+                    applied={p.accountCreditApplied ?? 0}
+                    enabled={!!p.useAccountCredit}
+                    onToggle={(next) => p.setUseAccountCredit?.(next)}
+                />
 
                 <div className="flex flex-col gap-4">
                     <p className="text-[18px] font-semibold text-[#101828]">Payment method</p>
@@ -233,21 +258,10 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                                 icon={<CreditCardCheck className="w-4 h-4 text-[#475467]" />}
                             />
                         )}
-                        {/* Member Wallet — internal account credit, gated on a
-                            positive balance rather than a payment provider. */}
-                        {(p.walletBalance ?? 0) > 0 && (
-                            <PaymentMethodCard
-                                selected={p.paymentMethod === "wallet"}
-                                onSelect={() => p.setPaymentMethod("wallet")}
-                                title="Member Wallet"
-                                subtitle={`Balance: AED ${(p.walletBalance ?? 0).toLocaleString()}`}
-                                icon={<Wallet01 className="w-4 h-4 text-[#475467]" />}
-                            />
-                        )}
                     </div>
                 </div>
 
-                {p.paymentMethod !== null && (show(p.paymentMethod) || p.paymentMethod === "wallet") && (
+                {p.paymentMethod !== null && show(p.paymentMethod) && (
                     <div className="flex flex-col gap-4">
                         <p className="text-[18px] font-semibold text-[#101828]">Payment confirmation</p>
                         {p.paymentMethod === "cash" && (
@@ -265,9 +279,6 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                         {p.paymentMethod === "banktransfer" && (
                             <BankTransferConfirmation total={p.total} />
                         )}
-                        {p.paymentMethod === "wallet" && (
-                            <WalletConfirmation total={p.total} balance={p.walletBalance ?? 0} />
-                        )}
                     </div>
                 )}
             </div>
@@ -281,7 +292,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     );
 }
 
-function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, total }: {
+function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, accountCreditApplied = 0, total }: {
     customer: Customer;
     items: PurchaseLineItem[];
     subtotal: number; discountPercent: number; discountAmount: number; promoCode?: string;
@@ -290,6 +301,9 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
      *  line prices; the tax row becomes informational and does NOT add to
      *  `total`. The label flips to "Tax (X% included)". */
     taxIncluded?: boolean;
+    /** Account-credit AED applied to the sale via the "Use my balance" toggle.
+     *  Renders as a reduction line between Discount and Total when > 0. */
+    accountCreditApplied?: number;
     total: number;
 }) {
     // Sales-commission attribution is now an EXPLICIT "Credited to" pick — see
@@ -332,6 +346,24 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                     <p className="text-[14px] text-[#667085]">Subtotal</p>
                     <p className="text-[16px] font-medium text-[#101828]">AED {subtotal.toLocaleString()}</p>
                 </div>
+                {/* Tax row — labelled differently depending on the global
+                    "Prices include tax" toggle. Exclusive: "Tax rate (X%)",
+                    amount is added on top. Inclusive: "Tax (X% included)",
+                    informational only (already inside the displayed prices).
+                    Order (client Jul 2026): Subtotal → Tax → Discount → Credit
+                    → Total. Tax is now on the RAW subtotal; discount + credit
+                    both reduce the taxed figure. */}
+                {taxRate > 0 && (
+                    <div className="flex items-center justify-between">
+                        <p className="text-[14px] text-[#667085]">
+                            {taxIncluded
+                                ? <>Tax (<span className="font-medium text-[#101828]">{taxRate}% included</span>)</>
+                                : <>Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</>
+                            }
+                        </p>
+                        <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
+                    </div>
+                )}
                 {discountAmount > 0 && (
                     <div className="flex items-center justify-between">
                         <p className="text-[14px] text-[#667085]">
@@ -343,19 +375,10 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                         <p className="text-[16px] font-medium text-[#d92d20]">-AED {discountAmount.toLocaleString()}</p>
                     </div>
                 )}
-                {/* Tax row — labelled differently depending on the global
-                    "Prices include tax" toggle. Exclusive: "Tax rate (X%)",
-                    amount is added on top. Inclusive: "Tax (X% included)",
-                    informational only (already inside the displayed prices). */}
-                {taxRate > 0 && (
+                {accountCreditApplied > 0 && (
                     <div className="flex items-center justify-between">
-                        <p className="text-[14px] text-[#667085]">
-                            {taxIncluded
-                                ? <>Tax (<span className="font-medium text-[#101828]">{taxRate}% included</span>)</>
-                                : <>Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</>
-                            }
-                        </p>
-                        <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
+                        <p className="text-[14px] text-[#667085]">Account credit</p>
+                        <p className="text-[16px] font-medium text-[#d92d20]">-AED {accountCreditApplied.toLocaleString()}</p>
                     </div>
                 )}
                 <div className="flex items-center justify-between">
@@ -409,6 +432,68 @@ function PaymentMethodCard({ selected, onSelect, title, subtitle, icon }: {
                 {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
         </button>
+    );
+}
+
+/** Account credit reduction row — sits above the payment method picker.
+ *  Toggle ON: apply min(balance, postDiscount) as a reduction (parent
+ *  computes the resolved figure via `computeTotals`). Toggle OFF: no
+ *  reduction. Balance = the customer's wallet balance (referral rewards +
+ *  refunds + grants — same slice the removed Wallet tab used to render). */
+function AccountCreditSection({ balance, applied, enabled, onToggle }: {
+    balance: number;
+    applied: number;
+    enabled: boolean;
+    onToggle: (next: boolean) => void;
+}) {
+    // Zero-balance state renders the same section chrome but the toggle is
+    // disabled (nothing to apply) and the balance line reads "AED 0
+    // available". Client Jul 2026 — always show the section so the checkout
+    // layout stays consistent regardless of whether the customer has any
+    // balance today.
+    const hasBalance = balance > 0;
+    return (
+        <div className="flex flex-col gap-3">
+            <p className="text-[18px] font-semibold text-[#101828]">Account credit</p>
+            <div className={cn(
+                "flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                !hasBalance && "opacity-70",
+            )}>
+                {/* Icon container matches the featured icon on PaymentMethodCard
+                    (32×32, `bg-[#f9fafb]` + 1px border) so the two sections
+                    read as one visual language above the payment picker. */}
+                <div className="w-8 h-8 rounded-[6px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
+                    <Wallet01 className="w-4 h-4 text-[#475467]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#344054]">Available balance</p>
+                    <p className="text-[14px] text-[#475467]">
+                        {enabled && applied > 0
+                            ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
+                            : <>AED {balance.toLocaleString()} available to apply</>
+                        }
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled}
+                    disabled={!hasBalance}
+                    onClick={() => hasBalance && onToggle(!enabled)}
+                    className={cn(
+                        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                        hasBalance ? (enabled ? "bg-[#658774]" : "bg-[#e4e7ec]") : "bg-[#e4e7ec] cursor-not-allowed",
+                    )}
+                >
+                    <span
+                        className={cn(
+                            "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                            enabled && hasBalance ? "translate-x-[22px]" : "translate-x-[2px]",
+                        )}
+                    />
+                </button>
+            </div>
+        </div>
     );
 }
 
@@ -545,46 +630,9 @@ function BankTransferConfirmation({ total }: { total: number }) {
     );
 }
 
-function WalletConfirmation({ total, balance }: { total: number; balance: number }) {
-    const remaining = balance - total;
-    const insufficient = remaining < 0;
-    return (
-        <div className="flex flex-col gap-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-6">
-            <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-[12px] bg-[#f2f7f4] flex items-center justify-center">
-                    <Wallet01 className="w-5 h-5 text-[#658774]" />
-                </div>
-                <p className="text-[16px] font-semibold text-[#101828]">Charge Member Wallet</p>
-            </div>
-            {/* Balance → charge → remaining breakdown so the cashier sees the
-                post-charge balance before confirming. */}
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-[14px]">
-                    <span className="text-[#475467]">Current balance</span>
-                    <span className="font-medium text-[#101828]">AED {balance.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between text-[14px]">
-                    <span className="text-[#475467]">Amount to charge</span>
-                    <span className="font-medium text-[#101828]">AED {total.toLocaleString()}</span>
-                </div>
-                <div className="h-px bg-[#e4e7ec]" />
-                <div className="flex items-center justify-between text-[14px]">
-                    <span className="text-[#475467]">Remaining after</span>
-                    <span className={cn("font-semibold", insufficient ? "text-[#d92d20]" : "text-[#101828]")}>
-                        AED {Math.max(0, remaining).toLocaleString()}
-                    </span>
-                </div>
-            </div>
-            {insufficient && (
-                <div className="flex gap-2 items-start bg-[#fffbfa] border-1 border-[#fecdca] rounded-[8px] px-3 py-2">
-                    <p className="text-[13px] text-[#b42318] leading-[18px]">
-                        Wallet balance is short by AED {Math.abs(remaining).toLocaleString()}. Choose another method or top up the wallet first.
-                    </p>
-                </div>
-            )}
-        </div>
-    );
-}
+// (Old `WalletConfirmation` payment-method card removed — wallet ceased to be
+//  a selectable method in Jul 2026; account credit is now the reduction
+//  toggle at the top of the checkout, above the payment picker.)
 
 // ─── Loading state — Figma 6891:75669 ─────────────────────────────────────────
 export function ProcessingPaymentCard({ method, chargedTo }: { method: PaymentMethod; chargedTo: string }) {
@@ -618,7 +666,6 @@ function PaymentMethodLogo({ method }: { method: PaymentMethod }) {
     if (method === "applepay") return <div className="w-6 h-6 rounded-md bg-[#101828] flex items-center justify-center"><AppleLogo /></div>;
     if (method === "googlepay") return <div className="w-6 h-6 rounded-md bg-white border-1 border-[#e4e7ec] flex items-center justify-center"><GoogleLogo /></div>;
     if (method === "banktransfer") return <CreditCardCheck className="w-6 h-6 text-[#475467]" />;
-    if (method === "wallet") return <Wallet01 className="w-6 h-6 text-[#658774]" />;
     return <MasterCardLogo />;
 }
 
@@ -653,6 +700,10 @@ export interface ReceiptStepProps {
     /** Phase 4 — pass through from the global "Prices include tax" toggle.
      *  Affects the receipt's tax-row label. */
     taxIncluded?: boolean;
+    /** Account-credit AED applied to this sale via the checkout toggle.
+     *  Renders as a red reduction line between Discount and Total when > 0,
+     *  matching the PaymentInformation summary shape. */
+    accountCreditApplied?: number;
     total: number;
     paymentMethodLabel: string;
     chargedTo: string;
@@ -707,6 +758,21 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <p className="text-[14px] text-[#667085]">Subtotal</p>
                             <p className="text-[16px] font-medium text-[#101828]">AED {p.subtotal.toLocaleString()}</p>
                         </div>
+                        {/* Order (client Jul 2026): Subtotal → Tax → Discount →
+                            Account credit → Total. Same shape as the
+                            PaymentInformation summary in step 1 so what the
+                            cashier confirmed matches the printed receipt. */}
+                        {p.taxRate > 0 && (
+                            <div className="flex items-center justify-between">
+                                <p className="text-[14px] text-[#667085]">
+                                    {p.taxIncluded
+                                        ? <>Tax (<span className="font-medium text-[#101828]">{p.taxRate}% included</span>)</>
+                                        : <>Tax rate (<span className="font-medium text-[#101828]">{p.taxRate}%</span>)</>
+                                    }
+                                </p>
+                                <p className="text-[16px] font-medium text-[#101828]">AED {p.taxAmount.toLocaleString()}</p>
+                            </div>
+                        )}
                         {p.discountAmount > 0 && (
                             <div className="flex items-center justify-between">
                                 <p className="text-[14px] text-[#667085]">
@@ -718,18 +784,10 @@ export function ReceiptStep(p: ReceiptStepProps) {
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {p.discountAmount.toLocaleString()}</p>
                             </div>
                         )}
-                        {/* Tax row — labelled per the global "Prices include
-                            tax" toggle. Exclusive: "Tax rate (X%)" added on
-                            top. Inclusive: "Tax (X% included)" informational. */}
-                        {p.taxRate > 0 && (
+                        {(p.accountCreditApplied ?? 0) > 0 && (
                             <div className="flex items-center justify-between">
-                                <p className="text-[14px] text-[#667085]">
-                                    {p.taxIncluded
-                                        ? <>Tax (<span className="font-medium text-[#101828]">{p.taxRate}% included</span>)</>
-                                        : <>Tax rate (<span className="font-medium text-[#101828]">{p.taxRate}%</span>)</>
-                                    }
-                                </p>
-                                <p className="text-[16px] font-medium text-[#101828]">AED {p.taxAmount.toLocaleString()}</p>
+                                <p className="text-[14px] text-[#667085]">Account credit</p>
+                                <p className="text-[16px] font-medium text-[#d92d20]">-AED {(p.accountCreditApplied ?? 0).toLocaleString()}</p>
                             </div>
                         )}
                         <div className="flex items-center justify-between">
@@ -819,8 +877,7 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
                 : paymentMethod === "applepay" ? "Apple Pay"
                     : paymentMethod === "googlepay" ? "Google Pay"
                         : paymentMethod === "banktransfer" ? "Bank transfer"
-                            : paymentMethod === "wallet" ? "Member Wallet"
-                                : "—";
+                            : "—";
     const chargedTo =
         paymentMethod === "card" && selectedCardId
             ? (() => {
@@ -831,8 +888,7 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
                 : paymentMethod === "applepay" ? "Apple Pay"
                     : paymentMethod === "googlepay" ? "Google Pay"
                         : paymentMethod === "banktransfer" ? "Bank transfer"
-                            : paymentMethod === "wallet" ? "Member Wallet"
-                                : "—";
+                            : "—";
     return { label, chargedTo };
 }
 
@@ -859,64 +915,77 @@ export function computeTotals(
         roundingMode?: import("@/lib/store").TaxRoundingMode;
         branchId?: string;
     },
+    /** Account-credit AED requested at checkout — reduces the total AFTER tax
+     *  and discount (per client Jul 2026: Subtotal → Tax → Discount → Credit).
+     *  Auto-capped at the post-discount total so it can't over-apply.
+     *  Existing callers who don't pass it get zero credit applied (no
+     *  behaviour change). */
+    accountCreditRequestedAed: number = 0,
 ) {
     const subtotal = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
-    const pctDiscount = Math.round(subtotal * (discountPercent / 100));
-    const discountAmount = Math.min(subtotal, pctDiscount + Math.round(promoDiscountAed));
-    const afterDiscounts = Math.max(0, subtotal - discountAmount);
 
-    if (!taxContext || subtotal <= 0) {
-        return {
-            subtotal, discountAmount,
-            taxRate: 0, taxAmount: 0, taxIncluded: false,
-            total: afterDiscounts,
-        };
-    }
-
-    // Per-line tax (matches the POS page's algorithm). Imports kept lazy so
-    // this helper stays usable from anywhere without an /admin store import.
-    const { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effectiveRatePercentage } =
-        require("@/lib/tax-calc") as typeof import("@/lib/tax-calc");
-
-    const roundingMode = taxContext.roundingMode ?? "per_line";
-    const lineTaxes: number[] = [];
+    // Tax now computed on the RAW subtotal (client Jul 2026: tax first, then
+    // discount + account credit reduce the total). Old order was discount →
+    // tax, which meant the studio didn't tax the discounted portion.
+    let totalTax = 0;
     let firstRate = 0;
-    for (const item of items) {
-        const category = categoryForProductType(item.productType);
-        if (!category) { lineTaxes.push(0); continue; }
-        const match = findActiveTaxRuleFor(
-            { taxRules: taxContext.taxRules, taxRates: taxContext.taxRates },
-            category,
-            taxContext.branchId,
-        );
-        if (!match) { lineTaxes.push(0); continue; }
-        // Honour the new TaxRate.type — Exempt + Zero-rated both resolve to
-        // 0%, but only Exempt SUPPRESSES the receipt line. Zero-rated still
-        // counts as taxable (the customer's receipt should show 0% tax).
-        const effectiveRate = effectiveRatePercentage(match.rate);
-        const lineRaw = item.unitPrice * item.quantity;
-        const lineShare = subtotal > 0 ? lineRaw / subtotal : 0;
-        const lineAfter = afterDiscounts * lineShare;
-        const breakdown = computeLineTax(lineAfter, effectiveRate, taxContext.pricesIncludeTax, roundingMode);
-        lineTaxes.push(breakdown.taxAed);
-        // First non-Exempt rate drives the displayed rate label (Exempt
-        // rates carry 0% and shouldn't surface "0% tax" on the receipt).
-        if (firstRate === 0 && match.rate.type !== "exempt") {
-            firstRate = effectiveRate;
+    const taxIncluded = taxContext?.pricesIncludeTax ?? false;
+
+    if (taxContext && subtotal > 0) {
+        const { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effectiveRatePercentage } =
+            require("@/lib/tax-calc") as typeof import("@/lib/tax-calc");
+        const roundingMode = taxContext.roundingMode ?? "per_line";
+        const lineTaxes: number[] = [];
+        for (const item of items) {
+            const category = categoryForProductType(item.productType);
+            if (!category) { lineTaxes.push(0); continue; }
+            const match = findActiveTaxRuleFor(
+                { taxRules: taxContext.taxRules, taxRates: taxContext.taxRates },
+                category,
+                taxContext.branchId,
+            );
+            if (!match) { lineTaxes.push(0); continue; }
+            // Exempt + Zero-rated both resolve to 0%; only Exempt suppresses
+            // the receipt line — Zero-rated still counts as taxable.
+            const effectiveRate = effectiveRatePercentage(match.rate);
+            const lineRaw = item.unitPrice * item.quantity;
+            const breakdown = computeLineTax(lineRaw, effectiveRate, taxContext.pricesIncludeTax, roundingMode);
+            lineTaxes.push(breakdown.taxAed);
+            if (firstRate === 0 && match.rate.type !== "exempt") {
+                firstRate = effectiveRate;
+            }
         }
+        const rawTotalTax = lineTaxes.reduce((a, b) => a + b, 0);
+        totalTax = roundingMode === "per_invoice" ? Math.round(rawTotalTax) : rawTotalTax;
     }
 
-    // Aggregate. Per-invoice mode rounds the sum exactly once; per-line
-    // mode summed already-rounded values inside the loop above.
-    const rawTotalTax = lineTaxes.reduce((a, b) => a + b, 0);
-    const totalTax = roundingMode === "per_invoice" ? Math.round(rawTotalTax) : rawTotalTax;
+    // Pre-reduction total = what discount + credit both work off of.
+    //  Tax-inclusive: tax is already inside subtotal → work off subtotal.
+    //  Tax-exclusive: tax is added on top → work off subtotal + tax.
+    const preDiscountTotal = taxIncluded ? subtotal : subtotal + totalTax;
 
-    // Inclusive: tax was already baked into prices, total stays at afterDiscounts.
-    // Exclusive: tax is added on top.
-    const total = taxContext.pricesIncludeTax ? afterDiscounts : afterDiscounts + totalTax;
+    // Discount — percentage is applied to the raw subtotal (matches how promo
+    // + custom discount read on the toolbar), then combined with any flat
+    // promo AED. The combined figure caps at `preDiscountTotal` so a 100%
+    // discount wipes both goods and any exclusive tax cleanly.
+    const pctDiscount = Math.round(subtotal * (discountPercent / 100));
+    const discountAmount = Math.min(preDiscountTotal, pctDiscount + Math.round(promoDiscountAed));
+    const postDiscount = Math.max(0, preDiscountTotal - discountAmount);
+
+    // Account credit — capped at post-discount total so it never over-applies.
+    // Callers should also cap by the customer's wallet balance before passing
+    // in; the store's applyPurchase re-caps at debit time as a belt-and-braces.
+    const requestedCredit = Math.max(0, Math.round(accountCreditRequestedAed));
+    const accountCreditApplied = Math.min(postDiscount, requestedCredit);
+    const total = Math.max(0, postDiscount - accountCreditApplied);
+
     return {
-        subtotal, discountAmount,
-        taxRate: firstRate, taxAmount: totalTax, taxIncluded: taxContext.pricesIncludeTax,
+        subtotal,
+        discountAmount,
+        accountCreditApplied,
+        taxRate: firstRate,
+        taxAmount: totalTax,
+        taxIncluded,
         total,
     };
 }

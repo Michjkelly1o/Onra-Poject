@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { payrollBreakdownFor, commissionForPeriod } from "@/lib/payroll-calc";
+import { payrollBreakdownFor, totalEarningsForStaff, type CommissionBreakdown } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -58,6 +58,15 @@ import { RowActions } from "@/components/patterns/RowActions";
 
 function aed(n: number): string {
     return `AED ${Math.round(n).toLocaleString("en-US")}`;
+}
+
+/** ISO yyyy-mm-dd from a Date — used to stamp period_start / period_end
+ *  on synthetic payroll entries created at Run Payroll confirm time. */
+function dateOnly(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
 }
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -361,6 +370,13 @@ interface RunRow {
      *  silently divides by an approximate per-customer price and
      *  breaks reconciliation on Split-Rate + hybrid revenue rows. */
     totalAttendees: number;
+    /** Base pay BEFORE commission (monthly salary or the entry's class total)
+     *  — the figure the CSV pay-model breakdown expands. */
+    baseEarnings: number;
+    /** Sales commission credited for the period — appended as its own CSV
+     *  line so components reconcile to `payout`. */
+    commission: CommissionBreakdown;
+    /** base + commission — the "Staff payout" column + run totals. */
     payout: number;
     status: PayrollEntryStatus;
 }
@@ -396,25 +412,33 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
+    const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
     const lines: string[] = [];
     for (const r of rows) {
-        // Pipe REAL totals through — `totalAttendees` and `grossRevenue`
-        // both come from the payroll entry, so the breakdown row math
-        // (basis × rate = amount) reconciles to the entry's
-        // `total_earnings` on every pay model. The old code
-        // reconstructed attendees as `grossRevenue / 150`, which
-        // silently divided by an approximate per-customer price and
-        // desynced Split-Rate + hybrid-revenue rows from their subtotal.
+        // Expand the BASE pay (salary / class earnings) into its pay-model
+        // components. `totalAttendees` + `grossRevenue` come from the payroll
+        // entry so basis × rate = amount reconciles on every pay model.
         const breakdown = payrollBreakdownFor(r.payRate, {
-            totalEarningsAed: r.payout,
+            totalEarningsAed: r.baseEarnings,
             completedClasses: r.classesCount,
             totalAttendees:   r.totalAttendees,
             revenueBaseAed:   r.grossRevenue,
         });
+        // Sales commission is paid ON TOP of the base — append it as its own
+        // component so the rows sum to the total payout (base + commission).
+        const components = [...breakdown.components];
+        if (r.commission.totalCommission > 0) {
+            components.push({
+                component: "Sales commission",
+                basis:  "—",
+                rate:   "—",
+                amount: fmt(r.commission.totalCommission),
+            });
+        }
         const statusLabel = r.status === "paid" ? "Paid" : "Pending";
         const totalPayout = Math.round(r.payout);
 
-        breakdown.components.forEach((comp, idx) => {
+        components.forEach((comp, idx) => {
             const isFirst = idx === 0;
             lines.push([
                 isFirst ? r.instructor.name  : "",
@@ -431,12 +455,12 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
             ].map(escape).join(","));
         });
 
-        // Multi-component models get an explicit Subtotal row so the
-        // client can see the sum without re-adding in Excel — matches
-        // the reference table shipped in the client's screenshot.
-        if (breakdown.components.length > 1) {
+        // Multi-component rows (incl. any base + commission split) get an
+        // explicit Subtotal = total payout so the client can see the sum
+        // without re-adding in Excel.
+        if (components.length > 1) {
             lines.push([
-                "", "", "", "", "Subtotal", "", "", breakdown.total,
+                "", "", "", "", "Subtotal", "", "", fmt(r.payout),
                 "", "", "",
             ].map(escape).join(","));
         }
@@ -490,6 +514,10 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const businessCountry       = useAppStore(s => s.businessProfile.country);
     const showPayrollTax        = payrollTaxAppliesForCountry(businessCountry);
     const setPayrollEntriesStatus = useAppStore(s => s.setPayrollEntriesStatus);
+    // Materialises payroll entries for non-instructor staff at run confirm
+    // time — closes the gap where Front Desk / Branch Admin / Operator rows
+    // stayed stuck Pending because they had no seeded entry to flip.
+    const createPayrollEntries    = useAppStore(s => s.createPayrollEntries);
     const showToast             = useAppStore(s => s.showToast);
 
     // Period defaults to the **active month** (1st → last day of current).
@@ -530,6 +558,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             });
         }
 
+        // Shared inputs for the canonical earnings formula (base + commission).
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const fromISO = iso(range.from);
+        const toISO   = iso(range.to);
+
         const instructorRows: RunRow[] = instructors
             .filter(i => i.status === "active")
             .map(instructor => {
@@ -537,43 +571,55 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                 const livePayRate = instructor.payRateId
                     ? payRates.find(p => p.id === instructor.payRateId)
                     : undefined;
+                const { base, commission, total } = totalEarningsForStaff(
+                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                );
                 return {
                     entryId: entry?.id ?? `noentry_${instructor.id}`,
                     actualEntryId: entry?.id,
                     instructor,
                     branchId: instructor.branchId,
-                    payRateName: entry?.payRateName ?? livePayRate?.name ?? "—",
+                    // Current default rate — live name over the entry snapshot.
+                    payRateName: livePayRate?.name ?? entry?.payRateName ?? "—",
                     payRate:     livePayRate,
                     classesCount:   entry?.classesCount   ?? 0,
                     totalHours:     entry?.totalHours     ?? 0,
                     grossRevenue:   entry?.grossRevenue   ?? 0,
                     totalAttendees: entry?.totalAttendees ?? 0,
-                    payout:         entry?.totalEarnings  ?? 0,
+                    baseEarnings:   base,
+                    commission,
+                    payout:         total,
                     status:         entry?.status         ?? "pending",
                 } satisfies RunRow;
             });
 
-        // Non-instructor staff rows (Phase 3B) — no class teaching, so payout =
-        // monthly salary (if any) + commission. No payroll entry, so they show
-        // but aren't part of the mark-paid batch (needs `actualEntryId`).
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        // Non-instructor staff rows — no class teaching, so base pay =
+        // monthly salary (if any) + commission. Entries are materialised at Run
+        // Payroll confirm time (`createPayrollEntries`); this builder now looks
+        // them up by staff id so once created they behave exactly like an
+        // instructor row (mark-paid works, status flips to Paid, etc.).
         const staffRows: RunRow[] = staff
             .filter(st => st.status === "active")
             .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
             .map(st => {
                 const livePayRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
-                const commission = commissionForPeriod(st.id, livePayRate, sources, iso(range.from), iso(range.to));
-                const salary = livePayRate?.type === "monthly" ? livePayRate.fixedSalary : 0;
+                const entry = byInstructor.get(st.id);
+                const { base, commission, total } = totalEarningsForStaff(
+                    st.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                );
                 const synthetic: Instructor = {
                     id: st.id, name: st.fullName, initials: st.initials, color: st.color,
                     imageUrl: st.imageUrl, email: st.email, phone: st.phone,
                     joinedDate: st.joinedDate, branchId: st.branchId ?? "",
                     payRateId: st.payRateId, status: st.status === "active" ? "active" : "inactive",
                 };
+                // Paid entries are frozen — surface the entry's own snapshot so
+                // the row's payout matches what was actually paid. Pending
+                // rows recompute live (like instructors).
+                const displayPayout = entry?.status === "paid" ? entry.totalEarnings : total;
                 return {
-                    entryId: `staff_${st.id}`,
-                    actualEntryId: undefined,
+                    entryId: entry?.id ?? `staff_${st.id}`,
+                    actualEntryId: entry?.id,
                     instructor: synthetic,
                     branchId: st.branchId ?? "",
                     payRateName: livePayRate?.name ?? "—",
@@ -582,8 +628,10 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     totalHours: 0,
                     grossRevenue: 0,
                     totalAttendees: 0,
-                    payout: salary + commission.totalCommission,
-                    status: "pending",
+                    baseEarnings: base,
+                    commission,
+                    payout: displayPayout,
+                    status: entry?.status ?? "pending",
                 } satisfies RunRow;
             });
 
@@ -605,10 +653,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         () => allRows.filter(r => !branchId || r.branchId === branchId),
         [allRows, branchId],
     );
-    const totalPayouts     = metricRows.reduce((s, r) => s + r.payout, 0);
-    const totalClasses     = metricRows.reduce((s, r) => s + r.classesCount, 0);
-    const grossRevenue     = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
-    const avgPerInstructor = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
+    const totalPayouts = metricRows.reduce((s, r) => s + r.payout, 0);
+    const totalClasses = metricRows.reduce((s, r) => s + r.classesCount, 0);
+    const grossRevenue = metricRows.reduce((s, r) => s + r.grossRevenue, 0);
+    // Payroll reopened to all staff — average is over the whole payroll pool
+    // (instructors + non-instructor staff both), matching the compensation list.
+    const avgPerStaff  = metricRows.length > 0 ? totalPayouts / metricRows.length : 0;
 
     // Payroll withholding rate — live-joined from the Tax module. Owner
     // edits Settings → Tax → Pay rate rule → this recomputes without a
@@ -654,19 +704,58 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     );
 
     // ─── Pending entries snapshot (for the Process Payroll button gating) ─
-    const pendingEntryIds = useMemo(
-        () => filteredRows.filter(r => r.status === "pending" && r.actualEntryId).map(r => r.actualEntryId!) ,
+    // All Pending rows in the current filter — instructors AND non-instructor
+    // staff. Non-instructors have no seeded entry, so their `actualEntryId` is
+    // undefined until the confirm handler materialises one via
+    // `createPayrollEntries`. `allPaid` tracks the whole pool so the Process
+    // button correctly disables only when nothing at all is pending.
+    const pendingRows = useMemo(
+        () => filteredRows.filter(r => r.status === "pending"),
         [filteredRows],
     );
-    const allPaid = pendingEntryIds.length === 0;
+    const allPaid = pendingRows.length === 0;
 
     // Subtitle: "7 instructors · Feb 2025" — derived from filteredRows + period.
     const subtitle = `${filteredRows.length} ${filteredRows.length === 1 ? "staff member" : "staff"} · ${monthYearLabel(range.from)}`;
 
     // ─── Actions ──────────────────────────────────────────────────────────
+    //
+    // Payroll entries are only seeded for instructors. Non-instructor staff
+    // (Front Desk / Branch Admin / Operator) get an entry materialised the
+    // first time payroll runs for them — same specs a seeded entry would
+    // carry, so downstream code (per-row mark-paid, commission snapshot,
+    // Paid status) works identically. Guarded on staff having a valid
+    // pay rate + branch so a misconfigured row can't leak an empty entry.
+    function synthesizePayrollSpec(row: RunRow) {
+        return {
+            instructorId:  row.instructor.id,
+            branchId:      row.branchId,
+            payRateId:     row.payRate?.id ?? "",
+            payRateName:   row.payRateName,
+            periodStart:   dateOnly(range.from),
+            periodEnd:     dateOnly(range.to),
+            classesCount:  row.classesCount,
+            totalAttendees: row.totalAttendees,
+            totalHours:    row.totalHours,
+            grossRevenue:  row.grossRevenue,
+            baseEarnings:  row.baseEarnings,
+            adjustmentAmount: 0,
+            totalEarnings: row.baseEarnings, // commission snapshot added at "paid" flip
+        };
+    }
+
     function handleMarkPaid(row: RunRow) {
-        if (!row.actualEntryId) return;
-        setPayrollEntriesStatus([row.actualEntryId], "paid");
+        // Existing entry (instructor or previously-materialised staff row).
+        if (row.actualEntryId) {
+            setPayrollEntriesStatus([row.actualEntryId], "paid");
+            showToast("Payment recorded", `${row.instructor.name} marked as paid.`, "success", "check");
+            return;
+        }
+        // Non-instructor staff row with no entry yet — materialise one now
+        // and immediately mark it Paid. Same store path as the bulk confirm
+        // so the commission snapshot logic runs identically.
+        const [newId] = createPayrollEntries([synthesizePayrollSpec(row)]);
+        setPayrollEntriesStatus([newId], "paid");
         showToast("Payment recorded", `${row.instructor.name} marked as paid.`, "success", "check");
     }
 
@@ -681,9 +770,13 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         // so the "AED X processed" line in the submitted modal matches
         // what actually leaves the studio's account. Same math the
         // Process modal displays.
-        const grossForRun = filteredRows
-            .filter(r => r.status === "pending" && r.actualEntryId)
-            .reduce((s, r) => s + r.payout, 0);
+        //
+        // Every pending row (instructor + non-instructor staff) contributes
+        // to gross wages — the earlier code skipped rows without an
+        // actualEntryId which silently under-reported the run total for
+        // non-instructor staff. That's fixed here by iterating `pendingRows`
+        // directly.
+        const grossForRun = pendingRows.reduce((s, r) => s + r.payout, 0);
         // Gate withholding on the SAME country flag the Process modal
         // uses (`showPayrollTax`). GCC studios (UAE default) show no
         // withholding, so the success toast + submitted modal must
@@ -695,13 +788,21 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             ? Math.round(grossForRun * (payrollTaxRate / 100))
             : 0;
         const totalForRun = Math.round(grossForRun) - withholdingForRun;
-        const countForRun = pendingEntryIds.length;
+        const countForRun = pendingRows.length;
         const periodLabel = monthYearLabel(range.from);
 
-        // Phase 2: skip persisting a PayrollRun row for now — phase 3 / future
-        // payroll-history view can add the run record. Just flip every pending
-        // entry in scope to paid.
-        setPayrollEntriesStatus(pendingEntryIds, "paid");
+        // Materialise entries for any non-instructor pending rows first, THEN
+        // flip every pending id (existing + freshly created) to Paid in one
+        // pass. Both instructor and non-instructor rows now settle in the
+        // same run — closes the earlier gap where staff rows stayed Pending.
+        const existingIds = pendingRows
+            .filter(r => r.actualEntryId)
+            .map(r => r.actualEntryId!);
+        const rowsToCreate = pendingRows.filter(r => !r.actualEntryId);
+        const createdIds = rowsToCreate.length > 0
+            ? createPayrollEntries(rowsToCreate.map(synthesizePayrollSpec))
+            : [];
+        setPayrollEntriesStatus([...existingIds, ...createdIds], "paid");
 
         setSubmittedSnapshot({ total: totalForRun, instructorCount: countForRun, periodLabel });
         setConfirmOpen(false);
@@ -709,7 +810,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         // sees both the persistent receipt (toast) and the inline export CTA.
         showToast(
             "Payroll processed successfully",
-            `${aed(totalForRun)} paid to ${countForRun} ${countForRun === 1 ? "instructor" : "instructors"} for ${periodLabel}.`,
+            `${aed(totalForRun)} paid to ${countForRun} ${countForRun === 1 ? "staff member" : "staff"} for ${periodLabel}.`,
             "success", "check",
         );
         setSubmittedOpen(true);
@@ -757,7 +858,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={monthYearLabel(range.from)} Icon={CoinsStacked01} />
                     <MetricCard label="Total payouts"      value={aed(totalPayouts)}     period={monthYearLabel(range.from)} Icon={CoinsHand} />
                     <MetricCard label="Classes completed"  value={totalClasses.toLocaleString("en-US")} period={monthYearLabel(range.from)} Icon={CheckCircle} />
-                    <MetricCard label="Avg per Instructor" value={aed(avgPerInstructor)} period={monthYearLabel(range.from)} Icon={Users01} />
+                    <MetricCard label="Avg per staff" value={aed(avgPerStaff)} period={monthYearLabel(range.from)} Icon={Users01} />
                 </div>
 
                 {/* Toolbar */}
@@ -790,7 +891,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     {pageRows.length === 0 ? (
                         <div className="relative" style={{ minHeight: 400 }}>
                             <EmptyState
-                                title="No instructors"
+                                title="No staff"
                                 subtitle="Try adjusting the branch or status filter."
                             />
                         </div>
@@ -825,7 +926,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                         <th className={cn(TH, "w-[140px]")}>
                                             <SortableHeader sortKey="payout" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span>Instructor payout</span>
+                                                    <span>Staff payout</span>
                                                     {showPayrollTax && (
                                                         <TaxSuffix
                                                             category="pay_rate"
@@ -865,7 +966,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                                 <td className={TD}>
                                                     <RowActions
                                                         minWidth={180}
-                                                        triggerDisabled={!(r.status === "pending" && !!r.actualEntryId)}
+                                                        triggerDisabled={r.status !== "pending"}
                                                         items={[{
                                                             label: "Mark as paid",
                                                             icon: Check,
@@ -892,17 +993,14 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             {/* Modals */}
             <ProcessPayrollModal
                 open={confirmOpen}
-                instructorCount={pendingEntryIds.length}
-                // Gross wages = sum of instructor PAYOUTS across the
-                // pending rows about to be processed. Was previously
-                // labelled "Gross revenue" and summed studio-side
-                // revenue, which never subtracted cleanly to the Total
-                // line and confused the client. Payout is the sum of
-                // `earningsForClass` — the same number each instructor
-                // will actually receive before withholding.
-                grossWages={filteredRows
-                    .filter(r => r.status === "pending" && r.actualEntryId)
-                    .reduce((s, r) => s + r.payout, 0)}
+                instructorCount={pendingRows.length}
+                // Gross wages = sum of PAYOUTS across every pending row
+                // (instructors + non-instructor staff). Was previously scoped
+                // to `actualEntryId`-only rows, which silently under-reported
+                // the run total for non-instructor staff. Payout = the shared
+                // helper's base + commission — the same figure each staff
+                // member will actually receive before withholding.
+                grossWages={pendingRows.reduce((s, r) => s + r.payout, 0)}
                 taxRate={payrollTaxRate}
                 showTax={showPayrollTax}
                 onCancel={() => setConfirmOpen(false)}

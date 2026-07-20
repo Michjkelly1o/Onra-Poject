@@ -16,13 +16,17 @@
 //                 whole roster when the appointment itself is Cancelled
 //                 (cascaded via cancelAppointment).
 //
-// ROW ACTIONS — status × service-type matrix (from the brief):
+// ROW ACTIONS — status × service-type matrix:
 //
 //                       OPEN SESSION                        PRIVATE
 //   Upcoming            Cancel customer · Remove customer   (none — single customer)
-//   Ongoing             Mark Present / No-show              Mark Present / No-show
-//   Completed           (none)                              (none)
+//   Ongoing             Present (inline button in row)      Present (inline button in row)
+//   Completed           (none — retrospective badges only)  (none)
 //   Cancelled           (none)                              (none)
+//
+// A no-show is auto-flagged by the system — no explicit button. When the
+// system flags one the Status column renders a NoShowBadge in place of
+// the inline Present button.
 //
 // Bulk-action bar appears on the Booked tab for Open session whenever ≥1
 // row is selected — actions match the per-row matrix above for the
@@ -32,7 +36,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check,
+    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
     FilterLines,
 } from "@untitledui/icons";
@@ -319,6 +323,31 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
 // ─── Roster row actions ─────────────────────────────────────────────────────
 
 type RowActionKind = "cancel" | "remove" | "present";
+
+// ─── Inline Present button — mirrors the class detail
+//     ([/schedule/[classId]/page.tsx](src/app/schedule/[classId]/page.tsx)) +
+//     instructor variant ([/class/[classId]/page.tsx](src/app/class/[classId]/page.tsx#L344)).
+//
+// Renders in the Status column for Ongoing roster rows that haven't been
+// marked yet. Same DS `secondary-gray` chrome + `#067647` green
+// text/icon + `#ecfdf3` hover tint as the bulk "Mark present" button —
+// one attendance language across every detail page. Clicking flips the
+// cell to a `PresentBadge`. A no-show is auto-flagged by the system —
+// no explicit button.
+
+function PresentButton({ onClick }: { onClick: () => void }) {
+    return (
+        <Button
+            variant="secondary-gray"
+            size="sm"
+            onClick={onClick}
+            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+        >
+            Present
+        </Button>
+    );
+}
 
 // ─── Bulk action bar (Open session only) ────────────────────────────────────
 
@@ -1097,10 +1126,12 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                             {showStatusColumn && (
                                                 <td className={TD}>
                                                     {/* Mirrors /schedule/[classId] booked-tab badge logic 1:1:
-                                                        - Ongoing / Completed → render Present / No-show badges
-                                                          (same components class schedule uses) only when
-                                                          attendance has been marked. Unmarked rows stay
-                                                          empty so the admin sees what's left to process.
+                                                        - Ongoing → PresentBadge / NoShowBadge when marked,
+                                                          else an INLINE Present BUTTON (client feedback Jul
+                                                          2026 — same chrome as the instructor variant).
+                                                          A no-show is auto-flagged by the system; there's
+                                                          no explicit button for it.
+                                                        - Completed → keep the badge-only readout (retrospective).
                                                         - Cancelled tab → keep the existing appointment-booking
                                                           status badge (Booked / Cancelled / etc). */}
                                                     {tab === "booked" && (appointment.status === "Ongoing" || appointment.status === "Completed")
@@ -1108,27 +1139,18 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                             ? <PresentBadge />
                                                             : r.status === "NoShow"
                                                                 ? <NoShowBadge />
-                                                                : null)
+                                                                : appointment.status === "Ongoing"
+                                                                    ? <PresentButton onClick={() => actions.onMarkOne(r.id)} />
+                                                                    : null)
                                                         : <StatusBadge type="appointment-booking" status={r.status} />}
                                                 </td>
                                             )}
                                             <td className={TD}>
                                                 {r.status !== "Cancelled" && (() => {
-                                                    const isOngoing       = appointment.status === "Ongoing";
                                                     const isUpcoming      = appointment.status === "Upcoming";
-                                                    const presentDisabled = isOngoing && r.status === "Attended";
                                                     return (
                                                         <RowActions
                                                             items={[
-                                                                {
-                                                                    label: presentDisabled ? "Already present" : "Present",
-                                                                    icon: Check,
-                                                                    success: true,
-                                                                    successText: true,
-                                                                    disabled: presentDisabled,
-                                                                    hidden: !isOngoing,
-                                                                    onClick: () => actions.onMarkOne(r.id),
-                                                                },
                                                                 {
                                                                     label: "Cancel customer",
                                                                     icon: SlashCircle01,
@@ -1224,6 +1246,10 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
         | { kind: "remove-booking"; bookingId: string }
         | { kind: "bulk-cancel"; ids: string[] }
         | { kind: "bulk-remove"; ids: string[] }
+        // Bulk mark-present now goes through a confirmation modal to match
+        // the class detail (client feedback Jul 2026 — parity between class
+        // and appointment attendance flows).
+        | { kind: "bulk-mark"; ids: string[] }
         | { kind: "delete-review"; ratingId: string }
         | { kind: "bulk-delete-review"; ids: string[] };
     const [modalTarget, setModalTarget] = useState<ModalTarget | null>(null);
@@ -1284,14 +1310,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                         }}
                         onBulkCancel={(ids) => setModalTarget({ kind: "bulk-cancel", ids })}
                         onBulkRemove={(ids) => setModalTarget({ kind: "bulk-remove", ids })}
-                        onBulkMark={(ids) => {
-                            markPresentBulk(ids);
-                            showToast(
-                                "Customers marked present",
-                                `${ids.length} customer${ids.length === 1 ? "" : "s"} updated.`,
-                                "success", "check",
-                            );
-                        }}
+                        onBulkMark={(ids) => setModalTarget({ kind: "bulk-mark", ids })}
                         onDeleteReviewOne={(id) => setModalTarget({ kind: "delete-review", ratingId: id })}
                         onDeleteReviewBulk={(ids) => setModalTarget({ kind: "bulk-delete-review", ids })}
                     />
@@ -1313,6 +1332,52 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                         setModalTarget(null);
                     }}
                 />
+            )}
+
+            {/* Bulk mark-present confirmation — parity with the class detail
+                bulk flow. Same chrome, same copy shape, same DS primary button
+                (pale-mint `var(--brand-tertiary)` — no color override). */}
+            {modalTarget?.kind === "bulk-mark" && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-[#0c111d]/60" onClick={() => setModalTarget(null)} />
+                    <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                        <button type="button" onClick={() => setModalTarget(null)}
+                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
+                            <XClose className="w-6 h-6 text-[#667085]" />
+                        </button>
+                        <div className="flex flex-col items-center gap-4 pt-6 px-6">
+                            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-6 h-6 text-[#067647]" />
+                            </div>
+                            <div className="flex flex-col gap-1 text-center w-full">
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                                    Mark {modalTarget.ids.length} customer{modalTarget.ids.length === 1 ? "" : "s"} as present?
+                                </h3>
+                                <p className="text-[14px] text-[#475467] leading-[20px]">
+                                    The selected customers will be marked as present for this appointment.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 pt-6 pb-6">
+                            <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setModalTarget(null)}>
+                                Cancel
+                            </Button>
+                            <Button variant="primary" size="lg" className="flex-1"
+                                onClick={() => {
+                                    const ids = modalTarget.ids;
+                                    markPresentBulk(ids);
+                                    showToast(
+                                        "Customers marked present",
+                                        `${ids.length} customer${ids.length === 1 ? "" : "s"} updated.`,
+                                        "success", "check",
+                                    );
+                                    setModalTarget(null);
+                                }}>
+                                Yes, mark present
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
             <CancelBookingModal
                 open={modalTarget?.kind === "cancel-booking" || modalTarget?.kind === "bulk-cancel"}

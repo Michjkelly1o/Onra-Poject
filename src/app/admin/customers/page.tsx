@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft,
-    Eye, Edit02, Trash01, Trash02, Archive, Check, Download01, Upload01,
+    Eye, Edit02, Trash01, Trash02, Archive, Check, Download01,
     MarkerPin01, AlignLeft, XClose, RefreshCcw01, SlashCircle01, HeartHand,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,9 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { useAppStore, type Customer } from "@/lib/store";
-import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
+// CustomerImportModal import removed (Jul 2026) — the Import Data entry is
+// hidden pending a proper migration flow build. The modal file stays on disk
+// as reference for that rebuild.
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Pagination } from "@/components/ui/Pagination";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -495,7 +497,6 @@ export default function CustomersPage() {
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
-    const [importOpen, setImportOpen] = useState(false);
 
     // Reset to page 1 whenever the result set changes shape.
     useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize]);
@@ -748,14 +749,10 @@ export default function CustomersPage() {
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
-                {/* Import-only entry from the customers module — direct
-                    create flow lives only on POS / class-schedule add-
-                    customer paths (`/customers/new?returnTo=...`). */}
-                <Button variant="primary" size="md"
-                    leftIcon={<Upload01 className="w-4 h-4" />}
-                    onClick={() => setImportOpen(true)}>
-                    Import data
-                </Button>
+                {/* Import Data entry hidden pending a proper migration flow
+                    build (client Jul 2026). The CustomerImportModal file stays
+                    on disk as reference for the rebuild — this page just no
+                    longer surfaces the entry point. */}
             </div>
 
             {/* ── Table area — sits flush on the admin chrome, no outer
@@ -943,8 +940,6 @@ export default function CustomersPage() {
                     />
                 );
             })()}
-
-            <CustomerImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
             <Toast />
         </div>

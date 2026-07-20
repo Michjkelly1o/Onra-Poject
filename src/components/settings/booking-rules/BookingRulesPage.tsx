@@ -28,11 +28,15 @@ import { Toast } from "@/components/ui/Toast";
 import { MultiSelectCard, type MultiSelectOption } from "@/components/patterns/MultiSelectCard";
 import { useAppStore } from "@/lib/store";
 import type {
-    ClassesSettings, CancellationPolicy, CancellationOutcome,
+    ClassesSettings, CancellationPolicy, CancellationOutcome, FreezePolicy,
 } from "@/lib/store";
 import { BookingWindowPanel } from "./BookingWindowPanel";
 import { WaitlistPanel }      from "./WaitlistPanel";
 import { CancellationPolicyPanel } from "./CancellationPolicyPanel";
+// Freeze policy moved here from its own tab (client Jul 2026 — one fewer
+// settings tab, the freeze rules live alongside cancellation now). Panel
+// component unchanged; only the entry point changes.
+import { FreezePolicyPanel }  from "../FreezePolicyPanel";
 
 // ─── Display helpers ────────────────────────────────────────────────────────
 
@@ -67,6 +71,14 @@ const OUTCOME_LABEL: Record<CancellationOutcome, string> = {
     credit_forfeited: "Credit forfeited",
 };
 
+/** Freeze-policy duration unit — same table the retired FreezePolicyPage
+ *  used, moved here now that the summary card lives on this page. */
+const FREEZE_UNIT_LABEL: Record<FreezePolicy["max_duration_unit"], (n: number) => string> = {
+    days:   n => (n === 1 ? "day" : "days"),
+    weeks:  n => (n === 1 ? "week" : "weeks"),
+    months: n => (n === 1 ? "month" : "months"),
+};
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 type CancellationTab = "rule" | "applied";
@@ -74,6 +86,10 @@ type CancellationTab = "rule" | "applied";
 export default function BookingRulesPage() {
     const classesSettings   = useAppStore(s => s.classesSettings);
     const cancellationPolicy = useAppStore(s => s.cancellationPolicy);
+    // Freeze policy summary reads the SAME store slice + panel as the retired
+    // /admin/settings/freeze-policy tab. Copies the FreezePolicyPage's summary
+    // rendering verbatim so behaviour + data are unchanged (Jul 2026 move).
+    const freezePolicy      = useAppStore(s => s.freezePolicy);
     const updateClassesSettings = useAppStore(s => s.updateClassesSettings);
     const showToast         = useAppStore(s => s.showToast);
 
@@ -81,10 +97,33 @@ export default function BookingRulesPage() {
     const [wlOpen, setWlOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
     const [cpTab, setCpTab]   = useState<CancellationTab>("rule");
+    const [fpOpen, setFpOpen] = useState(false);
 
     // Landing's "Last minutes booking" reads the INVERSE of the cutoff
     // toggle. Cutoff ON = members can book to the last minute = "Yes".
     const lastMinutesBookingYes = classesSettings.booking_cutoff_enabled;
+
+    // Freeze policy summary values — identical derivation to the retired
+    // FreezePolicyPage, so the numbers shown here match what that page used
+    // to render (no data / logic change).
+    const freezeDurationValue = freezePolicy.max_duration_enabled
+        ? `${freezePolicy.max_duration_value} ${FREEZE_UNIT_LABEL[freezePolicy.max_duration_unit](freezePolicy.max_duration_value)}`
+        : "No limit";
+    const freezeFreezesValue = freezePolicy.limit_freezes_enabled
+        ? String(freezePolicy.max_freezes)
+        : "Unlimited";
+    const freezeFeeValue = freezePolicy.fee_enabled
+        ? `AED ${freezePolicy.fee_amount_aed} · ${freezePolicy.fee_type === "one_time" ? "One-time" : "Recurring"}`
+        : "No";
+    const freezeReasonsValue = !freezePolicy.allow_exceptions
+        ? "Any reason"
+        : (() => {
+            const n = freezePolicy.reasons.filter(r => r.enabled && r.label.trim()).length;
+            return `${n} reason${n === 1 ? "" : "s"}`;
+        })();
+    const freezeApplyToValue = freezePolicy.apply_to === "all"
+        ? "All memberships"
+        : `${freezePolicy.membership_ids.length} membership${freezePolicy.membership_ids.length === 1 ? "" : "s"}`;
 
     function handleToggleWaitlist(next: boolean) {
         updateClassesSettings({ waitlist_enabled: next });
@@ -185,10 +224,35 @@ export default function BookingRulesPage() {
                 {cpTab === "applied" && <AppliedToSummary policy={cancellationPolicy} />}
             </SettingsCard>
 
+            {/* ── Card 4: Freeze policy ────────────────────────────
+                Moved here from the retired /admin/settings/freeze-policy
+                tab (client Jul 2026). Reads the same freezePolicy slice +
+                opens the same FreezePolicyPanel — pure UI relocation, no
+                behaviour or data change. */}
+            <SettingsCard>
+                <CardHeader
+                    title="Freeze policy"
+                    subtitle="Rules for how members pause their memberships from their account."
+                    editLabel="Customize"
+                    onEdit={() => setFpOpen(true)}
+                />
+                <SummaryField label="Enable freeze policy" value={freezePolicy.enabled ? "Yes" : "No"} />
+                {freezePolicy.enabled && (
+                    <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+                        <SummaryField label="Maximum freeze duration" value={freezeDurationValue} />
+                        <SummaryField label="Freezes per membership"  value={freezeFreezesValue} />
+                        <SummaryField label="Freeze fee"              value={freezeFeeValue} />
+                        <SummaryField label="Allowed reasons"         value={freezeReasonsValue} />
+                        <SummaryField label="Apply to"                value={freezeApplyToValue} />
+                    </div>
+                )}
+            </SettingsCard>
+
             {/* Side panels */}
             <BookingWindowPanel       open={bwOpen} onClose={() => setBwOpen(false)} />
             <WaitlistPanel            open={wlOpen} onClose={() => setWlOpen(false)} />
             <CancellationPolicyPanel  open={cpOpen} onClose={() => setCpOpen(false)} />
+            <FreezePolicyPanel        open={fpOpen} onClose={() => setFpOpen(false)} />
 
             <Toast />
         </div>

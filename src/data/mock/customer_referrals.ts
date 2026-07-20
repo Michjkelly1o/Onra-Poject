@@ -47,8 +47,8 @@ export const customer_referrals: CustomerReferral[] = [
         referred_name: "Phoenix Baker",
         referred_email: "phoenix.baker@email.com",
         benefit_credits: 2,
-        benefit_type: "wallet_credit",
-        benefit_amount: 100,
+        // benefit_type/amount removed Jul 2026 — studio's referral is
+        // Class Credit only; row reverts to `benefit_credits`.
         referred_at: "2025-02-28T22:00:00Z",
         expires_at:  "2025-05-29T22:00:00Z",
         origin_branch_id: SOUTH,
@@ -71,8 +71,8 @@ export const customer_referrals: CustomerReferral[] = [
         referred_name: "Demi Wilkinson",
         referred_email: "demi.wilkinson@email.com",
         benefit_credits: 1,
-        benefit_type: "wallet_credit",
-        benefit_amount: 50,
+        // benefit_type/amount removed Jul 2026 — studio's referral is
+        // Class Credit only; row reverts to `benefit_credits`.
         referred_at: "2025-12-02T11:30:00Z",
         expires_at:  "2026-03-02T11:30:00Z",
         origin_branch_id: SOUTH,
@@ -95,8 +95,8 @@ export const customer_referrals: CustomerReferral[] = [
         referred_name: "Natali Craig",
         referred_email: "natali.craig@email.com",
         benefit_credits: 2,
-        benefit_type: "wallet_credit",
-        benefit_amount: 75,
+        // benefit_type/amount removed Jul 2026 — studio's referral is
+        // Class Credit only; row reverts to `benefit_credits`.
         referred_at: "2026-02-10T10:15:00Z",
         expires_at:  "2026-05-11T10:15:00Z",
         origin_branch_id: SOUTH,

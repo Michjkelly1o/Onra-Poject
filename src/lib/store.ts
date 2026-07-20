@@ -1919,6 +1919,12 @@ export interface CustomerTransaction {
     /** Member's stated reason for the refund request — shown in the
      *  Refund-requests modal. */
     refundRequestReason?: string;
+    /** Account-credit AED applied to this sale via the checkout toggle
+     *  (client Jul 2026 — the wallet is no longer a standalone payment
+     *  method). Remembered on the transaction so refund flows can restore
+     *  the credit to the customer's wallet. Absent / 0 = no credit was
+     *  used and refunds don't touch the wallet. */
+    accountCreditAppliedAed?: number;
 }
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
@@ -3809,6 +3815,13 @@ export interface AppState {
      *  per-row "Mark as paid" action). If `payrollRunId` is supplied the
      *  entries are stamped with it; otherwise just status flips. */
     setPayrollEntriesStatus: (ids: string[], status: PayrollEntryStatus, payrollRunId?: string) => void;
+    /** Materialise payroll entries for staff that don't have one yet — used by
+     *  the Run Payroll flow so non-instructor staff (Front Desk, Branch Admin,
+     *  Operator) can actually be paid. Instructors have entries seeded up
+     *  front; non-instructor staff don't, and this closes that gap on demand.
+     *  Returns the newly-created entry ids so the caller can pipe them into
+     *  `setPayrollEntriesStatus(..., "paid")` in the same run. */
+    createPayrollEntries: (specs: Array<Omit<PayrollEntry, "id" | "status" | "createdAt"> & { status?: PayrollEntryStatus }>) => string[];
     /** Apply an adjustment to a single entry — used in the Run Payroll review
      *  step. Recomputes `totalEarnings` automatically. */
     setPayrollEntryAdjustment: (id: string, amount: number, reason?: string) => void;
@@ -4076,6 +4089,13 @@ export interface AppState {
          *  the POS UI (no auto-cashier fallback). Ignored for customer-portal
          *  sales (self-service → unattributed). Commission refactor Phase 2. */
         sellerStaffId?: string,
+        /** Account credit (AED) applied to this sale — the "Use my balance"
+         *  toggle in POS + customer checkout. When > 0, the store debits the
+         *  same amount from the customer's wallet ledger in the same tick, so
+         *  the account balance stays consistent with what the receipt shows.
+         *  Callers pass min(walletBalance, orderTotalPostDiscount) so the debit
+         *  never exceeds the sale or the balance. */
+        accountCreditAppliedAed?: number,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -6158,6 +6178,13 @@ export const useAppStore = create<AppState>()(persist(
                         status: "refunded" as const,
                         refundedAtISO: new Date().toISOString(),
                         refundMethod: method,
+                        // `transactionType: "refund"` is what
+                        // `commissionForPeriod`'s `categoryStats` uses to net
+                        // this row out of the seller's commission base
+                        // (client Jul 2026 audit fix — was left as "sale" or
+                        // undefined, so live UI refunds never clawed back
+                        // commission from the crediting staff).
+                        transactionType: "refund" as const,
                     }
                     : t,
             ),
@@ -6166,6 +6193,20 @@ export const useAppStore = create<AppState>()(persist(
             const targetCustomer = get().customers.find(c => c.id === target.customerId);
             const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
             get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
+            // Restore any account credit that was applied to this sale so the
+            // customer's balance returns to what it was before the checkout.
+            // Skipped on rows that didn't use credit (undefined / 0). Silent
+            // credit-back — the refund toast is the user-facing signal.
+            if (target.accountCreditAppliedAed && target.accountCreditAppliedAed > 0) {
+                get().creditWallet({
+                    customerId: target.customerId,
+                    amountAed: target.accountCreditAppliedAed,
+                    reason: "Refunded from checkout",
+                    referenceType: "refund",
+                    referenceId: target.id,
+                    silent: true,
+                });
+            }
         }
     },
 
@@ -6706,6 +6747,22 @@ export const useAppStore = create<AppState>()(persist(
         if (status === "paid") {
             get().recordAudit("Ran payroll", "payroll", payrollRunId ?? "run", `${ids.length} entries`, { entries: ids.length });
         }
+    },
+    createPayrollEntries: (specs) => {
+        // Deterministic id shape so audits + logs read cleanly. Non-instructor
+        // staff entries land here at Run Payroll confirm time so their row can
+        // be marked Paid alongside the instructor rows.
+        const stamp = Date.now();
+        const created: PayrollEntry[] = specs.map((spec, i) => ({
+            ...spec,
+            id: `pe_run_${stamp}_${i}`,
+            status: spec.status ?? "pending",
+            createdAt: new Date(stamp).toISOString(),
+        }));
+        set((state) => ({
+            payrollEntries: [...state.payrollEntries, ...created],
+        }));
+        return created.map((e) => e.id);
     },
     setPayrollEntryAdjustment: (id, amount, reason) => {
         set(state => ({
@@ -7768,7 +7825,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -7972,6 +8029,13 @@ export const useAppStore = create<AppState>()(persist(
                 const source = paymentSource ?? "pos";
                 const cashierStaffId =
                     source === "customer_portal" ? undefined : sellerStaffId;
+                // Attach the account credit stamp to the FIRST membership/
+                // package line so a subsequent refund of that line restores
+                // the credit to the wallet (see `refundTransaction`). Most
+                // sales are single-line so this covers the common path; a
+                // partial refund on a rare multi-line sale that only targets
+                // a later line is a documented edge case for the prototype.
+                const isFirstSaleLine = idx === firstSaleIdx;
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
@@ -7989,6 +8053,9 @@ export const useAppStore = create<AppState>()(persist(
                     transactionType: "sale",
                     staffId: cashierStaffId,
                     createdAtISO: nowISO,
+                    ...(isFirstSaleLine && accountCreditAppliedAed && accountCreditAppliedAed > 0
+                        ? { accountCreditAppliedAed }
+                        : {}),
                 });
             });
 
@@ -8067,6 +8134,28 @@ export const useAppStore = create<AppState>()(persist(
                 customerId: buyerSnapshot.id,
                 branchId: buyerSnapshot.branchId,
             });
+        }
+
+        // Account credit debit — when the customer used their balance at
+        // checkout, subtract it from the wallet ledger AFTER the sale posts
+        // so `walletBalanceAed` on the same render already sees the reduction.
+        // Guarded to never debit past the current balance (belt-and-braces —
+        // callers already cap it, but a bad caller can't push the balance
+        // negative). Uses the existing `debitWallet` action so history + audit
+        // read consistently with every other debit surface.
+        if (accountCreditAppliedAed && accountCreditAppliedAed > 0) {
+            const balance = walletBalanceAed(get().walletTransactions, customerId);
+            const debitAed = Math.min(accountCreditAppliedAed, balance);
+            if (debitAed > 0) {
+                get().debitWallet({
+                    customerId,
+                    amountAed: debitAed,
+                    reason: "Applied at checkout",
+                    referenceType: "pos_sale",
+                    referenceId: firstTxnId,
+                    silent: true,
+                });
+            }
         }
     },
 
@@ -8447,11 +8536,6 @@ export const useAppStore = create<AppState>()(persist(
         //   types). 3 seed rows + half of DEMO_NOW_REFERRALS re-typed to
         //   `wallet_credit` so both card lines demo populated. Bump forces
         //   a reseed on next hydrate so testers pick up the new fields.
-        // v66 (2026-07-20): schedule status is derived from the DEVICE clock
-        //   (`liveScheduleStatus`) instead of the seed's baked value, so a past
-        //   class can never sit in the customer's Upcoming bookings. Also adds
-        //   waitlist claim-offer fields to ClassBooking for the "Notify to
-        //   accept" flow. Bump reseeds so testers pick both up.
         // v57 (2026-07-14): session-type dimension Phase 1. Every bookable/
         //   scheduled row gains an explicit `type` ("class" | "private" |
         //   "recovery"): ClassTemplate/ClassSchedule = "class", Service =
@@ -8501,7 +8585,34 @@ export const useAppStore = create<AppState>()(persist(
         //   (was stale pr_standard/AED 441) → month rollup = AED 8,000 salary,
         //   so the payroll staff-detail + compensation list show a real total
         //   instead of AED 0. Bump reseeds payroll entries.
-        version: 66,
+        // v66 (2026-07-15): Candice's payroll entry re-based to her Monthly Rate
+        //   (was stale pr_standard/AED 294) to match her assignment — QA fix so
+        //   the earnings figure agrees across the compensation list, run
+        //   payroll + staff detail (all now go through one shared helper). Bump
+        //   reseeds payroll entries.
+        // v67 (2026-07-16): Account credit becomes a checkout reduction toggle
+        //   (was standalone "Member Wallet" payment method). CustomerTransaction
+        //   gains `accountCreditAppliedAed` so refunds can restore the balance.
+        //   Bump discards old persisted transactions to avoid a mixed shape.
+        // v68 (2026-07-17): Studio's referral is Class Credit only (client rule
+        //   — no mixed class + account credit histories per customer).
+        //   `wallet_transactions` seed emptied; `customer_referrals`
+        //   `wallet_credit` overrides removed. Bump reseeds so existing
+        //   testers drop the stale referral wallet balances.
+        // v69 (2026-07-17): Follow-up — retired the alternating
+        //   `REWARD_TYPES` array on `DEMO_NOW_REFERRALS` (was still
+        //   stamping half the demo referrals as `wallet_credit` @ AED 50
+        //   × credits, e.g. "Liam Carter — AED 100"). Every DEMO_NOW row
+        //   now stamps `free_credits` with the row's benefit_credits
+        //   count. Bump reseeds so testers who already refreshed under
+        //   v68 pick up the corrected shape.
+        // v70 (2026-07-20): schedule status is derived from the DEVICE clock
+        //   (`liveScheduleStatus`) instead of the seed's baked value, so a past
+        //   class can never sit in the customer's Upcoming bookings. Also adds
+        //   waitlist claim-offer fields to ClassBooking (`waitlistClaimOfferedAt`
+        //   / `ExpiresAt` / `DeclinedAt`) for the "Notify to accept" flow. Bump
+        //   reseeds so testers pick both up.
+        version: 70,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
