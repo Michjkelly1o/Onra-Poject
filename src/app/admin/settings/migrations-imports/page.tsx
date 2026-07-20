@@ -43,6 +43,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterPill } from "@/components/ui/FilterPill";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
@@ -92,11 +93,24 @@ function isoDay(iso: string): string {
 
 // ─── File-type chip ──────────────────────────────────────────────────────────
 
-/** Small file icon with a coloured badge stripe (CSV / XLSX / XLS) matching
- *  the Figma. Kept inline — only used on this page. */
+/** Small file icon per file type. CSV renders the client-provided webp
+ *  asset (`/csv-file-icon.webp` — placed in `public/` on 2026-07-20 per
+ *  client feedback). XLSX / XLS fall back to a matching outline-file
+ *  icon with a green label stripe so the family still reads consistent
+ *  when we get a non-CSV row. If the client later ships XLSX/XLS icons,
+ *  drop them next to the CSV asset and extend the switch. */
 function FileTypeChip({ type }: { type: ImportHistorySeed["file_type"] }) {
-    // Palette per file type. CSV + XLSX both use the green Success 600
-    // per Figma; XLS mirrors XLSX. If a new type lands, extend here.
+    if (type === "csv") {
+        return (
+            <div className="relative shrink-0 w-6 h-6 overflow-clip">
+                <img
+                    src="/csv-file-icon.webp"
+                    alt="CSV file"
+                    className="w-6 h-6 object-contain"
+                />
+            </div>
+        );
+    }
     const label = type.toUpperCase();
     return (
         <div className="relative shrink-0 w-6 h-6">
@@ -151,8 +165,8 @@ function FilterPanel({ open, onClose, applied, onApply }: {
     );
 
     return (
-        <SlidePanel open={open} onClose={onClose} width={400}>
-            {/* Header */}
+        <SlidePanel open={open} onClose={onClose} width={420}>
+            {/* Header — matches the customer-module filter panel */}
             <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
                 <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                 <button type="button" onClick={onClose}
@@ -161,10 +175,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 </button>
             </div>
 
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+            {/* Body — px-6 py-5 gap-5 matches the customer module so both
+                filter surfaces read identically. */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                 {/* Data type — multi */}
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                     <SectionLabel label="Data type" />
                     <div className="flex flex-wrap gap-2">
                         {DATA_TYPE_KEYS.map(k => (
@@ -179,7 +194,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 <Divider />
 
                 {/* Status — multi */}
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                     <SectionLabel label="Status" />
                     <div className="flex flex-wrap gap-2">
                         {STATUS_KEYS.map(s => (
@@ -193,33 +208,43 @@ function FilterPanel({ open, onClose, applied, onApply }: {
 
                 <Divider />
 
-                {/* Date range (imported_at bounds) — two native date inputs.
-                    Uses the ISO yyyy-MM-dd string so downstream comparisons
-                    stay TZ-safe (matches the schedule + reports pattern). */}
-                <div className="flex flex-col gap-3">
-                    <SectionLabel label="Imported between" />
+                {/* Imported date range — DatePicker per client 2026-07-20.
+                    Same "Start date / End date" pair the customer module's
+                    Plan expiry filter uses so the two panels feel identical.
+                    End is clamped to ≥ start via `minDate`, and if the admin
+                    picks a later start after an end was set we clear the
+                    now-invalid end. */}
+                <div className="flex flex-col gap-2">
+                    <SectionLabel label="Imported date range" />
                     <div className="grid grid-cols-2 gap-3">
-                        <input type="date" value={pending.fromISO}
-                            onChange={e => setPending(p => ({ ...p, fromISO: e.target.value }))}
-                            className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]"
+                        <DatePicker
+                            value={pending.fromISO}
+                            onChange={v => setPending(p => ({
+                                ...p,
+                                fromISO: v,
+                                toISO: p.toISO && v && p.toISO < v ? "" : p.toISO,
+                            }))}
+                            placeholder="Start date"
                         />
-                        <input type="date" value={pending.toISO}
-                            onChange={e => setPending(p => ({ ...p, toISO: e.target.value }))}
-                            className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]"
+                        <DatePicker
+                            value={pending.toISO}
+                            onChange={v => setPending(p => ({ ...p, toISO: v }))}
+                            placeholder="End date"
+                            minDate={pending.fromISO || undefined}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex gap-3 items-center px-6 py-4 border-t border-[#e4e7ec] shrink-0">
-                <Button variant="secondary-gray" size="lg" className="flex-1"
-                    disabled={!hasAny}
-                    onClick={() => { onApply(EMPTY_FILTER); setPending(EMPTY_FILTER); onClose(); }}>
+            {/* Footer — buttons are fit-width (no flex-1) and pinned to
+                the edges via justify-between, matching the customer-module
+                filter (client 2026-07-20). */}
+            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                     Clear filter
                 </Button>
-                <Button variant="primary" size="lg" className="flex-1"
-                    disabled={!hasAny}
+                <Button variant="primary" size="md" disabled={!hasAny}
                     onClick={() => { onApply(pending); onClose(); }}>
                     Apply
                 </Button>
@@ -319,14 +344,16 @@ export default function MigrationsImportsPage() {
                 </Button>
             </div>
 
-            {/* ── View card ── min-h 760 keeps the card the same size on empty
-                + populated so filter changes don't jump the layout. */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] min-h-[760px] flex flex-col overflow-hidden">
+            {/* ── Body ── Borderless like /admin/products/gift-cards
+                (client 2026-07-20). No nested view card, no rounded
+                corners; table sits flush on the settings page chrome.
+                `min-h` on the wrapper keeps the empty state and the
+                populated table at the same footprint so the layout
+                doesn't jump when filters narrow to zero. */}
+            <div className="flex flex-col flex-1 min-h-[560px]">
                 {totalRows === 0 ? (
-                    // Empty state — Figma 196:99884. Uses the shared
-                    // EmptyState component with the Database02 glyph to
-                    // match the design's illustration.
-                    <div className="flex-1 relative">
+                    // Empty state — Figma 196:99884.
+                    <div className="relative flex-1 min-h-[400px]">
                         <EmptyState
                             icon={Database02}
                             title="There are no imported data yet"
@@ -334,95 +361,92 @@ export default function MigrationsImportsPage() {
                         />
                     </div>
                 ) : (
-                    <>
-                        <div className="flex-1 overflow-x-auto scrollbar-hide">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="dataType" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Data type</SortableHeader>
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="file" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Imported file</SortableHeader>
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="totalRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Total rows</SortableHeader>
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="importedRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Imported rows</SortableHeader>
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="invalidRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Invalid rows</SortableHeader>
-                                        </th>
-                                        <th className={TH}>
-                                            <span className="text-[12px] font-medium text-[#475467]">Invalid rows data</span>
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="dataType" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Data type</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="file" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Imported file</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="totalRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Total rows</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="importedRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Imported rows</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="invalidRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Invalid rows</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <span className="text-[12px] font-medium text-[#475467]">Invalid rows data</span>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paged.map(row => (
+                                    <tr key={row.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                        <td className={TD}>
+                                            <div className="flex flex-col">
+                                                <span className="text-[14px] font-medium text-[#101828]">{DATA_TYPE_LABEL[row.data_type]}</span>
+                                                <span className="text-[14px] text-[#667085]">{fmtImportedAt(row.imported_at)}</span>
+                                            </div>
+                                        </td>
+                                        <td className={TD}>
+                                            <div className="flex items-center gap-3">
+                                                <FileTypeChip type={row.file_type} />
+                                                <span className="text-[14px] font-medium text-[#101828]">{row.file_name}</span>
+                                            </div>
+                                        </td>
+                                        <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
+                                            {row.total_rows.toLocaleString("en-US")}
+                                        </td>
+                                        <td className={cn(TD, "text-[14px] font-medium text-[#079455]")}>
+                                            {row.imported_rows > 0 ? row.imported_rows.toLocaleString("en-US") : "-"}
+                                        </td>
+                                        <td className={cn(TD, "text-[14px] font-medium")}>
+                                            {row.invalid_rows > 0
+                                                ? <span className="text-[#b42318]">{row.invalid_rows.toLocaleString("en-US")}</span>
+                                                : <span className="text-[#101828]">-</span>}
+                                        </td>
+                                        <td className={TD}>
+                                            {row.invalid_rows_file_name ? (
+                                                <div className="flex items-center gap-3 max-w-[240px]">
+                                                    <FileTypeChip type={
+                                                        row.invalid_rows_file_name.toLowerCase().endsWith(".xlsx") ? "xlsx"
+                                                        : row.invalid_rows_file_name.toLowerCase().endsWith(".xls") ? "xls"
+                                                        : "csv"
+                                                    } />
+                                                    <span className="text-[14px] font-medium text-[#101828] truncate">
+                                                        {row.invalid_rows_file_name}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[14px] font-medium text-[#101828]">-</span>
+                                            )}
+                                        </td>
+                                        <td className={TD}>
+                                            <StatusBadge type="import" status={row.status} />
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {paged.map(row => (
-                                        <tr key={row.id} className="hover:bg-[#f9fafb]/50 transition-colors">
-                                            <td className={TD}>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[14px] font-medium text-[#101828]">{DATA_TYPE_LABEL[row.data_type]}</span>
-                                                    <span className="text-[14px] text-[#667085]">{fmtImportedAt(row.imported_at)}</span>
-                                                </div>
-                                            </td>
-                                            <td className={TD}>
-                                                <div className="flex items-center gap-3">
-                                                    <FileTypeChip type={row.file_type} />
-                                                    <span className="text-[14px] font-medium text-[#101828]">{row.file_name}</span>
-                                                </div>
-                                            </td>
-                                            <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
-                                                {row.total_rows.toLocaleString("en-US")}
-                                            </td>
-                                            <td className={cn(TD, "text-[14px] font-medium text-[#079455]")}>
-                                                {row.imported_rows > 0 ? row.imported_rows.toLocaleString("en-US") : "-"}
-                                            </td>
-                                            <td className={cn(TD, "text-[14px] font-medium")}>
-                                                {row.invalid_rows > 0
-                                                    ? <span className="text-[#b42318]">{row.invalid_rows.toLocaleString("en-US")}</span>
-                                                    : <span className="text-[#101828]">-</span>}
-                                            </td>
-                                            <td className={TD}>
-                                                {row.invalid_rows_file_name ? (
-                                                    <div className="flex items-center gap-3 max-w-[240px]">
-                                                        <FileTypeChip type={
-                                                            row.invalid_rows_file_name.toLowerCase().endsWith(".xlsx") ? "xlsx"
-                                                            : row.invalid_rows_file_name.toLowerCase().endsWith(".xls") ? "xls"
-                                                            : "csv"
-                                                        } />
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate">
-                                                            {row.invalid_rows_file_name}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[14px] font-medium text-[#101828]">-</span>
-                                                )}
-                                            </td>
-                                            <td className={TD}>
-                                                <StatusBadge type="import" status={row.status} />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="border-t border-[#e4e7ec] px-6 py-4">
-                            <Pagination
-                                variant="compact"
-                                page={page}
-                                total={totalRows}
-                                pageSize={pageSize}
-                                onPage={setPage}
-                                onPageSize={size => { setPageSize(size); setPage(1); }}
-                            />
-                        </div>
-                    </>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {totalRows > 0 && (
+                    <Pagination
+                        page={page}
+                        total={totalRows}
+                        pageSize={pageSize}
+                        onPage={setPage}
+                        onPageSize={size => { setPageSize(size); setPage(1); }}
+                    />
                 )}
             </div>
 
