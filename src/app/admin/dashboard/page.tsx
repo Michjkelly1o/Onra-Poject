@@ -31,11 +31,12 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, appointmentToClassInstance, isAppointmentId, type SessionType } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
-import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS, SESSION_TYPE_TAG_LABEL } from "@/lib/session-type";
+import { SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS, SESSION_TYPE_TAG_LABEL } from "@/lib/session-type";
 import { SelectInput } from "@/components/ui/select-input"; // used for location + instructor
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
+import { TypeLocationFilter } from "@/components/dashboard/TypeLocationFilter";
 import {
     RenewalDueModal,
     FailedPaymentsModal,
@@ -1468,79 +1469,58 @@ export default function AdminDashboard() {
                     {activeTab === "today" ? `Welcome, ${studioDisplayName}` : ""}
                 </p>
 
-                {/* Session-type picker — Today tab only. Pills row (client
-                    Jul 2026 — was a SelectInput dropdown). Selected pill uses
-                    the multi-select mint palette (`#e9fff3` / `#7ba08c`) the
-                    filter panels use so the whole app's filter language reads
-                    consistently. Sits BEFORE the location dropdown so the
-                    row reads as [pills | All locations]. Pills locked to the
-                    same h-10 (40px) height as the SelectInput trigger so the
-                    row aligns cleanly. */}
+                {/* Merged Type + Locations filter — Today tab (client 2026-07-20).
+                    Replaces the separate pills row + shared location dropdown
+                    with a single popover that matches DateRangeFilter's trigger
+                    chrome. Type is single-select (radio-style rows); Locations
+                    is single-select-under-checkbox-skin (radio semantics with
+                    checkbox visuals) so downstream widgets keep their existing
+                    `branchId: string | null` prop shape. */}
                 {activeTab === "today" && (
-                    <div className="flex items-center gap-2 h-10">
-                        {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
-                            const label = t === "" ? "All" : SESSION_TYPE_LABEL[t];
-                            const active = typeFilter === t;
-                            return (
-                                <button
-                                    key={t || "all"}
-                                    type="button"
-                                    onClick={() => setTypeFilter(t as SessionType | "")}
-                                    aria-pressed={active}
-                                    className={cn(
-                                        "h-10 px-4 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                                        active
-                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                            : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
-                                    )}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <TypeLocationFilter
+                        type={typeFilter}
+                        onTypeChange={setTypeFilter}
+                        location={location}
+                        onLocationChange={setLocation}
+                        options={branches
+                            .filter(b => b.status === "active")
+                            .map(b => ({ id: b.id, name: b.name }))}
+                    />
                 )}
 
-                {/* Coming-up session-type pills — same chrome as the Today
-                    pills so the whole app's filter language reads consistently
-                    (client Jul 2026). Wired to `comingType` so each type has
-                    its own metric-card set per the brief. */}
+                {/* Merged Type + Locations filter — Coming Up tab (client
+                    2026-07-20). Same component as Today; wires to `comingType`
+                    so the per-type card matrix on Coming Up still switches on
+                    it (the Today `typeFilter` is intentionally separate — each
+                    tab keeps its own type memory so the user's pick on Today
+                    doesn't silently re-scope Coming Up's cards). */}
                 {activeTab === "coming" && (
-                    <div className="flex items-center gap-2 h-10">
-                        {(["", ...SESSION_TYPE_ORDER] as const).map(t => {
-                            const label = t === "" ? "All" : SESSION_TYPE_LABEL[t];
-                            const active = comingType === t;
-                            return (
-                                <button
-                                    key={t || "all"}
-                                    type="button"
-                                    onClick={() => setComingType(t as SessionType | "")}
-                                    aria-pressed={active}
-                                    className={cn(
-                                        "h-10 px-4 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                                        active
-                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                            : "bg-white border-1 border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
-                                    )}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <TypeLocationFilter
+                        type={comingType}
+                        onTypeChange={setComingType}
+                        location={location}
+                        onLocationChange={setLocation}
+                        options={branches
+                            .filter(b => b.status === "active")
+                            .map(b => ({ id: b.id, name: b.name }))}
+                    />
                 )}
 
-                {/* Location picker — always visible. Placed AFTER the pills so
-                    the Today-tab row reads as [pills | All locations] (client
-                    Jul 2026). */}
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
-                    placeholder="Select location"
-                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                    value={location}
-                    onChange={setLocation}
-                    width="w-[220px]"
-                />
+                {/* Location picker — Performance tab only. The merged filter
+                    (used on Today + Coming Up) is Type-aware, but Performance
+                    has no Type dimension; keeping the existing SelectInput here
+                    is the least-invasive path and preserves the tab's original
+                    chrome (Location · DateRange · Add widget). */}
+                {activeTab === "performance" && (
+                    <SelectInput
+                        triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                        placeholder="Select location"
+                        options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                        value={location}
+                        onChange={setLocation}
+                        width="w-[220px]"
+                    />
+                )}
 
                 {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
                     7823:53746). Height locked to h-10 (40px) to match the

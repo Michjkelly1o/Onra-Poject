@@ -1589,8 +1589,25 @@ function SchedulePage() {
                     entitySingular="classes"
                     entityPlural="classes"
                 />
-                {/* Filter — leads the scoping controls (Filter · Location ·
-                    Search). Green dot marks any active filter. */}
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                    value={location}
+                    onChange={setLocation}
+                    width="w-[220px]"
+                />
+                {/* Custom width — schedule list uses w-[200px] not the
+                    canonical 240px to leave room for the Filter + Export + Add
+                    buttons in the same row. */}
+                <ToolbarSearch
+                    value={search}
+                    onChange={v => { setSearch(v); setPage(1); }}
+                    placeholder="Search"
+                    widthClass="w-[200px]"
+                />
+                {/* Filter — after Location + Search, before Export + Add.
+                    Green dot marks any active filter. */}
                 <Button variant="secondary-gray" size="md"
                     leftIcon={
                         <div className="relative">
@@ -1601,23 +1618,6 @@ function SchedulePage() {
                     onClick={() => setFilterOpen(true)}>
                     Filter
                 </Button>
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                    placeholder="Select location"
-                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                    value={location}
-                    onChange={setLocation}
-                    width="w-[220px]"
-                />
-                {/* Custom width — schedule list uses w-[200px] not the
-                    canonical 240px to leave room for the Export + Add buttons
-                    in the same row. */}
-                <ToolbarSearch
-                    value={search}
-                    onChange={v => { setSearch(v); setPage(1); }}
-                    placeholder="Search"
-                    widthClass="w-[200px]"
-                />
                 <ExportDropdown
                     onExportCsv={() => {
                         exportScheduleCsv(filteredClasses);
@@ -1628,11 +1628,11 @@ function SchedulePage() {
                         );
                     }}
                 />
-                {/* Add — relabelled from "Add Class" to just "Add" (client
-                    2026-07-20). Still routes to /schedule/new which creates a
-                    class; Private + Recovery sessions are authored under
-                    /admin/services. */}
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add</Button>
+                {/* Add new — relabelled from "Add Class" → "Add" → "Add new"
+                    (client 2026-07-20). Still routes to /schedule/new which
+                    creates a class; Private + Recovery sessions are authored
+                    under /admin/services. */}
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add new</Button>
             </div>
 
             {/* ── View card ── Fills the remaining viewport height (was a fixed 760px
