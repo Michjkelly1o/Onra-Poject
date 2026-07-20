@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="XLS file">
+  <path d="M32 12 h48 l24 24 v72 a8 8 0 0 1 -8 8 h-64 a8 8 0 0 1 -8 -8 v-88 a8 8 0 0 1 8 -8 z"
+        fill="#ffffff" stroke="#d0d5dd" stroke-width="4"/>
+  <path d="M80 12 v20 a4 4 0 0 0 4 4 h20"
+        fill="none" stroke="#d0d5dd" stroke-width="4"/>
+  <rect x="4" y="48" width="76" height="40" rx="4" ry="4" fill="#079455"/>
+  <text x="42" y="76" text-anchor="middle" fill="#ffffff"
+        font-family="Inter, system-ui, -apple-system, sans-serif"
+        font-size="26" font-weight="800" letter-spacing="0.6">XLS</text>
+</svg>

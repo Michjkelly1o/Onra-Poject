@@ -93,78 +93,29 @@ function isoDay(iso: string): string {
 
 // ─── File-type chip ──────────────────────────────────────────────────────────
 
-/** Inline SVG document icon that visually matches the client-shipped CSV
- *  webp asset — grey rounded-corner document outline with a folded top-
- *  right corner and a coloured label rectangle at the bottom-left. Used
- *  for XLSX / XLS rows so every file-type icon on the page reads as
- *  one visual family (2026-07-20 follow-up: the earlier `File02 + tiny
- *  badge` fallback stuck out next to the polished CSV image). */
-function InlineFileIcon({ label, labelBg }: { label: string; labelBg: string }) {
-    return (
-        <svg
-            viewBox="0 0 32 32"
-            className="shrink-0 w-6 h-6"
-            aria-label={`${label} file`}
-        >
-            {/* Document body (grey outline). Rounded corners + folded
-                top-right that mirrors the shape of the CSV webp asset. */}
-            <path
-                d="M6 3 h13 l7 7 v18 a2 2 0 0 1 -2 2 h-18 a2 2 0 0 1 -2 -2 v-23 a2 2 0 0 1 2 -2 z"
-                fill="#ffffff"
-                stroke="#d0d5dd"
-                strokeWidth="1.5"
-            />
-            {/* Folded corner. */}
-            <path
-                d="M19 3 v6 a1 1 0 0 0 1 1 h6"
-                fill="none"
-                stroke="#d0d5dd"
-                strokeWidth="1.5"
-            />
-            {/* Coloured label rectangle at the bottom-left, same green
-                the CSV asset uses (Success 600 per the Figma). */}
-            <rect x="2" y="17" width="18" height="9" rx="1.5" fill={labelBg} />
-            <text
-                x="11"
-                y="24"
-                textAnchor="middle"
-                fontSize="6.5"
-                fontWeight="800"
-                fill="#ffffff"
-                fontFamily="Inter, system-ui, sans-serif"
-                letterSpacing="0.4"
-            >
-                {label}
-            </text>
-        </svg>
-    );
-}
+/** File-type icon. Every file type resolves to an asset in `public/` so
+ *  all rows render through the same `<img>` pipeline — no visual mismatch
+ *  between the client-shipped CSV webp and the XLSX/XLS variants (client
+ *  flag 2026-07-20: the earlier inline SVG rendered differently at small
+ *  sizes than the webp asset). If the client ships PNG/WEBP for XLSX or
+ *  XLS later, replace the .svg reference with the new asset — the
+ *  component signature stays identical. */
+const FILE_ICON_SRC: Record<ImportHistorySeed["file_type"], string> = {
+    csv:  "/csv-file-icon.webp",
+    xlsx: "/xlsx-file-icon.svg",
+    xls:  "/xls-file-icon.svg",
+};
 
-/** File-type chip. CSV uses the client-shipped webp asset (Success 600
- *  green). XLSX / XLS render an inline SVG in the same visual language
- *  so mixed-type tables don't look inconsistent. If the client ships
- *  standalone XLSX/XLS asset images later, swap the InlineFileIcon
- *  branches for `<img src={...} />` the same way CSV works. */
 function FileTypeChip({ type }: { type: ImportHistorySeed["file_type"] }) {
-    if (type === "csv") {
-        return (
-            <div className="relative shrink-0 w-6 h-6 overflow-clip">
-                <img
-                    src="/csv-file-icon.webp"
-                    alt="CSV file"
-                    className="w-6 h-6 object-contain"
-                />
-            </div>
-        );
-    }
-    if (type === "xlsx") {
-        // Same green as CSV per the Figma design (both file-type
-        // labels appeared in Success 600 green in the mockup).
-        return <InlineFileIcon label="XLSX" labelBg="#079455" />;
-    }
-    // XLS — same green, distinct label so a mixed .xls report can't be
-    // mistaken for .xlsx.
-    return <InlineFileIcon label="XLS" labelBg="#079455" />;
+    return (
+        <div className="relative shrink-0 w-6 h-6 overflow-clip">
+            <img
+                src={FILE_ICON_SRC[type]}
+                alt={`${type.toUpperCase()} file`}
+                className="w-6 h-6 object-contain"
+            />
+        </div>
+    );
 }
 
 // ─── Filter panel ────────────────────────────────────────────────────────────

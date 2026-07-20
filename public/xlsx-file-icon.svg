@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="XLSX file">
+  <!-- Document body — matches csv-file-icon.webp proportions:
+       light-grey rounded rectangle with a folded top-right corner. -->
+  <path d="M32 12 h48 l24 24 v72 a8 8 0 0 1 -8 8 h-64 a8 8 0 0 1 -8 -8 v-88 a8 8 0 0 1 8 -8 z"
+        fill="#ffffff" stroke="#d0d5dd" stroke-width="4"/>
+  <!-- Folded corner (drops a subtle inner triangle). -->
+  <path d="M80 12 v20 a4 4 0 0 0 4 4 h20"
+        fill="none" stroke="#d0d5dd" stroke-width="4"/>
+  <!-- Green label — bleeds off the left edge exactly like the CSV asset. -->
+  <rect x="4" y="48" width="88" height="40" rx="4" ry="4" fill="#079455"/>
+  <!-- Label text — bold + centred inside the green rectangle. -->
+  <text x="48" y="76" text-anchor="middle" fill="#ffffff"
+        font-family="Inter, system-ui, -apple-system, sans-serif"
+        font-size="26" font-weight="800" letter-spacing="0.6">XLSX</text>
+</svg>
