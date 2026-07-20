@@ -89,13 +89,22 @@ Ground rules that keep this from becoming spaghetti:
 2. **Live catalog** — the same shape as AI-Agent's `CATALOG`, but instead of importing from `mock-data`, each dataset's `rows` is computed live from Zustand via those readers.
 3. **`scope.ts`** — copied over unchanged from AI-Agent (already snake_case, generic). This enforces branch scope.
 4. **`engine.ts`** — copied over unchanged from AI-Agent. It's schema-agnostic; it just runs against whatever `CATALOG` gives it.
-5. **`auth.ts`** — replaced. Instead of reading `DEMO_PERSONA` env var, it reads `useAppStore.getState().currentUser` + `currentRole` on every request and derives `AuthContext` from that. So the demo role switcher automatically drives the AI's scope.
+5. **`auth.ts`** — replaced. Takes `user + role` (plain data) and derives `AuthContext`. Called on the server with values extracted from the request body. See "Server can't see Zustand" note below.
+
+**Constraint discovered in Phase 2 (2026-07-20): server can't call `useAppStore.getState()`.** Syncfit's store is marked `"use client"` (React Server Components rule for client-only modules), so any API route that tries to `import { useAppStore }` gets a runtime `"Attempted to call getState() from the server"` error. Zustand's `persist` middleware is browser-only anyway (needs localStorage).
+
+**Real plumbing (Phase 3):** the client component that fires an AI request captures its own state and passes a snapshot in the request body:
+```
+POST /api/ai-agent
+{ messages, storeSnapshot: { customers: [...], transactions: [...], ... } }
+```
+The server API reads from body, passes to `buildCatalog(body.storeSnapshot)`, runs `runAnalyze(ctx, catalog, spec)`. The snapshot travels with each request — cost is bandwidth but it's the only way client-side state reaches a server route in this architecture.
 
 **Zero client-side changes.** All of this is server code that fires per-request.
 
 **Extending the catalog:** For Phase 1 we keep the same 7 datasets AI-Agent already supports (transactions, customers, classes, bookings, leads, campaigns, spend). Adding more datasets (appointments, wallet, services, payroll, etc.) is Phase 8+ — one dataset at a time, each is a one-file addition.
 
-**Exit check:** `npm run build` green. A test API endpoint (temporary, deleted at end of phase) that calls the engine directly returns real numbers from the Zustand store. Verify by creating a booking in the UI and checking the count went up.
+**Exit check:** `npm run build` green. End-to-end verification (real numbers returned) deferred to **Phase 3** — that's when the client component exists that can send its Zustand snapshot to the server. Phase 2's exit is purely "code compiles cleanly + types line up," verified via `npm run build`.
 
 ---
 

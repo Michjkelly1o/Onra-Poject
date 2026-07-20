@@ -1,3 +1,0 @@
-// Phase 2 lands here: scope.ts (branch-scope enforcer), engine.ts (query
-// runner), catalog.ts (Zustand-backed datasets), and store-readers.ts
-// (snake_case adapters over the live @/lib/store slices).
