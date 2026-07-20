@@ -379,7 +379,10 @@ function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
                     </div>
                 </div>
 
-                {/* Suggestion cards */}
+                {/* Suggestion cards — Phase 12: Create + Customer now
+                    trigger dedicated tools (list_create_shortcuts /
+                    find_customer). Insight still routes through the
+                    studio-overview tool. */}
                 <div className="flex gap-4 w-full">
                     <SuggestionCard
                         icon={PencilLine}
@@ -387,7 +390,7 @@ function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
                         description="Set up new classes, plans, packs, and staff."
                         onClick={() =>
                             onSend(
-                                "What can I create in the studio — walk me through classes, plans, packs, and staff.",
+                                "Show me every quick-create shortcut in admin.",
                             )
                         }
                     />
@@ -397,17 +400,17 @@ function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
                         description="Get quick insights to help grow your studio."
                         onClick={() =>
                             onSend(
-                                "Give me a studio overview — revenue this month, active members, top-selling plans.",
+                                "Give me a studio overview — revenue this month, active customers, top-selling plans.",
                             )
                         }
                     />
                     <SuggestionCard
                         icon={User01}
                         title="Customer"
-                        description="Find customers and handle refunds or credits."
+                        description="Find customers and jump straight to their profile."
                         onClick={() =>
                             onSend(
-                                "Who are the customers at churn risk right now?",
+                                "Help me find a customer. Ask me for the name, email, or phone to search for.",
                             )
                         }
                     />

@@ -68,6 +68,140 @@ function guard(fn: () => InsightCard): InsightCard {
     }
 }
 
+// ─── Phase 12: create-shortcut catalog ────────────────────────────────────────
+//
+// A ranked_list card the "Create" empty-state suggestion returns. Each
+// row is a real admin "new record" route. Adding a shortcut is a one-
+// line addition here — the row is clickable via Card.tsx's RankedListRow
+// (Phase 12 addition) which routes via `useRouter().push(row.href)`.
+
+const CREATE_SHORTCUTS = [
+    {
+        title: "New customer",
+        subtitle: "Add a customer profile with contact + branch.",
+        href: "/customers/new",
+    },
+    {
+        title: "New class template",
+        subtitle: "Recurring class definition — name, category, duration, capacity.",
+        href: "/class-types/new",
+    },
+    {
+        title: "New scheduled class",
+        subtitle: "Put a class on the calendar with instructor + room + time.",
+        href: "/schedule/new",
+    },
+    {
+        title: "New service (private / recovery)",
+        subtitle: "Private 1:1 or open recovery session — duration, price, room.",
+        href: "/services/new",
+    },
+    {
+        title: "New membership or package",
+        subtitle: "Subscription plan or class-credit pack.",
+        href: "/products/new",
+    },
+    {
+        title: "New promo code",
+        subtitle: "Discount code — percentage or fixed AED, usage limits.",
+        href: "/products/promo-codes/new",
+    },
+    {
+        title: "New gift card design",
+        subtitle: "Face value + validity for issued gift cards.",
+        href: "/products/gift-cards/new",
+    },
+    {
+        title: "New staff member",
+        subtitle: "Instructor / front desk / admin — role, pay rate, branch.",
+        href: "/staff/members/new",
+    },
+    {
+        title: "New marketing campaign",
+        subtitle: "Email / WhatsApp / SMS blast with a target audience.",
+        href: "/marketing/new",
+    },
+    {
+        title: "New branch",
+        subtitle: "Add a physical location + address + main contact.",
+        href: "/settings/branches/new",
+    },
+    {
+        title: "New room",
+        subtitle: "A room inside an existing branch — Studio A, Reformer Room.",
+        href: "/settings/rooms/new",
+    },
+] as const;
+
+// ─── Phase 12: customer search ────────────────────────────────────────────────
+
+function findCustomer(
+    ctx: AuthContext,
+    catalog: Catalog,
+    q: { query: string; limit?: number },
+): InsightCard {
+    const limit = q.limit ?? 12;
+    const query = q.query.trim().toLowerCase();
+    if (!query) {
+        return {
+            card: "empty",
+            message:
+                "Give me a name, email, or phone snippet to search for.",
+        };
+    }
+    const rows = branchFilter(
+        ctx,
+        catalog.customers.rows as { branch_id?: string | null }[],
+    ) as Row[];
+
+    const matches = rows
+        .filter((c) => {
+            const first = ((c.first_name as string) ?? "").toLowerCase();
+            const last = ((c.last_name as string) ?? "").toLowerCase();
+            const email = ((c.email as string) ?? "").toLowerCase();
+            const phone = ((c.phone as string) ?? "").toLowerCase();
+            return (
+                first.includes(query) ||
+                last.includes(query) ||
+                `${first} ${last}`.includes(query) ||
+                email.includes(query) ||
+                phone.replace(/\D+/g, "").includes(query.replace(/\D+/g, ""))
+            );
+        })
+        .slice(0, limit);
+
+    if (matches.length === 0) {
+        return {
+            card: "empty",
+            message: `No customers match "${q.query}".`,
+        };
+    }
+
+    return {
+        card: "ranked_list",
+        title: `${matches.length} customer${matches.length === 1 ? "" : "s"} matching "${q.query}"`,
+        rows: matches.map((c) => {
+            const first = (c.first_name as string) ?? "";
+            const last = (c.last_name as string) ?? "";
+            const email = (c.email as string) ?? "";
+            const planName =
+                (c.plan_name as string) ?? (c.plan_kind as string) ?? "no plan";
+            const status = (c.status as string) ?? "";
+            return {
+                title: `${first} ${last}`.trim() || email || "Unnamed customer",
+                subtitle: email ? `${email} · ${planName}` : planName,
+                right1: status,
+                // Per-row deep link → the customer's profile.
+                href: `/customers/${c.id}`,
+            };
+        }),
+        note:
+            matches.length === limit
+                ? `Showing the first ${limit}. Narrow the search to see more.`
+                : undefined,
+    };
+}
+
 // ─── Inline helpers (replace POC's MockStudioRepository) ─────────────────────
 
 /** Studio-overview KPI tile row — active customers, visible branches,
@@ -287,6 +421,39 @@ export function insightTools(
                         limit: q.limit,
                     }),
                 ),
+        }),
+
+        // ─── Phase 12 tools ───────────────────────────────────────────
+
+        list_create_shortcuts: tool({
+            description:
+                "Return a ranked list of quick-create shortcuts — every 'new record' route in admin (new customer, new class template, new membership, new promo code, etc.). Each row is clickable and navigates the user straight to the /new form. Use when the user asks 'what can I create?' / 'show me shortcuts' / 'how do I add a X'.",
+            parameters: z.object({}),
+            execute: async () =>
+                guard(() => ({
+                    card: "ranked_list" as const,
+                    title: "Quick-create shortcuts",
+                    // The CREATE_SHORTCUTS constant is declared as
+                    // `as const`; strip the readonly modifier so it fits
+                    // the mutable RankedRow[] the card contract expects.
+                    rows: CREATE_SHORTCUTS.map((s) => ({ ...s })),
+                    note: "Click any row to open the form pre-scoped for a new record.",
+                })),
+        }),
+
+        find_customer: tool({
+            description:
+                "Search customers by name / email / phone (substring, case-insensitive). Returns a people list where each row deep-links to the customer's profile page. Use when the user asks 'find <name>' / 'look up <email>' / 'who is <substring>'. If the user just wants a broad list, use list_records({ dataset: 'customers' }) instead.",
+            parameters: z.object({
+                query: z
+                    .string()
+                    .describe(
+                        "The name, email, or phone snippet to search for. At least a few characters.",
+                    ),
+                limit: z.number().max(30).optional(),
+            }),
+            execute: async ({ query, limit }) =>
+                guard(() => findCustomer(ctx, catalog, { query, limit })),
         }),
     };
 }

@@ -17,6 +17,10 @@ export type RankedRow = {
     subtitle?: string;
     right1?: string; // e.g. "142 bookings"
     right2?: string; // e.g. "89% occupancy"
+    /** Phase 12 — when set, the whole row is clickable and navigates
+     *  via Next.js's client router. Used by find_customer (row → profile)
+     *  and list_create_shortcuts (row → new-record form). */
+    href?: string;
 };
 
 /** Phase 10 — every card can carry an optional deep link. Clicking the

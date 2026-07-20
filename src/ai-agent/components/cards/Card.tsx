@@ -60,6 +60,70 @@ function CardNote({ children }: { children?: React.ReactNode }) {
     );
 }
 
+/** Phase 12 — one row of a ranked_list card. Clickable when `row.href`
+ *  is set (find_customer → profile, list_create_shortcuts → new-record
+ *  form). Non-clickable rows stay as plain divs to keep the visual
+ *  rhythm of the top-N list unchanged.
+ *
+ *  Kept as a separate component (not inline JSX) so the useRouter hook
+ *  is called at the top of the row, respecting the rules of hooks. */
+function RankedListRow({
+    row: r,
+}: {
+    row: import("@/ai-agent/agent/cards").RankedRow;
+}) {
+    const router = useRouter();
+    const clickable = !!r.href;
+    const body = (
+        <>
+            <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                    {r.title}
+                </div>
+                {r.subtitle && (
+                    <div className="text-[13px] text-[#667085] leading-5 truncate">
+                        {r.subtitle}
+                    </div>
+                )}
+            </div>
+            <div className="text-right shrink-0">
+                {r.right1 && (
+                    <div className="text-[14px] font-medium text-[#101828] leading-5 tabular-nums">
+                        {r.right1}
+                    </div>
+                )}
+                {r.right2 && (
+                    <div className="text-[13px] text-[#667085] leading-5 tabular-nums">
+                        {r.right2}
+                    </div>
+                )}
+                {clickable && (
+                    <ArrowUpRight className="inline-block size-3.5 text-[#4b8c9a]" />
+                )}
+            </div>
+        </>
+    );
+    if (clickable) {
+        return (
+            <button
+                type="button"
+                onClick={() => router.push(r.href!)}
+                className={cn(
+                    "w-full text-left flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0 -mx-2 px-2 rounded-md",
+                    "hover:bg-[#f9fafb] transition-colors",
+                )}
+            >
+                {body}
+            </button>
+        );
+    }
+    return (
+        <div className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+            {body}
+        </div>
+    );
+}
+
 /** Phase 10 — the deep-link chip. If `link.href` is present, clicking
  *  navigates the tester to that route via Next.js's client-side router
  *  (no full page reload). Backwards-compat: still accepts nothing (chip
@@ -151,33 +215,7 @@ export function Card({ data }: { data: InsightCard }) {
                 <CardTitle>{data.title}</CardTitle>
                 <div className="flex flex-col divide-y divide-[#eaecf0]">
                     {data.rows.map((r, i) => (
-                        <div
-                            key={i}
-                            className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
-                        >
-                            <div className="min-w-0 flex-1">
-                                <div className="text-[14px] font-medium text-[#101828] leading-5 truncate">
-                                    {r.title}
-                                </div>
-                                {r.subtitle && (
-                                    <div className="text-[13px] text-[#667085] leading-5 truncate">
-                                        {r.subtitle}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="text-right shrink-0">
-                                {r.right1 && (
-                                    <div className="text-[14px] font-medium text-[#101828] leading-5 tabular-nums">
-                                        {r.right1}
-                                    </div>
-                                )}
-                                {r.right2 && (
-                                    <div className="text-[13px] text-[#667085] leading-5 tabular-nums">
-                                        {r.right2}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <RankedListRow key={i} row={r} />
                     ))}
                 </div>
                 <CardNote>{data.note}</CardNote>
