@@ -34,7 +34,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    MarkerPin01, Plus, XClose, Database02, File02,
+    MarkerPin01, Plus, XClose, Database02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -93,12 +93,58 @@ function isoDay(iso: string): string {
 
 // ─── File-type chip ──────────────────────────────────────────────────────────
 
-/** Small file icon per file type. CSV renders the client-provided webp
- *  asset (`/csv-file-icon.webp` — placed in `public/` on 2026-07-20 per
- *  client feedback). XLSX / XLS fall back to a matching outline-file
- *  icon with a green label stripe so the family still reads consistent
- *  when we get a non-CSV row. If the client later ships XLSX/XLS icons,
- *  drop them next to the CSV asset and extend the switch. */
+/** Inline SVG document icon that visually matches the client-shipped CSV
+ *  webp asset — grey rounded-corner document outline with a folded top-
+ *  right corner and a coloured label rectangle at the bottom-left. Used
+ *  for XLSX / XLS rows so every file-type icon on the page reads as
+ *  one visual family (2026-07-20 follow-up: the earlier `File02 + tiny
+ *  badge` fallback stuck out next to the polished CSV image). */
+function InlineFileIcon({ label, labelBg }: { label: string; labelBg: string }) {
+    return (
+        <svg
+            viewBox="0 0 32 32"
+            className="shrink-0 w-6 h-6"
+            aria-label={`${label} file`}
+        >
+            {/* Document body (grey outline). Rounded corners + folded
+                top-right that mirrors the shape of the CSV webp asset. */}
+            <path
+                d="M6 3 h13 l7 7 v18 a2 2 0 0 1 -2 2 h-18 a2 2 0 0 1 -2 -2 v-23 a2 2 0 0 1 2 -2 z"
+                fill="#ffffff"
+                stroke="#d0d5dd"
+                strokeWidth="1.5"
+            />
+            {/* Folded corner. */}
+            <path
+                d="M19 3 v6 a1 1 0 0 0 1 1 h6"
+                fill="none"
+                stroke="#d0d5dd"
+                strokeWidth="1.5"
+            />
+            {/* Coloured label rectangle at the bottom-left, same green
+                the CSV asset uses (Success 600 per the Figma). */}
+            <rect x="2" y="17" width="18" height="9" rx="1.5" fill={labelBg} />
+            <text
+                x="11"
+                y="24"
+                textAnchor="middle"
+                fontSize="6.5"
+                fontWeight="800"
+                fill="#ffffff"
+                fontFamily="Inter, system-ui, sans-serif"
+                letterSpacing="0.4"
+            >
+                {label}
+            </text>
+        </svg>
+    );
+}
+
+/** File-type chip. CSV uses the client-shipped webp asset (Success 600
+ *  green). XLSX / XLS render an inline SVG in the same visual language
+ *  so mixed-type tables don't look inconsistent. If the client ships
+ *  standalone XLSX/XLS asset images later, swap the InlineFileIcon
+ *  branches for `<img src={...} />` the same way CSV works. */
 function FileTypeChip({ type }: { type: ImportHistorySeed["file_type"] }) {
     if (type === "csv") {
         return (
@@ -111,20 +157,14 @@ function FileTypeChip({ type }: { type: ImportHistorySeed["file_type"] }) {
             </div>
         );
     }
-    const label = type.toUpperCase();
-    return (
-        <div className="relative shrink-0 w-6 h-6">
-            <File02 className="absolute inset-0 w-6 h-6 text-[#667085]" strokeWidth={1.5} />
-            <span
-                className={cn(
-                    "absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px]",
-                    "text-[7px] font-bold leading-none text-white bg-[#079455] uppercase",
-                )}
-            >
-                {label}
-            </span>
-        </div>
-    );
+    if (type === "xlsx") {
+        // Same green as CSV per the Figma design (both file-type
+        // labels appeared in Success 600 green in the mockup).
+        return <InlineFileIcon label="XLSX" labelBg="#079455" />;
+    }
+    // XLS — same green, distinct label so a mixed .xls report can't be
+    // mistaken for .xlsx.
+    return <InlineFileIcon label="XLS" labelBg="#079455" />;
 }
 
 // ─── Filter panel ────────────────────────────────────────────────────────────
