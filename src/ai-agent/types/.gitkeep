@@ -1,0 +1,3 @@
+// Shared type definitions live here — AuthContext, DateRange, Filter, and
+// the InsightCard / MigrationCard discriminated unions. Populated as
+// phases 2-5 land.

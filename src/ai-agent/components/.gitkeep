@@ -1,0 +1,3 @@
+// Phase 4 lands here: FloatingAiButton.tsx (fixed bottom-right trigger)
+// + AiAgentModal.tsx (chat shell with left sidebar + right pane). Phase 5
+// adds ChatThread.tsx + cards/ + charts/ + TypingDots.tsx.
