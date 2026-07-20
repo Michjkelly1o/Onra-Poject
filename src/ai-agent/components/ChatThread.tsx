@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra AI Agent · ChatThread (Phase 5)
+// Onra AI Agent · ChatThread (Phase 7 — mode-aware: insight + migration)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // The live chat pane. Owns the whole right-side content area (empty state
@@ -7,28 +7,27 @@
 // message list without prop drilling. Mirrors the shape of
 // ONRA AI-Agent/components/ChatThread.tsx.
 //
-// Key differences from the POC:
+// Two instances are mounted (one per mode — see AiAgentPage.tsx); only the
+// active one is visible. The thread IS the mode, and each thread keeps
+// its own message history via useChat's `id` prop.
 //
-// 1. Points at `/api/ai-agent` (not `/api/agent` — namespaced route per
-//    the plan doc).
-//
-// 2. Uses `experimental_prepareRequestBody` from useChat to snapshot the
-//    client's Zustand store at request time and stuff it in the POST
-//    body. Syncfit's store is marked "use client" — the server can't
-//    call getState(), so the client MUST carry the snapshot per request
-//    (see Phase 2 constraint note in the plan doc). The route reads it
-//    from body and passes it to buildCatalog().
-//
-// 3. Suggestion cards + typing dots + tool-call rendering are all
-//    Tailwind-styled to match the Figma. Empty state (orb + heading +
-//    subtitle + cards) matches AgentEmptyState from AiAgentPage.tsx.
-//
-// 4. Insight mode ONLY in Phase 5 — Migration is Phase 7. No file upload,
-//    no MigrationCards, no mode switching.
+// Behaviour by mode:
+//   • "insight"   — analytics chat. Composer's paperclip is inert. Empty
+//                   state shows Create/Insight/Customer suggestion cards.
+//                   Tool results render as Card (metric group / bar chart
+//                   / line chart / donut / data table / export).
+//   • "migration" — 4-step wizard. Composer's paperclip opens a hidden
+//                   <input type=file accept=".csv"> and, on pick, POSTs
+//                   the file to /api/ai-agent/upload. The parsed file is
+//                   kept in local React state and sent in every
+//                   subsequent chat POST body (stateless server —
+//                   Phase 7 architecture note in the plan doc). Empty
+//                   state shows a "Migrate your data" heading + "Start
+//                   migration" button. Tool results render as MigCard.
 
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { UIMessage } from "@ai-sdk/ui-utils";
 import { useChat } from "@ai-sdk/react";
@@ -40,14 +39,23 @@ import {
     User01,
     AlertCircle,
     RefreshCw01,
+    UploadCloud02,
 } from "@untitledui/icons";
 import Image from "next/image";
 import { useAppStore, type AppState } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { InsightCard } from "@/ai-agent/agent/cards";
-import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
+import type {
+    AiAgentStateSnapshot,
+    AiAgentMode,
+} from "@/ai-agent/types/request";
+import type {
+    MigrationCard,
+    ParsedFile,
+} from "@/ai-agent/migration/migration-cards";
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
+import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
 
 // three.js is ~600KB — dynamic import so it only ships when the empty
@@ -84,9 +92,27 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
     };
 }
 
-export function ChatThread() {
+export function ChatThread({
+    mode = "insight",
+    visible = true,
+}: {
+    mode?: AiAgentMode;
+    /** Two ChatThreads stay mounted (one per mode) so each keeps its own
+     *  history when the user switches threads. Only the active one is
+     *  visible. */
+    visible?: boolean;
+}) {
     const currentUser = useAppStore((s) => s.currentUser);
     const currentRole = useAppStore((s) => s.currentRole);
+
+    // Migration only — the parsed CSV lives in local state and travels
+    // with every request. Persisting to Zustand would put a fat blob in
+    // localStorage; not worth it for a session-scoped upload.
+    const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
+    const parsedFileRef = useRef<ParsedFile | null>(null);
+    parsedFileRef.current = parsedFile;
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const {
         messages,
@@ -98,10 +124,13 @@ export function ChatThread() {
         error,
         reload,
     } = useChat({
+        // Distinct id per mode → two mounted instances, two histories.
+        id: `onra-agent-${mode}`,
         api: "/api/ai-agent",
         maxSteps: 3, // matches AI_AGENT_MAX_STEPS in flags.ts (Hobby 10s cap)
         // Per-request body: grab a fresh Zustand snapshot every time so the
         // model sees whatever the admin just created/edited seconds ago.
+        // Also carries `mode` + (for migration) the current `parsedFile`.
         experimental_prepareRequestBody: ({ messages: msgs }) => {
             const state = useAppStore.getState();
             const body = {
@@ -111,6 +140,13 @@ export function ChatThread() {
                     role: currentRole as UserRole,
                 },
                 storeSnapshot: pickStoreSnapshot(state),
+                mode,
+                // parsedFile is only meaningful for migration; server
+                // ignores it for insight mode. Ref instead of state so
+                // the freshest value is captured at request time even if
+                // the closure was created earlier.
+                parsedFile:
+                    mode === "migration" ? parsedFileRef.current : null,
             };
             return body;
         },
@@ -121,28 +157,85 @@ export function ChatThread() {
 
     const endRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        endRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+        if (visible) {
+            endRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, visible]);
 
     const send = (text: string) => {
         if (!text.trim() || isBusy) return;
         append({ role: "user", content: text });
     };
 
+    const openUpload = () => fileInputRef.current?.click();
+
+    async function uploadFile(file: File) {
+        setUploadError(null);
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("role", currentRole ?? "");
+        try {
+            const res = await fetch("/api/ai-agent/upload", {
+                method: "POST",
+                body: fd,
+            });
+            if (!res.ok) {
+                const { error: msg } = (await res.json().catch(() => ({}))) as {
+                    error?: string;
+                };
+                setUploadError(msg ?? `Upload failed (${res.status}).`);
+                return;
+            }
+            const parsed = (await res.json()) as ParsedFile;
+            setParsedFile(parsed);
+            parsedFileRef.current = parsed;
+            send(
+                `I've uploaded my customer file (${parsed.filename}, ${parsed.rows.length} rows). Please inspect it.`,
+            );
+        } catch (e) {
+            setUploadError(
+                e instanceof Error ? e.message : "Upload failed unexpectedly.",
+            );
+        }
+    }
+
+    const act: MigActions = { send, openUpload };
+
     return (
         <div
             className="relative h-full flex flex-col"
-            style={{ fontFamily: DM_SANS_STACK }}
+            style={{
+                fontFamily: DM_SANS_STACK,
+                display: visible ? "flex" : "none",
+            }}
         >
+            {/* Hidden file input — only used in migration mode. Kept
+                mounted in both modes so the DOM shape is consistent. */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadFile(f);
+                    e.target.value = "";
+                }}
+            />
+
             {/* Scrolling message region takes remaining height. Composer
                 docks at the bottom outside the scroll. */}
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {empty ? (
-                    <EmptyState onSend={send} />
+                    mode === "migration" ? (
+                        <MigrationEmptyState onStart={send} />
+                    ) : (
+                        <InsightEmptyState onSend={send} />
+                    )
                 ) : (
                     <div className="w-full max-w-[720px] mx-auto px-6 py-8 flex flex-col gap-6">
                         {messages.map((m) => (
-                            <MessageRow key={m.id} message={m} />
+                            <MessageRow key={m.id} message={m} mode={mode} act={act} />
                         ))}
                         {isBusy && messages[messages.length - 1]?.role === "user" && (
                             <div className="flex items-start gap-3">
@@ -159,6 +252,13 @@ export function ChatThread() {
                                 onRetry={() => reload()}
                             />
                         )}
+                        {uploadError && (
+                            <ErrorBanner
+                                message={uploadError}
+                                onRetry={openUpload}
+                                retryLabel="Try again"
+                            />
+                        )}
                         <div ref={endRef} />
                     </div>
                 )}
@@ -168,9 +268,11 @@ export function ChatThread() {
             <div className="shrink-0 border-t border-[#eaecf0] bg-white/80 backdrop-blur-sm">
                 <div className="w-full max-w-[720px] mx-auto px-6 py-4">
                     <Composer
+                        mode={mode}
                         value={input}
                         onChange={handleInputChange}
                         onSubmit={handleSubmit}
+                        onAttach={openUpload}
                         disabled={isBusy}
                     />
                 </div>
@@ -180,10 +282,10 @@ export function ChatThread() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Empty state — orb, heading, subtitle, three suggestion cards
+// Empty states — Insight suggests capabilities; Migration promotes a start
 // ─────────────────────────────────────────────────────────────────────────────
 
-function EmptyState({ onSend }: { onSend: (t: string) => void }) {
+function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
     return (
         <div className="w-full max-w-[720px] mx-auto px-6 h-full flex items-center justify-center py-12">
             <div className="flex flex-col gap-8 items-center w-full">
@@ -249,6 +351,52 @@ function EmptyState({ onSend }: { onSend: (t: string) => void }) {
     );
 }
 
+function MigrationEmptyState({ onStart }: { onStart: (t: string) => void }) {
+    return (
+        <div className="w-full max-w-[560px] mx-auto px-6 h-full flex items-center justify-center py-12">
+            <div className="flex flex-col gap-6 items-center w-full">
+                <ParticleOrb size={72} />
+                <div className="flex flex-col gap-1 text-center w-full items-center">
+                    <h1
+                        className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] inline-block"
+                        style={{
+                            fontFamily: DM_SANS_STACK,
+                            backgroundImage:
+                                "linear-gradient(90deg, #658774 0%, #7ba08c 100%)",
+                            WebkitBackgroundClip: "text",
+                            backgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            color: "transparent",
+                        }}
+                    >
+                        Migrate your data
+                    </h1>
+                    <p className="text-[15px] leading-6 text-[#667085]">
+                        I&apos;ll guide you through importing your customers
+                        from another platform — step by step, using your
+                        actual export.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() =>
+                        onStart("I want to migrate my customer data into Onra.")
+                    }
+                    className={cn(
+                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
+                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                        "hover:bg-[#aad4bd] transition-colors",
+                    )}
+                >
+                    <UploadCloud02 className="size-4" />
+                    Start migration
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function SuggestionCard({
     icon: Icon,
     title,
@@ -298,7 +446,15 @@ function SuggestionCard({
 // Message rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MessageRow({ message: m }: { message: UIMessage }) {
+function MessageRow({
+    message: m,
+    mode,
+    act,
+}: {
+    message: UIMessage;
+    mode: AiAgentMode;
+    act: MigActions;
+}) {
     if (m.role === "user") {
         return (
             <div className="flex items-start justify-end gap-3">
@@ -319,15 +475,30 @@ function MessageRow({ message: m }: { message: UIMessage }) {
             <div className="flex items-start gap-3">
                 <AssistantAvatar />
                 <div className="flex-1 min-w-0 flex flex-col gap-3">
-                    {/* Tool invocations render as cards */}
+                    {/* Tool invocations render as cards. Migration tool
+                        results go through MigCard (with action callbacks);
+                        insight tool results go through Card. */}
                     {m.toolInvocations?.map((ti) =>
                         ti.state === "result" ? (
-                            <Card
-                                key={ti.toolCallId}
-                                data={ti.result as InsightCard}
-                            />
+                            mode === "migration" ? (
+                                <MigCard
+                                    key={ti.toolCallId}
+                                    data={ti.result as MigrationCard}
+                                    act={act}
+                                />
+                            ) : (
+                                <Card
+                                    key={ti.toolCallId}
+                                    data={ti.result as InsightCard}
+                                />
+                            )
                         ) : (
-                            <TypingDots key={ti.toolCallId} label="Working" />
+                            <TypingDots
+                                key={ti.toolCallId}
+                                label={
+                                    mode === "migration" ? "Reading" : "Working"
+                                }
+                            />
                         ),
                     )}
                     {/* Free-text response (interpretation line under a card,
@@ -348,9 +519,11 @@ function MessageRow({ message: m }: { message: UIMessage }) {
 function ErrorBanner({
     message,
     onRetry,
+    retryLabel = "Retry",
 }: {
     message: string;
     onRetry: () => void;
+    retryLabel?: string;
 }) {
     // Trim the raw error to something a client can read. Server responses
     // like "AI Agent is admin-only." pass through; server timeouts show as
@@ -386,7 +559,7 @@ function ErrorBanner({
                 )}
             >
                 <RefreshCw01 className="size-3.5" />
-                Retry
+                {retryLabel}
             </button>
         </div>
     );
@@ -407,21 +580,26 @@ function AssistantAvatar() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Composer — attachment (inert until Phase 7), input, send
+// Composer — attachment (active in migration mode), input, send
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Composer({
+    mode,
     value,
     onChange,
     onSubmit,
+    onAttach,
     disabled,
 }: {
+    mode: AiAgentMode;
     value: string;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+    onAttach: () => void;
     disabled: boolean;
 }) {
     const canSend = value.trim().length > 0 && !disabled;
+    const attachActive = mode === "migration";
     return (
         <form
             onSubmit={onSubmit}
@@ -430,18 +608,23 @@ function Composer({
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
             )}
         >
-            {/* Attachment — inert placeholder (Phase 7 wires CSV upload
-                for the Migration thread). Kept in the layout so the
-                composer geometry doesn't shift when Migration lands. */}
+            {/* Attachment. Active in migration mode (opens the file picker
+                for a CSV upload). Inert in insight mode — kept in the
+                layout so composer geometry doesn't shift between threads. */}
             <button
                 type="button"
-                aria-label="Attach file (coming soon)"
-                disabled
+                aria-label={
+                    attachActive ? "Upload CSV" : "Attach file (not available)"
+                }
+                onClick={attachActive ? onAttach : undefined}
+                disabled={!attachActive || disabled}
                 className={cn(
                     "size-9 flex-shrink-0 flex items-center justify-center rounded-md",
                     "bg-white border border-[#d0d5dd] text-[#344054]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    "disabled:opacity-60 disabled:cursor-not-allowed",
+                    attachActive
+                        ? "hover:bg-[#f9fafb] transition-colors"
+                        : "disabled:opacity-60 disabled:cursor-not-allowed",
                 )}
             >
                 <Attachment01 className="size-5" />
@@ -450,7 +633,11 @@ function Composer({
             <input
                 value={value}
                 onChange={onChange}
-                placeholder="Ask me anything"
+                placeholder={
+                    mode === "migration"
+                        ? "Reply, or attach a CSV…"
+                        : "Ask me anything"
+                }
                 disabled={disabled}
                 className="flex-1 min-w-0 h-9 px-2 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6 disabled:opacity-70"
                 style={{ fontFamily: DM_SANS_STACK }}

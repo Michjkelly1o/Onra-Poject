@@ -53,14 +53,15 @@ interface ThreadDef {
     key: ThreadKey;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
-    /** Coming-soon threads render but stay non-interactive in Phase 5. */
+    /** Coming-soon threads render but stay non-interactive. */
     enabled: boolean;
 }
 
+// Phase 7 enables migrate_data. Studio setup is still Phase 11.
 const THREADS: readonly ThreadDef[] = [
     { key: "general",       label: "General chat", icon: MessageChatCircle, enabled: true  },
     { key: "studio_setup",  label: "Studio setup", icon: Building01,        enabled: false },
-    { key: "migrate_data",  label: "Migrate data", icon: UploadCloud02,     enabled: false },
+    { key: "migrate_data",  label: "Migrate data", icon: UploadCloud02,     enabled: true  },
 ];
 
 const DM_SANS_STACK =
@@ -131,7 +132,7 @@ export function AiAgentPage() {
                             activeThread={activeThread}
                             onSelectThread={setActiveThread}
                         />
-                        <AgentChatSurface />
+                        <AgentChatSurface activeThread={activeThread} />
                     </>
                 ) : (
                     <NotAvailableForRoleState onClose={handleClose} />
@@ -256,7 +257,7 @@ function AgentSidebar({
 // Right chat surface — wraps the ChatThread + decorative background
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AgentChatSurface() {
+function AgentChatSurface({ activeThread }: { activeThread: ThreadKey }) {
     return (
         <div
             className={cn(
@@ -279,10 +280,19 @@ function AgentChatSurface() {
                 <ConcentricSquaresDecoration />
             </div>
 
-            {/* Live chat — owns the empty state, message list, and composer.
-                Absolutely positioned above the decoration layer. */}
+            {/* Both ChatThreads stay MOUNTED (one per mode) so each keeps
+                its own message history when the user switches threads —
+                same pattern as the POC. `visible` toggles display but
+                the useChat state under each survives. */}
             <div className="relative h-full">
-                <ChatThread />
+                <ChatThread
+                    mode="insight"
+                    visible={activeThread === "general"}
+                />
+                <ChatThread
+                    mode="migration"
+                    visible={activeThread === "migrate_data"}
+                />
             </div>
         </div>
     );

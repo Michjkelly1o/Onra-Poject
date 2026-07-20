@@ -13,6 +13,7 @@
 
 import type { AppState } from "@/lib/store";
 import type { User, UserRole } from "@/types";
+import type { ParsedFile } from "@/ai-agent/migration/migration-cards";
 
 /** Slices the AI Agent's data layer reads. Narrower than AppState so the
  *  wire payload stays as small as possible; every field here MUST match
@@ -31,6 +32,9 @@ export type AiAgentStateSnapshot = Pick<
     | "marketingSpend"
 >;
 
+/** Thread mode. Insight = analytics chat; migration = 4-step wizard. */
+export type AiAgentMode = "insight" | "migration";
+
 /** POST /api/ai-agent body. */
 export interface AiAgentRequestBody {
     /** AI SDK `useChat` messages array. Typed loose here because the SDK
@@ -46,4 +50,11 @@ export interface AiAgentRequestBody {
     };
     /** Live Zustand snapshot the catalog reads from. */
     storeSnapshot: AiAgentStateSnapshot;
+    /** Thread mode. Optional (defaults to "insight" for backwards
+     *  compatibility with Phase 5 clients that didn't send it). */
+    mode?: AiAgentMode;
+    /** Migration only — the parsed CSV the client uploaded. Null before
+     *  the user attaches a file. The API route routes to migrationTools
+     *  when `mode === "migration"` and passes this through. */
+    parsedFile?: ParsedFile | null;
 }

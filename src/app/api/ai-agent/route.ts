@@ -14,8 +14,10 @@
 // Vercel Hobby: hard 10s serverless timeout. `maxDuration` and `maxSteps` come
 // from `flags.ts` so the whole request-plus-tool-chain fits inside that budget.
 //
-// This file — this endpoint — is Phase 3 (Insight only). Migration branch
-// (mode === "migration" + migrationTools) is Phase 7 and intentionally absent.
+// Phase 7 update: the route branches on `mode` in the body.
+//   mode === "insight" (default): Insight tools + Insight prompt
+//   mode === "migration":         Migration tools + Migration prompt +
+//                                 client's `parsedFile` threaded through
 
 import { streamText } from "ai";
 import {
@@ -25,8 +27,12 @@ import {
 } from "@/ai-agent/flags";
 import { claude } from "@/ai-agent/agent/model";
 import { resolveAuthContext } from "@/ai-agent/agent/auth";
-import { buildInsightPrompt } from "@/ai-agent/agent/prompt";
+import {
+    buildInsightPrompt,
+    buildMigrationPrompt,
+} from "@/ai-agent/agent/prompt";
 import { insightTools } from "@/ai-agent/agent/tools";
+import { migrationTools } from "@/ai-agent/migration/migration-tools";
 import { buildCatalog } from "@/ai-agent/data/catalog";
 import type { AiAgentRequestBody } from "@/ai-agent/types/request";
 import type { AppState } from "@/lib/store";
@@ -46,13 +52,14 @@ export async function POST(req: Request) {
         return new Response("Bad JSON body.", { status: 400 });
     }
 
-    const { messages, context, storeSnapshot } = body;
+    const { messages, context, storeSnapshot, mode, parsedFile } = body;
     if (!messages || !context?.user || !context?.role || !storeSnapshot) {
         return new Response(
             "Missing one of: messages, context.user, context.role, storeSnapshot.",
             { status: 400 },
         );
     }
+    const activeMode = mode ?? "insight";
 
     // Feature-flag gate — only admin can talk to the agent.
     if (!isAiAgentEnabled(context.role)) {
@@ -80,8 +87,21 @@ export async function POST(req: Request) {
     // prove structural equivalence across the narrow→wide direction, but
     // every field the function reads is present.
     const catalog = buildCatalog(storeSnapshot as unknown as AppState);
-    const tools = insightTools(ctx, catalog, storeSnapshot);
-    const system = buildInsightPrompt(ctx, today, catalog);
+
+    // Mode branch — Insight (analytics) vs Migration (4-step wizard).
+    // Insight tools read the live catalog; Migration tools read the
+    // client-supplied parsedFile (upload) + branches list from the
+    // snapshot. The two tool sets are DELIBERATELY exclusive — an
+    // insight turn cannot call migration tools and vice-versa, so the
+    // model can't accidentally cross-contaminate write vs read intent.
+    const tools =
+        activeMode === "migration"
+            ? migrationTools(ctx, parsedFile ?? null, storeSnapshot.branches)
+            : insightTools(ctx, catalog, storeSnapshot);
+    const system =
+        activeMode === "migration"
+            ? buildMigrationPrompt(ctx, today)
+            : buildInsightPrompt(ctx, today, catalog);
 
     const result = streamText({
         model: claude(AI_AGENT_MODEL_ID),
