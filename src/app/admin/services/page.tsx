@@ -763,10 +763,17 @@ function ServicesPageInner() {
 
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={handleAdd}>
-                    Add new
-                </Button>
+                {/* Add-new is hidden on the type-scoped Private + Recovery
+                    views (client 2026-07-21) — those flows are now created
+                    from the Schedule module's Add dropdown so admins have
+                    a single entry point. The umbrella /admin/services list
+                    keeps its own Add for direct service authoring. */}
+                {!typeScope && (
+                    <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                        onClick={handleAdd}>
+                        Add new
+                    </Button>
+                )}
             </div>
 
             {/* Body — flush on the admin chrome (no nested view card). The

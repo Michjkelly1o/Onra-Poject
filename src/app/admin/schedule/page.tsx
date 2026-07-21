@@ -1303,6 +1303,58 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
+// ─── Add-session dropdown (client 2026-07-21) ────────────────────────────────
+// Primary button + right-anchored menu with the three session types.
+// Clicking a type routes to its create form with the schedule module set
+// as returnTo so the admin lands back on /admin/schedule after save.
+function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const returnTo = encodeURIComponent("/admin/schedule");
+    const OPTIONS = [
+        { label: "Class",              href: `/schedule/new?returnTo=${returnTo}` },
+        { label: "Private session",    href: `/services/new?returnTo=${returnTo}&type=private` },
+        { label: "Recovery & wellness", href: `/services/new?returnTo=${returnTo}&type=recovery` },
+    ];
+    return (
+        <div ref={ref} className="relative">
+            <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Plus className="w-4 h-4" />}
+                rightIcon={<ChevronDown className={cn("w-4 h-4 transition-transform", open && "rotate-180")} />}
+                onClick={() => setOpen(p => !p)}
+            >
+                Add new
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[220px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5">
+                    {OPTIONS.map(opt => (
+                        <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => {
+                                setOpen(false);
+                                router.push(opt.href);
+                            }}
+                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
 function exportScheduleCsv(rows: ClassSchedule[]) {
@@ -1592,11 +1644,17 @@ function SchedulePage() {
                         );
                     }}
                 />
-                {/* Add new — relabelled from "Add Class" → "Add" → "Add new"
-                    (client 2026-07-20). Still routes to /schedule/new which
-                    creates a class; Private + Recovery sessions are authored
-                    under /admin/services. */}
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/schedule/new?returnTo=${encodeURIComponent("/admin/schedule")}`)}>Add new</Button>
+                {/* Add new — dropdown (client 2026-07-21). Was a single
+                    button routing to /schedule/new. Now offers the three
+                    session types so the admin can create a class, a
+                    private session service, or a recovery & wellness
+                    service directly from the schedule module.
+                    • Class    → /schedule/new  (dated class instance)
+                    • Private  → /services/new?type=private  (service definition)
+                    • Recovery → /services/new?type=recovery (service definition)
+                    Every option returns to /admin/schedule after save so
+                    the admin lands back on the schedule list. */}
+                <AddSessionMenu router={router} />
             </div>
 
             {/* ── View card ── Fills the remaining viewport height (was a fixed 760px
