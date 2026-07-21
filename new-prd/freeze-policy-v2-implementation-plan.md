@@ -38,37 +38,99 @@ the client needs to answer before we start Phase 1.
 Same rules that governed the AI Agent integration ([new-prd/ai-agent-implementation-plan.md](./ai-agent-implementation-plan.md) — see § "Guiding architecture principles"):
 
 1. **Every phase is a valid commit.** You can stop after any phase and the app still works — the feature is partially wired but nothing existing breaks.
-2. **Additive schema changes only.** New fields on `FreezePolicy` + `FreezeReason` default to their v1-equivalent behavior. Existing seeded rows migrate silently on persist bump.
-3. **Rename with migration.** `allow_exceptions` becomes `require_reason` (semantic equivalent). Migrate on load — no data loss for existing testers.
-4. **Cross-module changes stay minimal per file.** Booking guardrails touch ~6–8 files, each with a 2–4 line addition (`if plan is frozen: reject`). No refactors.
-5. **Notification events piggyback on the existing customer-notifications table.** Register them the same way payment / booking events already work — no new dispatch layer.
-6. **Billing math stays in the mock/demo path.** Option A (shift renewal) vs Option B (prorate next charge) is implemented as two branches of the same `computeNextCharge` helper. Real billing engine wiring is out of scope.
+2. **Reuse existing components — never inline a duplicate.** Every new UI (radio cards, expandable reason exceptions, date-range picker, approval modal, ineligibility chip) uses a component already in [src/components/ui/](../src/components/ui/) or [src/components/patterns/](../src/components/patterns/). Before building anything new: grep for a similar pattern (`SegmentedTabs`, `MultiSelectCard`, `Toggle`, `DatePicker`, `Field`, `NumberField`) and reuse. Don't reinvent. See [feedback_component_centralization.md](../.claude/projects/-Users-hizkiast-Desktop-Syncfit/memory/feedback_component_centralization.md).
+3. **Additive schema changes only.** New fields on `FreezePolicy` + `FreezeReason` default to their v1-equivalent behavior. Existing seeded rows migrate silently on persist bump.
+4. **Rename with migration.** `allow_exceptions` becomes `require_reason` (semantic equivalent). Migrate on load — no data loss for existing testers.
+5. **Cross-module changes stay minimal per file.** Booking guardrails touch ~6–8 files, each with a 2–4 line addition (`if plan is frozen: reject`). No refactors.
+6. **Notification events piggyback on the existing customer-notifications table.** Register them the same way payment / booking events already work — no new dispatch layer.
+7. **Billing math stays in the mock/demo path.** Option A (shift renewal) vs Option B (prorate next charge) is implemented as two branches of the same `computeNextCharge` helper. Real billing engine wiring is out of scope.
+8. **Do not break the app.** Every phase ends with a green `yarn build`. Logic + flow + data + all modules + all sides (admin / instructor / customer) stay intact. If a phase risks touching a load-bearing shared surface (store.ts, booking flow entry points, notification dispatch), the change is minimal + reviewed against the sync chain the same way the AI Agent audit was done.
 
 ---
 
-## Open questions (Phase 0 blockers)
+## Decisions (locked 2026-07-20)
 
-I need answers on these 8 before Phase 1 starts. Each one affects
-what the code has to do.
+Client delegated the 8 open questions to us with the direction:
+"decide what's the best for the client and for this app." Below are
+the locked answers, each with the rationale used to pick it. Each
+answer pins a specific bit of behavior Phase 1+ implements.
 
-1. **"Per calendar year" (client message) vs "per rolling 12 months" (Figma image)** — which wins? The Figma screenshot says "per rolling 12 months" on the Maximum freezes field; the client's written feedback says "per calendar year". These are different rules — calendar year resets Jan 1; rolling 12 months resets 12 months after each freeze.
+### Q1 — Maximum freezes counting window
+**Answer: Per calendar year.**
+Client's written feedback explicitly says "per calendar year"; the
+Figma image says "per rolling 12 months". The written brief takes
+precedence — it's newer AND it's the model members find easier to
+reason about ("I get 2 freezes this year, resets Jan 1"). Rolling
+windows require members to remember dates. Store field:
+`max_freezes_period: "calendar_year"`.
 
-2. **Auto-resume reminder cadence** — how many days before end? Figma doesn't show. Default proposal: 3 days (matches Payment reminder cadence in existing notification_settings).
+### Q2 — Auto-resume reminder cadence
+**Answer: 3 days before the freeze end date.**
+Matches the existing Payment reminder cadence in
+[notification_settings.ts](../src/data/mock/notification_settings.ts)
+so the two customer reminders share tone + timing. Configurable via
+the customer notifications settings table like every other event.
 
-3. **"Admins only" mode UX on the customer app** — hide the Freeze CTA entirely, or show it as "Contact your studio to freeze" (disabled with helper text)?
+### Q3 — "Admins only" mode UX on customer app
+**Answer: Hide the Freeze button entirely on the customer plan page.**
+No dead affordance, no "call your studio" toast to dismiss. When
+admin picks Admins-only, the customer app treats the plan as if
+freeze doesn't exist. Members who need to freeze can reach out via
+their existing communication channels (WhatsApp, email) — no need to
+teach them a new one.
 
-4. **"Members request, admins approve" workflow shape** — new plan status `freeze_requested`, OR a separate `freeze_requests` slice keyed by plan id? First is simpler (fewer stores, easier to derive UI state); second is more auditable (request history survives multiple freezes).
+### Q4 — "Members request, admins approve" workflow shape
+**Answer: New plan status `freeze_requested`.**
+Simpler than a dedicated `freeze_requests` slice. The plan's own
+lifecycle carries the state; UI derivation is trivial ("if
+status === 'freeze_requested', show the pending badge + admin's
+Approve/Reject modal"). The trade-off — no request history if the
+same plan is requested/rejected/requested again — is fine for the
+demo. When we want request history, we already have `recordAudit`
+in the store which log every state transition (audit trail
+survives, plan state stays clean).
 
-5. **"First billing cycle" definition** — window between `plan_created_at` and `first_billed_at`, OR a hardcoded window (e.g. first 30 days)? First is more accurate; second is simpler.
+### Q5 — "First billing cycle" definition (eligibility guardrail)
+**Answer: Window between `plan_created_at` and `first_billed_at`.**
+Dynamic + accurate — the plan already tracks `first_billed_at` on
+the plan row (used by the referral module too), so no new field is
+needed. A hardcoded 30-day window would mis-fire on plans with
+trial periods or off-cycle billing. Reading the two existing dates
+is 4 lines of code.
 
-6. **"Payment failing" definition** — derived from last transaction status on the plan's customer, OR an explicit `payment_status: "failing"` flag on the plan itself? Deriving is DRY-er; flag is faster to check.
+### Q6 — "Payment failing" definition (eligibility guardrail)
+**Answer: Derived from the last transaction status on the customer's
+account.**
+`customerTransactions[].status === "failed"` is already a real seed
+field the POS module writes on failed captures. No new
+`payment_status: "failing"` flag on the plan needed. Derivation:
+"the most recent transaction for this customer whose plan_id matches
+has status === 'failed' AND no successful transaction after it".
 
-7. **Reason exceptions applied per member** — when a reason enables "ignores max duration", does the customer sheet show NO cap, or does the admin freeze form show the cap with an override checkbox? Figma reads as "no cap" for that reason on the member side.
+### Q7 — Reason exceptions applied on the customer sheet
+**Answer: Customer sheet shows NO cap when the picked reason has
+`ignoresMaxDuration` enabled.**
+Matches the Figma reading + the client's language ("ignores the
+30-day cap"). When Sarah picks "Medical condition", her date-range
+picker allows any duration (up to a hard system max — 12 months —
+to prevent absurd inputs). The `ignoresFreezeLimit` and `waivesFee`
+flags apply symmetrically: freeze doesn't count toward the annual
+limit, and no fee is charged. The admin freeze form on the customer
+detail page respects the same rules — admin is another actor, not
+an override path.
 
-8. **Persist bump migration strategy** — for existing seeded policies + existing frozen plans, do we:
-   (a) Auto-migrate `allow_exceptions=true → require_reason=true` (semantic-equivalent rename) + default new fields to sensible defaults, keeping user progress, OR
-   (b) Bump persist version (v76 → v77) forcing a full reseed on every tester's next reload, dropping their in-progress state?
-   Approach (a) is nicer for tester continuity; (b) is simpler + guarantees everyone lands on the same v2 defaults.
+### Q8 — Persist bump migration strategy
+**Answer: Both — auto-migrate the field rename PLUS bump persist
+version (v76 → v77).**
+Belt-and-suspenders. The migration in `onRehydrateStorage` carries
+`allow_exceptions → require_reason` semantically for anyone loading
+an old snapshot, so their existing "reasons on" configuration
+transfers. The persist bump then forces a reseed anyway for testers
+who haven't touched the site since v76 — guarantees everyone lands
+on the same v2 defaults (Billing behavior = "Pauses", Who can
+freeze = "Members & admins", Min duration = 7 days, Max freezes
+period = "calendar_year"). Zero risk of a tester carrying a stale
+schema hidden behind a version match.
 
 ---
 
@@ -288,7 +350,8 @@ Rejection message: "Your membership is frozen — you can book again on <resume_
 
 ## Pre-Phase-1 checklist
 
-1. This plan doc committed (Phase 0 delivery).
-2. Snapshot tag `pre-freeze-policy-v2` created (done).
-3. Client answers the 8 open questions above.
-4. Say "go" to start Phase 1.
+1. ✅ Plan doc committed (Phase 0 delivery).
+2. ✅ Snapshot tag `pre-freeze-policy-v2` created.
+3. ✅ 8 open questions locked in the "Decisions" section above.
+4. ✅ Guardrails locked: reuse existing components, don't break the app.
+5. **Awaiting:** client says "go" to start Phase 1.
