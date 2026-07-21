@@ -190,6 +190,16 @@ export function ReferralOverviewTab() {
 
     return (
         <div className="flex flex-col gap-4 max-w-[1100px]">
+            {/* ── Toolbar ────────────────────────────────────────────────
+                Period filter lives ABOVE the containers, matching the
+                dashboard / insights / compensation pattern. `flex-1`
+                spacer pushes the filter to the right so it aligns with
+                every other module's toolbar. */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1" />
+                <DateRangeFilter value={period} onChange={setPeriod} />
+            </div>
+
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex items-center gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex-1 flex flex-col gap-1">
@@ -209,12 +219,6 @@ export function ReferralOverviewTab() {
                         Monthly budget resets in {resetDays} {resetDays === 1 ? "day" : "days"}.
                     </p>
                 </div>
-                {/* Period filter — client 2026-07-20. Scopes the 4 KPI
-                    tiles + Top referrers table + monthly budget bar to
-                    the selected range. Placed left of Share so the two
-                    actions read as "filter what I see" → "share
-                    program". */}
-                <DateRangeFilter value={period} onChange={setPeriod} />
                 <Button variant="secondary-gray" size="md" leftIcon={<Share07 className="w-4 h-4" />} onClick={shareLink}>
                     Share program link
                 </Button>
