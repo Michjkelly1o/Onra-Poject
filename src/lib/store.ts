@@ -2141,6 +2141,34 @@ interface FreezeChargePreview {
     savingsAed?: number;
 }
 
+// Reason-exception resolver (mirror of the one in freeze-eligibility.ts —
+// duplicated to avoid a circular import since eligibility already imports
+// from store.ts). Callers pass a reason LABEL; we look it up in the
+// policy's enabled reasons and return the three bypass flags. Returns
+// all-false when the label matches nothing so `if (bypass.waivesFee)`
+// reads cleanly. Keep the shape in sync with the customer-side copy.
+interface StoreReasonBypass {
+    ignoresMaxDuration: boolean;
+    ignoresFreezeLimit: boolean;
+    waivesFee: boolean;
+}
+function resolveReasonExceptions(
+    policy: FreezePolicy,
+    reasonLabel: string | undefined | null,
+): StoreReasonBypass {
+    const noBypass: StoreReasonBypass = { ignoresMaxDuration: false, ignoresFreezeLimit: false, waivesFee: false };
+    if (!reasonLabel) return noBypass;
+    const match = policy.reasons.find(
+        r => r.enabled && r.label.trim() === reasonLabel.trim(),
+    );
+    if (!match || !match.exceptions) return noBypass;
+    return {
+        ignoresMaxDuration: match.exceptions.ignoresMaxDuration === true,
+        ignoresFreezeLimit: match.exceptions.ignoresFreezeLimit === true,
+        waivesFee:          match.exceptions.waivesFee === true,
+    };
+}
+
 function computeNextCharge(
     plan: CustomerPlan,
     policy: FreezePolicy,
@@ -6154,7 +6182,15 @@ export const useAppStore = create<AppState>()(persist(
         //     prorated down by the frozen fraction of the billing cycle.
         //     Stashed on `nextChargeAdjustmentAed` for the renewal step to
         //     consume; expiry math untouched.
+        //
+        // Audit fix (Phase 6+) — the picked reason's per-reason exceptions
+        // now actually gate behaviors. `ignoresFreezeLimit` skips the
+        // freezeCount++ so a bypassing reason (e.g. Medical) doesn't burn
+        // the customer's annual freeze quota. `waivesFee` is enforced in
+        // the fee-charging actions below (freezeMembershipByCustomer +
+        // approveFreezeRequest), not here — this action is fee-agnostic.
         const policy = get().freezePolicy;
+        const bypass = resolveReasonExceptions(policy, reason ?? undefined);
         set(state => ({
             customerPlans: state.customerPlans.map(p => {
                 if (p.id !== planId) return p;
@@ -6170,7 +6206,12 @@ export const useAppStore = create<AppState>()(persist(
                     freezeSource: source ?? "admin" as const,
                     // Lifetime freeze tally — the freeze policy's
                     // "max freezes per membership" is checked against this.
-                    freezeCount: (p.freezeCount ?? 0) + 1,
+                    // Bypassed reasons (ignoresFreezeLimit=true) don't
+                    // increment so genuine medical / injury freezes don't
+                    // eat into the annual quota (client 2026-07-20 intent).
+                    freezeCount: bypass.ignoresFreezeLimit
+                        ? (p.freezeCount ?? 0)
+                        : (p.freezeCount ?? 0) + 1,
                     // Reason (customer self-freeze) — surfaced admin-side.
                     freezeReason: reason ?? undefined,
                     // Option A: expiry shifts by frozenDays. Option B:
@@ -6243,8 +6284,12 @@ export const useAppStore = create<AppState>()(persist(
         }
         // Charge-now: emit a non-refundable freeze-fee row when the studio
         // policy configures a fee (mirrors the cancellation-penalty pattern).
+        // Audit fix — a reason with `waivesFee` enabled skips the charge
+        // entirely (client 2026-07-20 intent: Medical / Injury etc.
+        // freezes don't cost the member anything).
         const policy = get().freezePolicy;
-        const fee = policy.fee_enabled ? Math.max(0, policy.fee_amount_aed) : 0;
+        const bypass = resolveReasonExceptions(policy, reason);
+        const fee = policy.fee_enabled && !bypass.waivesFee ? Math.max(0, policy.fee_amount_aed) : 0;
         if (customer && fee > 0) {
             const now = new Date().toISOString();
             const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -6373,8 +6418,12 @@ export const useAppStore = create<AppState>()(persist(
         // Charge-now: emit the freeze-fee row on approval (same charge-now
         // pattern as the direct-freeze path — the fee is tied to the
         // freeze STARTING, not to the request being submitted).
+        // Audit fix — respect `waivesFee` on the requested reason so an
+        // approved medical-request skips the charge, same as a direct
+        // medical freeze.
         const policy = get().freezePolicy;
-        const fee = policy.fee_enabled ? Math.max(0, policy.fee_amount_aed) : 0;
+        const bypass = resolveReasonExceptions(policy, target.freezeRequestReason);
+        const fee = policy.fee_enabled && !bypass.waivesFee ? Math.max(0, policy.fee_amount_aed) : 0;
         if (customer && fee > 0) {
             const nowISO = new Date().toISOString();
             const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -6494,6 +6543,14 @@ export const useAppStore = create<AppState>()(persist(
                         cancelMode: mode,
                         cancelReason: reason,
                         cancelledAtISO: new Date().toISOString(),
+                        // Audit fix — clear any pending freeze-request
+                        // scratch fields if the plan gets cancelled from
+                        // the freeze_requested state. Prevents dead
+                        // request data from persisting on a cancelled row.
+                        freezeRequestStartISO: undefined,
+                        freezeRequestEndISO: undefined,
+                        freezeRequestReason: undefined,
+                        freezeRequestedAtISO: undefined,
                     }
                     : p,
             );

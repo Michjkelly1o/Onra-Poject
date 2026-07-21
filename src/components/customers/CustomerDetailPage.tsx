@@ -37,6 +37,8 @@ import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore, type Customer, type CustomerPlan } from "@/lib/store";
+import { resolveReasonExceptions, previewFreezeBilling } from "@/lib/customer/freeze-eligibility";
+import { shortDate as customerShortDate } from "@/lib/customer/profile-format";
 import { CustomerBookingsTab } from "./CustomerBookingsTab";
 import { CustomerPaymentsTab } from "./CustomerPaymentsTab";
 // CustomerWalletTab removed alongside the "Wallet" tab (client Jul 2026 —
@@ -241,19 +243,53 @@ function FreezeModal({ plan, onClose, onConfirm }: {
     const [end, setEnd] = useState("");
     const [reason, setReason] = useState("");
 
-    // Freeze reasons come from the studio-wide freeze policy — same source of
-    // truth the customer-portal Freeze sheet reads. When the list is empty
-    // (exceptions off, or all reasons unchecked / deleted) the dropdown is
-    // hidden entirely per client Jul 2026.
+    // v2 audit fix (Phase 6+) — plan doc Q7: "admin is another actor, not an
+    // override path". The admin modal now enforces the same rules the
+    // customer sheet does: minimum-duration floor, maximum-duration ceiling
+    // (unless the picked reason has `ignoresMaxDuration`), per-reason
+    // waivesFee bypass, and the correct Option A/B disclosure copy.
     const policy = useAppStore(s => s.freezePolicy);
     const availableReasons = policy.require_reason
         ? policy.reasons.filter(r => r.enabled && r.label.trim()).map(r => r.label)
         : [];
     const showReason = availableReasons.length > 0;
 
+    // Policy-driven caps mirroring FreezePlanSheet (customer side).
+    const UNIT_DAYS = { days: 1, weeks: 7, months: 30 } as const;
+    const minDays = Math.max(1, policy.min_duration_value * UNIT_DAYS[policy.min_duration_unit]);
+    const maxDays = policy.max_duration_enabled
+        ? policy.max_duration_value * UNIT_DAYS[policy.max_duration_unit]
+        : null;
+    // HARD_MAX_DAYS matches the customer sheet — stops a bypassed reason from
+    // submitting a 10-year freeze via the admin form.
+    const HARD_MAX_DAYS = 365;
+
+    const bypass = resolveReasonExceptions(policy, reason || undefined);
     const days = end && end >= start ? daysBetween(start, end) : 0;
-    const canConfirm = !!end && end >= start && days > 0 && (!showReason || !!reason);
-    const newExpiry = days > 0 ? addDaysISO(plan.expiryISO, days) : plan.expiryISO;
+    const bypassMaxCap = bypass.ignoresMaxDuration;
+    const effectiveMax = bypassMaxCap ? HARD_MAX_DAYS : (maxDays ?? HARD_MAX_DAYS);
+    const underMin = days > 0 && days < minDays;
+    const overMax = days > 0 && days > effectiveMax;
+    const canConfirm = !!end && end >= start && days > 0 && !underMin && !overMax && (!showReason || !!reason);
+
+    // Option A/B disclosure — same math the customer sheet uses so the
+    // admin sees exactly what will happen to the next charge.
+    const preview = canConfirm ? previewFreezeBilling(plan, policy, start, end) : null;
+    const feeWaived = bypass.waivesFee && policy.fee_enabled;
+
+    const durationHelper = underMin
+        ? `Minimum freeze: ${minDays} day${minDays === 1 ? "" : "s"}.`
+        : overMax && !bypassMaxCap
+          ? `Maximum freeze: ${maxDays} day${maxDays === 1 ? "" : "s"}.`
+          : overMax && bypassMaxCap
+            ? `Freeze can't exceed ${HARD_MAX_DAYS} days.`
+            : canConfirm
+              ? preview && preview.behavior === "pause"
+                  ? `${plan.planTypeLabel} will be extended by ${days} day${days === 1 ? "" : "s"}. Next charge shifts from ${customerShortDate(preview.originalNextChargeISO)} to ${customerShortDate(preview.newNextChargeISO)}.`
+                  : preview && preview.newChargeAmountAed != null && preview.savingsAed && preview.savingsAed > 0
+                    ? `Next charge on ${customerShortDate(preview.originalNextChargeISO)} will be reduced to AED ${preview.newChargeAmountAed} (saving AED ${preview.savingsAed}).`
+                    : "Freeze is on schedule — next charge amount unchanged."
+              : "Pick a start and end date. The disclosure below shows what will happen to the next charge.";
 
     return (
         <ModalShell
@@ -279,10 +315,8 @@ function FreezeModal({ plan, onClose, onConfirm }: {
             </div>
             <div className="flex items-center gap-4 p-4 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
                 <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
-                <p className="text-[14px] text-[#475467] leading-[20px]">
-                    {canConfirm
-                        ? `${plan.planTypeLabel} will be extended by ${days} ${days === 1 ? "day" : "days"}. New expiry: ${fmtDate(newExpiry)}`
-                        : "Pick a start and end date — the plan's expiry will be extended by the frozen duration."}
+                <p className={`text-[14px] leading-[20px] ${underMin || overMax ? "text-[#b42318]" : "text-[#475467]"}`}>
+                    {durationHelper}
                 </p>
             </div>
             {/* Reason picker — reads from the freeze policy's enabled reasons.
@@ -297,6 +331,19 @@ function FreezeModal({ plan, onClose, onConfirm }: {
                         options={availableReasons.map(r => ({ value: r, label: r }))}
                         width="w-full"
                     />
+                </div>
+            )}
+            {/* Fee callout — surfaces when the policy charges a fee, muted grey
+                when the picked reason waives it (so the admin sees BOTH the
+                policy default AND the exception at a glance). */}
+            {policy.fee_enabled && policy.fee_amount_aed > 0 && (
+                <div className={`rounded-[12px] border-1 p-4 ${feeWaived ? "bg-[#f9fafb] border-[#e4e7ec]" : "bg-[#fffaf5] border-[#f9dbaf]"}`}>
+                    <p className={`text-[14px] leading-[20px] ${feeWaived ? "text-[#667085]" : "text-[#b93815]"}`}>
+                        {feeWaived
+                            ? <>Freeze fee <span className="font-semibold">waived</span> for this reason (AED {policy.fee_amount_aed} normally applies).</>
+                            : <>A {policy.fee_type === "recurring" ? "recurring" : "one-time"} freeze fee of <span className="font-semibold">AED {policy.fee_amount_aed}</span> will be charged on confirm.</>
+                        }
+                    </p>
                 </div>
             )}
         </ModalShell>

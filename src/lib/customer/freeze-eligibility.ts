@@ -29,6 +29,60 @@
 import type { CustomerPlan, CustomerTransaction, FreezePolicy } from "@/lib/store";
 import { addDaysISO, daysBetweenISO } from "@/lib/customer/dates";
 
+// ── Reason-exception resolver (Phase 5 audit fix) ───────────────────────────
+//
+// The policy stores three bypass flags per reason
+// (`ignoresMaxDuration` / `ignoresFreezeLimit` / `waivesFee`). Every consumer
+// that mutates state on a freeze — the customer sheet, freezeCustomerPlan
+// (freezeCount++), freezeMembershipByCustomer (fee charge), admin freeze
+// modal — needs to look those flags up by the picked reason LABEL. This
+// helper is the single point of resolution so a label typo can't silently
+// disable a bypass.
+
+export interface ReasonExceptions {
+    ignoresMaxDuration: boolean;
+    ignoresFreezeLimit: boolean;
+    waivesFee: boolean;
+}
+
+const NO_BYPASS: ReasonExceptions = {
+    ignoresMaxDuration: false,
+    ignoresFreezeLimit: false,
+    waivesFee: false,
+};
+
+/** Resolve a reason label → the flags it carries in the policy. Returns
+ *  `NO_BYPASS` when the label doesn't match any enabled reason (empty
+ *  reason, deleted reason, typo). Callers always get a defined object,
+ *  so `if (bypass.waivesFee)` reads cleanly. */
+export function resolveReasonExceptions(
+    policy: FreezePolicy,
+    reasonLabel: string | undefined | null,
+): ReasonExceptions {
+    if (!reasonLabel) return NO_BYPASS;
+    const match = policy.reasons.find(
+        r => r.enabled && r.label.trim() === reasonLabel.trim(),
+    );
+    if (!match || !match.exceptions) return NO_BYPASS;
+    return {
+        ignoresMaxDuration: match.exceptions.ignoresMaxDuration === true,
+        ignoresFreezeLimit: match.exceptions.ignoresFreezeLimit === true,
+        waivesFee:          match.exceptions.waivesFee === true,
+    };
+}
+
+/** True when AT LEAST ONE enabled reason carries the given bypass flag.
+ *  Used by decideFreezeCta to loosen the annual-cap gate — a member who's
+ *  hit their limit can still freeze via a bypassing reason. */
+export function anyReasonHasBypass(
+    policy: FreezePolicy,
+    key: "ignoresMaxDuration" | "ignoresFreezeLimit" | "waivesFee",
+): boolean {
+    return policy.reasons.some(
+        r => r.enabled && r.exceptions && r.exceptions[key] === true,
+    );
+}
+
 // ── Frozen-plan guard (Phase 3) ─────────────────────────────────────────────
 
 /** A customer's currently frozen membership, ready to feed the "you can book
@@ -184,9 +238,14 @@ export function decideFreezeCta(
     }
     // Freeze-limit ceiling (per calendar year, per Q1). Freeze count is
     // maintained on the plan row every time freezeCustomerPlan fires.
+    // Loosened per audit fix: if ANY enabled reason has
+    // `ignoresFreezeLimit` on, a limit-reached customer can still freeze
+    // via that reason, so the CTA stays visible. If no bypass exists,
+    // the gate blocks as before.
     if (
         policy.limit_freezes_enabled &&
-        (plan.freezeCount ?? 0) >= policy.max_freezes
+        (plan.freezeCount ?? 0) >= policy.max_freezes &&
+        !anyReasonHasBypass(policy, "ignoresFreezeLimit")
     ) {
         return { mode: "hidden", reason: "freeze_limit_reached" };
     }
