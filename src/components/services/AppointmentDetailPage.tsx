@@ -1279,7 +1279,11 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Appointment details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        {appointment.type === "private"  ? "Private session details" :
+                         appointment.type === "recovery" ? "Recovery & wellness details" :
+                         "Appointment details"}
+                    </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>

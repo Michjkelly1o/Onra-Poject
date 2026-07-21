@@ -1006,7 +1006,11 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Service details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        {service.type === "private"  ? "Private session details" :
+                         service.type === "recovery" ? "Recovery & wellness details" :
+                         "Service details"}
+                    </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
