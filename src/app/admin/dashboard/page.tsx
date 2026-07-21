@@ -37,6 +37,7 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { dateFilterToRange } from "@/lib/period-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
 import { TypeLocationFilter } from "@/components/dashboard/TypeLocationFilter";
+import { ComingUpTab } from "@/components/dashboard/ComingUpTab";
 import {
     RenewalDueModal,
     FailedPaymentsModal,
@@ -614,6 +615,10 @@ export default function AdminDashboard() {
     //   • packages — is_intro_offer flag for the Trials-ending card
     const appointmentBookings = useAppStore(s => s.appointmentBookings);
     const packages            = useAppStore(s => s.packages);
+    // Coming Up v3 (client 2026-07-21) — the new tab reads blockedTimes +
+    // staff for the "Sara A. away" event chip on the revenue chart.
+    const blockedTimes        = useAppStore(s => s.blockedTimes);
+    const staff               = useAppStore(s => s.staff);
 
     // One-shot init of the location picker (client 2026-07-20, Option A) —
     // as soon as the `branches` slice hydrates, seed `locations` with every
@@ -1642,23 +1647,42 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* KPI Metrics — Coming-up uses a fixed 3-col grid to match the
-                Figma 6-card layout; Today/Performance keep the wrap-flex
-                behavior so 4-5 cards fill one row without gaps. */}
-            <div className={cn(
-                activeTab === "coming"
-                    ? "grid grid-cols-3 gap-6 items-start"
-                    // Today/Performance: stretch so every card (incl. the
-                    // Occupancy split card) shares one row height.
-                    : "flex flex-wrap gap-6 items-stretch",
-            )}>
-                {metrics.map((metric) => (
-                    <MetricCard key={metric.label} metric={metric} />
-                ))}
-                {/* Occupancy (Today) was removed 2026-07-20 per client feedback
-                    — the occupancy signal now lives on the Coming-up tab as
-                    "Capacity used" per session type. */}
-            </div>
+            {/* KPI Metrics — Today/Performance keep the wrap-flex layout so
+                4-5 cards fill one row without gaps. The Coming-up tab's own
+                metric grid was retired 2026-07-21 in favour of the new
+                three-block layout (strip + revenue chart + capacity
+                heatmap) — see <ComingUpTab /> below. */}
+            {activeTab !== "coming" && (
+                <div className="flex flex-wrap gap-6 items-stretch">
+                    {metrics.map((metric) => (
+                        <MetricCard key={metric.label} metric={metric} />
+                    ))}
+                    {/* Occupancy (Today) was removed 2026-07-20 per client feedback
+                        — the occupancy signal now lives on the Coming-up tab as
+                        "Capacity used" per session type. */}
+                </div>
+            )}
+
+            {/* Coming Up tab body — client 2026-07-21 rebuild against
+                new-prd/onracomingupv3_7_1_5 (1).html. Every filter on
+                the sticky toolbar above (Type, Locations, Range) flows
+                straight into the tab through the props below. */}
+            {activeTab === "coming" && (
+                <ComingUpTab
+                    sessions={scopedSessions}
+                    classBookings={scopedBookings}
+                    appointmentBookings={appointmentBookings}
+                    customers={scopedCustomers}
+                    transactions={scopedTransactions}
+                    customerPlans={scopedCustomerPlans}
+                    appointments={scopedAppointments}
+                    blockedTimes={blockedTimes}
+                    staff={staff}
+                    todayISO={todayISO}
+                    type={comingType}
+                    range={comingRange}
+                />
+            )}
 
             {/* Performance tab */}
             {activeTab === "performance" && (

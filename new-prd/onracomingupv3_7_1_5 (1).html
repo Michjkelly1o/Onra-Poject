@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onra — Coming Up v3 · Outlook (Mockup)</title>
+<style>
+  :root{
+    --bg:#faf9f5; --panel:#ffffff; --line:#e9e7df; --line2:#dcdad0;
+    --ink:#1e2a24; --muted:#6b7772; --faint:#9aa39e;
+    --accent:#3d7a5a; --accent-bg:#e8f1ea; --accent-line:#bcd6c6;
+    --class:#0f6e56; --class-bg:#e1f5ee; --class-line:#5dcaa5; --class-fill:#159d7b;
+    --appt:#3c3489; --appt-bg:#eeedfe; --appt-line:#afa9ec; --appt-fill:#6258cf;
+    --rec:#993c1d; --rec-bg:#faece7; --rec-line:#f0997b; --rec-fill:#c2551f;
+    --warn:#a05a00; --warn-bg:#fdf3e4;
+    --radius:9px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased;}
+  .main{padding:26px 34px;max-width:1060px;margin:0 auto;}
+  .h1{font-size:22px;font-weight:600;letter-spacing:-.01em;margin:0 0 2px;}
+  .lede{color:var(--muted);font-size:13px;margin:0 0 18px;}
+
+  .tabs{display:flex;gap:4px;border-bottom:0.5px solid var(--line);margin-bottom:20px;}
+  .tab{padding:9px 16px;font-size:13.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent);}
+
+  .rowhead{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .rowhead .spacer{flex:1;}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;padding:6px 13px;border-radius:999px;border:0.5px solid var(--line2);background:var(--panel);color:var(--muted);cursor:pointer;user-select:none;}
+  .pill:hover{border-color:var(--accent-line);}
+  .pill .sw{width:8px;height:8px;border-radius:50%;flex:none;}
+  .pill.on{background:var(--accent-bg);border-color:var(--accent-line);color:var(--accent);font-weight:500;}
+  .pill.t-class.on{background:var(--class-bg);border-color:var(--class-line);color:var(--class);}
+  .pill.t-appt.on{background:var(--appt-bg);border-color:var(--appt-line);color:var(--appt);}
+  .pill.t-rec.on{background:var(--rec-bg);border-color:var(--rec-line);color:var(--rec);}
+  .loc{font-size:12.5px;color:var(--muted);border:0.5px solid var(--line2);background:var(--panel);border-radius:999px;padding:6px 13px;cursor:pointer;user-select:none;}
+  .loc:hover{border-color:var(--accent-line);}
+  .locwrap{position:relative;display:inline-block;}
+  .locmenu{position:absolute;top:calc(100% + 6px);left:0;background:var(--panel);border:0.5px solid var(--line2);border-radius:9px;padding:5px;min-width:165px;box-shadow:0 8px 24px rgba(30,42,36,.10);display:none;z-index:20;}
+  .locmenu label{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink);padding:6px 9px;border-radius:6px;cursor:pointer;user-select:none;}
+  .locmenu label:hover{background:var(--bg);}
+  .locmenu label.all{border-bottom:0.5px solid var(--line);margin-bottom:4px;border-radius:6px 6px 0 0;}
+  .locmenu input{accent-color:var(--accent);margin:0;width:13px;height:13px;}
+  .locmenu .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .fmenu{left:auto;right:0;padding:9px;}
+  .fmenu[data-open]{display:flex;}
+  .fcol{min-width:165px;}
+  .fcol + .fcol{border-left:0.5px solid var(--line);margin-left:8px;padding-left:12px;}
+  .fhead{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:3px 9px 7px;}
+  .locmenu label.sel{font-weight:600;}
+  .locmenu label.sel::after{content:'✓';margin-left:auto;color:var(--muted);font-size:11px;padding-left:10px;}
+  .legend{margin-left:auto;display:flex;gap:12px;text-transform:none;letter-spacing:0;font-size:11px;color:var(--muted);font-weight:400;}
+  .legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;}
+  .seg{display:flex;border:0.5px solid var(--line2);border-radius:999px;background:var(--panel);overflow:hidden;}
+  .seg span{font-size:12.5px;color:var(--muted);padding:6px 14px;cursor:pointer;user-select:none;}
+  .seg span.on{background:var(--ink);color:#fff;font-weight:500;}
+
+  .grp{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:0 0 9px;}
+
+  .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:22px;}
+  .tile{background:var(--panel);border:0.5px solid var(--line);border-radius:var(--radius);padding:13px 14px;}
+  .tile .k{font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+  .tile .v{font-size:19px;font-weight:600;letter-spacing:-.01em;}
+  .tile .v small{font-size:11.5px;font-weight:500;color:var(--faint);}
+  .tile .s{font-size:11.5px;color:var(--faint);margin-top:3px;}
+  .tile.alert .v{color:var(--warn);}
+  .bar{height:5px;border-radius:99px;background:var(--line);margin-top:9px;overflow:hidden;}
+  .bar i{display:block;height:100%;border-radius:99px;}
+  .cap{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+  .cap .r{display:flex;align-items:center;gap:8px;}
+  .cap .r b{font-size:10.5px;font-weight:500;color:var(--muted);width:52px;flex:none;}
+  .cap .r .bar{flex:1;margin:0;}
+  .cap .r em{font-style:normal;font-size:10.5px;color:var(--faint);width:30px;text-align:right;flex:none;}
+
+  /* ---- Outlook chart ---- */
+  .panelbox{background:var(--panel);border:0.5px solid var(--line);border-radius:var(--radius);padding:18px 18px 14px;margin-bottom:14px;}
+  .chartwrap{position:relative;margin:6px 0 0;}
+  .gridlayer{position:absolute;left:44px;right:0;top:0;bottom:0;}
+  .gl{position:absolute;left:0;right:0;height:1px;background:var(--line);}
+  .gl.zero{background:var(--line2);}
+  .ytick{position:absolute;left:0;width:36px;text-align:right;font-size:10.5px;color:var(--faint);transform:translateY(-50%);font-variant-numeric:tabular-nums;}
+  .cols{position:relative;display:flex;align-items:flex-end;gap:0;margin-left:44px;}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;}
+  .stack{display:flex;flex-direction:column-reverse;width:24px;}
+  .segm{width:100%;cursor:default;}
+  .segm.top{border-radius:4px 4px 0 0;}
+  .segm + .segm{margin-bottom:0;}
+  .segm.gap{margin-bottom:2px;}
+  .cap-label{font-size:10.5px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums;}
+  .xrow{display:flex;margin-left:44px;margin-top:8px;}
+  .xrow .xc{flex:1;text-align:center;font-size:11px;color:var(--muted);line-height:1.3;}
+  .xrow .xc b{font-weight:600;color:var(--ink);display:block;font-size:11px;}
+  .evrow{display:flex;margin-left:44px;margin-top:8px;min-height:22px;}
+  .evrow .ec{flex:1;display:flex;justify-content:center;align-items:flex-start;padding:0 3px;}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted);background:var(--bg);border:0.5px solid var(--line);border-radius:999px;padding:3px 8px;white-space:nowrap;cursor:default;}
+  .chip .sw{width:6px;height:6px;border-radius:50%;flex:none;}
+
+  /* ---- Capacity heat rows ---- */
+  .heat{margin-left:44px;}
+  .hrow{display:flex;align-items:center;margin-bottom:6px;}
+  .hrow:last-child{margin-bottom:0;}
+  .hlab{width:64px;flex:none;font-size:10.5px;font-weight:500;color:var(--muted);margin-left:-64px;padding-right:10px;text-align:right;}
+  .hcells{display:flex;flex:1;gap:4px;}
+  .hcell{flex:1;height:20px;border-radius:5px;cursor:default;position:relative;display:flex;align-items:center;justify-content:center;font-size:10px;font-variant-numeric:tabular-nums;}
+  .hcell.closed{background:repeating-linear-gradient(45deg,var(--line) 0 3px,var(--panel) 3px 7px);}
+
+  .note{font-size:11.5px;color:var(--faint);font-style:italic;margin-top:4px;}
+
+  /* tooltip */
+  .tip{position:fixed;z-index:10;background:var(--ink);color:#fff;font-size:11.5px;padding:7px 10px;border-radius:7px;pointer-events:none;display:none;line-height:1.45;max-width:230px;}
+  .tip b{font-weight:600;}
+  .tip .m{color:#c8d0cb;}
+</style>
+</head>
+<body>
+<div class="main">
+
+  <div class="h1">Welcome, Forma Studio</div>
+  <div class="lede">Dashboard</div>
+
+  <div class="tabs">
+    <div class="tab">Today</div>
+    <div class="tab active">Coming Up</div>
+  </div>
+
+  <!-- All controls top right: ONE filter dropdown (types on one side, locations on the other) → window. Everything scopes the whole tab. -->
+  <div class="rowhead">
+    <span class="spacer"></span>
+    <span class="locwrap">
+      <span class="loc" id="fbtn" onclick="toggleMenu(event)">All types · All locations ▾</span>
+      <div class="locmenu fmenu" id="fmenu">
+        <div class="fcol">
+          <div class="fhead">Type</div>
+          <label class="all sel" data-t="all" onclick="pickType('all',this)">All types</label>
+          <label data-t="class" onclick="pickType('class',this)"><span class="dot" style="background:var(--class-fill)"></span>Classes</label>
+          <label data-t="appt" onclick="pickType('appt',this)"><span class="dot" style="background:var(--appt-fill)"></span>Private sessions</label>
+          <label data-t="rec" onclick="pickType('rec',this)"><span class="dot" style="background:var(--rec-fill)"></span>Recovery &amp; wellness</label>
+        </div>
+        <div class="fcol">
+          <div class="fhead">Locations</div>
+          <label class="all"><input type="checkbox" checked data-l="all" onchange="locAll(this)">All locations</label>
+          <label><input type="checkbox" checked data-l="Downtown" onchange="locOne()">Downtown</label>
+          <label><input type="checkbox" checked data-l="Marina" onchange="locOne()">Marina</label>
+          <label><input type="checkbox" checked data-l="Jumeirah" onchange="locOne()">Jumeirah</label>
+        </div>
+      </div>
+    </span>
+    <span class="seg">
+      <span class="on" data-r="7" onclick="setR(this)">Next 7 days</span>
+      <span data-r="30" onclick="setR(this)">Next 30 days</span>
+    </span>
+  </div>
+
+  <!-- Strip: shows the numbers for the selected scope -->
+  <div class="tiles" id="strip"></div>
+
+  <!-- Revenue outlook -->
+  <div class="panelbox">
+    <div class="grp" style="margin-bottom:2px;display:flex;align-items:center;">Revenue · <span id="win-label" style="text-transform:none;letter-spacing:0;">by day</span><span class="legend" id="legend"></span></div>
+    <div class="chartwrap" style="height:170px;">
+      <div class="gridlayer" id="grid"></div>
+      <div class="cols" id="cols" style="height:170px;"></div>
+    </div>
+    <div class="xrow" id="xrow"></div>
+    <div class="evrow" id="evrow"></div>
+  </div>
+
+  <!-- Capacity outlook -->
+  <div class="panelbox">
+    <div class="grp">Capacity used · <span id="win-label2" style="text-transform:none;letter-spacing:0;">by day</span></div>
+    <div class="heat" id="heat"></div>
+  </div>
+
+  <div class="note">Individual items to fix live in Today → Act on it. Click a day to open its schedule.</div>
+
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+  var TYPES = [
+    {key:'class', name:'Classes',            fill:'#159d7b'},
+    {key:'appt',  name:'Private sessions',   fill:'#6258cf'},
+    {key:'rec',   name:'Recovery & wellness',fill:'#c2551f'}
+  ];
+
+  var DATA = {
+    '7': {
+      unit:'by day', ymax:4600, ticks:[0,2000,4000],
+      cols:[
+        {lab:'Sat', sub:'18 Jul', rev:{class:2900, appt:900, rec:500},  fill:{class:72, appt:80, rec:70}},
+        {lab:'Sun', sub:'19 Jul', rev:{class:2400, appt:700, rec:450},  fill:{class:64, appt:60, rec:58}},
+        {lab:'Mon', sub:'20 Jul', rev:{class:1900, appt:850, rec:450},  fill:{class:55, appt:75, rec:55}},
+        {lab:'Tue', sub:'21 Jul', rev:{class:1700, appt:600, rec:400},  fill:{class:48, appt:55, rec:50}},
+        {lab:'Wed', sub:'22 Jul', rev:{class:2100, appt:750, rec:380},  fill:{class:58, appt:65, rec:52}},
+        {lab:'Thu', sub:'23 Jul', rev:{class:2500, appt:900, rec:520},  fill:{class:66, appt:78, rec:68}},
+        {lab:'Fri', sub:'24 Jul', rev:{class:2400, appt:900, rec:550},  fill:{class:63, appt:70, rec:75}}
+      ]
+    },
+    '30': {
+      unit:'by week', ymax:26000, ticks:[0,10000,20000],
+      cols:[
+        {lab:'Wk 1', sub:'18–24 Jul', rev:{class:15900, appt:5600, rec:3250}, fill:{class:59, appt:70, rec:63}},
+        {lab:'Wk 2', sub:'25–31 Jul', rev:{class:16200, appt:5900, rec:3000}, fill:{class:61, appt:65, rec:60}},
+        {lab:'Wk 3', sub:'1–7 Aug',   rev:{class:14800, appt:5200, rec:2600}, fill:{class:56, appt:58, rec:52}, ev:{t:'class', txt:'Workshop · 8/24 sold'}},
+        {lab:'Wk 4', sub:'8–14 Aug',  rev:{class:16500, appt:5400, rec:2850}, fill:{class:60, appt:60, rec:55}, ev:{t:'appt', txt:'Sara A. away'}}
+      ]
+    }
+  };
+
+  // by-type splits for the pinned strip (tooltip) and type-context tiles
+  var SPLITS = {
+    '7':  { revenue:{class:'AED 15,900', appt:'AED 5,600', rec:'AED 3,250'},
+            bookings:{class:243, appt:31, rec:38},
+            newcust:{class:6, appt:1, rec:2},
+            returning:{class:95, appt:17, rec:22},
+            credits:{class:5, appt:3, rec:1} },
+    '30': { revenue:{class:'AED 63,400', appt:'AED 22,100', rec:'AED 11,700'},
+            bookings:{class:981, appt:118, rec:141},
+            newcust:{class:25, appt:4, rec:9},
+            returning:{class:265, appt:62, rec:45},
+            credits:{class:16, appt:7, rec:3} }
+  };
+
+  var range = '7', filter = 'all';
+  var tip = document.getElementById('tip');
+
+  function fmt(n){ return n >= 1000 ? (n/1000).toFixed(n%1000===0?0:1)+'K' : ''+n; }
+  function fmtFull(n){ return 'AED ' + n.toLocaleString('en-US'); }
+  function tname(k){ for (var t of TYPES) if (t.key===k) return t.name; return ''; }
+  function tfill(k){ for (var t of TYPES) if (t.key===k) return t.fill; return '#9aa39e'; }
+
+  function showTip(e, html){ tip.innerHTML = html; tip.style.display='block'; moveTip(e); }
+  function moveTip(e){
+    var x = e.clientX+14, y = e.clientY+14;
+    if (x + 240 > window.innerWidth) x = e.clientX - 244;
+    tip.style.left = x+'px'; tip.style.top = y+'px';
+  }
+  function hideTip(){ tip.style.display='none'; }
+
+  // Five tiles per scope. Slot jobs: 1 money locked in · 2 money recurring/at stake ·
+  // 3 demand · 4 expiring/risk · 5 the type's signature signal.
+  // All keeps the capacity tile (cross-type compare); type views drop it — the
+  // capacity panel below carries occupancy, with the window avg in its header.
+  var STRIPSETS = {
+    all: [
+      {k:'Revenue', v:{7:'AED 24,750',30:'AED 97,200'}, split:'revenue'},
+      {k:'Bookings', v:{7:'312',30:'1,240'}, split:'bookings'},
+      {k:'New customers', v:{7:'9',30:'38'}, split:'newcust'},
+      {k:'Returning customers', v:{7:'134',30:'372'}, split:'returning'},
+      {k:'Expiring plans', alert:true, v:{7:'9',30:'26'}, split:'credits'},
+      {cap:true}
+    ],
+    class: [
+      {k:'Revenue', v:{7:'AED 15,900',30:'AED 63,400'}},
+      {k:'Bookings', v:{7:'243',30:'981'}},
+      {k:'New customers', v:{7:'6',30:'25'}},
+      {k:'Returning customers', v:{7:'95',30:'265'}},
+      {k:'Expiring plans', alert:true, v:{7:'5',30:'16'}},
+      {k:'Under-filled classes', alert:true, v:{7:'7',30:'31'}}
+    ],
+    appt: [
+      {k:'Revenue', v:{7:'AED 5,600',30:'AED 22,100'}},
+      {k:'Bookings', v:{7:'31',30:'118'}},
+      {k:'New customers', v:{7:'1',30:'4'}},
+      {k:'Returning customers', v:{7:'17',30:'62'}},
+      {k:'Expiring plans', alert:true, v:{7:'3',30:'7'}}
+    ],
+    rec: [
+      {k:'Revenue', v:{7:'AED 3,250',30:'AED 11,700'}},
+      {k:'Bookings', v:{7:'38',30:'141'}},
+      {k:'New customers', v:{7:'2',30:'9'}},
+      {k:'Returning customers', v:{7:'22',30:'45'}},
+      {k:'Expiring plans', alert:true, v:{7:'1',30:'3'}},
+      {top:true}
+    ]
+  };
+  var CAPS = { class:{'7':59,'30':59}, appt:{'7':70,'30':63}, rec:{'7':61,'30':57} };
+
+  // Top recovery services by bookings in the window (mini-bars like the All capacity tile)
+  var TOPSVC = {
+    '7':  [{n:'Ice bath',v:16},{n:'Sauna',v:12},{n:'Massage',v:10}],
+    '30': [{n:'Ice bath',v:58},{n:'Sauna',v:45},{n:'Massage',v:38}]
+  };
+
+  function splitTip(kind){
+    var s = SPLITS[range][kind];
+    return TYPES.map(function(t){
+      return '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+t.fill+';margin-right:6px;"></span>'
+        + t.name + ' <b>' + s[t.key] + '</b>';
+    }).join('<br>');
+  }
+
+  function renderStrip(){
+    var html = STRIPSETS[filter].map(function(t){
+      if (t.top){
+        var list = TOPSVC[range], max = list[0].v;
+        return '<div class="tile"><div class="k">Top services</div><div class="cap">'
+          + list.map(function(s){
+              return '<div class="r"><b>'+s.n+'</b><span class="bar"><i style="width:'+Math.round(s.v/max*100)+'%;background:var(--rec-fill);"></i></span><em>'+s.v+'</em></div>';
+            }).join('')
+          + '</div></div>';
+      }
+      if (t.cap){
+        return '<div class="tile"><div class="k">Capacity used</div><div class="cap">'
+          + TYPES.map(function(ty){
+              var short = ty.key==='class'?'Classes': ty.key==='appt'?'Private':'Recovery';
+              var pct = CAPS[ty.key][range];
+              return '<div class="r"><b>'+short+'</b><span class="bar"><i style="width:'+pct+'%;background:'+ty.fill+';"></i></span><em>'+pct+'%</em></div>';
+            }).join('')
+          + '</div></div>';
+      }
+      return '<div class="tile'+(t.alert?' alert':'')+'"'+(t.split?' data-split="'+t.split+'"':'')+'>'
+        + '<div class="k">'+t.k+'</div><div class="v">'+t.v[range]+'</div>'
+        + (t.s ? '<div class="s">'+t.s[range]+'</div>' : '') + '</div>';
+    }).join('');
+    var strip = document.getElementById('strip');
+    // 5-tile scopes stretch to fill the row; 6-tile scopes keep six equal columns
+    strip.style.gridTemplateColumns = 'repeat(' + STRIPSETS[filter].length + ',1fr)';
+    strip.innerHTML = html;
+    strip.querySelectorAll('.tile[data-split]').forEach(function(tile){
+      tile.onmouseenter = function(e){ showTip(e, splitTip(tile.dataset.split)); };
+      tile.onmousemove = moveTip; tile.onmouseleave = hideTip;
+    });
+  }
+
+  function render(){
+    renderStrip();
+    var d = DATA[range];
+    var active = filter==='all' ? TYPES.map(t=>t.key) : [filter];
+    var scope = filter==='all' ? '' : tname(filter) + ' · ';
+    document.getElementById('win-label').textContent = scope + d.unit;
+    document.getElementById('win-label2').textContent = scope + d.unit
+      + (filter!=='all' ? ' · avg ' + CAPS[filter][range] + '%' : '');
+
+    // chart legend (dropdown replaced the pill row, so All view needs its own legend)
+    document.getElementById('legend').innerHTML = filter==='all'
+      ? TYPES.map(function(t){ return '<span><i style="background:'+t.fill+'"></i>'+t.name+'</span>'; }).join('')
+      : '';
+
+    // y grid: scale to visible max
+    var ymax = 0;
+    d.cols.forEach(function(c){ var s=0; active.forEach(function(k){ s+=c.rev[k]; }); if (s>ymax) ymax=s; });
+    ymax = ymax*1.08;
+    var ticks = d.ticks.filter(function(t){ return t<=ymax; });
+    if (filter!=='all'){ // cleaner ticks for smaller scales
+      var step = ymax>12000?5000: ymax>4000?2000: ymax>2200?1000:500;
+      ticks=[]; for(var v=0; v<=ymax; v+=step) ticks.push(v);
+    }
+    var H = 170;
+    var grid = document.getElementById('grid'); grid.innerHTML='';
+    ticks.forEach(function(t){
+      var y = H - (t/ymax)*H;
+      var gl = document.createElement('div'); gl.className='gl'+(t===0?' zero':''); gl.style.top=y+'px'; grid.appendChild(gl);
+      var yt = document.createElement('div'); yt.className='ytick'; yt.style.top=y+'px'; yt.style.left='-44px'; yt.textContent = t===0?'0':fmt(t); grid.appendChild(yt);
+    });
+
+    // columns
+    var cols = document.getElementById('cols'); cols.innerHTML='';
+    var xrow = document.getElementById('xrow'); xrow.innerHTML='';
+    var evrow = document.getElementById('evrow'); evrow.innerHTML='';
+    d.cols.forEach(function(c){
+      var col = document.createElement('div'); col.className='col';
+      var total = 0; active.forEach(function(k){ total += c.rev[k]; });
+      var lab = document.createElement('div'); lab.className='cap-label'; lab.textContent = fmt(total); col.appendChild(lab);
+      var stack = document.createElement('div'); stack.className='stack';
+      var drawn = active.filter(function(k){ return c.rev[k]>0; });
+      drawn.forEach(function(k, i){
+        var seg = document.createElement('div');
+        var h = Math.max(2, (c.rev[k]/ymax)*H);
+        seg.className = 'segm' + (i<drawn.length-1 ? ' gap' : ' top');
+        seg.style.height = h+'px';
+        seg.style.background = tfill(k);
+        seg.onmouseenter = function(e){ showTip(e, '<b>'+tname(k)+'</b><br>'+c.lab+' '+c.sub+'<br><span class="m">'+fmtFull(c.rev[k])+' expected</span>'); };
+        seg.onmousemove = moveTip; seg.onmouseleave = hideTip;
+        stack.appendChild(seg);
+      });
+      col.appendChild(stack);
+      cols.appendChild(col);
+
+      var xc = document.createElement('div'); xc.className='xc';
+      xc.innerHTML = '<b>'+c.lab+'</b>'+c.sub;
+      xrow.appendChild(xc);
+
+      var ec = document.createElement('div'); ec.className='ec';
+      if (c.ev && (filter==='all' || !c.ev.t || c.ev.t===filter)){
+        var chip = document.createElement('span'); chip.className='chip';
+        chip.innerHTML = (c.ev.t ? '<span class="sw" style="background:'+tfill(c.ev.t)+'"></span>' : '') + c.ev.txt;
+        ec.appendChild(chip);
+      }
+      evrow.appendChild(ec);
+    });
+
+    // capacity heat rows
+    var heat = document.getElementById('heat'); heat.innerHTML='';
+    TYPES.filter(function(t){ return active.indexOf(t.key)>=0; }).forEach(function(t){
+      var row = document.createElement('div'); row.className='hrow';
+      var hl = document.createElement('div'); hl.className='hlab'; hl.textContent = t.key==='class'?'Classes': t.key==='appt'?'Private':'Recovery';
+      var hc = document.createElement('div'); hc.className='hcells';
+      d.cols.forEach(function(c){
+        var cell = document.createElement('div');
+        var f = c.fill[t.key];
+        if (f===null){
+          cell.className='hcell closed';
+          cell.onmouseenter=function(e){ showTip(e,'<b>'+t.name+'</b><br>'+c.lab+' '+c.sub+'<br><span class="m">Closed — maintenance</span>'); };
+        } else {
+          cell.className='hcell';
+          var alpha = 0.15 + Math.max(0, Math.min(1, (f-40)/45))*0.8;
+          cell.style.background = t.fill + Math.round(alpha*255).toString(16).padStart(2,'0');
+          // % label: white or ink depending on blended cell luminance
+          var r = parseInt(t.fill.slice(1,3),16), g = parseInt(t.fill.slice(3,5),16), bl = parseInt(t.fill.slice(5,7),16);
+          var lum = (0.2126*(alpha*r+(1-alpha)*255) + 0.7152*(alpha*g+(1-alpha)*255) + 0.0722*(alpha*bl+(1-alpha)*255))/255;
+          cell.style.color = lum < 0.62 ? '#ffffff' : 'var(--ink)';
+          cell.textContent = f + '%';
+          cell.onmouseenter=function(e){ showTip(e,'<b>'+t.name+'</b><br>'+c.lab+' '+c.sub+'<br><span class="m">'+f+'% of capacity booked</span>'); };
+        }
+        cell.onmousemove=moveTip; cell.onmouseleave=hideTip;
+        hc.appendChild(cell);
+      });
+      row.appendChild(hl); row.appendChild(hc);
+      heat.appendChild(row);
+    });
+  }
+
+  // One filter dropdown, two panes: type (single-select) · locations (checkable, mock only)
+  function toggleMenu(e){
+    e.stopPropagation();
+    var el = document.getElementById('fmenu');
+    el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+  }
+  document.addEventListener('click', function(e){
+    var w = document.querySelector('.locwrap');
+    if (w && !w.contains(e.target)) document.getElementById('fmenu').style.display = 'none';
+  });
+  var typeNames = {all:'All types', class:'Classes', appt:'Private sessions', rec:'Recovery & wellness'};
+  function fbtnLabel(){
+    var on = Array.prototype.slice.call(document.querySelectorAll('#fmenu input:not([data-l="all"])')).filter(function(c){ return c.checked; });
+    var total = document.querySelectorAll('#fmenu input:not([data-l="all"])').length;
+    var locTxt = (on.length === total || on.length === 0) ? 'All locations'
+      : on.length === 1 ? on[0].dataset.l
+      : on.length + ' locations';
+    document.getElementById('fbtn').innerHTML =
+      (filter !== 'all' ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+tfill(filter)+';margin-right:6px;"></span>' : '')
+      + typeNames[filter] + ' · ' + locTxt + ' ▾';
+  }
+  function pickType(f, el){
+    filter = f;
+    document.querySelectorAll('#fmenu label[data-t]').forEach(function(l){ l.classList.remove('sel'); });
+    el.classList.add('sel');
+    fbtnLabel();
+    render();
+  }
+  function locAll(cb){
+    document.querySelectorAll('#fmenu input:not([data-l="all"])').forEach(function(c){ c.checked = cb.checked; });
+    fbtnLabel();
+  }
+  function locOne(){
+    var ones = Array.prototype.slice.call(document.querySelectorAll('#fmenu input:not([data-l="all"])'));
+    document.querySelector('#fmenu input[data-l="all"]').checked = ones.every(function(c){ return c.checked; });
+    fbtnLabel();
+  }
+
+  function setR(el){
+    document.querySelectorAll('.seg span').forEach(s=>s.classList.remove('on'));
+    el.classList.add('on');
+    range = el.dataset.r;
+    document.querySelectorAll('.rv').forEach(function(e){ e.innerHTML = e.dataset[range]; });
+    document.querySelectorAll('.rb').forEach(function(b){ b.style.width = b.dataset[range] + '%'; });
+    render();
+  }
+  render();
+</script>
+</body>
+</html>
