@@ -33,6 +33,7 @@ export function PlanCard({
     onReactivate,
     canReactivate = false,
     canFreeze = true,
+    freezeMode = "direct",
 }: {
     plan: CustomerPlan;
     creditsRemaining?: number;
@@ -47,6 +48,11 @@ export function PlanCard({
      *  policy (enabled + apply-to + under the max-freezes limit). When false the
      *  Freeze button is hidden (Cancel fills the row). Unfreeze is unaffected. */
     canFreeze?: boolean;
+    /** How the CTA reads — "direct" is the classic "Freeze"; "request" is used
+     *  when the studio picked Who can freeze = "Members request, admins
+     *  approve" (freeze policy v2). The Phase 5 wiring changes what the click
+     *  does; this prop only controls the label. */
+    freezeMode?: "direct" | "request";
 }) {
     const isMembership = plan.kind === "membership";
     const total = totalCredits(plan.creditsLabel);
@@ -171,7 +177,7 @@ export function PlanCard({
                             </Button>
                         ) : canFreeze ? (
                             <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onFreeze}>
-                                Freeze
+                                {freezeMode === "request" ? "Request freeze" : "Freeze"}
                             </Button>
                         ) : null}
                     </div>

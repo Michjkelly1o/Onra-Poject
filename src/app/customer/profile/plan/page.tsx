@@ -10,12 +10,12 @@ import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { ChevronLeft, CreditCardX } from "@untitledui/icons";
 import { useAppStore, type CustomerPlan } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
-import { REAL_TODAY_ISO, addDaysISO } from "@/lib/customer/dates";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { PlanCard } from "@/components/customer/profile/PlanCard";
-import { FreezePlanSheet } from "@/components/customer/profile/FreezePlanSheet";
+import { FreezePlanSheet, type FreezeReasonOption } from "@/components/customer/profile/FreezePlanSheet";
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
 import { Button } from "@/components/ui/button";
+import { decideFreezeCta } from "@/lib/customer/freeze-eligibility";
 
 // Cancel-plan reasons come from the studio-wide Cancellation policy (Booking
 // rules → Cancellation policy panel) — same source the admin cancel modal
@@ -43,6 +43,7 @@ export default function MyPlanPage() {
     const reactivateCustomerPlan = useAppStore((s) => s.reactivateCustomerPlan);
     const freezePolicy = useAppStore((s) => s.freezePolicy);
     const cancellationPolicy = useAppStore((s) => s.cancellationPolicy);
+    const customerTransactions = useAppStore((s) => s.customerTransactions);
 
     // Cancel-plan reasons come from Booking rules → Cancellation policy panel.
     // Fallback covers old persisted policies missing the field. When the list
@@ -60,25 +61,26 @@ export default function MyPlanPage() {
     // singleton seed.
     const policy = freezePolicy;
 
-    /** Freeze is offered only when the policy is on, the plan's membership is in
-     *  scope (apply-to), and it's under the max-freezes limit. */
-    function canFreezePlan(p: CustomerPlan): boolean {
-        if (p.kind !== "membership") return false;
-        if (!policy.enabled) return false;
-        if (policy.apply_to === "specific" && !(p.productId && policy.membership_ids.includes(p.productId))) return false;
-        if (policy.limit_freezes_enabled && (p.freezeCount ?? 0) >= policy.max_freezes) return false;
-        return true;
-    }
+    // Freeze CTA decision — centralised in `freeze-eligibility.ts` so the
+    // page, the card, and Phase 5's approval surface all read the same
+    // gates (policy on, admins_only mode, apply-to scope, freeze-limit
+    // ceiling, first billing cycle, payment failing). Called per plan
+    // below.
+    const ctaFor = (p: CustomerPlan) => decideFreezeCta(p, policy, customerTransactions);
 
-    // Sheet inputs derived from the policy (reasons / max duration / fee).
-    const unitDays = { days: 1, weeks: 7, months: 30 } as const;
-    const freezeReasons = policy.require_reason
-        ? policy.reasons.filter((r) => r.enabled && r.label.trim()).map((r) => r.label)
+    // Sheet inputs derived from the policy (reasons + fee). v2 — reasons
+    // carry their per-reason `exceptions` object so the sheet knows which
+    // pick bypasses the max-duration cap (Q7). Min / max duration + billing
+    // behavior are read directly from the policy inside the sheet.
+    const freezeReasons: FreezeReasonOption[] = policy.require_reason
+        ? policy.reasons
+              .filter((r) => r.enabled && r.label.trim())
+              .map((r) => ({
+                  label: r.label,
+                  ignoresMaxDuration: r.exceptions?.ignoresMaxDuration === true,
+              }))
         : [];
     const requireReason = policy.require_reason;
-    const maxFreezeDays = policy.max_duration_enabled
-        ? policy.max_duration_value * unitDays[policy.max_duration_unit]
-        : null;
     const freezeFee = policy.fee_enabled && policy.fee_amount_aed > 0
         ? { amount: policy.fee_amount_aed, type: policy.fee_type }
         : null;
@@ -155,23 +157,36 @@ export default function MyPlanPage() {
     // ("Expired plan") — same section style as the Notifications list.
     const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen");
     const pastPlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "cancelled" || p.status === "expired");
-    const renderCard = (p: CustomerPlan) => (
-        <PlanCard
-            key={p.id}
-            plan={p}
-            creditsRemaining={member?.creditsRemaining}
-            canReactivate={canReactivate(p)}
-            canFreeze={canFreezePlan(p)}
-            onFreeze={() => setFreezePlan(p)}
-            onUnfreeze={() => doUnfreeze(p)}
-            onCancel={() => setCancelPlan(p)}
-            onReactivate={() => doReactivate(p)}
-        />
-    );
+    const renderCard = (p: CustomerPlan) => {
+        const cta = ctaFor(p);
+        return (
+            <PlanCard
+                key={p.id}
+                plan={p}
+                creditsRemaining={member?.creditsRemaining}
+                canReactivate={canReactivate(p)}
+                canFreeze={cta.mode !== "hidden"}
+                freezeMode={cta.mode === "request" ? "request" : "direct"}
+                onFreeze={() => setFreezePlan(p)}
+                onUnfreeze={() => doUnfreeze(p)}
+                onCancel={() => setCancelPlan(p)}
+                onReactivate={() => doReactivate(p)}
+            />
+        );
+    };
 
-    function doFreeze(days: number, reason: string) {
+    // v2 (Phase 2) — sheet now supplies its own start/end, so we accept a
+    // full input object rather than a duration. Approval flow lands in
+    // Phase 5; for now Request-mode confirms freeze the same way as
+    // Members & admins so the demo end-to-end still works.
+    function doFreeze(input: { startISO: string; endISO: string; days: number; reasonLabel: string }) {
         if (!freezePlan) return;
-        const { fee } = freezeMembershipByCustomer(freezePlan.id, REAL_TODAY_ISO, addDaysISO(REAL_TODAY_ISO, days), reason || undefined);
+        const { fee } = freezeMembershipByCustomer(
+            freezePlan.id,
+            input.startISO,
+            input.endISO,
+            input.reasonLabel || undefined,
+        );
         showToast(
             `${Noun(freezePlan)} has been frozen`,
             fee > 0
@@ -258,10 +273,12 @@ export default function MyPlanPage() {
             <FreezePlanSheet
                 open={!!freezePlan}
                 onClose={() => setFreezePlan(null)}
+                plan={freezePlan}
+                policy={policy}
                 planNoun={freezePlan?.kind === "membership" ? "membership" : "package"}
                 reasons={freezeReasons}
                 requireReason={requireReason}
-                maxDays={maxFreezeDays}
+                approvalMode={freezePlan ? ctaFor(freezePlan).mode === "request" : false}
                 fee={freezeFee}
                 onConfirm={doFreeze}
             />
