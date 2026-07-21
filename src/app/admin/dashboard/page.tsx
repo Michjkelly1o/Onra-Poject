@@ -10,7 +10,7 @@ import {
     CalendarCheck01,
     BarChartSquare01,
     Plus,
-    DownloadCloud01,
+    Download01,
     // Metrics + Needs-attention icons (client dashboard update Jul 2026)
     CoinsStacked01,
     UserPlus01,
@@ -492,10 +492,14 @@ function ActivityRow({ item }: { item: TeamActivityItem }) {
     );
 }
 
-// ── Report dropdown ──
-const REPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
+// ── Export dropdown ──
+// Client 2026-07-21 — renamed from "Report" to "Export" so the dashboard
+// matches the Export button pattern used across every other admin list
+// (Customers / Products / Reports / Schedule / etc.): secondary-gray chrome,
+// Download01 icon, dropdown carrying format options.
+const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
 
-function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
+function ExportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -510,17 +514,17 @@ function ReportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
     return (
         <div ref={ref} className="relative flex-shrink-0">
             <Button
-                variant="primary"
+                variant="secondary-gray"
                 size="md"
-                leftIcon={<DownloadCloud01 className="w-4 h-4" />}
+                leftIcon={<Download01 className="w-4 h-4" />}
                 className="whitespace-nowrap"
                 onClick={() => setOpen(p => !p)}
             >
-                Report
+                Export
             </Button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[140px]">
-                    {REPORT_FORMATS.map(fmt => (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
+                    {EXPORT_FORMATS.map(fmt => (
                         <button
                             key={fmt}
                             type="button"
@@ -1602,19 +1606,11 @@ export default function AdminDashboard() {
                                     onChange={setPeriod}
                                 />
 
-                                {/* Add widget */}
-                                <Button
-                                    variant="secondary-gray"
-                                    size="md"
-                                    leftIcon={<Plus className="w-4 h-4" />}
-                                    className="flex-shrink-0 whitespace-nowrap"
-                                    onClick={() => setWidgetModalOpen(true)}
-                                >
-                                    Add widget
-                                </Button>
-
-                                {/* Report download — with format picker */}
-                                <ReportDropdown
+                                {/* Export — secondary-gray white variant with
+                                    Download01 icon (client 2026-07-21). Sits
+                                    with the filters; the primary Add widget
+                                    button lives on the far right below. */}
+                                <ExportDropdown
                                     onExportCsv={() => {
                                         exportPerformanceCsv(metrics, activeWidgets, period);
                                         showToast(
@@ -1624,6 +1620,22 @@ export default function AdminDashboard() {
                                         );
                                     }}
                                 />
+
+                                {/* Add widget — promoted to primary + moved to
+                                    the far right (client 2026-07-21) so it
+                                    reads as the main action on the Performance
+                                    tab. Every other control is a filter /
+                                    exporter; this is the only affordance that
+                                    adds new content to the dashboard. */}
+                                <Button
+                                    variant="primary"
+                                    size="md"
+                                    leftIcon={<Plus className="w-4 h-4" />}
+                                    className="flex-shrink-0 whitespace-nowrap"
+                                    onClick={() => setWidgetModalOpen(true)}
+                                >
+                                    Add widget
+                                </Button>
                             </>
                         )}
                     </div>
