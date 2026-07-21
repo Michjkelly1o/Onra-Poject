@@ -1072,10 +1072,16 @@ export const customerNotificationSink: {
         | null
         | ((n: {
               customerId: string;
-              event: "booking_confirmed" | "spot_available";
+              event:
+                  | "booking_confirmed"
+                  | "spot_available"
+                  // Freeze policy v2 (client 2026-07-20)
+                  | "membership_frozen"
+                  | "membership_reactivated"
+                  | "freeze_reminder";
               title: string;
               message: string;
-              relatedType: "booking";
+              relatedType: "booking" | "customer_plan";
               relatedId: string;
           }) => void);
 } = { emit: null };
@@ -1848,6 +1854,11 @@ export interface CustomerPlan {
      *  allowed reasons). Surfaced admin-side so the studio sees WHY the
      *  membership was paused. Cleared on unfreeze. */
     freezeReason?: string;
+    /** Idempotency stamp for the "freeze reminder" customer notification.
+     *  Set to the local ISO day when the reminder fired so a second hydrate
+     *  the same day doesn't spam the bell. Cleared on unfreeze so a future
+     *  freeze can re-arm. (Freeze policy v2 — client 2026-07-20 Phase 4.) */
+    freezeReminderSentAtISO?: string;
     freeCredits?: number;
     grantReason?: string;
     grantIssuedBy?: string;
@@ -2070,6 +2081,15 @@ function dateLabelFromISO(iso: string): string {
 function dayOfWeekFromISO(iso: string): string {
     const d = new Date(iso + "T00:00:00Z");
     return WEEKDAYS[d.getUTCDay()];
+}
+
+/** "20 Jul" for a freeze notification body — short, human-facing.
+ *  Kept close to the other date helpers so future callers land here. */
+function freezeDayLabel(iso: string): string {
+    if (!iso) return "";
+    const d = new Date(iso.slice(0, 10) + "T00:00:00Z");
+    if (Number.isNaN(d.getTime())) return iso;
+    return `${String(d.getUTCDate()).padStart(2, "0")} ${MONTHS[d.getUTCMonth()]}`;
 }
 
 function templateFromSeed(t: SeedClassTemplate): ClassTemplate {
@@ -6064,6 +6084,38 @@ export const useAppStore = create<AppState>()(persist(
         // Freeze via the shared action — handles status, expiry extension,
         // freezeCount++, the reason, and the audit entry (customer_portal).
         get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal", reason);
+        // Phase 4 — customer bell + admin bell notifications on self-freeze.
+        // Customer sees "Membership frozen" in their bookings tab; admin sees
+        // a bell row on the notifications page so the studio knows a member
+        // paused their plan self-service. Same fan-out pattern the rest of
+        // the store uses (customerNotificationSink for the member, emit-
+        // Notifications for the admin).
+        const start = freezeDayLabel(startISO);
+        const end = freezeDayLabel(endISO);
+        if (customer) {
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_frozen",
+                title: "Membership frozen",
+                message: `${plan.name} is frozen from ${start} to ${end}. Bookings resume ${end}.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_frozen",
+                    title: "Membership frozen",
+                    body: `${customerName} froze their ${plan.name} — resumes ${end}.`,
+                    icon: "calendar-minus",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
         // Charge-now: emit a non-refundable freeze-fee row when the studio
         // policy configures a fee (mirrors the cancellation-penalty pattern).
         const policy = get().freezePolicy;
@@ -6098,7 +6150,16 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             customerPlans: state.customerPlans.map(p =>
                 p.id === planId
-                    ? { ...p, status: "active" as const, freezeStartISO: undefined, freezeEndISO: undefined, freezeReason: undefined }
+                    ? {
+                          ...p,
+                          status: "active" as const,
+                          freezeStartISO: undefined,
+                          freezeEndISO: undefined,
+                          freezeReason: undefined,
+                          // Clear the reminder idempotency stamp so a future
+                          // freeze can re-arm its 3-day reminder cleanly.
+                          freezeReminderSentAtISO: undefined,
+                      }
                     : p,
             ),
         }));
@@ -8845,7 +8906,16 @@ export const useAppStore = create<AppState>()(persist(
         //   defaults any missing v2 fields to sensible v1-equivalent
         //   behaviour. Belt + suspenders per plan doc Q8: the version
         //   bump forces stale caches to reseed anyway.
-        version: 77,
+        // v78 (2026-07-21 admin): FreezePolicy v2 Phase 4 — auto-resume
+        //   sweep + freeze reminder notification. Adds
+        //   `freezeReminderSentAtISO` idempotency stamp on CustomerPlan
+        //   (defaults to undefined via migration below) so a fresh
+        //   hydrate can queue the 3-day reminder without spamming the
+        //   bell on repeat hydrates the same day. Bump reseeds stale
+        //   payloads so testers pick up the two new notification events
+        //   (`membership_frozen`, `membership_reactivated`) + the new
+        //   `ns_membership_freeze_reminder` notification_settings row.
+        version: 78,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -8898,15 +8968,106 @@ export const useAppStore = create<AppState>()(persist(
                 delete (fp as { allow_exceptions?: boolean }).allow_exceptions;
                 state.freezePolicy = fp;
             }
+            // v78 (2026-07-21) — Freeze policy v2 Phase 4.
+            // Auto-resume + reminder sweep. Runs at hydrate so an
+            // in-memory snapshot always reflects the freeze lifecycle
+            // WITHOUT needing a background timer.
+            //
+            // Two independent sub-sweeps:
+            //  1. AUTO-RESUME — any plan whose `freezeEndISO ≤ today`
+            //     flips back to active. Fires a customer bell row +
+            //     an admin bell row so both audiences see the change.
+            //  2. REMINDER — any still-frozen plan whose `freezeEndISO`
+            //     is within 3 days (Q2) AND hasn't been reminded today
+            //     enqueues a customer notification. `freezeReminderSentAtISO`
+            //     is stamped to today so a second hydrate the same
+            //     session doesn't re-fire. Cleared on unfreeze so a
+            //     future freeze can re-arm.
+            const todayISO = new Date().toISOString().slice(0, 10);
+            const REMINDER_DAYS = 3;
+            const resumedPlans: { plan: CustomerPlan; customer: Customer | undefined }[] = [];
+            const reminderPlans: { plan: CustomerPlan; customer: Customer | undefined }[] = [];
+            state.customerPlans = state.customerPlans.map((p) => {
+                if (p.status !== "frozen" || !p.freezeEndISO) return p;
+                const endDay = p.freezeEndISO.slice(0, 10);
+                // Auto-resume — end date reached.
+                if (endDay <= todayISO) {
+                    const c = state.customers.find(x => x.id === p.customerId);
+                    resumedPlans.push({ plan: p, customer: c });
+                    return {
+                        ...p,
+                        status: "active" as const,
+                        freezeStartISO: undefined,
+                        freezeEndISO: undefined,
+                        freezeReason: undefined,
+                        freezeReminderSentAtISO: undefined,
+                    };
+                }
+                // Reminder window — within N days of end date.
+                const daysLeft = Math.round(
+                    (Date.parse(`${endDay}T00:00:00Z`) - Date.parse(`${todayISO}T00:00:00Z`)) / 86_400_000,
+                );
+                if (
+                    daysLeft > 0 &&
+                    daysLeft <= REMINDER_DAYS &&
+                    p.freezeReminderSentAtISO !== todayISO
+                ) {
+                    const c = state.customers.find(x => x.id === p.customerId);
+                    reminderPlans.push({ plan: p, customer: c });
+                    return { ...p, freezeReminderSentAtISO: todayISO };
+                }
+                return p;
+            });
             // Deferred: the waitlist sweep calls set(), which must not run while
             // the store is still rehydrating. One tick later it applies Booking
             // Rules to any class already sitting with a free spot + a queue —
-            // so admin and customer open on the same reconciled state.
+            // so admin and customer open on the same reconciled state. Freeze
+            // notifications fire here too so `emitNotifications` sees a
+            // fully rehydrated store.
             setTimeout(() => {
                 try {
                     useAppStore.getState().reconcileBookingSpots();
                     useAppStore.getState().expireWaitlistClaims();
                     useAppStore.getState().reconcileWaitlistOffers();
+                    // Freeze policy v2 Phase 4 — notification fan-out for
+                    // the two sweeps above. Kept out of the sync path so
+                    // the render pass finishes before the bell blinks.
+                    for (const { plan, customer } of resumedPlans) {
+                        if (!customer) continue;
+                        customerNotificationSink.emit?.({
+                            customerId: customer.id,
+                            event: "membership_reactivated",
+                            title: "Membership resumed",
+                            message: `Your ${plan.name} is active again. Welcome back!`,
+                            relatedType: "customer_plan",
+                            relatedId: plan.id,
+                        });
+                        const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+                        useAppStore.getState().emitNotifications({
+                            admin: {
+                                tab: "booking",
+                                event: "membership_reactivated",
+                                title: "Membership resumed",
+                                body: `${customerName}'s ${plan.name} auto-resumed.`,
+                                icon: "refresh",
+                                sourceModule: "booking",
+                                sourceId: plan.id,
+                                customerId: customer.id,
+                                branchId: customer.branchId,
+                            },
+                        });
+                    }
+                    for (const { plan, customer } of reminderPlans) {
+                        if (!customer || !plan.freezeEndISO) continue;
+                        customerNotificationSink.emit?.({
+                            customerId: customer.id,
+                            event: "freeze_reminder",
+                            title: "Freeze ending soon",
+                            message: `Your ${plan.name} resumes on ${freezeDayLabel(plan.freezeEndISO)}. Bookings will be available again.`,
+                            relatedType: "customer_plan",
+                            relatedId: plan.id,
+                        });
+                    }
                 } catch {
                     /* store not ready (SSR / teardown) — the layout guard retries */
                 }

@@ -2204,7 +2204,13 @@ export type NotificationEventSeed =
     | "shift_assigned"           // staff (re)assigned to a shift
     | "shift_removed"            // staff removed from a shift
     | "blocked_time_added"       // admin blocked time for instructor
-    | "blocked_time_removed";    // admin deleted a blocked-time entry
+    | "blocked_time_removed"     // admin deleted a blocked-time entry
+    // ── Freeze policy v2 (client 2026-07-20) ─────────────────────────
+    //    Fired when a customer freezes their own membership or when a
+    //    freeze auto-resumes at end-date. Admin bell rows surface to
+    //    the studio so they know a member paused / unpaused their plan.
+    | "membership_frozen"        // customer self-freeze started
+    | "membership_reactivated";  // auto-resume swept a freeze back to active
 
 /** Tab grouping on the notifications page.
  *

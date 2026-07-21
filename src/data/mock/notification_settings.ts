@@ -365,6 +365,28 @@ export const notification_settings: NotificationSettingSeed[] = [
         send_offsets: [],
     },
     {
+        // ── Freeze policy v2 Phase 4 (client 2026-07-20) ────────────────
+        // Fires 3 days before the freeze end date so the member has time
+        // to book their first class back. Q2 pinned the cadence at 3 days
+        // to mirror the payment reminder — one send window across the
+        // customer bell so the tone stays consistent.
+        id: "ns_membership_freeze_reminder",
+        category: "package_membership",
+        notification_type: "membership_freeze_reminder",
+        label: "Freeze ending reminder",
+        email_enabled: true,
+        whatsapp_enabled: true,
+        sms_enabled: true,
+        email_subject: "Your {package_name} resumes on {expiry_date}",
+        email_template: "Hi {member_name},\n\nA quick heads-up — your {package_name} freeze ends on {expiry_date} and your membership resumes automatically. You'll be able to book classes again from that day.\n\n— {studio_name}",
+        whatsapp_template: "Hi {member_name}! ❄️ Your {package_name} freeze ends {expiry_date} — bookings will be back on. See you soon!",
+        sms_template: "{studio_name}: {package_name} resumes on {expiry_date} — bookings back on that day.",
+        whatsapp_approval_status: "approved",
+        is_critical: false,
+        send_mode: "scheduled",
+        send_offsets: [{ value: 3, unit: "days" }],
+    },
+    {
         id: "ns_membership_renewal",
         category: "package_membership",
         notification_type: "membership_renewal",

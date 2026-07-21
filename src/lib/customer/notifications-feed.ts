@@ -27,7 +27,11 @@ export type NotifEvent =
     | "appointment_cancelled"
     | "membership_purchase"
     | "class_package"
-    | "failed_payment";
+    | "failed_payment"
+    // ── Freeze policy v2 Phase 4 (client 2026-07-20) ────────────────
+    | "membership_frozen"
+    | "membership_reactivated"
+    | "freeze_reminder";
 
 export type NotifRelatedType = "booking" | "appointment" | "plan" | "product" | "payment_method";
 
@@ -256,5 +260,16 @@ export function useUnreadNotifCount(): number {
 customerNotificationSink.emit = ({ customerId, event, title, message, relatedType, relatedId }) => {
     const viewer = getAuthSession().customerId ?? DEMO_MEMBER_ID;
     if (customerId !== viewer) return;
-    addCustomerNotification({ tab: "bookings", event, title, message, relatedType, relatedId });
+    // Bookings tab hosts every membership-lifecycle event today
+    // (booking_confirmed / spot_available / membership_frozen /
+    // membership_reactivated / freeze_reminder). Payments tab is reserved
+    // for the transaction/refund/receipt feed. Keep this line in sync with
+    // the sink's event union in store.ts if new events are added.
+    //
+    // The store-side sink uses `customer_plan` for freeze events (matches
+    // its audit-log target type); the customer feed's own `related_type`
+    // column standardised on `plan`. Map here so both sides stay natural
+    // in their own module.
+    const feedRelatedType: NotifRelatedType = relatedType === "customer_plan" ? "plan" : relatedType;
+    addCustomerNotification({ tab: "bookings", event, title, message, relatedType: feedRelatedType, relatedId });
 };
