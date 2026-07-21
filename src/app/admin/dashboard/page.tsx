@@ -630,10 +630,6 @@ export default function AdminDashboard() {
     // feed lives on /admin/notifications?tab=team.
     const recentActivity = useTeamActivity(10);
     // Phase 3 cross-module sync — welcome header reads from the centralized
-    // Branding `displayName` so editing it through Settings → Branding flips
-    // the dashboard greeting in the same render cycle.
-    const studioDisplayName = useAppStore(s => s.brandingSettings.displayName);
-
     // Sourced from the live `branches` slice so dashboard / schedule / POS
     // branch pickers reflect adds, archives and renames in Business &
     // Locations immediately. Inactive + archived branches are hidden (only
@@ -1484,164 +1480,154 @@ export default function AdminDashboard() {
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
 
-            {/* Tab Navigation — sticky when scrolling. The `bg-white`
-                covers directly behind the tabs; the white box-shadow
+            {/* Tabs + tab-specific toolbar — sticky when scrolling.
+                Client 2026-07-21: toolbar controls (Type/Location filter,
+                DateRange, Add widget, etc.) now sit on the SAME row as
+                the tabs so the whole strip stays frozen. The `bg-white`
+                covers directly behind the strip; the white box-shadow
                 extends that white 24px UPWARD to fill main's p-6 top
-                padding gap (where content used to bleed through above
-                the tabs). box-shadow is purely visual — it does NOT
+                padding gap. box-shadow is purely visual — it does NOT
                 affect layout, so the tab strip does NOT move a pixel. */}
-            <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] shadow-[0_-24px_0_0_#ffffff]">
-                <div className="flex gap-3 items-start">
-                    <button
-                        onClick={() => setActiveTab("today")}
-                        className={cn(
-                            "flex gap-2 h-8 items-center justify-center pb-3 px-1 relative flex-shrink-0 transition-colors",
-                            activeTab === "today"
-                                ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
-                                : "text-[#667085] font-semibold hover:text-[#344054]"
-                        )}
-                    >
-                        <span className="text-sm">Today</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("coming")}
-                        className={cn(
-                            "flex gap-2 h-8 items-center justify-center pb-3 px-1 relative flex-shrink-0 transition-colors",
-                            activeTab === "coming"
-                                ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
-                                : "text-[#667085] font-semibold hover:text-[#344054]"
-                        )}
-                    >
-                        <span className="text-sm">Coming Up</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("performance")}
-                        className={cn(
-                            "flex gap-2 h-8 items-center justify-center pb-3 px-1 relative flex-shrink-0 transition-colors",
-                            activeTab === "performance"
-                                ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
-                                : "text-[#667085] font-semibold hover:text-[#344054]"
-                        )}
-                    >
-                        <span className="text-sm">Performance</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Welcome + Location Picker + tab-specific actions */}
-            <div className="flex gap-2 items-center">
-                <p className="flex-1 font-semibold text-base text-[#101828]">
-                    {activeTab === "today" ? `Welcome, ${studioDisplayName}` : ""}
-                </p>
-
-                {/* Merged Type + Locations filter — Today tab (client 2026-07-20).
-                    Replaces the separate pills row + shared location dropdown
-                    with a single popover that matches DateRangeFilter's trigger
-                    chrome. Type is single-select (radio-style rows); Locations
-                    is single-select-under-checkbox-skin (radio semantics with
-                    checkbox visuals) so downstream widgets keep their existing
-                    `branchId: string | null` prop shape. */}
-                {activeTab === "today" && (
-                    <TypeLocationFilter
-                        type={typeFilter}
-                        onTypeChange={setTypeFilter}
-                        locations={locations}
-                        onLocationsChange={setLocations}
-                        options={branches
-                            .filter(b => b.status === "active")
-                            .map(b => ({ id: b.id, name: b.name }))}
-                    />
-                )}
-
-                {/* Merged Type + Locations filter — Coming Up tab (client
-                    2026-07-20). Same component as Today; wires to `comingType`
-                    so the per-type card matrix on Coming Up still switches on
-                    it (the Today `typeFilter` is intentionally separate — each
-                    tab keeps its own type memory so the user's pick on Today
-                    doesn't silently re-scope Coming Up's cards). */}
-                {activeTab === "coming" && (
-                    <TypeLocationFilter
-                        type={comingType}
-                        onTypeChange={setComingType}
-                        locations={locations}
-                        onLocationsChange={setLocations}
-                        options={branches
-                            .filter(b => b.status === "active")
-                            .map(b => ({ id: b.id, name: b.name }))}
-                    />
-                )}
-
-                {/* Location picker — Performance tab only. The merged filter
-                    (used on Today + Coming Up) is Type-aware, but Performance
-                    has no Type dimension; keeping the existing SelectInput here
-                    is the least-invasive path and preserves the tab's original
-                    chrome (Location · DateRange · Add widget). */}
-                {activeTab === "performance" && (
-                    <SelectInput
-                        triggerIcon={<MarkerPin01 className="w-5 h-5" />}
-                        placeholder="Select location"
-                        options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                        value={locations.length === 1 ? locations[0] : ""}
-                        onChange={(v) => setLocations(v ? [v] : [])}
-                        width="w-[220px]"
-                    />
-                )}
-
-                {/* Coming-up range pill — Next 7 days | Next 30 days (Figma
-                    7823:53746). Height locked to h-10 (40px) to match the
-                    Location dropdown so the header row reads as one strip. */}
-                {activeTab === "coming" && (
-                    <div className="flex items-center gap-1 h-10 p-1 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px]">
-                        {([7, 30] as const).map(n => (
-                            <button
-                                key={n}
-                                type="button"
-                                onClick={() => setComingRange(n)}
-                                className={cn(
-                                    "h-8 px-3 rounded-[6px] text-[13px] font-medium transition-colors",
-                                    comingRange === n
-                                        ? "bg-white text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                        : "text-[#667085] hover:text-[#344054]",
-                                )}
-                            >
-                                Next {n} days
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {/* Performance-only controls */}
-                {activeTab === "performance" && (
-                    <>
-                        <DateRangeFilter
-                            value={period}
-                            onChange={setPeriod}
-                        />
-
-                        {/* Add widget */}
-                        <Button
-                            variant="secondary-gray"
-                            size="md"
-                            leftIcon={<Plus className="w-4 h-4" />}
-                            className="flex-shrink-0 whitespace-nowrap"
-                            onClick={() => setWidgetModalOpen(true)}
+            <div className="sticky top-0 z-30 w-full bg-white shadow-[0_-24px_0_0_#ffffff]">
+                <div className="flex gap-3 items-center justify-between">
+                    {/* Left: tabs. `items-center` matches the toolbar chrome
+                        so tabs vertically align with the h-10 controls. */}
+                    <div className="flex gap-3 items-center flex-shrink-0">
+                        <button
+                            onClick={() => setActiveTab("today")}
+                            className={cn(
+                                "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
+                                activeTab === "today"
+                                    ? "border-[#101828] text-[#101828] font-semibold"
+                                    : "border-transparent text-[#667085] font-semibold hover:text-[#344054]"
+                            )}
                         >
-                            Add widget
-                        </Button>
+                            <span className="text-sm">Today</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("coming")}
+                            className={cn(
+                                "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
+                                activeTab === "coming"
+                                    ? "border-[#101828] text-[#101828] font-semibold"
+                                    : "border-transparent text-[#667085] font-semibold hover:text-[#344054]"
+                            )}
+                        >
+                            <span className="text-sm">Coming Up</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("performance")}
+                            className={cn(
+                                "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
+                                activeTab === "performance"
+                                    ? "border-[#101828] text-[#101828] font-semibold"
+                                    : "border-transparent text-[#667085] font-semibold hover:text-[#344054]"
+                            )}
+                        >
+                            <span className="text-sm">Performance</span>
+                        </button>
+                    </div>
 
-                        {/* Report download — with format picker */}
-                        <ReportDropdown
-                            onExportCsv={() => {
-                                exportPerformanceCsv(metrics, activeWidgets, period);
-                                showToast(
-                                    "Performance report exported",
-                                    `${metrics.length} metric${metrics.length === 1 ? "" : "s"} + ${activeWidgets.length} widget${activeWidgets.length === 1 ? "" : "s"} exported to CSV.`,
-                                    "success", "check",
-                                );
-                            }}
-                        />
-                    </>
-                )}
+                    {/* Right: tab-specific toolbar. Sits INSIDE the sticky
+                        container so it freezes with the tabs. Height locked
+                        to h-10 (40px) matching the tab row so the strip
+                        reads as one line. Pushed to the bottom via -mb-0.5
+                        so the toolbar's own border-1 rows don't visually
+                        collide with the strip's border-b. */}
+                    <div className="flex gap-2 items-center pb-2">
+                        {/* Merged Type + Locations filter — Today tab. */}
+                        {activeTab === "today" && (
+                            <TypeLocationFilter
+                                type={typeFilter}
+                                onTypeChange={setTypeFilter}
+                                locations={locations}
+                                onLocationsChange={setLocations}
+                                options={branches
+                                    .filter(b => b.status === "active")
+                                    .map(b => ({ id: b.id, name: b.name }))}
+                            />
+                        )}
+
+                        {/* Merged Type + Locations filter — Coming Up tab. */}
+                        {activeTab === "coming" && (
+                            <TypeLocationFilter
+                                type={comingType}
+                                onTypeChange={setComingType}
+                                locations={locations}
+                                onLocationsChange={setLocations}
+                                options={branches
+                                    .filter(b => b.status === "active")
+                                    .map(b => ({ id: b.id, name: b.name }))}
+                            />
+                        )}
+
+                        {/* Location picker — Performance tab only. */}
+                        {activeTab === "performance" && (
+                            <SelectInput
+                                triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                                placeholder="Select location"
+                                options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                                value={locations.length === 1 ? locations[0] : ""}
+                                onChange={(v) => setLocations(v ? [v] : [])}
+                                width="w-[220px]"
+                            />
+                        )}
+
+                        {/* Coming-up range pill — Next 7 days | Next 30 days. */}
+                        {activeTab === "coming" && (
+                            <div className="flex items-center gap-1 h-10 p-1 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px]">
+                                {([7, 30] as const).map(n => (
+                                    <button
+                                        key={n}
+                                        type="button"
+                                        onClick={() => setComingRange(n)}
+                                        className={cn(
+                                            "h-8 px-3 rounded-[6px] text-[13px] font-medium transition-colors",
+                                            comingRange === n
+                                                ? "bg-white text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                                : "text-[#667085] hover:text-[#344054]",
+                                        )}
+                                    >
+                                        Next {n} days
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Performance-only controls */}
+                        {activeTab === "performance" && (
+                            <>
+                                <DateRangeFilter
+                                    value={period}
+                                    onChange={setPeriod}
+                                />
+
+                                {/* Add widget */}
+                                <Button
+                                    variant="secondary-gray"
+                                    size="md"
+                                    leftIcon={<Plus className="w-4 h-4" />}
+                                    className="flex-shrink-0 whitespace-nowrap"
+                                    onClick={() => setWidgetModalOpen(true)}
+                                >
+                                    Add widget
+                                </Button>
+
+                                {/* Report download — with format picker */}
+                                <ReportDropdown
+                                    onExportCsv={() => {
+                                        exportPerformanceCsv(metrics, activeWidgets, period);
+                                        showToast(
+                                            "Performance report exported",
+                                            `${metrics.length} metric${metrics.length === 1 ? "" : "s"} + ${activeWidgets.length} widget${activeWidgets.length === 1 ? "" : "s"} exported to CSV.`,
+                                            "success", "check",
+                                        );
+                                    }}
+                                />
+                            </>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* KPI Metrics — Coming-up uses a fixed 3-col grid to match the

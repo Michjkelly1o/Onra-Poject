@@ -170,12 +170,25 @@ export default function Header() {
     // "Recovery & wellness" nav entries share the route, so the header title
     // reads the type off the query to show the right module name.
     const typeParam = useSearchParams().get("type");
+    // Dashboard title greets the studio by name (client 2026-07-21).
+    // Reads from brandingSettings.displayName so editing it in
+    // Settings → Branding flips the greeting in the same render cycle.
+    const studioDisplayName = useAppStore(s => s.brandingSettings.displayName);
     const pageTitle =
         pathname === "/admin/services" && (typeParam === "private" || typeParam === "recovery")
             ? SESSION_TYPE_LABEL[typeParam]
-            : getPageTitle(pathname);
+            : pathname === "/admin/dashboard"
+              ? `Welcome ${studioDisplayName}`
+              : getPageTitle(pathname);
     const [searchOpen, setSearchOpen] = useState(false);
     const isInstructor = pathname.startsWith("/instructor");
+    // Global search is dashboard-only (client 2026-07-21). Every other admin
+    // module has its own scoped filter/search on the page, so the header
+    // affordance was redundant + noisy. Kept live on the dashboard because
+    // that's the one landing surface where the user hasn't yet picked a
+    // module to search inside.
+    const isDashboard = pathname.startsWith("/admin/dashboard");
+    const showGlobalSearch = !isInstructor && isDashboard;
 
     // Persona-aware account route — instructor pages link to the dedicated
     // instructor account page; everywhere else (admin) goes to the
@@ -197,14 +210,17 @@ export default function Header() {
                 <Breadcrumbs className="p-0 text-[12px]" />
             </div>
 
-            {/* Right: Search (admin only, icon-button — matches the bell
-                chrome) + Bell + Profile dropdown. The instructor experience
-                doesn't surface a global search — the surfaces an instructor
-                touches (schedule, dashboard) are scoped to their own data,
-                so a global text search across customers / staff / products
-                is irrelevant to them. */}
+            {/* Right: Search (dashboard only, icon-button — matches the bell
+                chrome) + Bell + Profile dropdown. Client 2026-07-21: global
+                search is hidden on every non-dashboard admin page. Every
+                other module has its own scoped filter/search on the page, so
+                the header affordance was redundant. Kept live on the
+                dashboard because that's the landing surface where the user
+                hasn't yet picked a module to search inside. The instructor
+                experience never sees it (their surfaces are scoped to their
+                own data, so cross-studio search is irrelevant). */}
             <div className="flex items-center gap-[12px]">
-                {!isInstructor && (
+                {showGlobalSearch && (
                     <button
                         type="button"
                         onClick={() => setSearchOpen(true)}
@@ -222,7 +238,7 @@ export default function Header() {
                     we ever need a header avatar again it's still here. */}
             </div>
 
-            {!isInstructor && (
+            {showGlobalSearch && (
                 <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
             )}
         </header>
