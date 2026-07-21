@@ -216,8 +216,14 @@ function formatSendTime(ns: NotificationSetting): string {
 
 // ─── Row kebab menu (Edit template / Manage timing) ────────────────────────
 
-function RowKebab({ onEditTemplate, onManageTiming }: {
-    onEditTemplate: () => void; onManageTiming: () => void;
+function RowKebab({ onEditTemplate, onManageTiming, onRemove }: {
+    onEditTemplate: () => void;
+    onManageTiming: () => void;
+    /** Client 2026-07-20: override rows carry a Remove action, parent
+     *  rows don't. When set, appears at the bottom of the menu with
+     *  destructive-red text — sits UNDER the two edit actions so a
+     *  fumbled click doesn't nuke the override. */
+    onRemove?: () => void;
 }) {
     const btnRef = useRef<HTMLButtonElement>(null);
     const [open, setOpen] = useState(false);
@@ -241,6 +247,17 @@ function RowKebab({ onEditTemplate, onManageTiming }: {
                     <Clock className="w-4 h-4 text-[#667085]" />
                     Manage timing
                 </button>
+                {onRemove && (
+                    <>
+                        <div className="h-px bg-[#eaecf0] my-1" />
+                        <button type="button"
+                            onClick={() => { setOpen(false); onRemove(); }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors text-left">
+                            <Trash01 className="w-4 h-4 text-[#b42318]" />
+                            Delete override
+                        </button>
+                    </>
+                )}
             </FixedDropdown>
         </>
     );
@@ -248,7 +265,7 @@ function RowKebab({ onEditTemplate, onManageTiming }: {
 
 // ─── Event row ─────────────────────────────────────────────────────────────
 
-function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate, onManageTiming }: {
+function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate, onManageTiming, trailingBadge }: {
     ns: NotificationSetting;
     waConnected: boolean;
     onChannelToggle: (channel: "email" | "whatsapp" | "sms", enabled: boolean) => void;
@@ -258,6 +275,10 @@ function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate,
     onLockHit: () => void;
     onEditTemplate: () => void;
     onManageTiming: () => void;
+    /** Client 2026-07-20: marketing rows render a small "N branches"
+     *  chip after the label + existing pills. Non-marketing rows
+     *  pass null so the row is unchanged. */
+    trailingBadge?: React.ReactNode;
 }) {
     // Meta approval state is a property of the template itself so it
     // stays visible whenever the integration is connected — even when
@@ -299,6 +320,7 @@ function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate,
                 {ns.sentDuringCampaigns && (
                     <Pill tone="gray">Sent during campaigns</Pill>
                 )}
+                {trailingBadge}
             </div>
             <div className={cn(COL_EMAIL, "flex justify-center")}>
                 <Toggle on={ns.emailEnabled}
@@ -384,6 +406,13 @@ function Section({
         }
         return map;
     }, [allSettings, category]);
+    // Per-parent accordion state (marketing only) — client 2026-07-20.
+    // Each parent row is collapsed by default; clicking the chevron on
+    // the parent row expands its branch-overrides block. Non-marketing
+    // categories never read this state.
+    const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
+    const toggleParent = (id: string) =>
+        setExpandedParents(s => ({ ...s, [id]: !s[id] }));
     return (
         <div className="border-t border-[#e4e7ec]">
             <button type="button" onClick={onToggle}
@@ -396,32 +425,69 @@ function Section({
                 <span className="text-[14px] font-medium text-[#101828]">{meta.label}</span>
             </button>
 
-            {open && items.map(ns => (
-                <Fragment key={ns.id}>
-                    <EventRow
-                        ns={ns}
-                        waConnected={waConnected}
-                        onChannelToggle={(ch, v) => onChannelToggle(ns.id, ch, v)}
-                        onLockHit={() => onLockHit(ns.id)}
-                        onEditTemplate={() => onEditTemplate(ns)}
-                        onManageTiming={() => onManageTiming(ns)}
-                    />
-                    {category === "marketing" && (
-                        <MarketingBranchOverrides
-                            parent={ns}
-                            overrides={overridesByType.get(ns.notificationType) ?? []}
-                            branches={branches}
-                            waConnected={waConnected}
-                            onChannelToggle={onChannelToggle}
-                            onLockHit={onLockHit}
-                            onEditTemplate={onEditTemplate}
-                            onManageTiming={onManageTiming}
-                            onAddBranchOverride={onAddBranchOverride}
-                            onRemoveBranchOverride={onRemoveBranchOverride}
-                        />
-                    )}
-                </Fragment>
-            ))}
+            {open && items.map(ns => {
+                const isMarketing = category === "marketing";
+                const isExpanded = !!expandedParents[ns.id];
+                const overrideCount =
+                    (overridesByType.get(ns.notificationType) ?? []).length;
+                return (
+                    <Fragment key={ns.id}>
+                        <div className="relative">
+                            {isMarketing && (
+                                <button
+                                    type="button"
+                                    onClick={() => toggleParent(ns.id)}
+                                    aria-label={
+                                        isExpanded
+                                            ? `Hide branch overrides for ${ns.label}`
+                                            : `Show branch overrides for ${ns.label}`
+                                    }
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 flex items-center justify-center rounded hover:bg-[#f2f4f7] text-[#667085] transition-colors"
+                                >
+                                    <ChevronDown
+                                        className={cn(
+                                            "w-4 h-4 transition-transform",
+                                            !isExpanded && "-rotate-90",
+                                        )}
+                                    />
+                                </button>
+                            )}
+                            <EventRow
+                                ns={ns}
+                                waConnected={waConnected}
+                                onChannelToggle={(ch, v) => onChannelToggle(ns.id, ch, v)}
+                                onLockHit={() => onLockHit(ns.id)}
+                                onEditTemplate={() => onEditTemplate(ns)}
+                                onManageTiming={() => onManageTiming(ns)}
+                                trailingBadge={
+                                    isMarketing && overrideCount > 0 ? (
+                                        <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-[#f5fffa] border border-[#e4e7ec] text-[11px] font-medium text-[#658774]">
+                                            {overrideCount}{" "}
+                                            {overrideCount === 1
+                                                ? "branch"
+                                                : "branches"}
+                                        </span>
+                                    ) : null
+                                }
+                            />
+                        </div>
+                        {isMarketing && isExpanded && (
+                            <MarketingBranchOverrides
+                                parent={ns}
+                                overrides={overridesByType.get(ns.notificationType) ?? []}
+                                branches={branches}
+                                waConnected={waConnected}
+                                onChannelToggle={onChannelToggle}
+                                onLockHit={onLockHit}
+                                onEditTemplate={onEditTemplate}
+                                onManageTiming={onManageTiming}
+                                onAddBranchOverride={onAddBranchOverride}
+                                onRemoveBranchOverride={onRemoveBranchOverride}
+                            />
+                        )}
+                    </Fragment>
+                );
+            })}
 
             {open && category === "marketing" && (
                 <div className="mx-4 mt-4 mb-4 rounded-[12px] bg-[#f5fffa] border-1 border-[#e4e7ec] px-4 py-3 flex items-start gap-3">
@@ -470,7 +536,7 @@ function MarketingBranchOverrides({
         b => b.status === "active" && !usedBranchIds.has(b.id),
     );
     return (
-        <div className="bg-[#fafbff]">
+        <div>
             {overrides.map(o => (
                 <MarketingOverrideRow
                     key={o.id}
@@ -490,7 +556,7 @@ function MarketingBranchOverrides({
                         <button
                             type="button"
                             onClick={() => setAddOpen(o => !o)}
-                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[#4b8c9a] hover:bg-white hover:text-[#306b78] transition-colors"
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[#658774] hover:bg-[#f5fffa] hover:text-[#4c6a5a] transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             Branch overrides
@@ -517,11 +583,6 @@ function MarketingBranchOverrides({
                             </div>
                         )}
                     </div>
-                    {overrides.length === 0 && (
-                        <span className="text-[12px] text-[#98a2b3]">
-                            Add a branch to customise this notification&apos;s channels + template for that location. Branches without an override inherit the settings above.
-                        </span>
-                    )}
                 </div>
             )}
         </div>
@@ -576,16 +637,12 @@ function MarketingOverrideRow({
             <div className={cn(COL_SEND, "text-[13px] text-[#475467]")}>
                 {override.sentDuringCampaigns ? "—" : formatSendTime(override)}
             </div>
-            <div className={cn(COL_KEBAB, "flex items-center justify-center gap-1")}>
-                <RowKebab onEditTemplate={onEditTemplate} onManageTiming={onManageTiming} />
-                <button
-                    type="button"
-                    onClick={onRemove}
-                    aria-label={`Remove ${branchName} override`}
-                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#f9fafb] text-[#98a2b3] hover:text-[#b42318] transition-colors"
-                >
-                    <Trash01 className="w-4 h-4" />
-                </button>
+            <div className={cn(COL_KEBAB, "flex justify-center")}>
+                <RowKebab
+                    onEditTemplate={onEditTemplate}
+                    onManageTiming={onManageTiming}
+                    onRemove={onRemove}
+                />
             </div>
         </div>
     );
