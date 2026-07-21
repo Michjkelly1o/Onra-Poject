@@ -26,8 +26,10 @@ import type { StripMetrics } from "@/lib/dashboard/coming-up";
 import { aedFull } from "@/lib/dashboard/coming-up";
 import { cn } from "@/lib/utils";
 
-/** One tile — kv card with optional split-tooltip on hover. `alert` flips
- *  the value color to the amber warning tone. */
+/** One tile — matches the shared MetricCard chrome (rounded-2xl, p-4,
+ *  text-sm label, text-xl value) so the Coming-up strip reads the same
+ *  as every other dashboard KPI grid. `alert` flips the value color to
+ *  the amber warning tone. */
 function Tile({ label, value, sub, alert, split, className }: {
     label: string;
     value: string;
@@ -40,17 +42,20 @@ function Tile({ label, value, sub, alert, split, className }: {
     const [showTip, setShowTip] = useState(false);
     return (
         <div
-            className={cn("relative bg-white border-1 border-[#e4e7ec] rounded-[10px] p-3.5", className)}
+            className={cn("relative bg-white border border-[#e4e7ec] rounded-2xl p-4", className)}
             onMouseEnter={split ? () => setShowTip(true) : undefined}
             onMouseLeave={split ? () => setShowTip(false) : undefined}
         >
-            <p className="text-[11.5px] text-[#667085] mb-1.5">{label}</p>
-            <p className={cn("text-[19px] font-semibold leading-tight tracking-tight", alert ? "text-[#b54708]" : "text-[#101828]")}>
+            <p className="font-normal text-sm text-[#667085] whitespace-nowrap mb-1.5">{label}</p>
+            <p className={cn("font-semibold text-xl leading-[28px] whitespace-nowrap", alert ? "text-[#b54708]" : "text-[#101828]")}>
                 {value}
             </p>
-            {sub && <p className="text-[11.5px] text-[#98a2b3] mt-1">{sub}</p>}
+            {sub && <p className="font-normal text-xs text-[#667085] mt-1">{sub}</p>}
             {split && showTip && (
-                <div className="absolute z-20 left-3.5 top-full mt-1 bg-[#1e2a24] text-white text-[11.5px] rounded-md py-2 px-3 min-w-[200px] shadow-lg pointer-events-none">
+                <div
+                    role="tooltip"
+                    className="absolute z-20 left-4 top-full mt-2 bg-[#0c111d] text-white text-[12px] leading-[16px] rounded-[8px] py-2 px-3 min-w-[220px] shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)] pointer-events-none"
+                >
                     {split.map((row, i) => (
                         <div key={i} className="flex items-center gap-2 leading-[1.5]">
                             <span
@@ -79,11 +84,11 @@ function BarRow({ name, value, max, color, valueLabel }: {
     const pct = max > 0 ? Math.round((value / max) * 100) : 0;
     return (
         <div className="flex items-center gap-2">
-            <span className="w-[52px] shrink-0 text-[10.5px] font-medium text-[#667085]">{name}</span>
+            <span className="w-[52px] shrink-0 text-xs font-medium text-[#667085]">{name}</span>
             <span className="flex-1 h-1.5 bg-[#eaecf0] rounded-full overflow-hidden">
                 <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
             </span>
-            <span className="w-[30px] shrink-0 text-right text-[10.5px] text-[#98a2b3] tabular-nums">{valueLabel}</span>
+            <span className="w-[36px] shrink-0 text-right text-xs text-[#667085] tabular-nums">{valueLabel}</span>
         </div>
     );
 }
@@ -165,8 +170,8 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
 
             {/* Trailing signature tile — varies by filter. */}
             {typeFilter === "" && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[10px] p-3.5">
-                    <p className="text-[11.5px] text-[#667085] mb-2">Capacity used</p>
+                <div className="bg-white border border-[#e4e7ec] rounded-2xl p-4">
+                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap mb-2">Capacity used</p>
                     <div className="flex flex-col gap-1.5">
                         {SESSION_TYPE_ORDER.map(t => (
                             <BarRow
@@ -190,8 +195,8 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
                 />
             )}
             {typeFilter === "recovery" && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[10px] p-3.5">
-                    <p className="text-[11.5px] text-[#667085] mb-2">Top services</p>
+                <div className="bg-white border border-[#e4e7ec] rounded-2xl p-4">
+                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap mb-2">Top services</p>
                     <div className="flex flex-col gap-1.5">
                         {m.topRecoveryServices.length > 0 ? (
                             m.topRecoveryServices.map((s, i) => (
@@ -205,7 +210,7 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
                                 />
                             ))
                         ) : (
-                            <p className="text-[11.5px] text-[#98a2b3] italic">No recovery bookings yet.</p>
+                            <p className="text-xs text-[#98a2b3] italic">No recovery bookings yet.</p>
                         )}
                     </div>
                 </div>
