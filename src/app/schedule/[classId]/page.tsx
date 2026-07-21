@@ -15,6 +15,8 @@ import { Toast } from "@/components/ui/Toast";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { useAppStore, type ClassInstance, type ClassBooking, type Customer, type Membership as MembershipType, type Package as PackageType, type GenderAccess } from "@/lib/store";
+import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
+import { shortDate } from "@/lib/customer/profile-format";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -2117,6 +2119,20 @@ export default function ClassDetailPage() {
      *  `pickedPlanId` is the package the admin chose in PaymentConfirmation for
      *  multi-package customers; falls back to the customer's first available plan. */
     function insertBooking(c: Customer, status: "booked" | "waitlisted", pickedPlanId?: string) {
+        // Phase 3 — admin walk-in path is subject to the same freeze guard as
+        // the customer portal. If the customer's membership is currently
+        // frozen, refuse the write and surface a red toast with the resume
+        // date so the admin knows to redirect the member or wait.
+        const frozen = getFrozenActiveMembership(c.id, useAppStore.getState().customerPlans);
+        if (frozen) {
+            showToast(
+                "Membership frozen",
+                `${c.firstName}'s ${frozen.planName} is frozen — they can book again on ${shortDate(frozen.resumeISO)}.`,
+                "error",
+                "slash",
+            );
+            return;
+        }
         const bookingId = `b-${Date.now()}`;
         useAppStore.setState(state => {
             const planId = c.planKind === "membership"

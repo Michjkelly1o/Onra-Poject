@@ -10,13 +10,14 @@
 // appointment promo pages; Pay now → appointment processing → success.
 
 import { useParams, useRouter } from "next/navigation";
-import { Clock, MarkerPin01 } from "@untitledui/icons";
+import { AlertCircle, Clock, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
-import { to12h } from "@/lib/customer/dates";
-import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { useCurrentCustomer, useCurrentCustomerContext } from "@/lib/customer/context";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { appointmentDraft } from "@/lib/customer/booking-flow";
 import { useAppointment } from "@/lib/customer/appointments-data";
+import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
+import { shortDate } from "@/lib/customer/profile-format";
 import { CheckoutCart } from "@/components/customer/checkout/CheckoutCart";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,12 @@ export default function AppointmentReviewPage() {
     const appointment = useAppointment(id);
     const instructors = useAppStore((s) => s.instructors);
     const branches = useAppStore((s) => s.branches);
+    const customerPlans = useAppStore((s) => s.customerPlans);
+    const member = useCurrentCustomer();
+    // Phase 3 — same freeze guard the class booking page uses. During a
+    // freeze the customer cannot book anything else, including appointments.
+    // Same copy across the two entry points for a consistent experience.
+    const frozenMembership = member ? getFrozenActiveMembership(member.id, customerPlans) : null;
 
     const instructor = appointmentDraft.instructorId
         ? instructors.find((i) => i.id === appointmentDraft.instructorId) ?? null
@@ -43,6 +50,32 @@ export default function AppointmentReviewPage() {
                     onClick={() => router.push("/customer/search")}
                 >
                     Back to Search
+                </Button>
+            </div>
+        );
+    }
+
+    // Frozen-membership short-circuit — replaces the whole checkout with a
+    // clear "you can book again on X" card + Back to my plan CTA so the
+    // member never reaches the payment step.
+    if (frozenMembership) {
+        return (
+            <div className="flex min-h-full flex-col items-center justify-center gap-4 px-6 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full bg-[#fee4e2]">
+                    <AlertCircle className="size-6 text-[#d92d20]" aria-hidden />
+                </div>
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Your membership is frozen</p>
+                <p className="max-w-[280px] text-sm leading-5 text-[#475467]">
+                    Your <span className="font-semibold text-[var(--brand-text)]">{frozenMembership.planName}</span> is paused.
+                    You can book again on {shortDate(frozenMembership.resumeISO)}.
+                </p>
+                <Button
+                    variant="primary"
+                    size="lg"
+                    className="rounded-full"
+                    onClick={() => router.push("/customer/profile/plan")}
+                >
+                    Manage plan
                 </Button>
             </div>
         );

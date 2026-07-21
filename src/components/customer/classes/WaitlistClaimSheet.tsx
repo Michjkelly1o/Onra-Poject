@@ -12,7 +12,7 @@
 // Chrome matches <CancelConfirmSheet>: centred icon, title, one-line outcome, a
 // primary action and a quiet secondary one.
 
-import { CalendarCheck02 } from "@untitledui/icons";
+import { AlertCircle, CalendarCheck02 } from "@untitledui/icons";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +24,11 @@ export function WaitlistClaimSheet({
     expiresLabel,
     onClaim,
     onDecline,
+    /** Phase 3 — when set, the sheet disables the Claim button and shows a
+     *  red rejection banner. Used by the freeze guard: a frozen membership
+     *  can't claim a waitlist spot. Copy is fed by the caller so the same
+     *  sheet can be reused for other block reasons later. */
+    blockedReason,
 }: {
     open: boolean;
     onClose: () => void;
@@ -35,6 +40,7 @@ export function WaitlistClaimSheet({
     expiresLabel?: string;
     onClaim: () => void;
     onDecline: () => void;
+    blockedReason?: string;
 }) {
     return (
         <CustomerSheet open={open} onClose={onClose}>
@@ -49,7 +55,13 @@ export function WaitlistClaimSheet({
                         offered to the next person.
                     </p>
                 </div>
-                {expiresLabel && (
+                {blockedReason && (
+                    <div className="flex w-full items-start gap-2 rounded-xl border border-[#fda29b] bg-[#fffbfa] p-3 text-left">
+                        <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#d92d20]" aria-hidden />
+                        <p className="text-sm font-normal leading-5 text-[#b42318]">{blockedReason}</p>
+                    </div>
+                )}
+                {!blockedReason && expiresLabel && (
                     <div className="flex w-full items-center justify-center rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-3">
                         <p className="text-sm font-normal leading-5 text-[#475467]">Claim within {expiresLabel}</p>
                     </div>
@@ -58,12 +70,14 @@ export function WaitlistClaimSheet({
                     variant="primary"
                     size="xl"
                     className="mt-1 w-full rounded-full"
+                    disabled={!!blockedReason}
                     onClick={() => {
+                        if (blockedReason) return;
                         onClaim();
                         onClose();
                     }}
                 >
-                    Claim spot
+                    {blockedReason ? "Can't claim" : "Claim spot"}
                 </Button>
                 <Button
                     variant="secondary"

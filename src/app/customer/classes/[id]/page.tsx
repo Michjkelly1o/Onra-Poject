@@ -20,6 +20,8 @@ import { WaitlistClaimSheet } from "@/components/customer/classes/WaitlistClaimS
 import { hasLiveWaitlistClaim, useAppStore } from "@/lib/store";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
+import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
+import { shortDate } from "@/lib/customer/profile-format";
 
 // One class credit is spent per booked seat (see `addClassBooking`).
 const CLASS_CREDIT_COST = 1;
@@ -40,6 +42,11 @@ export default function ClassDetailPage() {
     const declineWaitlistSpot = useAppStore((st) => st.declineWaitlistSpot);
     const expireWaitlistClaims = useAppStore((st) => st.expireWaitlistClaims);
     const showToast = useAppStore((st) => st.showToast);
+    // Phase 3 — a frozen membership blocks the waitlist claim path too. The
+    // sheet still opens so the member sees why they can't claim, but the
+    // primary CTA is disabled + a red banner tells them the resume date.
+    const customerPlans = useAppStore((st) => st.customerPlans);
+    const frozenMembership = member ? getFrozenActiveMembership(member.id, customerPlans) : null;
     // Lapse any stale offers on entry so an expired claim cascades to the next
     // person without needing a background timer.
     useEffect(() => {
@@ -187,7 +194,13 @@ export default function ClassDetailPage() {
                 className={detail.name}
                 when={`${formatLongDate(detail.dateISO)} • ${to12h(detail.startTime)}`}
                 expiresLabel={claimMinutesLeft ? `${claimMinutesLeft} minute${claimMinutesLeft === 1 ? "" : "s"}` : undefined}
+                blockedReason={
+                    frozenMembership
+                        ? `Your ${frozenMembership.planName} is frozen — you can book again on ${shortDate(frozenMembership.resumeISO)}.`
+                        : undefined
+                }
                 onClaim={() => {
+                    if (frozenMembership) return;
                     const ok = claimWaitlistSpot(myClaim.id);
                     showToast(
                         ok ? "You're booked!" : "Spot no longer available",

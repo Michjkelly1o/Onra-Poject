@@ -21,6 +21,8 @@ import { useClassDetail, useNeedsWaiver } from "@/lib/customer/search-data";
 import { formatLongDate, to12h } from "@/lib/customer/dates";
 import { bookingDraft, ensureBookingDraft, DROP_IN_PRICE_AED, type BookingGuest } from "@/lib/customer/booking-flow";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
+import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
+import { shortDate } from "@/lib/customer/profile-format";
 import { Button } from "@/components/ui/button";
 import { SpotPicker } from "@/components/customer/classes/SpotPicker";
 
@@ -44,6 +46,13 @@ function BookingConfirmation() {
     const { member } = useCurrentCustomerContext();
     const allBookings = useAppStore((s) => s.classBookings);
     const schedules = useAppStore((s) => s.classSchedules);
+    // Phase 3 — during a freeze the customer cannot book anything else.
+    // Read the customer's plans and derive the frozen-membership state so we
+    // can (1) show a clear resume-date banner and (2) disable the CTA. Same
+    // gate wired into the appointment booking + waitlist claim entry points
+    // for consistent copy across the app.
+    const customerPlans = useAppStore((s) => s.customerPlans);
+    const frozenMembership = member ? getFrozenActiveMembership(member.id, customerPlans) : null;
     const scrollable = useMainScrollable();
     const scrolled = useMainScrolled();
     const needsWaiver = useNeedsWaiver();
@@ -169,6 +178,9 @@ function BookingConfirmation() {
 
     function confirm() {
         if (!detail || !member || spotMissing || isClosed) return;
+        // Frozen membership blocks the write path — belt to the disabled CTA
+        // + banner in the render tree below.
+        if (frozenMembership) return;
         // Hand off to the Processing screen, which performs the write then routes
         // to Success. Selections travel as query params.
         const params = new URLSearchParams({ mode });
@@ -408,7 +420,16 @@ function BookingConfirmation() {
                     scrollable ? "bg-white" : ""
                 }`}
             >
-                {overlapClass && (
+                {frozenMembership && (
+                    <div className="flex w-full items-start gap-2 rounded-xl border border-[#fda29b] bg-[#fffbfa] p-4">
+                        <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#d92d20]" aria-hidden />
+                        <p className="text-sm font-normal leading-5 text-[#b42318]">
+                            Your <span className="font-semibold">{frozenMembership.planName}</span> is frozen — you can
+                            book again on {shortDate(frozenMembership.resumeISO)}.
+                        </p>
+                    </div>
+                )}
+                {overlapClass && !frozenMembership && (
                     <div className="flex w-full items-start gap-2 rounded-xl border border-[#fec84b] bg-[#fffcf5] p-4">
                         <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#dc6803]" aria-hidden />
                         <p className="text-sm font-normal leading-5 text-[#93370d]">
@@ -456,10 +477,18 @@ function BookingConfirmation() {
                     variant="primary"
                     size="xl"
                     className="w-full rounded-full"
-                    disabled={needsPurchase || spotMissing || isClosed}
+                    disabled={!!frozenMembership || needsPurchase || spotMissing || isClosed}
                     onClick={confirm}
                 >
-                    {isClosed ? "Booking closed" : spotMissing ? "Select a spot" : mode === "waitlist" ? "Join waitlist" : "Confirm booking"}
+                    {frozenMembership
+                        ? "Membership frozen"
+                        : isClosed
+                          ? "Booking closed"
+                          : spotMissing
+                            ? "Select a spot"
+                            : mode === "waitlist"
+                              ? "Join waitlist"
+                              : "Confirm booking"}
                 </Button>
             </div>
         </div>

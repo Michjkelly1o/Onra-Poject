@@ -29,6 +29,42 @@
 import type { CustomerPlan, CustomerTransaction, FreezePolicy } from "@/lib/store";
 import { addDaysISO, daysBetweenISO } from "@/lib/customer/dates";
 
+// ── Frozen-plan guard (Phase 3) ─────────────────────────────────────────────
+
+/** A customer's currently frozen membership, ready to feed the "you can book
+ *  again on X" banner. `null` when the customer holds no frozen membership. */
+export interface FrozenActiveMembership {
+    planId: string;
+    /** Human-facing plan name, e.g. "Unlimited monthly". */
+    planName: string;
+    /** ISO date when the freeze ends and the plan auto-resumes (Phase 4). */
+    resumeISO: string;
+}
+
+/** Returns the customer's currently frozen membership, or null if none.
+ *
+ *  A membership is "currently frozen" when `status === "frozen"`. The seed
+ *  invariant enforces one active-or-frozen membership per customer, so this
+ *  helper returns the first hit. Package plans are excluded — freezing
+ *  never applies to packages.
+ *
+ *  Used by every booking entry point to reject a new booking with:
+ *  "Your <planName> is frozen — you can book again on <resumeISO>." */
+export function getFrozenActiveMembership(
+    customerId: string,
+    plans: CustomerPlan[],
+): FrozenActiveMembership | null {
+    const frozen = plans.find(
+        p => p.customerId === customerId && p.kind === "membership" && p.status === "frozen",
+    );
+    if (!frozen) return null;
+    return {
+        planId: frozen.id,
+        planName: frozen.name,
+        resumeISO: (frozen.freezeEndISO ?? "").slice(0, 10) || frozen.expiryISO.slice(0, 10),
+    };
+}
+
 // ── First-cycle gate ────────────────────────────────────────────────────────
 
 /** True when the plan is still in its first billing cycle — i.e. the customer
