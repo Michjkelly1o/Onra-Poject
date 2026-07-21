@@ -15,6 +15,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 
@@ -402,15 +403,8 @@ export default function ClassTypesPage() {
                     <p className="text-[16px] font-medium text-[#101828]">{visible.length} class templates</p>
                 </div>
 
-                {/* Search */}
-                <div className="relative w-[220px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
-                    <input
-                        type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search template..."
-                        className="h-10 w-full pl-[40px] pr-[14px] bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                {/* Search — icon-only, expands on click (client 2026-07-21). */}
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search template..." />
 
                 {/* Filter button (client 2026-07-21 — icon-only + tooltip) */}
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilters} />

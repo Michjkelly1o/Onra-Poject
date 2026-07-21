@@ -689,7 +689,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                             placeholder="Search transaction..."
                             size="sm"
                         />
-                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
                     </div>
 
                     {/* Table */}

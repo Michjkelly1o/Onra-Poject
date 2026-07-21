@@ -29,6 +29,8 @@ import type { ClassRating } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { branchTzLabel } from "@/lib/branch-time";
 
@@ -2407,23 +2409,17 @@ export default function ClassDetailPage() {
                                     {tab === "reviews" ? `${reviewsList.length} ratings` : `${tabTotal} customers`}
                                 </p>
                             </div>
-                            <div className="relative w-[200px]">
-                                <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                                <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                                    placeholder={tab === "reviews" ? "Search rating..." : "Search customer..."}
-                                    className="h-9 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                />
-                            </div>
-                            <Button variant="secondary-gray" size="md"
-                                leftIcon={
-                                    <div className="relative">
-                                        <FilterLines className="w-4 h-4" />
-                                        {hasActiveFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                                    </div>
-                                }
-                                onClick={() => tab === "reviews" ? setReviewFilterOpen(true) : setFilterOpen(true)}>
-                                Filter
-                            </Button>
+                            <ToolbarSearch
+                                value={search}
+                                onChange={v => { setSearch(v); setPage(1); }}
+                                placeholder={tab === "reviews" ? "Search rating..." : "Search customer..."}
+                                size="sm"
+                            />
+                            <ToolbarFilter
+                                onClick={() => tab === "reviews" ? setReviewFilterOpen(true) : setFilterOpen(true)}
+                                active={hasActiveFilter}
+                                size="sm"
+                            />
                         </div>
 
                         {/* Table */}

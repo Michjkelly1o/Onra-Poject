@@ -40,6 +40,7 @@ import { useAppStore, type GiftCardDesign } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
@@ -459,13 +460,7 @@ function ActiveCustomersTab({ holders, cardName }: {
                         {filtered.length} {filtered.length === 1 ? "Customer" : "Customers"}
                     </p>
                 </div>
-                <div className="relative w-[220px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search customer..."
-                        className="h-9 w-full pl-[36px] pr-[14px] bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search customer..." size="sm" />
             </div>
 
             {/* Body */}

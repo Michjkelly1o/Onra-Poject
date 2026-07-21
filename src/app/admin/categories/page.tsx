@@ -38,6 +38,7 @@ import type { ClassCategory } from "@/lib/store";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
@@ -228,16 +229,7 @@ export default function CategoriesPage() {
                         {categories.length} {categories.length === 1 ? "category" : "categories"}
                     </p>
                 </div>
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search category..."
-                        className="h-10 w-full pl-9 pr-3 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search category..." />
                 <Button
                     variant="primary"
                     size="md"

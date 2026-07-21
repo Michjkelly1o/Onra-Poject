@@ -363,7 +363,7 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
                     placeholder="Search agreement..."
                     size="sm"
                 />
-                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
             </div>
 
             {/* Table */}

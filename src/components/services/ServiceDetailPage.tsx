@@ -822,7 +822,7 @@ function RightPanel({ service }: { service: Service }) {
                         widthClass="w-[220px]"
                     />
                     {tab === "appointments" && (
-                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={!!hasActiveAppointmentFilter} />
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={!!hasActiveAppointmentFilter} size="sm" />
                     )}
                 </div>
 

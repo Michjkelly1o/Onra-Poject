@@ -652,7 +652,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                             placeholder="Search booking..."
                             size="sm"
                         />
-                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
                     </div>
 
                     {/* Table */}

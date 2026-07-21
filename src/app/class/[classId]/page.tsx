@@ -91,6 +91,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Toast } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 
 // ─── Helpers — verbatim admin ───────────────────────────────────────────────
 
@@ -664,16 +665,11 @@ export default function InstructorClassDetailPage() {
                                     {totalRows} customer{totalRows === 1 ? "" : "s"}
                                 </span>
                             </div>
-                            <div className="relative w-[280px]">
-                                <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={e => { setSearch(e.target.value); setPage(1); }}
-                                    placeholder="Search customer..."
-                                    className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                />
-                            </div>
+                            <ToolbarSearch
+                                value={search}
+                                onChange={v => { setSearch(v); setPage(1); }}
+                                placeholder="Search customer..."
+                            />
                         </div>
 
                         {/* Table — wrapped in `px-6 pb-2` so the table edges

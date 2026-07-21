@@ -55,6 +55,8 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { AppointmentCustomerBadges } from "@/components/customers/CustomerBadges";
 
 // ─── Table constants ─────────────────────────────────────────────────────────
@@ -954,24 +956,14 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                             : `${sorted.length} ${sorted.length === 1 ? "customer" : "customers"}`}
                     </p>
                 </div>
-                <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder={tab === "reviews" ? "Search rating..." : "Search customer..."}
-                        className="h-9 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch
+                    value={search}
+                    onChange={setSearch}
+                    placeholder={tab === "reviews" ? "Search rating..." : "Search customer..."}
+                    size="sm"
+                />
                 {tab === "reviews" && (
-                    <Button variant="secondary-gray" size="md"
-                        leftIcon={
-                            <div className="relative">
-                                <FilterLines className="w-4 h-4" />
-                                {hasActiveReviewFilter && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                            </div>
-                        }
-                        onClick={() => setReviewFilterOpen(true)}>
-                        Filter
-                    </Button>
+                    <ToolbarFilter onClick={() => setReviewFilterOpen(true)} active={hasActiveReviewFilter} size="sm" />
                 )}
             </div>
 

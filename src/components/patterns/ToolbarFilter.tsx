@@ -27,14 +27,18 @@ export interface ToolbarFilterProps {
     active?: boolean;
     /** Tooltip label on hover. Defaults to "Filter". */
     label?: string;
+    /** Visual size — matches ToolbarSearch's size prop so a filter next
+     *  to a compact search in a customer-profile inner tab stays the
+     *  same height. Defaults to "md" (h-10 w-10). */
+    size?: "md" | "sm";
 }
 
-export function ToolbarFilter({ onClick, active = false, label = "Filter" }: ToolbarFilterProps) {
+export function ToolbarFilter({ onClick, active = false, label = "Filter", size = "md" }: ToolbarFilterProps) {
     return (
         <IconTooltip label={label}>
             <Button
                 variant="secondary-gray"
-                size="icon"
+                size={size === "md" ? "icon" : "icon-sm"}
                 aria-label={label}
                 onClick={onClick}
             >

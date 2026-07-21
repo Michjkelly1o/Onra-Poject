@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { SelectInput } from "@/components/ui/select-input";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { TableAvatar } from "@/components/ui/avatar";
 import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
@@ -655,12 +656,11 @@ function POSInner() {
                             placeholder="Select location"
                             width="w-[180px]"
                         />
-                        <div className="relative w-[200px]">
-                            <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                                placeholder="Search product..."
-                                className="h-10 w-full pl-[38px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
-                        </div>
+                        <ToolbarSearch
+                            value={search}
+                            onChange={setSearch}
+                            placeholder="Search product..."
+                        />
                         <CartToggleButton open={cartOpen} onClick={() => setCartOpen(o => !o)} />
                     </div>
 

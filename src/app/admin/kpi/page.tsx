@@ -34,6 +34,7 @@ import { SearchMd, MarkerPin01 } from "@untitledui/icons";
 import { SelectInput } from "@/components/ui/select-input";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
 import { InsightMetricCard, type Metric } from "@/components/insights/InsightMetricCard";
 import { useAppStore } from "@/lib/store";
@@ -248,13 +249,7 @@ export default function KpiPage() {
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1" />
-                <div className="relative w-[220px]">
-                    <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Search KPI..."
-                        className="h-10 w-full pl-[44px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search KPI..." />
                 {/* Location picker — reused from the dashboard header
                     (same MarkerPin01 glyph + "All locations" sentinel). */}
                 <SelectInput

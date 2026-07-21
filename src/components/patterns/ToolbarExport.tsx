@@ -26,9 +26,12 @@ export interface ToolbarExportProps {
     disabled?: boolean;
     /** Tooltip label on hover. Defaults to "Export". */
     label?: string;
+    /** Visual size — matches ToolbarSearch's size prop for consistency
+     *  in customer-profile inner tabs. Defaults to "md" (h-10 w-10). */
+    size?: "md" | "sm";
 }
 
-export function ToolbarExport({ onExportCsv, disabled = false, label = "Export" }: ToolbarExportProps) {
+export function ToolbarExport({ onExportCsv, disabled = false, label = "Export", size = "md" }: ToolbarExportProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -47,7 +50,7 @@ export function ToolbarExport({ onExportCsv, disabled = false, label = "Export" 
             <IconTooltip label={label} disabled={open}>
                 <Button
                     variant="secondary-gray"
-                    size="icon"
+                    size={size === "md" ? "icon" : "icon-sm"}
                     disabled={disabled}
                     aria-label={label}
                     onClick={() => setOpen(p => !p)}
