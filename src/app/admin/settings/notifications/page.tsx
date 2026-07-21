@@ -96,7 +96,13 @@ const COL_EMAIL    = "w-[64px]";
 const COL_WA       = "w-[80px]";
 const COL_APPROVAL = "w-[120px]";
 const COL_SMS      = "w-[64px]";
-const COL_SEND     = "w-[180px]";
+// Send time column tightened 2026-07-20 — the actual strings are
+// "Immediately" or "24h, 2h" (offsets). 180px was massively
+// over-provisioned; the empty right-side gutter the client called out
+// came from here. Tightening to 110px gives that space back to the
+// Notifications label column so long labels ("Studio announcements",
+// "New class launch") stop truncating.
+const COL_SEND     = "w-[110px]";
 const COL_KEBAB    = "w-[40px]";
 
 // ─── Tiny atoms ────────────────────────────────────────────────────────────
