@@ -67,13 +67,16 @@ export function getFrozenActiveMembership(
 
 // ── First-cycle gate ────────────────────────────────────────────────────────
 
-/** True when the plan is still in its first billing cycle — i.e. the customer
- *  has only paid the initial charge and the renewal hasn't run yet.
+/** True when the plan is still in the window BEFORE its first charge has
+ *  cleared — i.e. sign-up complete but the initial payment hasn't landed
+ *  yet (trial, pending gateway, etc.). Q5 defines this window as
+ *  `plan_created_at → first_billed_at`, so a member is "in first cycle"
+ *  only while there is zero completed sale on file for the plan.
  *
- *  Derivation: count `complete` membership transactions for this
- *  customer+productId. Zero (unpaid pending) or one (initial only) count as
- *  first cycle. Two or more means at least one renewal has landed. Package
- *  and complimentary plans return false — the gate is membership-only. */
+ *  Derivation: count `complete` membership sale transactions for this
+ *  customer+productId. Zero → still pre-billing (BLOCK freeze). One or
+ *  more → the first charge has landed (ALLOW freeze). Package and
+ *  complimentary plans return false — the gate is membership-only. */
 export function isPlanInFirstBillingCycle(
     plan: CustomerPlan,
     transactions: CustomerTransaction[],
@@ -88,7 +91,7 @@ export function isPlanInFirstBillingCycle(
             t.status === "complete" &&
             (t.transactionType === undefined || t.transactionType === "sale"),
     );
-    return completedForPlan.length <= 1;
+    return completedForPlan.length === 0;
 }
 
 // ── Payment-failing gate ────────────────────────────────────────────────────
