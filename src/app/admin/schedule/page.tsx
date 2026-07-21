@@ -348,13 +348,13 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 // Removed in this revision: `dayOfWeek` + `dateFrom` / `dateTo` (Day of
 // week + Custom date range sections dropped from the Figma).
 //
-// Type filter — SINGLE selection on the session type dimension
-//   ("class" | "private" | "recovery" | ""), rendered as a 3-button toggle.
-//   Filters the merged schedule feed (class schedules + appointments) by
-//   `ClassInstance.type`. Empty string = no Type filter (show all).
+// Type filter — MULTI selection on the session type dimension
+//   (client 2026-07-21). Was a single-select toggle; the client wanted
+//   to be able to pick e.g. Classes + Private simultaneously. Empty
+//   array = "any type" (matches "no filter" semantics).
 type ClassTypeFilter = SessionType;
 type FilterState = {
-    type: ClassTypeFilter | "";
+    types: ClassTypeFilter[];
     statuses: ClassStatus[];
     timeOfDay: string[];
     instructors: string[];
@@ -363,7 +363,7 @@ type FilterState = {
     categories: string[];
 };
 const EMPTY_FILTER: FilterState = {
-    type: "", statuses: [], timeOfDay: [],
+    types: [], statuses: [], timeOfDay: [],
     instructors: [], categories: [],
 };
 const ALL_TYPES: ClassTypeFilter[] = SESSION_TYPE_ORDER;
@@ -504,7 +504,7 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
     function toggle<T>(arr: T[], val: T): T[] { return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]; }
 
-    const hasAny = !!pending.type || pending.statuses.length > 0 ||
+    const hasAny = pending.types.length > 0 || pending.statuses.length > 0 ||
         pending.timeOfDay.length > 0 ||
         pending.instructors.length > 0 || pending.categories.length > 0;
 
@@ -529,16 +529,23 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                     2337:111898: Type → Status → Time of the day →
                     Location → Instructor → Template. */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                    {/* Type — Classes / Private / Recovery (single-select
-                        toggle). Click the active option again to clear. */}
+                    {/* Type — Classes / Private / Recovery (multi-select,
+                        client 2026-07-21). Any combination is legal —
+                        picking two options ORs them together in the
+                        filter predicate below. Same 3-button grid chrome
+                        as before; only the semantics + selected-state
+                        derivation changed. */}
                     <div className="flex flex-col gap-2">
                         <SectionLabel label="Type" />
                         <div className="grid grid-cols-3 gap-2">
                             {ALL_TYPES.map(t => {
-                                const selected = pending.type === t;
+                                const selected = pending.types.includes(t);
                                 return (
                                     <button key={t} type="button"
-                                        onClick={() => setPending(p => ({ ...p, type: selected ? "" : t }))}
+                                        onClick={() => setPending(p => ({
+                                            ...p,
+                                            types: toggle(p.types, t),
+                                        }))}
                                         className={cn(
                                             "h-10 px-2 rounded-[8px] text-[13px] font-medium border transition-all text-center leading-tight",
                                             selected
@@ -677,29 +684,18 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                 )}
                             </td>
                             <td className={TD}>
-                                <div className="flex items-center gap-3">
-                                    {/* Template cover thumbnail — fully rounded to match every
-                                        other in-table avatar. Falls back to initials over the
-                                        category-tinted circle when the template has no image. */}
-                                    <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-1 border-[#e4e7ec] flex items-center justify-center"
-                                        style={{ backgroundColor: c.coverColor }}>
-                                        {c.coverImage ? (
-                                            <img src={c.coverImage} alt={c.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-[12px] font-semibold" style={{ color: getCategoryColor(c.category).text }}>
-                                                {c.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
-                                        <div className="text-[13px] text-[#667085]">
-                                            {/* Appointment open sessions have no fixed instructor —
-                                                surface "Open session" instead of a dangling "with ". */}
-                                            {c.instructorName
-                                                ? <>with {c.instructorName}</>
-                                                : isAppointmentId(c.id) ? "Open session" : "—"}
-                                        </div>
+                                {/* Cover thumbnail dropped from the list view per client
+                                    2026-07-21 — the category tag + name already identify
+                                    the session; the image added noise without adding
+                                    signal at this density. Card view keeps its cover. */}
+                                <div>
+                                    <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
+                                    <div className="text-[13px] text-[#667085]">
+                                        {/* Appointment open sessions have no fixed instructor —
+                                            surface "Open session" instead of a dangling "with ". */}
+                                        {c.instructorName
+                                            ? <>with {c.instructorName}</>
+                                            : isAppointmentId(c.id) ? "Open session" : "—"}
                                     </div>
                                 </div>
                             </td>
@@ -1476,7 +1472,7 @@ function SchedulePage() {
         setPopup({ cls, anchor: { x: rect.right, y: rect.top } });
     }
 
-    const hasActiveFilter = !!applied.type || applied.statuses.length > 0 ||
+    const hasActiveFilter = applied.types.length > 0 || applied.statuses.length > 0 ||
         applied.timeOfDay.length > 0 ||
         applied.instructors.length > 0 || applied.categories.length > 0;
 
@@ -1487,9 +1483,9 @@ function SchedulePage() {
         if (location && c.branchId !== location) return false;
         const q = search.toLowerCase();
         if (q && !c.name.toLowerCase().includes(q) && !c.instructorName.toLowerCase().includes(q) && !c.location.toLowerCase().includes(q)) return false;
-        // Type filter — single select on the session type dimension
-        //   ("class" | "private" | "recovery").
-        if (applied.type && c.type !== applied.type) return false;
+        // Type filter — multi-select on the session type dimension
+        //   ("class" | "private" | "recovery"). Empty array = no filter.
+        if (applied.types.length > 0 && !applied.types.includes(c.type)) return false;
         if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
         if (applied.instructors.length > 0 && !applied.instructors.includes(c.instructorId)) return false;
         if (applied.categories.length > 0 && !applied.categories.includes(c.category)) return false;

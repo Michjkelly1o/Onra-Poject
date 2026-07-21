@@ -732,7 +732,23 @@ function ServicesPageInner() {
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={filteredRows.length} entitySingular="service" />
+                {/* Total label mirrors the deep-linked scope (client 2026-07-21) —
+                    Private page reads "private session(s)", Recovery reads
+                    "recovery & wellness". The generic "service(s)" label is kept
+                    for the umbrella /admin/services route that lists both. */}
+                <ToolbarTotal
+                    count={filteredRows.length}
+                    entitySingular={
+                        typeScope === "private"  ? "private session" :
+                        typeScope === "recovery" ? "recovery & wellness" :
+                        "service"
+                    }
+                    entityPlural={
+                        typeScope === "private"  ? "private sessions" :
+                        typeScope === "recovery" ? "recovery & wellness" :
+                        undefined
+                    }
+                />
 
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
