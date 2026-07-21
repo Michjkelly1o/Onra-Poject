@@ -248,15 +248,12 @@ function RowKebab({ onEditTemplate, onManageTiming, onRemove }: {
                     Manage timing
                 </button>
                 {onRemove && (
-                    <>
-                        <div className="h-px bg-[#eaecf0] my-1" />
-                        <button type="button"
-                            onClick={() => { setOpen(false); onRemove(); }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors text-left">
-                            <Trash01 className="w-4 h-4 text-[#b42318]" />
-                            Delete override
-                        </button>
-                    </>
+                    <button type="button"
+                        onClick={() => { setOpen(false); onRemove(); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors text-left">
+                        <Trash01 className="w-4 h-4 text-[#b42318]" />
+                        Delete override
+                    </button>
                 )}
             </FixedDropdown>
         </>
@@ -461,11 +458,8 @@ function Section({
                                 onManageTiming={() => onManageTiming(ns)}
                                 trailingBadge={
                                     isMarketing && overrideCount > 0 ? (
-                                        <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-[#f5fffa] border border-[#e4e7ec] text-[11px] font-medium text-[#658774]">
-                                            {overrideCount}{" "}
-                                            {overrideCount === 1
-                                                ? "branch"
-                                                : "branches"}
+                                        <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#f5fffa] border border-[#e4e7ec] text-[11px] font-medium text-[#658774] whitespace-nowrap shrink-0">
+                                            {`${overrideCount} ${overrideCount === 1 ? "branch" : "branches"}`}
                                         </span>
                                     ) : null
                                 }
