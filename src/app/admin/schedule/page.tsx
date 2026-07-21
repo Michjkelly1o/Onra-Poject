@@ -7,7 +7,7 @@ import {
     ChevronLeft, ChevronRight, Eye, Edit02, Trash01,
     Download01, MarkerPin01, Clock, Users01, AlignLeft, XClose,
     Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
-    ChevronDown,
+    ChevronDown, User01, HeartHand,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { buildMonthGrid } from "@/lib/calendar-utils";
@@ -1305,8 +1305,10 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
 
 // ─── Add-session dropdown (client 2026-07-21) ────────────────────────────────
 // Primary button + right-anchored menu with the three session types.
-// Clicking a type routes to its create form with the schedule module set
-// as returnTo so the admin lands back on /admin/schedule after save.
+// Chrome matches the Staff & shift AddNewMenu (StaffPermissionsPage.tsx) —
+// no chevron on the trigger, each menu item is icon + label. Clicking a
+// type routes to its create form with returnTo=/admin/schedule so the
+// admin lands back on the schedule list after save.
 function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -1318,35 +1320,30 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
         return () => document.removeEventListener("mousedown", h);
     }, []);
     const returnTo = encodeURIComponent("/admin/schedule");
-    const OPTIONS = [
-        { label: "Class",              href: `/schedule/new?returnTo=${returnTo}` },
-        { label: "Private session",    href: `/services/new?returnTo=${returnTo}&type=private` },
-        { label: "Recovery & wellness", href: `/services/new?returnTo=${returnTo}&type=recovery` },
+    // Icons chosen to echo each session type's visual language:
+    //   • Users01 for Class     (group session)
+    //   • User01 for Private    (1-on-1 session)
+    //   • HeartHand for Recovery (wellness / care)
+    // Neutral #667085 tone so the icons read as menu glyphs, not brand.
+    const items: { label: string; icon: React.ReactNode; href: string }[] = [
+        { label: "Class",               icon: <Users01 className="w-4 h-4 text-[#667085]" />,  href: `/schedule/new?returnTo=${returnTo}` },
+        { label: "Private session",     icon: <User01 className="w-4 h-4 text-[#667085]" />,   href: `/services/new?returnTo=${returnTo}&type=private` },
+        { label: "Recovery & wellness", icon: <HeartHand className="w-4 h-4 text-[#667085]" />, href: `/services/new?returnTo=${returnTo}&type=recovery` },
     ];
     return (
         <div ref={ref} className="relative">
-            <Button
-                variant="primary"
-                size="md"
+            <Button variant="primary" size="md"
                 leftIcon={<Plus className="w-4 h-4" />}
-                rightIcon={<ChevronDown className={cn("w-4 h-4 transition-transform", open && "rotate-180")} />}
-                onClick={() => setOpen(p => !p)}
-            >
+                onClick={() => setOpen(p => !p)}>
                 Add new
             </Button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[220px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5">
-                    {OPTIONS.map(opt => (
-                        <button
-                            key={opt.label}
-                            type="button"
-                            onClick={() => {
-                                setOpen(false);
-                                router.push(opt.href);
-                            }}
-                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
-                        >
-                            {opt.label}
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px]">
+                    {items.map(it => (
+                        <button key={it.label} type="button"
+                            onClick={() => { setOpen(false); router.push(it.href); }}
+                            className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            {it.icon}{it.label}
                         </button>
                     ))}
                 </div>
