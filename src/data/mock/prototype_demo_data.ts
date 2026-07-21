@@ -240,13 +240,19 @@ const SCHEDULE_SPECS: ScheduleSpec[] = [
 
     // TOMORROW — 3 rows covering morning + evening so testers can check
     // in to at least one class the day after they open the app.
-    { daysFromNow: 1, slotIdx: 0, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 6,  status: "Upcoming" }, // Reformer Pilates · 09:00 · South
+    //
+    // Client 2026-07-20 follow-up: Ava Wright must appear on all 8 rows.
+    // The deterministic rotator picks Ava (idx 1 in CUSTOMERS) when
+    // (sIdx + n) % 10 === 1 for some n < booked. Bumping `booked` on the
+    // two rows where n exceeded the count is the least-invasive fix —
+    // no generator change, still uses the same rotator.
+    { daysFromNow: 1, slotIdx: 0, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 9,  status: "Upcoming" }, // Reformer Pilates · 09:00 · South (bumped 6→9 to include Ava at n=8)
     { daysFromNow: 1, slotIdx: 2, branchId: SOUTH, templateIdx: 1, capacity: 15, booked: 8,  status: "Upcoming" }, // Barre · 17:00 · South
     { daysFromNow: 1, slotIdx: 3, branchId: EAST,  templateIdx: 2, capacity: 16, booked: 10, status: "Upcoming" }, // Hot Yoga · 19:00 · East
 
     // IN 2 DAYS — 2 rows filling extra morning + evening buckets.
     { daysFromNow: 2, slotIdx: 0, branchId: SOUTH, templateIdx: 1, capacity: 15, booked: 7,  status: "Upcoming" }, // Barre · 09:00 · South
-    { daysFromNow: 2, slotIdx: 3, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 4,  status: "Upcoming" }, // Reformer Pilates · 19:00 · South
+    { daysFromNow: 2, slotIdx: 3, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 5,  status: "Upcoming" }, // Reformer Pilates · 19:00 · South (bumped 4→5 to include Ava at n=4)
 
     // IN 3 DAYS + IN 4 DAYS — extra padding so the "coming days" panel on
     // the dashboard's Coming Up tab has fresh rows every day.

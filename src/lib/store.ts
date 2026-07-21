@@ -8753,7 +8753,12 @@ export const useAppStore = create<AppState>()(persist(
         //   All 8 specs shifted +1 day (today → tomorrow, tomorrow →
         //   in 2 days, etc). Bump reseeds any v74 payload so the
         //   today rows no longer show up.
-        version: 75,
+        // v76 (2026-07-20 admin): follow-up to v75 — client asked to
+        //   include Ava Wright on ALL 8 new check-in classes. Bumped
+        //   the `booked` count on the two rows the rotator wasn't
+        //   reaching (class #1 6→9, class #5 4→5). Bump reseeds
+        //   cached snapshots so testers pick up the widened rosters.
+        version: 76,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
