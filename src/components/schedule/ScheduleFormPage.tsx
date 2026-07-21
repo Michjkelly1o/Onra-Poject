@@ -1742,7 +1742,9 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                 });
                 if (conflicts) return ds; // refuse the update — keep prior state
             }
-            return {
+
+            // Apply the primary update on `day` first.
+            const next: Record<string, TimeSlot[]> = {
                 ...ds,
                 [day]: list.map((s, idx) => {
                     if (idx !== i) return s;
@@ -1750,6 +1752,38 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                     return { ...s, [field]: val };
                 }),
             };
+
+            // Cascade to sibling weekdays (client 2026-07-21) — when the
+            // admin picks a start time on the FIRST slot of a day, mirror
+            // it to every OTHER selected day whose first slot is still
+            // empty AND where the time is legal for that weekday.
+            //
+            // "Legal" = in `repeatSlotsByDay[otherDay]` (business hours +
+            // instructor shift) AND not in `blockedSlotsByDay[otherDay]`
+            // (double-book / blocked-time overlap). If the time isn't
+            // legal on a sibling day, that day is left as the empty
+            // "Select time" default so the admin knows to pick manually.
+            //
+            // Only cascades on FIRST-slot start-time picks — extra slots
+            // and end-time edits are left day-local so an admin adding
+            // a second slot on Wed doesn't quietly propagate to Fri.
+            if (field === "start" && val && i === 0) {
+                for (const otherDay of selectedDays) {
+                    if (otherDay === day) continue;
+                    const otherList = next[otherDay] ?? [];
+                    const firstEmpty = otherList.length === 0 || !otherList[0].start;
+                    if (!firstEmpty) continue;
+                    const availableOnOther = repeatSlotsByDay[otherDay];
+                    if (!availableOnOther || !availableOnOther.includes(val)) continue;
+                    const blockedOnOther = blockedSlotsByDay[otherDay] ?? [];
+                    if (blockedOnOther.includes(val)) continue;
+                    const filled: TimeSlot = { start: val, end: calcEndTime(val, duration) };
+                    next[otherDay] = otherList.length === 0
+                        ? [filled]
+                        : [filled, ...otherList.slice(1)];
+                }
+            }
+            return next;
         });
     }
     function addSlot(day: string) {
@@ -2514,23 +2548,19 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
                                     </div>
 
-                                    {/* Recurring ends section — Jul 2026 client
-                                        feedback: dropdown collapsed to three
-                                        inline radios (Never / On / After) with
-                                        the associated input (date picker or
-                                        numeric) appearing right next to the
-                                        picked radio. Same 3-value vocab as
-                                        before, so persisted drafts and every
-                                        downstream generator keep working. */}
+                                    {/* Recurring ends section — vertical stack
+                                        (client 2026-07-21). Was a single row
+                                        with all 3 radios inline; the row got
+                                        cramped on narrower viewports and the
+                                        picked-radio input (date or numeric)
+                                        crowded the sibling radios. Now each
+                                        radio + its input sits on its own row
+                                        so the section reads top-down. */}
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
                                             <p className="text-[18px] font-semibold text-[#101828]">Recurring Ends</p>
 
-                                            {/* All 3 radios inline on one row. Date picker + numeric
-                                                widths shrunk (160 / 80) so the row fits without wrap.
-                                                Row still wraps on narrow viewports via `flex-wrap` —
-                                                falls back to a 2/1 split gracefully. */}
-                                            <div className="flex items-center gap-5 flex-wrap">
+                                            <div className="flex flex-col items-start gap-3">
                                                 <RepeatEndRadio
                                                     label="Never"
                                                     checked={repeatEnd === "No end date"}
@@ -2541,7 +2571,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                     checked={repeatEnd === "End on date"}
                                                     onSelect={() => setRepeatEnd("End on date")}
                                                 >
-                                                    <div className={cn("w-[160px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
+                                                    <div className={cn("w-[200px]", repeatEnd !== "End on date" && "opacity-40 pointer-events-none")}>
                                                         <DatePicker
                                                             value={endDate}
                                                             onChange={setEndDate}
@@ -2555,7 +2585,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                     onSelect={() => setRepeatEnd("End after")}
                                                 >
                                                     <div className={cn("flex items-center gap-2", repeatEnd !== "End after" && "opacity-40 pointer-events-none")}>
-                                                        <div className="w-[80px]">
+                                                        <div className="w-[100px]">
                                                             <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
                                                         </div>
                                                         <span className="text-[14px] text-[#475467]">classes</span>
