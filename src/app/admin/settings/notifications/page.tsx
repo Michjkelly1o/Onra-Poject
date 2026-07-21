@@ -28,13 +28,13 @@
 //     column header) when the WhatsApp Business integration isn't
 //     connected — read live from `useAppStore(s => s.integrations)`.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
     Edit02, XClose, Check, Lightbulb02,
     CalendarCheck01, BankNote01, CreditCard02, Announcement02, Users01,
     ChevronDown, DotsVertical, Clock, Trash01, Send03, HelpCircle,
-    AlertCircle,
+    AlertCircle, Plus, MarkerPin01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -342,8 +342,12 @@ function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate,
 function Section({
     category, items, open, onToggle, waConnected, onChannelToggle, onLockHit, onEditTemplate, onManageTiming,
     marketingOptedIn, marketingTotal,
+    branches, allSettings, onAddBranchOverride, onRemoveBranchOverride,
 }: {
     category: NotificationCategory;
+    /** Parent rows only for this category — the page pre-filters
+     *  branch-override child rows out. Children are looked up per
+     *  parent from `allSettings` below (marketing category only). */
     items: NotificationSetting[];
     open: boolean; onToggle: () => void;
     waConnected: boolean;
@@ -355,8 +359,31 @@ function Section({
      *  group — the other categories ignore them. */
     marketingOptedIn: number;
     marketingTotal: number;
+    /** Branches available for per-marketing overrides. Passed all the
+     *  way in so the "+ Add branch override" dropdown menu can list
+     *  only branches that don't already have an override. */
+    branches: { id: string; name: string; status: string }[];
+    /** Full settings slice — used to look up override children per
+     *  marketing parent. */
+    allSettings: NotificationSetting[];
+    onAddBranchOverride: (parentId: string, branchId: string) => void;
+    onRemoveBranchOverride: (id: string) => void;
 }) {
     const meta = CATEGORY_META[category];
+    // Child overrides keyed by notificationType so lookup is O(1) per
+    // parent. Only meaningful when category === "marketing"; other
+    // categories never carry branchId'd rows.
+    const overridesByType = useMemo(() => {
+        const map = new Map<string, NotificationSetting[]>();
+        if (category !== "marketing") return map;
+        for (const n of allSettings) {
+            if (!n.branchId) continue;
+            const list = map.get(n.notificationType) ?? [];
+            list.push(n);
+            map.set(n.notificationType, list);
+        }
+        return map;
+    }, [allSettings, category]);
     return (
         <div className="border-t border-[#e4e7ec]">
             <button type="button" onClick={onToggle}
@@ -370,19 +397,34 @@ function Section({
             </button>
 
             {open && items.map(ns => (
-                <EventRow
-                    key={ns.id}
-                    ns={ns}
-                    waConnected={waConnected}
-                    onChannelToggle={(ch, v) => onChannelToggle(ns.id, ch, v)}
-                    onLockHit={() => onLockHit(ns.id)}
-                    onEditTemplate={() => onEditTemplate(ns)}
-                    onManageTiming={() => onManageTiming(ns)}
-                />
+                <Fragment key={ns.id}>
+                    <EventRow
+                        ns={ns}
+                        waConnected={waConnected}
+                        onChannelToggle={(ch, v) => onChannelToggle(ns.id, ch, v)}
+                        onLockHit={() => onLockHit(ns.id)}
+                        onEditTemplate={() => onEditTemplate(ns)}
+                        onManageTiming={() => onManageTiming(ns)}
+                    />
+                    {category === "marketing" && (
+                        <MarketingBranchOverrides
+                            parent={ns}
+                            overrides={overridesByType.get(ns.notificationType) ?? []}
+                            branches={branches}
+                            waConnected={waConnected}
+                            onChannelToggle={onChannelToggle}
+                            onLockHit={onLockHit}
+                            onEditTemplate={onEditTemplate}
+                            onManageTiming={onManageTiming}
+                            onAddBranchOverride={onAddBranchOverride}
+                            onRemoveBranchOverride={onRemoveBranchOverride}
+                        />
+                    )}
+                </Fragment>
             ))}
 
             {open && category === "marketing" && (
-                <div className="mx-4 mb-4 rounded-[12px] bg-[#f5fffa] border-1 border-[#e4e7ec] px-4 py-3 flex items-start gap-3">
+                <div className="mx-4 mt-4 mb-4 rounded-[12px] bg-[#f5fffa] border-1 border-[#e4e7ec] px-4 py-3 flex items-start gap-3">
                     <Lightbulb02 className="w-5 h-5 text-[#658774] shrink-0 mt-0.5" />
                     <p className="text-[14px] text-[#475467] leading-[20px]">
                         Only <span className="font-semibold text-[#101828]">{marketingOptedIn.toLocaleString()}</span> of{" "}
@@ -391,6 +433,160 @@ function Section({
                     </p>
                 </div>
             )}
+        </div>
+    );
+}
+
+// ─── Marketing per-branch overrides (client 2026-07-20) ───────────────────
+//
+// Sits directly under each MARKETING parent row. Renders one child row
+// per existing override + a "+ Add branch override" affordance
+// listing every branch that doesn't yet have an override for this
+// parent. When no branches remain unassigned, the button hides.
+
+function MarketingBranchOverrides({
+    parent, overrides, branches, waConnected,
+    onChannelToggle, onLockHit, onEditTemplate, onManageTiming,
+    onAddBranchOverride, onRemoveBranchOverride,
+}: {
+    parent: NotificationSetting;
+    overrides: NotificationSetting[];
+    branches: { id: string; name: string; status: string }[];
+    waConnected: boolean;
+    onChannelToggle: (id: string, channel: "email" | "whatsapp" | "sms", enabled: boolean) => void;
+    onLockHit: (id: string) => void;
+    onEditTemplate: (ns: NotificationSetting) => void;
+    onManageTiming: (ns: NotificationSetting) => void;
+    onAddBranchOverride: (parentId: string, branchId: string) => void;
+    onRemoveBranchOverride: (id: string) => void;
+}) {
+    const [addOpen, setAddOpen] = useState(false);
+    const branchName = (id: string) =>
+        branches.find(b => b.id === id)?.name ?? id;
+    const usedBranchIds = new Set(overrides.map(o => o.branchId).filter(Boolean) as string[]);
+    // Only active branches — an archived branch shouldn't accept new
+    // overrides. Existing overrides on archived branches keep rendering.
+    const eligibleBranches = branches.filter(
+        b => b.status === "active" && !usedBranchIds.has(b.id),
+    );
+    return (
+        <div className="bg-[#fafbff]">
+            {overrides.map(o => (
+                <MarketingOverrideRow
+                    key={o.id}
+                    override={o}
+                    branchName={o.branchId ? branchName(o.branchId) : "—"}
+                    waConnected={waConnected}
+                    onChannelToggle={(ch, v) => onChannelToggle(o.id, ch, v)}
+                    onLockHit={() => onLockHit(o.id)}
+                    onEditTemplate={() => onEditTemplate(o)}
+                    onManageTiming={() => onManageTiming(o)}
+                    onRemove={() => onRemoveBranchOverride(o.id)}
+                />
+            ))}
+            {eligibleBranches.length > 0 && (
+                <div className="flex items-center gap-2 pl-11 pr-4 py-2 border-t border-dashed border-[#eaecf0]">
+                    <div className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setAddOpen(o => !o)}
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[#4b8c9a] hover:bg-white hover:text-[#306b78] transition-colors"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            Branch overrides
+                        </button>
+                        {addOpen && (
+                            <div className="absolute left-0 top-full mt-1 z-10 bg-white border border-[#e4e7ec] rounded-lg shadow-lg py-1 min-w-[220px]">
+                                <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-[#98a2b3]">
+                                    Add for branch
+                                </div>
+                                {eligibleBranches.map(b => (
+                                    <button
+                                        key={b.id}
+                                        type="button"
+                                        onClick={() => {
+                                            onAddBranchOverride(parent.id, b.id);
+                                            setAddOpen(false);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#344054] hover:bg-[#f9fafb] text-left"
+                                    >
+                                        <MarkerPin01 className="w-4 h-4 text-[#667085]" />
+                                        {b.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {overrides.length === 0 && (
+                        <span className="text-[12px] text-[#98a2b3]">
+                            Add a branch to customise this notification&apos;s channels + template for that location. Branches without an override inherit the settings above.
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MarketingOverrideRow({
+    override, branchName, waConnected,
+    onChannelToggle, onLockHit, onEditTemplate, onManageTiming, onRemove,
+}: {
+    override: NotificationSetting;
+    branchName: string;
+    waConnected: boolean;
+    onChannelToggle: (channel: "email" | "whatsapp" | "sms", enabled: boolean) => void;
+    onLockHit: () => void;
+    onEditTemplate: () => void;
+    onManageTiming: () => void;
+    onRemove: () => void;
+}) {
+    const showApprovalPill = waConnected;
+    return (
+        <div className="flex items-center gap-4 pl-11 pr-4 h-[48px] border-t border-dashed border-[#eaecf0]">
+            <div className="flex-1 min-w-0 flex items-center gap-2 pl-5">
+                <MarkerPin01 className="w-4 h-4 text-[#7ba08c] shrink-0" />
+                <span className="text-[13px] text-[#344054] truncate">{branchName}</span>
+                <span className="text-[11px] text-[#98a2b3] shrink-0">override</span>
+            </div>
+            <div className={cn(COL_EMAIL, "flex justify-center")}>
+                <Toggle on={override.emailEnabled}
+                    onChange={v => onChannelToggle("email", v)}
+                    onLockedClick={onLockHit}
+                    ariaLabel={`Email ${branchName}`} />
+            </div>
+            <div className={cn(COL_WA, "flex justify-center")}>
+                <Toggle on={override.whatsappEnabled && waConnected}
+                    disabled={!waConnected}
+                    onChange={v => onChannelToggle("whatsapp", v)}
+                    onLockedClick={onLockHit}
+                    ariaLabel={`WhatsApp ${branchName}`} />
+            </div>
+            {showApprovalPill && (
+                <div className={cn(COL_APPROVAL, "flex justify-center")}>
+                    <ApprovalPill status={override.whatsappApprovalStatus} />
+                </div>
+            )}
+            <div className={cn(COL_SMS, "flex justify-center")}>
+                <Toggle on={override.smsEnabled}
+                    onChange={v => onChannelToggle("sms", v)}
+                    onLockedClick={onLockHit}
+                    ariaLabel={`SMS ${branchName}`} />
+            </div>
+            <div className={cn(COL_SEND, "text-[13px] text-[#475467]")}>
+                {override.sentDuringCampaigns ? "—" : formatSendTime(override)}
+            </div>
+            <div className={cn(COL_KEBAB, "flex items-center justify-center gap-1")}>
+                <RowKebab onEditTemplate={onEditTemplate} onManageTiming={onManageTiming} />
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    aria-label={`Remove ${branchName} override`}
+                    className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#f9fafb] text-[#98a2b3] hover:text-[#b42318] transition-colors"
+                >
+                    <Trash01 className="w-4 h-4" />
+                </button>
+            </div>
         </div>
     );
 }
@@ -1232,6 +1428,13 @@ export default function CustomerNotificationsPage() {
     const setChannel   = useAppStore(s => s.setNotificationEventChannel);
     const showToast    = useAppStore(s => s.showToast);
     const customers    = useAppStore(s => s.customers);
+    // Client 2026-07-20: per-branch marketing overrides. `branches` feeds
+    // the "+ Add branch override" dropdown; the add/remove actions
+    // mutate `notificationSettings` in place (new rows have `branchId`
+    // set — parent lookup is by shared `notificationType`).
+    const branches                    = useAppStore(s => s.branches);
+    const addMarketingBranchOverride  = useAppStore(s => s.addMarketingBranchOverride);
+    const removeMarketingBranchOverride = useAppStore(s => s.removeMarketingBranchOverride);
 
     /** Marketing-opt-in count for the info banner under the Marketing
      *  group. Deliverable = non-archived customers (active + inactive);
@@ -1289,11 +1492,17 @@ export default function CustomerNotificationsPage() {
     >(null);
     const [deliveryOpen, setDeliveryOpen] = useState(false);
 
+    // Only PARENT rows land in each section — branch overrides (any row
+    // with `branchId` set) are hidden from the top-level list and
+    // rendered as children under their parent by the Section component.
     const byCategory = useMemo(() => {
         const grouped: Record<NotificationCategory, NotificationSetting[]> = {
             booking: [], payment: [], package_membership: [], marketing: [], referral: [],
         };
-        for (const n of settings) grouped[n.category].push(n);
+        for (const n of settings) {
+            if (n.branchId) continue;
+            grouped[n.category].push(n);
+        }
         return grouped;
     }, [settings]);
 
@@ -1373,6 +1582,10 @@ export default function CustomerNotificationsPage() {
                         onManageTiming={ns => setTemplateEditor({ ns, initialTab: "timing" })}
                         marketingOptedIn={marketingOptedIn}
                         marketingTotal={marketingTotal}
+                        branches={branches}
+                        allSettings={settings}
+                        onAddBranchOverride={addMarketingBranchOverride}
+                        onRemoveBranchOverride={removeMarketingBranchOverride}
                     />
                 ))}
             </div>

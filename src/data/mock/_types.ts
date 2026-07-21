@@ -2069,6 +2069,24 @@ export interface NotificationSettingSeed {
      *  buyer. Consumers (future dispatch layer) branch on this
      *  field to resolve `to_email` / `to_phone`. */
     recipient_source?: "customer" | "gift_card_recipient";
+
+    // ── Per-branch marketing overrides (client 2026-07-20) ────────────
+    /** Optional branch scope. When omitted (the common case), this row
+     *  is the studio-wide DEFAULT for its notification_type. When set,
+     *  the row is an OVERRIDE for the named branch of the SAME
+     *  notification_type — the branch inherits the parent's identity
+     *  (label, category) but overrides its channel toggles + templates
+     *  + timing.
+     *
+     *  Look-up rule at dispatch time: for a given (notification_type,
+     *  branch_id), pick the row whose branch_id === request.branch_id
+     *  if one exists, else fall back to the row with no branch_id
+     *  (the studio-wide default).
+     *
+     *  Only meaningful on rows in the `marketing` category — that's
+     *  the surface the "+ Branch overrides" expander is exposed for.
+     *  Every other category stays studio-wide by convention. */
+    branch_id?: string;
 }
 
 // ─── Notification records (in-app feed — PRD 12 §6.1) ────────────────────────

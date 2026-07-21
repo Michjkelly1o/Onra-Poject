@@ -1372,6 +1372,18 @@ export interface NotificationSetting {
      *  the IssuedGiftCard row so the person BEING GIFTED the card
      *  gets the redemption code, not the buyer. */
     recipientSource?: "customer" | "gift_card_recipient";
+
+    /** Optional branch scope. When omitted, this row is the studio-wide
+     *  DEFAULT. When set, this row is a per-branch OVERRIDE for the
+     *  same notificationType — inherits the parent's label + category
+     *  identity but carries its own channel toggles, templates, and
+     *  timing. Only surfaces on `marketing`-category rows in the UI;
+     *  the other categories keep their studio-wide behaviour.
+     *
+     *  Dispatch look-up (future): given a (notificationType, branchId)
+     *  pair, prefer the branchId-scoped row if present, else fall
+     *  back to the row with no branchId. */
+    branchId?: string;
 }
 
 // ─── Tax module (PRD 11 §10) ───────────────────────────────────────────────
@@ -3001,6 +3013,7 @@ function notificationSettingFromSeed(n: NotificationSettingSeed): NotificationSe
 
         sentDuringCampaigns: n.sent_during_campaigns,
         recipientSource:     n.recipient_source,
+        branchId:            n.branch_id,
     };
 }
 
@@ -3889,6 +3902,22 @@ export interface AppState {
      *  contract. Disabling critical is always allowed. Returns `false`
      *  when the flip was refused so the caller can surface a toast. */
     setNotificationEventCritical: (id: string, isCritical: boolean) => boolean;
+
+    // ── Per-branch marketing overrides (client 2026-07-20) ────────────
+    /** Create a per-branch override for a marketing row. Copies the
+     *  parent's channel toggles + template bodies as the starting
+     *  point (so the override is a "safe clone" the admin can then
+     *  tweak). Returns the new override's id.
+     *
+     *  Parent is looked up by `parentId` (the studio-wide row's id;
+     *  the row whose `branchId` is unset). If a branch already has
+     *  an override for that parent, returns the existing id
+     *  (idempotent). Only allowed on marketing-category rows. */
+    addMarketingBranchOverride: (parentId: string, branchId: string) => string;
+    /** Remove a per-branch override; the branch reverts to inheriting
+     *  the parent (studio-wide) row's settings. No-op if the id
+     *  isn't a branch override. */
+    removeMarketingBranchOverride: (id: string) => void;
 
     // ── Delivery hours (v27 — Figma 7733:51010) ───────────────────────────
     /** Single studio-wide record. Every notification respects this
@@ -6967,6 +6996,49 @@ export const useAppStore = create<AppState>()(persist(
                 n.id === id ? { ...n, ...patch } : n,
             ),
         })),
+    addMarketingBranchOverride: (parentId, branchId) => {
+        const parent = get().notificationSettings.find(n => n.id === parentId);
+        // Not-found or category-wrong → return an empty id, no-op mutation.
+        if (!parent || parent.category !== "marketing") return "";
+        // Idempotent: if this branch already has an override for this
+        // parent, return its id and leave state alone.
+        const existing = get().notificationSettings.find(
+            n => n.notificationType === parent.notificationType && n.branchId === branchId,
+        );
+        if (existing) return existing.id;
+        const id = `ns_${parent.notificationType}_${branchId}`;
+        const override: NotificationSetting = {
+            // Copy every field from the parent so the override starts as
+            // a safe clone. Admin then tweaks channel toggles / templates
+            // for that branch.
+            ...parent,
+            id,
+            branchId,
+            // Templates + toggles cloned. Rejection reason cleared — a
+            // fresh row hasn't been resubmitted to Meta yet, so pending
+            // is the honest default when the parent was rejected.
+            whatsappApprovalStatus: parent.whatsappApprovalStatus === "rejected"
+                ? "pending"
+                : parent.whatsappApprovalStatus,
+            whatsappRejectionReason: undefined,
+            // sendOffsets — copy so edits to the override don't mutate
+            // the parent's array by reference.
+            sendOffsets: parent.sendOffsets.map(o => ({ ...o })),
+        };
+        set(state => ({
+            notificationSettings: [...state.notificationSettings, override],
+        }));
+        return id;
+    },
+    removeMarketingBranchOverride: (id) => {
+        // No-op guard: only remove if the row IS a branch override
+        // (has branchId) — never nuke a studio-wide default.
+        const row = get().notificationSettings.find(n => n.id === id);
+        if (!row || !row.branchId) return;
+        set(state => ({
+            notificationSettings: state.notificationSettings.filter(n => n.id !== id),
+        }));
+    },
     updateNotificationDeliverySettings: (patch) => {
         set(state => ({
             notificationDeliverySettings: { ...state.notificationDeliverySettings, ...patch },
