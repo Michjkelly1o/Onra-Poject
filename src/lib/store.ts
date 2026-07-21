@@ -8741,7 +8741,14 @@ export const useAppStore = create<AppState>()(persist(
         //   bump to v73 sits above both lineages and forces a clean
         //   reseed on merge day so everyone lands on the same
         //   schema-plus-seed floor.
-        version: 73,
+        // v74 (2026-07-20 admin): 8 new check-in test rows appended to
+        //   SCHEDULE_SPECS covering today + next 3 days across every
+        //   SLOT_TIMES bucket (see prototype_demo_data.ts § "Check-in
+        //   test rows"). Client couldn't find an Upcoming class after
+        //   noon since the seed had only the 11:00 today slot. Bump
+        //   reseeds cached snapshots so testers always see fresh
+        //   Upcoming classes with real bookings.
+        version: 74,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
