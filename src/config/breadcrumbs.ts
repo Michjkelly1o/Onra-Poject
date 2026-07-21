@@ -29,6 +29,7 @@
 // DYNAMIC_LABELS. Sub-pages get a friendly leaf label in LEAF_LABELS.
 
 import type { AppState } from "@/lib/store";
+import { findSettingsGroupFor } from "@/config/settings-groups";
 
 export interface BreadcrumbSegment {
     /** Text shown in the crumb. */
@@ -70,6 +71,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/settings/notifications":   "Customer notifications",
     "/admin/settings/tax":             "Tax",
     "/admin/settings/agreements":      "Agreements",
+    "/admin/settings/migrations-imports": "Migration & imports",
     "/admin/settings/referral":        "Referral program",
     "/admin/settings/account":         "Account settings",
     "/instructor/dashboard":           "Dashboard",
@@ -275,20 +277,35 @@ export function resolveBreadcrumbs(pathname: string, store: AppState): Breadcrum
     if (MODULE_LABELS[path]) {
         // Dashboards render nothing — the page title carries the label.
         if (path === "/admin/dashboard" || path === "/instructor/dashboard") return [];
-        // Settings sub-modules render `Settings > <sub-module>` — EXCEPT the
-        // ones that only live under /admin/settings/ by URL but belong to a
-        // different sidebar group. Referral program sits under the Marketing
-        // menu (with Campaigns + Promotions), so it shows no "Settings"
-        // parent — matching its Marketing siblings.
+        // Settings sub-modules render `Settings > <Group> > <Sub-module>`
+        // (e.g. `Settings > Operations > Migration & imports`). The group
+        // crumb (Business / Operations / Customer) reflects the settings
+        // navigation regrouping the client shipped Jul 2026 — see
+        // src/config/settings-groups.ts.
+        //
+        // Two paths under /admin/settings/ live OUTSIDE the tabbed groups
+        // (Referral program → Marketing sidebar, Account settings → user-
+        // menu chip). Referral shows no Settings crumb at all; Account
+        // shows just `Settings > Account settings` (no group — it's not
+        // in one). `findSettingsGroupFor` returns null in both cases,
+        // which we handle below.
         if (
             path.startsWith("/admin/settings/")
             && path !== "/admin/settings"
             && !NON_SETTINGS_ADMIN_PATHS.has(path)
         ) {
-            return [
+            const group = findSettingsGroupFor(path);
+            const crumbs: BreadcrumbSegment[] = [
                 { label: "Settings", href: "/admin/settings" },
-                { label: MODULE_LABELS[path] },
             ];
+            if (group) {
+                // Group crumb links to the group's first tab (its landing
+                // target). Matches the sidebar dropdown convention where
+                // clicking a group opens on its first sub-page.
+                crumbs.push({ label: group.label, href: group.tabs[0].href });
+            }
+            crumbs.push({ label: MODULE_LABELS[path] });
+            return crumbs;
         }
         return [{ label: MODULE_LABELS[path] }];
     }
@@ -304,7 +321,19 @@ export function resolveBreadcrumbs(pathname: string, store: AppState): Breadcrum
         const rest = path.slice(root.prefix.length).replace(/^\/+/, "");
         const parts = rest ? rest.split("/") : [];
         const crumbs: BreadcrumbSegment[] = [];
-        if (root.parent) crumbs.push({ ...root.parent });
+        if (root.parent) {
+            crumbs.push({ ...root.parent });
+            // Under /admin/settings/*, insert the group crumb between
+            // "Settings" and the module list so nested detail pages read
+            // `Settings > Operations > Booking rules > …` — same shape as
+            // the top-level settings pages in Case 1 above.
+            if (root.parent.href === "/admin/settings") {
+                const group = findSettingsGroupFor(root.listPath);
+                if (group) {
+                    crumbs.push({ label: group.label, href: group.tabs[0].href });
+                }
+            }
+        }
 
         // Role-aware remap for SHARED takeover pages. The appointment detail
         // (`/appointments/[id]`) is reached by BOTH admin (from
