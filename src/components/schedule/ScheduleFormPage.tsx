@@ -1758,11 +1758,23 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
             // it to every OTHER selected day whose first slot is still
             // empty AND where the time is legal for that weekday.
             //
-            // "Legal" = in `repeatSlotsByDay[otherDay]` (business hours +
-            // instructor shift) AND not in `blockedSlotsByDay[otherDay]`
-            // (double-book / blocked-time overlap). If the time isn't
-            // legal on a sibling day, that day is left as the empty
-            // "Select time" default so the admin knows to pick manually.
+            // "Legal" mirrors the SAME rules the sibling day's own
+            // TimeDropdown enforces:
+            //   • `repeatSlotsByDay[otherDay]` is the allowed slot list
+            //     for that weekday (business hours + instructor shift).
+            //     - `undefined` → restrictions haven't computed yet
+            //       (no room / no date picked). The dropdown itself
+            //       falls back to DEFAULT_TIME_SLOTS in that case, so
+            //       cascade is permissive too. Without this fallback
+            //       the cascade would silently skip whenever the admin
+            //       hadn't yet picked a room — the bug the client hit.
+            //     - `[]` → branch is CLOSED that weekday. Skip cascade.
+            //     - non-empty → must include `val` or skip.
+            //   • `blockedSlotsByDay[otherDay]` covers double-book /
+            //     blocked-time overlaps. Skip when it hits.
+            //
+            // If either check fails, leave the sibling day empty so the
+            // admin knows to pick manually.
             //
             // Only cascades on FIRST-slot start-time picks — extra slots
             // and end-time edits are left day-local so an admin adding
@@ -1774,7 +1786,12 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                     const firstEmpty = otherList.length === 0 || !otherList[0].start;
                     if (!firstEmpty) continue;
                     const availableOnOther = repeatSlotsByDay[otherDay];
-                    if (!availableOnOther || !availableOnOther.includes(val)) continue;
+                    if (availableOnOther !== undefined) {
+                        // Branch is closed that weekday → skip.
+                        if (availableOnOther.length === 0) continue;
+                        // Time not in the weekday's allowed slot list → skip.
+                        if (!availableOnOther.includes(val)) continue;
+                    }
                     const blockedOnOther = blockedSlotsByDay[otherDay] ?? [];
                     if (blockedOnOther.includes(val)) continue;
                     const filled: TimeSlot = { start: val, end: calcEndTime(val, duration) };
