@@ -37,6 +37,8 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -125,18 +127,17 @@ function StatusFilterDropdown({ value, onChange }: {
 
     return (
         <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={
-                    <div className="relative">
+            <IconTooltip label="Filter" disabled={open}>
+                <Button variant="secondary-gray" size="icon" aria-label="Filter"
+                    onClick={() => setOpen(p => !p)}>
+                    <span className="relative inline-flex">
                         <FilterLines className="w-4 h-4" />
                         {value !== null && (
-                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}
-                    </div>
-                }
-                onClick={() => setOpen(p => !p)}>
-                Filter
-            </Button>
+                    </span>
+                </Button>
+            </IconTooltip>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
                     <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
@@ -233,44 +234,6 @@ const MODAL_CONFIG: Record<ModalAction, {
 
 // Local ActionModal removed — uses canonical `<ConfirmModal>` driven by
 // MODAL_CONFIG above.
-
-// ─── Export dropdown ────────────────────────────────────────────────────────
-
-const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
-
-function ExportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    return (
-        <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={<Download01 className="w-4 h-4" />}
-                onClick={() => setOpen(p => !p)}>
-                Export
-            </Button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[140px]">
-                    {EXPORT_FORMATS.map(fmt => (
-                        <button key={fmt} type="button"
-                            onClick={() => {
-                                setOpen(false);
-                                // Only CSV is wired today; PDF / Excel come later.
-                                if (fmt === "CSV") onExportCsv();
-                            }}
-                            className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            {fmt}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
@@ -703,7 +666,7 @@ export default function GiftCardsPage() {
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="gift card" />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
-                <ExportDropdown
+                <ToolbarExport
                     onExportCsv={() => {
                         exportGiftCardsCsv(filteredRows);
                         showToast(

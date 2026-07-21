@@ -38,6 +38,7 @@ import { dateFilterToRange } from "@/lib/period-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
 import { TypeLocationFilter } from "@/components/dashboard/TypeLocationFilter";
 import { ComingUpTab } from "@/components/dashboard/ComingUpTab";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import {
     RenewalDueModal,
     FailedPaymentsModal,
@@ -493,57 +494,9 @@ function ActivityRow({ item }: { item: TeamActivityItem }) {
     );
 }
 
-// ── Export dropdown ──
-// Client 2026-07-21 — renamed from "Report" to "Export" so the dashboard
-// matches the Export button pattern used across every other admin list
-// (Customers / Products / Reports / Schedule / etc.): secondary-gray chrome,
-// Download01 icon, dropdown carrying format options.
-const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
-
-function ExportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        function handler(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        }
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
-    }, []);
-
-    return (
-        <div ref={ref} className="relative flex-shrink-0">
-            <Button
-                variant="secondary-gray"
-                size="md"
-                leftIcon={<Download01 className="w-4 h-4" />}
-                className="whitespace-nowrap"
-                onClick={() => setOpen(p => !p)}
-            >
-                Export
-            </Button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
-                    {EXPORT_FORMATS.map(fmt => (
-                        <button
-                            key={fmt}
-                            type="button"
-                            onClick={() => {
-                                setOpen(false);
-                                // Only CSV is wired today; PDF / Excel come later.
-                                if (fmt === "CSV") onExportCsv();
-                            }}
-                            className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
-                        >
-                            {fmt}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
+// Export dropdown retired 2026-07-21 — replaced by the shared
+// ToolbarExport component (icon-only, hover tooltip). See
+// @/components/patterns/ToolbarExport.
 
 /** Delta caption for the Performance-tab metric cards — flips "vs …" to
  *  match the active period picker so a "This month" card reads "vs last
@@ -1615,7 +1568,7 @@ export default function AdminDashboard() {
                                     Download01 icon (client 2026-07-21). Sits
                                     with the filters; the primary Add widget
                                     button lives on the far right below. */}
-                                <ExportDropdown
+                                <ToolbarExport
                                     onExportCsv={() => {
                                         exportPerformanceCsv(metrics, activeWidgets, period);
                                         showToast(

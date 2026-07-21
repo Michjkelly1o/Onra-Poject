@@ -14,6 +14,7 @@ import type { ClassTemplate, TemplateStatus } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 
@@ -411,22 +412,8 @@ export default function ClassTypesPage() {
                     />
                 </div>
 
-                {/* Filter button */}
-                <Button
-                    variant="secondary-gray"
-                    size="md"
-                    leftIcon={
-                        <div className="relative">
-                            <FilterLines className="w-4 h-4" />
-                            {hasActiveFilters && (
-                                <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border border-white" />
-                            )}
-                        </div>
-                    }
-                    onClick={() => setFilterOpen(true)}
-                >
-                    Filter
-                </Button>
+                {/* Filter button (client 2026-07-21 — icon-only + tooltip) */}
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilters} />
 
                 {/* Add template */}
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`)}>

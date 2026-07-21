@@ -31,6 +31,7 @@ import { useAppStore, type PromoCode } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
@@ -495,18 +496,7 @@ export default function PromoListPage() {
                     />
                 </div>
 
-                <Button variant="secondary-gray" size="md"
-                    leftIcon={
-                        <div className="relative">
-                            <FilterLines className="w-4 h-4" />
-                            {hasActiveFilter && (
-                                <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border border-white" />
-                            )}
-                        </div>
-                    }
-                    onClick={() => setFilterOpen(true)}>
-                    Filter
-                </Button>
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>

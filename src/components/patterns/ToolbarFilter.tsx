@@ -4,45 +4,50 @@
 // Onra Studio — Shared ToolbarFilter button
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Secondary-gray Button with a `FilterLines` icon and an optional little
-// green dot in the top-right of the icon when any filter is active.
-// Replaces ~10 lines per file × 11 files = ~110 duplicate lines.
+// Icon-only Button with a `FilterLines` glyph + hover tooltip. Client
+// 2026-07-21 asked us to trim toolbar copy across the app — Filter,
+// Search, and Export all collapse to their icons and disclose their
+// name on hover instead. The green-dot indicator stays visible when
+// any filter is applied so the active state reads at a glance without
+// opening the panel.
 //
-// Renders:
-//
-//   <Button variant="secondary-gray" size="md" leftIcon={...}>Filter</Button>
-//
-// with the standard chrome already baked in. Pass `active` true when any
-// filter is applied so the dot indicator shows.
+// Signature preserved from the v1 text-only version so consumers only
+// re-render with the new chrome. `label` still controls the tooltip
+// copy (defaults to "Filter"), but the button no longer renders the
+// text — only the tooltip does.
 
 import { FilterLines } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "./IconTooltip";
 
 export interface ToolbarFilterProps {
     onClick: () => void;
     /** True when any filter is currently applied — renders the green dot
      *  indicator in the top-right corner of the filter icon. */
     active?: boolean;
-    /** Button label. Defaults to "Filter". */
+    /** Tooltip label on hover. Defaults to "Filter". */
     label?: string;
 }
 
 export function ToolbarFilter({ onClick, active = false, label = "Filter" }: ToolbarFilterProps) {
     return (
-        <Button
-            variant="secondary-gray"
-            size="md"
-            leftIcon={
-                <div className="relative">
+        <IconTooltip label={label}>
+            <Button
+                variant="secondary-gray"
+                size="icon"
+                aria-label={label}
+                onClick={onClick}
+            >
+                <span className="relative inline-flex">
                     <FilterLines className="w-4 h-4" />
                     {active && (
-                        <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
+                        <span
+                            className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white"
+                            aria-hidden
+                        />
                     )}
-                </div>
-            }
-            onClick={onClick}
-        >
-            {label}
-        </Button>
+                </span>
+            </Button>
+        </IconTooltip>
     );
 }

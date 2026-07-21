@@ -43,6 +43,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
@@ -215,41 +216,6 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
                         <button key={it.label} type="button" onClick={() => { setOpen(false); it.onClick(); }}
                             className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                             {it.icon}{it.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Export dropdown (CSV functional, PDF/Excel placeholders) ──────────────
-
-const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
-
-function ExportDropdown({ disabled, onExportCsv }: { disabled: boolean; onExportCsv: () => void }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    return (
-        <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={<Download01 className="w-4 h-4" />}
-                disabled={disabled}
-                onClick={() => setOpen(p => !p)}>
-                Export
-            </Button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
-                    {EXPORT_FORMATS.map(fmt => (
-                        <button key={fmt} type="button"
-                            onClick={() => { setOpen(false); if (fmt === "CSV") onExportCsv(); }}
-                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            {fmt}
                         </button>
                     ))}
                 </div>
@@ -1037,7 +1003,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     CSV. Kept for the Staff & shift route (still useful
                     for HR exports). */}
                 {forceTab !== "roles" && (
-                    <ExportDropdown disabled={totalCount === 0} onExportCsv={handleExport} />
+                    <ToolbarExport disabled={totalCount === 0} onExportCsv={handleExport} />
                 )}
                 {/* Role & permissions route: the only role filter left is
                     Status (roles are branch-agnostic), so it's a direct

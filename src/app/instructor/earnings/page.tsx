@@ -38,6 +38,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
 import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
 import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
@@ -355,21 +356,7 @@ export default function InstructorEarningsPage() {
                         />
                     </div>
                     <DateRangeFilter value={period} onChange={setPeriod} />
-                    <Button
-                        variant="secondary-gray"
-                        size="md"
-                        leftIcon={
-                            <div className="relative">
-                                <FilterLines className="w-4 h-4" />
-                                {hasAnyFilter(filters) && (
-                                    <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
-                                )}
-                            </div>
-                        }
-                        onClick={() => setFilterOpen(true)}
-                    >
-                        Filter
-                    </Button>
+                    <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasAnyFilter(filters)} />
                 </div>
 
                 {/* Table — verbatim admin's table structure */}

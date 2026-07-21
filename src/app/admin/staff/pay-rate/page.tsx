@@ -36,6 +36,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { RowActions } from "@/components/patterns/RowActions";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
     useAppStore,
     type PayRate, type PayRateStatus, type PayRateType,
@@ -148,18 +149,17 @@ function StatusFilterDropdown({ value, onChange }: {
 
     return (
         <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={
-                    <div className="relative">
+            <IconTooltip label="Filter" disabled={open}>
+                <Button variant="secondary-gray" size="icon" aria-label="Filter"
+                    onClick={() => setOpen(p => !p)}>
+                    <span className="relative inline-flex">
                         <FilterLines className="w-4 h-4" />
                         {value !== null && (
-                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}
-                    </div>
-                }
-                onClick={() => setOpen(p => !p)}>
-                Filter
-            </Button>
+                    </span>
+                </Button>
+            </IconTooltip>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
                     <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>

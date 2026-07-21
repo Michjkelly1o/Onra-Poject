@@ -117,6 +117,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { buildMonthGrid } from "@/lib/calendar-utils";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 
 // ─── Category colors — same palette admin uses (verbatim) ───────────────────
 
@@ -1397,21 +1398,9 @@ export default function InstructorSchedulePage() {
                         <NavBtn onClick={next} label="Next"><ChevronRight className="w-4 h-4" /></NavBtn>
                     </div>
 
-                    {/* Right: filter — ml-auto, admin's exact button + dot pattern */}
+                    {/* Right: filter — icon-only + tooltip (client 2026-07-21). */}
                     <div className="ml-auto">
-                        <Button variant="secondary-gray" size="md"
-                            leftIcon={
-                                <div className="relative">
-                                    <FilterLines className="w-4 h-4" />
-                                    {hasAnyFilter(filters) && (
-                                        <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
-                                    )}
-                                </div>
-                            }
-                            onClick={() => setFilterOpen(true)}
-                        >
-                            Filter
-                        </Button>
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasAnyFilter(filters)} />
                     </div>
                 </div>
 

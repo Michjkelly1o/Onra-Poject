@@ -42,6 +42,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { Toast } from "@/components/ui/Toast";
@@ -398,46 +399,6 @@ function ValueChip({ prefix, value }: { prefix: string; value: number }) {
     return (
         <div className="h-11 px-4 flex items-center justify-center border-1 border-[#e4e7ec] rounded-[12px] text-[14px] font-medium text-[#101828]">
             {prefix}{value.toLocaleString()}
-        </div>
-    );
-}
-
-// ─── Export dropdown ─────────────────────────────────────────────────────────
-
-const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
-
-function ExportDropdown({ onExportCsv }: { onExportCsv: () => void }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-
-    return (
-        <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={<Download01 className="w-4 h-4" />}
-                onClick={() => setOpen(p => !p)}>
-                Export
-            </Button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[140px]">
-                    {EXPORT_FORMATS.map(fmt => (
-                        <button key={fmt} type="button"
-                            onClick={() => {
-                                setOpen(false);
-                                // Only CSV is wired today; PDF / Excel come later.
-                                if (fmt === "CSV") onExportCsv();
-                            }}
-                            className="w-full text-left px-5 py-3 text-[15px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            {fmt}
-                        </button>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }
@@ -989,7 +950,7 @@ export default function ProductsPage() {
                     width="w-[220px]"
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search products..." />
-                <ExportDropdown
+                <ToolbarExport
                     onExportCsv={() => {
                         exportProductsCsv(filteredRows);
                         showToast(

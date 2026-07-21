@@ -38,6 +38,7 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
 import { totalEarningsForStaff } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
@@ -57,44 +58,6 @@ function aed(n: number): string {
 // can read a truthful "nothing earned yet this month" state.
 const DEFAULT_PERIOD: DateFilter = { type: "month", label: "This month" };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-// ─── Export dropdown (same chrome as customers/products list) ───────────────
-
-const EXPORT_FORMATS = ["CSV", "PDF", "Excel"] as const;
-
-function ExportDropdown({ disabled, onExportCsv }: { disabled: boolean; onExportCsv: () => void }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-    }, []);
-    return (
-        <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={<Download01 className="w-4 h-4" />}
-                disabled={disabled}
-                onClick={() => setOpen(p => !p)}>
-                Export
-            </Button>
-            {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
-                    {EXPORT_FORMATS.map(fmt => (
-                        <button key={fmt} type="button"
-                            onClick={() => {
-                                setOpen(false);
-                                if (fmt === "CSV") onExportCsv();
-                            }}
-                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            {fmt}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
 
 // ─── Metric card ───────────────────────────────────────────────────────────
 
@@ -473,7 +436,7 @@ export default function CompensationPage() {
                     />
                 </div>
                 <DateRangeFilter value={period} onChange={setPeriod} />
-                <ExportDropdown
+                <ToolbarExport
                     disabled={filteredRows.length === 0}
                     onExportCsv={() => {
                         exportCompensationCsv(filteredRows, branches);
