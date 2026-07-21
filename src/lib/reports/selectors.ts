@@ -298,7 +298,7 @@ export interface CustomerPlanRow {
     planName: string;
     planTypeLabel: string;
     creditsLabel: string;
-    status: "active" | "expired" | "frozen" | "cancelled" | "removed";
+    status: "active" | "expired" | "frozen" | "freeze_requested" | "cancelled" | "removed";
     purchasedAtISO: string;
     expiryISO: string;
     priceAed: number;

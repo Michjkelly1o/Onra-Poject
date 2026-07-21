@@ -61,9 +61,12 @@ export function PlanCard({
     // A finite plan with 0 credits left is spent → history: no actions, muted card
     // (you can't freeze / cancel a run-out plan). Unlimited plans never exhaust.
     const exhausted = total !== null && remaining <= 0;
-    // Only a NON-exhausted active/frozen plan is "live" — frozen / cancelled /
-    // expired / removed / exhausted all render as a disabled (grey) history card.
-    const isLive = (plan.status === "active" || plan.status === "frozen") && !exhausted;
+    // Only a NON-exhausted active / frozen / freeze_requested plan is "live" —
+    // cancelled / expired / removed / exhausted render as a disabled (grey)
+    // history card. A pending-approval plan counts as live too so its Cancel
+    // + info stays reachable while waiting on the admin decision.
+    const isLive =
+        (plan.status === "active" || plan.status === "frozen" || plan.status === "freeze_requested") && !exhausted;
     const disabled = plan.status !== "active" || exhausted;
 
     const creditLine = total === null ? "Unlimited credits" : `${remaining} credits left`;
@@ -73,15 +76,17 @@ export function PlanCard({
     const statusLine =
         plan.status === "frozen"
             ? `Frozen until: ${plan.freezeEndISO ? dayMonthYear(plan.freezeEndISO) : "—"}`
-            : plan.status === "cancelled"
-              ? "Cancelled"
-              : plan.status === "expired"
-                ? "Expired"
-                : plan.status === "removed"
-                  ? "Removed"
-                  : exhausted
-                    ? "No credits left"
-                    : "Active";
+            : plan.status === "freeze_requested"
+              ? "Freeze pending approval"
+              : plan.status === "cancelled"
+                ? "Cancelled"
+                : plan.status === "expired"
+                  ? "Expired"
+                  : plan.status === "removed"
+                    ? "Removed"
+                    : exhausted
+                      ? "No credits left"
+                      : "Active";
 
     return (
         <div className="flex flex-col gap-4 rounded-2xl border border-[#eaecf0] bg-white p-4">
@@ -149,6 +154,20 @@ export function PlanCard({
                         <span className="text-sm font-normal leading-5 text-[#667085]">Expiry date</span>
                         <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{shortDate(plan.expiryISO)}</span>
                     </div>
+                </div>
+            )}
+
+            {/* Phase 5 — freeze_requested info block. Members can see the
+                dates they requested + the amber "awaiting approval" hint
+                without leaving the plan page. */}
+            {plan.status === "freeze_requested" && plan.freezeRequestStartISO && plan.freezeRequestEndISO && (
+                <div className="flex items-start gap-2 rounded-xl border border-[#fec84b] bg-[#fffcf5] p-3">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#dc6803]" aria-hidden />
+                    <p className="text-sm leading-5 text-[#93370d]">
+                        Freeze pending admin approval from{" "}
+                        <span className="font-semibold">{shortDate(plan.freezeRequestStartISO)}</span>{" "}
+                        to <span className="font-semibold">{shortDate(plan.freezeRequestEndISO)}</span>.
+                    </p>
                 </div>
             )}
 

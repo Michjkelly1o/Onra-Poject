@@ -38,6 +38,7 @@ export default function MyPlanPage() {
     const goBack = useCustomerBack("/customer/profile");
     const member = useCurrentCustomer();
     const freezeMembershipByCustomer = useAppStore((s) => s.freezeMembershipByCustomer);
+    const requestFreezeByCustomer = useAppStore((s) => s.requestFreezeByCustomer);
     const unfreezeCustomerPlan = useAppStore((s) => s.unfreezeCustomerPlan);
     const cancelCustomerPlan = useAppStore((s) => s.cancelCustomerPlan);
     const reactivateCustomerPlan = useAppStore((s) => s.reactivateCustomerPlan);
@@ -95,11 +96,11 @@ export default function MyPlanPage() {
     // Show the FULL plan history — every membership + credit package the customer
     // has held (active / frozen / cancelled / expired), newest-active first.
     // Complimentary free-credit grants are surfaced elsewhere.
-    const statusOrder: Record<string, number> = { active: 0, frozen: 1, cancelled: 2, expired: 3 };
+    const statusOrder: Record<string, number> = { active: 0, freeze_requested: 0, frozen: 1, cancelled: 2, expired: 3 };
     const myPlans = useAppStore((s) => s.customerPlans).filter(
         (p) =>
             p.customerId === member?.id &&
-            (p.status === "active" || p.status === "frozen" || p.status === "cancelled" || p.status === "expired"),
+            (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancelled" || p.status === "expired"),
     );
     // Purchased plans only — the one-membership-OR-packages invariant below
     // applies to what the customer BOUGHT, never to complimentary grants.
@@ -113,7 +114,7 @@ export default function MyPlanPage() {
     // two memberships and never a membership + package. If corrupt state violates
     // this, the extras (planIdsToCancel) render as cancelled so the first paint is
     // already valid, matching what the self-heal writes back to the store.
-    const activeRaw = rawPlans.filter((p) => p.status === "active" || p.status === "frozen");
+    const activeRaw = rawPlans.filter((p) => p.status === "active" || p.status === "frozen" || p.status === "freeze_requested");
     // Decide which active plans stay active — by OBJECT REFERENCE (robust to any
     // duplicate/edge ids). Newest purchase wins: a membership winner keeps ONLY
     // itself (one active membership ever); a package winner keeps every active
@@ -127,11 +128,13 @@ export default function MyPlanPage() {
         for (const pl of sortedActive) if (pl.kind === "package") keep.add(pl);
     }
     const plans = rawPlans
-        .map((pl) =>
-            (pl.status === "active" || pl.status === "frozen") && !keep.has(pl)
-                ? { ...pl, status: "cancelled" as const }
-                : pl,
-        )
+        .map((pl) => {
+            // A pending freeze-request counts as "live" too so we don't
+            // shadow-cancel a plan that's currently waiting on admin
+            // approval.
+            const isLive = pl.status === "active" || pl.status === "frozen" || pl.status === "freeze_requested";
+            return isLive && !keep.has(pl) ? { ...pl, status: "cancelled" as const } : pl;
+        })
         .sort((a, b) => {
             const byStatus = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
             return byStatus !== 0 ? byStatus : (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? "");
@@ -140,7 +143,7 @@ export default function MyPlanPage() {
     // and only if it's a cancelled membership with no active plan held. Once the
     // customer moved on to a newer plan (even a since-cancelled package), all older
     // plans are history-only. Packages never reactivate.
-    const holdsActivePlan = plans.some((p) => p.status === "active" || p.status === "frozen");
+    const holdsActivePlan = plans.some((p) => p.status === "active" || p.status === "frozen" || p.status === "freeze_requested");
     const newestPlanId = [...rawPlans].sort(
         (a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""),
     )[0]?.id;
@@ -155,7 +158,7 @@ export default function MyPlanPage() {
 
     // Grouped for display: live plans on top ("Active plan"), history below
     // ("Expired plan") — same section style as the Notifications list.
-    const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen");
+    const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen" || p.status === "freeze_requested");
     const pastPlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "cancelled" || p.status === "expired");
     const renderCard = (p: CustomerPlan) => {
         const cta = ctaFor(p);
@@ -175,12 +178,32 @@ export default function MyPlanPage() {
         );
     };
 
-    // v2 (Phase 2) — sheet now supplies its own start/end, so we accept a
-    // full input object rather than a duration. Approval flow lands in
-    // Phase 5; for now Request-mode confirms freeze the same way as
-    // Members & admins so the demo end-to-end still works.
+    // Phase 5 — the sheet now branches on Who-can-freeze mode:
+    //   • "Members & admins"                → freezeMembershipByCustomer
+    //     (direct freeze, charges fee immediately)
+    //   • "Members request, admins approve" → requestFreezeByCustomer
+    //     (parks the plan in `freeze_requested`, admin has to approve —
+    //     fee is charged on approval, not on request submission)
+    // "Admins only" mode hides the CTA entirely so this branch is
+    // unreachable for members.
     function doFreeze(input: { startISO: string; endISO: string; days: number; reasonLabel: string }) {
         if (!freezePlan) return;
+        const requestMode = ctaFor(freezePlan).mode === "request";
+        if (requestMode) {
+            requestFreezeByCustomer(
+                freezePlan.id,
+                input.startISO,
+                input.endISO,
+                input.reasonLabel || undefined,
+            );
+            showToast(
+                "Freeze request sent",
+                `Your ${noun(freezePlan)} freeze is pending admin approval — you'll be notified when it's decided.`,
+                "success",
+                "check",
+            );
+            return;
+        }
         const { fee } = freezeMembershipByCustomer(
             freezePlan.id,
             input.startISO,

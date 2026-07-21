@@ -1837,7 +1837,7 @@ export interface CustomerPlan {
     name: string;
     planTypeLabel: string;
     creditsLabel: string;
-    status: "active" | "expired" | "frozen" | "cancelled" | "removed";
+    status: "active" | "expired" | "frozen" | "freeze_requested" | "cancelled" | "removed";
     purchasedAtISO: string;
     expiryISO: string;
     priceAed?: number;
@@ -1859,6 +1859,30 @@ export interface CustomerPlan {
      *  the same day doesn't spam the bell. Cleared on unfreeze so a future
      *  freeze can re-arm. (Freeze policy v2 — client 2026-07-20 Phase 4.) */
     freezeReminderSentAtISO?: string;
+    // ── Freeze policy v2 Phase 5 — approval flow (client 2026-07-20) ────────
+    /** Requested freeze START date while `status === "freeze_requested"`.
+     *  Copied over onto `freezeStartISO` when an admin approves; discarded
+     *  on reject. */
+    freezeRequestStartISO?: string;
+    /** Requested freeze END date while `status === "freeze_requested"`.
+     *  Approval copies onto `freezeEndISO`; reject discards. */
+    freezeRequestEndISO?: string;
+    /** Reason the customer supplied with the request. Shown in the admin
+     *  Approve/Reject modal + persisted as `freezeReason` on approve. */
+    freezeRequestReason?: string;
+    /** ISO timestamp the customer submitted the request — drives the "New
+     *  request" pill sort order in the admin surface. */
+    freezeRequestedAtISO?: string;
+    /** Optional note the admin wrote when rejecting. Cleared once the
+     *  customer submits a new request. */
+    freezeRejectionNote?: string;
+    // ── Freeze policy v2 Phase 5 — Option B (stay_on_schedule) billing ─────
+    /** Proration credit applied to the NEXT charge when the studio's
+     *  `billing_behavior === "stay_on_schedule"`. Rendered on the plan card
+     *  ("Next charge: AED 285 (saved AED 15)") and consumed at renewal
+     *  time. Undefined for Option A ("pause") since Pause shifts the
+     *  billing date instead of discounting the amount. */
+    nextChargeAdjustmentAed?: number;
     freeCredits?: number;
     grantReason?: string;
     grantIssuedBy?: string;
@@ -2090,6 +2114,67 @@ function freezeDayLabel(iso: string): string {
     const d = new Date(iso.slice(0, 10) + "T00:00:00Z");
     if (Number.isNaN(d.getTime())) return iso;
     return `${String(d.getUTCDate()).padStart(2, "0")} ${MONTHS[d.getUTCMonth()]}`;
+}
+
+// ── Freeze policy v2 Phase 5 — Option A/B billing math ─────────────────────
+//
+// Pure helper: given a plan, a freeze window, and the studio's billing
+// behavior, return the resulting next-charge date + adjustment amount.
+// Called from `freezeCustomerPlan` when writing the plan row + from
+// `approveFreezeRequest` when the admin greenlights a pending request.
+// Mirrors `previewFreezeBilling` in `@/lib/customer/freeze-eligibility` —
+// kept in this file to avoid a circular import (eligibility imports the
+// store, not the other way around).
+
+/** Days per billing cycle for prorate math. 30 matches the client's
+ *  worked-example screenshots (Jul 1 → Aug 1 → Sep 1 monthly billing). */
+const BILLING_CYCLE_DAYS = 30;
+
+interface FreezeChargePreview {
+    frozenDays: number;
+    /** New next-charge ISO day (YYYY-MM-DD). Option A: original + frozenDays.
+     *  Option B: original (unchanged — the charge stays on schedule). */
+    newNextChargeISO: string;
+    /** Original next-charge ISO day — the day before the current expiry. */
+    originalNextChargeISO: string;
+    /** Prorate credit (AED) for Option B; undefined for Option A. */
+    savingsAed?: number;
+}
+
+function computeNextCharge(
+    plan: CustomerPlan,
+    policy: FreezePolicy,
+    startISO: string,
+    endISO: string,
+): FreezeChargePreview {
+    const startMs = Date.parse(`${startISO.slice(0, 10)}T00:00:00Z`);
+    const endMs = Date.parse(`${endISO.slice(0, 10)}T00:00:00Z`);
+    const frozenDays = Math.max(0, Math.round((endMs - startMs) / 86_400_000));
+    // Convention shared with PlanCard: next-charge = expiry - 1 day.
+    const expiryDay = plan.expiryISO.slice(0, 10);
+    const originalNextChargeMs = Date.parse(`${expiryDay}T00:00:00Z`) - 86_400_000;
+    const originalNextChargeISO = new Date(originalNextChargeMs).toISOString().slice(0, 10);
+    if (policy.billing_behavior === "pause") {
+        const newMs = originalNextChargeMs + frozenDays * 86_400_000;
+        return {
+            frozenDays,
+            newNextChargeISO: new Date(newMs).toISOString().slice(0, 10),
+            originalNextChargeISO,
+        };
+    }
+    // Option B — stay on schedule, prorate down.
+    const price = plan.priceAed;
+    if (price === undefined || price <= 0) {
+        return { frozenDays, newNextChargeISO: originalNextChargeISO, originalNextChargeISO };
+    }
+    const savingsRaw = Math.round((frozenDays / BILLING_CYCLE_DAYS) * price);
+    const savings = Math.min(price, Math.max(0, savingsRaw));
+    return {
+        frozenDays,
+        newNextChargeISO: originalNextChargeISO,
+        originalNextChargeISO,
+        savingsAed: savings,
+    };
 }
 
 function templateFromSeed(t: SeedClassTemplate): ClassTemplate {
@@ -3755,6 +3840,22 @@ export interface AppState {
      *  max-freezes / max-duration) is enforced in the customer UI; this action
      *  performs the mutation + fee charge. Returns the fee charged (0 = none). */
     freezeMembershipByCustomer: (planId: string, startISO: string, endISO: string, reason?: string) => { fee: number };
+    // ── Freeze policy v2 Phase 5 — approval flow ───────────────────────────
+    /** Customer-portal freeze REQUEST — parks the plan in `freeze_requested`
+     *  with the requested window + reason. No fee is charged at this stage;
+     *  the fee (if any) is applied on approve. Used when the studio's
+     *  `who_can_freeze === "members_request_admins_approve"`. */
+    requestFreezeByCustomer: (planId: string, startISO: string, endISO: string, reason?: string) => void;
+    /** Admin approves a pending freeze request. Transitions the plan to
+     *  `frozen` with the requested dates + reason, applies the billing
+     *  behavior (Option A/B), clears the request scratch fields, and
+     *  charges the freeze fee if configured. Fires customer + admin bell
+     *  rows same as a direct freeze. */
+    approveFreezeRequest: (planId: string) => void;
+    /** Admin rejects a pending freeze request. Reverts to `active` and
+     *  stores the optional note so the customer sees why. Bell rows tell
+     *  the customer + admin audit log. */
+    rejectFreezeRequest: (planId: string, note?: string) => void;
     /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
     cancelCustomerPlan: (planId: string, mode: "today" | "period_end", reason: string) => void;
     reactivateCustomerPlan: (planId: string) => void;
@@ -6043,15 +6144,18 @@ export const useAppStore = create<AppState>()(persist(
 
     freezeCustomerPlan: (planId, startISO, endISO, source, reason) => {
         const target = get().customerPlans.find(p => p.id === planId);
+        // Phase 5 — billing_behavior branches the freeze math:
+        //   • "pause" (Option A) → expiry shifts by frozenDays, next-charge
+        //     amount unchanged. Historical behavior.
+        //   • "stay_on_schedule" (Option B) → expiry stays, next-charge is
+        //     prorated down by the frozen fraction of the billing cycle.
+        //     Stashed on `nextChargeAdjustmentAed` for the renewal step to
+        //     consume; expiry math untouched.
+        const policy = get().freezePolicy;
         set(state => ({
             customerPlans: state.customerPlans.map(p => {
                 if (p.id !== planId) return p;
-                // Frozen days are added back onto the expiry so the customer
-                // doesn't lose the paused time (Brief: expiry is extended).
-                const days = Math.max(0, Math.round(
-                    (new Date(`${endISO}T00:00:00Z`).getTime() - new Date(`${startISO}T00:00:00Z`).getTime()) / 86_400_000,
-                ));
-                const extendedExpiry = new Date(new Date(p.expiryISO).getTime() + days * 86_400_000).toISOString();
+                const preview = computeNextCharge(p, policy, startISO, endISO);
                 return {
                     ...p,
                     status: "frozen" as const,
@@ -6066,7 +6170,25 @@ export const useAppStore = create<AppState>()(persist(
                     freezeCount: (p.freezeCount ?? 0) + 1,
                     // Reason (customer self-freeze) — surfaced admin-side.
                     freezeReason: reason ?? undefined,
-                    expiryISO: extendedExpiry,
+                    // Option A: expiry shifts by frozenDays. Option B:
+                    // expiry stays put; the renewal picks up the prorate.
+                    expiryISO:
+                        policy.billing_behavior === "pause"
+                            ? new Date(preview.newNextChargeISO + "T00:00:00Z").toISOString()
+                            : p.expiryISO,
+                    // Option B only — stashed for the renewal cycle.
+                    nextChargeAdjustmentAed:
+                        policy.billing_behavior === "stay_on_schedule"
+                            ? preview.savingsAed ?? undefined
+                            : undefined,
+                    // Clear stale request scratch — approve-flow copies fields
+                    // over onto the freeze fields; make sure we don't carry
+                    // the request payload after transition.
+                    freezeRequestStartISO: undefined,
+                    freezeRequestEndISO: undefined,
+                    freezeRequestReason: undefined,
+                    freezeRequestedAtISO: undefined,
+                    freezeRejectionNote: undefined,
                 };
             }),
         }));
@@ -6145,6 +6267,186 @@ export const useAppStore = create<AppState>()(persist(
         return { fee };
     },
 
+    // ── Freeze policy v2 Phase 5 — approval flow ──────────────────────────
+    requestFreezeByCustomer: (planId, startISO, endISO, reason) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target) return;
+        const customer = get().customers.find(c => c.id === target.customerId);
+        const nowISO = new Date().toISOString();
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                          ...p,
+                          status: "freeze_requested" as const,
+                          freezeRequestStartISO: startISO,
+                          freezeRequestEndISO: endISO,
+                          freezeRequestReason: reason ?? undefined,
+                          freezeRequestedAtISO: nowISO,
+                          // Clear stale rejection note when the customer
+                          // resubmits after a rejection.
+                          freezeRejectionNote: undefined,
+                      }
+                    : p,
+            ),
+        }));
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit(
+                `${customerName} requested a freeze`,
+                "customer_plan",
+                planId,
+                target.name,
+                { from: startISO, to: endISO },
+            );
+            // Customer bell — confirm the request landed.
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_frozen",
+                title: "Freeze requested",
+                message: `Your request for ${target.name} (${freezeDayLabel(startISO)} → ${freezeDayLabel(endISO)}) is pending admin approval.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            // Admin bell — surface the request in the notifications page so
+            // the studio owner sees it without having to open the customer
+            // detail.
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_frozen",
+                    title: "Freeze requested",
+                    body: `${customerName} requested a freeze on ${target.name} (${freezeDayLabel(startISO)} → ${freezeDayLabel(endISO)}).`,
+                    icon: "calendar-minus",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+    },
+
+    approveFreezeRequest: (planId) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target || target.status !== "freeze_requested") return;
+        const startISO = target.freezeRequestStartISO;
+        const endISO = target.freezeRequestEndISO;
+        if (!startISO || !endISO) return;
+        const reason = target.freezeRequestReason;
+        // Hand off to the shared freeze action — it applies Option A/B
+        // billing math, bumps freezeCount, records the audit, and clears
+        // the request scratch fields via its own reset block.
+        get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal", reason);
+        // Notifications — same shape as the direct-freeze fan-out in
+        // freezeMembershipByCustomer, but the initiator is the admin
+        // approving the request rather than the customer.
+        const customer = get().customers.find(c => c.id === target.customerId);
+        if (customer) {
+            const end = freezeDayLabel(endISO);
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_frozen",
+                title: "Freeze approved",
+                message: `Your ${target.name} freeze was approved. Bookings resume ${end}.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_frozen",
+                    title: "Freeze approved",
+                    body: `Approved freeze for ${customerName}'s ${target.name} — resumes ${end}.`,
+                    icon: "calendar-minus",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+        // Charge-now: emit the freeze-fee row on approval (same charge-now
+        // pattern as the direct-freeze path — the fee is tied to the
+        // freeze STARTING, not to the request being submitted).
+        const policy = get().freezePolicy;
+        const fee = policy.fee_enabled ? Math.max(0, policy.fee_amount_aed) : 0;
+        if (customer && fee > 0) {
+            const nowISO = new Date().toISOString();
+            const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            const feeTxn: CustomerTransaction = {
+                id: txnId,
+                customerId: customer.id,
+                branchId: customer.branchId,
+                kind: "freeze_fee",
+                productId: planId,
+                name: policy.fee_type === "recurring" ? "Membership freeze fee (recurring)" : "Membership freeze fee",
+                amountAed: fee,
+                status: "complete",
+                paymentMethod: "card",
+                paymentSource: "customer_portal",
+                createdAtISO: nowISO,
+                transactionType: "sale",
+                isRefundable: false,
+            };
+            set(state => ({ customerTransactions: [...state.customerTransactions, feeTxn] }));
+        }
+    },
+
+    rejectFreezeRequest: (planId, note) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target || target.status !== "freeze_requested") return;
+        const customer = get().customers.find(c => c.id === target.customerId);
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                          ...p,
+                          status: "active" as const,
+                          freezeRequestStartISO: undefined,
+                          freezeRequestEndISO: undefined,
+                          freezeRequestReason: undefined,
+                          freezeRequestedAtISO: undefined,
+                          freezeRejectionNote: note?.trim() ? note.trim() : undefined,
+                      }
+                    : p,
+            ),
+        }));
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit(
+                `Rejected ${customerName}'s freeze request`,
+                "customer_plan",
+                planId,
+                target.name,
+                note ? { note } : undefined,
+            );
+            const noteSuffix = note?.trim() ? ` Note from the studio: ${note.trim()}` : "";
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_reactivated",
+                title: "Freeze request declined",
+                message: `Your ${target.name} freeze request was declined.${noteSuffix}`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_reactivated",
+                    title: "Freeze request declined",
+                    body: `Declined ${customerName}'s freeze request on ${target.name}.`,
+                    icon: "refresh",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+    },
+
     unfreezeCustomerPlan: (planId) => {
         const target = get().customerPlans.find(p => p.id === planId);
         set(state => ({
@@ -6159,6 +6461,11 @@ export const useAppStore = create<AppState>()(persist(
                           // Clear the reminder idempotency stamp so a future
                           // freeze can re-arm its 3-day reminder cleanly.
                           freezeReminderSentAtISO: undefined,
+                          // Phase 5 — release the Option B prorate credit
+                          // if it was set. Manual unfreeze mid-cycle means
+                          // the frozen fraction was never actually paused,
+                          // so there's no proration to apply anymore.
+                          nextChargeAdjustmentAed: undefined,
                       }
                     : p,
             ),
@@ -8915,7 +9222,18 @@ export const useAppStore = create<AppState>()(persist(
         //   payloads so testers pick up the two new notification events
         //   (`membership_frozen`, `membership_reactivated`) + the new
         //   `ns_membership_freeze_reminder` notification_settings row.
-        version: 78,
+        // v79 (2026-07-21 admin): FreezePolicy v2 Phase 5 — approval flow
+        //   + Option A/B billing math. CustomerPlan gains:
+        //     • `freeze_requested` status
+        //     • freezeRequestStartISO / freezeRequestEndISO / reason /
+        //       requestedAtISO / rejectionNote scratch fields
+        //     • nextChargeAdjustmentAed (Option B prorate credit)
+        //   Persisted rows keep working — the fields are all optional,
+        //   defaults are undefined. Bump reseeds stale payloads so
+        //   testers pick up the new store actions (requestFreezeByCustomer /
+        //   approveFreezeRequest / rejectFreezeRequest) + the new admin
+        //   review modal + the pending-approval customer plan card state.
+        version: 79,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

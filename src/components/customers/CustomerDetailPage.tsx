@@ -132,7 +132,12 @@ function CustomerStatusBadge({ status }: { status: Customer["status"] }) {
 }
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
-    active: "Active", expired: "Expired", frozen: "Frozen", cancelled: "Cancelled", removed: "Removed",
+    active: "Active",
+    expired: "Expired",
+    frozen: "Frozen",
+    freeze_requested: "Freeze requested",
+    cancelled: "Cancelled",
+    removed: "Removed",
 };
 
 function PlanStatusBadge({ status }: { status: PlanStatus }) {
@@ -140,6 +145,9 @@ function PlanStatusBadge({ status }: { status: PlanStatus }) {
         active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
         expired: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
         frozen: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
+        // Amber for "waiting on us" — matches the pending-approval convention
+        // used by refund requests (needs-attention row on the dashboard).
+        freeze_requested: "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
         cancelled: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
         removed: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
@@ -331,6 +339,88 @@ function UnfreezeModal({ plan, onClose, onConfirm }: {
                     <div className="rounded-[8px] border-1 border-[#e4e7ec] bg-[#f9fafb] px-3.5 py-2.5 text-[14px] text-[#475467]">
                         {plan.freezeReason}
                     </div>
+                </div>
+            )}
+        </ModalShell>
+    );
+}
+
+// ─── Freeze-request review modal (Phase 5) ────────────────────────────────────
+// Shown when the studio's Who-can-freeze is set to "Members request, admins
+// approve" and the customer has submitted a freeze request. Admin sees the
+// requested dates + reason and can either Approve (transitions the plan to
+// frozen with the requested window) or Reject (optionally with a note that
+// travels back to the customer's bell). Mirrors the UnfreezeModal chrome —
+// read-only DatePickers for the window + a stacked action pair in the footer.
+
+function FreezeRequestReviewModal({ plan, onClose, onApprove, onReject }: {
+    plan: CustomerPlan;
+    onClose: () => void;
+    onApprove: () => void;
+    onReject: (note: string) => void;
+}) {
+    const [rejectMode, setRejectMode] = useState(false);
+    const [note, setNote] = useState("");
+    return (
+        <ModalShell
+            title={rejectMode ? "Decline freeze request" : "Review freeze request"}
+            subtitle={
+                rejectMode
+                    ? "Optionally add a note — the customer will see it in their notifications."
+                    : "The customer has requested to freeze this plan. Approve to freeze immediately, or decline."
+            }
+            onClose={onClose}
+            footer={
+                rejectMode ? (
+                    <>
+                        <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setRejectMode(false)}>
+                            Back
+                        </Button>
+                        <Button variant="destructive" size="lg" className="flex-1" onClick={() => onReject(note)}>
+                            Decline request
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setRejectMode(true)}>
+                            Decline
+                        </Button>
+                        <Button variant="primary" size="lg" className="flex-1" onClick={onApprove}>
+                            Approve request
+                        </Button>
+                    </>
+                )
+            }
+        >
+            {/* Requested window — read-only. Dates come straight off the plan. */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Requested start</label>
+                    <DatePicker value={plan.freezeRequestStartISO ?? ""} onChange={() => {}} placeholder="—" disabled />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Requested end</label>
+                    <DatePicker value={plan.freezeRequestEndISO ?? ""} onChange={() => {}} placeholder="—" disabled />
+                </div>
+            </div>
+            {plan.freezeRequestReason && (
+                <div className="mt-4 flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
+                    <div className="rounded-[8px] border-1 border-[#e4e7ec] bg-[#f9fafb] px-3.5 py-2.5 text-[14px] text-[#475467]">
+                        {plan.freezeRequestReason}
+                    </div>
+                </div>
+            )}
+            {rejectMode && (
+                <div className="mt-4 flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[#344054]">Note to customer (optional)</label>
+                    <textarea
+                        value={note}
+                        onChange={e => setNote(e.target.value)}
+                        rows={3}
+                        placeholder="e.g. Freeze window falls in our peak season — please pick dates after Sep 1."
+                        className="w-full rounded-[8px] border-1 border-[#d0d5dd] bg-white px-3.5 py-2.5 text-[14px] text-[#101828] placeholder:text-[#98a2b3] focus:outline-none focus:ring-2 focus:ring-[#7ba08c]/40"
+                    />
                 </div>
             )}
         </ModalShell>
@@ -586,7 +676,7 @@ function CustomerStatusModal({ action, customerName, onClose, onConfirm }: {
 
 // ─── Plan-row actions (⋮) ─────────────────────────────────────────────────────
 
-type PlanActionKind = "freeze" | "unfreeze" | "cancel" | "remove" | "view";
+type PlanActionKind = "freeze" | "unfreeze" | "cancel" | "remove" | "view" | "freeze_review";
 
 /** Which row actions a plan offers, given its kind + status. */
 function planActions(plan: CustomerPlan): PlanActionKind[] {
@@ -597,6 +687,10 @@ function planActions(plan: CustomerPlan): PlanActionKind[] {
     }
     if (plan.status === "active") return ["freeze", "cancel"];
     if (plan.status === "frozen") return ["unfreeze"];
+    // Phase 5 — pending freeze request. Admin can approve or reject via
+    // the shared review modal; Cancel stays available in case the admin
+    // wants to end the plan altogether rather than acting on the request.
+    if (plan.status === "freeze_requested") return ["freeze_review", "cancel"];
     return [];
 }
 
@@ -628,6 +722,12 @@ function PlanRowActions({ plan, onAction }: {
                     <button type="button" onClick={() => trigger("unfreeze")}
                         className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
                         <PlayCircle className="w-4 h-4 text-[#667085]" />Unfreeze
+                    </button>
+                )}
+                {actions.includes("freeze_review") && (
+                    <button type="button" onClick={() => trigger("freeze_review")}
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        <PauseCircle className="w-4 h-4 text-[#667085]" />Review freeze request
                     </button>
                 )}
                 {actions.includes("view") && (
@@ -787,7 +887,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type PlanModalState =
-    | { kind: "freeze" | "unfreeze" | "cancel" | "remove" | "view"; plan: CustomerPlan }
+    | { kind: "freeze" | "unfreeze" | "cancel" | "remove" | "view" | "freeze_review"; plan: CustomerPlan }
     | null;
 
 export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }: { customerId: string; returnTo?: string }) {
@@ -798,6 +898,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const freezeCustomerPlan = useAppStore(s => s.freezeCustomerPlan);
     const unfreezeCustomerPlan = useAppStore(s => s.unfreezeCustomerPlan);
+    const approveFreezeRequest = useAppStore(s => s.approveFreezeRequest);
+    const rejectFreezeRequest = useAppStore(s => s.rejectFreezeRequest);
     const cancelCustomerPlan = useAppStore(s => s.cancelCustomerPlan);
     const removeComplimentaryPlan = useAppStore(s => s.removeComplimentaryPlan);
     const showToast = useAppStore(s => s.showToast);
@@ -855,7 +957,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
     // ── Plan tab sort — Transaction name / Plan type / Status / Expiry. ──
     const PLAN_STATUS_ORDER: Record<PlanStatus, number> = {
-        active: 0, frozen: 1, expired: 2, cancelled: 3, removed: 4,
+        active: 0, freeze_requested: 0, frozen: 1, expired: 2, cancelled: 3, removed: 4,
     };
     const { sorted: sortedPlans, sortKey: planSortKey, sortDir: planSortDir, toggle: togglePlanSort } = useSort<CustomerPlan>(filteredPlans, {
         name:       (a, b) => a.name.localeCompare(b.name),
@@ -973,6 +1075,29 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             "Membership has been unfrozen",
             `All benefits and bookings have been reactivated for ${plan.name}.`,
             "success", "check",
+        );
+    }
+    // Phase 5 — approval flow. Approve / Reject share the same modal
+    // (FreezeRequestReviewModal below). Reject accepts an optional note
+    // the customer sees when the rejection notification fires.
+    function handleApproveFreezeRequest(plan: CustomerPlan) {
+        approveFreezeRequest(plan.id);
+        setPlanModal(null);
+        showToast(
+            "Freeze request approved",
+            `${plan.name} is now frozen — the customer has been notified.`,
+            "success", "check",
+        );
+    }
+    function handleRejectFreezeRequest(plan: CustomerPlan, note: string) {
+        rejectFreezeRequest(plan.id, note.trim() || undefined);
+        setPlanModal(null);
+        showToast(
+            "Freeze request declined",
+            note.trim()
+                ? `${plan.name} stays active — the customer was told: "${note.trim()}"`
+                : `${plan.name} stays active — the customer has been notified.`,
+            "error", "slash",
         );
     }
     function handleCancelPlan(plan: CustomerPlan, mode: "today" | "period_end", reason: string) {
@@ -1300,6 +1425,14 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             {planModal?.kind === "unfreeze" && (
                 <UnfreezeModal plan={planModal.plan} onClose={() => setPlanModal(null)}
                     onConfirm={() => handleUnfreeze(planModal.plan)} />
+            )}
+            {planModal?.kind === "freeze_review" && (
+                <FreezeRequestReviewModal
+                    plan={planModal.plan}
+                    onClose={() => setPlanModal(null)}
+                    onApprove={() => handleApproveFreezeRequest(planModal.plan)}
+                    onReject={note => handleRejectFreezeRequest(planModal.plan, note)}
+                />
             )}
             {planModal?.kind === "cancel" && (
                 <CancelPlanModal plan={planModal.plan} onClose={() => setPlanModal(null)}

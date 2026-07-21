@@ -127,7 +127,13 @@ export type FreezeIneligibilityReason =
     | "policy_disabled"
     | "out_of_scope"
     | "freeze_limit_reached"
-    | "not_membership";
+    | "not_membership"
+    /** Plan is already in `freeze_requested` — waiting for admin approve/
+     *  reject. CTA is hidden; the card shows a pending pill instead. */
+    | "freeze_pending"
+    /** Plan is already frozen. CTA is hidden; the card shows the resume
+     *  date + Unfreeze button. */
+    | "already_frozen";
 
 /** How the CTA should render on the customer plan page.
  *
@@ -153,6 +159,13 @@ export function decideFreezeCta(
     // Membership-only affordance — packages have no freeze.
     if (plan.kind !== "membership") {
         return { mode: "hidden", reason: "not_membership" };
+    }
+    // Already in the freeze lifecycle — don't offer a second CTA.
+    if (plan.status === "freeze_requested") {
+        return { mode: "hidden", reason: "freeze_pending" };
+    }
+    if (plan.status === "frozen") {
+        return { mode: "hidden", reason: "already_frozen" };
     }
     if (!policy.enabled) {
         return { mode: "hidden", reason: "policy_disabled" };

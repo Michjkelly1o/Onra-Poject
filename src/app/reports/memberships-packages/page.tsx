@@ -38,11 +38,12 @@ interface MembershipsDisplayRow {
 }
 
 const STATUS_LABEL: Record<CustomerPlanRow["status"], string> = {
-    active:    "Active",
-    expired:   "Expired",
-    frozen:    "Frozen",
-    cancelled: "Cancelled",
-    removed:   "Removed",
+    active:            "Active",
+    expired:           "Expired",
+    frozen:            "Frozen",
+    freeze_requested:  "Freeze requested",
+    cancelled:         "Cancelled",
+    removed:           "Removed",
 };
 
 function planTypeLabel(kind: CustomerPlanRow["kind"]): string {
