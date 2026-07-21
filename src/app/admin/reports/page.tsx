@@ -76,7 +76,7 @@ const CATEGORIES: ReportCategory[] = [
             "Track studio performance — sales, refunds, discounts, gift cards, tax, revenue recognition, MRR, ARPM, and per-visit economics.",
         icon: BankNote01,
         items: [
-            { slug: "total-sales",         label: "Total Sales (orders)"         },
+            { slug: "total-sales",         label: "Total Sales"                  },
             { slug: "sales-by-category",   label: "Sales by Category (stream)"   },
             { slug: "sales-by-item",       label: "Sales by Item"                },
             { slug: "payments",            label: "Payments"                     },

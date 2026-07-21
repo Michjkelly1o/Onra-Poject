@@ -7,7 +7,7 @@
 // new-prd/Onra_Reporting.xlsx sheet "Total Sales" column-for-column:
 //
 //   23 columns (all display + calc formulas from the Excel spec)
-//   5 breakdown dimensions (Revenue category / Customer / Staff /
+//   5 breakdown dimensions (Sale category / Customer / Staff /
 //                           Location / Sales channel)
 //   Net vs Gross measure toggle
 //   6 period options (None + day/week/month/quarter/year)
@@ -62,8 +62,11 @@ const K = {
 export const TOTAL_SALES_REPORT: ReportDefinition = {
     id:          "total-sales",
     category:    "financial",
-    title:       "Total Sales (orders)",
-    description: "Order-level list of everything sold — the financial source of truth. Refunds land in their own period; voids are erased.",
+    // Client 2026-07-20: drop "(orders)" from the visible title; also
+    // renamed the description away from "order-level" for consistency
+    // with the new "Sale category" vocabulary on the dimension dropdown.
+    title:       "Total Sales",
+    description: "Row-level list of everything sold — the financial source of truth. Refunds land in their own period; voids are erased.",
     type:        "lookback",
     route:       "/reports/total-sales",
     selector:    "selectTransactionLedger",
@@ -81,7 +84,7 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
         { key: K.customerEmail,    label: "Customer email",               kind: "text",     minWidth: 220, hiddenByDefault: true },
         { key: K.staffId,          label: "Staff ID",                     kind: "id",       minWidth: 160, hiddenByDefault: true },
         { key: K.salesChannel,     label: "Sales channel",                kind: "text",     minWidth: 160 },
-        { key: K.revenueCategoryLabel, label: "Revenue category",         kind: "text",     minWidth: 160 },
+        { key: K.revenueCategoryLabel, label: "Sale category",            kind: "text",     minWidth: 160 },
         { key: K.saleItems,        label: "Sale items",                   kind: "text",     minWidth: 240 },
         { key: K.quantity,         label: "Quantity",                     kind: "number",   minWidth: 100 },
         { key: K.grossSales,       label: "Gross sales",                  kind: "currency", minWidth: 140 },
@@ -99,7 +102,7 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
 
     // 5 break-down dimensions.
     dimensions: [
-        { key: "revenue_category", label: "Revenue category", extract: r => String(r[K.revenueCategoryLabel] ?? "—") },
+        { key: "revenue_category", label: "Sale category", extract: r => String(r[K.revenueCategoryLabel] ?? "—") },
         { key: "customer",         label: "Customer",         extract: r => String(r[K.customerName] ?? "—") },
         { key: "staff",            label: "Staff",            extract: r => String(r[K.staffName] ?? "—") },
         { key: "location",         label: "Location",         extract: r => String(r[K.location] ?? "—") },
