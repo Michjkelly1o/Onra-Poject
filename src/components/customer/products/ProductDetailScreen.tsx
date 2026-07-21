@@ -113,7 +113,7 @@ export function ProductDetailScreen({
     const heldMembershipPlan =
         member != null
             ? customerPlans.find(
-                  (p) => p.customerId === member.id && p.kind === "membership" && (p.status === "active" || p.status === "frozen"),
+                  (p) => p.customerId === member.id && p.kind === "membership" && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
               )
             : undefined;
     const membershipUsable =
@@ -123,7 +123,7 @@ export function ProductDetailScreen({
         member != null &&
         creditsLeft > 0 &&
         customerPlans.some(
-            (p) => p.customerId === member.id && p.kind === "package" && (p.status === "active" || p.status === "frozen"),
+            (p) => p.customerId === member.id && p.kind === "package" && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
     const ownedMembershipId = activeMembershipPlan?.productId;
     const currentMembership = ownedMembershipId ? memberships.find((m) => m.id === ownedMembershipId) ?? null : null;

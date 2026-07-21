@@ -37,7 +37,6 @@ const BILLING_BEHAVIOR_OPTIONS: RadioCardOption<FreezePolicy["billing_behavior"]
         label: "Pauses",
         description:
             "The payment date and renewal date shift by the freeze length. Members pay full price and skip nothing.",
-        recommended: true,
     },
     {
         key: "stay_on_schedule",
@@ -53,7 +52,6 @@ const WHO_CAN_FREEZE_OPTIONS: RadioCardOption<FreezePolicy["who_can_freeze"]>[] 
         label: "Members & admins",
         description:
             "Members pause from their account within the limits below. Staff can always freeze from a customer profile.",
-        recommended: true,
     },
     {
         key: "members_request_admins_approve",

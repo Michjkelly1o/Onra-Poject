@@ -83,7 +83,7 @@ export default function ProductsPage() {
                   (p) =>
                       p.customerId === member.id &&
                       p.kind === "membership" &&
-                      (p.status === "active" || p.status === "frozen"),
+                      (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
               )
             : undefined;
     const membershipUsable =
@@ -100,7 +100,7 @@ export default function ProductsPage() {
             (p) =>
                 p.customerId === member.id &&
                 p.kind !== "complimentary" &&
-                (p.status === "active" || p.status === "frozen"),
+                (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
     // Only the customer's MOST RECENTLY purchased plan is reactivatable — and only
     // if it's a cancelled membership with no active plan held. Re-buying an OLDER
@@ -189,7 +189,7 @@ export default function ProductsPage() {
             (p) =>
                 p.customerId === member.id &&
                 p.kind === "package" &&
-                (p.status === "active" || p.status === "frozen"),
+                (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
 
     function cartQtyFor(p: PlanRow): number {

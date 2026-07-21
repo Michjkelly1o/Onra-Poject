@@ -122,7 +122,7 @@ export function useActivePlan(): ActivePlanVM | null {
         // or frozen) — read straight from customerPlans, independent of
         // member.membershipId, so a cancelled / expired plan reliably hides it.
         const held = customerPlans.some(
-            (p) => p.customerId === member.id && (p.status === "active" || p.status === "frozen"),
+            (p) => p.customerId === member.id && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
         if (!held) return null;
         const credits = typeof member.creditsRemaining === "number" ? member.creditsRemaining : null;
@@ -170,7 +170,7 @@ export function useCreditBalance(): CreditBalanceVM | null {
             (p) =>
                 p.customerId === member.id &&
                 p.kind === kind &&
-                (p.status === "active" || p.status === "frozen"),
+                (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
         if (held.length === 0) return null;
         // Unlimited memberships carry no numeric credit balance.
@@ -242,7 +242,7 @@ export function useReconcileMemberPlans(): void {
             (p) =>
                 p.customerId === member.id &&
                 p.kind !== "complimentary" &&
-                (p.status === "active" || p.status === "frozen"),
+                (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
         for (const id of planIdsToCancel(active)) {
             cancelCustomerPlan(id, "period_end", "Switched plan — only one plan type can be active");

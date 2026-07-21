@@ -2673,14 +2673,17 @@ function derivedFlatPlanFields(
     plans: CustomerPlan[],
     customerId: string,
 ): Pick<Customer, "planKind" | "planName" | "membershipId" | "packageIds" | "planExpiryISO"> {
+    // freeze_requested plans still count as held — until the admin acts,
+    // the customer's live plan is the same one, just waiting for a
+    // decision. Same treatment across every "held plan" check below.
     const heldMemberships = plans.filter(p =>
         p.customerId === customerId
         && p.kind === "membership"
-        && (p.status === "active" || p.status === "frozen"));
+        && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"));
     const heldPackages = plans.filter(p =>
         p.customerId === customerId
         && p.kind === "package"
-        && (p.status === "active" || p.status === "frozen"));
+        && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"));
     // Membership wins over package if both are present — matches
     // `applyPurchase`'s cascade-cancel bias and reads correctly on the
     // rare interim state before the cascade has run.
@@ -3426,7 +3429,7 @@ function reconcileCreditsRemaining(customers: Customer[], plans: CustomerPlan[])
         if (typeof c.creditsRemaining === "number") return c;
         const cust_plans = plans.filter(p =>
             p.customerId === c.id
-            && (p.status === "active" || p.status === "frozen"),
+            && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
         );
         if (cust_plans.length === 0) return c;
         // Any active unlimited plan → leave the counter undefined so
@@ -6510,7 +6513,7 @@ export const useAppStore = create<AppState>()(persist(
                 if (c.id !== target.customerId) return c;
                 const stillCounted = customerPlans.filter(p =>
                     p.customerId === c.id
-                    && (p.status === "active" || p.status === "frozen"));
+                    && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"));
                 let cap = 0;
                 let hasUnlimited = false;
                 for (const p of stillCounted) {

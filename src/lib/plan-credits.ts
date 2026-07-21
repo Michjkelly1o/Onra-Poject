@@ -51,7 +51,11 @@ export function derivePlanBalances(
     creditsRemaining: number | undefined,
 ): Map<string, PlanCreditBalance> {
     const out = new Map<string, PlanCreditBalance>();
-    const isLive = (p: CustomerPlan) => p.status === "active" || p.status === "frozen";
+    // freeze_requested plans are still active-in-effect until the admin
+    // acts on the request — count them alongside active + frozen so credit
+    // math doesn't drop the row while approval is pending.
+    const isLive = (p: CustomerPlan) =>
+        p.status === "active" || p.status === "frozen" || p.status === "freeze_requested";
 
     // Terminal-status rows: snapshot from the seed.
     for (const p of plans) {
