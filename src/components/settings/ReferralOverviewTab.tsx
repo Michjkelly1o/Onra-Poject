@@ -20,7 +20,7 @@
 // `packages`), so a new referral or a reward-config change reflects here on
 // the same render cycle. See `deriveReferralOverview` in referral-helpers.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Share07 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { TableAvatar } from "@/components/ui/avatar";
 import { Pagination } from "@/components/ui/Pagination";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { dateFilterToRange } from "@/lib/period-filter";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore } from "@/lib/store";
 import { deriveReferralOverview } from "@/lib/referral-helpers";
@@ -69,6 +71,33 @@ export function ReferralOverviewTab() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
+    // Period filter — client 2026-07-20. Default "This month" so the
+    // Overview tab lands on the same view the (still-monthly) budget bar
+    // is scoped to. All KPI + Top referrers derivations below read from
+    // `filteredReferrals` instead of the raw slice.
+    const [period, setPeriod] = useState<DateFilter>({
+        type: "month",
+        label: "This month",
+    });
+    const filteredReferrals = useMemo(() => {
+        const { from, to } = dateFilterToRange(period);
+        const fromT = from.getTime();
+        const toT = to.getTime();
+        return customerReferrals.filter((r) => {
+            const t = Date.parse(r.referredAtISO);
+            return !Number.isNaN(t) && t >= fromT && t <= toT;
+        });
+    }, [customerReferrals, period]);
+
+    // Reset the top-referrers pagination whenever the period changes so
+    // the tester doesn't land on an out-of-range page after switching.
+    const periodKey = period.type === "custom"
+        ? `${period.from.toISOString()}|${period.to.toISOString()}`
+        : `${period.type}|${period.label}`;
+    useEffect(() => {
+        setPage(1);
+    }, [periodKey]);
+
     // ── Centralized product averages feeding the derived KPIs ──────────────
     const avgMembershipPriceAed = useMemo(() => {
         const active = memberships.filter(m => m.status === "active");
@@ -84,14 +113,16 @@ export function ReferralOverviewTab() {
     }, [packages]);
 
     const metrics = useMemo(
-        () => deriveReferralOverview(customerReferrals, settings, avgMembershipPriceAed, avgAedPerCredit),
-        [customerReferrals, settings, avgMembershipPriceAed, avgAedPerCredit],
+        () => deriveReferralOverview(filteredReferrals, settings, avgMembershipPriceAed, avgAedPerCredit),
+        [filteredReferrals, settings, avgMembershipPriceAed, avgAedPerCredit],
     );
 
     // ── Top referrers — group the ledger by referrer, join to customer ─────
+    // Reads from `filteredReferrals` so the leaderboard reflects the
+    // selected period (per client 2026-07-20).
     const referrerRows = useMemo<ReferrerRow[]>(() => {
         const byReferrer = new Map<string, { referrals: number; credits: number }>();
-        for (const r of customerReferrals) {
+        for (const r of filteredReferrals) {
             const acc = byReferrer.get(r.referrerCustomerId) ?? { referrals: 0, credits: 0 };
             acc.referrals += 1;
             acc.credits += r.benefitCredits;
@@ -113,7 +144,7 @@ export function ReferralOverviewTab() {
             });
         }
         return rows;
-    }, [customerReferrals, customers, branches]);
+    }, [filteredReferrals, customers, branches]);
 
     const { sorted, sortKey, sortDir, toggle } = useSort<ReferrerRow>(referrerRows, {
         name:      (a, b) => a.name.localeCompare(b.name),
@@ -178,6 +209,12 @@ export function ReferralOverviewTab() {
                         Monthly budget resets in {resetDays} {resetDays === 1 ? "day" : "days"}.
                     </p>
                 </div>
+                {/* Period filter — client 2026-07-20. Scopes the 4 KPI
+                    tiles + Top referrers table + monthly budget bar to
+                    the selected range. Placed left of Share so the two
+                    actions read as "filter what I see" → "share
+                    program". */}
+                <DateRangeFilter value={period} onChange={setPeriod} />
                 <Button variant="secondary-gray" size="md" leftIcon={<Share07 className="w-4 h-4" />} onClick={shareLink}>
                     Share program link
                 </Button>
