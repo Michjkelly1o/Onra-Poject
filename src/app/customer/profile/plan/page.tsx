@@ -72,10 +72,10 @@ export default function MyPlanPage() {
 
     // Sheet inputs derived from the policy (reasons / max duration / fee).
     const unitDays = { days: 1, weeks: 7, months: 30 } as const;
-    const freezeReasons = policy.allow_exceptions
+    const freezeReasons = policy.require_reason
         ? policy.reasons.filter((r) => r.enabled && r.label.trim()).map((r) => r.label)
         : [];
-    const requireReason = policy.allow_exceptions;
+    const requireReason = policy.require_reason;
     const maxFreezeDays = policy.max_duration_enabled
         ? policy.max_duration_value * unitDays[policy.max_duration_unit]
         : null;

@@ -238,7 +238,7 @@ function FreezeModal({ plan, onClose, onConfirm }: {
     // (exceptions off, or all reasons unchecked / deleted) the dropdown is
     // hidden entirely per client Jul 2026.
     const policy = useAppStore(s => s.freezePolicy);
-    const availableReasons = policy.allow_exceptions
+    const availableReasons = policy.require_reason
         ? policy.reasons.filter(r => r.enabled && r.label.trim()).map(r => r.label)
         : [];
     const showReason = availableReasons.length > 0;

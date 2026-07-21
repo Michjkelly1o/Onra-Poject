@@ -115,7 +115,7 @@ export default function BookingRulesPage() {
     const freezeFeeValue = freezePolicy.fee_enabled
         ? `AED ${freezePolicy.fee_amount_aed} · ${freezePolicy.fee_type === "one_time" ? "One-time" : "Recurring"}`
         : "No";
-    const freezeReasonsValue = !freezePolicy.allow_exceptions
+    const freezeReasonsValue = !freezePolicy.require_reason
         ? "Any reason"
         : (() => {
             const n = freezePolicy.reasons.filter(r => r.enabled && r.label.trim()).length;

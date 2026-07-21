@@ -260,6 +260,26 @@ export interface FreezeReason {
     id: string;
     label: string;
     enabled: boolean;
+    /** v2 — Per-reason overrides that bypass one or more of the base
+     *  policy limits when a member picks THIS reason (client 2026-07-20,
+     *  Figma "3 exceptions ▾" expander).
+     *
+     *  All three flags default undefined = follow the base policy.
+     *  Consumers apply these at freeze-eligibility check time. */
+    exceptions?: {
+        /** When true, this reason bypasses the policy's maximum freeze
+         *  duration — the customer's date-range picker allows any
+         *  duration (up to a hard system max of 12 months). Figma:
+         *  "ignores the 30-day cap". */
+        ignoresMaxDuration?: boolean;
+        /** When true, this freeze doesn't count against the
+         *  `max_freezes` limit for the calendar year. Figma: "ignores
+         *  2 / 12 months". */
+        ignoresFreezeLimit?: boolean;
+        /** When true, no freeze fee is charged for this reason, even
+         *  if `fee_enabled` is on. Figma: "if a fee is enabled". */
+        waivesFee?: boolean;
+    };
 }
 
 /**
@@ -275,23 +295,75 @@ export interface FreezePolicy {
     id: string;
     /** Master toggle — when OFF the customer Freeze action is hidden. */
     enabled: boolean;
+
+    // ── v2 — Billing during a freeze (client 2026-07-20) ────────────
+    /** How the billing schedule reacts when a plan is frozen.
+     *
+     *  `pause` (Recommended — Option A in the Figma):
+     *    Payment date + renewal date shift by the freeze length.
+     *    Members pay full price and skip nothing.
+     *
+     *  `stay_on_schedule` (Option B):
+     *    Members keep their usual payment date. The next charge is
+     *    reduced by the frozen days (prorated).
+     *
+     *  Consumed by `computeNextCharge` in Phase 5. UI on the customer
+     *  Freeze sheet discloses which one is active before confirming. */
+    billing_behavior: "pause" | "stay_on_schedule";
+
+    // ── v2 — Who can freeze (client 2026-07-20) ─────────────────────
+    /** Who is allowed to initiate a freeze:
+     *   `members_and_admins`: members freeze from their account; staff
+     *     can always freeze from the customer profile.
+     *   `members_request_admins_approve`: member submits a request;
+     *     the plan enters `freeze_requested` state until an admin
+     *     approves or rejects.
+     *   `admins_only`: members don't see the Freeze CTA on the
+     *     customer app; only staff can freeze from the profile. */
+    who_can_freeze:
+        | "members_and_admins"
+        | "members_request_admins_approve"
+        | "admins_only";
+
+    // ── v2 — Limits (client 2026-07-20) ─────────────────────────────
+    /** Minimum freeze length (ALWAYS enforced — no on/off toggle).
+     *  Prevents 1-day pauses that would be gamed for a small bill
+     *  adjustment. Default 7 days per Figma. */
+    min_duration_value: number;
+    min_duration_unit: "days" | "weeks" | "months";
     /** Cap the freeze length. When OFF, no maximum is enforced. */
     max_duration_enabled: boolean;
     max_duration_value: number;
     max_duration_unit: "days" | "weeks" | "months";
-    /** Cap how many times ONE membership can be frozen (enforced against the
-     *  plan's freeze count). When OFF, unlimited freezes. */
+    /** Cap how many times ONE membership can be frozen inside a given
+     *  window. When OFF, unlimited freezes. The window is fixed at
+     *  "per calendar year" (resets Jan 1) per client 2026-07-20 — the
+     *  rolling-window rendering shown in the Figma was superseded by
+     *  the written brief. */
     limit_freezes_enabled: boolean;
     max_freezes: number;
+    /** The window `max_freezes` counts against. Currently only
+     *  `calendar_year` is supported; the enum is kept explicit so a
+     *  future "rolling_12m" option can land as an additive change. */
+    max_freezes_period: "calendar_year";
+
     /** Charge a fee to freeze. `recurring` = per billing cycle while frozen;
      *  `one_time` = charged once at freeze time. Amount in AED. */
     fee_enabled: boolean;
     fee_type: "one_time" | "recurring";
     fee_amount_aed: number;
-    /** When ON, members must pick from the enabled reasons below; when OFF a
-     *  freeze needs no reason. */
-    allow_exceptions: boolean;
+
+    // ── v2 — Freeze reasons (client 2026-07-20) ─────────────────────
+    /** When ON, members must pick from the enabled reasons below; when
+     *  OFF a freeze needs no reason.
+     *
+     *  Renamed from `allow_exceptions` in v2 — same semantics, clearer
+     *  label. Persist migration in store.ts's onRehydrateStorage
+     *  carries the old field through so existing seeded snapshots
+     *  don't lose their configuration on the version bump. */
+    require_reason: boolean;
     reasons: FreezeReason[];
+
     /** Which memberships the policy covers. "specific" → only membership_ids
      *  can be frozen; the rest are treated as freeze-disabled. */
     apply_to: "all" | "specific";

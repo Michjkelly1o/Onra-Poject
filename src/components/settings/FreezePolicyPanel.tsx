@@ -11,12 +11,13 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose, Trash01, HelpCircle, Lightbulb02 } from "@untitledui/icons";
+import { XClose, Trash01, HelpCircle, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { UnitSuffixSelect } from "@/components/patterns/UnitSuffixSelect";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { MultiSelectCard, type MultiSelectOption } from "@/components/patterns/MultiSelectCard";
+import { RadioCardGroup, type RadioCardOption } from "@/components/patterns/RadioCard";
 import { useAppStore } from "@/lib/store";
 import type { FreezePolicy, FreezeReason } from "@/lib/store";
 
@@ -24,6 +25,48 @@ const DURATION_UNITS = [
     { value: "days",   label: "days"   },
     { value: "weeks",  label: "weeks"  },
     { value: "months", label: "months" },
+];
+
+// v2 (client 2026-07-20) — RadioCard options for the two new sections.
+// Kept as file-level constants (not inline) so the shape stays consistent
+// across renders + is easy to tweak in one place.
+
+const BILLING_BEHAVIOR_OPTIONS: RadioCardOption<FreezePolicy["billing_behavior"]>[] = [
+    {
+        key: "pause",
+        label: "Pauses",
+        description:
+            "The payment date and renewal date shift by the freeze length. Members pay full price and skip nothing.",
+        recommended: true,
+    },
+    {
+        key: "stay_on_schedule",
+        label: "Stays on schedule",
+        description:
+            "Members keep their usual payment date; the next charge is reduced by the frozen days.",
+    },
+];
+
+const WHO_CAN_FREEZE_OPTIONS: RadioCardOption<FreezePolicy["who_can_freeze"]>[] = [
+    {
+        key: "members_and_admins",
+        label: "Members & admins",
+        description:
+            "Members pause from their account within the limits below. Staff can always freeze from a customer profile.",
+        recommended: true,
+    },
+    {
+        key: "members_request_admins_approve",
+        label: "Members request, admins approve",
+        description:
+            "Members submit a freeze request; nothing changes until staff approve it.",
+    },
+    {
+        key: "admins_only",
+        label: "Admins only",
+        description:
+            "Freezes are applied by staff from the customer profile. Members don't see a freeze option.",
+    },
 ];
 
 let customReasonSeq = 0;
@@ -135,6 +178,109 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
     );
 }
 
+// v2 (client 2026-07-20) — one row in the Freeze reasons list.
+// Shows the reason label + enabled checkbox on the left; a small
+// "N exceptions ▾" chip on the right (Figma reference); trash icon at
+// the far right. When expanded, three inline rows let the admin flip
+// the per-reason bypass flags (`ignoresMaxDuration` / `ignoresFreezeLimit`
+// / `waivesFee`). The chip count reflects only the truthy flags so a
+// reason with no overrides reads "No exceptions".
+const EXCEPTION_LABELS: {
+    key: "ignoresMaxDuration" | "ignoresFreezeLimit" | "waivesFee";
+    label: string;
+    hint: string;
+}[] = [
+    { key: "ignoresMaxDuration", label: "No maximum duration",           hint: "ignores the duration cap" },
+    { key: "ignoresFreezeLimit", label: "Doesn't count toward the limit", hint: "ignores the yearly freeze limit" },
+    { key: "waivesFee",          label: "Waive the freeze fee",          hint: "if a fee is enabled" },
+];
+
+function ReasonRow({
+    reason,
+    expanded,
+    onToggleExpand,
+    onToggleEnabled,
+    onSetException,
+    onRemove,
+}: {
+    reason: FreezeReason;
+    expanded: boolean;
+    onToggleExpand: () => void;
+    onToggleEnabled: () => void;
+    onSetException: (
+        field: "ignoresMaxDuration" | "ignoresFreezeLimit" | "waivesFee",
+        value: boolean,
+    ) => void;
+    onRemove: () => void;
+}) {
+    const activeExceptions = EXCEPTION_LABELS.reduce(
+        (n, e) => n + (reason.exceptions?.[e.key] ? 1 : 0),
+        0,
+    );
+    const chipLabel =
+        activeExceptions === 0 ? "No exceptions" : `${activeExceptions} exception${activeExceptions === 1 ? "" : "s"}`;
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 min-h-[32px]">
+                <Checkbox checked={reason.enabled} onChange={onToggleEnabled} />
+                <span className="flex-1 text-[14px] text-[#344054]">{reason.label}</span>
+                <button
+                    type="button"
+                    onClick={onToggleExpand}
+                    className={cn(
+                        "inline-flex items-center gap-1 h-7 px-2 rounded-md text-[12px] font-medium transition-colors whitespace-nowrap",
+                        activeExceptions > 0
+                            ? "text-[#658774] hover:bg-[#f5fffa]"
+                            : "text-[#667085] hover:bg-[#f9fafb]",
+                    )}
+                >
+                    {chipLabel}
+                    <ChevronDown
+                        className={cn(
+                            "w-3.5 h-3.5 transition-transform",
+                            !expanded && "-rotate-90",
+                        )}
+                    />
+                </button>
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    aria-label={`Remove ${reason.label}`}
+                    className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors"
+                >
+                    <Trash01 className="w-4 h-4" />
+                </button>
+            </div>
+            {expanded && (
+                <div className="ml-8 mb-1 flex flex-col gap-2 rounded-[8px] bg-[#f9fafb] border-1 border-[#eaecf0] px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-wide text-[#98a2b3] font-medium">
+                        Exceptions for this reason
+                    </p>
+                    {EXCEPTION_LABELS.map(e => (
+                        <div
+                            key={e.key}
+                            className="flex items-center gap-3 min-h-[28px]"
+                        >
+                            <Checkbox
+                                checked={!!reason.exceptions?.[e.key]}
+                                onChange={() =>
+                                    onSetException(e.key, !reason.exceptions?.[e.key])
+                                }
+                            />
+                            <span className="flex-1 text-[13px] text-[#344054]">
+                                {e.label}
+                            </span>
+                            <span className="text-[12px] text-[#98a2b3]">
+                                {e.hint}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function FreezePolicyPanel({ open, onClose }: {
     open: boolean; onClose: () => void;
 }) {
@@ -147,11 +293,18 @@ export function FreezePolicyPanel({ open, onClose }: {
     const [form, setForm] = useState<FreezePolicy>(() => clonePolicy(policy));
     // Draft text for the "Add a custom reason" input (committed via the Add button).
     const [newReason, setNewReason] = useState("");
+    // v2 (client 2026-07-20) — per-reason "exceptions ▾" expander state.
+    // Keyed by reason id; only reasons the admin opens live here. Reset
+    // on panel re-open (below).
+    const [expandedReasons, setExpandedReasons] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (open) {
             setForm(clonePolicy(policy));
             setNewReason("");
+            // Collapse every reason's exception expander on panel open —
+            // predictable landing state, admin expands one at a time.
+            setExpandedReasons({});
             setShown(false);
             const r = requestAnimationFrame(() => setShown(true));
             return () => cancelAnimationFrame(r);
@@ -245,7 +398,56 @@ export function FreezePolicyPanel({ open, onClose }: {
 
                     {form.enabled && (
                         <>
+                            {/* v2 (client 2026-07-20) — NEW section.
+                                Two RadioCards laying out the two Figma-
+                                spec billing behaviours ("Pauses" vs
+                                "Stays on schedule"). "Pauses" is the
+                                recommended default per plan doc Q1. */}
+                            <Section title="Billing during a freeze">
+                                <RadioCardGroup
+                                    ariaLabel="Billing during a freeze"
+                                    options={BILLING_BEHAVIOR_OPTIONS}
+                                    value={form.billing_behavior}
+                                    onChange={v => patch({ billing_behavior: v })}
+                                />
+                            </Section>
+
+                            {/* v2 (client 2026-07-20) — NEW section.
+                                Three RadioCards for who is allowed to
+                                initiate a freeze. Phase 2 wires the
+                                customer-side CTA gating against this
+                                field; Phase 5 wires the request-approval
+                                surface for the middle option. */}
+                            <Section title="Who can freeze">
+                                <RadioCardGroup
+                                    ariaLabel="Who can freeze"
+                                    options={WHO_CAN_FREEZE_OPTIONS}
+                                    value={form.who_can_freeze}
+                                    onChange={v => patch({ who_can_freeze: v })}
+                                />
+                            </Section>
+
                             <Section title="Limits">
+                                {/* v2 (client 2026-07-20) — Minimum
+                                    freeze duration. Always enforced (no
+                                    on/off) — prevents 1-day pauses that
+                                    would game a small bill adjustment.
+                                    Default 7 days per Figma. */}
+                                <Field label="Minimum freeze duration">
+                                    <NumberField
+                                        value={form.min_duration_value}
+                                        onChange={v => patch({ min_duration_value: v })}
+                                        ariaLabel="Minimum freeze duration"
+                                        suffixSlot={
+                                            <UnitSuffixSelect
+                                                value={form.min_duration_unit}
+                                                onChange={v => patch({ min_duration_unit: v as FreezePolicy["min_duration_unit"] })}
+                                                options={DURATION_UNITS}
+                                            />
+                                        }
+                                    />
+                                </Field>
+
                                 <ToggleCard
                                     title="Set maximum freeze duration"
                                     subtitle="Cap how long a single freeze can last."
@@ -270,17 +472,25 @@ export function FreezePolicyPanel({ open, onClose }: {
                                 )}
 
                                 <ToggleCard
-                                    title="Limit number of freezes per membership"
-                                    subtitle="Cap how many times one membership can be frozen."
+                                    title="Limit freezes per calendar year"
+                                    subtitle="Cap how many times one membership can be frozen in a year (resets Jan 1)."
                                     on={form.limit_freezes_enabled}
                                     onChange={v => patch({ limit_freezes_enabled: v })}
                                 />
                                 {form.limit_freezes_enabled && (
-                                    <Field label="Maximum freezes per membership">
+                                    /* v2 — Renamed from "Maximum freezes
+                                       per membership" per client
+                                       2026-07-20. Field enforces a
+                                       per-calendar-year cap; the
+                                       max_freezes_period enum is fixed
+                                       at "calendar_year" for now (a
+                                       future rolling-window option would
+                                       be additive). */
+                                    <Field label="Maximum freezes per calendar year">
                                         <NumberField
                                             value={form.max_freezes}
                                             onChange={v => patch({ max_freezes: v })}
-                                            ariaLabel="Maximum freezes per membership"
+                                            ariaLabel="Maximum freezes per calendar year"
                                         />
                                     </Field>
                                 )}
@@ -319,75 +529,70 @@ export function FreezePolicyPanel({ open, onClose }: {
                             </Section>
 
                             <Section title="Freeze reasons">
+                                {/* v2 (client 2026-07-20) — Renamed from
+                                    "Allow exceptions". Same semantic — the
+                                    toggle governs whether the customer's
+                                    freeze sheet forces a reason pick. */}
                                 <ToggleCard
-                                    title="Allow exceptions"
-                                    subtitle="Require customers to pick a reason when freezing."
-                                    on={form.allow_exceptions}
-                                    onChange={v => patch({ allow_exceptions: v })}
+                                    title="Require a reason"
+                                    subtitle="Members must pick a reason when freezing. They only see the reasons enabled below."
+                                    on={form.require_reason}
+                                    onChange={v => patch({ require_reason: v })}
                                     helpIcon
                                 />
-                                {form.allow_exceptions && (
-                                    <>
-                                        {/* Neutral info banner — matches the class-template
-                                            creation tip (target reference for the app-wide
-                                            info-alert style). */}
-                                        <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
-                                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                                            <p className="text-[14px] text-[#475467] leading-[20px]">
-                                                Customers will only see the reasons enabled below.
+                                {form.require_reason && (
+                                    <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white p-4 flex flex-col gap-2">
+                                        {form.reasons.length === 0 ? (
+                                            <p className="text-[13px] text-[#667085] italic py-1">
+                                                No reasons yet — add one below.
                                             </p>
-                                        </div>
-
-                                        {/* Container groups the reasons list + inline add-input into
-                                            one visual block. Every reason (defaults + custom) has a
-                                            trash button so row heights are consistent. */}
-                                        <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white p-4 flex flex-col gap-2">
-                                            {form.reasons.length === 0 ? (
-                                                <p className="text-[13px] text-[#667085] italic py-1">
-                                                    No reasons yet — add one below.
-                                                </p>
-                                            ) : (
-                                                form.reasons.map(r => (
-                                                    <div key={r.id} className="flex items-center gap-3 min-h-[32px]">
-                                                        <Checkbox
-                                                            checked={r.enabled}
-                                                            onChange={() => setReason(r.id, { enabled: !r.enabled })}
-                                                        />
-                                                        <span className="flex-1 text-[14px] text-[#344054]">{r.label}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeReason(r.id)}
-                                                            aria-label="Remove reason"
-                                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors"
-                                                        >
-                                                            <Trash01 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-
-                                            {/* Divider between the list and the add-input — only when
-                                                there ARE reasons above, to avoid a lone divider on empty state. */}
-                                            {form.reasons.length > 0 && (
-                                                <div className="h-px w-full bg-[#f2f4f7] my-1" />
-                                            )}
-
-                                            {/* Add a custom reason — type + click Add (or press Enter). */}
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={newReason}
-                                                    onChange={e => setNewReason(e.target.value)}
-                                                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
-                                                    placeholder="Add a custom reason"
-                                                    className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                        ) : (
+                                            form.reasons.map(r => (
+                                                <ReasonRow
+                                                    key={r.id}
+                                                    reason={r}
+                                                    expanded={expandedReasons[r.id] ?? false}
+                                                    onToggleExpand={() =>
+                                                        setExpandedReasons(prev => ({
+                                                            ...prev,
+                                                            [r.id]: !prev[r.id],
+                                                        }))
+                                                    }
+                                                    onToggleEnabled={() =>
+                                                        setReason(r.id, { enabled: !r.enabled })
+                                                    }
+                                                    onSetException={(field, value) =>
+                                                        setReason(r.id, {
+                                                            exceptions: {
+                                                                ...r.exceptions,
+                                                                [field]: value,
+                                                            },
+                                                        })
+                                                    }
+                                                    onRemove={() => removeReason(r.id)}
                                                 />
-                                                <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
-                                                    Add
-                                                </Button>
-                                            </div>
+                                            ))
+                                        )}
+
+                                        {form.reasons.length > 0 && (
+                                            <div className="h-px w-full bg-[#f2f4f7] my-1" />
+                                        )}
+
+                                        {/* Add a custom reason — type + click Add (or press Enter). */}
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={newReason}
+                                                onChange={e => setNewReason(e.target.value)}
+                                                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
+                                                placeholder="Add a custom reason"
+                                                className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                            />
+                                            <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
+                                                Add
+                                            </Button>
                                         </div>
-                                    </>
+                                    </div>
                                 )}
                             </Section>
 

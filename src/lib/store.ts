@@ -8830,7 +8830,22 @@ export const useAppStore = create<AppState>()(persist(
         //   the `booked` count on the two rows the rotator wasn't
         //   reaching (class #1 6→9, class #5 4→5). Bump reseeds
         //   cached snapshots so testers pick up the widened rosters.
-        version: 76,
+        // v77 (2026-07-20 admin): FreezePolicy v2 — schema expanded
+        //   per client feedback into a full membership-freeze workflow:
+        //   • billing_behavior (Option A/B — Pauses vs Stays on schedule)
+        //   • who_can_freeze (Members&admins / request-approval / admins-only)
+        //   • min_duration_value + _unit (default 7 days)
+        //   • max_freezes_period (calendar_year — fixed per client Q1)
+        //   • rename allow_exceptions → require_reason (semantic clone)
+        //   • FreezeReason.exceptions (per-reason bypass of duration /
+        //     limit / fee)
+        //   The rehydrate handler below migrates old `allow_exceptions`
+        //   into `require_reason` on any pre-v77 payload so testers
+        //   don't lose their reason-required setting on refresh, and
+        //   defaults any missing v2 fields to sensible v1-equivalent
+        //   behaviour. Belt + suspenders per plan doc Q8: the version
+        //   bump forces stale caches to reseed anyway.
+        version: 77,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -8846,6 +8861,43 @@ export const useAppStore = create<AppState>()(persist(
                 ...a,
                 status: liveScheduleStatus(a.dateISO, a.startTime, a.endTime, a.status),
             }));
+            // v77 (2026-07-20) — FreezePolicy v2 migration.
+            // Any pre-v77 snapshot has `allow_exceptions` but not
+            // `require_reason`; missing v2 fields need sensible
+            // defaults so the panel doesn't throw undefined-access
+            // errors. Belt + suspenders per plan doc Q8: version
+            // bump above forces stale caches to reseed anyway, but
+            // if Zustand's persist middleware carries the row through
+            // (e.g. same-major upgrade), this fixup guarantees the
+            // shape is complete + safe.
+            const fp = state.freezePolicy as unknown as
+                (FreezePolicy & { allow_exceptions?: boolean }) | undefined;
+            if (fp) {
+                // Rename: allow_exceptions → require_reason.
+                if (fp.require_reason === undefined && fp.allow_exceptions !== undefined) {
+                    fp.require_reason = fp.allow_exceptions;
+                }
+                // Defaults for every new v2 field.
+                if (fp.billing_behavior === undefined)   fp.billing_behavior = "pause";
+                if (fp.who_can_freeze === undefined)     fp.who_can_freeze = "members_and_admins";
+                if (fp.min_duration_value === undefined) fp.min_duration_value = 7;
+                if (fp.min_duration_unit === undefined)  fp.min_duration_unit = "days";
+                if (fp.max_freezes_period === undefined) fp.max_freezes_period = "calendar_year";
+                if (fp.require_reason === undefined)     fp.require_reason = true;
+                // Reasons array — every reason gets the exceptions
+                // field defaulted to undefined (no bypass), so per-
+                // reason overrides opt-in rather than opt-out.
+                if (Array.isArray(fp.reasons)) {
+                    fp.reasons = fp.reasons.map(r =>
+                        r.exceptions !== undefined ? r : { ...r },
+                    );
+                }
+                // Drop the legacy alias — future reads must go through
+                // require_reason. Keeping the old key would confuse
+                // grep/audit tools + tempt callers to use the stale name.
+                delete (fp as { allow_exceptions?: boolean }).allow_exceptions;
+                state.freezePolicy = fp;
+            }
             // Deferred: the waitlist sweep calls set(), which must not run while
             // the store is still rehydrating. One tick later it applies Booking
             // Rules to any class already sitting with a free spot + a queue —
