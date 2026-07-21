@@ -84,11 +84,17 @@ function BarRow({ name, value, max, color, valueLabel }: {
     const pct = max > 0 ? Math.round((value / max) * 100) : 0;
     return (
         <div className="flex items-center gap-2">
-            <span className="w-[52px] shrink-0 text-xs font-medium text-[#667085]">{name}</span>
-            <span className="flex-1 h-1.5 bg-[#eaecf0] rounded-full overflow-hidden">
+            {/* Name column stretches with `flex-1 min-w-0 truncate` so a
+                longer service name like "Breathwork" (used in Top services
+                for Recovery mode) ellipsizes cleanly instead of overlapping
+                the bar. Title attribute discloses the full name on hover.
+                Bar + value stay fixed-width so every row's right edge
+                aligns. */}
+            <span title={name} className="flex-1 min-w-0 truncate text-xs font-medium text-[#667085]">{name}</span>
+            <span className="w-16 shrink-0 h-1.5 bg-[#eaecf0] rounded-full overflow-hidden">
                 <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
             </span>
-            <span className="w-[36px] shrink-0 text-right text-xs text-[#667085] tabular-nums">{valueLabel}</span>
+            <span className="w-8 shrink-0 text-right text-xs text-[#667085] tabular-nums">{valueLabel}</span>
         </div>
     );
 }
