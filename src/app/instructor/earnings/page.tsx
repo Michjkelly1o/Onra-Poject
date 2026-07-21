@@ -39,6 +39,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
 import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
 import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
@@ -345,16 +346,7 @@ export default function InstructorEarningsPage() {
                             {totalRows} {totalRows === 1 ? "booking" : "bookings"}
                         </p>
                     </div>
-                    <div className="relative w-[260px]">
-                        <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="Search bookings..."
-                            className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                        />
-                    </div>
+                    <ToolbarSearch value={search} onChange={setSearch} placeholder="Search bookings..." />
                     <DateRangeFilter value={period} onChange={setPeriod} />
                     <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasAnyFilter(filters)} />
                 </div>

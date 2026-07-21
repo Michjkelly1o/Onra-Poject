@@ -39,6 +39,9 @@ import {
     type IntegrationCategory,
 } from "./categories";
 import { RequestIntegrationModal } from "./RequestIntegrationModal";
+import { Button } from "@/components/ui/button";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 
 // One discriminated-union flow state covering every modal step.
 type FlowState =
@@ -65,13 +68,7 @@ export function AppsToolbar({
 }) {
     return (
         <div className="flex items-center gap-3">
-            <div className="relative w-[280px]">
-                <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                    placeholder="Search..."
-                    className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                />
-            </div>
+            <ToolbarSearch value={search} onChange={setSearch} placeholder="Search..." />
             <FilterDropdown
                 open={filterOpen}
                 onOpenChange={setFilterOpen}
@@ -286,17 +283,17 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
 
     return (
         <div ref={ref} className="relative">
-            <button
-                type="button"
-                onClick={() => onOpenChange(!open)}
-                className="h-10 px-3 inline-flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-            >
-                <div className="relative">
-                    <FilterLines className="w-4 h-4 text-[#475467]" />
-                    {value && <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />}
-                </div>
-                Filter
-            </button>
+            <IconTooltip label="Filter" disabled={open}>
+                <Button variant="secondary-gray" size="icon" aria-label="Filter"
+                    onClick={() => onOpenChange(!open)}>
+                    <span className="relative inline-flex">
+                        <FilterLines className="w-4 h-4" />
+                        {value && (
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
+                        )}
+                    </span>
+                </Button>
+            </IconTooltip>
             {open && (
                 // min-w-[240px] fits "Marketing & communication" on a
                 // single line — the previous 200px wrapped the label.

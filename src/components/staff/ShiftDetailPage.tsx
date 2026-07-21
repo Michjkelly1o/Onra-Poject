@@ -38,6 +38,8 @@ import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { Toast } from "@/components/ui/Toast";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
@@ -260,18 +262,17 @@ function StatusFilterDropdown({ value, onChange }: {
     }, []);
     return (
         <div ref={ref} className="relative">
-            <Button variant="secondary-gray" size="md"
-                leftIcon={
-                    <div className="relative">
+            <IconTooltip label="Filter" disabled={open}>
+                <Button variant="secondary-gray" size="icon" aria-label="Filter"
+                    onClick={() => setOpen(p => !p)}>
+                    <span className="relative inline-flex">
                         <FilterLines className="w-4 h-4" />
                         {value !== null && (
-                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" />
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}
-                    </div>
-                }
-                onClick={() => setOpen(p => !p)}>
-                Filter
-            </Button>
+                    </span>
+                </Button>
+            </IconTooltip>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-2 min-w-[160px]">
                     {STATUS_FILTER_OPTIONS.map(opt => (
@@ -499,12 +500,7 @@ function AssignedStaffsTab({ shift, onChangeRoleFor, onChangeShiftFor }: {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="relative w-[280px]">
-                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                            placeholder="Search staff..."
-                            className="h-10 w-full pl-9 pr-3 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]" />
-                    </div>
+                    <ToolbarSearch value={search} onChange={setSearch} placeholder="Search staff..." />
                     <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
                 </div>
             </div>

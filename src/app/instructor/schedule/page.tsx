@@ -118,6 +118,7 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { buildMonthGrid } from "@/lib/calendar-utils";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 
 // ─── Category colors — same palette admin uses (verbatim) ───────────────────
 
@@ -1354,16 +1355,7 @@ export default function InstructorSchedulePage() {
                         {periodCount} class {periodCount === 1 ? "schedule" : "schedules"}
                     </p>
                 </div>
-                <div className="relative w-[260px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search class..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search class..." />
             </div>
 
             {/* ── View card ── Fills remaining viewport height (was a fixed

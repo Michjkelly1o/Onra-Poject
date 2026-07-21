@@ -42,6 +42,7 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
@@ -540,16 +541,7 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                         {filtered.length} Version
                     </p>
                 </div>
-                <div className="relative w-[220px]">
-                    <SearchLg className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search version..."
-                        className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search version..." />
             </div>
 
             {/* Table */}
@@ -785,16 +777,7 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
                         {filtered.length} {filtered.length === 1 ? "customer" : "customers"}
                     </p>
                 </div>
-                <div className="relative w-[280px]">
-                    <SearchLg className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search customer..."
-                        className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                    />
-                </div>
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search customer..." />
             </div>
 
             {/* Table — cols vary by sub-tab. Pending/never has no
