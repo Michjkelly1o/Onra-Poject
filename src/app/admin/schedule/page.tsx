@@ -1411,7 +1411,6 @@ function SchedulePage() {
         () => new Map(branches.map(b => [b.id, branchTzLabel(b)])),
         [branches],
     );
-    const [activeTab, setActiveTab] = useState<ViewTab>("list");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     // Deep-link support — Staff details "Schedule" internal link drops the
@@ -1419,6 +1418,19 @@ function SchedulePage() {
     // view. Honour it on first mount only so a manual filter clear sticks.
     const searchParams = useSearchParams();
     const initialInstructorId = searchParams?.get("instructorId") ?? "";
+    // Dashboard Coming Up chart deep-links land here with `?date=YYYY-MM-DD`
+    // (single day, 7-day mode) or `?dateFrom=A&dateTo=B` (week span, 30-day
+    // mode). Honour both on first mount so the schedule opens on the exact
+    // day/week the admin clicked, not on today's default.
+    const initialDate     = searchParams?.get("date") ?? "";
+    const initialDateFrom = searchParams?.get("dateFrom") ?? "";
+    // ?date deep-links open on the Day tab; ?dateFrom+dateTo deep-links
+    // open on the Week tab. Otherwise land on the default List view.
+    const [activeTab, setActiveTab] = useState<ViewTab>(
+        initialDate     ? "day"  :
+        initialDateFrom ? "week" :
+        "list",
+    );
     const [applied, setApplied] = useState<FilterState>(
         initialInstructorId
             ? { ...EMPTY_FILTER, instructors: [initialInstructorId] }
@@ -1426,8 +1438,10 @@ function SchedulePage() {
     );
     // Day view tracks an ISO date so prev/next can walk freely. Display label
     // is derived at render time via isoToDisplay().
-    const [dayDateISO, setDayDateISO] = useState(DAY_VIEW_DATE);
-    const [weekStart, setWeekStart] = useState(TODAY_MONDAY_ISO); // ISO Monday
+    const [dayDateISO, setDayDateISO] = useState(initialDate || DAY_VIEW_DATE);
+    const [weekStart, setWeekStart] = useState(
+        initialDateFrom ? isoToMonday(initialDateFrom) : TODAY_MONDAY_ISO,
+    );
     const [monthYear, setMonthYear] = useState(TODAY_MONTH_YEAR);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);

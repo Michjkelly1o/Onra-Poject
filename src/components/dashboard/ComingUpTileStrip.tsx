@@ -19,7 +19,7 @@
 // plans) on the All-mode strip surface the per-type breakdown so the
 // admin can eyeball type contributions without switching the filter.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
 import type { SessionType } from "@/lib/store";
 import type { StripMetrics } from "@/lib/dashboard/coming-up";
@@ -73,7 +73,10 @@ function Tile({ label, value, sub, alert, split, className }: {
     );
 }
 
-/** Bar row for the mini-bar tiles (Capacity used, Top services). */
+/** Bar row for the mini-bar tiles (Capacity used, Top services). The name
+ *  column truncates on overflow; hover on the name opens a DS tooltip
+ *  disclosing the full label. Chrome matches the chart / capacity-cell
+ *  tooltips so the whole tab speaks one tooltip vocabulary. */
 function BarRow({ name, value, max, color, valueLabel }: {
     name: string;
     value: number;
@@ -82,19 +85,55 @@ function BarRow({ name, value, max, color, valueLabel }: {
     valueLabel: string;
 }) {
     const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
+    const nameRef = useRef<HTMLSpanElement>(null);
+    // Only surface the tooltip when the label is actually truncated —
+    // short names like "Classes" don't need the disclosure. Checked at
+    // mouseenter time instead of on every render so the DOM read is
+    // deferred and doesn't block layout.
+    function tipPos(e: React.MouseEvent) {
+        const TIP_WIDTH_EST = 160;
+        const x = e.clientX + TIP_WIDTH_EST > window.innerWidth
+            ? e.clientX - TIP_WIDTH_EST - 12
+            : e.clientX + 12;
+        return { x, y: e.clientY + 12 };
+    }
+    function onEnter(e: React.MouseEvent) {
+        const el = nameRef.current;
+        if (el && el.scrollWidth > el.clientWidth) setTip(tipPos(e));
+    }
+    function onMove(e: React.MouseEvent) {
+        setTip(prev => (prev ? tipPos(e) : prev));
+    }
     return (
         <div className="flex items-center gap-2">
             {/* Name column stretches with `flex-1 min-w-0 truncate` so a
                 longer service name like "Breathwork" (used in Top services
-                for Recovery mode) ellipsizes cleanly instead of overlapping
-                the bar. Title attribute discloses the full name on hover.
-                Bar + value stay fixed-width so every row's right edge
-                aligns. */}
-            <span title={name} className="flex-1 min-w-0 truncate text-xs font-medium text-[#667085]">{name}</span>
+                for Recovery mode) ellipsizes cleanly. Bar + value stay
+                fixed-width so every row's right edge aligns. Full label
+                on hover comes via the DS tooltip below. */}
+            <span
+                ref={nameRef}
+                onMouseEnter={onEnter}
+                onMouseMove={onMove}
+                onMouseLeave={() => setTip(null)}
+                className="flex-1 min-w-0 truncate text-xs font-medium text-[#667085]"
+            >
+                {name}
+            </span>
             <span className="w-16 shrink-0 h-1.5 bg-[#eaecf0] rounded-full overflow-hidden">
                 <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
             </span>
             <span className="w-8 shrink-0 text-right text-xs text-[#667085] tabular-nums">{valueLabel}</span>
+            {tip && (
+                <div
+                    role="tooltip"
+                    className="fixed z-50 bg-[#0c111d] text-white text-[12px] leading-[16px] rounded-[8px] px-3 py-2 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)] pointer-events-none max-w-[280px]"
+                    style={{ left: tip.x, top: tip.y }}
+                >
+                    {name}
+                </div>
+            )}
         </div>
     );
 }
