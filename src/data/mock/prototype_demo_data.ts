@@ -223,12 +223,11 @@ const SCHEDULE_SPECS: ScheduleSpec[] = [
 
     // ── Check-in test rows — client 2026-07-20 ────────────────────────────
     //
-    // Client couldn't find a class to check customers into. Root cause: the
-    // existing today block only carried a single 11:00 class, so any tester
-    // opening the app after noon saw NO upcoming today classes. These 8
-    // extra rows fill every SLOT_TIMES bucket across today + the next two
-    // days so a real tester ALWAYS sees at least one Upcoming class with
-    // real bookings — regardless of the hour they log in.
+    // Client couldn't find a class to check customers into. Every added row
+    // starts TOMORROW (daysFromNow >= 1) so the tester has a guaranteed
+    // window of future classes to check into regardless of the hour they
+    // log in. Nothing is dated today per client 2026-07-20 follow-up
+    // ("do not make it today, make it start from tomorrow").
     //
     // Bookings are 4–10 per class (see `booked`), well below capacity so the
     // roster tab shows a checkable list without hitting "Class full" gates.
@@ -236,27 +235,24 @@ const SCHEDULE_SPECS: ScheduleSpec[] = [
     // specs; no separate booking rows needed.
     //
     // Runtime override: `liveScheduleStatus()` re-derives status from the
-    // device clock on every hydrate, so a today row at 09:00 renders as
-    // Ongoing when the tester logs in between 09:00 and 10:00 and Upcoming
-    // otherwise. Seed status "Upcoming" is a forward-looking default that
-    // works with the override on every clock.
+    // device clock on every hydrate; every row here dated in the future
+    // renders as "Upcoming" at load time.
 
-    // TODAY — three new slots (existing seed already has today at 11:00 via
-    // slotIdx:1). Now covers 09:00, 17:00, 19:00 too so afternoon + evening
-    // testers always have an Upcoming to check into.
-    { daysFromNow: 0, slotIdx: 0, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 6,  status: "Upcoming" }, // Reformer Pilates · 09:00 · South
-    { daysFromNow: 0, slotIdx: 2, branchId: SOUTH, templateIdx: 1, capacity: 15, booked: 8,  status: "Upcoming" }, // Barre · 17:00 · South
-    { daysFromNow: 0, slotIdx: 3, branchId: EAST,  templateIdx: 2, capacity: 16, booked: 10, status: "Upcoming" }, // Hot Yoga · 19:00 · East
+    // TOMORROW — 3 rows covering morning + evening so testers can check
+    // in to at least one class the day after they open the app.
+    { daysFromNow: 1, slotIdx: 0, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 6,  status: "Upcoming" }, // Reformer Pilates · 09:00 · South
+    { daysFromNow: 1, slotIdx: 2, branchId: SOUTH, templateIdx: 1, capacity: 15, booked: 8,  status: "Upcoming" }, // Barre · 17:00 · South
+    { daysFromNow: 1, slotIdx: 3, branchId: EAST,  templateIdx: 2, capacity: 16, booked: 10, status: "Upcoming" }, // Hot Yoga · 19:00 · East
 
-    // TOMORROW — cover morning + evening buckets not already in the seed.
-    { daysFromNow: 1, slotIdx: 0, branchId: SOUTH, templateIdx: 1, capacity: 15, booked: 7,  status: "Upcoming" }, // Barre · 09:00 · South
-    { daysFromNow: 1, slotIdx: 3, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 4,  status: "Upcoming" }, // Reformer Pilates · 19:00 · South
+    // IN 2 DAYS — 2 rows filling extra morning + evening buckets.
+    { daysFromNow: 2, slotIdx: 0, branchId: SOUTH, templateIdx: 1, capacity: 15, booked: 7,  status: "Upcoming" }, // Barre · 09:00 · South
+    { daysFromNow: 2, slotIdx: 3, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 4,  status: "Upcoming" }, // Reformer Pilates · 19:00 · South
 
-    // DAY AFTER TOMORROW + IN 3 DAYS — extra padding so the "coming days"
-    // panel on the dashboard's Coming up tab has fresh rows every day.
-    { daysFromNow: 2, slotIdx: 2, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 5,  status: "Upcoming" }, // Reformer Pilates · 17:00 · South
-    { daysFromNow: 2, slotIdx: 3, branchId: EAST,  templateIdx: 1, capacity: 15, booked: 6,  status: "Upcoming" }, // Barre · 19:00 · East
-    { daysFromNow: 3, slotIdx: 0, branchId: EAST,  templateIdx: 2, capacity: 16, booked: 9,  status: "Upcoming" }, // Hot Yoga · 09:00 · East
+    // IN 3 DAYS + IN 4 DAYS — extra padding so the "coming days" panel on
+    // the dashboard's Coming Up tab has fresh rows every day.
+    { daysFromNow: 3, slotIdx: 2, branchId: SOUTH, templateIdx: 0, capacity: 12, booked: 5,  status: "Upcoming" }, // Reformer Pilates · 17:00 · South
+    { daysFromNow: 3, slotIdx: 3, branchId: EAST,  templateIdx: 1, capacity: 15, booked: 6,  status: "Upcoming" }, // Barre · 19:00 · East
+    { daysFromNow: 4, slotIdx: 0, branchId: EAST,  templateIdx: 2, capacity: 16, booked: 9,  status: "Upcoming" }, // Hot Yoga · 09:00 · East
 ];
 
 export const DEMO_NOW_SCHEDULES: ClassSchedule[] = SCHEDULE_SPECS.map((s, idx) => {

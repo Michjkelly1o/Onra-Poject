@@ -8748,7 +8748,12 @@ export const useAppStore = create<AppState>()(persist(
         //   noon since the seed had only the 11:00 today slot. Bump
         //   reseeds cached snapshots so testers always see fresh
         //   Upcoming classes with real bookings.
-        version: 74,
+        // v75 (2026-07-20 admin): follow-up to v74 — client asked to
+        //   start the new check-in rows from TOMORROW, not today.
+        //   All 8 specs shifted +1 day (today → tomorrow, tomorrow →
+        //   in 2 days, etc). Bump reseeds any v74 payload so the
+        //   today rows no longer show up.
+        version: 75,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
