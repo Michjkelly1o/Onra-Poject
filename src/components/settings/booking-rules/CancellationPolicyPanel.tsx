@@ -411,8 +411,8 @@ export function CancellationPolicyPanel({ open, onClose }: {
                         />
                     </Section>
 
-                    {/* ── Membership members (no credit to forfeit) ─ */}
-                    <Section title="Membership members (no credit to forfeit)">
+                    {/* ── Membership customers (no credit to forfeit) ─ */}
+                    <Section title="Membership customers (no credit to forfeit)">
                         {/* Master penalty gate — sits ABOVE the two fee
                             cards. When OFF the two cards below render
                             disabled + collapsed. Figma 7631:454486 /

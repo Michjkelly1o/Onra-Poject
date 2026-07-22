@@ -381,7 +381,7 @@ function UnfreezeModal({ plan, onClose, onConfirm }: {
                     <DatePicker value={plan.freezeEndISO ?? ""} onChange={() => {}} placeholder="—" disabled />
                 </div>
             </div>
-            {/* Reason the member gave when self-freezing (customer portal). */}
+            {/* Reason the customer gave when self-freezing (customer portal). */}
             {plan.freezeReason && (
                 <div className="mt-4 flex flex-col gap-1.5">
                     <label className="text-[14px] font-medium text-[#344054]">Freeze reason</label>
@@ -395,7 +395,7 @@ function UnfreezeModal({ plan, onClose, onConfirm }: {
 }
 
 // ─── Freeze-request review modal (Phase 5) ────────────────────────────────────
-// Shown when the studio's Who-can-freeze is set to "Members request, admins
+// Shown when the studio's Who-can-freeze is set to "Customers request, admins
 // approve" and the customer has submitted a freeze request. Admin sees the
 // requested dates + reason and can either Approve (transitions the plan to
 // frozen with the requested window) or Reject (optionally with a note that
@@ -537,7 +537,7 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
                     <p className="text-[16px] font-medium text-[#101828]">{plan.name}</p>
                 </div>
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Member since</p>
+                    <p className="text-[14px] text-[#667085]">Customer since</p>
                     <p className="text-[16px] font-medium text-[#101828]">{fmtDate(plan.purchasedAtISO)}</p>
                 </div>
                 <div className="flex flex-col">

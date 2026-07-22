@@ -131,7 +131,7 @@ const TAB_EMPTY_COPY: Record<InstructorTabKey, { title: string; subtitle: string
     },
     booking: {
         title: "No booking notifications",
-        subtitle: "When members book, cancel, or no-show your classes, it will appear here.",
+        subtitle: "When customers book, cancel, or no-show your classes, it will appear here.",
     },
     earnings: {
         title: "No earnings notifications",

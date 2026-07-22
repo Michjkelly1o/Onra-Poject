@@ -232,7 +232,7 @@ export default function BookingRulesPage() {
             <SettingsCard>
                 <CardHeader
                     title="Freeze policy"
-                    subtitle="Rules for how members pause their memberships from their account."
+                    subtitle="Rules for how customers pause their memberships from their account."
                     editLabel="Customize"
                     onEdit={() => setFpOpen(true)}
                 />
@@ -378,7 +378,7 @@ function CancellationRuleSummary({ policy }: { policy: CancellationPolicy }) {
 
             <div className="h-px w-full bg-[#e4e7ec]" />
 
-            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Membership members (no credit to forfeit)</p>
+            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Membership customers (no credit to forfeit)</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                 <SummaryField
                     label="Charge a late cancel fee"

@@ -36,34 +36,34 @@ const BILLING_BEHAVIOR_OPTIONS: RadioCardOption<FreezePolicy["billing_behavior"]
         key: "pause",
         label: "Pauses",
         description:
-            "The payment date and renewal date shift by the freeze length. Members pay full price and skip nothing.",
+            "The payment date and renewal date shift by the freeze length. Customers pay full price and skip nothing.",
     },
     {
         key: "stay_on_schedule",
         label: "Stays on schedule",
         description:
-            "Members keep their usual payment date; the next charge is reduced by the frozen days.",
+            "Customers keep their usual payment date; the next charge is reduced by the frozen days.",
     },
 ];
 
 const WHO_CAN_FREEZE_OPTIONS: RadioCardOption<FreezePolicy["who_can_freeze"]>[] = [
     {
         key: "members_and_admins",
-        label: "Members & admins",
+        label: "Customers & admins",
         description:
-            "Members pause from their account within the limits below. Staff can always freeze from a customer profile.",
+            "Customers pause from their account within the limits below. Staff can always freeze from a customer profile.",
     },
     {
         key: "members_request_admins_approve",
-        label: "Members request, admins approve",
+        label: "Customers request, admins approve",
         description:
-            "Members submit a freeze request; nothing changes until staff approve it.",
+            "Customers submit a freeze request; nothing changes until staff approve it.",
     },
     {
         key: "admins_only",
         label: "Admins only",
         description:
-            "Freezes are applied by staff from the customer profile. Members don't see a freeze option.",
+            "Freezes are applied by staff from the customer profile. Customers don't see a freeze option.",
     },
 ];
 
@@ -396,7 +396,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-7">
                     <ToggleCard
                         title="Enable freeze policy"
-                        subtitle="Allow members to pause their membership from their account."
+                        subtitle="Allow customers to pause their membership from their account."
                         on={form.enabled}
                         onChange={v => patch({ enabled: v })}
                     />
@@ -505,7 +505,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                             <Section title="Freeze fee">
                                 <ToggleCard
                                     title="Charge a freeze fee"
-                                    subtitle="Members pay this to freeze their membership."
+                                    subtitle="Customers pay this to freeze their membership."
                                     on={form.fee_enabled}
                                     onChange={v => patch({ fee_enabled: v })}
                                 />
@@ -541,7 +541,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                                     freeze sheet forces a reason pick. */}
                                 <ToggleCard
                                     title="Require a reason"
-                                    subtitle="Members must pick a reason when freezing. They only see the reasons enabled below."
+                                    subtitle="Customers must pick a reason when freezing. They only see the reasons enabled below."
                                     on={form.require_reason}
                                     onChange={v => patch({ require_reason: v })}
                                     helpIcon

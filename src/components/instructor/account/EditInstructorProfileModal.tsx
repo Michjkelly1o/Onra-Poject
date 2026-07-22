@@ -195,7 +195,7 @@ export function EditInstructorProfileModal({
                         value={introduction}
                         onChange={e => setIntroduction(e.target.value)}
                         rows={6}
-                        placeholder="Tell members about your experience and teaching style…"
+                        placeholder="Tell customers about your experience and teaching style…"
                         className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none"
                     />
                     <p className="text-[14px] text-[#667085] leading-5">
