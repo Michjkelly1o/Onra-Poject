@@ -23,7 +23,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    DotsVertical, XClose, Check, ChevronLeft,
+    DotsVertical, XClose, Check, ChevronLeft, ChevronDown, ChevronRight,
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Trash02,
     UserPlus01, Clock, AlignLeft,
 } from "@untitledui/icons";
@@ -168,30 +168,34 @@ function ShiftExpandBody({
     });
     return (
         <div className="flex flex-col gap-3">
-            {/* Staffing target stepper */}
+            {/* Header row — Assigned staff label on LEFT, Staffing
+                target stepper on RIGHT (client 2026-07-22 audit). Both
+                labels are normal case (no uppercase / no tracking-
+                wider) to match the rest of the app's section labels. */}
             <div className="flex items-center gap-3">
-                <p className="text-[12px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3]">Staffing target</p>
-                <div className="inline-flex items-center border-1 border-[#e4e7ec] rounded-[8px] bg-white overflow-hidden">
-                    <button type="button"
-                        onClick={() => onChangeTarget(Math.max(0, (shift.staffing_target ?? 1) - 1))}
-                        aria-label="Decrease staffing target"
-                        className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
-                        −
-                    </button>
-                    <span className="w-10 text-center text-[14px] font-semibold text-[#101828] border-x-1 border-[#e4e7ec]">
-                        {shift.staffing_target ?? 1}
-                    </span>
-                    <button type="button"
-                        onClick={() => onChangeTarget((shift.staffing_target ?? 1) + 1)}
-                        aria-label="Increase staffing target"
-                        className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
-                        +
-                    </button>
+                <p className="text-[13px] font-semibold text-[#344054] flex-1">Assigned staff · days within the shift</p>
+                <div className="flex items-center gap-3 shrink-0">
+                    <p className="text-[13px] text-[#667085]">Staffing target</p>
+                    <div className="inline-flex items-center border-1 border-[#e4e7ec] rounded-[8px] bg-white overflow-hidden">
+                        <button type="button"
+                            onClick={() => onChangeTarget(Math.max(0, (shift.staffing_target ?? 1) - 1))}
+                            aria-label="Decrease staffing target"
+                            className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
+                            −
+                        </button>
+                        <span className="w-10 text-center text-[14px] font-semibold text-[#101828] border-x-1 border-[#e4e7ec]">
+                            {shift.staffing_target ?? 1}
+                        </span>
+                        <button type="button"
+                            onClick={() => onChangeTarget((shift.staffing_target ?? 1) + 1)}
+                            aria-label="Increase staffing target"
+                            className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
+                            +
+                        </button>
+                    </div>
                 </div>
-                <p className="text-[13px] text-[#667085]">staff needed on this shift</p>
             </div>
 
-            <p className="text-[12px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3]">Assigned staff · days within the shift</p>
             {rows.length === 0 ? (
                 <p className="text-[14px] text-[#667085]">No staff assigned yet. Use the row's "Assign staff" action to add one.</p>
             ) : (
@@ -255,9 +259,6 @@ function ShiftExpandBody({
                     })}
                 </div>
             )}
-            <p className="text-[13px] text-[#667085]">
-                A staff member's days default to all shift days; narrow them here. Profile "working days" are derived from shift assignments — one source of truth.
-            </p>
         </div>
     );
 }
@@ -505,11 +506,15 @@ export interface ShiftManagementTabProps {
      *  sub-tab row (client 2026-07-22 lifted from inline). Defaults to
      *  "list" so the tab still renders standalone. */
     viewMode?: "list" | "week";
+    /** Week pointer for the Week view — Monday of the picked week. The
+     *  parent (StaffPermissionsPage) owns the date navigator on the
+     *  sub-tab row so this is a read-only prop. Client 2026-07-22. */
+    weekStart?: Date;
 }
 
 export function ShiftManagementTab({
     returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange,
-    viewMode = "list",
+    viewMode = "list", weekStart,
 }: ShiftManagementTabProps) {
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
@@ -734,7 +739,7 @@ export function ShiftManagementTab({
         <>
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1">
-                    <ShiftsWeekView branchId={branchId} search={search} />
+                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart} />
                 </div>
             ) : (
             /* Table card — wrapped in px-6 so the table edges line up with
@@ -814,20 +819,25 @@ export function ShiftManagementTab({
                                                 />
                                             </td>
                                             <td className={TD}>
-                                                <div className="flex items-center gap-3">
+                                                {/* Client 2026-07-22 audit: chevron
+                                                    accordion replaces the "· details"
+                                                    text button. Click the chevron OR
+                                                    anywhere on the name to expand. */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExpandedShiftId(prev => prev === s.id ? null : s.id)}
+                                                    aria-label={isExpanded ? `Collapse ${s.name}` : `Expand ${s.name}`}
+                                                    className="flex items-center gap-3 w-full text-left"
+                                                >
+                                                    <span className={cn(
+                                                        "w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 transition-transform",
+                                                        isExpanded && "rotate-90",
+                                                    )} aria-hidden>
+                                                        <ChevronRight className="w-4 h-4" />
+                                                    </span>
                                                     <ShiftAvatar />
                                                     <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
-                                                    {/* "· details" toggles the expand
-                                                        row below. Client 2026-07-22
-                                                        mockup: clicking "· details"
-                                                        reveals the per-staff day chips
-                                                        for this shift's assignments. */}
-                                                    <button type="button"
-                                                        onClick={() => setExpandedShiftId(prev => prev === s.id ? null : s.id)}
-                                                        className="text-[13px] text-[#658774] hover:text-[#3b5446] underline underline-offset-2 transition-colors">
-                                                        · {isExpanded ? "hide" : "details"}
-                                                    </button>
-                                                </div>
+                                                </button>
                                             </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{branch?.name ?? "—"}</td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{daysSummary(s.working_days)}</td>

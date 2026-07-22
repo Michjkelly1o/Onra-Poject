@@ -91,12 +91,14 @@ function ShiftBar({ label }: { label: string }) {
     );
 }
 
-/** Class dot line — small green bullet + "HH:MM Name" text. */
+/** Class dot line — small green bullet + "HH:MM Name" text.
+ *  `min-w-0` on the flex row lets the text truncate cleanly instead of
+ *  overflowing into the neighboring day column. */
 function ClassDot({ time, name }: { time: string; name: string }) {
     return (
-        <p className="flex items-center gap-1 text-[10px] leading-[14px] text-[#475467] truncate" title={`${time} ${name}`}>
+        <p className="flex items-center gap-1 text-[10px] leading-[14px] text-[#475467] min-w-0" title={`${time} ${name}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-[#7ba08c] shrink-0" aria-hidden />
-            <span className="truncate">{time} {name}</span>
+            <span className="truncate min-w-0">{time} {name}</span>
         </p>
     );
 }
@@ -126,9 +128,15 @@ interface ShiftsWeekViewProps {
     /** Search filter from the parent toolbar. Passed through — narrows
      *  the visible staff rows by name / email. */
     search: string;
+    /** Week pointer (Monday of the picked week). Owned by the parent
+     *  StaffPermissionsPage so the date navigator can render on the
+     *  sub-tab row (client 2026-07-22). Falls back to this Monday if
+     *  the parent doesn't pass one — keeps the component runnable
+     *  standalone in tests / storybook. */
+    weekStart?: Date;
 }
 
-export function ShiftsWeekView({ branchId, search }: ShiftsWeekViewProps) {
+export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
@@ -136,8 +144,8 @@ export function ShiftsWeekView({ branchId, search }: ShiftsWeekViewProps) {
     const blockedTimes     = useAppStore(s => s.blockedTimes);
     const classSchedules   = useAppStore(s => s.classSchedules);
 
-    // Week pointer — starts on the Monday of the real today.
-    const [weekStart, setWeekStart] = useState<Date>(() => mondayOfWeek(new Date()));
+    // Falls back to this Monday when the parent doesn't provide one.
+    const weekStart = externalWeekStart ?? mondayOfWeek(new Date());
     const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
     const todayISO = isoDayLocal(new Date());
 
@@ -235,36 +243,8 @@ export function ShiftsWeekView({ branchId, search }: ShiftsWeekViewProps) {
     // ── Render ────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col gap-4 px-6 py-4">
-            {/* Date navigator — center-aligned, uses the SAME date-pill
-                chrome the /admin/schedule Week view uses so both surfaces
-                read as one voice (client 2026-07-22). */}
-            <div className="relative flex items-center h-9">
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-                    <button
-                        type="button"
-                        aria-label="Previous week"
-                        onClick={() => setWeekStart(d => addDays(d, -7))}
-                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setWeekStart(mondayOfWeek(new Date()))}
-                        className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[168px] text-center hover:bg-[#e4e7ec] transition-colors"
-                    >
-                        {weekRangeLabel(weekStart)}
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="Next week"
-                        onClick={() => setWeekStart(d => addDays(d, 7))}
-                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
+            {/* Date navigator lifted to the parent sub-tab row
+                (StaffPermissionsPage → ShiftsDateNav). */}
 
             {/* Grid */}
             <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white overflow-x-auto">

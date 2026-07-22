@@ -26,7 +26,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronDown,
+    SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronRight, ChevronDown,
     MarkerPin01, FilterLines, XClose, Eye, Edit02, Archive, Trash01,
     Trash02, RefreshCcw01, SlashCircle01, Check, User01, Send01, UserPlus01,
     UserSquare, ClockPlus, AlarmClockOff, AlertTriangle,
@@ -511,9 +511,12 @@ function toHour(hhmm: string): string {
  *  represents "instructor" / "active" throughout the app so a shift
  *  assignment reads as a positive signal. */
 function ShiftAssignmentChip({ label }: { label: string }) {
+    // Fit-width pill — no `max-w-full truncate` so the chip hugs its
+    // content rather than stretching to the column width. Client
+    // 2026-07-22 audit.
     return (
         <span
-            className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#f0faf3] border-1 border-[#c7e5d1] text-[#3b5446] max-w-full truncate"
+            className="inline-flex w-fit items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#f0faf3] border-1 border-[#c7e5d1] text-[#3b5446]"
             title={label}
         >
             {label}
@@ -530,6 +533,98 @@ function NoShiftWarning() {
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             No shift yet — can&apos;t be scheduled
         </span>
+    );
+}
+
+// ─── Shifts / Time off date navigators (Phase 5 + 6 lifted up) ──────────
+//
+// Client 2026-07-22 audit — the Week and Month date navigators moved out
+// of the child view components and up here so they render on the sub-tab
+// row alongside the List / Week / Month toggle. Chrome matches the
+// /admin/schedule Week + Month navs.
+
+const MONTH_LABELS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+
+/** Local yyyy-mm-dd for a Date. */
+function fmtDayLocal(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+void fmtDayLocal;
+
+/** "20 – 26 Jul 2026" / "27 Jul – 2 Aug 2026". */
+function weekRangeLabel(start: Date): string {
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    const y = end.getFullYear();
+    const monthLabelsShort = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    if (start.getMonth() === end.getMonth()) {
+        return `${start.getDate()} – ${end.getDate()} ${monthLabelsShort[end.getMonth()]} ${y}`;
+    }
+    return `${start.getDate()} ${monthLabelsShort[start.getMonth()]} – ${end.getDate()} ${monthLabelsShort[end.getMonth()]} ${y}`;
+}
+
+function ShiftsDateNav({ weekStart, setWeekStart }: {
+    weekStart: Date;
+    setWeekStart: (d: Date) => void;
+}) {
+    return (
+        <div className="flex items-center gap-1">
+            <button type="button" aria-label="Previous week"
+                onClick={() => {
+                    const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button type="button"
+                onClick={() => {
+                    const d = new Date(); d.setHours(0,0,0,0);
+                    const monIdx = (d.getDay() + 6) % 7;
+                    d.setDate(d.getDate() - monIdx);
+                    setWeekStart(d);
+                }}
+                className="px-3 py-[6px] rounded-[8px] bg-surface-secondary text-[14px] font-semibold text-[#344054] min-w-[168px] text-center hover:bg-[#e4e7ec] transition-colors">
+                {weekRangeLabel(weekStart)}
+            </button>
+            <button type="button" aria-label="Next week"
+                onClick={() => {
+                    const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                <ChevronRight className="w-4 h-4" />
+            </button>
+        </div>
+    );
+}
+
+function TimeOffDateNav({ cursor, setCursor }: {
+    cursor: { year: number; month: number };
+    setCursor: (c: { year: number; month: number }) => void;
+}) {
+    return (
+        <div className="flex items-center gap-1">
+            <button type="button" aria-label="Previous month"
+                onClick={() => setCursor(cursor.month === 0
+                    ? { year: cursor.year - 1, month: 11 }
+                    : { year: cursor.year, month: cursor.month - 1 })}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button type="button"
+                onClick={() => { const d = new Date(); setCursor({ year: d.getFullYear(), month: d.getMonth() }); }}
+                className="px-3 py-[6px] rounded-[8px] bg-surface-secondary text-[14px] font-semibold text-[#344054] min-w-[160px] text-center hover:bg-[#e4e7ec] transition-colors">
+                {MONTH_LABELS[cursor.month]} {cursor.year}
+            </button>
+            <button type="button" aria-label="Next month"
+                onClick={() => setCursor(cursor.month === 11
+                    ? { year: cursor.year + 1, month: 0 }
+                    : { year: cursor.year, month: cursor.month + 1 })}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                <ChevronRight className="w-4 h-4" />
+            </button>
+        </div>
     );
 }
 
@@ -682,6 +777,20 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // previously picked view.
     const [shiftsViewMode,  setShiftsViewMode]  = useState<"list" | "week">("list");
     const [timeOffViewMode, setTimeOffViewMode] = useState<"list" | "month">("list");
+    // Date pointers ALSO lifted up so their prev/next/label buttons can
+    // render on the sub-tab row next to the view toggle (client
+    // 2026-07-22). Week points at the Monday of the current week; Month
+    // is a { year, month } cursor.
+    const [shiftsWeekStart, setShiftsWeekStart] = useState<Date>(() => {
+        const d = new Date(); d.setHours(0, 0, 0, 0);
+        const monIdx = (d.getDay() + 6) % 7;
+        d.setDate(d.getDate() - monIdx);
+        return d;
+    });
+    const [timeOffMonthCursor, setTimeOffMonthCursor] = useState<{ year: number; month: number }>(() => {
+        const d = new Date();
+        return { year: d.getFullYear(), month: d.getMonth() };
+    });
     const [roleFilter,  setRoleFilter]  = useState<RoleFilter>(EMPTY_ROLE_FILTER);
     const [staffFilter, setStaffFilter] = useState<StaffFilter>(EMPTY_STAFF_FILTER);
     const [page, setPage] = useState(1);
@@ -1211,6 +1320,16 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             />
                         )}
                         <div className="flex-1" />
+                        {/* Date navigator — only rendered when the sub-tab is
+                            on its Week / Month view. Uses the same chrome the
+                            /admin/schedule Week + Month navs use so both
+                            surfaces read as one voice (client 2026-07-22). */}
+                        {forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week" && (
+                            <ShiftsDateNav weekStart={shiftsWeekStart} setWeekStart={setShiftsWeekStart} />
+                        )}
+                        {forceTab === "staff" && staffSubTab === "blocked-time" && timeOffViewMode === "month" && (
+                            <TimeOffDateNav cursor={timeOffMonthCursor} setCursor={setTimeOffMonthCursor} />
+                        )}
                         {/* Per-sub-tab view toggle — lifted up here from the
                             child tab body (client 2026-07-22). Shifts gets
                             List / Week; Time off gets List / Month. */}
@@ -1256,13 +1375,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         onCloseFilter={() => setFilterOpen(false)}
                         onFilterStateChange={setShiftFilterActive}
                         viewMode={shiftsViewMode}
+                        weekStart={shiftsWeekStart}
                     />
                 )}
                 {/* Blocked time sub-tab — fully wired (Figma 7413:239407). Same
                     branchId + search inputs from the toolbar drive this table
                     the way they drive Staff + Shift management. */}
                 {forceTab === "staff" && staffSubTab === "blocked-time" && (
-                    <BlockedTimeTab branchId={branchId} search={search} viewMode={timeOffViewMode} />
+                    <BlockedTimeTab
+                        branchId={branchId}
+                        search={search}
+                        viewMode={timeOffViewMode}
+                        monthCursor={timeOffMonthCursor}
+                    />
                 )}
                 {/* Table — roles
                     Padding model matches /admin/products (membership/packages):
@@ -1475,7 +1600,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                         const list = assignmentsByStaff.get(s.id) ?? [];
                                                         if (list.length === 0) return <NoShiftWarning />;
                                                         return (
-                                                            <div className="flex flex-col gap-1.5 max-w-[240px]">
+                                                            <div className="flex flex-col items-start gap-1.5">
                                                                 {list.map(a => {
                                                                     const sh = shiftsById.get(a.shift_id);
                                                                     if (!sh) return null;

@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { useAppStore, type BlockedTime } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { useRef } from "react";
@@ -426,22 +427,38 @@ export default function InstructorTimeOffPage() {
         setPendingDelete(null);
     }
 
+    // Sortable — same pattern the instructor earnings table uses so both
+    // pages read as one voice (client 2026-07-22 audit).
+    const { sorted: sortedEntries, sortKey, sortDir, toggle: toggleSort } = useSort<BlockedTime>(myEntries, {
+        date:   (a, b) => (a.date_from_iso ?? a.date).localeCompare(b.date_from_iso ?? b.date),
+        reason: (a, b) => (a.reason ?? "other").localeCompare(b.reason ?? "other"),
+        note:   (a, b) => a.note.localeCompare(b.note),
+    });
+
     return (
         <div className="flex flex-col gap-5 h-full">
-            {/* Toolbar — page title comes from the layout Header, not
-                repeated here (client 2026-07-22 audit fix). Right-side
-                Add button opens the SlidePanel. */}
-            <div className="flex items-center justify-end gap-3">
+            {/* Toolbar — "Total N time off" counter on the left (matches the
+                instructor earnings page layout); Add button on the right.
+                Page title comes from the layout Header. Client 2026-07-22
+                audit. */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1">
+                    <p className="text-[16px] text-[#667085]">Total</p>
+                    <p className="text-[16px] font-medium text-[#101828]">
+                        {myEntries.length} time off
+                    </p>
+                </div>
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => setPanel({ open: true, mode: "create" })}>
                     Add time off
                 </Button>
             </div>
 
-            {/* Table card — matches admin table chrome (border + rounded).
-                Client 2026-07-22 audit: was a stacked list of soft cards;
-                a real table is easier to scan and matches the admin. */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            {/* Table — client 2026-07-22 audit: dropped the outer bordered
+                card + rounded corners. Table now sits flush on the layout
+                chrome (same as the instructor earnings table). Sortable
+                headers via the shared `SortableHeader` primitive. */}
+            <div>
                 {myEntries.length === 0 ? (
                     <div className="relative min-h-[400px]">
                         <EmptyState
@@ -455,14 +472,20 @@ export default function InstructorTimeOffPage() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className={cn(TH, "w-[280px]")}>Date &amp; time</th>
-                                    <th className={cn(TH, "w-[120px]")}>Reason</th>
-                                    <th className={TH}>Note</th>
+                                    <th className={cn(TH, "w-[280px]")}>
+                                        <SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[120px]")}>
+                                        <SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Reason</SortableHeader>
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="note"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Note</SortableHeader>
+                                    </th>
                                     <th className={cn(TH, "w-[52px]")} />
                                 </tr>
                             </thead>
                             <tbody>
-                                {myEntries.map(b => {
+                                {sortedEntries.map(b => {
                                     const fromISO = b.date_from_iso ?? b.date;
                                     const toISO   = b.date_to_iso   ?? b.date;
                                     const days = spanDays(fromISO, toISO);

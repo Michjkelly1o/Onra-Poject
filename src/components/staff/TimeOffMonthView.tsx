@@ -152,18 +152,22 @@ interface TimeOffMonthViewProps {
     branchId: string;
     /** Search filter from the parent toolbar. */
     search: string;
+    /** Month cursor from the parent's date navigator on the sub-tab
+     *  row (client 2026-07-22). Falls back to this month if the parent
+     *  doesn't pass one. */
+    monthCursor?: { year: number; month: number };
 }
 
-export function TimeOffMonthView({ branchId, search }: TimeOffMonthViewProps) {
+export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonthViewProps) {
     const blockedTimes = useAppStore(s => s.blockedTimes);
     const staff        = useAppStore(s => s.staff);
     const staffById = useMemo(() => new Map(staff.map(s => [s.id, s] as const)), [staff]);
 
-    // Pointer starts at the CURRENT month (Aug 2026 on the seed).
-    const [cursor, setCursor] = useState<{ year: number; month: number }>(() => {
+    // Cursor falls back to this month when the parent doesn't provide one.
+    const cursor = monthCursor ?? (() => {
         const d = new Date();
         return { year: d.getFullYear(), month: d.getMonth() };
-    });
+    })();
 
     const days = useMemo(() => buildCalendarDays(cursor.year, cursor.month), [cursor]);
     const weeks = useMemo(() => toWeeks(days), [days]);
@@ -209,50 +213,10 @@ export function TimeOffMonthView({ branchId, search }: TimeOffMonthViewProps) {
         return `${firstName}${extra} · ${title}`;
     }
 
-    // Navigation
-    function prevMonth() {
-        setCursor(c => c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 });
-    }
-    function nextMonth() {
-        setCursor(c => c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 });
-    }
-    function jumpToday() {
-        const d = new Date();
-        setCursor({ year: d.getFullYear(), month: d.getMonth() });
-    }
-
     return (
         <div className="flex flex-col gap-4 px-6 py-4">
-            {/* Month navigator — center-aligned, uses the SAME date-pill
-                chrome the /admin/schedule Month view uses (client
-                2026-07-22). */}
-            <div className="relative flex items-center h-9">
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-                    <button
-                        type="button"
-                        aria-label="Previous month"
-                        onClick={prevMonth}
-                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={jumpToday}
-                        className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[160px] text-center hover:bg-[#e4e7ec] transition-colors"
-                    >
-                        {MONTH_LABELS[cursor.month]} {cursor.year}
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="Next month"
-                        onClick={nextMonth}
-                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
+            {/* Month navigator lifted to the parent sub-tab row
+                (StaffPermissionsPage → TimeOffDateNav). */}
 
             {/* Calendar frame */}
             <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white overflow-hidden">
@@ -294,27 +258,39 @@ export function TimeOffMonthView({ branchId, search }: TimeOffMonthViewProps) {
                                         )}
                                         style={{ minHeight: 96 + barsAreaHeight }}
                                     >
-                                        <div className="flex items-center gap-1.5">
+                                        {/* Day number — turns amber + gets a
+                                            small AlertTriangle when ≥ 2 staff are
+                                            away that day. Bars already visualize
+                                            the overlap by stacking; the chip
+                                            (which used to render below the day
+                                            number) was colliding with the bar
+                                            area at `top: 34 + N * 22`, so we
+                                            collapsed the two signals into one
+                                            colored day number. Client 2026-07-22
+                                            audit. */}
+                                        <div className="flex items-center gap-1">
                                             <span className={cn(
                                                 "text-[13px] font-semibold",
-                                                isOutsideMonth ? "text-[#d0d5dd]" : isToday ? "text-[#3b5446]" : "text-[#344054]",
+                                                isOutsideMonth
+                                                    ? "text-[#d0d5dd]"
+                                                    : showOverlap
+                                                        ? "text-[#b54708]"
+                                                        : isToday
+                                                            ? "text-[#3b5446]"
+                                                            : "text-[#344054]",
                                             )}>
                                                 {day.getDate()}
                                             </span>
+                                            {showOverlap && !isOutsideMonth && (
+                                                <AlertTriangle className="w-3.5 h-3.5 text-[#b54708] shrink-0"
+                                                    aria-label={`${awayCount} staff away`} />
+                                            )}
                                             {isToday && (
                                                 <span className="inline-flex items-center px-[8px] py-[1px] rounded-full text-[11px] font-medium border-1 bg-[#e7f2eb] border-[#c7e5d1] text-[#3b5446] whitespace-nowrap">
                                                     Today
                                                 </span>
                                             )}
                                         </div>
-                                        {showOverlap && (
-                                            <div className="mt-1">
-                                                <span className="inline-flex items-center gap-1 px-[8px] py-[1px] rounded-full text-[11px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
-                                                    <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                    {awayCount} staff away
-                                                </span>
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}

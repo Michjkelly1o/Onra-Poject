@@ -207,9 +207,11 @@ export interface BlockedTimeTabProps {
     /** View mode driven by the parent's List / Month SegmentedTabs on
      *  the sub-tab row (client 2026-07-22 lifted from inline). */
     viewMode?: "list" | "month";
+    /** Month cursor owned by the parent (client 2026-07-22). */
+    monthCursor?: { year: number; month: number };
 }
 
-export function BlockedTimeTab({ branchId, search, viewMode = "list" }: BlockedTimeTabProps) {
+export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCursor }: BlockedTimeTabProps) {
     const router = useRouter();
     const blockedTimes      = useAppStore(s => s.blockedTimes);
     const staff             = useAppStore(s => s.staff);
@@ -317,7 +319,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list" }: BlockedT
     return (
         <>
             {viewMode === "month" ? (
-                <TimeOffMonthView branchId={branchId ?? ""} search={search} />
+                <TimeOffMonthView branchId={branchId ?? ""} search={search} monthCursor={monthCursor} />
             ) : (
             <div className="flex flex-col">
                 {filtered.length === 0 ? (
