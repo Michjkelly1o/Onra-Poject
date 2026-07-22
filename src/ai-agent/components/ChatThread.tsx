@@ -277,6 +277,7 @@ export function ChatThread({
                         addRoom: st.addRoom,
                         addBranch: st.addBranch,
                         addStaff: st.addStaff,
+                        addPromoCode: st.addPromoCode,
                         classCategories: st.classCategories,
                         classTemplates: st.classTemplates,
                         instructors: st.instructors,

@@ -2933,7 +2933,10 @@ export interface ImportHistorySeed {
         | "gift_cards"
         | "services"
         | "rooms"
-        | "branches";
+        | "branches"
+        | "promo_codes"
+        | "pay_rates"
+        | "campaigns";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;

@@ -29,6 +29,7 @@ import type {
     Service,
     Staff,
     Role,
+    PromoCode,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -110,6 +111,7 @@ export interface ImportDeps {
     instructors: Instructor[];
     rooms: Room[];
     branches: Branch[];
+    addPromoCode: (input: Omit<PromoCode, "id"> & { id?: string }) => string;
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -124,7 +126,10 @@ export interface ImportDeps {
             | "services"
             | "rooms"
             | "branches"
-            | "staff";
+            | "staff"
+            | "promo_codes"
+            | "pay_rates"
+            | "campaigns";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -314,6 +319,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     rooms: "rooms",
     branches: "branches",
     staff: "staff",
+    promo_codes: "promo_codes",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -577,6 +583,35 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "promo_codes") {
+        const records = materialize("promo_codes", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.code) continue;
+            const isFixed = /fixed|flat|aed|amount/i.test(rec.discount_type ?? "");
+            deps.addPromoCode({
+                code: rec.code.trim().toUpperCase(),
+                name: rec.name || undefined,
+                discount_type: isFixed ? "fixed" : "percentage",
+                discount_value: toNumber(rec.discount_value, 0),
+                max_discount_aed: rec.max_discount ? toNumber(rec.max_discount, 0) || undefined : undefined,
+                min_purchase_aed: rec.min_purchase ? toNumber(rec.min_purchase, 0) || undefined : undefined,
+                applies_to: [], // empty = all product types
+                usage_limit: rec.usage_limit ? toNumber(rec.usage_limit, 0) || undefined : undefined,
+                usage_count: 0,
+                valid_until: toISODate(rec.valid_until) ?? undefined,
+                status: "active",
+                description: rec.description || undefined,
+                branch_ids: [],
             });
             created++;
         }
