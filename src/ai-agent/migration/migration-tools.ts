@@ -52,6 +52,7 @@ const ENTITY_ENUM = z.enum([
     "gift_cards",
     "services",
     "rooms",
+    "branches",
 ]);
 
 /** Empty result — used when no file is uploaded or the caller is not

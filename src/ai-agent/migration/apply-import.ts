@@ -93,6 +93,7 @@ export interface ImportDeps {
     }) => string;
     addService: (input: Omit<Service, "id">) => string;
     addRoom: (input: Room) => void;
+    addBranch: (input: Branch) => void;
     /** Live class categories, for resolving a CSV category name → its FK + color. */
     classCategories: ClassCategory[];
     /** Live slices class_schedule resolves its FKs against. */
@@ -283,6 +284,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     gift_cards: "gift_cards",
     services: "services",
     rooms: "rooms",
+    branches: "branches",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -546,6 +548,32 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "branches") {
+        const records = materialize("branches", file);
+        let created = 0;
+        for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+            if (!rec.name) continue;
+            deps.addBranch({
+                id: `branch_import_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+                name: rec.name,
+                status: "active",
+                is_main: false, // imported branches never displace the main branch
+                address: rec.address || undefined,
+                city: rec.city || undefined,
+                state: rec.state || undefined,
+                country: rec.country || undefined,
+                phone: rec.phone || undefined,
+                email: rec.email || undefined,
             });
             created++;
         }
