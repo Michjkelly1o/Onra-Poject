@@ -8346,6 +8346,31 @@ export const useAppStore = create<AppState>()(persist(
                 instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [id]),
             };
         });
+        // Audit fix 2026-07-22 — mirror the legacy shiftId into the M2M
+        // shiftAssignments slice so the new staff shows up in shift
+        // rosters / staffing counts / delete-blocked gates. Without this,
+        // `deleteShifts` (which prefers M2M count) would let admin delete
+        // a shift the new staff was just assigned to, orphaning the ref.
+        // Matches the sync updateStaff does when shiftId changes.
+        if (next.shiftId) {
+            const shiftId = next.shiftId;
+            set(state => {
+                const parent = state.shifts.find(s => s.id === shiftId);
+                if (!parent) return state;
+                const alreadyThere = state.shiftAssignments.some(
+                    a => a.staff_id === id && a.shift_id === shiftId,
+                );
+                if (alreadyThere) return state;
+                const row: ShiftAssignment = {
+                    id: `sa_${shiftId}_${id}`,
+                    shift_id: shiftId,
+                    staff_id: id,
+                    days_of_week: [...parent.working_days],
+                    created_at: new Date().toISOString(),
+                };
+                return { shiftAssignments: [...state.shiftAssignments, row] };
+            });
+        }
         return id;
     },
     updateStaff: (id, patch) => {
