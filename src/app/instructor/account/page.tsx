@@ -121,8 +121,19 @@ export default function InstructorAccountPage() {
     // admin edit on Settings > Locations propagates here without a
     // manual refresh.
     const businessHoursSlice = useAppStore(s => s.businessHours);
+    const shiftAssignmentsSlice = useAppStore(s => s.shiftAssignments);
     const myStaffRow      = staffSlice.find(s => s.id === staffProfileId);
-    const myShift         = myStaffRow?.shiftId ? shiftsSlice.find(s => s.id === myStaffRow.shiftId) : undefined;
+    // Audit fix 2026-07-22 — blend M2M shift_assignments with the legacy
+    // shiftId. When multi-shift, the profile card only has slots for ONE
+    // window, so we pick the FIRST assignment (or legacy) as the primary
+    // display. Future: expand the profile card to render a list.
+    const myShift = (() => {
+        if (!myStaffRow) return undefined;
+        const first = shiftAssignmentsSlice.find(a => a.staff_id === myStaffRow.id);
+        if (first) return shiftsSlice.find(sh => sh.id === first.shift_id);
+        if (myStaffRow.shiftId) return shiftsSlice.find(sh => sh.id === myStaffRow.shiftId);
+        return undefined;
+    })();
     const myCategoryNames = (myStaffRow?.categoryIds ?? [])
         .map(id => classCategories.find(c => c.id === id)?.name)
         .filter((n): n is string => !!n);

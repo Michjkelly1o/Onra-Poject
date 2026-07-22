@@ -373,7 +373,16 @@ function AssignedStaffsTab({ shift, onChangeRoleFor, onChangeShiftFor }: {
     const [bulkPending, setBulkPending] = useState<BulkKind | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const scoped = useMemo(() => allStaff.filter(s => s.shiftId === shift.id), [allStaff, shift.id]);
+    // Audit fix 2026-07-22 — blend M2M shiftAssignments with the legacy
+    // shiftId so a staff whose PRIMARY shift is elsewhere but who ALSO
+    // holds an M2M assignment for this shift still shows in the roster.
+    const shiftAssignmentsSlice = useAppStore(s => s.shiftAssignments);
+    const scoped = useMemo(() => {
+        const m2mStaffIds = new Set(
+            shiftAssignmentsSlice.filter(a => a.shift_id === shift.id).map(a => a.staff_id),
+        );
+        return allStaff.filter(s => s.shiftId === shift.id || m2mStaffIds.has(s.id));
+    }, [allStaff, shiftAssignmentsSlice, shift.id]);
     const searched = useMemo(() => {
         const q = search.trim().toLowerCase();
         return scoped.filter(s => {
@@ -802,6 +811,7 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
     const pathname = usePathname();
     const shifts          = useAppStore(s => s.shifts);
     const staff           = useAppStore(s => s.staff);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const branches        = useAppStore(s => s.branches);
     const setShiftsStatus = useAppStore(s => s.setShiftsStatus);
     const deleteShifts    = useAppStore(s => s.deleteShifts);
@@ -809,7 +819,15 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
 
     const shift = shifts.find(s => s.id === shiftId);
     const branch = useMemo(() => shift ? branches.find(b => b.id === shift.branch_id) : undefined, [shift?.branch_id, branches]);
-    const totalStaffs = useMemo(() => shift ? staff.filter(s => s.shiftId === shift.id).length : 0, [staff, shift?.id]);
+    // Audit fix 2026-07-22 — count via UNION of legacy shiftId + M2M
+    // so multi-shift staff aren't undercounted.
+    const totalStaffs = useMemo(() => {
+        if (!shift) return 0;
+        const ids = new Set<string>();
+        for (const s of staff) if (s.shiftId === shift.id) ids.add(s.id);
+        for (const a of shiftAssignments) if (a.shift_id === shift.id) ids.add(a.staff_id);
+        return ids.size;
+    }, [staff, shiftAssignments, shift?.id]);
 
     const [sidebarConfirm, setSidebarConfirm] = useState<ConfirmKind | null>(null);
     const [showAssign, setShowAssign] = useState(false);

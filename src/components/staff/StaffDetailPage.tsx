@@ -526,10 +526,38 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
     const classRatings  = useAppStore(s => s.classRatings);
     const classBookings = useAppStore(s => s.classBookings);
     const shifts        = useAppStore(s => s.shifts);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const classCategories = useAppStore(s => s.classCategories);
 
     // Resolve shift + categories for the Personal information section.
-    const assignedShift = staff.shiftId ? shifts.find(sh => sh.id === staff.shiftId) : undefined;
+    // Audit fix 2026-07-22 — blend M2M assignments with the legacy
+    // shiftId so multi-shift staff show every one of their shifts,
+    // not just the primary. Preserves single-shift visual when there's
+    // only one binding.
+    const assignedShifts = useMemo(() => {
+        const seen = new Set<string>();
+        const out: typeof shifts = [];
+        for (const a of shiftAssignments) {
+            if (a.staff_id !== staff.id) continue;
+            const sh = shifts.find(x => x.id === a.shift_id);
+            if (sh && !seen.has(sh.id)) { seen.add(sh.id); out.push(sh); }
+        }
+        if (out.length === 0 && staff.shiftId) {
+            const sh = shifts.find(x => x.id === staff.shiftId);
+            if (sh) out.push(sh);
+        }
+        return out;
+    }, [shiftAssignments, shifts, staff.id, staff.shiftId]);
+    // Union of working_days across every shift so the "Working days" strip
+    // shows every day the staff might be on the floor.
+    const combinedWorkingDays = useMemo(() => {
+        if (assignedShifts.length === 0) return null;
+        const out = [false, false, false, false, false, false, false];
+        for (const sh of assignedShifts) {
+            for (let i = 0; i < 7; i++) if (sh.working_days[i]) out[i] = true;
+        }
+        return out;
+    }, [assignedShifts]);
     const assignedCategoryNames = (staff.categoryIds ?? [])
         .map(id => classCategories.find(c => c.id === id)?.name)
         .filter((n): n is string => !!n);
@@ -595,10 +623,12 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                     <InfoField label="Categories"
                         value={assignedCategoryNames.length > 0 ? assignedCategoryNames.join(", ") : "—"} />
                     <InfoField label="Working days"
-                        value={assignedShift ? <WorkingDaysStrip workingDays={assignedShift.working_days} /> : "—"} />
+                        value={combinedWorkingDays ? <WorkingDaysStrip workingDays={combinedWorkingDays} /> : "—"} />
                     <InfoField label="Shift hours"
-                        value={assignedShift
-                            ? `${assignedShift.name} (${fmtShiftTime(assignedShift.start_time)} – ${fmtShiftTime(assignedShift.end_time)})`
+                        value={assignedShifts.length > 0
+                            ? assignedShifts
+                                  .map(sh => `${sh.name} (${fmtShiftTime(sh.start_time)} – ${fmtShiftTime(sh.end_time)})`)
+                                  .join(", ")
                             : "—"} />
                 </div>
             </div>

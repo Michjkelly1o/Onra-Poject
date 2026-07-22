@@ -1109,11 +1109,15 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         // Reason (from the freeze policy dropdown) is stored on the plan
         // and surfaced in the Unfreeze modal alongside the customer-picked
         // one — same source of truth for both surfaces.
-        freezeCustomerPlan(plan.id, startISO, endISO, "admin", reason || undefined);
+        // Audit fix 2026-07-22 — surface the freeze fee in the toast so
+        // the admin knows the customer's card was charged (Phase 5
+        // charge-now behaviour). Zero fee = no fee copy.
+        const { fee } = freezeCustomerPlan(plan.id, startISO, endISO, "admin", reason || undefined);
         setPlanModal(null);
+        const feeSuffix = fee > 0 ? ` AED ${fee} freeze fee charged.` : "";
         showToast(
             "Membership has been frozen",
-            `All active benefits and class bookings for ${plan.name} will be frozen until reactivated.`,
+            `All active benefits and class bookings for ${plan.name} will be frozen until reactivated.${feeSuffix}`,
             "error", "slash",
         );
     }

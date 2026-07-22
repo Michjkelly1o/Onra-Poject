@@ -30,10 +30,11 @@ export function AssignStaffModal({ shift, onClose }: {
     shift: Shift;
     onClose: () => void;
 }) {
-    const staff       = useAppStore(s => s.staff);
-    const shifts      = useAppStore(s => s.shifts);
-    const updateStaff = useAppStore(s => s.updateStaff);
-    const showToast   = useAppStore(s => s.showToast);
+    const staff             = useAppStore(s => s.staff);
+    const shifts            = useAppStore(s => s.shifts);
+    const shiftAssignments  = useAppStore(s => s.shiftAssignments);
+    const updateStaff       = useAppStore(s => s.updateStaff);
+    const showToast         = useAppStore(s => s.showToast);
 
     const [search, setSearch] = useState("");
     useEffect(() => { setSearch(""); }, [shift.id]);
@@ -105,8 +106,13 @@ export function AssignStaffModal({ shift, onClose }: {
                     ) : (
                         <div className="flex flex-col">
                             {available.map((s, i) => {
-                                const onThisShift = s.shiftId === shift.id;
-                                const otherShift  = s.shiftId && s.shiftId !== shift.id
+                                // Audit fix 2026-07-22 — a staff already
+                                // assigned to this shift via the M2M table
+                                // also counts as "on this shift", not just
+                                // when the legacy shiftId matches.
+                                const onThisShift = s.shiftId === shift.id
+                                    || shiftAssignments.some(a => a.staff_id === s.id && a.shift_id === shift.id);
+                                const otherShift  = !onThisShift && s.shiftId
                                     ? shifts.find(x => x.id === s.shiftId)
                                     : undefined;
                                 return (

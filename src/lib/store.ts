@@ -6337,6 +6337,23 @@ export const useAppStore = create<AppState>()(persist(
             };
             set(state => ({ customerTransactions: [...state.customerTransactions, feeTxn] }));
         }
+        // Audit fix 2026-07-22 — admin-path bell fan-out. When admin clicks
+        // Freeze on CustomerDetailPage, the customer needs to be told (their
+        // plan just paused). The customer-portal + approve wrappers below
+        // fire their own custom-titled bells; here we mirror the same shape
+        // for admin so no path is silent. Admin bell is skipped because the
+        // admin already sees the confirmation toast on their own screen.
+        if (source === "admin" && target2 && customer2) {
+            const end = freezeDayLabel(endISO);
+            customerNotificationSink.emit?.({
+                customerId: customer2.id,
+                event: "membership_frozen",
+                title: "Membership frozen",
+                message: `Your ${target2.name} was frozen by staff. Bookings resume ${end}.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+        }
         return { fee };
     },
 
@@ -8396,6 +8413,37 @@ export const useAppStore = create<AppState>()(persist(
                 instructors: nextInstructors,
             };
         });
+
+        // Audit fix 2026-07-22 — mirror the legacy `shiftId` change into
+        // the M2M `shiftAssignments` slice so availability gates
+        // (schedule form + customer slot picker) see the current shift.
+        // Without this sync, the M2M row stays pointed at the OLD shift
+        // and resolveShiftWindows returns stale windows (never falling
+        // through to the legacy fallback because `matched=true`).
+        //
+        // Rule:
+        //   • If shiftId was set to a value → drop every existing
+        //     assignment for this staff and insert one new row for the
+        //     new shift with the shift's full `working_days` as the
+        //     default day mask (mirrors what `addShiftAssignment` does).
+        //   • If shiftId was cleared (undefined) → drop every assignment
+        //     for this staff. The staff has no shift binding at all.
+        if (shiftActuallyChanged) {
+            set(state => {
+                const withoutStaffRows = state.shiftAssignments.filter(a => a.staff_id !== id);
+                if (!nextShiftId) return { shiftAssignments: withoutStaffRows };
+                const parent = state.shifts.find(s => s.id === nextShiftId);
+                if (!parent) return { shiftAssignments: withoutStaffRows };
+                const nextRow: ShiftAssignment = {
+                    id: `sa_${nextShiftId}_${id}`,
+                    shift_id: nextShiftId,
+                    staff_id: id,
+                    days_of_week: [...parent.working_days],
+                    created_at: new Date().toISOString(),
+                };
+                return { shiftAssignments: [...withoutStaffRows, nextRow] };
+            });
+        }
 
         // Fan out the shift-change instructor notification + audit. Runs
         // AFTER the cascading set() above so the staff slice is current

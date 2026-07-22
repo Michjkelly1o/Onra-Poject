@@ -230,6 +230,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     const blockedTimes      = useAppStore(s => s.blockedTimes);
     const staff             = useAppStore(s => s.staff);
     const shifts            = useAppStore(s => s.shifts);
+    const shiftAssignments  = useAppStore(s => s.shiftAssignments);
     const businessHours     = useAppStore(s => s.businessHours);
     const addBlockedTime    = useAppStore(s => s.addBlockedTime);
     const updateBlockedTime = useAppStore(s => s.updateBlockedTime);
@@ -290,9 +291,24 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
 
     const timeWindow = useMemo<{ open: string; close: string; source: "shift" | "branch" | "none" }>(() => {
         if (selectedStaff.length > 0) {
-            const sharedShiftId = selectedStaff.every(s => s.shiftId && s.shiftId === selectedStaff[0].shiftId)
-                ? selectedStaff[0].shiftId
-                : null;
+            // Audit fix 2026-07-22 — resolve every selected staff's shift
+            // ids via UNION of legacy shiftId + M2M shift_assignments,
+            // then intersect to find the shift(s) they all share. Uses
+            // exactly one shared shift's window when possible; otherwise
+            // falls back to the branch hours envelope.
+            const shiftIdsFor = (st: Staff): Set<string> => {
+                const ids = new Set<string>();
+                if (st.shiftId) ids.add(st.shiftId);
+                for (const a of shiftAssignments) if (a.staff_id === st.id) ids.add(a.shift_id);
+                return ids;
+            };
+            let shared: Set<string> = shiftIdsFor(selectedStaff[0]);
+            for (let i = 1; i < selectedStaff.length; i++) {
+                const next = shiftIdsFor(selectedStaff[i]);
+                shared = new Set(Array.from(shared).filter(x => next.has(x)));
+                if (shared.size === 0) break;
+            }
+            const sharedShiftId = shared.size === 1 ? Array.from(shared)[0] : null;
             if (sharedShiftId) {
                 const shift = shifts.find(x => x.id === sharedShiftId);
                 if (shift) return { open: shift.start_time, close: shift.end_time, source: "shift" };
@@ -310,7 +326,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
             }
         }
         return { open: "00:00", close: "24:00", source: "none" };
-    }, [selectedStaff, shifts, branchId, businessHours]);
+    }, [selectedStaff, shifts, shiftAssignments, branchId, businessHours]);
 
     const startOptions = useMemo(
         () => TIME_OPTIONS.filter(o => o.value >= timeWindow.open && o.value < timeWindow.close),
