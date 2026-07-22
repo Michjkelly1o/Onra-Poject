@@ -100,6 +100,13 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     { id: "new-customers-source",  title: "New customers by source",         description: "", category: "Marketing" },
     { id: "campaign-performance",  title: "Campaign performance",            description: "", category: "Marketing" },
     { id: "referral-program",      title: "Referral program",                description: "", category: "Marketing" },
+    // Referral share of new customers — client 2026-07-22. Stacked bar per
+    // month (light-grey "All new customers" background + green "Via referral"
+    // subset), 12 buckets for Last 12 months / Year presets, weekday/hourly
+    // for shorter ranges. Header disclosure shows first-vs-last-period share
+    // ("5% → 24%"). Live data from the customers slice, filtered by branch +
+    // period. Sits under Marketing per client pick.
+    { id: "referral-share",        title: "Referral share of new customers", description: "", category: "Marketing", info: "% of new customers acquired via referral" },
     { id: "promo-redemptions",     title: "Promo code redemptions",          description: "", category: "Marketing" },
     // ─── Marketing (KPI-tab exclusive; kept for KPI grid) ───────────────
     { id: "kpi-leads-by-source",      title: "Leads by source",             description: "", category: "Marketing" },

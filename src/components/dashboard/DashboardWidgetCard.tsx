@@ -408,6 +408,7 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "new-customers-source":    { headers: ["Source", "New customers"],                                  fields: ["name", "v"] },
     "campaign-performance":    { headers: ["Campaign", "Sent", "Opened", "Booked", "Revenue (AED)"],    fields: ["name", "sent", "opened", "booked", "revenueAed"] },
     "referral-program":        { headers: ["Referrer", "New customers referred"],                        fields: ["name", "v"] },
+    "referral-share":          { headers: ["Date", "All new customers", "Via referral"],                 fields: ["date", "all", "referral"] },
     "promo-redemptions":       { headers: ["Promo code", "Redemptions", "Revenue (AED)"],                fields: ["name", "v", "revenueAed"] },
 };
 
@@ -809,6 +810,81 @@ function computeTopServices(
     return ranked.sort((a, b) => b.v - a.v).slice(0, 5);
 }
 
+// ─── Referral share of new customers — live derivation ─────────────────────
+//
+// Stacked bar per period-bucket: "All new customers" (light grey background)
+// with "Via referral" (green subset) counted at the bottom. Client 2026-07-22.
+//
+// Row shape (one per axis label): { date: string; all: number; referral: number }.
+// The X-axis label + bucket function come straight from `pointsForPeriod` +
+// `heatmapColFor` so the widget's axis stays in lock-step with the other
+// time-series widgets (Last 12 months → 12 monthly ticks, This week → 7
+// daily ticks, Today → 24 hourly ticks, etc).
+//
+// Result also carries `firstShare` + `lastShare` for the header disclosure
+// ("5% → 24%") and the current-month absolute label ("9/38") the client's
+// mockup showed on the last bar.
+export interface ReferralShareResult {
+    rows: Array<{ date: string; all: number; referral: number }>;
+    /** Per-cell counts for header + last-bar labels. `first` = the earliest
+     *  non-empty bucket in the period; `last` = the most recent (usually the
+     *  current one on Last-12-months). */
+    first: { count: number; total: number; share: number } | null;
+    last:  { count: number; total: number; share: number } | null;
+}
+
+function computeReferralShare(
+    customers: Array<import("@/lib/store").Customer>,
+    branchIds: string[] | undefined,
+    period: DateFilter,
+): ReferralShareResult {
+    const { from, to } = period.type === "custom"
+        ? { from: period.from, to: period.to }
+        : resolvePresetBounds(period);
+    const fromMs = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+    const toMs   = new Date(to.getFullYear(),   to.getMonth(),   to.getDate(),   23, 59, 59).getTime();
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+    const { labels: cols } = pointsForPeriod(period);
+
+    // Bucket accumulators keyed by axis label (matches pointsForPeriod).
+    const allBy: Record<string, number> = {};
+    const refBy: Record<string, number> = {};
+    for (const label of cols) { allBy[label] = 0; refBy[label] = 0; }
+
+    for (const c of customers) {
+        if (scoped && !scoped.includes(c.branchId)) continue;
+        if (!c.createdAt) continue;
+        const t = new Date(c.createdAt).getTime();
+        if (Number.isNaN(t) || t < fromMs || t > toMs) continue;
+        // Bucket via the same helper the heatmap uses so widgets stay
+        // aligned. Time-of-day for `startTime` is meaningless for a
+        // customer signup, but hourly bucketing on Today/Yesterday needs
+        // an HH:MM — pull it off `createdAt`.
+        const iso = new Date(c.createdAt);
+        const dateISO = `${iso.getFullYear()}-${String(iso.getMonth() + 1).padStart(2, "0")}-${String(iso.getDate()).padStart(2, "0")}`;
+        const startTime = `${String(iso.getHours()).padStart(2, "0")}:${String(iso.getMinutes()).padStart(2, "0")}`;
+        const key = heatmapColFor(dateISO, startTime, period);
+        if (!(key in allBy)) continue;
+        allBy[key] += 1;
+        if (c.convertedFrom === "referral") refBy[key] += 1;
+    }
+
+    const rows = cols.map(date => ({ date, all: allBy[date], referral: refBy[date] }));
+
+    // Header disclosure — first vs last NON-EMPTY bucket in the range so
+    // an early empty month doesn't force the "from" side to 0%. Client
+    // mockup: Aug 1/22 ≈ 5% → Jul 9/38 ≈ 24%.
+    const withData = rows.filter(r => r.all > 0);
+    const first = withData.length > 0
+        ? { count: withData[0].referral, total: withData[0].all, share: Math.round((withData[0].referral / withData[0].all) * 100) }
+        : null;
+    const last  = withData.length > 0
+        ? { count: withData[withData.length - 1].referral, total: withData[withData.length - 1].all, share: Math.round((withData[withData.length - 1].referral / withData[withData.length - 1].all) * 100) }
+        : null;
+
+    return { rows, first, last };
+}
+
 /** Scale every numeric field in a chart-ready row by `factor`, leave strings
  *  (labels, dates, colors) untouched. Returns the same row when factor is 1. */
 function scaleRows(rows: object[], factor: number): object[] {
@@ -849,6 +925,10 @@ function renderChart(
     /** Recovery Top-services widget only — live-derived ranked list of
      *  recovery services by booked-seat count. Null on every other widget. */
     topServicesRows: Array<{ name: string; v: number }> | null = null,
+    /** Referral-share widget only — live-derived monthly stack of
+     *  (all new customers, new customers via referral) plus the header
+     *  first-vs-last-period share numbers. Null on every other widget. */
+    referralShareResult: ReferralShareResult | null = null,
 ): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
@@ -866,7 +946,9 @@ function renderChart(
           ([] as object[])
         : id === "recovery-top-services" && topServicesRows
             ? (topServicesRows as unknown as object[])
-            : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
+            : id === "referral-share" && referralShareResult
+                ? (referralShareResult.rows as unknown as object[])
+                : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -1645,6 +1727,109 @@ function renderChart(
             );
         }
 
+        // Referral share of new customers — stacked bar per axis-bucket,
+        // "Via referral" (green) inside "All new customers" (light grey
+        // background). Client 2026-07-22 mockup.
+        //
+        // Layout: SVG-free — an HTML flex row of vertical bars so the
+        // stack is one <div> per period-bucket, no Recharts stack quirks.
+        // Each column: background bar (rounded) filling the visible area
+        // + a green subset bar anchored bottom, height = referral/all.
+        // The tallest bucket in the range = 100% of the chart height so
+        // relative volume reads correctly across the row.
+        case "referral-share": {
+            const rows = data as { date: string; all: number; referral: number }[];
+            const maxAll = Math.max(1, ...rows.map(r => r.all));
+            // Absolute-value label ("9/38") anchors above the LAST non-empty
+            // bar to mirror the mockup. Skip when the range has no data.
+            const lastIdx = (() => {
+                for (let i = rows.length - 1; i >= 0; i--) if (rows[i].all > 0) return i;
+                return -1;
+            })();
+            const first = referralShareResult?.first;
+            const last  = referralShareResult?.last;
+            return (
+                <div className="flex-1 flex flex-col gap-2 mt-2 min-h-0">
+                    {/* Header row — legend on the right, first-vs-last-period
+                        share disclosure on the left. Matches the client mockup
+                        (2026-07-22): "5% → 24%" tells the story at a glance. */}
+                    <div className="flex items-center justify-between gap-3 px-1">
+                        {first && last ? (
+                            <p className="text-[13px] font-medium text-[#98a2b3]">
+                                <span>{first.share}%</span>
+                                <span className="mx-2">→</span>
+                                <span className="text-[#101828]">{last.share}%</span>
+                            </p>
+                        ) : (
+                            <span className="text-[13px] text-[#98a2b3]">—</span>
+                        )}
+                        <Legend items={[
+                            { color: "#92baa4", label: "Via referral" },
+                            { color: "#e4e7ec", label: "All new customers" },
+                        ]} />
+                    </div>
+                    {/* Bars area — 240px total incl. label headroom. */}
+                    <div className="flex-1 min-h-[220px] flex items-end gap-2 px-1 relative">
+                        {rows.map((r, i) => {
+                            const bgH = Math.round((r.all / maxAll) * 100);
+                            const refH = r.all > 0
+                                ? Math.round((r.referral / r.all) * bgH)
+                                : 0;
+                            const share = r.all > 0 ? Math.round((r.referral / r.all) * 100) : 0;
+                            return (
+                                <div
+                                    key={r.date}
+                                    className="group relative flex-1 h-full flex items-end justify-center"
+                                    style={{ maxWidth: 56 }}
+                                >
+                                    {/* Absolute-value label on the LAST bar
+                                        with data — mockup shows "9/38". */}
+                                    {i === lastIdx && r.all > 0 && (
+                                        <span className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full text-[12px] font-semibold text-[#101828] whitespace-nowrap">
+                                            {r.referral}/{r.all}
+                                        </span>
+                                    )}
+                                    {/* Stacked column — grey background bar
+                                        + green referral subset. */}
+                                    <div className="relative w-full rounded-t-[6px] overflow-hidden bg-[#f2f4f7]"
+                                        style={{ height: `${Math.max(2, bgH)}%` }}
+                                    >
+                                        {refH > 0 && (
+                                            <div
+                                                className="absolute bottom-0 left-0 right-0 bg-[#92baa4]"
+                                                style={{ height: `${refH}%` }}
+                                            />
+                                        )}
+                                    </div>
+                                    {/* Hover tooltip — dark chip matching the
+                                        capacity-heatmap + top-services chips
+                                        for one-voice tooltip vocabulary. */}
+                                    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="bg-[#0c111d] text-white text-[12px] leading-[16px] rounded-[8px] px-3 py-2 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)] whitespace-nowrap">
+                                            <p className="text-[#98a2b3] mb-0.5">{r.date}</p>
+                                            <p className="font-medium">
+                                                {r.referral} of {r.all} new customers · {share}%
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {/* X-axis labels — same interval strategy the other
+                        widgets use (Last 12 months: every label; 30-day:
+                        every 5th). Uses pointsForPeriod's `interval`. */}
+                    <div className="flex items-center gap-2 px-1">
+                        {rows.map((r, i) => (
+                            <div key={r.date} className="flex-1 text-center text-[11px] text-[#667085] truncate" style={{ maxWidth: 56 }}>
+                                {i % (interval + 1) === 0 ? r.date : ""}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
         // Promo code redemptions — code → uses + revenue attributed. Small
         // secondary "AED X" line under each code so both signals surface
         // without a second chart.
@@ -1797,6 +1982,17 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
         widgetId === "recovery-top-services" && svcAll && svcAppts
             ? computeTopServices(svcAll, svcAppts, branchIds, period ?? DEFAULT_PERIOD)
             : null;
+
+    // Referral share — live derivation from the customers slice, scoped
+    // to picked branch + period, bucketed on the same axis every other
+    // time-series widget uses. Client 2026-07-22 addition.
+    const referralCustomers = useAppStore(s =>
+        widgetId === "referral-share" ? s.customers : null,
+    );
+    const referralShareResult =
+        widgetId === "referral-share" && referralCustomers
+            ? computeReferralShare(referralCustomers, branchIds, period ?? DEFAULT_PERIOD)
+            : null;
     if (!meta) return null;
 
     return (
@@ -1873,7 +2069,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult)}
             </div>
         </div>
     );
