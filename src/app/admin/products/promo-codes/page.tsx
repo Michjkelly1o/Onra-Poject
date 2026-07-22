@@ -218,19 +218,19 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
                 "transition-all duration-150",
                 "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
-            {/* Banner — matches the customer-side PromoCard ratio
-                (aspect-[343/140]) so the artwork the customer sees is the
-                same shape admins preview here. `object-contain` on a
-                letterbox-tinted background so uploads that don't hit the
-                exact ratio never crop / cut the voucher copy off (client
-                2026-07-22). Was `aspect-[4/3] + object-cover` which
-                cropped 12:5 uploads down to a square. */}
+            {/* Banner — verbatim match for the customer-side PromoCard
+                (`src/components/customer/products/PromoCard.tsx`): same
+                aspect-[343/140] tile + `object-cover` fit. Admin preview
+                and customer render are now pixel-for-pixel identical so
+                what the admin sees IS what the customer sees. Was
+                `aspect-[4/3] + object-cover` which cropped 12:5 uploads
+                down to a square (client 2026-07-22). */}
             <div className={cn("relative aspect-[343/140] shrink-0 overflow-hidden", bannerClass)}>
                 {/* Image-only banner — the voucher artwork carries all copy.
                     Inactive / archived / expired promos render grayscale. */}
                 {promo.banner_image_url && (
                     <img src={promo.banner_image_url} alt={promo.name ?? promo.code}
-                        className={cn("absolute inset-0 w-full h-full object-contain", status !== "active" && "grayscale")} />
+                        className={cn("absolute inset-0 w-full h-full object-cover", status !== "active" && "grayscale")} />
                 )}
                 {/* Status badge — top right (system status, not voucher copy) */}
                 <div className="absolute top-3 right-3 z-10">

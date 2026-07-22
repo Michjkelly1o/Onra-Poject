@@ -182,16 +182,17 @@ function PromoSidebarBanner({ vm }: { vm: PromoDetailVM }) {
     const bannerClass = isActive
         ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
         : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
-    // Banner matches customer PromoCard ratio (aspect-[343/140]) so admin
-    // preview + customer render are identical. `object-contain` keeps
-    // every voucher upload uncropped, even ones whose native ratio doesn't
-    // hit the tile ratio exactly (client 2026-07-22).
+    // Banner — verbatim match for the customer PromoCard
+    // (`src/components/customer/products/PromoCard.tsx`): same
+    // aspect-[343/140] tile + `object-cover` fit. Admin preview and
+    // customer render are now pixel-for-pixel identical (client
+    // 2026-07-22).
     return (
         <div className={cn("relative aspect-[343/140] shrink-0 overflow-hidden", bannerClass)}>
             {/* Image-only banner — the voucher artwork carries all copy */}
             {vm.bannerImageUrl && (
                 <img src={vm.bannerImageUrl} alt={vm.name}
-                    className={cn("absolute inset-0 w-full h-full object-contain", !isActive && "grayscale")} />
+                    className={cn("absolute inset-0 w-full h-full object-cover", !isActive && "grayscale")} />
             )}
             {/* Status badge — top right (system status, not voucher copy) */}
             <div className="absolute top-3 right-3 z-10">
