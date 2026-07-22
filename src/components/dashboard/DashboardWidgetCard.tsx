@@ -10,7 +10,7 @@ import type { DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
 import {
     LineChart, Line, BarChart, Bar, ComposedChart, Area, AreaChart,
-    XAxis, YAxis, CartesianGrid, Tooltip,
+    XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
     ResponsiveContainer,
 } from "recharts";
 import { ArrowRight } from "@untitledui/icons";
@@ -1731,28 +1731,82 @@ function renderChart(
         // "Via referral" (green) inside "All new customers" (light grey
         // background). Client 2026-07-22 mockup.
         //
-        // Layout: SVG-free — an HTML flex row of vertical bars so the
-        // stack is one <div> per period-bucket, no Recharts stack quirks.
-        // Each column: background bar (rounded) filling the visible area
-        // + a green subset bar anchored bottom, height = referral/all.
-        // The tallest bucket in the range = 100% of the chart height so
-        // relative volume reads correctly across the row.
+        // Layout: full Recharts BarChart so the tooltip follows the cursor
+        // like every other widget on the dashboard. The stack renders as
+        // two <Bar> components sharing a stackId — the green referral
+        // subset on the bottom, the grey "remaining" on top — so the
+        // combined bar height reads as the total new-customer count.
+        // Custom tooltip content reformats the payload to show
+        // "Via referral / All new customers / Share" instead of the
+        // raw stacked slices.
         case "referral-share": {
-            const rows = data as { date: string; all: number; referral: number }[];
-            const maxAll = Math.max(1, ...rows.map(r => r.all));
-            // Absolute-value label ("9/38") anchors above the LAST non-empty
-            // bar to mirror the mockup. Skip when the range has no data.
+            const raw = data as { date: string; all: number; referral: number }[];
+            // Per-row derived: `remaining = all - referral` is what the
+            // top slice actually draws; carrying `all` + `share` on the
+            // datum lets the tooltip skip re-derivation.
+            const chartData = raw.map(r => ({
+                date: r.date,
+                referral: r.referral,
+                remaining: Math.max(0, r.all - r.referral),
+                all: r.all,
+                share: r.all > 0 ? Math.round((r.referral / r.all) * 100) : 0,
+            }));
+            // "9/38"-style absolute label on the LAST non-empty bar,
+            // rendered via Recharts' LabelList so it inherits the chart's
+            // internal coordinate system and can't collide with the header
+            // legend (the fixed h-[220px] container gives it 12px of top
+            // padding for the label headroom).
             const lastIdx = (() => {
-                for (let i = rows.length - 1; i >= 0; i--) if (rows[i].all > 0) return i;
+                for (let i = chartData.length - 1; i >= 0; i--) if (chartData[i].all > 0) return i;
                 return -1;
             })();
             const first = referralShareResult?.first;
             const last  = referralShareResult?.last;
+
+            /** Custom tooltip content — same white ChartTooltip chrome + a
+             *  purpose-built row layout that surfaces referral count,
+             *  total, and share on one hover. Recharts places this at the
+             *  cursor automatically (identical UX to every other widget). */
+            const ReferralTooltip = ({ active, payload, label }: {
+                active?: boolean;
+                payload?: readonly { payload?: { date: string; referral: number; all: number; share: number } }[];
+                label?: string | number;
+            }) => {
+                if (!active || !payload?.length) return null;
+                const p = payload[0]?.payload;
+                if (!p) return null;
+                return (
+                    <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[180px]">
+                        <p className="font-semibold text-[#101828] mb-1.5">{label ?? p.date}</p>
+                        <p className="flex items-center gap-1.5 mb-0.5">
+                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#92baa4]" />
+                            <span className="text-[#475467]">Via referral:</span>
+                            <span className="font-medium text-[#101828]">{p.referral}</span>
+                        </p>
+                        <p className="flex items-center gap-1.5 mb-0.5">
+                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#e4e7ec]" />
+                            <span className="text-[#475467]">All new customers:</span>
+                            <span className="font-medium text-[#101828]">{p.all}</span>
+                        </p>
+                        <p className="flex items-center gap-1.5">
+                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 opacity-0" />
+                            <span className="text-[#475467]">Share:</span>
+                            <span className="font-medium text-[#101828]">{p.share}%</span>
+                        </p>
+                    </div>
+                );
+            };
+
             return (
                 <div className="flex-1 flex flex-col gap-2 mt-2 min-h-0">
                     {/* Header row — legend on the right, first-vs-last-period
                         share disclosure on the left. Matches the client mockup
-                        (2026-07-22): "5% → 24%" tells the story at a glance. */}
+                        (2026-07-22): "5% → 24%" tells the story at a glance.
+                        The Recharts container below has its own `LabelList`
+                        for the "9/38" chip, so the header no longer competes
+                        with a floating overlay label like the HTML version
+                        did (fixed the "4/17" overlapping "All new customers"
+                        client 2026-07-22 flag). */}
                     <div className="flex items-center justify-between gap-3 px-1">
                         {first && last ? (
                             <p className="text-[13px] font-medium text-[#98a2b3]">
@@ -1768,93 +1822,39 @@ function renderChart(
                             { color: "#e4e7ec", label: "All new customers" },
                         ]} />
                     </div>
-                    {/* Bars area — 240px total incl. label headroom. */}
-                    <div className="flex-1 min-h-[220px] flex items-end gap-2 px-1 relative">
-                        {rows.map((r, i) => {
-                            const bgH = Math.round((r.all / maxAll) * 100);
-                            const refH = r.all > 0
-                                ? Math.round((r.referral / r.all) * bgH)
-                                : 0;
-                            const share = r.all > 0 ? Math.round((r.referral / r.all) * 100) : 0;
-                            return (
-                                <div
-                                    key={r.date}
-                                    className="group relative flex-1 h-full flex items-end justify-center"
-                                    style={{ maxWidth: 56 }}
-                                >
-                                    {/* Absolute-value label on the LAST bar
-                                        with data — mockup shows "9/38". */}
-                                    {i === lastIdx && r.all > 0 && (
-                                        <span className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full text-[12px] font-semibold text-[#101828] whitespace-nowrap">
-                                            {r.referral}/{r.all}
-                                        </span>
-                                    )}
-                                    {/* Stacked column — grey background bar
-                                        + green referral subset. */}
-                                    <div className="relative w-full rounded-t-[6px] overflow-hidden bg-[#f2f4f7]"
-                                        style={{ height: `${Math.max(2, bgH)}%` }}
-                                    >
-                                        {refH > 0 && (
-                                            <div
-                                                className="absolute bottom-0 left-0 right-0 bg-[#92baa4]"
-                                                style={{ height: `${refH}%` }}
-                                            />
-                                        )}
-                                    </div>
-                                    {/* Hover tooltip — verbatim `ChartTooltip`
-                                        chrome (white bg, colored dot per
-                                        series) so the referral widget speaks
-                                        the same visual language as every
-                                        Recharts widget on the dashboard.
-                                        Client 2026-07-22 flag: was a dark
-                                        chip that read as one-off. */}
-                                    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[180px] whitespace-nowrap">
-                                            <p className="font-semibold text-[#101828] mb-1.5">{r.date}</p>
-                                            <p className="flex items-center gap-1.5 mb-0.5">
-                                                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#92baa4]" />
-                                                <span className="text-[#475467]">Via referral:</span>
-                                                <span className="font-medium text-[#101828]">{r.referral}</span>
-                                            </p>
-                                            <p className="flex items-center gap-1.5 mb-0.5">
-                                                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#e4e7ec]" />
-                                                <span className="text-[#475467]">All new customers:</span>
-                                                <span className="font-medium text-[#101828]">{r.all}</span>
-                                            </p>
-                                            <p className="flex items-center gap-1.5">
-                                                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 opacity-0" />
-                                                <span className="text-[#475467]">Share:</span>
-                                                <span className="font-medium text-[#101828]">{share}%</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    {/* X-axis labels — same interval strategy the other
-                        widgets use (Last 12 months: every label; 30-day:
-                        every 5th). Uses pointsForPeriod's `interval`.
-                        `truncate` removed 2026-07-22: on the daily-30 axis
-                        it clipped "Jul 6" down to "J." because each column
-                        was ~30 px. Now the visible label uses whitespace-
-                        nowrap and OVERFLOWS into the neighboring hidden
-                        columns (which sit empty because we skipped them
-                        for this cell). */}
-                    <div className="flex items-center gap-2 px-1">
-                        {rows.map((r, i) => {
-                            const visible = i % (interval + 1) === 0;
-                            return (
-                                <div key={r.date} className="flex-1 text-center relative" style={{ maxWidth: 56 }}>
-                                    {visible && (
-                                        <span className="absolute left-1/2 top-0 -translate-x-1/2 text-[11px] text-[#667085] whitespace-nowrap">
-                                            {r.date}
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <ResponsiveContainer width="100%" height={h}>
+                        <BarChart data={chartData} barCategoryGap="20%" margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis {...axisProps} width={28} />
+                            <Tooltip content={<ReferralTooltip />} cursor={{ fill: "#f9fafb" }} />
+                            {/* Stack: green referral on the bottom, grey
+                                "remaining" on top so the combined column
+                                = total new customers. `radius` on the TOP
+                                bar rounds only the top corners of the stack
+                                (matches Recharts convention). */}
+                            <Bar dataKey="referral"  name="Via referral"       stackId="rc" fill="#92baa4" />
+                            <Bar dataKey="remaining" name="All new customers"  stackId="rc" fill="#e4e7ec" radius={[6, 6, 0, 0]}>
+                                {/* "9/38"-style absolute label on the LAST
+                                    non-empty bar — mirrors the mockup. */}
+                                <LabelList dataKey="all" position="top"
+                                    content={(props: { x?: number | string; y?: number | string; width?: number | string; index?: number; value?: number | string }) => {
+                                        const idx = props.index ?? -1;
+                                        if (idx !== lastIdx) return null;
+                                        const point = chartData[idx];
+                                        if (!point || point.all <= 0) return null;
+                                        const cx = Number(props.x ?? 0) + Number(props.width ?? 0) / 2;
+                                        const cy = Number(props.y ?? 0) - 6;
+                                        return (
+                                            <text x={cx} y={cy} textAnchor="middle" fontSize={12} fontWeight={600} fill="#101828">
+                                                {point.referral}/{point.all}
+                                            </text>
+                                        );
+                                    }}
+                                />
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
             );
         }
