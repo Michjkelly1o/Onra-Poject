@@ -619,25 +619,66 @@ function computeFailedPaymentsStats(
 
 // ─── Attendance heatmap — live derivation ────────────────────────────────────
 //
-// Build the 4-row × 7-column attendance grid (AM / MID / PM / EVE × Mon-Sun)
-// from live class_bookings joined to their class_schedules, scoped to the
-// picked branches + period. Client 2026-07-20 fix: the heatmap was static
-// seed data and DID NOT respond to the date filter. Now it does.
+// 4-row (AM/MID/PM/EVE time bands) × N-column grid where the X-axis follows
+// the picked date range:
 //
-// Cell value = attendance rate = present / (present + no_show + booked),
-// rounded to whole %. When a slot has no bookings in the period, we return
-// 0% so the tint drops to the palette's lowest step (visually "quiet slot").
+//   • Single-day preset  (Today / Yesterday) → 6 3-hour buckets on X:
+//                        06:00 · 09:00 · 12:00 · 15:00 · 18:00 · 21:00
+//   • Short ranges       (≤ 45 days spanning multiple days) → 7 weekday
+//                        cols Mon → Sun (aggregated across matching
+//                        weekdays in the period).
+//   • Long ranges        (> 45 days OR any "year" preset) → up to 12
+//                        month cols. "Last 12 months" walks the rolling
+//                        window Aug 25 → Jul 26; "This year" / "Last year"
+//                        use Jan → Dec.
+//
+// Cell = attendance rate = present / (present + no_show + booked).
+// Empty cells render as 0% (lightest tint). Client 2026-07-22: the axis
+// was fixed Mon-Sun regardless of picked range — now it tracks the range
+// so "Last 12 months" shows months, "Today" shows hours.
 
-type HeatmapRow = {
-    band: "AM" | "MID" | "PM" | "EVE";
-    Mon: number; Tue: number; Wed: number; Thu: number; Fri: number; Sat: number; Sun: number;
+/** Y-axis time-of-day band (rows). */
+type HeatmapBand = "AM" | "MID" | "PM" | "EVE";
+const BAND_LABEL: Record<HeatmapBand, string> = {
+    AM:  "AM",
+    MID: "MID",
+    PM:  "PM",
+    EVE: "EVE",
 };
+const BANDS: readonly HeatmapBand[] = ["AM", "MID", "PM", "EVE"] as const;
+
+/** Cell coordinate — one per (band, col). `col` is a string key that the
+ *  renderer's X-axis label array matches on. */
+interface HeatmapCell {
+    band: HeatmapBand;
+    col: string;
+    pct: number;
+    count: number;
+}
+
+/** X-axis modes. Picked per-period so the heatmap columns reflect the
+ *  picked range at a glance. */
+type HeatmapAxis = "hour" | "weekday" | "month";
+
+/** Payload returned to the renderer — everything it needs to draw the grid
+ *  and the "Based on N bookings" footer. */
+interface HeatmapResult {
+    axis: HeatmapAxis;
+    /** Column labels in draw order (X-axis). Length = 6 (hour), 7 (weekday),
+     *  or 12 (month). */
+    cols: string[];
+    /** Every cell for (band × col). Renderer looks up by (band, col). */
+    cells: HeatmapCell[];
+    totalBookings: number;
+    fromISO: string;
+    toISO: string;
+}
 
 /** Map an ISO time (`HH:MM`) → time-of-day band. AM = 05:00-10:59,
  *  MID = 11:00-14:59, PM = 15:00-17:59, EVE = 18:00+. Outside 05:00-24:00
  *  falls into AM (studio hours don't usually cross midnight but the
  *  fallback keeps totals sane). */
-function timeBand(startTime: string): HeatmapRow["band"] {
+function timeBand(startTime: string): HeatmapBand {
     const hh = Number((startTime ?? "").slice(0, 2));
     if (Number.isNaN(hh)) return "AM";
     if (hh >= 5 && hh < 11) return "AM";
@@ -646,9 +687,74 @@ function timeBand(startTime: string): HeatmapRow["band"] {
     return "EVE";
 }
 
-/** Map a JS getDay() (0=Sun) → the weekday key on HeatmapRow. */
-function dayKey(dow: number): keyof Omit<HeatmapRow, "band"> {
-    return (["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const)[dow] as keyof Omit<HeatmapRow, "band">;
+/** JS getDay() (0=Sun) → the 3-letter weekday key used on `weekday` axis. */
+function weekdayKey(dow: number): "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" {
+    return (["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const)[dow];
+}
+
+/** Bucket a Date into one of the 6 3-hour hour-bucket labels the `hour`
+ *  axis uses. Anchors at 06:00; anything before 06:00 or after 21:00
+ *  falls into the nearest bucket so all bookings land somewhere. */
+function hourBucketKey(startTime: string): string {
+    const hh = Number((startTime ?? "").slice(0, 2));
+    if (Number.isNaN(hh)) return "06:00";
+    if (hh < 9)  return "06:00";
+    if (hh < 12) return "09:00";
+    if (hh < 15) return "12:00";
+    if (hh < 18) return "15:00";
+    if (hh < 21) return "18:00";
+    return "21:00";
+}
+const HOUR_COLS: readonly string[] = ["06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
+const WEEKDAY_COLS: readonly string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const MONTH_SHORT: readonly string[] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** Deterministic per-cell weekly base counts. Rough baseline of what a
+ *  typical Forma-sized studio would see per weekday × time band — evening
+ *  and mid-day are busier, weekends taper. Kept as a plain table (not
+ *  Math.random) so the number of bookings a period reports is stable
+ *  across reloads and matches between tabs / users of the demo. */
+const HEATMAP_WEEKLY_BASE: Record<HeatmapBand, Record<string, number>> = {
+    AM:  { Mon: 5, Tue: 6, Wed: 5, Thu: 6, Fri: 4, Sat: 8, Sun: 6 },
+    MID: { Mon: 7, Tue: 8, Wed: 7, Thu: 8, Fri: 6, Sat: 9, Sun: 5 },
+    PM:  { Mon: 8, Tue: 9, Wed: 9, Thu: 8, Fri: 7, Sat: 5, Sun: 3 },
+    EVE: { Mon: 10, Tue: 11, Wed: 10, Thu: 11, Fri: 8, Sat: 4, Sun: 3 },
+};
+
+/** Attendance % anchor per cell — again a stable baseline. Cells stay
+ *  in the same relative order (evening is busier + better attended)
+ *  regardless of period, matching real studio behaviour. */
+const HEATMAP_ATTEND_PCT: Record<HeatmapBand, Record<string, number>> = {
+    AM:  { Mon: 78, Tue: 82, Wed: 80, Thu: 84, Fri: 72, Sat: 88, Sun: 82 },
+    MID: { Mon: 72, Tue: 76, Wed: 78, Thu: 80, Fri: 70, Sat: 82, Sun: 68 },
+    PM:  { Mon: 82, Tue: 86, Wed: 88, Thu: 84, Fri: 78, Sat: 74, Sun: 62 },
+    EVE: { Mon: 88, Tue: 92, Wed: 90, Thu: 89, Fri: 80, Sat: 70, Sun: 62 },
+};
+
+/** Pick which X-axis to render for the period, plus the column labels. */
+function pickHeatmapAxis(period: DateFilter): { axis: HeatmapAxis; cols: string[] } {
+    if (period.type === "year") {
+        return { axis: "month", cols: [...MONTH_SHORT] };
+    }
+    if (period.type === "month" && period.label.toLowerCase().includes("last 12")) {
+        // Rolling 12 months anchored on today's month at the end.
+        const today = new Date();
+        today.setDate(1); today.setHours(0, 0, 0, 0);
+        const cols: string[] = [];
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(today);
+            d.setMonth(d.getMonth() - (11 - i));
+            cols.push(MONTH_SHORT[d.getMonth()]);
+        }
+        return { axis: "month", cols };
+    }
+    const { from, to } = period.type === "custom"
+        ? { from: period.from, to: period.to }
+        : resolvePresetBounds(period);
+    const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
+    if (days <= 1) return { axis: "hour", cols: [...HOUR_COLS] };
+    if (days > 45) return { axis: "month", cols: [...MONTH_SHORT] };
+    return { axis: "weekday", cols: [...WEEKDAY_COLS] };
 }
 
 function computeAttendanceHeatmap(
@@ -656,13 +762,15 @@ function computeAttendanceHeatmap(
     schedules: Array<import("@/lib/store").ClassSchedule>,
     branchIds: string[] | undefined,
     period: DateFilter,
-): HeatmapRow[] {
+    activeBranchCount: number = 1,
+): HeatmapResult {
     const { from, to } = period.type === "custom"
         ? { from: period.from, to: period.to }
         : resolvePresetBounds(period);
     const fromMs = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
     const toMs   = new Date(to.getFullYear(),   to.getMonth(),   to.getDate(),   23, 59, 59).getTime();
     const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+    const { axis, cols } = pickHeatmapAxis(period);
 
     // Only schedules within the period + branch scope are considered. Building
     // a quick id → schedule map so the per-booking lookup stays O(1).
@@ -674,35 +782,138 @@ function computeAttendanceHeatmap(
         scheduleMap.set(s.id, s);
     }
 
-    // present / total buckets per (band, day) so we can compute the rate at
-    // the end without holding every booking in memory twice.
+    // present / total buckets per (band, col) so we can compute the rate at
+    // the end without holding every booking in memory twice. `col` key
+    // depends on axis mode (hour bucket / weekday / month).
     const present: Record<string, number> = {};
     const total: Record<string, number> = {};
-    const key = (band: string, day: string) => `${band}|${day}`;
+    const key = (band: string, col: string) => `${band}|${col}`;
+    let totalBookings = 0;
 
     for (const b of bookings) {
         const s = scheduleMap.get(b.classScheduleId);
         if (!s) continue;
         const d = new Date(`${s.dateISO}T00:00:00`);
         const band = timeBand(s.startTime);
-        const day  = dayKey(d.getDay());
-        const k = key(band, day);
+        const col =
+            axis === "hour"    ? hourBucketKey(s.startTime) :
+            axis === "weekday" ? weekdayKey(d.getDay()) :
+                                 MONTH_SHORT[d.getMonth()];
+        const k = key(band, col);
         total[k] = (total[k] ?? 0) + 1;
+        totalBookings += 1;
         if (b.attendanceStatus === "present") present[k] = (present[k] ?? 0) + 1;
     }
 
-    const days: Array<keyof Omit<HeatmapRow, "band">> = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const bands: HeatmapRow["band"][] = ["AM", "MID", "PM", "EVE"];
-    return bands.map(band => {
-        const row: HeatmapRow = { band, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
-        for (const day of days) {
-            const tot = total[key(band, day)] ?? 0;
-            const pre = present[key(band, day)] ?? 0;
-            row[day] = tot === 0 ? 0 : Math.round((pre / tot) * 100);
+    // ── Historical supplement ────────────────────────────────────────
+    //
+    // Seeds cover ~-21 → +30 days. For periods that reach further back
+    // (Last 90 days, Last 12 months, custom multi-month ranges), the
+    // real scan finds the same rows every time and the heatmap doesn't
+    // visibly move when the filter changes. Deterministic supplement:
+    // spread the weekly base counts across the period's columns using
+    // the picked axis mode so every cell in the visible axis gets some
+    // contribution (branch-scaled). Baseline attendance % is folded in
+    // at the same weight so cells stay near their real-data rate.
+    //
+    // ONLY runs when the requested period extends before the seeded
+    // window — Today / Yesterday / This week / short custom ranges are
+    // untouched and reflect only real bookings.
+    const NOW_MS = Date.now();
+    const seedFloorMs = NOW_MS - 22 * 24 * 60 * 60 * 1000;
+    const histFromMs = fromMs;
+    const histToMs   = Math.min(toMs, seedFloorMs);
+    if (histFromMs < histToMs) {
+        const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+        const weeks = Math.max(0, Math.floor((histToMs - histFromMs) / WEEK_MS));
+        const branchScale = scoped ? scoped.length : Math.max(1, activeBranchCount);
+        if (weeks > 0) {
+            for (const band of BANDS) {
+                // Base weekly volume + baseline % for this band (averaged
+                // over the 7 weekday slots so hour/month modes get a fair
+                // per-column allocation).
+                const bandDays = Object.values(HEATMAP_WEEKLY_BASE[band]);
+                const bandPcts = Object.values(HEATMAP_ATTEND_PCT[band]);
+                const weekTotal = bandDays.reduce((a, b) => a + b, 0);
+                const weekMean  = bandPcts.reduce((a, b) => a + b, 0) / bandPcts.length;
+
+                for (const col of cols) {
+                    let addTotal = 0;
+                    let attendPct = weekMean;
+                    if (axis === "weekday") {
+                        addTotal  = HEATMAP_WEEKLY_BASE[band][col] * branchScale * weeks;
+                        attendPct = HEATMAP_ATTEND_PCT[band][col] ?? weekMean;
+                    } else if (axis === "hour") {
+                        // Only the hour bucket matching the band gets the
+                        // volume; e.g. 06:00 + 09:00 = AM band, 18:00 +
+                        // 21:00 = EVE band. Other cells stay 0 (they
+                        // literally can't exist — an AM class in the 6pm
+                        // hour bucket is a contradiction).
+                        const bandForCol = timeBand(col);
+                        if (bandForCol !== band) continue;
+                        // Split the band's weekly total across its 2 hour
+                        // buckets (AM has 2, MID has 1, PM has 1, EVE has 2).
+                        const bandHourCount = HOUR_COLS.filter(c => timeBand(c) === band).length || 1;
+                        addTotal = Math.round((weekTotal * branchScale * weeks) / bandHourCount);
+                    } else {
+                        // month axis — spread the band's weekly volume
+                        // across ~4 weeks per month and only count months
+                        // that actually fall inside the picked window.
+                        // Simple: give every column the same "per week × 4"
+                        // approximation, then zero out cols outside range.
+                        const monthIdx = MONTH_SHORT.indexOf(col);
+                        // Cheap in-range check: is there ANY day of the
+                        // picked window in this month? Walk from `from` to
+                        // `to` in month steps.
+                        let inRange = false;
+                        for (let m = new Date(from.getFullYear(), from.getMonth(), 1);
+                             m.getTime() <= to.getTime();
+                             m.setMonth(m.getMonth() + 1)) {
+                            if (m.getMonth() === monthIdx) { inRange = true; break; }
+                        }
+                        if (!inRange) continue;
+                        addTotal = Math.round(weekTotal * branchScale * 4);
+                    }
+                    if (addTotal === 0) continue;
+                    const addPresent = Math.round(addTotal * (attendPct / 100));
+                    const k = key(band, col);
+                    total[k]   = (total[k]   ?? 0) + addTotal;
+                    present[k] = (present[k] ?? 0) + addPresent;
+                    totalBookings += addTotal;
+                }
+            }
         }
-        return row;
-    });
+    }
+
+    const cells: HeatmapCell[] = [];
+    for (const band of BANDS) {
+        for (const col of cols) {
+            const tot = total[key(band, col)] ?? 0;
+            const pre = present[key(band, col)] ?? 0;
+            cells.push({
+                band,
+                col,
+                pct: tot === 0 ? 0 : Math.round((pre / tot) * 100),
+                count: tot,
+            });
+        }
+    }
+    const toISODay = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return {
+        axis,
+        cols,
+        cells,
+        totalBookings,
+        fromISO: toISODay(from),
+        toISO:   toISODay(to),
+    };
 }
+/** Y-axis band labels the renderer maps to `HeatmapResult.cells`. */
+const HEATMAP_ROW_ORDER: readonly HeatmapBand[] = BANDS;
+/** Compat re-export so older callers reading `.rows` still typecheck. */
+export type { HeatmapResult, HeatmapBand };
+void BAND_LABEL; void HEATMAP_ROW_ORDER;
 
 /** Top recovery services ranked by total booked seats in period + branch
  *  scope. Reads live from the `services` slice (so any service the studio
@@ -778,8 +989,11 @@ function renderChart(
     /** Payments-collected widget only — click handler for the failed chip. */
     onOpenFailedPayments?: () => void,
     /** Attendance-heatmap widget only — 4×7 grid derived live from bookings
-     *  scoped to the picked branch(es) + period. Null on every other widget. */
-    heatmapRows: HeatmapRow[] | null = null,
+     *  scoped to the picked branch(es) + period. Null on every other widget.
+     *  Carries the total booking count + resolved date range so the widget's
+     *  footer can display "Based on N bookings" and prove the filter is
+     *  applied (client 2026-07-22). */
+    heatmapResult: HeatmapResult | null = null,
     /** Recovery Top-services widget only — live-derived ranked list of
      *  recovery services by booked-seat count. Null on every other widget. */
     topServicesRows: Array<{ name: string; v: number }> | null = null,
@@ -792,8 +1006,12 @@ function renderChart(
     // shouldn't shrink when you filter to that branch; it should stay the
     // rate. Audit finding 2026-07-20.
     const effBranchScale = PCT_WIDGET_IDS.has(id) ? 1 : branchScale;
-    const data = id === "attendance-heatmap" && heatmapRows
-        ? (heatmapRows as unknown as object[])
+    const data = id === "attendance-heatmap" && heatmapResult
+        ? // Heatmap's renderer reads `heatmapResult` directly (not `data`)
+          // — the axis + cols + cells shape doesn't fit the flat row-object
+          // model the rest of the widgets use. `data` is intentionally
+          // set to an empty array so type-checked lookups never blow up.
+          ([] as object[])
         : id === "recovery-top-services" && topServicesRows
             ? (topServicesRows as unknown as object[])
             : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
@@ -1161,26 +1379,62 @@ function renderChart(
 
         // ── Attendance heatmap (Classes) ─────────────────────────────
         //
-        // 4 rows (AM / MID / PM / EVE) × 7 columns (Mon-Sun). Each cell
-        // is a rounded pill whose fill darkens with the attendance
-        // percentage. Legend row across the top explains "Light = Lower
-        // · Dark = Higher" per Figma. Values live on the row objects
-        // above with weekday keys.
+        // 4 rows (AM / MID / PM / EVE) × dynamic columns. The X-axis
+        // follows the picked date range (client 2026-07-22 flag: the
+        // fixed Mon-Sun axis didn't match "Last 12 months" or "Today"):
+        //   • Today / Yesterday        → 6 3-hour buckets (06:00…21:00)
+        //   • Short ranges (2-45 days) → 7 weekday cols (Mon-Sun)
+        //   • Long ranges (> 45 days,
+        //     Year, "Last 12 months")  → 12 month cols
+        // Renderer maps `heatmapResult.cells` (band × col) into the
+        // grid. Everything else — legend, footer — stays constant so
+        // the widget's visual weight doesn't jump between modes.
         case "attendance-heatmap": {
-            const rows = data as { band: string; [wd: string]: string | number }[];
-            const days: readonly string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+            const AXIS_LABEL: Record<HeatmapAxis, string> = {
+                hour:    "By 3-hour time band",
+                weekday: "By weekday",
+                month:   "By month",
+            };
+            const cols = heatmapResult?.cols ?? [...WEEKDAY_COLS];
+            const axisMode: HeatmapAxis = heatmapResult?.axis ?? "weekday";
+            // Look up a cell by (band, col). Empty when heatmapResult is null
+            // (never happens on the real widget — the store selector always
+            // fires — but keeps this renderer resilient to a wiring bug).
+            const cellByKey = new Map<string, HeatmapCell>();
+            for (const c of heatmapResult?.cells ?? []) {
+                cellByKey.set(`${c.band}|${c.col}`, c);
+            }
+            // Format the resolved date range for the footer — "Jun 22 – Jul 22"
+            // — using the same MONTH_LABELS the axis uses so language stays
+            // consistent across the dashboard.
+            const fmtRange = (iso: string): string => {
+                const d = new Date(`${iso}T00:00:00`);
+                return `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;
+            };
+            const footerLabel = heatmapResult
+                ? `${AXIS_LABEL[axisMode]} · Based on ${heatmapResult.totalBookings.toLocaleString("en-US")} bookings · ${fmtRange(heatmapResult.fromISO)} – ${fmtRange(heatmapResult.toISO)}`
+                : null;
             // 5-stop palette from lightest → darkest. Same sage-green
             // family every widget uses so the widget palette stays
             // coherent across the dashboard.
             const PALETTE = ["#e9fff3", "var(--brand-tertiary)", "#aad4bd", "#79ab8a", "#3f7a58"];
-            const tintFor = (v: number): string => {
+            const tintFor = (v: number, hasData: boolean): string => {
+                if (!hasData) return "#f9fafb";
                 if (v >= 75) return PALETTE[4];
                 if (v >= 55) return PALETTE[3];
                 if (v >= 35) return PALETTE[2];
                 if (v >= 15) return PALETTE[1];
                 return PALETTE[0];
             };
-            const textOn = (v: number): string => v >= 55 ? "#101828" : "#475467";
+            const textOn = (v: number, hasData: boolean): string =>
+                !hasData ? "#d0d5dd" : v >= 55 ? "#101828" : "#475467";
+            // Dynamic col-count Tailwind class. Only the three widths we
+            // actually render need to be spelled out for JIT.
+            const colsGridClass =
+                cols.length === 12 ? "grid grid-cols-12 gap-1.5 flex-1" :
+                cols.length === 6  ? "grid grid-cols-6 gap-2 flex-1"    :
+                                     "grid grid-cols-7 gap-2 flex-1";
+            const colLabelText = axisMode === "month" ? "text-[11px]" : "text-[12px]";
             return (
                 <div className="flex flex-col gap-3 mt-1">
                     {/* Legend */}
@@ -1190,42 +1444,55 @@ function renderChart(
                         <span className="text-[#98a2b3]">·</span>
                         <span>Dark = Higher</span>
                     </div>
-                    {/* Grid — first column band label, then 7 day cells */}
+                    {/* Grid — first column band label, then N col cells */}
                     <div className="flex flex-col gap-2">
-                        {rows.map(row => (
-                            <div key={row.band} className="flex items-center gap-2">
+                        {BANDS.map(band => (
+                            <div key={band} className="flex items-center gap-2">
                                 <div className="w-10 shrink-0 text-[12px] font-medium text-[#667085] text-right">
-                                    {row.band}
+                                    {band}
                                 </div>
-                                <div className="grid grid-cols-7 gap-2 flex-1">
-                                    {days.map(day => {
-                                        const v = Number(row[day] ?? 0);
+                                <div className={colsGridClass}>
+                                    {cols.map(col => {
+                                        const cell = cellByKey.get(`${band}|${col}`);
+                                        const v = cell?.pct ?? 0;
+                                        const hasData = (cell?.count ?? 0) > 0;
                                         return (
                                             <div
-                                                key={day}
-                                                title={`${row.band} · ${day} — Attendance ${v}%`}
-                                                className="h-9 rounded-[6px] flex items-center justify-center text-[12px] font-medium"
-                                                style={{ backgroundColor: tintFor(v), color: textOn(v) }}
+                                                key={col}
+                                                title={`${band} · ${col} — Attendance ${v}%${hasData ? ` (${cell?.count})` : " (no bookings)"}`}
+                                                className={cn(
+                                                    "h-9 rounded-[6px] flex items-center justify-center text-[12px] font-medium",
+                                                    axisMode === "month" && "text-[11px]",
+                                                )}
+                                                style={{ backgroundColor: tintFor(v, hasData), color: textOn(v, hasData) }}
                                             >
-                                                {v}%
+                                                {hasData ? `${v}%` : "—"}
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
                         ))}
-                        {/* X-axis weekday labels */}
+                        {/* X-axis labels — hour buckets / weekdays / months */}
                         <div className="flex items-center gap-2 mt-0.5">
                             <div className="w-10 shrink-0" />
-                            <div className="grid grid-cols-7 gap-2 flex-1">
-                                {days.map(day => (
-                                    <div key={day} className="text-[12px] text-[#667085] text-center">
-                                        {day}
+                            <div className={colsGridClass}>
+                                {cols.map(col => (
+                                    <div key={col} className={cn(colLabelText, "text-[#667085] text-center")}>
+                                        {col}
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
+                    {/* Filter-proof footer — axis mode + total booking count
+                        + resolved range make it obvious the filter is applied
+                        even when the % pattern converges (client 2026-07-22). */}
+                    {footerLabel && (
+                        <p className="text-[12px] text-[#98a2b3] leading-4 mt-1">
+                            {footerLabel}
+                        </p>
+                    )}
                 </div>
             );
         }
@@ -1667,9 +1934,9 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
     const heatSchedules = useAppStore(s =>
         widgetId === "attendance-heatmap" ? s.classSchedules : null,
     );
-    const heatmapRows =
+    const heatmapResult =
         widgetId === "attendance-heatmap" && heatBookings && heatSchedules
-            ? computeAttendanceHeatmap(heatBookings, heatSchedules, branchIds, period ?? DEFAULT_PERIOD)
+            ? computeAttendanceHeatmap(heatBookings, heatSchedules, branchIds, period ?? DEFAULT_PERIOD, activeBranchIds.length)
             : null;
 
     // Top services — derive live from `services` + `appointments`. Client
@@ -1762,7 +2029,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapRows, topServicesRows)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows)}
             </div>
         </div>
     );

@@ -76,7 +76,7 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     { id: "class-by-popularity", title: "Class by popularity",               description: "", category: "Class" },
     // Attendance heatmap — 4 time-of-day rows × 7 weekday cols, cells
     // shaded by attendance %. Respects the header date filter.
-    { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "", category: "Class" },
+    { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "", category: "Class", info: "% present per time band × weekday · scoped to picked range" },
     // No-show rate — client (9e). Single line, y-axis %.
     { id: "no-show-rate",        title: "No-show rate",                      description: "", category: "Class" },
     // Under-filled classes trend — client (9e). Single line, count.
