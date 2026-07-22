@@ -290,9 +290,13 @@ function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number;
         case "month": {
             // "Last 12 months" needs MONTH ticks, not day-per-day (client
             // 2026-07-20 flag — was rendering 365 daily points on the x-axis
-            // which is unreadable). Anchored to today so the last label is
-            // the CURRENT month; scale mirrors the "year" case (6× per
-            // month) so seed magnitudes read sensibly.
+            // which is unreadable). Labels are month name ONLY ("Aug"/"Sep")
+            // — the earlier "Aug 25" year-suffix format read like a day of
+            // month ("August 25th") and confused testers (client 2026-07-22
+            // follow-up: "should be month and not date"). 12 consecutive
+            // months never repeat a name so year is contextually clear.
+            // Scale mirrors the "year" case (6× per month) so seed
+            // magnitudes read sensibly.
             const label = period.label.toLowerCase();
             if (label.includes("last 12")) {
                 const today = new Date();
@@ -300,7 +304,7 @@ function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number;
                 const labels = Array.from({ length: 12 }, (_, i) => {
                     const d = new Date(today);
                     d.setMonth(d.getMonth() - (11 - i));
-                    return `${MONTH_LABELS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+                    return MONTH_LABELS[d.getMonth()];
                 });
                 return { labels, scale: 6, interval: 0 };
             }
@@ -571,9 +575,10 @@ function periodLabelForDate(d: Date, period: DateFilter): string {
             // Year view: 12 monthly ticks "Jan" … "Dec".
             return MONTH_LABELS[d.getMonth()];
         case "month":
-            // "Last 12 months" view: 12 ticks "Jul 25" … "Jun 26".
+            // "Last 12 months" view: 12 month-name ticks "Aug"…"Jul".
+            // Matches the pointsForPeriod labels above.
             if (label.includes("last 12")) {
-                return `${MONTH_LABELS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+                return MONTH_LABELS[d.getMonth()];
             }
             return fmtMMMD(d);
         default:
