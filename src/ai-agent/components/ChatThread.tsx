@@ -442,11 +442,11 @@ export function ChatThread({
             {empty ? (
                 <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                     {mode === "migration" ? (
-                        <MigrationEmptyState onStart={send} composer={composerNode} />
+                        <MigrationEmptyState onStart={send} composer={composerNode} query={input} />
                     ) : mode === "studio_setup" ? (
-                        <StudioSetupEmptyState onStart={send} composer={composerNode} />
+                        <StudioSetupEmptyState onStart={send} composer={composerNode} query={input} />
                     ) : (
-                        <InsightEmptyState onSend={send} composer={composerNode} />
+                        <InsightEmptyState onSend={send} composer={composerNode} query={input} />
                     )}
                 </div>
             ) : (
@@ -509,9 +509,11 @@ export function ChatThread({
 function InsightEmptyState({
     onSend,
     composer,
+    query = "",
 }: {
     onSend: (t: string) => void;
     composer: React.ReactNode;
+    query?: string;
 }) {
     return (
         // Vertically-centered hero. min-h-full so items-center centres it, yet
@@ -547,7 +549,7 @@ function InsightEmptyState({
                     prompts (Figma 18841:8842). */}
                 <div className="flex flex-col gap-5 w-full">
                     {composer}
-                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.insight} onSend={onSend} />
+                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.insight} onSend={onSend} query={query} />
                 </div>
             </div>
         </div>
@@ -557,9 +559,11 @@ function InsightEmptyState({
 function StudioSetupEmptyState({
     onStart,
     composer,
+    query = "",
 }: {
     onStart: (t: string) => void;
     composer: React.ReactNode;
+    query?: string;
 }) {
     return (
         <div className="min-h-full w-full flex items-center justify-center px-6 py-12">
@@ -589,7 +593,7 @@ function StudioSetupEmptyState({
                 {/* Composer + context-specific starter prompts. */}
                 <div className="flex flex-col gap-5 w-full">
                     {composer}
-                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.studio_setup} onSend={onStart} />
+                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.studio_setup} onSend={onStart} query={query} />
                 </div>
             </div>
         </div>
@@ -599,9 +603,11 @@ function StudioSetupEmptyState({
 function MigrationEmptyState({
     onStart,
     composer,
+    query = "",
 }: {
     onStart: (t: string) => void;
     composer: React.ReactNode;
+    query?: string;
 }) {
     return (
         <div className="min-h-full w-full flex items-center justify-center px-6 py-12">
@@ -631,7 +637,7 @@ function MigrationEmptyState({
                 {/* Composer + context-specific starter prompts. */}
                 <div className="flex flex-col gap-5 w-full">
                     {composer}
-                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.migration} onSend={onStart} />
+                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.migration} onSend={onStart} query={query} />
                 </div>
             </div>
         </div>
@@ -674,19 +680,31 @@ const SUGGESTED_PROMPTS: Record<AiAgentMode, SuggestedPrompt[]> = {
 };
 
 /** Suggested-prompt list — Figma 18841:8842. A card of clickable starter
- *  prompts (arrow icon + lead + label). Shown under the composer on every
- *  chat type's empty state, with mode-specific prompts. */
+ *  prompts (arrow icon + lead + label). Sits under the composer on every chat
+ *  type's empty state. The box stays at the starting point; once the user
+ *  starts typing it narrows to the prompts matching what they've typed (a
+ *  live typeahead). When nothing matches, the box hides so it isn't an empty
+ *  frame — but with an empty query it always shows the full starter set. */
 function SuggestedPromptList({
     prompts,
     onSend,
+    query = "",
 }: {
     prompts: SuggestedPrompt[];
     onSend: (t: string) => void;
+    query?: string;
 }) {
+    const q = query.trim().toLowerCase();
+    const shown = q
+        ? prompts.filter((p) => `${p.lead} ${p.label}`.toLowerCase().includes(q))
+        : prompts;
+    // Keep the box at the starting point (empty query). While typing, hide it
+    // only when there are genuinely no matches.
+    if (shown.length === 0) return null;
     return (
         <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
             <div className="flex flex-col py-1">
-                {prompts.map((p, i) => (
+                {shown.map((p, i) => (
                     <div key={i} className="px-1.5 py-0.5">
                         <button
                             type="button"
