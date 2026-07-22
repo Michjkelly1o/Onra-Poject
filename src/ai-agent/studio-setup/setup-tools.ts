@@ -14,6 +14,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AuthContext } from "@/ai-agent/agent/auth";
+import { askQuestionsTool } from "@/ai-agent/agent/tools";
 import type { InsightCard } from "@/ai-agent/agent/cards";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 import {
@@ -36,6 +37,7 @@ export function setupTools(
     snapshot: AiAgentStateSnapshot,
 ) {
     return {
+        ...askQuestionsTool(),
         check_studio_status: tool({
             description:
                 "Get an at-a-glance snapshot of what's currently configured in the studio — total counts of branches, rooms, class categories, class templates, instructors, memberships, packages. Call this first when the user asks 'what's set up?' / 'where do I start?' / 'walk me through onboarding'. The returned card renders as a tile row.",

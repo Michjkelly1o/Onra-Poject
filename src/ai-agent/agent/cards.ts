@@ -80,6 +80,16 @@ export type InsightCard =
           rowCount: number;
           columns: string[];
       }
+    // Clarifying-question popup (renders <AiQuestionPrompt>). The agent emits
+    // this when it needs input before it can answer; the user picks an option
+    // or types their own, and the answer comes back as the next user message.
+    | {
+          card: "questions";
+          questions: {
+              title: string;
+              options: { id: string; lead?: string; label: string; subtitle?: string }[];
+          }[];
+      }
     | { card: "empty"; message: string };
 
 /** Canonical AED money formatter — mirrors the app-wide `AED N,NNN` display

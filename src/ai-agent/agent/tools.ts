@@ -68,6 +68,53 @@ function guard(fn: () => InsightCard): InsightCard {
     }
 }
 
+/** Shared `ask_questions` tool — available in EVERY mode so any flow can ask
+ *  the user clarifying questions through the interactive popup instead of
+ *  plain prose. Its execute simply echoes the spec back as a `questions` card;
+ *  the client renders <AiQuestionPrompt> and the user's answer returns as the
+ *  next user message. Spread `...askQuestionsTool()` into each tool set. */
+export function askQuestionsTool() {
+    return {
+        ask_questions: tool({
+            description:
+                "Ask the user one or more clarifying questions BEFORE acting, whenever their request is ambiguous or you must choose between options (which branch? which date range? which metric? which membership?). This renders an interactive popup: the user picks a suggested answer, types their own, or skips, and can page through multiple questions. ALWAYS prefer this over asking in plain text — every clarifying question you have MUST go through this tool. Give each question 2–5 short, concrete options (the popup adds its own free-text 'other' row and a Skip button automatically). After calling this tool, output no other text — the user answers via the popup and their reply arrives as the next message.",
+            parameters: z.object({
+                questions: z
+                    .array(
+                        z.object({
+                            title: z.string().describe("the question itself, e.g. 'Which branch?'"),
+                            options: z
+                                .array(
+                                    z.object({
+                                        id: z.string().describe("stable id for this option"),
+                                        lead: z
+                                            .string()
+                                            .optional()
+                                            .describe("muted lead-in, e.g. 'Show me'"),
+                                        label: z.string().describe("the emphasised answer text"),
+                                        subtitle: z
+                                            .string()
+                                            .optional()
+                                            .describe("optional one-line hint under the label"),
+                                    }),
+                                )
+                                .min(1)
+                                .describe("2–5 suggested answers"),
+                        }),
+                    )
+                    .min(1)
+                    .describe("one or more questions to ask, in order"),
+            }),
+            // Echo the spec back so the client can render the popup. No server
+            // work — this is a UI-only tool.
+            execute: async ({ questions }): Promise<InsightCard> => ({
+                card: "questions",
+                questions,
+            }),
+        }),
+    };
+}
+
 // ─── Phase 12: create-shortcut catalog ────────────────────────────────────────
 //
 // A ranked_list card the "Create" empty-state suggestion returns. Each
@@ -320,6 +367,7 @@ export function insightTools(
     snapshot: AiAgentStateSnapshot,
 ) {
     return {
+        ...askQuestionsTool(),
         analyze: tool({
             description:
                 "The primary analytics tool. Answer ANY numeric/comparison/trend question about the studio by describing the query — the server computes it and returns a chart. Pick a dataset, a metric, and (usually) a group_by, and choose the RIGHT chart like a data-viz expert. Examples: revenue by branch → dataset=transactions, metric=sum, metric_field=amount_aed, group_by=branch, filters=[{field:status,op:eq,value:complete}], unit=AED, visualize_as=bar (money → bar, never pie). Revenue over time → group_by=created_at, visualize_as=line. Gender split of members → dataset=customers, group_by=gender, visualize_as=donut (a true % share with few slices). Lead sources → dataset=leads, group_by=source, visualize_as=bar. Use the DATASETS list in the system prompt for valid dataset/field names. Set unit='AED' for money, 'rating' for ratings (0–5).",

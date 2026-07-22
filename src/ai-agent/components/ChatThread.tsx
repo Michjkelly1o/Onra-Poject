@@ -43,6 +43,7 @@ import {
     Copy03,
     Edit02,
     Check,
+    XClose,
 } from "@untitledui/icons";
 import Image from "next/image";
 import { useAppStore, type AppState } from "@/lib/store";
@@ -60,6 +61,7 @@ import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
+import { AiQuestionPrompt } from "@/ai-agent/components/AiQuestionPrompt";
 
 // three.js is ~600KB — dynamic import so it only ships when the empty
 // state is actually rendered (i.e. before the user's first message).
@@ -436,7 +438,7 @@ export function ChatThread({
                 between the subtext and the entry cards. Docks at the bottom once
                 a conversation starts. */}
             {empty ? (
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                     {mode === "migration" ? (
                         <MigrationEmptyState onStart={send} composer={composerNode} />
                     ) : mode === "studio_setup" ? (
@@ -446,7 +448,7 @@ export function ChatThread({
                     )}
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                     <div className="w-full max-w-[720px] mx-auto px-6 py-8 flex flex-col gap-6">
                         {messages.map((m) => (
                             <MessageRow
@@ -456,6 +458,7 @@ export function ChatThread({
                                 act={act}
                                 isLastUser={m.role === "user" && m.id === lastUserId && !isBusy}
                                 onSubmitEdit={(text) => submitEdit(m.id, text)}
+                                onAnswerQuestions={send}
                             />
                         ))}
                         {isBusy && messages[messages.length - 1]?.role === "user" && (
@@ -782,13 +785,14 @@ function UserMessageBubble({
         if (clean !== text) onSubmitEdit?.(clean);
     };
 
-    // ── Editing state — inline textarea styled as the bubble ──────────────────
+    // ── Editing state — inline textarea styled as the bubble, with the
+    //    Cancel / Send actions sitting OUTSIDE (below) the bubble. ─────────────
     if (editing) {
         return (
-            <div className="flex justify-end">
+            <div className="flex flex-col items-end gap-2">
                 <div
                     className={cn(
-                        "w-full max-w-[520px] p-3 flex flex-col gap-3",
+                        "w-full max-w-[520px] p-4 flex",
                         "bg-[#c4edd6] border border-[#aad4bd]",
                         "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
                         "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
@@ -809,23 +813,26 @@ function UserMessageBubble({
                         rows={Math.min(6, Math.max(1, draft.split("\n").length))}
                         className="w-full resize-none bg-transparent text-[14px] font-medium leading-5 text-[#344054] outline-none placeholder:text-[#658774]"
                     />
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={cancelEdit}
-                            className="h-8 px-3 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white/70 border border-[#aad4bd] hover:bg-white transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={saveEdit}
-                            disabled={!draft.trim()}
-                            className="h-8 px-3 rounded-[8px] text-[14px] font-semibold text-[#101828] bg-[#658774] text-white hover:bg-[#577665] disabled:opacity-50 transition-colors"
-                        >
-                            Send
-                        </button>
-                    </div>
+                </div>
+                {/* Actions live outside the bubble — icon-only. */}
+                <div className="flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={cancelEdit}
+                        aria-label="Cancel edit"
+                        className="size-9 flex items-center justify-center rounded-[8px] text-[#344054] bg-white border border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors"
+                    >
+                        <XClose className="size-5" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={saveEdit}
+                        disabled={!draft.trim()}
+                        aria-label="Send edit"
+                        className="size-9 flex items-center justify-center rounded-[8px] text-white bg-[#658774] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#577665] disabled:opacity-50 transition-colors"
+                    >
+                        <Send03 className="size-5" />
+                    </button>
                 </div>
             </div>
         );
@@ -876,6 +883,7 @@ function MessageRow({
     act,
     isLastUser = false,
     onSubmitEdit,
+    onAnswerQuestions,
 }: {
     message: UIMessage;
     mode: AiAgentMode;
@@ -884,6 +892,9 @@ function MessageRow({
      *  edited inline (Claude-style). */
     isLastUser?: boolean;
     onSubmitEdit?: (text: string) => void;
+    /** Called with the composed answer text when the user completes an
+     *  ask_questions popup — sent to the agent as the next user message. */
+    onAnswerQuestions?: (text: string) => void;
 }) {
     if (m.role === "user") {
         return <UserMessageBubble text={m.content} editable={isLastUser} onSubmitEdit={onSubmitEdit} />;
@@ -894,32 +905,52 @@ function MessageRow({
             <div className="flex items-start gap-3">
                 <AssistantAvatar />
                 <div className="flex-1 min-w-0 flex flex-col gap-3">
-                    {/* Tool invocations render as cards. Migration tool
-                        results go through MigCard (with action callbacks);
-                        insight tool results go through Card. */}
-                    {m.toolInvocations?.map((ti) =>
-                        ti.state === "result" ? (
-                            mode === "migration" ? (
-                                <MigCard
+                    {/* Tool invocations render as cards. The ask_questions tool
+                        renders the interactive popup in EVERY mode (checked
+                        first); otherwise migration results go through MigCard
+                        and insight results through Card. */}
+                    {m.toolInvocations?.map((ti) => {
+                        if (ti.state !== "result") {
+                            return (
+                                <TypingDots
                                     key={ti.toolCallId}
-                                    data={ti.result as MigrationCard}
-                                    act={act}
+                                    label={mode === "migration" ? "Reading" : "Working"}
                                 />
-                            ) : (
-                                <Card
+                            );
+                        }
+                        const result = ti.result as InsightCard | MigrationCard;
+                        if ((result as InsightCard).card === "questions") {
+                            const spec = (result as Extract<InsightCard, { card: "questions" }>).questions;
+                            return (
+                                <AiQuestionPrompt
                                     key={ti.toolCallId}
-                                    data={ti.result as InsightCard}
+                                    questions={spec}
+                                    onComplete={(answers) => {
+                                        // Compose the picked answers into one
+                                        // readable reply the agent can act on.
+                                        // Resolve option ids back to their label
+                                        // so the model sees the actual answer.
+                                        const parts = answers
+                                            .map((a, i) => {
+                                                if (a.kind === "option") {
+                                                    const opt = spec[i]?.options.find((o) => o.id === a.optionId);
+                                                    return opt ? `${spec[i].title}: ${opt.label}` : null;
+                                                }
+                                                if (a.kind === "other") return `${spec[i]?.title}: ${a.text}`;
+                                                return null;
+                                            })
+                                            .filter((x): x is string => !!x);
+                                        onAnswerQuestions?.(parts.join("\n") || "Skip");
+                                    }}
                                 />
-                            )
+                            );
+                        }
+                        return mode === "migration" ? (
+                            <MigCard key={ti.toolCallId} data={result as MigrationCard} act={act} />
                         ) : (
-                            <TypingDots
-                                key={ti.toolCallId}
-                                label={
-                                    mode === "migration" ? "Reading" : "Working"
-                                }
-                            />
-                        ),
-                    )}
+                            <Card key={ti.toolCallId} data={result as InsightCard} />
+                        );
+                    })}
                     {/* Free-text response (interpretation line under a card,
                         or a plain-text answer when no tool was called) */}
                     {m.content && (
