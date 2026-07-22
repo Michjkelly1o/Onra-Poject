@@ -106,7 +106,7 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // for shorter ranges. Header disclosure shows first-vs-last-period share
     // ("5% → 24%"). Live data from the customers slice, filtered by branch +
     // period. Sits under Marketing per client pick.
-    { id: "referral-share",        title: "Referral share of new customers", description: "", category: "Marketing", info: "% of new customers acquired via referral" },
+    { id: "referral-share",        title: "Referral share of new customers", description: "", category: "Marketing" },
     { id: "promo-redemptions",     title: "Promo code redemptions",          description: "", category: "Marketing" },
     // ─── Marketing (KPI-tab exclusive; kept for KPI grid) ───────────────
     { id: "kpi-leads-by-source",      title: "Leads by source",             description: "", category: "Marketing" },

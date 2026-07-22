@@ -9309,7 +9309,15 @@ export const useAppStore = create<AppState>()(persist(
         //   testers pick up the new store actions (requestFreezeByCustomer /
         //   approveFreezeRequest / rejectFreezeRequest) + the new admin
         //   review modal + the pending-approval customer plan card state.
-        version: 79,
+        // v80 (2026-07-22 admin): Referral share widget + customer seed
+        //   regeneration — `generateSyntheticCustomers` now anchors every
+        //   synthetic's `created_at` to the real NOW (was hard-coded to
+        //   2024-*) and stamps `converted_from` per-row with a growing
+        //   referral share by month. Bump forces stale localStorage
+        //   payloads to reseed so testers pick up the new customer
+        //   distribution — otherwise a persisted v79 snapshot keeps the
+        //   old 2024 dates and the widget reads as almost empty.
+        version: 80,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

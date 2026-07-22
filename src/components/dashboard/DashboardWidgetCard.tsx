@@ -1801,14 +1801,30 @@ function renderChart(
                                             />
                                         )}
                                     </div>
-                                    {/* Hover tooltip — dark chip matching the
-                                        capacity-heatmap + top-services chips
-                                        for one-voice tooltip vocabulary. */}
+                                    {/* Hover tooltip — verbatim `ChartTooltip`
+                                        chrome (white bg, colored dot per
+                                        series) so the referral widget speaks
+                                        the same visual language as every
+                                        Recharts widget on the dashboard.
+                                        Client 2026-07-22 flag: was a dark
+                                        chip that read as one-off. */}
                                     <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-[#0c111d] text-white text-[12px] leading-[16px] rounded-[8px] px-3 py-2 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)] whitespace-nowrap">
-                                            <p className="text-[#98a2b3] mb-0.5">{r.date}</p>
-                                            <p className="font-medium">
-                                                {r.referral} of {r.all} new customers · {share}%
+                                        <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[180px] whitespace-nowrap">
+                                            <p className="font-semibold text-[#101828] mb-1.5">{r.date}</p>
+                                            <p className="flex items-center gap-1.5 mb-0.5">
+                                                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#92baa4]" />
+                                                <span className="text-[#475467]">Via referral:</span>
+                                                <span className="font-medium text-[#101828]">{r.referral}</span>
+                                            </p>
+                                            <p className="flex items-center gap-1.5 mb-0.5">
+                                                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#e4e7ec]" />
+                                                <span className="text-[#475467]">All new customers:</span>
+                                                <span className="font-medium text-[#101828]">{r.all}</span>
+                                            </p>
+                                            <p className="flex items-center gap-1.5">
+                                                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 opacity-0" />
+                                                <span className="text-[#475467]">Share:</span>
+                                                <span className="font-medium text-[#101828]">{share}%</span>
                                             </p>
                                         </div>
                                     </div>
@@ -1818,13 +1834,26 @@ function renderChart(
                     </div>
                     {/* X-axis labels — same interval strategy the other
                         widgets use (Last 12 months: every label; 30-day:
-                        every 5th). Uses pointsForPeriod's `interval`. */}
+                        every 5th). Uses pointsForPeriod's `interval`.
+                        `truncate` removed 2026-07-22: on the daily-30 axis
+                        it clipped "Jul 6" down to "J." because each column
+                        was ~30 px. Now the visible label uses whitespace-
+                        nowrap and OVERFLOWS into the neighboring hidden
+                        columns (which sit empty because we skipped them
+                        for this cell). */}
                     <div className="flex items-center gap-2 px-1">
-                        {rows.map((r, i) => (
-                            <div key={r.date} className="flex-1 text-center text-[11px] text-[#667085] truncate" style={{ maxWidth: 56 }}>
-                                {i % (interval + 1) === 0 ? r.date : ""}
-                            </div>
-                        ))}
+                        {rows.map((r, i) => {
+                            const visible = i % (interval + 1) === 0;
+                            return (
+                                <div key={r.date} className="flex-1 text-center relative" style={{ maxWidth: 56 }}>
+                                    {visible && (
+                                        <span className="absolute left-1/2 top-0 -translate-x-1/2 text-[11px] text-[#667085] whitespace-nowrap">
+                                            {r.date}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             );
