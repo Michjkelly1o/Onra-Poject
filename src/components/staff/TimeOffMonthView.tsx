@@ -218,13 +218,22 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
     // this component's own frame + `px-6` padding. Weeks now extend
     // to the parent card's inner edges, matching the client's request
     // that the horizontal separator lines "fill full width".
+    //
+    // Round 6 (2026-07-22): dropped `h-full` on the outer wrapper +
+    // `overflow-hidden` on the calendar wrapper. Those two capped the
+    // component's height at the parent card's height and clipped
+    // anything taller — so the 6-row × 7-col grid (~720 px tall) was
+    // getting chopped and the parent's `overflow-y-auto` never fired
+    // because MY wrapper wasn't actually overflowing. Now the wrapper
+    // takes natural height, the parent scrolls when content exceeds
+    // its viewport.
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col">
             {/* Month navigator lifted to the parent sub-tab row
                 (StaffPermissionsPage → TimeOffDateNav). */}
 
-            {/* Calendar — flush, no inner frame */}
-            <div className="overflow-hidden">
+            {/* Calendar — flush, no inner frame, no height cap */}
+            <div>
                 {/* Weekday header */}
                 <div className="grid grid-cols-7 border-b border-[#e4e7ec] bg-[#fafbfa]">
                     {WEEKDAY_HEAD.map(w => (

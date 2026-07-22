@@ -250,8 +250,13 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
     // parent card; rows extend to the parent card's inner edges, and
     // horizontal scroll happens on the grid wrapper itself if the grid
     // still overflows on very narrow viewports.
+    // Round 6 (2026-07-22) — dropped `h-full` on the outer wrapper so
+    // the component takes natural content height. `h-full` was capping
+    // the wrapper at the parent card's height and preventing the
+    // parent's `overflow-y-auto` from firing when there were enough
+    // rows to overflow (Front Desk & Ops + Instructors on a big team).
     return (
-        <div className="flex flex-col h-full w-full">
+        <div className="flex flex-col w-full">
             {/* Date navigator lifted to the parent sub-tab row
                 (StaffPermissionsPage → ShiftsDateNav). */}
 
