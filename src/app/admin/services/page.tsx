@@ -763,17 +763,17 @@ function ServicesPageInner() {
 
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 
-                {/* Add-new is hidden on the type-scoped Private + Recovery
-                    views (client 2026-07-21) — those flows are now created
-                    from the Schedule module's Add dropdown so admins have
-                    a single entry point. The umbrella /admin/services list
-                    keeps its own Add for direct service authoring. */}
-                {!typeScope && (
-                    <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                        onClick={handleAdd}>
-                        Add new
-                    </Button>
-                )}
+                {/* Add-new shows on every scope — the umbrella /admin/services
+                    list, Private sessions, and Recovery & wellness — so admins
+                    can create a service directly from the list they're
+                    already viewing (client 2026-07-22 revert of the earlier
+                    scoped-hide). `handleAdd` uses `typeScope` to pre-select
+                    the correct session type on the new-service form so the
+                    tester lands on the right shape. */}
+                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                    onClick={handleAdd}>
+                    Add new
+                </Button>
             </div>
 
             {/* Body — flush on the admin chrome (no nested view card). The
