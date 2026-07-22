@@ -482,6 +482,23 @@ export default function InstructorTimeOffPage() {
                             const days = spanDays(fromISO, toISO);
                             const isRange = days > 1;
                             const isPast = toISO < todayISO();
+                            // Bug fix (audit 2026-07-22): a time-off entry
+                            // that lists MULTIPLE staff ids is a shared
+                            // event (e.g. team training with 4 instructors).
+                            // Editing / deleting it here would mutate the
+                            // row for EVERY staff on it — silently removing
+                            // Maya + Sara + Nadia from the same training
+                            // when Liam clicks Delete. The instructor page
+                            // is meant for MY OWN entries; shared events
+                            // are managed by admin. So on shared rows we:
+                            //   • Show a "Group entry" chip so it's clear
+                            //     the row isn't Liam-only.
+                            //   • Hide the Edit / Delete row menu.
+                            //   • Leave the row visible as read-only so
+                            //     the instructor still sees "I have team
+                            //     training on Aug 21".
+                            const isShared = b.staff_ids.length > 1;
+                            const otherCount = b.staff_ids.length - 1;
                             return (
                                 <div key={b.id} className={cn("px-5 py-4 flex items-center gap-4", isPast && "opacity-70")}>
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -502,18 +519,27 @@ export default function InstructorTimeOffPage() {
                                                     Past
                                                 </span>
                                             )}
+                                            {isShared && (
+                                                <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[11px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]">
+                                                    Group · with {otherCount} other{otherCount === 1 ? "" : "s"}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-[13px] text-[#667085]">
                                             {b.all_day
                                                 ? `All day${isRange ? ` · ${days} days` : ""}`
                                                 : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
                                             {b.note.trim() && ` · ${b.note.trim()}`}
+                                            {isShared && " · Managed by admin"}
                                         </p>
                                     </div>
-                                    <RowMenu
-                                        onEdit={() => setModal({ mode: "edit", row: b })}
-                                        onDelete={() => setPendingDelete(b)}
-                                    />
+                                    {/* Row menu — hidden on shared entries. */}
+                                    {!isShared && (
+                                        <RowMenu
+                                            onEdit={() => setModal({ mode: "edit", row: b })}
+                                            onDelete={() => setPendingDelete(b)}
+                                        />
+                                    )}
                                 </div>
                             );
                         })}

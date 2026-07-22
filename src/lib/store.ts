@@ -8074,16 +8074,38 @@ export const useAppStore = create<AppState>()(persist(
         // Delete only when NO staff has the shift assigned. Otherwise the
         // caller must Deactivate / Archive. Mirrors the gift card / service
         // delete gate.
-        const staffByShift = new Map<string, number>();
-        for (const s of get().staff) {
-            if (!s.shiftId) continue;
-            staffByShift.set(s.shiftId, (staffByShift.get(s.shiftId) ?? 0) + 1);
+        //
+        // Audit fix 2026-07-22: source of truth flipped from the legacy
+        // `staff.shiftId` (one-shift-per-staff) to the Phase 3
+        // `shiftAssignments` many-to-many table. Without this, an admin
+        // could delete a shift that still had assignments (via the row-
+        // expand), leaving orphan assignment rows pointing at a missing
+        // shift. Belt + suspenders: scrub `shiftAssignments` on delete
+        // even after the gate passes, so nothing lingers if the
+        // assignments slice ever drifts out of sync with the shifts
+        // slice.
+        const assignmentCount = new Map<string, number>();
+        for (const a of get().shiftAssignments) {
+            assignmentCount.set(a.shift_id, (assignmentCount.get(a.shift_id) ?? 0) + 1);
         }
-        const deletable = ids.filter(i => (staffByShift.get(i) ?? 0) === 0);
+        // Legacy fallback — a pre-v82 store with an empty assignments
+        // slice still counts off `staff.shiftId` so a fresh browser
+        // that hasn't hydrated the migration yet doesn't misgate.
+        if (assignmentCount.size === 0) {
+            for (const s of get().staff) {
+                if (!s.shiftId) continue;
+                assignmentCount.set(s.shiftId, (assignmentCount.get(s.shiftId) ?? 0) + 1);
+            }
+        }
+        const deletable = ids.filter(i => (assignmentCount.get(i) ?? 0) === 0);
         const blocked = ids.filter(i => !deletable.includes(i));
         const before = get().shifts.filter(s => deletable.includes(s.id));
         if (deletable.length > 0) {
-            set(state => ({ shifts: state.shifts.filter(s => !deletable.includes(s.id)) }));
+            const deletableSet = new Set(deletable);
+            set(state => ({
+                shifts: state.shifts.filter(s => !deletableSet.has(s.id)),
+                shiftAssignments: state.shiftAssignments.filter(a => !deletableSet.has(a.shift_id)),
+            }));
         }
         for (const s of before) get().recordAudit("Deleted shift", "shift", s.id, s.name);
         return { deleted: deletable, blocked };
@@ -8476,12 +8498,27 @@ export const useAppStore = create<AppState>()(persist(
                 // arrays already have zero matches, so these filters are
                 // no-ops in steady state — they protect against drift from
                 // future seed data or out-of-band mutations.
+                //
+                // Audit fix 2026-07-22: also scrub the new Phase 3
+                // `shiftAssignments` table + the multi-staff `staff_ids`
+                // arrays on Phase 2 `blockedTimes`. Without these, a
+                // deleted staff would leave orphan assignments pointing
+                // at a missing staff row, and a shared time-off entry
+                // would keep counting the deleted person as "away" on
+                // the Month view's overlap chip.
                 return {
                     staff: nextStaff,
                     instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, deletable),
                     payrollEntries: state.payrollEntries.filter(p => !deletableSet.has(p.instructorId)),
                     classSchedules: state.classSchedules.filter(s => !deletableSet.has(s.instructorId)),
                     classRatings: state.classRatings.filter(r => !deletableSet.has(r.instructorId)),
+                    shiftAssignments: state.shiftAssignments.filter(a => !deletableSet.has(a.staff_id)),
+                    blockedTimes: state.blockedTimes
+                        // Trim deleted staff out of every entry's multi-
+                        // select, then drop any entry that ends up empty
+                        // (no staff = no reason to keep the row).
+                        .map(bt => ({ ...bt, staff_ids: bt.staff_ids.filter(sid => !deletableSet.has(sid)) }))
+                        .filter(bt => bt.staff_ids.length > 0),
                 };
             });
         }
