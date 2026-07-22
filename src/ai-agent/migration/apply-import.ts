@@ -39,6 +39,25 @@ export interface ImportDeps {
         streetAddress?: string;
         branchId?: string;
     }) => string;
+    addMembership: (input: {
+        name: string;
+        description?: string;
+        credits: number | "unlimited";
+        duration_months: number;
+        price_aed: number;
+        branch_ids: string[];
+        status: "active" | "inactive" | "archived";
+        auto_renew?: boolean;
+    }) => string;
+    addPackage: (input: {
+        name: string;
+        description?: string;
+        credits: number;
+        validity_days: number;
+        price_aed: number;
+        branch_ids: string[];
+        status: "active" | "inactive" | "archived";
+    }) => string;
     addImportHistory: (input: {
         data_type:
             | "customers"
@@ -60,6 +79,29 @@ export interface ImportDeps {
     branchId: string;
 }
 
+/** Parse a currency/number string into a finite number, or `fallback`. Strips
+ *  AED, commas, and stray spaces so "AED 1,200" → 1200. */
+function toNumber(raw: string | undefined, fallback: number): number {
+    if (!raw) return fallback;
+    const n = Number(raw.replace(/[^0-9.\-]/g, ""));
+    return Number.isFinite(n) ? n : fallback;
+}
+
+/** Map a free-text billing cycle to a month count (monthly → 1, annual → 12). */
+function billingToMonths(raw: string | undefined): number {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (/year|annual|yr|12/.test(s)) return 12;
+    if (/quarter|3\s*month/.test(s)) return 3;
+    if (/(6|six)\s*month/.test(s)) return 6;
+    if (/week/.test(s)) return 1; // no sub-month cycle in the model — floor to 1
+    return 1; // monthly / unknown → 1
+}
+
+/** Truthy-string → boolean ("yes"/"true"/"1"/"on" → true). */
+function toBool(raw: string | undefined): boolean {
+    return /^(y|yes|true|1|on)$/i.test((raw ?? "").trim());
+}
+
 export interface ApplyResult {
     created: number;
     failed: number;
@@ -70,6 +112,8 @@ export interface ApplyResult {
 type HistoryType = Parameters<ImportDeps["addImportHistory"]>[0]["data_type"];
 const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     customers: "customers",
+    memberships: "memberships",
+    packages: "packages",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -104,6 +148,56 @@ export function applyImportToStore(
                 streetAddress: rec.street_address || undefined,
                 // branch left to the store's default so imported customers
                 // always land on a valid branch.
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "memberships") {
+        const records = materialize("memberships", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            const limit = (rec.class_limit ?? "").trim().toLowerCase();
+            const credits: number | "unlimited" =
+                !limit || limit === "unlimited" || limit === "0"
+                    ? "unlimited"
+                    : toNumber(rec.class_limit, 0);
+            deps.addMembership({
+                name: rec.name,
+                description: rec.description || undefined,
+                credits,
+                duration_months: billingToMonths(rec.billing_cycle),
+                price_aed: toNumber(rec.price, 0),
+                branch_ids: [], // empty = sellable at every active branch
+                status: "active",
+                auto_renew: toBool(rec.auto_renew_default),
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "packages") {
+        const records = materialize("packages", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            deps.addPackage({
+                name: rec.name,
+                description: rec.description || undefined,
+                credits: toNumber(rec.credit_count, 0),
+                validity_days: toNumber(rec.valid_days, 30),
+                price_aed: toNumber(rec.price, 0),
+                branch_ids: [],
+                status: "active",
             });
             created++;
         }

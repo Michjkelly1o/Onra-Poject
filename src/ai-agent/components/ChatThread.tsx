@@ -267,6 +267,8 @@ export function ChatThread({
                     parsedFileRef.current?.filename ?? "Imported file.csv",
                     {
                         addCustomer: st.addCustomer,
+                        addMembership: st.addMembership,
+                        addPackage: st.addPackage,
                         addImportHistory: st.addImportHistory,
                         branchId: st.branches[0]?.id ?? "",
                     },
