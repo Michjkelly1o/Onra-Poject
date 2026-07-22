@@ -538,46 +538,124 @@ const SYNTH_GENDERS: Array<"Male" | "Female"> = ["Female", "Male"];
 
 /** Produce N synthetic customers. Rows are deterministic — the same
  *  index always produces the same row so counts + KPIs are stable. */
+// Anchor synthetic customer created_at to the real "today" so date-range
+// filters always land inside the seeded window. Client 2026-07-22 flag: the
+// prior "2024-*" hard-coding meant Last-12-months on the dashboard never
+// hit any synthetic — the entire seed sat outside the rolling window.
+//
+// Distribution across the last 15 months (12-month rolling window + 3
+// extra months of tail so a filter like "Last 30 days" that reaches back
+// past today still has data). Per-month count grows toward NOW so the
+// customer-acquisition trend reads as "the studio is scaling", matching
+// the client's referral-share mockup (Aug small → Jul big).
+//
+// Referral share also grows month-over-month (5% at 12mo-ago → 24% at
+// now) so the "Referral share of new customers" widget renders the
+// mockup shape. `convertedFrom` is stamped directly on the synthetic row
+// so `deriveConvertedFrom` (which defaults every planKind=null customer
+// to "trial-class") doesn't wash out the referral signal.
+const SYNTH_NOW = new Date();
+const SYNTH_MS_PER_DAY = 24 * 60 * 60 * 1000;
+/** Non-null converted_from options for a synthetic customer's month. Cycled
+ *  by the intra-month index so per-month distribution is deterministic and
+ *  the same shape appears whenever the seed is re-generated. */
+const SYNTH_CONVERTED_FROM: readonly Customer["converted_from"][] = [
+    "first-visit", "intro-offer", "trial-class",
+] as const;
+
 function generateSyntheticCustomers(count: number): Customer[] {
     const out: Customer[] = [];
-    for (let i = 0; i < count; i++) {
-        const first = SYNTH_FIRST_NAMES[i % SYNTH_FIRST_NAMES.length];
-        // Second-axis offset so different first-names combine with a
-        // rotating range of last names instead of always the same pair.
-        const last  = SYNTH_LAST_NAMES [(i * 3 + 7) % SYNTH_LAST_NAMES.length];
-        const suffix = String(i).padStart(4, "0");
-        const pattern = SYNTH_MARKETING_PATTERNS[i % SYNTH_MARKETING_PATTERNS.length];
-        const branch = SYNTH_BRANCHES[i % SYNTH_BRANCHES.length];
-        const status = SYNTH_STATUSES[i % SYNTH_STATUSES.length];
-        const gender = SYNTH_GENDERS [(i >>> 1) % SYNTH_GENDERS.length];
 
-        // Spread created_at across the last ~18 months so date-range
-        // filters on the customer list have hits in every window.
-        const monthOffset = i % 18;
-        const dayOfMonth  = (i % 27) + 1;
-        const createdISO  = `2024-${String(6 + monthOffset > 12 ? monthOffset - 6 : monthOffset + 6).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}T09:00:00Z`;
+    // Growth curve — index 0 = 15 months ago, index 14 = current month.
+    // Weights approximate `1 + monthIdx / 15 * 2.5` (grows ~1x → 3.5x).
+    // Normalised so the sum equals `count` after rounding.
+    const MONTH_COUNT = 15;
+    const rawWeights: number[] = [];
+    for (let m = 0; m < MONTH_COUNT; m++) {
+        rawWeights.push(1 + (m / (MONTH_COUNT - 1)) * 2.5);
+    }
+    const weightSum = rawWeights.reduce((a, b) => a + b, 0);
+    const perMonth: number[] = rawWeights.map(w => Math.round((w / weightSum) * count));
+    // Fix rounding drift so per-month sum equals `count` exactly.
+    let drift = count - perMonth.reduce((a, b) => a + b, 0);
+    for (let m = MONTH_COUNT - 1; drift !== 0; m = (m - 1 + MONTH_COUNT) % MONTH_COUNT) {
+        perMonth[m] += drift > 0 ? 1 : -1;
+        drift += drift > 0 ? -1 : 1;
+        if (m === 0 && drift !== 0) break; // safety
+    }
+    // Referral-share curve — index 0 = 15mo-ago (~4%), index 14 = current
+    // month (~26%). Every 3rd customer in-month is a referral at the top
+    // of the curve, only ~1 in 25 at the tail. Reads visibly on the widget.
+    const referralPctByMonth: number[] = [];
+    for (let m = 0; m < MONTH_COUNT; m++) {
+        referralPctByMonth.push(4 + (m / (MONTH_COUNT - 1)) * 22);
+    }
 
-        out.push({
-            id:         `cust_synth_${suffix}`,
-            first_name: first,
-            last_name:  last,
-            initials:   `${first[0]}${last[0]}`,
-            email:      `${first.toLowerCase()}.${last.toLowerCase()}${suffix}@email.com`,
-            phone:      `+971 5${(i % 5)} ${String(100 + (i % 900)).padStart(3, "0")} ${String(1000 + ((i * 617) % 9000)).padStart(4, "0")}`,
-            branch_id:  branch,
-            plan_kind:  null,
-            created_at: createdISO,
-            gender,
-            status,
-            marketing_channel_email:              pattern.email,
-            marketing_channel_whatsapp:           pattern.wa,
-            marketing_channel_sms:                pattern.sms,
-            marketing_channel_push:               pattern.push,
-            marketing_topic_studio_announcements: pattern.sa,
-            marketing_topic_new_class_launch:     pattern.ncl,
-            marketing_topic_special_offers:       pattern.so,
-            marketing_topic_promo_code_offers:    pattern.pco,
-        });
+    // Iterate month-by-month so intra-month indices `m_i` reset per bucket.
+    let idx = 0;
+    for (let m = 0; m < MONTH_COUNT; m++) {
+        const monthTotal = perMonth[m];
+        // Month anchor — 1st of the target month, `MONTH_COUNT-1-m` months
+        // before NOW's month. Uses setMonth so year rollover is automatic.
+        const monthDate = new Date(SYNTH_NOW.getFullYear(), SYNTH_NOW.getMonth() - (MONTH_COUNT - 1 - m), 1);
+        const referralPct = referralPctByMonth[m];
+        // Stride within the month — each customer gets a stable day
+        // computed from its intra-month index so re-hydrates place the
+        // same customer on the same day. Days spread across ~28 to stay
+        // valid for every month (Feb-safe).
+        for (let mi = 0; mi < monthTotal; mi++, idx++) {
+            const i = idx; // preserve the caller-visible index for id + name
+            const first = SYNTH_FIRST_NAMES[i % SYNTH_FIRST_NAMES.length];
+            const last  = SYNTH_LAST_NAMES [(i * 3 + 7) % SYNTH_LAST_NAMES.length];
+            const suffix = String(i).padStart(4, "0");
+            const pattern = SYNTH_MARKETING_PATTERNS[i % SYNTH_MARKETING_PATTERNS.length];
+            const branch = SYNTH_BRANCHES[i % SYNTH_BRANCHES.length];
+            const status = SYNTH_STATUSES[i % SYNTH_STATUSES.length];
+            const gender = SYNTH_GENDERS [(i >>> 1) % SYNTH_GENDERS.length];
+
+            const dayOfMonth = ((mi * 3 + 1) % 27) + 1;
+            const created = new Date(monthDate);
+            created.setDate(dayOfMonth);
+            const createdISO = created.toISOString();
+
+            // Referral vs non-referral pick — deterministic threshold
+            // over the intra-month index. First N of the month are
+            // referrals where N = ceil(monthTotal × pct/100). Guarantees
+            // the widget shows exactly the intended share per bucket.
+            const referralCutoff = Math.ceil(monthTotal * (referralPct / 100));
+            const convertedFrom: Customer["converted_from"] = mi < referralCutoff
+                ? "referral"
+                : SYNTH_CONVERTED_FROM[mi % SYNTH_CONVERTED_FROM.length];
+
+            // Ensure the customer is CURRENTLY dated (JS Date's toISOString
+            // returns UTC; created may fall on a day in the past or future
+            // depending on local TZ but stays inside the same month for our
+            // bucketing needs).
+            void SYNTH_MS_PER_DAY;
+
+            out.push({
+                id:         `cust_synth_${suffix}`,
+                first_name: first,
+                last_name:  last,
+                initials:   `${first[0]}${last[0]}`,
+                email:      `${first.toLowerCase()}.${last.toLowerCase()}${suffix}@email.com`,
+                phone:      `+971 5${(i % 5)} ${String(100 + (i % 900)).padStart(3, "0")} ${String(1000 + ((i * 617) % 9000)).padStart(4, "0")}`,
+                branch_id:  branch,
+                plan_kind:  null,
+                created_at: createdISO,
+                converted_from: convertedFrom,
+                gender,
+                status,
+                marketing_channel_email:              pattern.email,
+                marketing_channel_whatsapp:           pattern.wa,
+                marketing_channel_sms:                pattern.sms,
+                marketing_channel_push:               pattern.push,
+                marketing_topic_studio_announcements: pattern.sa,
+                marketing_topic_new_class_launch:     pattern.ncl,
+                marketing_topic_special_offers:       pattern.so,
+                marketing_topic_promo_code_offers:    pattern.pco,
+            });
+        }
     }
     return out;
 }
