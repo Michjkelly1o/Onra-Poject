@@ -205,12 +205,16 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
             );
         } else {
             addShift({
-                name:         form.name.trim(),
-                branch_id:    form.branchId,
-                start_time:   form.startTime,
-                end_time:     form.endTime,
-                working_days: form.workingDays,
-                status:       "active",
+                name:            form.name.trim(),
+                branch_id:       form.branchId,
+                start_time:      form.startTime,
+                end_time:        form.endTime,
+                working_days:    form.workingDays,
+                // Client 2026-07-22 spec: staffing target lives on the
+                // list expand (edited inline). Form defaults to 1 so a
+                // freshly created shift is immediately actionable.
+                staffing_target: 1,
+                status:          "active",
             });
             // Figma 7412:561525 — success copy verbatim.
             showToast(

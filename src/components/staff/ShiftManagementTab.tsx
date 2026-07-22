@@ -20,7 +20,7 @@
 // + instructor detail Shift hours line read live from the same slice, so
 // edits here surface everywhere on the same render cycle.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     DotsVertical, XClose, Check, ChevronLeft,
@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useAppStore, type Shift } from "@/lib/store";
+import { useAppStore, type Shift, type ShiftAssignment, type Staff } from "@/lib/store";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -100,6 +100,164 @@ function daysSummary(workingDays: boolean[]): string {
     const contiguous = picked.length === (max - min + 1);
     if (contiguous && picked.length >= 3) return `${LABELS[min]} - ${LABELS[max]}`;
     return picked.map(i => LABELS[i]).join(", ");
+}
+
+// ─── Row expand — Assigned staff · days_of_week (client 2026-07-22) ───────
+//
+// Renders inside a `<tr><td colSpan={8}>` beneath the parent shift row.
+// Shows:
+//   • Staffing target — inline number stepper (± controls) so admins can
+//     change the "M in N / M needed" without opening the shift form.
+//   • Assigned staff table — one row per staff member on this shift, with
+//     day-of-week chips (M T W T F S S). Click a chip to toggle that day
+//     for THIS staff member on THIS shift (narrows the per-assignment
+//     `days_of_week` from the shift's full `working_days`). Trash icon
+//     removes the assignment entirely.
+//   • Helper line explaining the "default = all shift days, narrow here"
+//     rule (client 2026-07-22 mockup copy).
+
+const WEEKDAY_SHORT = ["S", "M", "T", "W", "T", "F", "S"] as const;
+const WEEKDAY_FULL  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+function DayChip({ active, disabled, letter, onClick, title }: {
+    active: boolean;
+    disabled: boolean;
+    letter: string;
+    onClick: () => void;
+    title: string;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={disabled ? undefined : onClick}
+            title={title}
+            aria-pressed={active}
+            aria-label={title}
+            className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold transition-colors border-1",
+                disabled
+                    ? "border-transparent bg-[#f2f4f7] text-[#d0d5dd] cursor-not-allowed"
+                    : active
+                        ? "border-[#7ba08c] bg-[#e7f2eb] text-[#3b5446]"
+                        : "border-[#e4e7ec] bg-white text-[#98a2b3] hover:border-[#aad4bd]",
+            )}
+        >
+            {letter}
+        </button>
+    );
+}
+
+function ShiftExpandBody({
+    shift, assignments, staffById,
+    onChangeDays, onRemoveAssignment, onChangeTarget,
+}: {
+    shift: Shift;
+    assignments: ShiftAssignment[];
+    staffById: Map<string, Staff>;
+    onChangeDays: (assignmentId: string, days: boolean[]) => void;
+    onRemoveAssignment: (assignmentId: string) => void;
+    onChangeTarget: (nextTarget: number) => void;
+}) {
+    // Sort by staff full name for a stable, scannable order.
+    const rows = [...assignments].sort((a, b) => {
+        const na = staffById.get(a.staff_id)?.fullName ?? a.staff_id;
+        const nb = staffById.get(b.staff_id)?.fullName ?? b.staff_id;
+        return na.localeCompare(nb);
+    });
+    return (
+        <div className="flex flex-col gap-3">
+            {/* Staffing target stepper */}
+            <div className="flex items-center gap-3">
+                <p className="text-[12px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3]">Staffing target</p>
+                <div className="inline-flex items-center border-1 border-[#e4e7ec] rounded-[8px] bg-white overflow-hidden">
+                    <button type="button"
+                        onClick={() => onChangeTarget(Math.max(0, (shift.staffing_target ?? 1) - 1))}
+                        aria-label="Decrease staffing target"
+                        className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
+                        −
+                    </button>
+                    <span className="w-10 text-center text-[14px] font-semibold text-[#101828] border-x-1 border-[#e4e7ec]">
+                        {shift.staffing_target ?? 1}
+                    </span>
+                    <button type="button"
+                        onClick={() => onChangeTarget((shift.staffing_target ?? 1) + 1)}
+                        aria-label="Increase staffing target"
+                        className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
+                        +
+                    </button>
+                </div>
+                <p className="text-[13px] text-[#667085]">staff needed on this shift</p>
+            </div>
+
+            <p className="text-[12px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3]">Assigned staff · days within the shift</p>
+            {rows.length === 0 ? (
+                <p className="text-[14px] text-[#667085]">No staff assigned yet. Use the row's "Assign staff" action to add one.</p>
+            ) : (
+                <div className="flex flex-col gap-2">
+                    {rows.map(a => {
+                        const s = staffById.get(a.staff_id);
+                        if (!s) return null;
+                        return (
+                            <div key={a.id} className="flex items-center gap-3 py-1.5">
+                                {/* Staff avatar + name — 180px column for a
+                                    stable left rail. */}
+                                <div className="flex items-center gap-2 w-[180px] shrink-0 min-w-0">
+                                    {s.imageUrl ? (
+                                        <img src={s.imageUrl} alt={s.fullName}
+                                            className="w-7 h-7 rounded-full object-cover" />
+                                    ) : (
+                                        <div
+                                            className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold text-white"
+                                            style={{ backgroundColor: s.color }}>
+                                            {s.initials}
+                                        </div>
+                                    )}
+                                    <span className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</span>
+                                </div>
+                                {/* Day chips — clickable when the parent shift
+                                    has that weekday in its working_days;
+                                    otherwise disabled so admins can't grant
+                                    a Sunday assignment on a Mon-Sat shift. */}
+                                <div className="flex items-center gap-1.5 flex-1">
+                                    {WEEKDAY_SHORT.map((letter, i) => {
+                                        const parentAllowsDay = shift.working_days[i];
+                                        const active = parentAllowsDay && a.days_of_week[i];
+                                        return (
+                                            <DayChip
+                                                key={i}
+                                                active={active}
+                                                disabled={!parentAllowsDay}
+                                                letter={letter}
+                                                title={parentAllowsDay
+                                                    ? `${active ? "Remove" : "Add"} ${WEEKDAY_FULL[i]}`
+                                                    : `Shift doesn't cover ${WEEKDAY_FULL[i]}`}
+                                                onClick={() => {
+                                                    const next = [...a.days_of_week];
+                                                    next[i] = !active;
+                                                    onChangeDays(a.id, next);
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                {/* Remove assignment */}
+                                <button
+                                    type="button"
+                                    onClick={() => onRemoveAssignment(a.id)}
+                                    aria-label={`Remove ${s.fullName} from ${shift.name}`}
+                                    className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[#98a2b3] hover:text-[#b42318] hover:bg-[#fef3f2] transition-colors shrink-0">
+                                    <Trash01 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+            <p className="text-[13px] text-[#667085]">
+                A staff member's days default to all shift days; narrow them here. Profile "working days" are derived from shift assignments — one source of truth.
+            </p>
+        </div>
+    );
 }
 
 // ─── Row action menu ───────────────────────────────────────────────────────
@@ -349,6 +507,12 @@ export function ShiftManagementTab({
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
     const staff             = useAppStore(s => s.staff);
+    // Client 2026-07-22 Phase 3 — many-to-many staff ↔ shift. The
+    // assignments slice replaces the old "one shift per staff via
+    // Staff.shiftId" model for the list's Staffing column + row expand.
+    const shiftAssignments  = useAppStore(s => s.shiftAssignments);
+    const updateShiftAssignmentDays = useAppStore(s => s.updateShiftAssignmentDays);
+    const removeShiftAssignment     = useAppStore(s => s.removeShiftAssignment);
     const branches          = useAppStore(s => s.branches);
     const setShiftsStatus   = useAppStore(s => s.setShiftsStatus);
     const deleteShifts      = useAppStore(s => s.deleteShifts);
@@ -377,15 +541,42 @@ export function ShiftManagementTab({
     }, [appliedStatuses, onFilterStateChange]);
 
     // ── Derived lookups ────────────────────────────────────────────────────
+    //
+    // `staffCountByShift` used to count off Staff.shiftId (one-shift-
+    // per-staff). Client 2026-07-22 Phase 3 replaced that with the
+    // many-to-many `shiftAssignments` slice, so the count now walks
+    // that array. Falls back to the legacy Staff.shiftId when no
+    // assignment slice is present (very old persisted stores that
+    // somehow slipped past the v82 migration).
     const staffCountByShift = useMemo(() => {
         const m = new Map<string, number>();
-        for (const s of staff) {
-            if (!s.shiftId) continue;
-            m.set(s.shiftId, (m.get(s.shiftId) ?? 0) + 1);
+        if (shiftAssignments.length > 0) {
+            for (const a of shiftAssignments) m.set(a.shift_id, (m.get(a.shift_id) ?? 0) + 1);
+        } else {
+            for (const s of staff) {
+                if (!s.shiftId) continue;
+                m.set(s.shiftId, (m.get(s.shiftId) ?? 0) + 1);
+            }
         }
         return m;
-    }, [staff]);
+    }, [shiftAssignments, staff]);
+    /** Assignment rows grouped by shift id — feeds the expand-row's
+     *  per-staff day chips. */
+    const assignmentsByShift = useMemo(() => {
+        const m = new Map<string, typeof shiftAssignments>();
+        for (const a of shiftAssignments) {
+            const list = m.get(a.shift_id) ?? [];
+            list.push(a);
+            m.set(a.shift_id, list);
+        }
+        return m;
+    }, [shiftAssignments]);
+    const staffById = useMemo(() => new Map(staff.map(s => [s.id, s] as const)), [staff]);
     const branchById = useMemo(() => new Map(branches.map(b => [b.id, b] as const)), [branches]);
+
+    // Client 2026-07-22: click "· details" on a shift name to expand
+    // the row and reveal assigned staff + per-staff days.
+    const [expandedShiftId, setExpandedShiftId] = useState<string | null>(null);
 
     // ── Filter + search ───────────────────────────────────────────────────
     const filtered = useMemo(() => {
@@ -574,13 +765,19 @@ export function ShiftManagementTab({
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="hours"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Shift hours</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[80px]")}>
-                                            <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staff</SortableHeader>
+                                        {/* Client 2026-07-22: Staff count column replaced
+                                            with a Staffing column ("N / M needed" +
+                                            Understaffed pill). Enabled column removed —
+                                            client feedback: "one Status control instead
+                                            of Status + Enabled." Status column now hosts
+                                            the enable/disable toggle inline (see
+                                            the row below). */}
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staffing</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[100px]")}>Enabled</th>
                                         <th className={cn(TH, "w-[52px]")}></th>
                                     </tr>
                                 </thead>
@@ -588,9 +785,14 @@ export function ShiftManagementTab({
                                     {pagedRows.map(s => {
                                     const isSelected = selectedIds.has(s.id);
                                     const assignedCount = staffCountByShift.get(s.id) ?? 0;
+                                    // Client 2026-07-22: understaffed = assigned < needed.
+                                    const target = s.staffing_target ?? 1;
+                                    const isUnderstaffed = assignedCount < target;
                                     const branch = branchById.get(s.branch_id);
+                                    const isExpanded = expandedShiftId === s.id;
                                     return (
-                                        <tr key={s.id}
+                                        <React.Fragment key={s.id}>
+                                        <tr
                                             className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
                                             <td className={TD}>
                                                 <CheckboxCell
@@ -603,6 +805,16 @@ export function ShiftManagementTab({
                                                 <div className="flex items-center gap-3">
                                                     <ShiftAvatar />
                                                     <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
+                                                    {/* "· details" toggles the expand
+                                                        row below. Client 2026-07-22
+                                                        mockup: clicking "· details"
+                                                        reveals the per-staff day chips
+                                                        for this shift's assignments. */}
+                                                    <button type="button"
+                                                        onClick={() => setExpandedShiftId(prev => prev === s.id ? null : s.id)}
+                                                        className="text-[13px] text-[#658774] hover:text-[#3b5446] underline underline-offset-2 transition-colors">
+                                                        · {isExpanded ? "hide" : "details"}
+                                                    </button>
                                                 </div>
                                             </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{branch?.name ?? "—"}</td>
@@ -610,15 +822,27 @@ export function ShiftManagementTab({
                                             <td className={cn(TD, "whitespace-nowrap")}>
                                                 {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
                                             </td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>{assignedCount}</td>
-                                            <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
-                                            <td className={TD}>
-                                                <EnabledToggle
-                                                    on={s.status === "active"}
-                                                    disabled={s.status === "archive"}
-                                                    onChange={next => handleEnableToggle(s, next)}
-                                                />
+                                            {/* Staffing cell — "N / M needed" + optional
+                                                Understaffed pill (amber tone matches
+                                                the range-chip color family so both
+                                                warnings read as one voice). */}
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className={cn(
+                                                        "text-[14px] font-medium",
+                                                        isUnderstaffed ? "text-[#b54708]" : "text-[#101828]",
+                                                    )}>
+                                                        {assignedCount}
+                                                    </span>
+                                                    <span className="text-[13px] text-[#667085]">/ {target} needed</span>
+                                                    {isUnderstaffed && (
+                                                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-semibold uppercase tracking-wider bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
+                                                            Understaffed
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
+                                            <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
                                             <td className={TD}>
                                                 <RowActions items={[
                                                     { label: "View details", icon: Eye, onClick: () => handleRowAction(s, "view") },
@@ -632,6 +856,28 @@ export function ShiftManagementTab({
                                                 ]} />
                                             </td>
                                         </tr>
+                                        {/* Row expand — assigned staff + per-staff
+                                            days_of_week chips. Client 2026-07-22
+                                            mockup: "days default to all shift days;
+                                            narrow them here." Also inlines a
+                                            "Staffing target" editor so admins can
+                                            change the M in "N / M needed" without
+                                            opening the form. */}
+                                        {isExpanded && (
+                                            <tr className="bg-[#fafbfa]">
+                                                <td colSpan={8} className="px-6 py-4">
+                                                    <ShiftExpandBody
+                                                        shift={s}
+                                                        assignments={assignmentsByShift.get(s.id) ?? []}
+                                                        staffById={staffById}
+                                                        onChangeDays={(assignmentId, days) => updateShiftAssignmentDays(assignmentId, days)}
+                                                        onRemoveAssignment={(assignmentId) => removeShiftAssignment(assignmentId)}
+                                                        onChangeTarget={(nextTarget) => updateShift(s.id, { staffing_target: Math.max(0, nextTarget) })}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </React.Fragment>
                                     );
                                 })}
                                 </tbody>

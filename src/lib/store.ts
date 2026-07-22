@@ -122,6 +122,7 @@ import {
     DEFAULT_GRANT_LIMITS as SEED_DEFAULT_GRANT_LIMITS,
     staff as SEED_STAFF,
     shifts as SEED_SHIFTS,
+    shift_assignments as SEED_SHIFT_ASSIGNMENTS,
     blocked_times as SEED_BLOCKED_TIMES,
     payroll_entries as SEED_PAYROLL_ENTRIES,
     notification_settings as SEED_NOTIFICATION_SETTINGS,
@@ -200,6 +201,7 @@ import {
     type RoleStatusSeed,
     type StaffSeed,
     type Shift,
+    type ShiftAssignment,
     type BlockedTime,
     type StaffStatusSeed,
     type NotificationSettingSeed,
@@ -800,7 +802,7 @@ export type StaffStatus = StaffStatusSeed;
 
 /** Re-export the seed-defined Shift type so consumer modules import a
  *  single canonical name. Mirrors the StaffStatus pattern above. */
-export type { Shift } from "@/data/mock/_types";
+export type { Shift, ShiftAssignment } from "@/data/mock/_types";
 
 /** Re-export the seed-defined BlockedTime type so consumer modules import
  *  it from the same canonical name as every other store type. (`ClassCategory`
@@ -3326,8 +3328,9 @@ const INITIAL_INSTRUCTORS:      Instructor[]     = SEED_INSTRUCTORS.map(instruct
 const INITIAL_PAYROLL_ENTRIES:  PayrollEntry[]   = SEED_PAYROLL_ENTRIES.map(payrollEntryFromSeed);
 const INITIAL_ROLES:            Role[]           = SEED_ROLES.map(roleFromSeed);
 const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed);
-const INITIAL_SHIFTS:           Shift[]          = SEED_SHIFTS;
-const INITIAL_BLOCKED_TIMES:    BlockedTime[]    = SEED_BLOCKED_TIMES;
+const INITIAL_SHIFTS:              Shift[]           = SEED_SHIFTS;
+const INITIAL_SHIFT_ASSIGNMENTS:   ShiftAssignment[] = SEED_SHIFT_ASSIGNMENTS;
+const INITIAL_BLOCKED_TIMES:       BlockedTime[]     = SEED_BLOCKED_TIMES;
 const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = SEED_NOTIFICATION_SETTINGS.map(notificationSettingFromSeed);
 // Admin + instructor notifications live in one initial array — the bell +
 // page components filter by `audience` based on the current user role.
@@ -3596,10 +3599,23 @@ export interface AppState {
      *  form's Assign shift dropdown + the instructor detail Shift
      *  hours line. */
     shifts: Shift[];
+    /** Many-to-many staff ↔ shift assignments (client 2026-07-22).
+     *  One row per (staff, shift) pair; carries the per-assignment
+     *  days-of-week subset. Feeds the shift list's Staffing column
+     *  and the expandable row's per-staff day chips. */
+    shiftAssignments: ShiftAssignment[];
 
     // ── Shift actions (Shift management module) ──────────────────────────
     /** Create a new shift. Returns the generated id. */
     addShift: (input: Omit<Shift, "id" | "created_at"> & { id?: string }) => string;
+    /** Add a staff → shift assignment. Idempotent (same pair returns the
+     *  existing row instead of duplicating). Defaults `days_of_week` to
+     *  the parent shift's `working_days` when omitted. */
+    addShiftAssignment: (input: { shift_id: string; staff_id: string; days_of_week?: boolean[] }) => string;
+    /** Remove a staff → shift assignment by id. */
+    removeShiftAssignment: (id: string) => void;
+    /** Update the per-assignment days-of-week subset. */
+    updateShiftAssignmentDays: (id: string, days: boolean[]) => void;
     /** Patch an existing shift — name / branch / hours / days / status. */
     updateShift: (id: string, patch: Partial<Omit<Shift, "id" | "created_at">>) => void;
     /** Bulk status flip (Archive / Reactivate / Deactivate / Recover).
@@ -4458,6 +4474,7 @@ export const useAppStore = create<AppState>()(persist(
     roles: [...INITIAL_ROLES],
     staff: [...INITIAL_STAFF],
     shifts: [...INITIAL_SHIFTS],
+    shiftAssignments: [...INITIAL_SHIFT_ASSIGNMENTS],
     blockedTimes: [...INITIAL_BLOCKED_TIMES],
     notificationSettings: [...INITIAL_NOTIFICATION_SETTINGS],
     notificationDeliverySettings: notificationDeliverySettingsFromSeed(SEED_NOTIFICATION_DELIVERY_SETTINGS),
@@ -8072,6 +8089,40 @@ export const useAppStore = create<AppState>()(persist(
         return { deleted: deletable, blocked };
     },
 
+    // ── Shift assignment actions (client 2026-07-22 many-to-many) ─────────
+    addShiftAssignment: (input) => {
+        const { shift_id, staff_id, days_of_week } = input;
+        // Idempotent — same pair returns the existing row's id.
+        const existing = get().shiftAssignments.find(
+            a => a.shift_id === shift_id && a.staff_id === staff_id,
+        );
+        if (existing) return existing.id;
+        const parent = get().shifts.find(s => s.id === shift_id);
+        const defaultDays = parent?.working_days ?? [false, false, false, false, false, false, false];
+        const id = `sa_${shift_id}_${staff_id}`;
+        const next: ShiftAssignment = {
+            id,
+            shift_id,
+            staff_id,
+            days_of_week: days_of_week ?? [...defaultDays],
+            created_at: new Date().toISOString(),
+        };
+        set(state => ({ shiftAssignments: [...state.shiftAssignments, next] }));
+        return id;
+    },
+    removeShiftAssignment: (id) => {
+        set(state => ({
+            shiftAssignments: state.shiftAssignments.filter(a => a.id !== id),
+        }));
+    },
+    updateShiftAssignmentDays: (id, days) => {
+        set(state => ({
+            shiftAssignments: state.shiftAssignments.map(a =>
+                a.id === id ? { ...a, days_of_week: [...days] } : a,
+            ),
+        }));
+    },
+
     // ── Blocked time actions (Staff & shift module) ──────────────────────
     //
     // Adds also fan out an instructor-bell notification to every staff in
@@ -9327,7 +9378,15 @@ export const useAppStore = create<AppState>()(persist(
         //   Aug 7-12, Liam physio Jul 23, team training Aug 21,
         //   Pilates review Jul 31). Bump forces stale seed to
         //   reseed cleanly.
-        version: 81,
+        // v82 (2026-07-22 admin): Staff/Shifts Phase 3 — Shift gained
+        //   `staffing_target: number` + new many-to-many
+        //   `shiftAssignments` slice (staff ↔ shift with per-assignment
+        //   `days_of_week`). Migration backfills `staffing_target = 1`
+        //   for shifts missing it and derives an initial
+        //   `shiftAssignments` array from every staff row's `shift_id`
+        //   when the persisted slice is missing / empty. Bump forces
+        //   pre-v82 snapshots to reseed cleanly.
+        version: 82,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -9409,6 +9468,41 @@ export const useAppStore = create<AppState>()(persist(
                         reason:        b.reason        ?? "other",
                     } as typeof bt;
                 });
+            }
+            // v82 (2026-07-22) — Shifts Phase 3 migration.
+            //
+            // Backfill `staffing_target` on every persisted Shift row
+            // (default 1) so the list's "N / M needed" chip never
+            // renders "N / undefined needed". Then derive an initial
+            // `shiftAssignments` slice from every staff row's
+            // `shift_id` when the persisted store came in without one
+            // (pre-v82 snapshots). Same derivation the seed uses at
+            // module load so admins land on the same shape.
+            if (Array.isArray(state.shifts)) {
+                state.shifts = state.shifts.map(s => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const sh = s as any;
+                    return {
+                        ...sh,
+                        staffing_target: typeof sh.staffing_target === "number" ? sh.staffing_target : 1,
+                    } as typeof s;
+                });
+            }
+            if (!Array.isArray(state.shiftAssignments) || state.shiftAssignments.length === 0) {
+                const derived: ShiftAssignment[] = [];
+                for (const st of state.staff ?? []) {
+                    if (!st.shiftId) continue;
+                    const parent = state.shifts.find(x => x.id === st.shiftId);
+                    if (!parent) continue;
+                    derived.push({
+                        id: `sa_${parent.id}_${st.id}`,
+                        shift_id: parent.id,
+                        staff_id: st.id,
+                        days_of_week: [...parent.working_days],
+                        created_at: parent.created_at,
+                    });
+                }
+                state.shiftAssignments = derived;
             }
             // v78 (2026-07-21) — Freeze policy v2 Phase 4.
             // Auto-resume + reminder sweep. Runs at hydrate so an

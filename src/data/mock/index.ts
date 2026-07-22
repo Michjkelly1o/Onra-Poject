@@ -40,6 +40,7 @@ export { staff } from "./staff";
 // detail page can render the Shift hours line. Full schema (per-branch,
 // recurring rules, exceptions) lands when the Shift management designs ship.
 export { shifts } from "./shifts";
+export { shift_assignments } from "./shift_assignments";
 // Blocked times — Staff & shift module's "Blocked time" tab. One row per
 // blocked-time entry (admin marks staff unavailable for a date window).
 export { blocked_times } from "./blocked_times";

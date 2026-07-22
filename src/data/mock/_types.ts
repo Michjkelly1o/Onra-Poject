@@ -1895,7 +1895,38 @@ export interface Shift {
     end_time: string;         // "12:00" — 24h
     /** 7-bit array [Sun..Sat] — true means the shift covers that day. */
     working_days: boolean[];
+    /** Number of staff the studio needs on this shift. Compared against
+     *  the count of `ShiftAssignment` rows to flag understaffed shifts.
+     *  Client 2026-07-22 spec ("assigned / N needed"). Defaults to 1
+     *  when the migration backfills a pre-v82 row. */
+    staffing_target: number;
     status: ShiftStatusSeed;
+    created_at: string;       // ISO 8601
+}
+
+// ─── Shift assignment (many-to-many staff ↔ shift) ────────────────────────
+//
+// Client 2026-07-22 requirement: one staff can hold MULTIPLE shifts, and
+// each assignment carries its own subset of the shift's working days
+// (so Liam can be on Morning shift Mon-Sat AND Afternoon shift Tue+Thu).
+// The seed derives this table from every `Staff.shift_id` at boot
+// (default `days_of_week = shift.working_days`); the migration in
+// `onRehydrateStorage` does the same for any pre-v82 persisted store.
+
+export interface ShiftAssignment {
+    /** e.g. "sa_shift_morning_maya" — derived deterministically from the
+     *  shift + staff ids at boot so the same pair always resolves to the
+     *  same assignment row on re-hydrate. */
+    id: string;
+    /** FK → shifts.id */
+    shift_id: string;
+    /** FK → staff.id */
+    staff_id: string;
+    /** 7-bit array [Sun..Sat] — SUBSET of the parent shift's
+     *  `working_days`. Defaults to the shift's full working_days when
+     *  the row is created; admins narrow from the shift's expanded
+     *  row on the list. */
+    days_of_week: boolean[];
     created_at: string;       // ISO 8601
 }
 
