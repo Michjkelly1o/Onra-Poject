@@ -34,6 +34,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, type Shift, type ShiftAssignment, type Staff } from "@/lib/store";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ShiftsWeekView } from "@/components/staff/ShiftsWeekView";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -519,6 +521,12 @@ export function ShiftManagementTab({
     const updateShift       = useAppStore(s => s.updateShift);
     const showToast         = useAppStore(s => s.showToast);
 
+    // Client 2026-07-22 Phase 5 — inner List / Week toggle. `viewMode`
+    // gates whether the tab renders the existing table (list) or the
+    // new read-only computed grid (week).
+    type ViewMode = "list" | "week";
+    const [viewMode, setViewMode] = useState<ViewMode>("list");
+
     const [appliedStatuses, setAppliedStatuses] = useState<StatusFilter>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [page, setPage] = useState(1);
@@ -725,9 +733,29 @@ export function ShiftManagementTab({
 
     return (
         <>
-            {/* Table card — wrapped in px-6 so the table edges line up with
-                the surrounding tab nav row + the pagination row below,
-                matching the staff table's padding model exactly. */}
+            {/* Client 2026-07-22 Phase 5 — List / Week sub-toggle. The
+                Week view is a read-only computed grid that answers
+                "who's in on Thursday, and where are the holes?" (see
+                ShiftsWeekView). List keeps the existing table + row
+                expand behavior unchanged. */}
+            <div className="shrink-0 px-6 pb-3 flex items-center gap-3">
+                <SegmentedTabs
+                    tabs={[
+                        { key: "list", label: "List" },
+                        { key: "week", label: "Week" },
+                    ]}
+                    activeKey={viewMode}
+                    onChange={k => setViewMode(k as ViewMode)}
+                />
+            </div>
+            {viewMode === "week" ? (
+                <div className="relative flex flex-col flex-1">
+                    <ShiftsWeekView branchId={branchId} search={search} />
+                </div>
+            ) : (
+            /* Table card — wrapped in px-6 so the table edges line up with
+               the surrounding tab nav row + the pagination row below,
+               matching the staff table's padding model exactly. */
             <div className="relative flex flex-col flex-1">
                 {filtered.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
@@ -911,6 +939,7 @@ export function ShiftManagementTab({
                     onAction={openBulkConfirm}
                 />
             </div>
+            )}
 
             <FilterPanel
                 open={filterOpen}
