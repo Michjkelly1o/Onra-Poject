@@ -24,9 +24,10 @@ export type RankedRow = {
 };
 
 /** Phase 10 — every card can carry an optional deep link. Clicking the
- *  chip navigates the tester to the matching /admin/insights tab (or
- *  any other admin route). `label` is the CTA text; `href` is a Next.js
- *  route (client-side navigation via `router.push`). */
+ *  chip navigates the tester to a LIVE admin route (e.g. the KPI page for
+ *  "Go to insight", a customer profile, a create form). `label` is the CTA
+ *  text; `href` is a Next.js route (client-side navigation via `router.push`).
+ *  Hrefs must point at enabled routes — see feature-flags.ts. */
 export type DeepLink = {
     label: string;
     href: string;

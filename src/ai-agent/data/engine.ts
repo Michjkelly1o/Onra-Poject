@@ -22,37 +22,21 @@ import type { Row } from "@/ai-agent/data/store-readers";
 // Deep-link routing table (Phase 10)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Maps each catalog dataset to a `/admin/insights` tab pre-filter query
-// string. The Insights page reads `?tab=` (Phase 10 wiring) to select
-// the corresponding metric grid + widget list. Unknown datasets default
-// to Finance since that's where new admin metrics tend to land first.
-//
-// If a card doesn't fit any tab (e.g. leads, spend) we still return a
-// href to /admin/insights?tab=finance — clicking "Go to insight" always
-// lands the tester somewhere meaningful.
+// The insight deep-link lands the tester on the KPI page. The legacy
+// `/admin/insights` route was RETIRED (client Jul 2026 — Insights renamed to
+// KPI); it's disabled in feature-flags.ts and 404s. The live surface is
+// `/admin/kpi`, which the sidebar's "Insights" label now points at too. The
+// KPI page opens on its first tab and doesn't read a query param, so a plain
+// `/admin/kpi` href always lands somewhere meaningful.
+const INSIGHTS_HREF = "/admin/kpi";
 
-const DATASET_TO_INSIGHTS_TAB: Record<string, "finance" | "memberships" | "classes"> = {
-    transactions:        "finance",
-    customers:           "memberships",
-    classes:             "classes",
-    bookings:            "classes",
-    leads:               "finance",
-    campaigns:           "finance",
-    spend:               "finance",
-    appointments:        "classes",
-    services:            "classes",
-    wallet_transactions: "finance",
-    payroll_entries:     "finance",
-    promo_codes:         "finance",
-};
-
-/** Build the deep-link chip a chart/list card carries. Every returned
- *  href is a valid Next.js route the /admin/insights page can render. */
-function insightsDeepLink(dataset: string): DeepLink {
-    const tab = DATASET_TO_INSIGHTS_TAB[dataset] ?? "finance";
+/** Build the deep-link chip a chart/list card carries. `href` is a live
+ *  Next.js route (the KPI page). `dataset` is accepted for call-site
+ *  compatibility; the KPI page selects its own default tab. */
+function insightsDeepLink(_dataset: string): DeepLink {
     return {
         label: "Go to insight",
-        href: `/admin/insights?tab=${tab}`,
+        href: INSIGHTS_HREF,
     };
 }
 

@@ -836,7 +836,9 @@ function AgentChatSurface({
                     className="absolute inset-x-0 bottom-0 h-[58%]"
                     style={{
                         background:
-                            "linear-gradient(to bottom, rgba(196,237,214,0) 0%, rgba(196,237,214,0.35) 55%, rgba(196,237,214,0.72) 100%)",
+                            // Opacity dialled back ~30% (client 2026-07-23) —
+                            // 0.35→0.25 mid, 0.72→0.50 foot.
+                            "linear-gradient(to bottom, rgba(196,237,214,0) 0%, rgba(196,237,214,0.25) 55%, rgba(196,237,214,0.50) 100%)",
                     }}
                 />
             </div>
