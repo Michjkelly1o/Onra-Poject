@@ -18,8 +18,8 @@
 //     as the staff form's Categories field).
 //
 // Success toast (Figma 7413:257605):
-//   "Blocked time added successfully"
-//   "The blocked time has been added and staff schedules have been updated."
+//   "Time off added successfully"
+//   "The time off has been added and staff schedules have been updated."
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -346,7 +346,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                 branch_id:  finalBranchId,
             });
             showToast(
-                "Blocked time updated",
+                "Time off updated",
                 "Staff schedules have been updated.",
                 "success", "check",
             );
@@ -362,8 +362,8 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
             });
             // Figma 7413:257605 — success copy verbatim.
             showToast(
-                "Blocked time added successfully",
-                "The blocked time has been added and staff schedules have been updated.",
+                "Time off added successfully",
+                "The time off has been added and staff schedules have been updated.",
                 "success", "check",
             );
         }
@@ -373,7 +373,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     if (mode === "edit" && !existing) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[#101828]">Blocked time not found</p>
+                <p className="font-semibold text-[18px] text-[#101828]">Time off not found</p>
                 <p className="text-[14px] text-[#667085]">The entry you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
                     Back to list
@@ -382,7 +382,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
         );
     }
 
-    const pageTitle = mode === "edit" ? "Edit blocked time" : "Add blocked time";
+    const pageTitle = mode === "edit" ? "Edit time off" : "Add time off";
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -407,14 +407,14 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
                                 1
                             </div>
-                            <span className="text-[14px] font-semibold text-[#3b5446]">Blocked time details</span>
+                            <span className="text-[14px] font-semibold text-[#3b5446]">Time off details</span>
                         </div>
                     </div>
 
                     {/* Form card */}
                     <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Blocked time details</h2>
+                            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Time off details</h2>
 
                             <div className="grid grid-cols-2 gap-4">
                                 {/* Title (optional) */}
@@ -495,7 +495,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
 
                             {/* Staffs */}
                             <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Staffs</label>
+                                <label className="text-[14px] font-medium text-[#344054]">Staff</label>
                                 <MultiStaffDropdown
                                     options={availableStaff}
                                     selectedIds={form.staffIds}
@@ -509,7 +509,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                         {/* Footer */}
                         <div className="shrink-0 px-6 py-4 flex items-center justify-end">
                             <Button variant="primary" size="md" disabled={!isValid} onClick={handleSubmit}>
-                                {mode === "create" ? "Add blocked time" : "Save changes"}
+                                {mode === "create" ? "Add time off" : "Save changes"}
                             </Button>
                         </div>
                     </div>

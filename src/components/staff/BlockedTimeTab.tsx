@@ -11,7 +11,7 @@
 //   • Title       — falls back to "Blocked" when empty.
 //   • Staff       — overlapping avatars + count (e.g. "2 staffs").
 //   • Note        — single-line truncated, "—" when blank.
-//   • Actions     — Edit blocked time · Delete blocked time.
+//   • Actions     — Edit time off · Delete time off.
 //
 // Toolbar inputs (Select location + Search) come from the parent
 // StaffPermissionsPage, identical to how the Shift management tab is wired.
@@ -68,7 +68,7 @@ function StackedAvatars({ staffList }: { staffList: Staff[] }) {
                 ))}
             </div>
             <span className="ml-2 text-[14px] text-[#344054] whitespace-nowrap">
-                {staffList.length} {staffList.length === 1 ? "staff" : "staffs"}
+                {staffList.length} {staffList.length === 1 ? "staff" : "staff"}
             </span>
         </div>
     );
@@ -88,11 +88,11 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
                 <button type="button" onClick={() => { setOpen(false); onEdit(); }}
                     className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Edit02 className="w-4 h-4 text-[#667085]" />Edit blocked time
+                    <Edit02 className="w-4 h-4 text-[#667085]" />Edit time off
                 </button>
                 <button type="button" onClick={() => { setOpen(false); onDelete(); }}
                     className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
-                    <Trash01 className="w-4 h-4 text-[#b42318]" />Delete blocked time
+                    <Trash01 className="w-4 h-4 text-[#b42318]" />Delete time off
                 </button>
             </FixedDropdown>
         </div>
@@ -104,7 +104,7 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 function DeleteModal({ count, subject, onCancel, onConfirm }: {
     count: number; subject: React.ReactNode; onCancel: () => void; onConfirm: () => void;
 }) {
-    const title = count === 1 ? "Delete this blocked time?" : `Delete ${count} blocked times?`;
+    const title = count === 1 ? "Delete this time off?" : `Delete ${count} time off entries?`;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
@@ -240,7 +240,7 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
             : pendingDelete.rows.map(r => r.id);
         deleteBlockedTimes(ids);
         showToast(
-            ids.length === 1 ? "Blocked time deleted" : `${ids.length} blocked times deleted`,
+            ids.length === 1 ? "Time off deleted" : `${ids.length} time off entries deleted`,
             "Staff schedules have been updated.",
             "success", "trash",
         );
@@ -261,7 +261,7 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                 {filtered.length === 0 ? (
                     <div className="relative" style={{ minHeight: 400 }}>
                         <EmptyState
-                            title={isTrulyEmpty ? "No blocked time yet" : "No blocked time found"}
+                            title={isTrulyEmpty ? "No time off yet" : "No time off found"}
                             subtitle={isTrulyEmpty
                                 ? "Use Add new to block time for one or more staff members."
                                 : "Try adjusting your search."}
@@ -279,7 +279,7 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                                                 checked={allChecked}
                                                 indeterminate={someChecked}
                                                 onChange={toggleAll}
-                                                ariaLabel="Select all blocked times"
+                                                ariaLabel="Select all time off entries"
                                             />
                                         </th>
                                         <th className={cn(TH, "w-[200px]")}>

@@ -1143,7 +1143,7 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
                                         Week views below. */}
                                     {blockedDates.has(day.iso) && (
                                         <div className="text-[10px] font-semibold text-[#475467] px-1.5 py-0.5 rounded border-1 border-[#d0d5dd] bg-[repeating-linear-gradient(45deg,_#f2f4f7_0,_#f2f4f7_3px,_transparent_0,_transparent_6px)] truncate"
-                                            title="Blocked time on this day">
+                                            title="Time off on this day">
                                             Blocked
                                         </div>
                                     )}

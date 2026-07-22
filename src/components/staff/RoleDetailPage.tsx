@@ -182,7 +182,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Total staffs</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{totalStaffs} {totalStaffs === 1 ? "staff" : "staffs"}</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{totalStaffs} {totalStaffs === 1 ? "staff" : "staff"}</p>
                         </div>
                         {isLocked && (
                             <div className="flex flex-col gap-1">
@@ -633,7 +633,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
             <div className="flex items-end justify-between gap-3 flex-wrap">
                 <div className="flex flex-col">
                     <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{scoped.length} {scoped.length === 1 ? "staff" : "staffs"}</p>
+                    <p className="text-[16px] font-medium text-[#101828]">{scoped.length} {scoped.length === 1 ? "staff" : "staff"}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToolbarSearch value={search} onChange={setSearch} placeholder="Search staff..." />
@@ -774,7 +774,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
             {/* Bulk confirm */}
             {bulkPending && (() => {
                 const cfg = CONFIRM_CFG[bulkPending];
-                const subject = `${selectionCount} ${selectionCount === 1 ? "staff" : "staffs"}`;
+                const subject = `${selectionCount} ${selectionCount === 1 ? "staff" : "staff"}`;
                 return (
                     <ConfirmModal
                         open

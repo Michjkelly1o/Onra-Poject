@@ -161,7 +161,7 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
 //   • "role-only" (new `/admin/staff/roles` menu item) → plain "Add role"
 //     primary button, no dropdown.
 //   • "staff-only" (new `/admin/staff` menu item — Staff & shift) → dropdown
-//     with "Add staff" + "Add shift" + "Add blocked time" so the Shift
+//     with "Add staff" + "Add shift" + "Add time off" so the Shift
 //     management + Blocked time sub-tabs can spawn their own records.
 //
 // Designs for Shift / Blocked time forms land next pass — the dropdown
@@ -198,7 +198,7 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
             ? [
                 { label: "Add staff",         icon: <UserPlus01 className="w-4 h-4 text-[#667085]" />,    onClick: onAddStaff },
                 { label: "Add shift",         icon: <ClockPlus className="w-4 h-4 text-[#667085]" />,     onClick: () => onAddShift?.() },
-                { label: "Add blocked time",  icon: <AlarmClockOff className="w-4 h-4 text-[#667085]" />, onClick: () => onAddBlockedTime?.() },
+                { label: "Add time off",  icon: <AlarmClockOff className="w-4 h-4 text-[#667085]" />, onClick: () => onAddBlockedTime?.() },
             ]
             : [
                 { label: "Add role",  icon: <UserSquare className="w-4 h-4 text-[#667085]" />,  onClick: onAddRole  },
@@ -1052,7 +1052,17 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         {/* Tab pill strip:
                               • combined view (legacy) → Roles | Staff side-by-side
                               • staff-only view       → Staff sub-tabs (Staff |
-                                Shift management | Blocked time) */}
+                                Shifts | Time off).
+                            Client 2026-07-22 rename:
+                              "Staff (Ns)"          → "Staff (N)"    (singular)
+                              "Shift management"    → "Shifts"
+                              "Blocked time"        → "Time off"
+                            Internal state keys unchanged
+                            (`staff-only`, `shift-management`, `blocked-time`)
+                            so URL params, deep-links, and every existing
+                            conditional keeps working — only the visible
+                            labels changed. Full rename happens in the
+                            data-model phase; this pass is copy-only. */}
                         {forceTab === undefined && (
                             <SegmentedTabs
                                 tabs={[
@@ -1067,8 +1077,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             <SegmentedTabs
                                 tabs={[
                                     { key: "staff",            label: "Staff" },
-                                    { key: "shift-management", label: "Shift management" },
-                                    { key: "blocked-time",     label: "Blocked time" },
+                                    { key: "shift-management", label: "Shifts" },
+                                    { key: "blocked-time",     label: "Time off" },
                                 ]}
                                 activeKey={staffSubTab}
                                 onChange={(k) => setStaffSubTab(k as typeof staffSubTab)}

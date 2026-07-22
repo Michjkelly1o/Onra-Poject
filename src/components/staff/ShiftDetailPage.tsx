@@ -497,7 +497,7 @@ function AssignedStaffsTab({ shift, onChangeRoleFor, onChangeShiftFor }: {
                 <div className="flex flex-col">
                     <p className="text-[14px] text-[#667085]">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
-                        {scoped.length} {scoped.length === 1 ? "staff" : "staffs"}
+                        {scoped.length} {scoped.length === 1 ? "staff" : "staff"}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -632,7 +632,7 @@ function AssignedStaffsTab({ shift, onChangeRoleFor, onChangeShiftFor }: {
             })()}
             {bulkPending && (() => {
                 const cfg = CONFIRM_CFG[bulkPending];
-                const subject = `${selectionCount} ${selectionCount === 1 ? "staff" : "staffs"}`;
+                const subject = `${selectionCount} ${selectionCount === 1 ? "staff" : "staff"}`;
                 return (
                     <ConfirmModal
                         open
@@ -750,7 +750,7 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Staffs</p>
+                            <p className="text-[14px] text-[#667085]">Staff</p>
                             <p className="text-[16px] font-medium text-[#101828]">{totalStaffs}</p>
                         </div>
                     </div>

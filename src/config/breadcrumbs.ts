@@ -164,7 +164,7 @@ const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/staff/roles",         listPath: "/admin/staff/roles",       label: "Role & permissions",   detailNoun: "Role details" },
     { prefix: "/staff/pay-rate",      listPath: "/admin/staff/pay-rate",    label: "Pay rate",             detailNoun: "Pay rate details" },
     { prefix: "/staff/shifts",        listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Shift details" },
-    { prefix: "/staff/blocked-time",  listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Blocked time" },
+    { prefix: "/staff/blocked-time",  listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Time off" },
     { prefix: "/compensation",        listPath: "/admin/compensation",      label: "Payroll",              detailNoun: "Payroll details" },
     { prefix: "/reports",             listPath: "/admin/reports",           label: "Reports" },
     { prefix: "/pos",                 listPath: "/admin/pos",               label: "Point of sale" },
@@ -275,7 +275,7 @@ const LEAF_LABELS: Record<string, string> = {
     "design":            "Customize design",
     "permissions":       "Permissions",
     "run":               "Run payroll",
-    "blocked-time":      "Blocked time",
+    "blocked-time":      "Time off",
 };
 
 /** Fallback for segments not covered anywhere else — turns "class-types"
