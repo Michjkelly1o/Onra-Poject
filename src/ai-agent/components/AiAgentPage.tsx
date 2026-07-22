@@ -836,9 +836,9 @@ function AgentChatSurface({
                     className="absolute inset-x-0 bottom-0 h-[58%]"
                     style={{
                         background:
-                            // Opacity dialled back ~30% (client 2026-07-23) —
-                            // 0.35→0.25 mid, 0.72→0.50 foot.
-                            "linear-gradient(to bottom, rgba(196,237,214,0) 0%, rgba(196,237,214,0.25) 55%, rgba(196,237,214,0.50) 100%)",
+                            // Opacity dialled back a further 20% (client
+                            // 2026-07-23) — 0.25→0.20 mid, 0.50→0.40 foot.
+                            "linear-gradient(to bottom, rgba(196,237,214,0) 0%, rgba(196,237,214,0.20) 55%, rgba(196,237,214,0.40) 100%)",
                     }}
                 />
             </div>
@@ -893,10 +893,11 @@ function ConcentricSquaresDecoration() {
                     height: 800,
                     // Pushed further DOWN (client 2026-07-22) so the pattern
                     // sits lower — only the topmost chevron arcs rise above
-                    // the foot of the canvas. Opacity dialled back so the
-                    // lines are a faint texture, not a loud graphic.
+                    // the foot of the canvas. Opacity dialled back a further
+                    // 30% (client 2026-07-23) so the lines are a faint
+                    // texture — 0.28→0.196.
                     transform: "translate(-50%, 52%) rotate(-32.1deg)",
-                    opacity: 0.28,
+                    opacity: 0.196,
                 }}
             >
                 {/* Masked content — the SVG mask is a radial fade from
