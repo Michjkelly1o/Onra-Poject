@@ -575,13 +575,13 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                                 displayValue={combinedLabel}
                             />
                         </div>
-                        <button type="button" onClick={() => onDeleteSlot(i)} disabled={i === 0}
-                            className={cn(
-                                "w-11 h-11 flex items-center justify-center rounded-[8px] border-1 bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] shrink-0 transition-colors",
-                                i === 0
-                                    ? "border-[#e4e7ec] text-[#fecdca] cursor-not-allowed"
-                                    : "border-[#e4e7ec] text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b]"
-                            )}>
+                        {/* Every slot is deletable, including the first
+                            (client 2026-07-22). Deleting the last remaining
+                            slot removes this weekday from the picker
+                            entirely — see the parent's `deleteSlot`. */}
+                        <button type="button" onClick={() => onDeleteSlot(i)}
+                            aria-label="Remove time slot"
+                            className="w-11 h-11 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] shrink-0 text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b] transition-colors">
                             <Trash01 className="w-5 h-5" />
                         </button>
                     </div>
@@ -1809,7 +1809,21 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         setDaySlots(ds => ({ ...ds, [day]: [...(ds[day] ?? []), { start: "", end: "" }] }));
     }
     function deleteSlot(day: string, i: number) {
-        setDaySlots(ds => ({ ...ds, [day]: ds[day].filter((_, idx) => idx !== i) }));
+        // Client 2026-07-22: every slot is deletable, including the first
+        // one. When the removed slot leaves the day with zero slots, the
+        // day itself is removed from the picked weekday set — the row
+        // disappears entirely instead of lingering as an empty card.
+        setDaySlots(ds => {
+            const remaining = (ds[day] ?? []).filter((_, idx) => idx !== i);
+            if (remaining.length === 0) {
+                // Drop the day from selectedDays AND clear its slot list
+                // so re-adding the day starts fresh with one empty slot.
+                setSelectedDays(prev => prev.filter(d => d !== day));
+                const { [day]: _dropped, ...rest } = ds;
+                return rest;
+            }
+            return { ...ds, [day]: remaining };
+        });
     }
 
     // Generate preview of recurring classes
