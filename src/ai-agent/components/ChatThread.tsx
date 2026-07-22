@@ -34,8 +34,12 @@ import { useChat } from "@ai-sdk/react";
 import {
     Attachment01,
     Send03,
+    PencilLine,
+    Stars02,
+    User01,
     AlertCircle,
     RefreshCw01,
+    UploadCloud02,
     Copy03,
     Edit02,
     Check,
@@ -545,11 +549,42 @@ function InsightEmptyState({
                     </div>
                 </div>
 
-                {/* AI input block — composer then context-specific starter
-                    prompts (Figma 18841:8842). */}
+                {/* AI input block — composer, the typeahead suggestions (only
+                    while typing), then the Create / Insight / Customer cards. */}
                 <div className="flex flex-col gap-5 w-full">
-                    {composer}
-                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.insight} onSend={onSend} query={query} />
+                    <div className="relative w-full">
+                        {composer}
+                        <SuggestedPromptList prompts={SUGGESTED_PROMPTS.insight} onSend={onSend} query={query} />
+                    </div>
+                    {/* Entry cards — Create / Insight / Customer (row, gap-16). */}
+                    <div className="flex gap-4 w-full">
+                        <SuggestionCard
+                            icon={PencilLine}
+                            title="Create"
+                            description="Set up new classes, plans, packs, and staff."
+                            onClick={() => onSend("Show me every quick-create shortcut in admin.")}
+                        />
+                        <SuggestionCard
+                            icon={Stars02}
+                            title="Insight"
+                            description="Get quick insights to help grow your studio."
+                            onClick={() =>
+                                onSend(
+                                    "Give me a studio overview — revenue this month, active customers, top-selling plans.",
+                                )
+                            }
+                        />
+                        <SuggestionCard
+                            icon={User01}
+                            title="Customer"
+                            description="Find customers and jump straight to their profile."
+                            onClick={() =>
+                                onSend(
+                                    "Help me find a customer. Ask me for the name, email, or phone to search for.",
+                                )
+                            }
+                        />
+                    </div>
                 </div>
             </div>
         </div>
@@ -590,8 +625,23 @@ function StudioSetupEmptyState({
                         also show you what&apos;s already configured.
                     </p>
                 </div>
-                {/* Composer + context-specific starter prompts. */}
-                <div className="flex flex-col gap-5 w-full">
+                <button
+                    type="button"
+                    onClick={() =>
+                        onStart("What's set up in my studio and what should I do next?")
+                    }
+                    className={cn(
+                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
+                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                        "hover:bg-[#aad4bd] transition-colors",
+                    )}
+                >
+                    <Stars02 className="size-4" />
+                    Show me what&apos;s missing
+                </button>
+                {/* Composer + typeahead suggestions (floating, only while typing). */}
+                <div className="relative w-full">
                     {composer}
                     <SuggestedPromptList prompts={SUGGESTED_PROMPTS.studio_setup} onSend={onStart} query={query} />
                 </div>
@@ -634,8 +684,21 @@ function MigrationEmptyState({
                         export. Attach a CSV any time with the paperclip.
                     </p>
                 </div>
-                {/* Composer + context-specific starter prompts. */}
-                <div className="flex flex-col gap-5 w-full">
+                <button
+                    type="button"
+                    onClick={() => onStart("I want to migrate my customer data into Onra.")}
+                    className={cn(
+                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
+                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                        "hover:bg-[#aad4bd] transition-colors",
+                    )}
+                >
+                    <UploadCloud02 className="size-4" />
+                    Start migration
+                </button>
+                {/* Composer + typeahead suggestions (floating, only while typing). */}
+                <div className="relative w-full">
                     {composer}
                     <SuggestedPromptList prompts={SUGGESTED_PROMPTS.migration} onSend={onStart} query={query} />
                 </div>
@@ -680,11 +743,9 @@ const SUGGESTED_PROMPTS: Record<AiAgentMode, SuggestedPrompt[]> = {
 };
 
 /** Suggested-prompt list — Figma 18841:8842. A card of clickable starter
- *  prompts (arrow icon + lead + label). Sits under the composer on every chat
- *  type's empty state. The box stays at the starting point; once the user
- *  starts typing it narrows to the prompts matching what they've typed (a
- *  live typeahead). When nothing matches, the box hides so it isn't an empty
- *  frame — but with an empty query it always shows the full starter set. */
+ *  prompts (arrow icon + lead + label). Hidden by default; it only appears
+ *  once the user starts typing, as a live typeahead of the prompts whose
+ *  lead+label match what they've typed. Empty input → nothing shown. */
 function SuggestedPromptList({
     prompts,
     onSend,
@@ -695,14 +756,18 @@ function SuggestedPromptList({
     query?: string;
 }) {
     const q = query.trim().toLowerCase();
-    const shown = q
-        ? prompts.filter((p) => `${p.lead} ${p.label}`.toLowerCase().includes(q))
-        : prompts;
-    // Keep the box at the starting point (empty query). While typing, hide it
-    // only when there are genuinely no matches.
+    // Nothing typed → don't show the box at all.
+    if (!q) return null;
+    const shown = prompts.filter((p) =>
+        `${p.lead} ${p.label}`.toLowerCase().includes(q),
+    );
+    // Typing but no matches → hide rather than show an empty frame.
     if (shown.length === 0) return null;
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+        // Floating dropdown — absolutely positioned under the composer so it
+        // overlays whatever is below (cards / buttons) instead of pushing the
+        // layout taller. The parent wraps the composer in `relative`.
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
             <div className="flex flex-col py-1">
                 {shown.map((p, i) => (
                     <div key={i} className="px-1.5 py-0.5">
@@ -723,6 +788,51 @@ function SuggestedPromptList({
                 ))}
             </div>
         </div>
+    );
+}
+
+function SuggestionCard({
+    icon: Icon,
+    title,
+    description,
+    onClick,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    description: string;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+                "flex-1 min-w-0 p-4 rounded-xl text-left",
+                "bg-white border border-[#e4e7ec]",
+                "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
+                "hover:border-[#d0d5dd] hover:shadow-[0px_16px_20px_-4px_rgba(16,24,40,0.12),0px_6px_8px_-2px_rgba(16,24,40,0.04)] transition-all",
+            )}
+        >
+            <div className="flex flex-col gap-2 items-start">
+                <div
+                    className={cn(
+                        "size-8 flex items-center justify-center rounded-[6px]",
+                        "bg-white border border-[#e4e7ec]",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    )}
+                >
+                    <Icon className="size-4 text-[#344054]" />
+                </div>
+                <div className="flex flex-col w-full">
+                    <span className="text-[14px] font-medium leading-5 text-[#344054]">
+                        {title}
+                    </span>
+                    <span className="text-[14px] leading-5 text-[#475467]">
+                        {description}
+                    </span>
+                </div>
+            </div>
+        </button>
     );
 }
 
