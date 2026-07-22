@@ -30,6 +30,7 @@ import type {
     Staff,
     Role,
     PromoCode,
+    MarketingItem,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -123,6 +124,7 @@ export interface ImportDeps {
         status: "active" | "archive";
         usageCount: number;
     }) => string;
+    addMarketingItem: (input: Omit<MarketingItem, "id"> & { id?: string }) => string;
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -332,6 +334,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     staff: "staff",
     promo_codes: "promo_codes",
     pay_rates: "pay_rates",
+    campaigns: "campaigns",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -595,6 +598,44 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "campaigns") {
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const records = materialize("campaigns", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.title) continue;
+            const t = (rec.type ?? "").toLowerCase();
+            const type: "new_class" | "announcement" | "event" = /new.?class|launch/.test(t)
+                ? "new_class"
+                : /event/.test(t)
+                  ? "event"
+                  : "announcement";
+            const url = (rec.external_url ?? "").trim();
+            deps.addMarketingItem({
+                title: rec.title,
+                type,
+                short_description: rec.description || "",
+                action_type: url ? "external_link" : "no_action",
+                external_url: url || undefined,
+                publish_date: `${toISODate(rec.publish_date) ?? todayISO}T09:00:00Z`,
+                expiry_date: toISODate(rec.expiry_date)
+                    ? `${toISODate(rec.expiry_date)}T09:00:00Z`
+                    : undefined,
+                branch_ids: [],
+                status: "active",
+                view_count: 0,
+                click_count: 0,
+                conversion_count: 0,
+                created_at: new Date().toISOString(),
             });
             created++;
         }
