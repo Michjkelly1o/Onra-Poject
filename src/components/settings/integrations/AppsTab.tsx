@@ -21,7 +21,7 @@
 // Data shape + store actions + cascade rules are unchanged.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SearchMd, FilterLines, Link04, Plus, Check } from "@untitledui/icons";
+import { SearchMd, Link04, Plus, Check } from "@untitledui/icons";
 import { useAppStore, type Integration } from "@/lib/store";
 import {
     IntegrationCard,
@@ -42,6 +42,7 @@ import { RequestIntegrationModal } from "./RequestIntegrationModal";
 import { Button } from "@/components/ui/button";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { Sliders } from "@/components/icons/Sliders";
 
 // One discriminated-union flow state covering every modal step.
 type FlowState =
@@ -287,7 +288,7 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
                 <Button variant="secondary-gray" size="icon" aria-label="Filter"
                     onClick={() => onOpenChange(!open)}>
                     <span className="relative inline-flex">
-                        <FilterLines className="w-4 h-4" />
+                        <Sliders className="w-5 h-5" />
                         {value && (
                             <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}

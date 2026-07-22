@@ -435,7 +435,9 @@ export default function CompensationPage() {
                         className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
-                <DateRangeFilter value={period} onChange={setPeriod} />
+                {/* Toolbar order (client 2026-07-22 sweep): Locations →
+                    Search → Export → Filter → Primary. Compensation's
+                    Filter is the DateRangeFilter (period selector). */}
                 <ToolbarExport
                     disabled={filteredRows.length === 0}
                     onExportCsv={() => {
@@ -447,6 +449,7 @@ export default function CompensationPage() {
                         );
                     }}
                 />
+                <DateRangeFilter value={period} onChange={setPeriod} />
                 <Button variant="primary" size="md" onClick={handleRunPayroll}>
                     Run payroll
                 </Button>

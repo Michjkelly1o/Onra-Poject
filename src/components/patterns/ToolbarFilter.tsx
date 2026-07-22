@@ -16,8 +16,8 @@
 // copy (defaults to "Filter"), but the button no longer renders the
 // text — only the tooltip does.
 
-import { FilterLines } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
+import { Sliders } from "@/components/icons/Sliders";
 import { IconTooltip } from "./IconTooltip";
 
 export interface ToolbarFilterProps {
@@ -43,7 +43,12 @@ export function ToolbarFilter({ onClick, active = false, label = "Filter", size 
                 onClick={onClick}
             >
                 <span className="relative inline-flex">
-                    <FilterLines className="w-4 h-4" />
+                    {/* Custom Sliders glyph — replaces FilterLines
+                        (client 2026-07-22). Rendered at 20 px so the
+                        drawn area matches other 4-hi icons after their
+                        stroke padding; strokeWidth={2} keeps weight
+                        consistent with sibling icons. */}
+                    <Sliders className="w-5 h-5" />
                     {active && (
                         <span
                             className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white"

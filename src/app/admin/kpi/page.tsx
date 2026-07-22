@@ -246,10 +246,10 @@ export default function KpiPage() {
                 </div>
             </div>
 
-            {/* Toolbar */}
+            {/* Toolbar — order (client 2026-07-22 sweep): Locations →
+                Search → Filter (DateRangeFilter on this page). */}
             <div className="flex items-center gap-3">
                 <div className="flex-1" />
-                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search KPI..." />
                 {/* Location picker — reused from the dashboard header
                     (same MarkerPin01 glyph + "All locations" sentinel). */}
                 <SelectInput
@@ -260,6 +260,7 @@ export default function KpiPage() {
                     onChange={setLocation}
                     width="w-[220px]"
                 />
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search KPI..." />
                 <DateRangeFilter value={period} onChange={setPeriod} />
             </div>
 

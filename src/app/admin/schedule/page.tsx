@@ -1089,10 +1089,15 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, activeBranc
 
 // ─── Month view ───────────────────────────────────────────────────────────────
 
-function MonthView({ classes, monthYear, onClassClick }: {
+function MonthView({ classes, monthYear, onClassClick, onMoreClick }: {
     classes: ClassInstance[];
     monthYear: string;
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
+    /** Fires when the day tile's "+N more" pill is clicked. Hands back the
+     *  DAY's full class list + click position so the parent can open the
+     *  DayClassListPopup anchored near the pill. Client 2026-07-22 —
+     *  previously the +N more pill was inert. */
+    onMoreClick: (dateISO: string, dayClasses: ClassInstance[], e: React.MouseEvent) => void;
 }) {
     // Blocked-time markers are intentionally OMITTED in Month view.
     // Month tiles are per-day not per-instructor, so a "Blocked" badge
@@ -1150,12 +1155,129 @@ function MonthView({ classes, monthYear, onClassClick }: {
                                             );
                                         })}
                                         {dayClasses.length > 2 && (
-                                            <ScheduleMorePill count={dayClasses.length - 2} />
+                                            <ScheduleMorePill
+                                                count={dayClasses.length - 2}
+                                                onClick={(e) => onMoreClick(day.iso, dayClasses, e)}
+                                            />
                                         )}
                                     </div>
                                 </>
                             )}
                         </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ─── Day-list popup (month view "+N more") ───────────────────────────────────
+//
+// Client 2026-07-22: the month-view "+ N more" pill was inert. Now it opens
+// this floating panel — same chrome as `ClassPopup` (fixed-positioned white
+// card, matching border/shadow so both popups read as siblings) but the
+// content is a scrollable list of every class on that day. Each row is
+// clickable and opens the standard `ClassPopup` for that class.
+
+function DayClassListPopup({ dateISO, classes, anchor, onClose, onClassClick }: {
+    dateISO: string;
+    classes: ClassInstance[];
+    anchor: { x: number; y: number };
+    onClose: () => void;
+    /** Called when a row is clicked. Same signature as MonthView's
+     *  `onClassClick` so the parent can reuse `handleClassClick` — that
+     *  handler opens the regular ClassPopup for the picked class. */
+    onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
+}) {
+    const popupRef = useRef<HTMLDivElement>(null);
+    const WIDTH = 340;
+    const MAX_H = 480;
+
+    // Position: prefer right of anchor, flip left if near right edge; clamp
+    // to viewport so a click on the last row of the last week doesn't push
+    // the panel off-screen.
+    const left = anchor.x + 12 + WIDTH > window.innerWidth - 16
+        ? Math.max(8, anchor.x - WIDTH - 12)
+        : anchor.x + 12;
+    const top = Math.min(anchor.y, window.innerHeight - MAX_H - 16);
+
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        function handleClick(e: MouseEvent) {
+            if (popupRef.current && !popupRef.current.contains(e.target as Node)) onClose();
+        }
+        document.addEventListener("keydown", handleKey);
+        document.addEventListener("mousedown", handleClick);
+        return () => {
+            document.removeEventListener("keydown", handleKey);
+            document.removeEventListener("mousedown", handleClick);
+        };
+    }, [onClose]);
+
+    // Human-readable date for the header — "Fri, Aug 8 · 5 classes".
+    const dateLabel = (() => {
+        const d = new Date(`${dateISO}T00:00:00`);
+        const day = d.toLocaleDateString("en-US", { weekday: "short" });
+        const month = d.toLocaleDateString("en-US", { month: "short" });
+        return `${day}, ${month} ${d.getDate()}`;
+    })();
+
+    // Sort by start time so rows read top-to-bottom chronologically.
+    const sorted = [...classes].sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    return (
+        <div ref={popupRef}
+            style={{ position: "fixed", top, left, width: WIDTH, maxHeight: MAX_H, zIndex: 9999 }}
+            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+        >
+            {/* Header — date + count + close */}
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e4e7ec]">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-[#101828] truncate">{dateLabel}</p>
+                    <p className="text-[12px] text-[#667085] leading-[16px]">
+                        {sorted.length} {sorted.length === 1 ? "class" : "classes"}
+                    </p>
+                </div>
+                <button type="button" onClick={onClose} aria-label="Close"
+                    className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085] shrink-0">
+                    <XClose className="w-4 h-4" />
+                </button>
+            </div>
+
+            {/* Scrollable list — one row per class */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-2 flex flex-col gap-1">
+                {sorted.map(cls => {
+                    const col = getCategoryColor(cls.category);
+                    return (
+                        <button
+                            key={cls.id}
+                            type="button"
+                            onClick={(e) => { onClose(); onClassClick(cls, e); }}
+                            className="w-full flex items-start gap-3 px-2 py-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left"
+                        >
+                            {/* Colored dot on category so the row echoes the
+                                month tile's tinted cards */}
+                            <span className="mt-1.5 w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: col.border }} aria-hidden />
+                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-[13px] font-medium text-[#344054] shrink-0">
+                                        {cls.displayTime}
+                                    </span>
+                                    <span className="text-[13px] font-semibold text-[#101828] truncate">
+                                        {cls.name}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <SessionTypeTag type={cls.type} size="sm" />
+                                    <span className="text-[12px] text-[#98a2b3] shrink-0">·</span>
+                                    <span className="text-[12px] text-[#667085] truncate">{cls.instructorName}</span>
+                                    <span className="text-[12px] text-[#98a2b3] shrink-0">·</span>
+                                    <span className="text-[12px] text-[#667085] shrink-0">{cls.booked}/{cls.capacity}</span>
+                                </div>
+                            </div>
+                            <StatusBadge type="class" status={cls.status} />
+                        </button>
                     );
                 })}
             </div>
@@ -1460,6 +1582,12 @@ function SchedulePage() {
     // active branch (see the widening logic below) instead of a specific one.
     const [location, setLocation] = useState<string>("");
     const [popup, setPopup] = useState<{ cls: ClassInstance; anchor: { x: number; y: number } } | null>(null);
+    // Month-view day-list popup — opens when a day tile's "+N more" pill is
+    // clicked, closes when the user picks a class (which then opens the
+    // regular `popup` above) or clicks outside. Client 2026-07-22.
+    const [dayListPopup, setDayListPopup] = useState<
+        { dateISO: string; classes: ClassInstance[]; anchor: { x: number; y: number } } | null
+    >(null);
     const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
     const cancelTarget = cancelTargetId ? classSchedules.find(c => c.id === cancelTargetId) ?? null : null;
@@ -1495,6 +1623,14 @@ function SchedulePage() {
         e.stopPropagation();
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         setPopup({ cls, anchor: { x: rect.right, y: rect.top } });
+    }
+
+    /** Month-view "+N more" click — opens the DayClassListPopup anchored
+     *  near the pill so admins can pick from every class on that day. */
+    function handleMoreClick(dateISO: string, dayClasses: ClassInstance[], e: React.MouseEvent) {
+        e.stopPropagation();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setDayListPopup({ dateISO, classes: dayClasses, anchor: { x: rect.right, y: rect.top } });
     }
 
     const hasActiveFilter = applied.types.length > 0 || applied.statuses.length > 0 ||
@@ -1627,10 +1763,9 @@ function SchedulePage() {
                     placeholder="Search"
                     widthClass="w-[200px]"
                 />
-                {/* Filter — after Location + Search, before Export + Add.
-                    Green dot marks any active filter. Icon-only via the
-                    shared ToolbarFilter (client 2026-07-21). */}
-                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                {/* Toolbar order (client 2026-07-22 sweep): Locations →
+                    Search → Export → Filter → Primary action. Green dot on
+                    Filter marks any active filter. */}
                 <ToolbarExport
                     onExportCsv={() => {
                         exportScheduleCsv(filteredClasses);
@@ -1641,6 +1776,7 @@ function SchedulePage() {
                         );
                     }}
                 />
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                 {/* Add new — dropdown (client 2026-07-21). Was a single
                     button routing to /schedule/new. Now offers the three
                     session types so the admin can create a class, a
@@ -1741,7 +1877,7 @@ function SchedulePage() {
                 )}
 
                 {activeTab === "month" && (
-                    <MonthView monthYear={monthYear} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <MonthView monthYear={monthYear} classes={filteredClasses} onClassClick={handleClassClick} onMoreClick={handleMoreClick} />
                 )}
             </div>
 
@@ -1750,6 +1886,20 @@ function SchedulePage() {
                 applied={applied} onApply={f => { setApplied(f); setPage(1); }}
                 categories={categoryNames}
             />
+
+            {/* Month-view day-list popup — surfaces every class on a day
+                when the "+N more" pill is clicked. Clicking a row here
+                closes this popup and opens the standard ClassPopup below
+                (via `handleClassClick`). Client 2026-07-22. */}
+            {dayListPopup && (
+                <DayClassListPopup
+                    dateISO={dayListPopup.dateISO}
+                    classes={dayListPopup.classes}
+                    anchor={dayListPopup.anchor}
+                    onClose={() => setDayListPopup(null)}
+                    onClassClick={handleClassClick}
+                />
+            )}
 
             {/* Class floating popup */}
             {popup && (

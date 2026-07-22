@@ -651,8 +651,14 @@ function MarketingOverrideRow({
 // ─── Column headers row ───────────────────────────────────────────────────
 
 function ColumnHeaders({ waConnected }: { waConnected: boolean }) {
+    // `sticky top-0` pins the column row to the top of the scroll ancestor
+    // (see the wrapper `<div className="flex-1 overflow-y-auto ...">` in
+    // `CustomerNotificationsPage`) so admins scrolling through 30+ event
+    // rows keep the "Email / WhatsApp / SMS / …" labels in view. `z-10`
+    // sits above the row content; `border-b` gives a visual separator when
+    // the header is pinned above scrolled rows. Client 2026-07-22.
     return (
-        <div className="flex items-center gap-4 pl-11 pr-4 h-[44px] bg-[#fafafa] border-t border-[#e4e7ec]">
+        <div className="sticky top-0 z-10 flex items-center gap-4 pl-11 pr-4 h-[44px] bg-[#fafafa] border-t border-b border-[#e4e7ec]">
             <div className="flex-1 min-w-0 text-[12px] font-medium text-[#475467]">Notifications</div>
             <div className={cn(COL_EMAIL, "text-center text-[12px] font-medium text-[#475467]")}>Email</div>
             <div className={cn(COL_WA, "flex items-center justify-center gap-1")}>
@@ -1598,10 +1604,17 @@ export default function CustomerNotificationsPage() {
             {/* Single unified card — page title + toolbar sit above the
              *  column header row, with the table body below. Divider
              *  bars come from the border-t on `ColumnHeaders` and each
-             *  `Section` so we don't stack extra rules. */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+             *  `Section` so we don't stack extra rules.
+             *
+             *  Card is a column-flex box capped at viewport height minus
+             *  the admin chrome (`max-h-[calc(100vh-220px)]`) so the
+             *  body region below the title strip scrolls INSIDE the card
+             *  and the sticky `ColumnHeaders` inside pins to that inner
+             *  scroll ancestor — client 2026-07-22 asked to keep column
+             *  headers visible while scrolling long event lists. */}
+            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col max-h-[calc(100vh-220px)]">
                 {/* Top strip — title + Quiet hours pill + Delivery hours button */}
-                <div className="flex items-start gap-4 px-6 py-5">
+                <div className="flex items-start gap-4 px-6 py-5 shrink-0">
                     <div className="flex-1 flex flex-col gap-1">
                         <p className="text-[16px] font-semibold text-[#101828]">Customer notifications</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
@@ -1623,28 +1636,32 @@ export default function CustomerNotificationsPage() {
                     </div>
                 </div>
 
-                {/* Column headers row + collapsible category sections */}
-                <ColumnHeaders waConnected={whatsappConnected} />
-                {CATEGORY_ORDER.map(cat => (
-                    <Section
-                        key={cat}
-                        category={cat}
-                        items={byCategory[cat]}
-                        open={openGroups[cat]}
-                        onToggle={() => toggleGroup(cat)}
-                        waConnected={whatsappConnected}
-                        onChannelToggle={handleChannelToggle}
-                        onLockHit={firePaymentLockToast}
-                        onEditTemplate={ns => setTemplateEditor({ ns })}
-                        onManageTiming={ns => setTemplateEditor({ ns, initialTab: "timing" })}
-                        marketingOptedIn={marketingOptedIn}
-                        marketingTotal={marketingTotal}
-                        branches={branches}
-                        allSettings={settings}
-                        onAddBranchOverride={addMarketingBranchOverride}
-                        onRemoveBranchOverride={removeMarketingBranchOverride}
-                    />
-                ))}
+                {/* Scroll region — column headers pin via `sticky top-0`
+                    on this element (the scroll ancestor). Collapsible
+                    category sections stack below. */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <ColumnHeaders waConnected={whatsappConnected} />
+                    {CATEGORY_ORDER.map(cat => (
+                        <Section
+                            key={cat}
+                            category={cat}
+                            items={byCategory[cat]}
+                            open={openGroups[cat]}
+                            onToggle={() => toggleGroup(cat)}
+                            waConnected={whatsappConnected}
+                            onChannelToggle={handleChannelToggle}
+                            onLockHit={firePaymentLockToast}
+                            onEditTemplate={ns => setTemplateEditor({ ns })}
+                            onManageTiming={ns => setTemplateEditor({ ns, initialTab: "timing" })}
+                            marketingOptedIn={marketingOptedIn}
+                            marketingTotal={marketingTotal}
+                            branches={branches}
+                            allSettings={settings}
+                            onAddBranchOverride={addMarketingBranchOverride}
+                            onRemoveBranchOverride={removeMarketingBranchOverride}
+                        />
+                    ))}
+                </div>
             </div>
 
             {templateEditor && (

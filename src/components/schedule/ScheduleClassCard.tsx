@@ -328,7 +328,13 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
 }
 
 // ─── "+N more" overflow pill (month view) ────────────────────────────────────
-export function ScheduleMorePill({ count, onClick }: { count: number; onClick?: () => void }) {
+export function ScheduleMorePill({ count, onClick }: {
+    count: number;
+    /** Called with the click event so the month-view can anchor its
+     *  DayClassListPopup near the pill's position. Signature updated
+     *  2026-07-22 (was `() => void`). */
+    onClick?: (e: React.MouseEvent) => void;
+}) {
     return (
         <button type="button" onClick={onClick}
             className="text-[11px] font-medium text-[#475467] hover:text-[#101828] px-1.5 py-[3px] w-full text-left transition-colors">

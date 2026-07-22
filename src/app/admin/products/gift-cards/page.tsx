@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, Plus, DotsVertical,
+    SearchMd, Plus, DotsVertical,
     ChevronLeft, Eye, Edit02, Trash01, Trash02, Archive,
     Download01, XClose, RefreshCcw01, SlashCircle01, Check,
     Gift01,
@@ -49,6 +49,7 @@ import {
 } from "@/lib/store";
 import { giftCardHolderCount } from "@/lib/giftCardHolders";
 import type { IssuedGiftCard } from "@/lib/store";
+import { Sliders } from "@/components/icons/Sliders";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ function StatusFilterDropdown({ value, onChange }: {
                 <Button variant="secondary-gray" size="icon" aria-label="Filter"
                     onClick={() => setOpen(p => !p)}>
                     <span className="relative inline-flex">
-                        <FilterLines className="w-4 h-4" />
+                        <Sliders className="w-5 h-5" />
                         {value !== null && (
                             <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}

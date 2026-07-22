@@ -29,7 +29,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, Download01, ChevronLeft, MarkerPin01,
-    SearchMd, FilterLines, CoinsHand, CoinsStacked01, CheckCircle, Users01,
+    SearchMd, CoinsHand, CoinsStacked01, CheckCircle, Users01,
     Check,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,7 @@ import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { Sliders } from "@/components/icons/Sliders";
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ function StatusFilterDropdown({ value, onChange }: {
                 <Button variant="secondary-gray" size="icon" aria-label="Filter"
                     onClick={() => setOpen(p => !p)}>
                     <span className="relative inline-flex">
-                        <FilterLines className="w-4 h-4" />
+                        <Sliders className="w-5 h-5" />
                         {value !== null && (
                             <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}

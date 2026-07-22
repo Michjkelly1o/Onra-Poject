@@ -47,12 +47,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
-    Edit02, SearchLg, FilterLines, Plus, ChevronDown, ChevronRight,
+    Edit02, SearchLg, Plus, ChevronDown, ChevronRight,
     DotsVertical, Building01, LayoutGrid01, Image01, Eye, Archive,
     Pencil01, Trash04, Check, XClose, SlashCircle01, RefreshCcw01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Sliders } from "@/components/icons/Sliders";
 import { useAppStore } from "@/lib/store";
 import type { Branch, Room, BusinessHours } from "@/data/mock/_types";
 import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
@@ -550,7 +551,7 @@ function FilterDropdown({ open, onToggle, onClose, value, onPick }: {
                     onClick={onToggle}
                 >
                     <span className="relative inline-flex">
-                        <FilterLines className="w-4 h-4" />
+                        <Sliders className="w-5 h-5" />
                         {value !== null && (
                             <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}

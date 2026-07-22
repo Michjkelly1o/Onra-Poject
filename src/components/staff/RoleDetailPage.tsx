@@ -22,7 +22,7 @@ import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronDown, ChevronUp, User01, Check,
     Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01, Trash01, Trash02,
-    UserPlus01, SearchMd, FilterLines, DotsVertical, Eye, Send01,
+    UserPlus01, SearchMd, DotsVertical, Eye, Send01,
     BarChartSquare02, Calendar, ShoppingCart02, Package, Speaker01,
     Users01, Settings01, CreditCard02, CoinsHand,
 } from "@untitledui/icons";
@@ -50,6 +50,7 @@ import {
     type Staff, type StaffStatus,
     type PermissionCell, type PermissionSectionSpec, type Branch,
 } from "@/lib/store";
+import { Sliders } from "@/components/icons/Sliders";
 
 // ─── Tokens — status badges + role-type badge colors ──────────────────────
 
@@ -414,7 +415,7 @@ function StatusFilterDropdown({ value, onChange }: {
                 <Button variant="secondary-gray" size="icon" aria-label="Filter"
                     onClick={() => setOpen(p => !p)}>
                     <span className="relative inline-flex">
-                        <FilterLines className="w-4 h-4" />
+                        <Sliders className="w-5 h-5" />
                         {value !== null && (
                             <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}

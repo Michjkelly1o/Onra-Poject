@@ -36,7 +36,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    FilterLines, Plus, DotsVertical, ChevronLeft, Edit02, Trash01, Trash02,
+    Plus, DotsVertical, ChevronLeft, Edit02, Trash01, Trash02,
     Archive, Download01, XClose, RefreshCcw01, SlashCircle01, Check, Percent03,
     ShoppingBag01, FileCheck02,
 } from "@untitledui/icons";
@@ -61,6 +61,7 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
+import { Sliders } from "@/components/icons/Sliders";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -222,7 +223,7 @@ function StatusFilterDropdown({ value, onChange }: {
                 <Button variant="secondary-gray" size="icon" aria-label="Filter"
                     onClick={() => setOpen(p => !p)}>
                     <span className="relative inline-flex">
-                        <FilterLines className="w-4 h-4" />
+                        <Sliders className="w-5 h-5" />
                         {value !== null && (
                             <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
                         )}
