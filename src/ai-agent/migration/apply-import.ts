@@ -26,6 +26,7 @@ import type {
     Instructor,
     Room,
     Branch,
+    Service,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -90,6 +91,7 @@ export interface ImportDeps {
         description?: string;
         price_aed?: number;
     }) => string;
+    addService: (input: Omit<Service, "id">) => string;
     /** Live class categories, for resolving a CSV category name → its FK + color. */
     classCategories: ClassCategory[];
     /** Live slices class_schedule resolves its FKs against. */
@@ -278,6 +280,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     class_templates: "class_templates",
     class_schedule: "class_schedule",
     gift_cards: "gift_cards",
+    services: "services",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -496,6 +499,51 @@ export function applyImportToStore(
                 coverImage: tpl.coverImage,
                 applicableMembershipIds: tpl.applicableMembershipIds,
                 applicablePackageIds: tpl.applicablePackageIds,
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "services") {
+        // Category is a soft FK (resolve by name, fall back to first). If the
+        // studio has no categories we can't build a valid service → skip all.
+        const cats = deps.classCategories;
+        if (cats.length === 0) {
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            return { created: 0, failed: file.rows.length };
+        }
+        const byName = new Map(cats.map((c) => [c.name.trim().toLowerCase(), c]));
+        const roomByName = new Map(deps.rooms.map((r) => [r.name.trim().toLowerCase(), r]));
+        const branch = deps.branches.find((b) => b.id === deps.branchId) ?? deps.branches[0];
+        const records = materialize("services", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            const cat = byName.get((rec.category ?? "").trim().toLowerCase()) ?? cats[0];
+            const type: "private" | "recovery" = /recover|wellness|spa/i.test(rec.type ?? "")
+                ? "recovery"
+                : "private";
+            const capacity = type === "recovery" ? toNumber(rec.capacity, 1) : 0;
+            const room = roomByName.get((rec.room ?? "").trim().toLowerCase());
+            deps.addService({
+                name: rec.name,
+                description: rec.description || "",
+                categoryId: cat.id,
+                category: cat.name,
+                type,
+                openSession: type === "recovery" && capacity > 1,
+                durationMin: toNumber(rec.duration_minutes, 60),
+                capacity,
+                price: toNumber(rec.price, 0),
+                branchId: deps.branchId,
+                branchName: branch?.name ?? "",
+                roomId: room?.id ?? "",
+                status: "Active",
+                coverColor: cat.color_hex ?? "#f1f2ed",
             });
             created++;
         }

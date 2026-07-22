@@ -132,6 +132,7 @@ The wizard supports these target entities. Ask the user which one they're import
 - **class_schedule** — individual class instances (template, date, time, instructor, room)
 - **leads** — sales funnel entries (full name, source, stage, contact info)
 - **gift_cards** — gift card designs sold in POS (name, value type, value, validity)
+- **services** — private + recovery/wellness services (name, type, category, duration, price)
 
 If the user says something ambiguous ("import my classes"), ask whether they mean class TEMPLATES (definitions) or class SCHEDULE (instances). If they haven't told you the entity by step 2, ASK before calling inspect_source.
 
