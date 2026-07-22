@@ -112,6 +112,17 @@ export interface ImportDeps {
     rooms: Room[];
     branches: Branch[];
     addPromoCode: (input: Omit<PromoCode, "id"> & { id?: string }) => string;
+    // Explicit flat-rate shape — Omit<PayRate,"id"> collapses the discriminated
+    // union to its common base fields (dropping type/flatAmount), so we spell
+    // the flat variant out. The store action accepts this structurally.
+    addPayRate: (input: {
+        type: "flat";
+        name: string;
+        flatAmount: number;
+        branchId: string;
+        status: "active" | "archive";
+        usageCount: number;
+    }) => string;
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -320,6 +331,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     branches: "branches",
     staff: "staff",
     promo_codes: "promo_codes",
+    pay_rates: "pay_rates",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -583,6 +595,31 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "pay_rates") {
+        // Imported as flat rates (fixed AED per class) — the common shape.
+        const branchByName = new Map(deps.branches.map((b) => [b.name.trim().toLowerCase(), b]));
+        const fallbackBranch = deps.branches.find((b) => b.id === deps.branchId) ?? deps.branches[0];
+        const records = materialize("pay_rates", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            const branch = branchByName.get((rec.branch ?? "").trim().toLowerCase()) ?? fallbackBranch;
+            deps.addPayRate({
+                type: "flat",
+                name: rec.name,
+                flatAmount: toNumber(rec.amount, 0),
+                branchId: branch?.id ?? "",
+                status: "active",
+                usageCount: 0,
             });
             created++;
         }
