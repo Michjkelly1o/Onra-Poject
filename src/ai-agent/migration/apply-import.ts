@@ -19,7 +19,14 @@
 
 import type { ParsedFile } from "@/ai-agent/migration/migration-cards";
 import type { EntityKey } from "@/ai-agent/migration/entities";
-import type { ClassTemplate, ClassCategory } from "@/lib/store";
+import type {
+    ClassTemplate,
+    ClassCategory,
+    ClassSchedule,
+    Instructor,
+    Room,
+    Branch,
+} from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
 /** The narrow slice of store actions the applier needs. Structurally satisfied
@@ -71,8 +78,14 @@ export interface ImportDeps {
         branch_id: string;
     }) => string;
     addClassTemplate: (input: Omit<ClassTemplate, "id">) => void;
+    addClassSchedule: (input: Omit<ClassSchedule, "id">) => string;
     /** Live class categories, for resolving a CSV category name → its FK + color. */
     classCategories: ClassCategory[];
+    /** Live slices class_schedule resolves its FKs against. */
+    classTemplates: ClassTemplate[];
+    instructors: Instructor[];
+    rooms: Room[];
+    branches: Branch[];
     addImportHistory: (input: {
         data_type:
             | "customers"
@@ -157,6 +170,82 @@ function coerceGender(raw: string | undefined): "Male" | "Female" | undefined {
     return undefined;
 }
 
+// ── Date / time helpers (class_schedule) ─────────────────────────────────────
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** Parse a date cell into "YYYY-MM-DD", or null when unparseable. Accepts
+ *  ISO (2026-08-15) and slash formats; slash order is inferred (first > 12 →
+ *  day-first, else month-first). */
+function toISODate(raw: string | undefined): string | null {
+    const s = (raw ?? "").trim();
+    if (!s) return null;
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const slash = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})$/);
+    if (slash) {
+        let a = parseInt(slash[1], 10);
+        let b = parseInt(slash[2], 10);
+        let y = parseInt(slash[3], 10);
+        if (y < 100) y += 2000;
+        // Ambiguous MM/DD vs DD/MM — if the first number can't be a month, treat
+        // it as the day; otherwise assume month-first.
+        let month: number, day: number;
+        if (a > 12) { day = a; month = b; } else { month = a; day = b; }
+        if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+        return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+    return null;
+}
+
+/** Weekday name for an ISO date (UTC-anchored to avoid TZ drift). */
+function dayName(iso: string): string {
+    const d = new Date(`${iso}T00:00:00Z`);
+    return WEEKDAYS[d.getUTCDay()] ?? "";
+}
+
+/** "Aug 15, 2026" label for an ISO date. */
+function dateLabel(iso: string): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    return `${MONTHS[(m ?? 1) - 1]} ${d}, ${y}`;
+}
+
+/** Parse a time cell into 24h "HH:MM", or null. Accepts "7:00 AM", "07:00",
+ *  "19:00", "7 PM". */
+function to24h(raw: string | undefined): string | null {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (!s) return null;
+    const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    const mer = m[3];
+    if (mer === "pm" && h < 12) h += 12;
+    if (mer === "am" && h === 12) h = 0;
+    if (h > 23 || min > 59) return null;
+    return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+/** Add minutes to a 24h "HH:MM", wrapping at 24h. */
+function addMinutes(hhmm: string, mins: number): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const total = (h * 60 + m + mins) % (24 * 60);
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** 24h "HH:MM" → "7:00 AM". */
+function to12h(hhmm: string): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const mer = h < 12 ? "AM" : "PM";
+    const hh = h % 12 === 0 ? 12 : h % 12;
+    return `${hh}:${String(m).padStart(2, "0")} ${mer}`;
+}
+
+/** "7:00 AM – 8:00 AM" display range. */
+function displayRange(start: string, end: string): string {
+    return `${to12h(start)} – ${to12h(end)}`;
+}
+
 export interface ApplyResult {
     created: number;
     failed: number;
@@ -171,6 +260,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     packages: "packages",
     leads: "leads",
     class_templates: "class_templates",
+    class_schedule: "class_schedule",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -329,10 +419,75 @@ export function applyImportToStore(
         return { created, failed };
     }
 
-    // Not wired yet — class_schedule stays counts-only. Its ~35 FK-resolved
-    // fields (template / instructor / room FKs, denormalized names + colors,
-    // date/time derivations) can't be built reliably from an arbitrary CSV
-    // without risking a broken schedule grid, so it's intentionally deferred.
+    if (entity === "class_schedule") {
+        // A schedule row hangs off a real template (for name / category /
+        // cover / plans). Match by name; skip rows whose template, date, or
+        // start time can't be resolved (counted failed) so we never insert a
+        // schedule with a dangling FK or an unparseable slot that would break
+        // the grid. Instructor + room are best-effort — an unmatched one lands
+        // "unassigned"/no-room, exactly like the admin schedule form allows.
+        const tByName = new Map(deps.classTemplates.map((t) => [t.name.trim().toLowerCase(), t]));
+        const instByName = new Map(deps.instructors.map((i) => [i.name.trim().toLowerCase(), i]));
+        const roomByName = new Map(deps.rooms.map((r) => [r.name.trim().toLowerCase(), r]));
+        const branch = deps.branches.find((b) => b.id === deps.branchId) ?? deps.branches[0];
+        const todayISO = new Date().toISOString().slice(0, 10);
+
+        const records = materialize("class_schedule", file);
+        let created = 0;
+        for (const rec of records) {
+            const tpl = tByName.get((rec.template_name ?? "").trim().toLowerCase());
+            if (!tpl) continue;
+            const dateISO = toISODate(rec.date);
+            if (!dateISO) continue;
+            const start = to24h(rec.start_time);
+            if (!start) continue;
+            const dur = tpl.durationMin > 0 ? tpl.durationMin : 60;
+            const end = to24h(rec.end_time) ?? addMinutes(start, dur);
+            const inst = instByName.get((rec.instructor_name ?? "").trim().toLowerCase());
+            const room = roomByName.get((rec.room_name ?? "").trim().toLowerCase());
+            deps.addClassSchedule({
+                templateId: tpl.id,
+                type: "class",
+                name: tpl.name,
+                description: tpl.description,
+                category: tpl.category,
+                branchId: deps.branchId,
+                instructorId: inst?.id ?? "",
+                instructorName: inst?.name ?? "",
+                instructorInitials: inst?.initials ?? "",
+                instructorColor: inst?.color ?? "#e0e0e0",
+                location: branch?.name ?? "",
+                roomId: room?.id ?? "",
+                room: room?.name ?? "",
+                date: dateLabel(dateISO),
+                dateISO,
+                dayOfWeek: dayName(dateISO),
+                startTime: start,
+                endTime: end,
+                displayTime: displayRange(start, end),
+                booked: 0,
+                capacity: toNumber(rec.capacity, tpl.capacity > 0 ? tpl.capacity : 10),
+                classType: "Group",
+                equipment: "",
+                spotSelectionEnabled: false,
+                waitlistEnabled: true,
+                rating: 0,
+                ratingCount: 0,
+                status: dateISO < todayISO ? "Completed" : "Upcoming",
+                genderAccess: "all",
+                coverColor: tpl.coverColor,
+                coverImage: tpl.coverImage,
+                applicableMembershipIds: tpl.applicableMembershipIds,
+                applicablePackageIds: tpl.applicablePackageIds,
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
     return null;
 }
 
