@@ -25,6 +25,7 @@ import { packagesEntity } from "@/ai-agent/migration/entities/packages";
 import { classTemplatesEntity } from "@/ai-agent/migration/entities/class-templates";
 import { classSchedulesEntity } from "@/ai-agent/migration/entities/class-schedules";
 import { leadsEntity } from "@/ai-agent/migration/entities/leads";
+import { giftCardsEntity } from "@/ai-agent/migration/entities/gift-cards";
 
 /** One target field the wizard maps a source column to. */
 export interface EntityField {
@@ -76,7 +77,8 @@ export type EntityKey =
     | "packages"
     | "class_templates"
     | "class_schedule"
-    | "leads";
+    | "leads"
+    | "gift_cards";
 
 /** The registry itself. Ordered — the model's system prompt lists them
  *  in this order when asking the user "which entity are you migrating?" */
@@ -87,6 +89,7 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
     class_templates: classTemplatesEntity,
     class_schedule:  classSchedulesEntity,
     leads:           leadsEntity,
+    gift_cards:      giftCardsEntity,
 };
 
 /** Human-readable menu the migration prompt lists for the AI to pick from. */

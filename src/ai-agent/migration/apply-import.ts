@@ -79,6 +79,17 @@ export interface ImportDeps {
     }) => string;
     addClassTemplate: (input: Omit<ClassTemplate, "id">) => void;
     addClassSchedule: (input: Omit<ClassSchedule, "id">) => string;
+    addGiftCardDesign: (input: {
+        name: string;
+        value_type: "fixed" | "custom";
+        fixed_value_aed?: number;
+        min_value_aed?: number;
+        max_value_aed?: number;
+        validity_days: number;
+        status: "active" | "inactive" | "archived";
+        description?: string;
+        price_aed?: number;
+    }) => string;
     /** Live class categories, for resolving a CSV category name → its FK + color. */
     classCategories: ClassCategory[];
     /** Live slices class_schedule resolves its FKs against. */
@@ -93,7 +104,12 @@ export interface ImportDeps {
             | "packages"
             | "class_templates"
             | "class_schedule"
-            | "leads";
+            | "leads"
+            | "gift_cards"
+            | "services"
+            | "rooms"
+            | "branches"
+            | "staff";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -261,6 +277,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     leads: "leads",
     class_templates: "class_templates",
     class_schedule: "class_schedule",
+    gift_cards: "gift_cards",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -479,6 +496,32 @@ export function applyImportToStore(
                 coverImage: tpl.coverImage,
                 applicableMembershipIds: tpl.applicableMembershipIds,
                 applicablePackageIds: tpl.applicablePackageIds,
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "gift_cards") {
+        const records = materialize("gift_cards", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            const isCustom = /custom|range|variable/i.test(rec.value_type ?? "");
+            const fixed = toNumber(rec.fixed_value, 0);
+            deps.addGiftCardDesign({
+                name: rec.name,
+                value_type: isCustom ? "custom" : "fixed",
+                fixed_value_aed: isCustom ? undefined : fixed || undefined,
+                min_value_aed: isCustom ? toNumber(rec.min_value, 0) || undefined : undefined,
+                max_value_aed: isCustom ? toNumber(rec.max_value, 0) || undefined : undefined,
+                validity_days: toNumber(rec.validity_days, 365),
+                status: "active",
+                description: rec.description || undefined,
+                price_aed: isCustom ? undefined : fixed || undefined,
             });
             created++;
         }

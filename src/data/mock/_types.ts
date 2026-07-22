@@ -2929,7 +2929,11 @@ export interface ImportHistorySeed {
         | "customer_plans"
         | "class_templates"
         | "class_schedule"
-        | "leads";
+        | "leads"
+        | "gift_cards"
+        | "services"
+        | "rooms"
+        | "branches";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;
