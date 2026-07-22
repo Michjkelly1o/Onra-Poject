@@ -30,6 +30,8 @@ import { useAppStore, type BlockedTime, type Staff } from "@/lib/store";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { Pagination } from "@/components/ui/Pagination";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { TimeOffMonthView } from "@/components/staff/TimeOffMonthView";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -211,6 +213,12 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
     const deleteBlockedTimes = useAppStore(s => s.deleteBlockedTimes);
     const showToast         = useAppStore(s => s.showToast);
 
+    // Client 2026-07-22 Phase 6 — inner List / Month toggle. `viewMode`
+    // gates whether the tab renders the existing table (list) or the
+    // read-only calendar (month).
+    type ViewMode = "list" | "month";
+    const [viewMode, setViewMode] = useState<ViewMode>("list");
+
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingDelete, setPendingDelete] = useState<
         | { mode: "row"; row: BlockedTime }
@@ -311,6 +319,20 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
 
     return (
         <>
+            {/* Client 2026-07-22 Phase 6 — List / Month sub-toggle. */}
+            <div className="shrink-0 px-6 pb-3 flex items-center gap-3">
+                <SegmentedTabs
+                    tabs={[
+                        { key: "list",  label: "List"  },
+                        { key: "month", label: "Month" },
+                    ]}
+                    activeKey={viewMode}
+                    onChange={k => setViewMode(k as ViewMode)}
+                />
+            </div>
+            {viewMode === "month" ? (
+                <TimeOffMonthView branchId={branchId ?? ""} search={search} />
+            ) : (
             <div className="flex flex-col">
                 {filtered.length === 0 ? (
                     <div className="relative" style={{ minHeight: 400 }}>
@@ -449,6 +471,7 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                     </div>
                 )}
             </div>
+            )}
 
             {pendingDelete && (
                 <DeleteModal
