@@ -19,6 +19,23 @@ import { useRouter } from "next/navigation";
 import type { DeepLink as DeepLinkData, InsightCard } from "@/ai-agent/agent/cards";
 import { ArrowUpRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { isRouteDisabled } from "@/config/feature-flags";
+
+/** Guard every deep-link click so the AI can NEVER navigate to a dead route —
+ *  including cards persisted before a route was retired. Retired routes are
+ *  remapped to their live replacement; anything still disabled falls back to
+ *  the dashboard instead of 404-ing. */
+function normalizeAdminHref(href: string): string {
+    const [path, query] = href.split("?");
+    // Insights module was renamed to KPI (client Jul 2026) — /admin/insights
+    // is 404'd; the live surface is /admin/kpi (it ignores the stale ?tab).
+    if (path === "/admin/insights" || path.startsWith("/admin/insights/")) {
+        return "/admin/kpi";
+    }
+    // Safety net — any other disabled route lands on the dashboard, never a 404.
+    if (isRouteDisabled(path)) return "/admin/dashboard";
+    return query ? `${path}?${query}` : path;
+}
 import { BarChart } from "@/ai-agent/components/charts/BarChart";
 import { LineChart } from "@/ai-agent/components/charts/LineChart";
 import { Donut } from "@/ai-agent/components/charts/Donut";
@@ -107,7 +124,7 @@ function RankedListRow({
         return (
             <button
                 type="button"
-                onClick={() => router.push(r.href!)}
+                onClick={() => router.push(normalizeAdminHref(r.href!))}
                 className={cn(
                     "w-full text-left flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0 -mx-2 px-2 rounded-md",
                     "hover:bg-[#f9fafb] transition-colors",
@@ -134,7 +151,7 @@ function DeepLink({ link }: { link?: DeepLinkData }) {
     return (
         <button
             type="button"
-            onClick={() => router.push(link.href)}
+            onClick={() => router.push(normalizeAdminHref(link.href))}
             className="self-start inline-flex items-center gap-1 text-[13px] font-medium text-[#4b8c9a] hover:text-[#306b78] hover:underline underline-offset-4"
         >
             <ArrowUpRight className="size-3.5" />
