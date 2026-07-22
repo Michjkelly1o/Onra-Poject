@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { DotsVertical, Trash01, Plus, DotsGrid } from "@untitledui/icons";
+import { DotsVertical, Trash01, Plus, DotsGrid, InfoCircle } from "@untitledui/icons";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG } from "./widget-catalog";
 import { useAppStore } from "@/lib/store";
@@ -241,6 +242,40 @@ function fmtMMMD(d: Date): string {
 function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number; interval: number } {
     switch (period.type) {
         case "day": {
+            // Client 2026-07-22 — the "day" preset bucket must render an
+            // x-axis appropriate to the range, not always 24 hourly ticks.
+            // Today / Yesterday stay hourly; the "Last N days" presets get
+            // one point per day up to 30 days, and switch to weekly buckets
+            // once the range exceeds ~60 days so the axis stays readable.
+            const label = period.label.toLowerCase();
+            if (label.includes("last 7 days")) {
+                const { from } = resolvePresetBounds(period);
+                const labels = Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(from); d.setDate(d.getDate() + i);
+                    return fmtMMMD(d);
+                });
+                return { labels, scale: 1, interval: 0 };
+            }
+            if (label.includes("last 30 days")) {
+                const { from } = resolvePresetBounds(period);
+                const labels = Array.from({ length: 30 }, (_, i) => {
+                    const d = new Date(from); d.setDate(d.getDate() + i);
+                    return fmtMMMD(d);
+                });
+                // ~7 visible ticks so labels don't collide.
+                return { labels, scale: 1, interval: 4 };
+            }
+            if (label.includes("last 90 days")) {
+                // 90 days → 13 weekly buckets ("Wk of Aug 12"). Scale ×7
+                // so seed magnitudes read as weekly totals, not daily.
+                const { from } = resolvePresetBounds(period);
+                const labels = Array.from({ length: 13 }, (_, i) => {
+                    const start = new Date(from); start.setDate(start.getDate() + i * 7);
+                    return `Wk of ${fmtMMMD(start)}`;
+                });
+                return { labels, scale: 7, interval: 1 };
+            }
+            // Today / Yesterday → 24 hourly ticks (default day chart).
             const labels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
             return { labels, scale: 0.15, interval: 3 };
         }
@@ -1673,7 +1708,25 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                         </span>
                     )}
                     <div className="min-w-0">
-                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">{meta.title}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">{meta.title}</p>
+                            {/* Info glyph — added for widgets whose value
+                                isn't obvious from the title alone (client
+                                2026-07-22: Utilization / Under-filled trend
+                                / Attach rate). Hover surfaces the formula
+                                via the shared DS tooltip. */}
+                            {meta.info && (
+                                <IconTooltip label={meta.info}>
+                                    <button
+                                        type="button"
+                                        aria-label={`About ${meta.title}`}
+                                        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] transition-colors"
+                                    >
+                                        <InfoCircle className="w-4 h-4" />
+                                    </button>
+                                </IconTooltip>
+                            )}
+                        </div>
                         {/* Hide the subtitle row when the catalogue entry sets
                             description to "" — client 2026-07-20 asked to drop
                             the redundant sub-caption on the time-series widgets

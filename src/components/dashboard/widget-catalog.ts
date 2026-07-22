@@ -35,6 +35,12 @@ export interface WidgetMeta {
      *  render title-only per client 2026-07-20. */
     description: string;
     category: WidgetCategory;
+    /** Formula/definition disclosed on hover of a small "i" glyph next to
+     *  the title. Set for widgets whose value isn't obvious from the
+     *  title alone (Utilization, Under-filled classes trend, Attach rate).
+     *  Left undefined by default so most widgets render no "i". Added
+     *  client 2026-07-22. */
+    info?: string;
 }
 
 // Client 2026-07-20 follow-up on feedback (3): subtitle removal applies to
@@ -74,12 +80,12 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // No-show rate — client (9e). Single line, y-axis %.
     { id: "no-show-rate",        title: "No-show rate",                      description: "", category: "Class" },
     // Under-filled classes trend — client (9e). Single line, count.
-    { id: "underfilled-trend",   title: "Under-filled classes trend",        description: "", category: "Class" },
+    { id: "underfilled-trend",   title: "Under-filled classes trend",        description: "", category: "Class", info: "no-shows ÷ booked spots" },
     // ─── Private sessions ──────────────────────────────────────────────
     // All 3 land under client (9c). Utilization = booked/available %,
     // Rebooking rate = % of session customers who booked again,
     // Top trainers = ranked bar of trainer names.
-    { id: "private-utilization", title: "Utilization",                       description: "", category: "Private sessions" },
+    { id: "private-utilization", title: "Utilization",                       description: "", category: "Private sessions", info: "booked vs available hours" },
     { id: "private-rebooking",   title: "Rebooking rate",                    description: "", category: "Private sessions" },
     { id: "private-top-trainers",title: "Top trainers by private bookings",  description: "", category: "Private sessions" },
     // ─── Recovery ──────────────────────────────────────────────────────
@@ -87,7 +93,7 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // Recovery bookings over time = single line, Attach rate = %.
     { id: "recovery-top-services", title: "Top services",                    description: "", category: "Recovery" },
     { id: "recovery-bookings",     title: "Recovery bookings over time",     description: "", category: "Recovery" },
-    { id: "recovery-attach-rate",  title: "Attach rate",                     description: "", category: "Recovery" },
+    { id: "recovery-attach-rate",  title: "Attach rate",                     description: "", category: "Recovery", info: "% of class customers who also book recovery" },
     // ─── Marketing ─────────────────────────────────────────────────────
     // Client (9f) — 4 widgets. Also keeps the 4 KPI-tab exclusive widgets
     // below so the KPI grid still has content.
