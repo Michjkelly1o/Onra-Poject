@@ -251,14 +251,17 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
     // horizontal scroll happens on the grid wrapper itself if the grid
     // still overflows on very narrow viewports.
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full w-full">
             {/* Date navigator lifted to the parent sub-tab row
                 (StaffPermissionsPage → ShiftsDateNav). */}
 
-            {/* Grid — flush, no inner frame */}
-            <div className="overflow-x-auto">
+            {/* Grid — flush, no inner frame. `w-full` forced on the
+                overflow wrapper so its content extends to the parent
+                card's inner edges even when the grid's `1fr` tracks
+                don't push a natural content width. */}
+            <div className="overflow-x-auto w-full">
                 {/* Column header row — sticky left rail + 7 day columns */}
-                <div className="grid w-full" style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}>
+                <div className="grid w-full" style={{ gridTemplateColumns: "minmax(180px, 200px) repeat(7, minmax(0, 1fr))" }}>
                     <div className="border-b border-[#e4e7ec] bg-[#fafbfa] px-4 py-3 text-[12px] font-semibold tracking-wide uppercase text-[#98a2b3]">
                         Staff
                     </div>
@@ -305,7 +308,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                                 <div
                                     key={s.id}
                                     className="grid border-b border-[#e4e7ec] w-full"
-                                    style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}
+                                    style={{ gridTemplateColumns: "minmax(180px, 200px) repeat(7, minmax(0, 1fr))" }}
                                 >
                                     {/* Left rail — avatar + name + (specialty
                                         subtitle for instructors, role subtitle
