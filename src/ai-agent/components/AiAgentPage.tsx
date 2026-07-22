@@ -394,6 +394,8 @@ function AgentSidebar({
     // Rename dialog target + confirm-modal target.
     const [renameTarget, setRenameTarget] = useState<ConvMeta | null>(null);
     const [confirm, setConfirm] = useState<{ conv: ConvMeta; kind: "archive" | "delete" } | null>(null);
+    // Search query — filters the Recents / Archived list by chat title.
+    const [search, setSearch] = useState("");
 
     // Active (non-archived), pinned first then newest. Archived split out for
     // the Archive drawer.
@@ -408,7 +410,12 @@ function AgentSidebar({
         () => conversations.filter((c) => c.archived),
         [conversations],
     );
-    const list = showArchived ? archivedConvos : activeConvos;
+    // Live title-search over whichever drawer is showing (case-insensitive).
+    const q = search.trim().toLowerCase();
+    const list = useMemo(() => {
+        const base = showArchived ? archivedConvos : activeConvos;
+        return q ? base.filter((c) => c.title.toLowerCase().includes(q)) : base;
+    }, [showArchived, archivedConvos, activeConvos, q]);
 
     return (
         <aside className="flex-none w-[288px] min-w-[288px] max-w-[288px] h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
@@ -418,6 +425,8 @@ function AgentSidebar({
                     <SearchLg className="size-5 text-[#667085] flex-shrink-0" />
                     <input
                         type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search chat..."
                         className="flex-1 min-w-0 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6"
                     />
@@ -466,7 +475,11 @@ function AgentSidebar({
                 </p>
                 {list.length === 0 ? (
                     <p className="px-2 py-6 text-[13px] text-[#98a2b3] text-center">
-                        {showArchived ? "No archived chats." : "No chats yet."}
+                        {q
+                            ? `No chats match "${search.trim()}".`
+                            : showArchived
+                              ? "No archived chats."
+                              : "No chats yet."}
                     </p>
                 ) : (
                     <div className="flex flex-col gap-1">
