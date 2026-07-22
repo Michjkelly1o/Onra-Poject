@@ -269,6 +269,7 @@ export function ChatThread({
                         addCustomer: st.addCustomer,
                         addMembership: st.addMembership,
                         addPackage: st.addPackage,
+                        addLead: st.addLead,
                         addImportHistory: st.addImportHistory,
                         branchId: st.branches[0]?.id ?? "",
                     },

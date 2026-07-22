@@ -3975,6 +3975,11 @@ export interface AppState {
     deletePackage: (id: string) => boolean;
     deletePackages: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
+    // ── Leads ───────────────────────────────────────────────────────────────
+    /** Append a lead to the funnel. Auto-generates id + added_at when not
+     *  supplied. Used by the AI Agent migration importer (leads entity). */
+    addLead: (input: Omit<Lead, "id" | "added_at"> & { id?: string; added_at?: string }) => string;
+
     // ── Gift card designs ───────────────────────────────────────────────────
     /** Append a new gift-card design. Auto-generates id + created_at when
      *  not supplied. Returns the resolved id so the caller can route to it. */
@@ -6972,6 +6977,17 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().packages.find(p => p.id === id);
         set(state => ({ packages: state.packages.map(p => p.id === id ? { ...p, ...patch } : p) }));
         if (target) get().recordAudit("Edited class package", "package", id, target.name);
+    },
+    addLead: (input) => {
+        const id = input.id ?? `lead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const next: Lead = {
+            ...input,
+            id,
+            added_at: input.added_at ?? new Date().toISOString(),
+        };
+        set(state => ({ leads: [next, ...state.leads] }));
+        get().recordAudit("Imported lead", "customer", id, next.contact_name);
+        return id;
     },
     setPackageStatus: (ids, status) => {
         const targets = get().packages.filter(p => ids.includes(p.id));

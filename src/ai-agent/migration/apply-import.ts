@@ -58,6 +58,17 @@ export interface ImportDeps {
         branch_ids: string[];
         status: "active" | "inactive" | "archived";
     }) => string;
+    addLead: (input: {
+        contact_name: string;
+        contact_email: string;
+        phone?: string;
+        gender?: "Male" | "Female";
+        source: "Instagram" | "Referral" | "Walk-in" | "Website" | "Google" | "WhatsApp";
+        stage: "new" | "contacted" | "trial-booked" | "trial-attended" | "paid" | "lost";
+        engagement_status: "cold" | "warm" | "hot" | "converted" | "lost";
+        first_purchase_amount_aed?: number;
+        branch_id: string;
+    }) => string;
     addImportHistory: (input: {
         data_type:
             | "customers"
@@ -102,6 +113,46 @@ function toBool(raw: string | undefined): boolean {
     return /^(y|yes|true|1|on)$/i.test((raw ?? "").trim());
 }
 
+/** Snap a free-text lead source to the funnel's enum; unknowns → "Website". */
+function coerceSource(raw: string | undefined): Parameters<ImportDeps["addLead"]>[0]["source"] {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (/insta|ig\b/.test(s)) return "Instagram";
+    if (/refer|word of mouth|friend/.test(s)) return "Referral";
+    if (/walk|in.?person|front desk/.test(s)) return "Walk-in";
+    if (/whats.?app|wa\b/.test(s)) return "WhatsApp";
+    if (/google|search|adwords|ppc/.test(s)) return "Google";
+    return "Website";
+}
+
+/** Snap a free-text stage to the funnel's enum; unknowns → "new". */
+function coerceStage(raw: string | undefined): Parameters<ImportDeps["addLead"]>[0]["stage"] {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (/paid|purchased|member|won|closed/.test(s)) return "paid";
+    if (/attend/.test(s)) return "trial-attended";
+    if (/book|trial.*book|scheduled/.test(s)) return "trial-booked";
+    if (/contact|called|emailed|reached/.test(s)) return "contacted";
+    if (/lost|dead|churn|no.?show/.test(s)) return "lost";
+    return "new";
+}
+
+/** Snap a free-text engagement to the enum; unknowns → "cold". */
+function coerceEngagement(raw: string | undefined): Parameters<ImportDeps["addLead"]>[0]["engagement_status"] {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (/convert|paid|member/.test(s)) return "converted";
+    if (/hot/.test(s)) return "hot";
+    if (/warm/.test(s)) return "warm";
+    if (/lost|dead/.test(s)) return "lost";
+    return "cold";
+}
+
+/** Male / Female from a free-text gender cell, else undefined. */
+function coerceGender(raw: string | undefined): "Male" | "Female" | undefined {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (s.startsWith("m")) return "Male";
+    if (s.startsWith("f") || s.startsWith("w")) return "Female";
+    return undefined;
+}
+
 export interface ApplyResult {
     created: number;
     failed: number;
@@ -114,6 +165,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     customers: "customers",
     memberships: "memberships",
     packages: "packages",
+    leads: "leads",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -198,6 +250,32 @@ export function applyImportToStore(
                 price_aed: toNumber(rec.price, 0),
                 branch_ids: [],
                 status: "active",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "leads") {
+        const records = materialize("leads", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.full_name) continue;
+            deps.addLead({
+                contact_name: rec.full_name,
+                contact_email: rec.email || "",
+                phone: rec.phone || undefined,
+                gender: coerceGender(rec.gender),
+                source: coerceSource(rec.source),
+                stage: coerceStage(rec.stage),
+                engagement_status: coerceEngagement(rec.engagement_status),
+                first_purchase_amount_aed: rec.first_purchase_amount
+                    ? toNumber(rec.first_purchase_amount, 0)
+                    : undefined,
+                branch_id: deps.branchId,
             });
             created++;
         }
