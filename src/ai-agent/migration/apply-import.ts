@@ -27,6 +27,8 @@ import type {
     Room,
     Branch,
     Service,
+    Staff,
+    Role,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -94,6 +96,13 @@ export interface ImportDeps {
     addService: (input: Omit<Service, "id">) => string;
     addRoom: (input: Room) => void;
     addBranch: (input: Branch) => void;
+    addStaff: (
+        input: Omit<Staff, "id" | "inviteSentAt" | "firstLoginCompleted"> & {
+            id?: string;
+            inviteSentAt?: string;
+            firstLoginCompleted?: boolean;
+        },
+    ) => string;
     /** Live class categories, for resolving a CSV category name → its FK + color. */
     classCategories: ClassCategory[];
     /** Live slices class_schedule resolves its FKs against. */
@@ -101,6 +110,8 @@ export interface ImportDeps {
     instructors: Instructor[];
     rooms: Room[];
     branches: Branch[];
+    /** Live roles, for resolving a CSV role name → its FK. */
+    roles: Role[];
     addImportHistory: (input: {
         data_type:
             | "customers"
@@ -189,6 +200,23 @@ function coerceGender(raw: string | undefined): "Male" | "Female" | undefined {
     if (s.startsWith("f") || s.startsWith("w")) return "Female";
     return undefined;
 }
+
+/** Snap a free-text role to a role TYPE the studio has; unknowns → instructor
+ *  (the most common studio hire). */
+function coerceRoleType(
+    raw: string | undefined,
+): "owner" | "branch_admin" | "operator" | "front_desk" | "instructor" {
+    const s = (raw ?? "").trim().toLowerCase();
+    if (/instructor|teacher|coach|trainer/.test(s)) return "instructor";
+    if (/front|reception|desk/.test(s)) return "front_desk";
+    if (/operator|manager|ops/.test(s)) return "operator";
+    if (/admin/.test(s)) return "branch_admin";
+    if (/owner/.test(s)) return "owner";
+    return "instructor";
+}
+
+/** Deterministic avatar colours for imported staff (from the studio palette). */
+const STAFF_PALETTE = ["#7ba08c", "#a3b18a", "#c4a484", "#8a9bb0", "#b0879b", "#87a8b0"];
 
 // ── Date / time helpers (class_schedule) ─────────────────────────────────────
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -285,6 +313,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     services: "services",
     rooms: "rooms",
     branches: "branches",
+    staff: "staff",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -548,6 +577,59 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "staff") {
+        // Role is a hard FK. Resolve a free-text role to a role the studio
+        // actually has; if none match the coerced type, fall back to any
+        // non-owner role (then any role). No roles at all → skip everything.
+        const roles = deps.roles;
+        if (roles.length === 0) {
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            return { created: 0, failed: file.rows.length };
+        }
+        const branchByName = new Map(deps.branches.map((b) => [b.name.trim().toLowerCase(), b]));
+        const fallbackBranch = deps.branches.find((b) => b.id === deps.branchId) ?? deps.branches[0];
+        const todayLabel = dateLabel(new Date().toISOString().slice(0, 10));
+        const records = materialize("staff", file);
+        let created = 0;
+        for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+            let first = (rec.first_name ?? "").trim();
+            let last = (rec.last_name ?? "").trim();
+            // Single "name" column → split into first + rest.
+            if (!last && first.includes(" ")) {
+                const parts = first.split(/\s+/);
+                first = parts.shift() ?? "";
+                last = parts.join(" ");
+            }
+            if (!first || !rec.email) continue;
+            const roleType = coerceRoleType(rec.role);
+            const role =
+                roles.find((r) => r.type === roleType) ??
+                roles.find((r) => r.type !== "owner") ??
+                roles[0];
+            if (!role) continue;
+            const branch = branchByName.get((rec.branch ?? "").trim().toLowerCase()) ?? fallbackBranch;
+            deps.addStaff({
+                firstName: first,
+                lastName: last,
+                fullName: `${first} ${last}`.trim(),
+                email: rec.email,
+                phone: rec.phone || "",
+                initials: `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase(),
+                color: STAFF_PALETTE[i % STAFF_PALETTE.length],
+                roleId: role.id,
+                branchId: branch?.id ?? null,
+                status: "active",
+                joinedDate: todayLabel,
             });
             created++;
         }

@@ -29,6 +29,7 @@ import { giftCardsEntity } from "@/ai-agent/migration/entities/gift-cards";
 import { servicesEntity } from "@/ai-agent/migration/entities/services";
 import { roomsEntity } from "@/ai-agent/migration/entities/rooms";
 import { branchesEntity } from "@/ai-agent/migration/entities/branches";
+import { staffEntity } from "@/ai-agent/migration/entities/staff";
 
 /** One target field the wizard maps a source column to. */
 export interface EntityField {
@@ -84,7 +85,8 @@ export type EntityKey =
     | "gift_cards"
     | "services"
     | "rooms"
-    | "branches";
+    | "branches"
+    | "staff";
 
 /** The registry itself. Ordered — the model's system prompt lists them
  *  in this order when asking the user "which entity are you migrating?" */
@@ -99,6 +101,7 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
     services:        servicesEntity,
     rooms:           roomsEntity,
     branches:        branchesEntity,
+    staff:           staffEntity,
 };
 
 /** Human-readable menu the migration prompt lists for the AI to pick from. */
