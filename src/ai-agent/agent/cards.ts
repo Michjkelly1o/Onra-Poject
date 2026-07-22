@@ -80,11 +80,19 @@ export type InsightCard =
           rowCount: number;
           columns: string[];
       }
-    // Clarifying-question popup (renders <AiQuestionPrompt>). The agent emits
-    // this when it needs input before it can answer; the user picks an option
-    // or types their own, and the answer comes back as the next user message.
+    // Clarifying-question popup. The assistant BUBBLE shows a compact step
+    // card (stepLabel badge + title + message); the interactive options render
+    // in a panel that FLOATS above the composer. The user picks an option (or
+    // types in the composer) and the answer comes back as the next message.
     | {
           card: "questions";
+          /** Badge in the bubble, e.g. "1 of 3 step". Optional. */
+          stepLabel?: string;
+          /** Bubble title, e.g. "Class details". Optional. */
+          title?: string;
+          /** Bubble message under the title. Optional. */
+          message?: string;
+          /** The questions paged through in the floating panel. */
           questions: {
               title: string;
               options: { id: string; lead?: string; label: string; subtitle?: string }[];

@@ -64,11 +64,15 @@ export interface AiQuestionPromptProps {
     /** Optional per-step callback (fires on every Next / Skip). */
     onStep?: (index: number, answer: AiQuestionAnswer) => void;
     className?: string;
+    /** Panel/dropdown presentation (floats above the composer): clicking an
+     *  option commits it and auto-advances; the free-text "other" row and the
+     *  Skip / Next footer are hidden (the real composer handles free text). */
+    compact?: boolean;
 }
 
 const OTHER_ID = "__other__";
 
-export function AiQuestionPrompt({ questions, onComplete, onStep, className }: AiQuestionPromptProps) {
+export function AiQuestionPrompt({ questions, onComplete, onStep, className, compact = false }: AiQuestionPromptProps) {
     const total = questions.length;
     const [step, setStep] = useState(0);
     // Per-step working selection + free-text; committed answers accumulate.
@@ -131,6 +135,27 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className }: A
         if (step > 0) loadStep(step - 1);
     };
 
+    // Option click: compact panels commit + auto-advance immediately (no Next
+    // button); inline just marks the selection for the Next button.
+    const selectOption = (optId: string) => {
+        if (compact) {
+            advance({ kind: "option", optionId: optId });
+        } else {
+            setSelectedId(optId);
+            setOtherText("");
+        }
+    };
+    // Forward chevron: inline advances the working selection; compact only
+    // walks forward through steps already answered.
+    const canGoNext = compact ? !!answers[step] && step + 1 < total : canAdvance;
+    const goNext = () => {
+        if (compact) {
+            if (answers[step] && step + 1 < total) loadStep(step + 1);
+        } else {
+            handleNext();
+        }
+    };
+
     const pager = useMemo(() => `${step + 1} of ${total}`, [step, total]);
 
     return (
@@ -162,8 +187,8 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className }: A
                         </span>
                         <button
                             type="button"
-                            onClick={canAdvance ? handleNext : undefined}
-                            disabled={!canAdvance}
+                            onClick={canGoNext ? goNext : undefined}
+                            disabled={!canGoNext}
                             aria-label="Next question"
                             className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
                         >
@@ -181,10 +206,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className }: A
                         <div key={opt.id} className="px-1.5 py-0.5">
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setSelectedId(opt.id);
-                                    setOtherText("");
-                                }}
+                                onClick={() => selectOption(opt.id)}
                                 className={cn(
                                     "w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
                                     active ? "bg-[#f1f7f4]" : "hover:bg-[#f9fafb]",
@@ -218,8 +240,10 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className }: A
                     );
                 })}
 
-                {/* Free-text "other" row + Skip / Next actions. */}
-                {allowOther ? (
+                {/* Free-text "other" row + Skip / Next actions. Hidden in the
+                    compact panel — the real composer handles free text and
+                    option-clicks auto-advance. */}
+                {compact ? null : allowOther ? (
                     <div className="px-1.5 py-0.5">
                         <div
                             className={cn(

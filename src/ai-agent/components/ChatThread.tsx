@@ -62,7 +62,7 @@ import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
-import { AiQuestionPrompt } from "@/ai-agent/components/AiQuestionPrompt";
+import { AiQuestionPrompt, type AiQuestionAnswer } from "@/ai-agent/components/AiQuestionPrompt";
 
 // three.js is ~600KB — dynamic import so it only ships when the empty
 // state is actually rendered (i.e. before the user's first message).
@@ -365,6 +365,37 @@ export function ChatThread({
     // The id of the most recent user message — the only one that's editable.
     const lastUserId = [...messages].reverse().find((mm) => mm.role === "user")?.id ?? null;
 
+    // Pending ask_questions — when the LAST message is an assistant turn whose
+    // tool result is a `questions` card, its options float above the composer.
+    // Once the user answers (a new user message lands), this clears itself.
+    const pendingQuestions = (() => {
+        if (isBusy) return null;
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "assistant") return null;
+        const ti = last.toolInvocations?.find(
+            (t) => t.state === "result" && (t.result as InsightCard)?.card === "questions",
+        );
+        if (!ti || ti.state !== "result") return null;
+        return ti.result as Extract<InsightCard, { card: "questions" }>;
+    })();
+    // Compose the picked answers into one readable reply and send it.
+    const answerQuestions = (
+        spec: Extract<InsightCard, { card: "questions" }>["questions"],
+        answers: AiQuestionAnswer[],
+    ) => {
+        const parts = answers
+            .map((a, i) => {
+                if (a.kind === "option") {
+                    const opt = spec[i]?.options.find((o) => o.id === a.optionId);
+                    return opt ? `${spec[i].title}: ${opt.label}` : null;
+                }
+                if (a.kind === "other") return `${spec[i]?.title}: ${a.text}`;
+                return null;
+            })
+            .filter((x): x is string => !!x);
+        send(parts.join("\n") || "Skip");
+    };
+
     const openUpload = () => fileInputRef.current?.click();
 
     async function uploadFile(file: File) {
@@ -464,7 +495,6 @@ export function ChatThread({
                                 act={act}
                                 isLastUser={m.role === "user" && m.id === lastUserId && !isBusy}
                                 onSubmitEdit={(text) => submitEdit(m.id, text)}
-                                onAnswerQuestions={send}
                             />
                         ))}
                         {isBusy && messages[messages.length - 1]?.role === "user" && (
@@ -496,9 +526,20 @@ export function ChatThread({
 
             {/* Docked composer — live conversation only. Client 2026-07-22:
                 no top border, full-width input (spans the canvas, no 720
-                cap) so it reads as an integrated bar over the gradient. */}
+                cap) so it reads as an integrated bar over the gradient. When
+                the agent has asked a question, its options panel floats
+                directly above the input. */}
             {!empty && (
                 <div className="shrink-0 bg-transparent">
+                    {pendingQuestions && (
+                        <div className="w-full px-6 pb-2">
+                            <AiQuestionPrompt
+                                compact
+                                questions={pendingQuestions.questions}
+                                onComplete={(answers) => answerQuestions(pendingQuestions.questions, answers)}
+                            />
+                        </div>
+                    )}
                     <div className="w-full px-6 py-4">{composerNode}</div>
                 </div>
             )}
@@ -976,13 +1017,37 @@ function UserMessageBubble({
     );
 }
 
+/** Compact step card shown in the assistant bubble for an ask_questions call —
+ *  a "N of M step" badge, a title, and a message. The interactive options live
+ *  in the panel that floats above the composer, not here. */
+function QuestionStepCard({
+    data,
+}: {
+    data: Extract<InsightCard, { card: "questions" }>;
+}) {
+    return (
+        <div className="w-full max-w-[560px] bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1.5">
+            {data.stepLabel && (
+                <span className="self-start inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 border-[#aad4bd] bg-[#eafaf1] text-[#3f6350]">
+                    {data.stepLabel}
+                </span>
+            )}
+            {data.title && (
+                <p className="text-[16px] font-semibold text-[#101828] leading-6">{data.title}</p>
+            )}
+            {data.message && (
+                <p className="text-[14px] text-[#475467] leading-5">{data.message}</p>
+            )}
+        </div>
+    );
+}
+
 function MessageRow({
     message: m,
     mode,
     act,
     isLastUser = false,
     onSubmitEdit,
-    onAnswerQuestions,
 }: {
     message: UIMessage;
     mode: AiAgentMode;
@@ -991,9 +1056,6 @@ function MessageRow({
      *  edited inline (Claude-style). */
     isLastUser?: boolean;
     onSubmitEdit?: (text: string) => void;
-    /** Called with the composed answer text when the user completes an
-     *  ask_questions popup — sent to the agent as the next user message. */
-    onAnswerQuestions?: (text: string) => void;
 }) {
     if (m.role === "user") {
         return <UserMessageBubble text={m.content} editable={isLastUser} onSubmitEdit={onSubmitEdit} />;
@@ -1019,30 +1081,11 @@ function MessageRow({
                         }
                         const result = ti.result as InsightCard | MigrationCard;
                         if ((result as InsightCard).card === "questions") {
-                            const spec = (result as Extract<InsightCard, { card: "questions" }>).questions;
-                            return (
-                                <AiQuestionPrompt
-                                    key={ti.toolCallId}
-                                    questions={spec}
-                                    onComplete={(answers) => {
-                                        // Compose the picked answers into one
-                                        // readable reply the agent can act on.
-                                        // Resolve option ids back to their label
-                                        // so the model sees the actual answer.
-                                        const parts = answers
-                                            .map((a, i) => {
-                                                if (a.kind === "option") {
-                                                    const opt = spec[i]?.options.find((o) => o.id === a.optionId);
-                                                    return opt ? `${spec[i].title}: ${opt.label}` : null;
-                                                }
-                                                if (a.kind === "other") return `${spec[i]?.title}: ${a.text}`;
-                                                return null;
-                                            })
-                                            .filter((x): x is string => !!x);
-                                        onAnswerQuestions?.(parts.join("\n") || "Skip");
-                                    }}
-                                />
-                            );
+                            // In the bubble we only show a compact step card
+                            // (badge + title + message). The interactive options
+                            // float above the composer (see PendingQuestionPanel).
+                            const qc = result as Extract<InsightCard, { card: "questions" }>;
+                            return <QuestionStepCard key={ti.toolCallId} data={qc} />;
                         }
                         return mode === "migration" ? (
                             <MigCard key={ti.toolCallId} data={result as MigrationCard} act={act} />

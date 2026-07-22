@@ -77,8 +77,20 @@ export function askQuestionsTool() {
     return {
         ask_questions: tool({
             description:
-                "Ask the user one or more clarifying questions BEFORE acting, whenever their request is ambiguous or you must choose between options (which branch? which date range? which metric? which membership?). This renders an interactive popup: the user picks a suggested answer, types their own, or skips, and can page through multiple questions. ALWAYS prefer this over asking in plain text — every clarifying question you have MUST go through this tool. Give each question 2–5 short, concrete options (the popup adds its own free-text 'other' row and a Skip button automatically). After calling this tool, output no other text — the user answers via the popup and their reply arrives as the next message.",
+                "Ask the user one or more clarifying questions BEFORE acting, whenever their request is ambiguous or you must choose between options (which branch? which date range? which metric? which membership?). This renders a compact step card in your chat bubble PLUS an interactive panel that floats above the input where the user picks an answer or pages between questions. ALWAYS prefer this over asking in plain text — every clarifying question you have MUST go through this tool. Give each question 2–5 short, concrete options. Provide a short `title` and `message` describing this step, and a `stepLabel` like '1 of 3 step' when the ask is part of a multi-step flow. After calling this tool, output no other text — the user answers in the panel and their reply arrives as the next message.",
             parameters: z.object({
+                stepLabel: z
+                    .string()
+                    .optional()
+                    .describe("badge shown in the bubble, e.g. '1 of 3 step' — omit for a one-off ask"),
+                title: z
+                    .string()
+                    .optional()
+                    .describe("short bubble title summarising this step, e.g. 'Class details'"),
+                message: z
+                    .string()
+                    .optional()
+                    .describe("one-line bubble message under the title, e.g. what you need from them"),
                 questions: z
                     .array(
                         z.object({
@@ -107,8 +119,11 @@ export function askQuestionsTool() {
             }),
             // Echo the spec back so the client can render the popup. No server
             // work — this is a UI-only tool.
-            execute: async ({ questions }): Promise<InsightCard> => ({
+            execute: async ({ stepLabel, title, message, questions }): Promise<InsightCard> => ({
                 card: "questions",
+                stepLabel,
+                title,
+                message,
                 questions,
             }),
         }),
