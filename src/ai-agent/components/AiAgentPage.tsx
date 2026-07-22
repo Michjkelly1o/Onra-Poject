@@ -311,7 +311,7 @@ function AgentSidebar({
     onOpenConversation: (id: string) => void;
 }) {
     return (
-        <aside className="w-[288px] flex-shrink-0 h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
+        <aside className="w-[288px] max-w-[288px] flex-shrink-0 h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
             {/* Search input */}
             <div className="p-4 border-b border-[#e4e7ec]">
                 <div className="flex items-center gap-2 h-10 px-4 rounded-lg border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
@@ -427,10 +427,12 @@ function AgentChatSurface({
         >
             {/* Mint gradient bg + concentric squares — grouped in one
                 aria-hidden layer so nothing decorative can intercept clicks.
-                Client 2026-07-20: pattern rises from the TOP of the canvas
-                (mint field, chevron tips point downward toward the chat). */}
-            <div aria-hidden className="absolute inset-0 pointer-events-none">
-                {/* Mint gradient — Figma 405:455839: 1392×428, centered, rising
+                Client 2026-07-22: refreshed to Figma 783:53146 — same
+                mint field + chevron rise, now with an overall 64%
+                opacity wrap so the pattern blends softer against the
+                chat, and the SVG radial-mask from the design file. */}
+            <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ opacity: 0.64 }}>
+                {/* Mint gradient — Figma 783:53147: 1392×428, centered, rising
                     from the foot (transparent → #e9fff3). */}
                 <div
                     className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[1392px] h-[428px]"
@@ -469,47 +471,77 @@ function AgentChatSurface({
     );
 }
 
-/** Decorative concentric rounded squares — reproduces the Figma's
- *  "Background pattern decorative" without pulling in the asset PNG. */
+/** Decorative concentric rounded squares — reproduces Figma 783:53148's
+ *  "Background pattern decorative". The whole thing lives inside a
+ *  1102.822×1102.822 wrapper anchored at top:381.3px from the foot of
+ *  the chat surface, rotated −32.1°; the inner 800×800 content is
+ *  masked by the design file's radial SVG so the outer arcs fade to
+ *  transparent, leaving only the soft chevron tips visible where the
+ *  pattern peeks above the fold. */
 function ConcentricSquaresDecoration() {
-    // Exact Figma 405:455839 concentric-square sizes.
+    // Exact Figma 783:53148 concentric-square sizes.
     const sizes = [228.571, 342.857, 457.143, 571.429, 685.714, 800];
+    // Figma places the 1102×1102 wrapper at `top: 381.3px`; on shorter
+    // chat surfaces this pushes the pattern's centre well below the fold
+    // so only its upper arcs peek through. Using absolute-from-top with
+    // a percentage-friendly value keeps the same visual on tall/short
+    // canvases (matches the Figma frame's intent).
+    const MASK_URL = "url(/ai-agent/canvas-pattern-mask.svg)";
     return (
-        <div
-            className="absolute inset-0 overflow-hidden"
-            style={{
-                opacity: 0.48,
-                // Softly reveal only the lower band where the pattern rises from
-                // the foot; approximates the Figma swirl mask.
-                WebkitMaskImage:
-                    "radial-gradient(120% 80% at 50% 118%, #000 0%, #000 46%, transparent 78%)",
-                maskImage:
-                    "radial-gradient(120% 80% at 50% 118%, #000 0%, #000 46%, transparent 78%)",
-            }}
-        >
-            {/* Wrapper rotated -32.1° (Figma), anchored so the nested squares'
-                centre sits just below the foot — only their upper arcs show as
-                rising chevrons. */}
+        <div className="absolute inset-0 overflow-hidden">
+            {/* Outer 1102 wrapper — rotated once so the concentric squares
+                inside inherit the tilt. Positioned with the top nailed to
+                381.3px from the top of the canvas (Figma 783:53148). */}
             <div
-                className="absolute left-1/2 bottom-0"
+                className="absolute left-1/2"
                 style={{
-                    width: 800,
-                    height: 800,
-                    transform: "translate(-50%, 34%) rotate(-32.1deg)",
+                    width: 1102.822,
+                    height: 1102.822,
+                    top: 381.3,
+                    transform: "translateX(-50%) rotate(-32.1deg)",
                 }}
             >
-                {sizes.map((size) => (
+                {/* opacity-48 content wrapper (Figma "Background pattern
+                    decorative") — the 800×800 canvas the concentric squares
+                    are centred within. */}
+                <div
+                    className="absolute top-1/2 left-1/2"
+                    style={{
+                        width: 800,
+                        height: 800,
+                        transform: "translate(-50%, -50%)",
+                        opacity: 0.48,
+                    }}
+                >
+                    {/* Masked content — the SVG mask is a radial fade from
+                        centre so the outermost squares dissolve softly. */}
                     <div
-                        key={size}
-                        className="absolute top-1/2 left-1/2 border-[#7ba08c] rounded-[28.571px]"
+                        className="absolute inset-0"
                         style={{
-                            width: size,
-                            height: size,
-                            borderWidth: 2.381,
-                            transform: "translate(-50%, -50%) rotate(-12.5deg)",
+                            WebkitMaskImage: MASK_URL,
+                            maskImage: MASK_URL,
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                            WebkitMaskSize: "100% 100%",
+                            maskSize: "100% 100%",
                         }}
-                    />
-                ))}
+                    >
+                        {sizes.map((size) => (
+                            <div
+                                key={size}
+                                className="absolute top-1/2 left-1/2 border-[#7ba08c] rounded-[28.571px]"
+                                style={{
+                                    width: size,
+                                    height: size,
+                                    borderWidth: 2.381,
+                                    transform: "translate(-50%, -50%) rotate(-12.5deg)",
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );

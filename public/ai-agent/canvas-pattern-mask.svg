@@ -1,0 +1,13 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Mask">
+<g id="_Background mask">
+<rect width="800" height="800" fill="url(#paint0_radial_0_15)"/>
+</g>
+</g>
+<defs>
+<radialGradient id="paint0_radial_0_15" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(400 400) rotate(90) scale(400 400)">
+<stop/>
+<stop offset="1" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>
