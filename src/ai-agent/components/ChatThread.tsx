@@ -409,6 +409,8 @@ export function ChatThread({
             onAttach={openUpload}
             isBusy={isBusy}
             onStop={stop}
+            attachedFileName={parsedFile?.filename ?? null}
+            onRemoveFile={() => setParsedFile(null)}
         />
     );
 
@@ -1041,6 +1043,8 @@ function Composer({
     onAttach,
     isBusy,
     onStop,
+    attachedFileName = null,
+    onRemoveFile,
 }: {
     mode: AiAgentMode;
     value: string;
@@ -1049,24 +1053,41 @@ function Composer({
     onAttach: () => void;
     isBusy: boolean;
     onStop: () => void;
+    /** Filename of the currently-attached upload (migration mode). When set,
+     *  a removable file chip shows above the input and the border turns
+     *  brand-green — Figma 18716:5616 "Added file" state. */
+    attachedFileName?: string | null;
+    onRemoveFile?: () => void;
 }) {
     const canSend = value.trim().length > 0 && !isBusy;
     const attachActive = mode === "migration";
+    const hasFile = !!attachedFileName;
     // Skeuomorphic inner border + inner shadow (Figma shadow-xs-skeuomorphic).
     const SKEUO =
         "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]";
     return (
-        // Answer field (Figma 405:455839): p-10, rounded-12, border #d0d5dd,
-        // shadow-xl. Focus turns the border green with a soft ring.
+        // Answer field (Figma 405:455839 / 18716:5616): p-10, rounded-12,
+        // shadow-xl. Border is #d0d5dd normally, brand-green (border-2) once a
+        // file is attached; focus also turns it green with a soft ring.
         <form
             onSubmit={onSubmit}
             className={cn(
-                "flex items-center justify-between gap-2 p-2.5 bg-white rounded-xl",
-                "border border-[#d0d5dd] transition-colors",
+                "flex flex-col gap-3 p-2.5 bg-white rounded-xl transition-colors",
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
-                "focus-within:border-[#7ba08c] focus-within:ring-4 focus-within:ring-[#7ba08c]/[0.12]",
+                hasFile
+                    ? "border-2 border-[#7ba08c]"
+                    : "border border-[#d0d5dd] focus-within:border-[#7ba08c] focus-within:ring-4 focus-within:ring-[#7ba08c]/[0.12]",
             )}
         >
+            {/* File chip row — Figma 18716:5616 "Added file". Only the CSV
+                upload the migration flow supports is shown. */}
+            {hasFile && (
+                <div className="flex flex-wrap items-start gap-3">
+                    <FileChip name={attachedFileName as string} onRemove={onRemoveFile} />
+                </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2">
             {/* Left: attach + input. */}
             <div className="flex flex-1 min-w-0 items-center gap-2">
                 <button
@@ -1126,6 +1147,34 @@ function Composer({
                     <Send03 className="size-5" />
                 </button>
             )}
+            </div>
         </form>
+    );
+}
+
+/** Uploaded-file chip — Figma 18716:6902. A page icon with a green "CSV"
+ *  badge, the filename, and a removable X in the top-right corner. */
+function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
+    return (
+        <div className="relative flex items-center gap-3 pl-4 pr-6 py-3 bg-white border border-[#e4e7ec] rounded-[12px] max-w-[240px]">
+            {/* File-type icon — a document sheet with a CSV badge. */}
+            <div className="relative size-6 shrink-0">
+                <div className="absolute inset-0 rounded-[3px] border border-[#e4e7ec] bg-[#f9fafb]" />
+                <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[#079455] text-white text-[6px] font-bold leading-none tracking-wide">
+                    CSV
+                </span>
+            </div>
+            <p className="min-w-0 truncate text-[14px] font-medium leading-5 text-[#344054]">{name}</p>
+            {onRemove && (
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    aria-label="Remove file"
+                    className="absolute top-[7px] right-[7px] size-4 flex items-center justify-center rounded-full bg-[#f2f4f7] hover:bg-[#e4e7ec] transition-colors"
+                >
+                    <XClose className="size-3 text-[#667085]" />
+                </button>
+            )}
+        </div>
     );
 }
