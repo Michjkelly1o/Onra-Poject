@@ -92,6 +92,7 @@ export interface ImportDeps {
         price_aed?: number;
     }) => string;
     addService: (input: Omit<Service, "id">) => string;
+    addRoom: (input: Room) => void;
     /** Live class categories, for resolving a CSV category name → its FK + color. */
     classCategories: ClassCategory[];
     /** Live slices class_schedule resolves its FKs against. */
@@ -281,6 +282,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     class_schedule: "class_schedule",
     gift_cards: "gift_cards",
     services: "services",
+    rooms: "rooms",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -544,6 +546,33 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "rooms") {
+        // Rooms hang off a branch — resolve by name, fall back to the default.
+        const branchByName = new Map(deps.branches.map((b) => [b.name.trim().toLowerCase(), b]));
+        const fallback = deps.branches.find((b) => b.id === deps.branchId) ?? deps.branches[0];
+        const records = materialize("rooms", file);
+        let created = 0;
+        for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+            if (!rec.name) continue;
+            const branch = branchByName.get((rec.branch ?? "").trim().toLowerCase()) ?? fallback;
+            if (!branch) continue; // no branch to attach the room to
+            deps.addRoom({
+                id: `room_import_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+                branch_id: branch.id,
+                name: rec.name,
+                capacity: toNumber(rec.capacity, 10),
+                status: "active",
+                equipment_notes: rec.equipment_notes || undefined,
             });
             created++;
         }

@@ -274,6 +274,7 @@ export function ChatThread({
                         addClassSchedule: st.addClassSchedule,
                         addGiftCardDesign: st.addGiftCardDesign,
                         addService: st.addService,
+                        addRoom: st.addRoom,
                         classCategories: st.classCategories,
                         classTemplates: st.classTemplates,
                         instructors: st.instructors,
