@@ -791,7 +791,14 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
     // striped strips just like the branch lunch break, but layered above
     // so the instructor sees their personal blocks (sick day, training,
     // etc.) without having to leave the calendar.
-    const dayBlocks = blockedTimes.filter(b => b.date === dateISO);
+    // Audit fix 2026-07-22 — range-inclusive so multi-day time-off
+    // (Phase 2 date_from_iso / date_to_iso) shows on every day it
+    // covers, not just the anchor day.
+    const dayBlocks = blockedTimes.filter(b => {
+        const from = b.date_from_iso ?? b.date;
+        const to   = b.date_to_iso   ?? b.date;
+        return dateISO >= from && dateISO <= to;
+    });
 
     const businessHours = branchId ? lookupBusinessHours(businessHoursRows, branchId, dateISO) : null;
     const gridStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open))  : FALLBACK_START_HOUR;
@@ -916,7 +923,12 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
     type Tuple = { start: string; end: string };
     const dayTuples: Tuple[][] = cols.map(c =>
         blockedTimes
-            .filter(b => b.date === c.iso)
+            // Audit fix 2026-07-22 — range-inclusive.
+            .filter(b => {
+                const from = b.date_from_iso ?? b.date;
+                const to   = b.date_to_iso   ?? b.date;
+                return c.iso >= from && c.iso <= to;
+            })
             .map(b => ({ start: b.start_time, end: b.end_time })),
     );
     // Collect every distinct tuple across the week (set keyed by string),
@@ -1019,7 +1031,12 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                                             col.isToday && "bg-[#f5fffa]/30",
                                         )} style={{ minHeight: gridHeight }}>
                                             {/* Personal blocked-time strips on this column. */}
-                                            {blockedTimes.filter(b => b.date === col.iso).map(b => (
+                                            {blockedTimes.filter(b => {
+                                                // Audit fix 2026-07-22 — range-inclusive.
+                                                const from = b.date_from_iso ?? b.date;
+                                                const to   = b.date_to_iso   ?? b.date;
+                                                return col.iso >= from && col.iso <= to;
+                                            }).map(b => (
                                                 <BlockedStrip
                                                     key={b.id}
                                                     blockStart={b.start_time}

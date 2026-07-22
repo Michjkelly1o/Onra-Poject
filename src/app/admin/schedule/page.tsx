@@ -901,11 +901,17 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                 // Blocked-time strips don't apply to the
                                 // synthetic Recovery column — there's no
                                 // real staff member to block.
+                                // Audit fix 2026-07-22 — range-inclusive so
+                                // multi-day time-off (Phase 2 date_from_iso /
+                                // date_to_iso) shows a BlockedStrip on every
+                                // day it covers, not just the anchor day.
                                 const instrBlocks = isRecoveryCol
                                     ? []
-                                    : blockedTimes.filter(b =>
-                                        b.date === dateISO && b.staff_ids.includes(instructor.id),
-                                    );
+                                    : blockedTimes.filter(b => {
+                                        const from = b.date_from_iso ?? b.date;
+                                        const to   = b.date_to_iso   ?? b.date;
+                                        return dateISO >= from && dateISO <= to && b.staff_ids.includes(instructor.id);
+                                    });
                                 return (
                                     <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
                                         {/* Per-instructor blocked strips —

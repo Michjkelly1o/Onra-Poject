@@ -113,7 +113,14 @@ export function useAvailableSlots(
                 if (c.instructorId === instructorId && c.dateISO === dateISO) busy.push([toMin(c.startTime), toMin(c.endTime)]);
             }
             for (const b of blockedTimes) {
-                if (b.date === dateISO && b.staff_ids.includes(instructorId)) busy.push([toMin(b.start_time), toMin(b.end_time)]);
+                // Audit fix 2026-07-22 — range-inclusive so a multi-day
+                // vacation blocks EVERY day it covers, not just the
+                // anchor day.
+                const from = b.date_from_iso ?? b.date;
+                const to   = b.date_to_iso   ?? b.date;
+                if (dateISO >= from && dateISO <= to && b.staff_ids.includes(instructorId)) {
+                    busy.push([toMin(b.start_time), toMin(b.end_time)]);
+                }
             }
             for (const a of adminAppointments) {
                 if (a.instructorId === instructorId && a.dateISO === dateISO && a.status !== "Cancelled") {

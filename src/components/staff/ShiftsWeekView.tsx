@@ -249,7 +249,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
             {/* Grid */}
             <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white overflow-x-auto">
                 {/* Column header row — sticky left rail + 7 day columns */}
-                <div className="grid" style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}>
+                <div className="grid w-full" style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}>
                     <div className="border-b border-[#e4e7ec] bg-[#fafbfa] px-4 py-3 text-[12px] font-semibold tracking-wide uppercase text-[#98a2b3]">
                         Staff
                     </div>
@@ -274,33 +274,28 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                     })}
                 </div>
 
-                {/* Section groups */}
+                {/* Section groups — section header + row grids all use
+                    `w-full` explicitly so the horizontal separator (border-b
+                    on each row) extends across the full container width
+                    (audit round 3: previously the border stopped short of
+                    the right edge). */}
                 {groups.map(g => (
-                    <div key={g.key}>
-                        <div
-                            className="grid"
-                            style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}
-                        >
-                            <div className="col-span-full px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-[#98a2b3] bg-[#fafafa] border-b border-[#e4e7ec]"
-                                style={{ gridColumn: "1 / -1" }}>
-                                {g.title}
-                            </div>
+                    <div key={g.key} className="w-full">
+                        {/* Section header is a plain full-width div, not a
+                            grid — no need to wrap in a grid just to span
+                            all columns. */}
+                        <div className="w-full px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-[#98a2b3] bg-[#fafafa] border-b border-[#e4e7ec]">
+                            {g.title}
                         </div>
                         {g.rows.length === 0 ? (
-                            <div
-                                className="grid"
-                                style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}
-                            >
-                                <div className="col-span-full px-4 py-4 text-[13px] text-[#98a2b3]"
-                                    style={{ gridColumn: "1 / -1" }}>
-                                    No {g.key === "instructors" ? "instructors" : "staff"} on this week.
-                                </div>
+                            <div className="w-full px-4 py-4 text-[13px] text-[#98a2b3]">
+                                No {g.key === "instructors" ? "instructors" : "staff"} on this week.
                             </div>
                         ) : (
                             g.rows.map(s => (
                                 <div
                                     key={s.id}
-                                    className="grid border-b border-[#e4e7ec]"
+                                    className="grid border-b border-[#e4e7ec] w-full"
                                     style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}
                                 >
                                     {/* Left rail — avatar + name + (specialty

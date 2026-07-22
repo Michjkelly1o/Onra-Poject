@@ -105,9 +105,16 @@ export function gateSlotsByInstructor(
     const dow = new Date(iso + "T00:00:00Z").getUTCDay();   // 0..6
     const shift = s.shiftId ? shifts.find(x => x.id === s.shiftId) : undefined;
     if (shift && !shift.working_days[dow]) return [];
-    const blocks = blockedTimes.filter(b =>
-        b.date === iso && b.staff_ids.includes(instructorId),
-    );
+    // Audit fix 2026-07-22 — Phase 2 introduced date_from_iso /
+    // date_to_iso for multi-day time-off ranges. The old check
+    // (`b.date === iso`) only matched single-day entries; a Maya vacation
+    // Aug 3-9 would leave every day EXCEPT Aug 3 unblocked. Now uses
+    // range-inclusive comparison with the legacy `date` as fallback.
+    const blocks = blockedTimes.filter(b => {
+        const from = b.date_from_iso ?? b.date;
+        const to   = b.date_to_iso   ?? b.date;
+        return iso >= from && iso <= to && b.staff_ids.includes(instructorId);
+    });
     return slots.filter(start => {
         const end = addMinutesToTime(start, durationMins);
         if (shift) {
@@ -169,9 +176,14 @@ export function instructorBlockedSlots(
 ): string[] {
     const { instructorId, durationMins, blockedTimes } = options;
     if (!instructorId || !iso) return [];
-    const blocks = blockedTimes.filter(b =>
-        b.date === iso && b.staff_ids.includes(instructorId),
-    );
+    // Audit fix 2026-07-22 — range-inclusive comparison so multi-day
+    // ranges (Phase 2 date_from_iso / date_to_iso) block every day
+    // they cover, not just the anchor day.
+    const blocks = blockedTimes.filter(b => {
+        const from = b.date_from_iso ?? b.date;
+        const to   = b.date_to_iso   ?? b.date;
+        return iso >= from && iso <= to && b.staff_ids.includes(instructorId);
+    });
     if (blocks.length === 0) return [];
     return slots.filter(start => {
         const end = addMinutesToTime(start, durationMins);

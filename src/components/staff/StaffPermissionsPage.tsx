@@ -1283,7 +1283,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     the Role & permissions route since Filter moved to
                     the main toolbar and there are no tabs left. */}
                 {forceTab !== "roles" && (
-                    <div className="shrink-0 px-6 py-4 flex items-center gap-3">
+                    <div className="shrink-0 px-6 py-4 flex items-center gap-3 relative">
                         {/* Tab pill strip:
                               • combined view (legacy) → Roles | Staff side-by-side
                               • staff-only view       → Staff sub-tabs (Staff |
@@ -1320,15 +1320,20 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             />
                         )}
                         <div className="flex-1" />
-                        {/* Date navigator — only rendered when the sub-tab is
-                            on its Week / Month view. Uses the same chrome the
-                            /admin/schedule Week + Month navs use so both
-                            surfaces read as one voice (client 2026-07-22). */}
+                        {/* Date navigator — center-aligned via `absolute
+                            left-1/2 -translate-x-1/2` inside the relative
+                            parent (matches the /admin/schedule Week + Month
+                            navigator alignment). Client 2026-07-22 audit
+                            round 3. */}
                         {forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week" && (
-                            <ShiftsDateNav weekStart={shiftsWeekStart} setWeekStart={setShiftsWeekStart} />
+                            <div className="absolute left-1/2 -translate-x-1/2">
+                                <ShiftsDateNav weekStart={shiftsWeekStart} setWeekStart={setShiftsWeekStart} />
+                            </div>
                         )}
                         {forceTab === "staff" && staffSubTab === "blocked-time" && timeOffViewMode === "month" && (
-                            <TimeOffDateNav cursor={timeOffMonthCursor} setCursor={setTimeOffMonthCursor} />
+                            <div className="absolute left-1/2 -translate-x-1/2">
+                                <TimeOffDateNav cursor={timeOffMonthCursor} setCursor={setTimeOffMonthCursor} />
+                            </div>
                         )}
                         {/* Per-sub-tab view toggle — lifted up here from the
                             child tab body (client 2026-07-22). Shifts gets
