@@ -34,16 +34,13 @@ import { useChat } from "@ai-sdk/react";
 import {
     Attachment01,
     Send03,
-    PencilLine,
-    Stars02,
-    User01,
     AlertCircle,
     RefreshCw01,
-    UploadCloud02,
     Copy03,
     Edit02,
     Check,
     XClose,
+    ArrowNarrowRight,
 } from "@untitledui/icons";
 import Image from "next/image";
 import { useAppStore, type AppState } from "@/lib/store";
@@ -197,12 +194,11 @@ export function ChatThread({
                 },
                 storeSnapshot: pickStoreSnapshot(state),
                 mode,
-                // parsedFile is only meaningful for migration; server
-                // ignores it for insight mode. Ref instead of state so
-                // the freshest value is captured at request time even if
-                // the closure was created earlier.
-                parsedFile:
-                    mode === "migration" ? parsedFileRef.current : null,
+                // Send the attached upload in EVERY mode (the user can now
+                // attach a file in general/studio chat too). Ref instead of
+                // state so the freshest value is captured at request time
+                // even if the closure was created earlier.
+                parsedFile: parsedFileRef.current,
             };
             return body;
         },
@@ -387,9 +383,13 @@ export function ChatThread({
             const parsed = (await res.json()) as ParsedFile;
             setParsedFile(parsed);
             parsedFileRef.current = parsed;
-            send(
-                `I've uploaded my customer file (${parsed.filename}, ${parsed.rows.length} rows). Please inspect it.`,
-            );
+            // Migration auto-kicks the inspect step; other modes just attach
+            // the file (shown as a chip) and let the user type their question.
+            if (mode === "migration") {
+                send(
+                    `I've uploaded my file (${parsed.filename}, ${parsed.rows.length} rows). Please inspect it.`,
+                );
+            }
         } catch (e) {
             setUploadError(
                 e instanceof Error ? e.message : "Upload failed unexpectedly.",
@@ -543,43 +543,11 @@ function InsightEmptyState({
                     </div>
                 </div>
 
-                {/* AI input block — composer (centered) then the entry cards
-                    (Figma gap-20). */}
+                {/* AI input block — composer then context-specific starter
+                    prompts (Figma 18841:8842). */}
                 <div className="flex flex-col gap-5 w-full">
                     {composer}
-                    {/* Entry cards — Create / Insight / Customer (row, gap-16). */}
-                    <div className="flex gap-4 w-full">
-                    <SuggestionCard
-                        icon={PencilLine}
-                        title="Create"
-                        description="Set up new classes, plans, packs, and staff."
-                        onClick={() =>
-                            onSend(
-                                "Show me every quick-create shortcut in admin.",
-                            )
-                        }
-                    />
-                    <SuggestionCard
-                        icon={Stars02}
-                        title="Insight"
-                        description="Get quick insights to help grow your studio."
-                        onClick={() =>
-                            onSend(
-                                "Give me a studio overview — revenue this month, active customers, top-selling plans.",
-                            )
-                        }
-                    />
-                    <SuggestionCard
-                        icon={User01}
-                        title="Customer"
-                        description="Find customers and jump straight to their profile."
-                        onClick={() =>
-                            onSend(
-                                "Help me find a customer. Ask me for the name, email, or phone to search for.",
-                            )
-                        }
-                    />
-                    </div>
+                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.insight} onSend={onSend} />
                 </div>
             </div>
         </div>
@@ -594,10 +562,10 @@ function StudioSetupEmptyState({
     composer: React.ReactNode;
 }) {
     return (
-        <div className="w-full max-w-[560px] mx-auto px-6 h-full flex items-center justify-center py-12">
-            <div className="flex flex-col gap-6 items-center w-full">
+        <div className="min-h-full w-full flex items-center justify-center px-6 py-12">
+            <div className="flex flex-col gap-6 items-center w-full max-w-[720px]">
                 <ParticleOrb size={72} />
-                <div className="flex flex-col gap-1 text-center w-full items-center">
+                <div className="flex flex-col gap-1 text-center w-full items-center max-w-[560px]">
                     <h1
                         className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] inline-block"
                         style={{
@@ -618,24 +586,11 @@ function StudioSetupEmptyState({
                         also show you what&apos;s already configured.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() =>
-                        onStart(
-                            "What's set up in my studio and what should I do next?",
-                        )
-                    }
-                    className={cn(
-                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
-                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
-                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                        "hover:bg-[#aad4bd] transition-colors",
-                    )}
-                >
-                    <Stars02 className="size-4" />
-                    Show me what&apos;s missing
-                </button>
-                <div className="w-full max-w-[720px]">{composer}</div>
+                {/* Composer + context-specific starter prompts. */}
+                <div className="flex flex-col gap-5 w-full">
+                    {composer}
+                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.studio_setup} onSend={onStart} />
+                </div>
             </div>
         </div>
     );
@@ -649,10 +604,10 @@ function MigrationEmptyState({
     composer: React.ReactNode;
 }) {
     return (
-        <div className="w-full max-w-[560px] mx-auto px-6 h-full flex items-center justify-center py-12">
-            <div className="flex flex-col gap-6 items-center w-full">
+        <div className="min-h-full w-full flex items-center justify-center px-6 py-12">
+            <div className="flex flex-col gap-6 items-center w-full max-w-[720px]">
                 <ParticleOrb size={72} />
-                <div className="flex flex-col gap-1 text-center w-full items-center">
+                <div className="flex flex-col gap-1 text-center w-full items-center max-w-[560px]">
                     <h1
                         className="text-[36px] font-semibold leading-[44px] tracking-[-0.72px] inline-block"
                         style={{
@@ -668,74 +623,88 @@ function MigrationEmptyState({
                         Migrate your data
                     </h1>
                     <p className="text-[15px] leading-6 text-[#667085]">
-                        I&apos;ll guide you through importing your customers
-                        from another platform — step by step, using your
-                        actual export.
+                        I&apos;ll guide you through importing your data from
+                        another platform — step by step, using your actual
+                        export. Attach a CSV any time with the paperclip.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() =>
-                        onStart("I want to migrate my customer data into Onra.")
-                    }
-                    className={cn(
-                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
-                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
-                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                        "hover:bg-[#aad4bd] transition-colors",
-                    )}
-                >
-                    <UploadCloud02 className="size-4" />
-                    Start migration
-                </button>
-                <div className="w-full max-w-[720px]">{composer}</div>
+                {/* Composer + context-specific starter prompts. */}
+                <div className="flex flex-col gap-5 w-full">
+                    {composer}
+                    <SuggestedPromptList prompts={SUGGESTED_PROMPTS.migration} onSend={onStart} />
+                </div>
             </div>
         </div>
     );
 }
 
-function SuggestionCard({
-    icon: Icon,
-    title,
-    description,
-    onClick,
+/** A suggested starter prompt — a muted lead + an emphasised label, plus the
+ *  full text sent when the row is clicked. */
+interface SuggestedPrompt {
+    lead: string;
+    label: string;
+    send: string;
+}
+
+/** Context-appropriate starter prompts per chat type (Figma 18841:8842). Each
+ *  set fits its mode: analytics for insight, onboarding for studio setup, and
+ *  import steps for migration. */
+const SUGGESTED_PROMPTS: Record<AiAgentMode, SuggestedPrompt[]> = {
+    insight: [
+        { lead: "Show me", label: "the most popular classes this month", send: "Show me the most popular classes this month." },
+        { lead: "Break down", label: "revenue by branch this month", send: "Break down revenue by branch this month." },
+        { lead: "Show me", label: "which memberships are selling best", send: "Which memberships are selling best?" },
+        { lead: "Find", label: "customers at risk of churning", send: "Find customers at risk of churning." },
+        { lead: "Give me", label: "a studio overview for this month", send: "Give me a studio overview for this month — revenue, active customers, and top-selling plans." },
+    ],
+    studio_setup: [
+        { lead: "Show me", label: "what's still missing in my setup", send: "What's still missing in my studio setup?" },
+        { lead: "Help me", label: "add my first class template", send: "Help me add my first class template." },
+        { lead: "Walk me through", label: "creating a membership plan", send: "Walk me through creating a membership plan." },
+        { lead: "Set up", label: "my branches and rooms", send: "Help me set up my branches and rooms." },
+        { lead: "Show me", label: "what's already configured", send: "Show me what's already configured in my studio." },
+    ],
+    migration: [
+        { lead: "Import", label: "my customers from another platform", send: "I want to import my customers from another platform." },
+        { lead: "Migrate", label: "my class schedule into Onra", send: "Help me migrate my class schedule into Onra." },
+        { lead: "Help me", label: "map columns from my export file", send: "Help me map the columns from my export file." },
+        { lead: "Show me", label: "which data I can import", send: "Which data can I import into Onra?" },
+        { lead: "Start", label: "importing my customer list", send: "Start importing my customer list." },
+    ],
+};
+
+/** Suggested-prompt list — Figma 18841:8842. A card of clickable starter
+ *  prompts (arrow icon + lead + label). Shown under the composer on every
+ *  chat type's empty state, with mode-specific prompts. */
+function SuggestedPromptList({
+    prompts,
+    onSend,
 }: {
-    icon: React.ComponentType<{ className?: string }>;
-    title: string;
-    description: string;
-    onClick: () => void;
+    prompts: SuggestedPrompt[];
+    onSend: (t: string) => void;
 }) {
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "flex-1 min-w-0 p-4 rounded-xl text-left",
-                "bg-white border border-[#e4e7ec]",
-                "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
-                "hover:border-[#d0d5dd] hover:shadow-[0px_16px_20px_-4px_rgba(16,24,40,0.12),0px_6px_8px_-2px_rgba(16,24,40,0.04)] transition-all",
-            )}
-        >
-            <div className="flex flex-col gap-2 items-start">
-                <div
-                    className={cn(
-                        "size-8 flex items-center justify-center rounded-[6px]",
-                        "bg-white border border-[#e4e7ec]",
-                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                    )}
-                >
-                    <Icon className="size-4 text-[#344054]" />
-                </div>
-                <div className="flex flex-col w-full">
-                    <span className="text-[14px] font-medium leading-5 text-[#344054]">
-                        {title}
-                    </span>
-                    <span className="text-[14px] leading-5 text-[#475467]">
-                        {description}
-                    </span>
-                </div>
+        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+            <div className="flex flex-col py-1">
+                {prompts.map((p, i) => (
+                    <div key={i} className="px-1.5 py-0.5">
+                        <button
+                            type="button"
+                            onClick={() => onSend(p.send)}
+                            className="w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left hover:bg-[#f9fafb] transition-colors"
+                        >
+                            <span className="shrink-0 size-6 flex items-center justify-center rounded-[6px] border border-[#e4e7ec] bg-white">
+                                <ArrowNarrowRight className="size-3 text-[#667085]" />
+                            </span>
+                            <span className="flex-1 min-w-0 flex items-center gap-1 text-[14px] leading-5 truncate">
+                                <span className="text-[#667085] font-normal">{p.lead}</span>
+                                <span className="text-[#344054] font-medium truncate">{p.label}</span>
+                            </span>
+                        </button>
+                    </div>
+                ))}
             </div>
-        </button>
+        </div>
     );
 }
 
@@ -1060,7 +1029,9 @@ function Composer({
     onRemoveFile?: () => void;
 }) {
     const canSend = value.trim().length > 0 && !isBusy;
-    const attachActive = mode === "migration";
+    // Attach a file in EVERY mode (client 2026-07-22) — the paperclip used to
+    // be migration-only, which read as "broken" in general/studio chat.
+    const attachActive = true;
     const hasFile = !!attachedFileName;
     // Skeuomorphic inner border + inner shadow (Figma shadow-xs-skeuomorphic).
     const SKEUO =
