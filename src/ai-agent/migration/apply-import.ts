@@ -19,6 +19,7 @@
 
 import type { ParsedFile } from "@/ai-agent/migration/migration-cards";
 import type { EntityKey } from "@/ai-agent/migration/entities";
+import type { ClassTemplate, ClassCategory } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
 /** The narrow slice of store actions the applier needs. Structurally satisfied
@@ -69,6 +70,9 @@ export interface ImportDeps {
         first_purchase_amount_aed?: number;
         branch_id: string;
     }) => string;
+    addClassTemplate: (input: Omit<ClassTemplate, "id">) => void;
+    /** Live class categories, for resolving a CSV category name → its FK + color. */
+    classCategories: ClassCategory[];
     addImportHistory: (input: {
         data_type:
             | "customers"
@@ -166,6 +170,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     memberships: "memberships",
     packages: "packages",
     leads: "leads",
+    class_templates: "class_templates",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -285,7 +290,49 @@ export function applyImportToStore(
         return { created, failed };
     }
 
-    // Not wired yet — leave the pre-existing counts-only behaviour untouched.
+    if (entity === "class_templates") {
+        // Category is a hard FK — resolve the CSV name to a live category, or
+        // fall back to the first one. If the studio has NO categories, we
+        // can't build a valid template, so skip every row (counted failed)
+        // rather than insert a template with a dangling category.
+        const cats = deps.classCategories;
+        if (cats.length === 0) {
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            return { created: 0, failed: file.rows.length };
+        }
+        const byName = new Map(cats.map((c) => [c.name.trim().toLowerCase(), c]));
+        const records = materialize("class_templates", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            const cat = byName.get((rec.category ?? "").trim().toLowerCase()) ?? cats[0];
+            deps.addClassTemplate({
+                type: "class",
+                name: rec.name,
+                description: rec.description || "",
+                categoryId: cat.id,
+                category: cat.name,
+                locationType: "Group",
+                durationMin: toNumber(rec.duration_minutes, 60),
+                capacity: toNumber(rec.capacity, 10),
+                status: "Active",
+                coverColor: cat.color_hex ?? "#f1f2ed",
+                applicableMembershipIds: [],
+                applicablePackageIds: [],
+                applicableMemberships: [],
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    // Not wired yet — class_schedule stays counts-only. Its ~35 FK-resolved
+    // fields (template / instructor / room FKs, denormalized names + colors,
+    // date/time derivations) can't be built reliably from an arbitrary CSV
+    // without risking a broken schedule grid, so it's intentionally deferred.
     return null;
 }
 

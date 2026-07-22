@@ -270,6 +270,8 @@ export function ChatThread({
                         addMembership: st.addMembership,
                         addPackage: st.addPackage,
                         addLead: st.addLead,
+                        addClassTemplate: st.addClassTemplate,
+                        classCategories: st.classCategories,
                         addImportHistory: st.addImportHistory,
                         branchId: st.branches[0]?.id ?? "",
                     },
