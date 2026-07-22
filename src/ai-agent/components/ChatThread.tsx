@@ -107,18 +107,13 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
     };
 }
 
-/** localStorage key for a thread's persisted chat history. One key per
- *  mode so Insight + Migration histories don't collide. Bumped when the
- *  message shape changes to force a clean reseed. */
-const CHAT_HISTORY_KEY = (mode: AiAgentMode) =>
-    `onra-ai-agent-messages-v1-${mode}`;
-
-/** SSR-safe read of the persisted chat history. `typeof window` guard
- *  because Next.js will call this during static prerender. */
-function loadPersistedMessages(mode: AiAgentMode): UIMessage[] {
-    if (typeof window === "undefined") return [];
+/** SSR-safe read of a conversation's persisted chat history from `storageKey`.
+ *  `null` (an ephemeral entry that has not become a conversation yet) hydrates
+ *  empty and never persists. `typeof window` guard for static prerender. */
+function loadPersistedMessages(storageKey: string | null): UIMessage[] {
+    if (storageKey === null || typeof window === "undefined") return [];
     try {
-        const raw = window.localStorage.getItem(CHAT_HISTORY_KEY(mode));
+        const raw = window.localStorage.getItem(storageKey);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         return Array.isArray(parsed) ? (parsed as UIMessage[]) : [];
@@ -130,12 +125,24 @@ function loadPersistedMessages(mode: AiAgentMode): UIMessage[] {
 export function ChatThread({
     mode = "insight",
     visible = true,
+    chatId,
+    storageKey = null,
+    onFirstUserMessage,
 }: {
     mode?: AiAgentMode;
-    /** Two ChatThreads stay mounted (one per mode) so each keeps its own
-     *  history when the user switches threads. Only the active one is
-     *  visible. */
     visible?: boolean;
+    /** Stable, unique `useChat` id for THIS view (e.g. "entry:general:3" or
+     *  "conv:abc"). Distinct per open conversation so the SDK never shares
+     *  cached message state between two different chats. */
+    chatId: string;
+    /** localStorage key to hydrate + persist under. `null` = an ephemeral entry
+     *  point: starts empty and is never persisted — until the parent adopts it
+     *  into a Recents conversation and passes a real key (no remount). */
+    storageKey?: string | null;
+    /** Fired ONCE when the first user message lands in an ephemeral entry
+     *  (`storageKey` was null). The parent turns that entry into a saved Recents
+     *  conversation. Not passed for an already-saved conversation. */
+    onFirstUserMessage?: (firstText: string) => void;
 }) {
     const currentUser = useAppStore((s) => s.currentUser);
     const currentRole = useAppStore((s) => s.currentRole);
@@ -152,7 +159,7 @@ export function ChatThread({
     // Phase 10 — persist chat history to localStorage per thread. Hydrate
     // ONCE on mount (initialMessages is a stable snapshot); the persist
     // effect below writes on every change.
-    const initialMessages = useRef<UIMessage[]>(loadPersistedMessages(mode));
+    const initialMessages = useRef<UIMessage[]>(loadPersistedMessages(storageKey));
 
     const {
         messages,
@@ -163,9 +170,11 @@ export function ChatThread({
         status,
         error,
         reload,
+        stop,
     } = useChat({
-        // Distinct id per mode → two mounted instances, two histories.
-        id: `onra-agent-${mode}`,
+        // Distinct id per OPEN conversation (not per mode) so switching between
+        // Recents conversations never shares cached message state.
+        id: chatId,
         api: "/api/ai-agent",
         initialMessages: initialMessages.current,
         maxSteps: 3, // matches AI_AGENT_MAX_STEPS in flags.ts (Hobby 10s cap)
@@ -209,21 +218,38 @@ export function ChatThread({
     // Persistence). Skipped when messages is empty to avoid writing an
     // empty array on mount before hydration completes.
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        // Ephemeral entry (storageKey null) never persists — that is what keeps
+        // the three entry points empty on refresh. A conversation persists under
+        // its own key so Recents can reopen it.
+        if (typeof window === "undefined" || storageKey === null) return;
         try {
             if (messages.length === 0) {
-                window.localStorage.removeItem(CHAT_HISTORY_KEY(mode));
+                window.localStorage.removeItem(storageKey);
             } else {
-                window.localStorage.setItem(
-                    CHAT_HISTORY_KEY(mode),
-                    JSON.stringify(messages),
-                );
+                window.localStorage.setItem(storageKey, JSON.stringify(messages));
             }
         } catch {
             // localStorage can throw (quota, disabled, private mode) —
             // swallow and continue; persistence is best-effort.
         }
-    }, [messages, mode]);
+    }, [messages, storageKey]);
+
+    // First-message adoption — the moment an ephemeral entry gets its first user
+    // message, tell the parent so it creates a Recents conversation. Fires once;
+    // not wired for an already-saved conversation (no onFirstUserMessage passed).
+    const firstMsgFiredRef = useRef(false);
+    useEffect(() => {
+        if (firstMsgFiredRef.current || !onFirstUserMessage) return;
+        const firstUser = messages.find((m) => m.role === "user");
+        if (!firstUser) return;
+        firstMsgFiredRef.current = true;
+        const text =
+            typeof firstUser.content === "string" && firstUser.content.trim()
+                ? firstUser.content.trim()
+                : "New chat";
+        onFirstUserMessage(text);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages]);
 
     // Migration audit-row hook: when the model's `commit_import` tool
     // returns a non-trivial result (any of created/skipped/failed > 0),
@@ -351,6 +377,19 @@ export function ChatThread({
 
     const act: MigActions = { send, openUpload };
 
+    // Shared composer — centered in the empty hero, docked in a conversation.
+    const composerNode = (
+        <Composer
+            mode={mode}
+            value={input}
+            onChange={handleInputChange}
+            onSubmit={handleSubmit}
+            onAttach={openUpload}
+            isBusy={isBusy}
+            onStop={stop}
+        />
+    );
+
     return (
         <div
             className="relative h-full flex flex-col"
@@ -373,18 +412,21 @@ export function ChatThread({
                 }}
             />
 
-            {/* Scrolling message region takes remaining height. Composer
-                docks at the bottom outside the scroll. */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                {empty ? (
-                    mode === "migration" ? (
-                        <MigrationEmptyState onStart={send} />
+            {/* Empty state (Figma 413:460177): composer is centered in the hero,
+                between the subtext and the entry cards. Docks at the bottom once
+                a conversation starts. */}
+            {empty ? (
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                    {mode === "migration" ? (
+                        <MigrationEmptyState onStart={send} composer={composerNode} />
                     ) : mode === "studio_setup" ? (
-                        <StudioSetupEmptyState onStart={send} />
+                        <StudioSetupEmptyState onStart={send} composer={composerNode} />
                     ) : (
-                        <InsightEmptyState onSend={send} />
-                    )
-                ) : (
+                        <InsightEmptyState onSend={send} composer={composerNode} />
+                    )}
+                </div>
+            ) : (
+                <div className="flex-1 min-h-0 overflow-y-auto">
                     <div className="w-full max-w-[720px] mx-auto px-6 py-8 flex flex-col gap-6">
                         {messages.map((m) => (
                             <MessageRow key={m.id} message={m} mode={mode} act={act} />
@@ -413,22 +455,15 @@ export function ChatThread({
                         )}
                         <div ref={endRef} />
                     </div>
-                )}
-            </div>
-
-            {/* Composer — docked at the bottom, always visible. */}
-            <div className="shrink-0 border-t border-[#eaecf0] bg-white/80 backdrop-blur-sm">
-                <div className="w-full max-w-[720px] mx-auto px-6 py-4">
-                    <Composer
-                        mode={mode}
-                        value={input}
-                        onChange={handleInputChange}
-                        onSubmit={handleSubmit}
-                        onAttach={openUpload}
-                        disabled={isBusy}
-                    />
                 </div>
-            </div>
+            )}
+
+            {/* Docked composer — live conversation only. */}
+            {!empty && (
+                <div className="shrink-0 border-t border-[#eaecf0] bg-white/80 backdrop-blur-sm">
+                    <div className="w-full max-w-[720px] mx-auto px-6 py-4">{composerNode}</div>
+                </div>
+            )}
         </div>
     );
 }
@@ -437,11 +472,20 @@ export function ChatThread({
 // Empty states — Insight suggests capabilities; Migration promotes a start
 // ─────────────────────────────────────────────────────────────────────────────
 
-function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
+function InsightEmptyState({
+    onSend,
+    composer,
+}: {
+    onSend: (t: string) => void;
+    composer: React.ReactNode;
+}) {
     return (
-        <div className="w-full max-w-[720px] mx-auto px-6 h-full flex items-center justify-center py-12">
-            <div className="flex flex-col gap-8 items-center w-full">
-                {/* Orb + copy */}
+        // Vertically-centered hero. min-h-full so items-center centres it, yet
+        // it can still scroll if the viewport is short.
+        <div className="min-h-full w-full flex items-center justify-center px-6 py-12">
+            {/* Container — Figma max-w-720, gap-32 (top block ↔ input block). */}
+            <div className="w-full max-w-[720px] flex flex-col gap-8 items-center">
+                {/* Top — orb + heading + subtext (Figma gap-16). */}
                 <div className="flex flex-col gap-4 items-center w-full">
                     <ParticleOrb size={72} />
                     <div className="flex flex-col gap-1 text-center w-full items-center">
@@ -465,11 +509,12 @@ function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
                     </div>
                 </div>
 
-                {/* Suggestion cards — Phase 12: Create + Customer now
-                    trigger dedicated tools (list_create_shortcuts /
-                    find_customer). Insight still routes through the
-                    studio-overview tool. */}
-                <div className="flex gap-4 w-full">
+                {/* AI input block — composer (centered) then the entry cards
+                    (Figma gap-20). */}
+                <div className="flex flex-col gap-5 w-full">
+                    {composer}
+                    {/* Entry cards — Create / Insight / Customer (row, gap-16). */}
+                    <div className="flex gap-4 w-full">
                     <SuggestionCard
                         icon={PencilLine}
                         title="Create"
@@ -500,13 +545,20 @@ function InsightEmptyState({ onSend }: { onSend: (t: string) => void }) {
                             )
                         }
                     />
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-function StudioSetupEmptyState({ onStart }: { onStart: (t: string) => void }) {
+function StudioSetupEmptyState({
+    onStart,
+    composer,
+}: {
+    onStart: (t: string) => void;
+    composer: React.ReactNode;
+}) {
     return (
         <div className="w-full max-w-[560px] mx-auto px-6 h-full flex items-center justify-center py-12">
             <div className="flex flex-col gap-6 items-center w-full">
@@ -549,12 +601,19 @@ function StudioSetupEmptyState({ onStart }: { onStart: (t: string) => void }) {
                     <Stars02 className="size-4" />
                     Show me what&apos;s missing
                 </button>
+                <div className="w-full max-w-[720px]">{composer}</div>
             </div>
         </div>
     );
 }
 
-function MigrationEmptyState({ onStart }: { onStart: (t: string) => void }) {
+function MigrationEmptyState({
+    onStart,
+    composer,
+}: {
+    onStart: (t: string) => void;
+    composer: React.ReactNode;
+}) {
     return (
         <div className="w-full max-w-[560px] mx-auto px-6 h-full flex items-center justify-center py-12">
             <div className="flex flex-col gap-6 items-center w-full">
@@ -595,6 +654,7 @@ function MigrationEmptyState({ onStart }: { onStart: (t: string) => void }) {
                     <UploadCloud02 className="size-4" />
                     Start migration
                 </button>
+                <div className="w-full max-w-[720px]">{composer}</div>
             </div>
         </div>
     );
@@ -792,74 +852,93 @@ function Composer({
     onChange,
     onSubmit,
     onAttach,
-    disabled,
+    isBusy,
+    onStop,
 }: {
     mode: AiAgentMode;
     value: string;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
     onAttach: () => void;
-    disabled: boolean;
+    isBusy: boolean;
+    onStop: () => void;
 }) {
-    const canSend = value.trim().length > 0 && !disabled;
+    const canSend = value.trim().length > 0 && !isBusy;
     const attachActive = mode === "migration";
+    // Skeuomorphic inner border + inner shadow (Figma shadow-xs-skeuomorphic).
+    const SKEUO =
+        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]";
     return (
+        // Answer field (Figma 405:455839): p-10, rounded-12, border #d0d5dd,
+        // shadow-xl. Focus turns the border green with a soft ring.
         <form
             onSubmit={onSubmit}
             className={cn(
-                "flex items-center gap-2 p-2.5 bg-white border border-[#d0d5dd] rounded-xl",
+                "flex items-center justify-between gap-2 p-2.5 bg-white rounded-xl",
+                "border border-[#d0d5dd] transition-colors",
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
+                "focus-within:border-[#7ba08c] focus-within:ring-4 focus-within:ring-[#7ba08c]/[0.12]",
             )}
         >
-            {/* Attachment. Active in migration mode (opens the file picker
-                for a CSV upload). Inert in insight mode — kept in the
-                layout so composer geometry doesn't shift between threads. */}
-            <button
-                type="button"
-                aria-label={
-                    attachActive ? "Upload CSV" : "Attach file (not available)"
-                }
-                onClick={attachActive ? onAttach : undefined}
-                disabled={!attachActive || disabled}
-                className={cn(
-                    "size-9 flex-shrink-0 flex items-center justify-center rounded-md",
-                    "bg-white border border-[#d0d5dd] text-[#344054]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    attachActive
-                        ? "hover:bg-[#f9fafb] transition-colors"
-                        : "disabled:opacity-60 disabled:cursor-not-allowed",
-                )}
-            >
-                <Attachment01 className="size-5" />
-            </button>
+            {/* Left: attach + input. */}
+            <div className="flex flex-1 min-w-0 items-center gap-2">
+                <button
+                    type="button"
+                    aria-label={attachActive ? "Upload CSV" : "Attach file (not available)"}
+                    onClick={attachActive ? onAttach : undefined}
+                    disabled={!attachActive}
+                    className={cn(
+                        "size-9 flex-shrink-0 flex items-center justify-center rounded-lg",
+                        "bg-white border border-[#d0d5dd] text-[#344054]",
+                        SKEUO,
+                        attachActive
+                            ? "hover:bg-[#f9fafb] transition-colors"
+                            : "disabled:opacity-60 disabled:cursor-not-allowed",
+                    )}
+                >
+                    <Attachment01 className="size-5" />
+                </button>
 
-            <input
-                value={value}
-                onChange={onChange}
-                placeholder={
-                    mode === "migration"
-                        ? "Reply, or attach a CSV…"
-                        : "Ask me anything"
-                }
-                disabled={disabled}
-                className="flex-1 min-w-0 h-9 px-2 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6 disabled:opacity-70"
-                style={{ fontFamily: DM_SANS_STACK }}
-            />
+                <input
+                    value={value}
+                    onChange={onChange}
+                    placeholder={mode === "migration" ? "Reply, or attach a CSV…" : "Ask me anything"}
+                    className="flex-1 min-w-0 h-9 px-1 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6"
+                    style={{ fontFamily: DM_SANS_STACK }}
+                />
+            </div>
 
-            <button
-                type="submit"
-                aria-label="Send"
-                disabled={!canSend}
-                className={cn(
-                    "size-9 flex-shrink-0 flex items-center justify-center rounded-md",
-                    "bg-[#c4edd6] text-[#0c2d34] border-1 border-white/[0.12]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#aad4bd] transition-colors",
-                    "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-[#c4edd6]",
-                )}
-            >
-                <Send03 className="size-5" />
-            </button>
+            {/* Right: Send → Stop while generating (Figma answer-field states). */}
+            {isBusy ? (
+                <button
+                    type="button"
+                    aria-label="Stop generating"
+                    onClick={onStop}
+                    className={cn(
+                        "size-9 flex-shrink-0 flex items-center justify-center rounded-lg",
+                        "bg-[#c4edd6] text-[#0c2d34] border-2 border-white/[0.12]",
+                        SKEUO,
+                        "hover:bg-[#aad4bd] transition-colors",
+                    )}
+                >
+                    <span className="size-3.5 rounded-[4px] border-2 border-current" aria-hidden />
+                </button>
+            ) : (
+                <button
+                    type="submit"
+                    aria-label="Send"
+                    disabled={!canSend}
+                    className={cn(
+                        "size-9 flex-shrink-0 flex items-center justify-center rounded-lg",
+                        "bg-[#c4edd6] text-[#0c2d34] border-2 border-white/[0.12]",
+                        SKEUO,
+                        "hover:bg-[#aad4bd] transition-colors",
+                        "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-[#c4edd6]",
+                    )}
+                >
+                    <Send03 className="size-5" />
+                </button>
+            )}
         </form>
     );
 }

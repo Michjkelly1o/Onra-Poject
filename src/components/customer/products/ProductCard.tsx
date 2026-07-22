@@ -77,9 +77,21 @@ export function ProductCard({
                     <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{product.name}</p>
                     <p className="truncate text-sm font-normal leading-5 text-[#475467]">{product.sub}</p>
                 </div>
-                <p className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
-                    {product.priceLabel ?? `AED ${product.price}`}
-                </p>
+                {/* Price + per-class, inline (Figma 4548:45171): the price leads
+                    (text-md semibold, brand green) and the per-class sits muted
+                    and bottom-aligned beside it. `unitPriceLabel` is set on credit
+                    packages only, so every other product shows the price alone —
+                    the row is identical across the catalog. */}
+                <div className="flex items-center gap-1">
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-primary)]">
+                        {product.priceLabel ?? `AED ${product.price}`}
+                    </p>
+                    {product.unitPriceLabel && (
+                        <span className="flex items-end self-stretch py-0.5">
+                            <span className="text-xs font-normal leading-[18px] text-[#667085]">{product.unitPriceLabel}</span>
+                        </span>
+                    )}
+                </div>
             </div>
 
             {inCart ? (

@@ -13,7 +13,7 @@
 import { useEffect, useMemo } from "react";
 import { useAppStore, type CustomerPlan } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
-import type { PlanRow } from "@/lib/customer/purchase";
+import { perClassLabel, type PlanRow } from "@/lib/customer/purchase";
 
 function fmtLongDate(iso?: string): string {
     if (!iso) return "—";
@@ -76,6 +76,7 @@ export function useCatalogProducts(): CatalogProducts {
                 sub: `${p.credits} credit${p.credits === 1 ? "" : "s"} • ${fmtValidity(p.validity_days)}`,
                 price: p.price_aed,
                 creditBadge: { big: String(p.credits), small: p.credits === 1 ? "credit" : "credits" },
+                unitPriceLabel: perClassLabel(p.price_aed, p.credits),
             }));
 
         const giftCards: PlanRow[] = giftCardDesigns

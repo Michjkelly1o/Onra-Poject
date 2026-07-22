@@ -23,6 +23,15 @@ export interface GiftCardMeta {
     validLabel: string;
 }
 
+/** "AED 150/class" for a finite plan; undefined when there's no meaningful
+ *  per-class price (unlimited credits, zero/absent credits, or a gift card). */
+export function perClassLabel(priceAed: number, credits: number | "unlimited" | undefined): string | undefined {
+    if (credits === "unlimited" || typeof credits !== "number" || credits <= 0) return undefined;
+    // Round to the nearest dirham — prices/credits are whole numbers, but guard
+    // against a fractional result regardless.
+    return `AED ${Math.round(priceAed / credits)}/class`;
+}
+
 export interface PlanRow {
     id: string;
     kind: PlanKind;
@@ -35,6 +44,11 @@ export interface PlanRow {
     price: number;
     /** Card price-label override — gift-card custom "Start from AED 50". */
     priceLabel?: string;
+    /** Per-class breakdown shown as a muted line under the price, e.g.
+     *  "AED 150/class". Set on CREDIT PACKAGES only — memberships (a recurring
+     *  subscription, not a per-class buy) and gift cards never carry it. Built
+     *  via `perClassLabel`. */
+    unitPriceLabel?: string;
     /** Gift-card metadata (set when kind === "gift_card"). */
     giftCard?: GiftCardMeta;
 }
@@ -220,6 +234,7 @@ export function usePurchasePlans(): PlanRow[] {
                     sub: `${p.credits} credit${p.credits === 1 ? "" : "s"} • ${fmtValidity(p.validity_days)}`,
                     price: p.price_aed,
                     creditBadge: { big: String(p.credits), small: p.credits === 1 ? "credit" : "credits" },
+                    unitPriceLabel: perClassLabel(p.price_aed, p.credits),
                 })),
         ],
         [memberships, packages],
