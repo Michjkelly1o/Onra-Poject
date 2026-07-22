@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
-import { ChevronLeft, FilterLines, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
+import { ChevronLeft, Sliders02, RefreshCcw01, SlashCircle01 } from "@untitledui/icons";
 import {
     applyBookingFilters,
     bookingFilterCount,
@@ -230,7 +230,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                     aria-label="Filter"
                     className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
-                    <FilterLines className="size-5 text-[#344054]" aria-hidden />
+                    <Sliders02 className="size-5 text-[#344054]" aria-hidden />
                     {fcount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}
@@ -250,7 +250,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                     fcount > 0 ? (
                         <div className="flex flex-1 items-center justify-center">
                             <SearchEmptyState
-                                icon={FilterLines}
+                                icon={Sliders02}
                                 title="No bookings match"
                                 description="Try clearing or changing your filters."
                             />

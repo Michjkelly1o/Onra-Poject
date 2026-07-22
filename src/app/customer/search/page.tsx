@@ -15,7 +15,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
-import { ChevronDown, FilterLines, MarkerPin01 } from "@untitledui/icons";
+import { ChevronDown, Sliders02, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
 import { addDaysISO, firstOfMonthISO, monthYearOf, REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
@@ -196,7 +196,7 @@ export default function SearchPage() {
                     aria-label="Filter"
                     className="relative flex shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white p-2.5 transition-colors active:bg-gray-50"
                 >
-                    <FilterLines className="size-5 text-[#344054]" aria-hidden />
+                    <Sliders02 className="size-5 text-[#344054]" aria-hidden />
                     {fcount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}

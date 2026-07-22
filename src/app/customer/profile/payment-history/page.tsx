@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { loginHref } from "@/lib/customer/auth-flow";
-import { CheckCircle, ChevronLeft, FilterLines, Package, CalendarCheck02, XCircle } from "@untitledui/icons";
+import { CheckCircle, ChevronLeft, Sliders02, Package, CalendarCheck02, XCircle } from "@untitledui/icons";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { useIsAuthenticated } from "@/lib/customer/auth";
@@ -130,7 +130,7 @@ export default function PaymentHistoryPage() {
                     aria-label="Filter"
                     className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                 >
-                    <FilterLines className="size-5 text-[#344054]" aria-hidden />
+                    <Sliders02 className="size-5 text-[#344054]" aria-hidden />
                     {fcount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}
@@ -149,7 +149,7 @@ export default function PaymentHistoryPage() {
                 {groups.length === 0 ? (
                     <div className="flex flex-1 items-center justify-center">
                         <SearchEmptyState
-                            icon={fcount > 0 ? FilterLines : Package}
+                            icon={fcount > 0 ? Sliders02 : Package}
                             title={fcount > 0 ? "No payments match" : "No payments yet"}
                             description={
                                 fcount > 0
