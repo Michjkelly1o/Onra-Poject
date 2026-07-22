@@ -180,9 +180,18 @@ function MultiStaffDropdown({ options, selectedIds, onChange, placeholder }: {
 
 interface FormValue {
     title: string;
-    date: string;          // ISO "YYYY-MM-DD"
+    /** Range start (inclusive) — replaces the single `date` field.
+     *  Legacy `date` on the store row still mirrors this. */
+    dateFrom: string;      // ISO "YYYY-MM-DD"
+    dateTo:   string;      // ISO "YYYY-MM-DD"
+    /** When true, start/end times are ignored; entry runs 00:00-23:59. */
+    allDay: boolean;
     startTime: string;
     endTime: string;
+    /** Fixed reason category — Sick / Vacation / Training / Other.
+     *  Client 2026-07-22 replaced the free-text-only title. */
+    reason: "sick" | "vacation" | "training" | "other";
+    /** Free-text context. Required only when `reason === "other"`. */
     note: string;
     staffIds: string[];
 }
@@ -195,8 +204,17 @@ function todayISO(): string {
 }
 
 const EMPTY_FORM = (): FormValue => ({
-    title: "", date: "", startTime: "", endTime: "", note: "", staffIds: [],
+    title: "", dateFrom: "", dateTo: "", allDay: false,
+    startTime: "", endTime: "", reason: "vacation", note: "", staffIds: [],
 });
+
+/** Reason category options — matches the seed's `TimeOffReason` type. */
+const REASON_OPTIONS: { value: FormValue["reason"]; label: string }[] = [
+    { value: "sick",     label: "Sick"     },
+    { value: "vacation", label: "Vacation" },
+    { value: "training", label: "Training" },
+    { value: "other",    label: "Other"    },
+];
 
 // ─── Page ────────────────────────────────────────────────────────────────
 
@@ -221,27 +239,27 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
         ? blockedTimes.find(b => b.id === blockedTimeId)
         : undefined;
 
-    const [form, setForm] = useState<FormValue>(() => existing
-        ? {
-            title:     existing.title,
-            date:      existing.date,
-            startTime: existing.start_time,
-            endTime:   existing.end_time,
-            note:      existing.note,
-            staffIds:  [...existing.staff_ids],
-        }
-        : EMPTY_FORM());
+    // Existing entry hydration — falls back to legacy `date` when the
+    // migrated fields are missing (pre-v81 seeds). All-day defaults to
+    // false so testers pick times explicitly unless they toggle it on.
+    const seedFormFromExisting = (): FormValue => ({
+        title:     existing!.title,
+        dateFrom:  existing!.date_from_iso ?? existing!.date,
+        dateTo:    existing!.date_to_iso   ?? existing!.date,
+        allDay:    existing!.all_day       ?? false,
+        startTime: existing!.start_time,
+        endTime:   existing!.end_time,
+        reason:    existing!.reason        ?? "other",
+        note:      existing!.note,
+        staffIds:  [...existing!.staff_ids],
+    });
+    const [form, setForm] = useState<FormValue>(() =>
+        existing ? seedFormFromExisting() : EMPTY_FORM(),
+    );
 
     useEffect(() => {
         if (mode !== "edit" || !existing) return;
-        setForm({
-            title:     existing.title,
-            date:      existing.date,
-            startTime: existing.start_time,
-            endTime:   existing.end_time,
-            note:      existing.note,
-            staffIds:  [...existing.staff_ids],
-        });
+        setForm(seedFormFromExisting());
     }, [mode, existing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function set(patch: Partial<FormValue>) { setForm(prev => ({ ...prev, ...patch })); }
@@ -321,46 +339,61 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
 
     // ── Validation ───────────────────────────────────────────────────────
     const todayDate = todayISO();
-    const isPastDate = !!form.date && form.date < todayDate;
+    const isPastDate = !!form.dateFrom && form.dateFrom < todayDate;
+    const isRangeInverted = !!form.dateFrom && !!form.dateTo && form.dateTo < form.dateFrom;
+    // "Other" reason requires a note; the fixed categories accept an
+    // optional note but never REQUIRE one (matches client 2026-07-22
+    // spec: "when selecting other you can add a note").
+    const missingOtherNote = form.reason === "other" && !form.note.trim();
 
     const isValid = (() => {
-        if (!form.date) return false;
-        if (isPastDate) return false;
-        if (!form.startTime || !form.endTime) return false;
-        if (form.startTime >= form.endTime) return false;
+        if (!form.dateFrom || !form.dateTo) return false;
+        if (isPastDate || isRangeInverted) return false;
+        // Time bounds only enforced when NOT all-day.
+        if (!form.allDay) {
+            if (!form.startTime || !form.endTime) return false;
+            if (form.startTime >= form.endTime) return false;
+        }
         if (form.staffIds.length === 0) return false;
+        if (missingOtherNote) return false;
         return true;
     })();
 
     function handleSubmit() {
         if (!isValid) return;
         const finalBranchId = branchId!;
+        // All-day → 00:00 → 23:59; timed → picked values. Keeping
+        // start_time/end_time populated even for all-day means any
+        // consumer that reads them (schedule overlay, exports) still
+        // gets a sane window.
+        const effStart = form.allDay ? "00:00" : form.startTime;
+        const effEnd   = form.allDay ? "23:59" : form.endTime;
+        // Legacy `date` column mirrors `date_from_iso` so consumers
+        // that haven't migrated to the range fields continue to work
+        // (see the store rehydrate migration + BlockedTime type for
+        // details). New submissions write BOTH.
+        const rowShape = {
+            title:         form.title.trim(),
+            date:          form.dateFrom,
+            date_from_iso: form.dateFrom,
+            date_to_iso:   form.dateTo,
+            all_day:       form.allDay,
+            start_time:    effStart,
+            end_time:      effEnd,
+            reason:        form.reason,
+            note:          form.note.trim(),
+            staff_ids:     form.staffIds,
+            branch_id:     finalBranchId,
+        };
         if (mode === "edit" && existing) {
-            updateBlockedTime(existing.id, {
-                title:      form.title.trim(),
-                date:       form.date,
-                start_time: form.startTime,
-                end_time:   form.endTime,
-                note:       form.note.trim(),
-                staff_ids:  form.staffIds,
-                branch_id:  finalBranchId,
-            });
+            updateBlockedTime(existing.id, rowShape);
             showToast(
                 "Time off updated",
                 "Staff schedules have been updated.",
                 "success", "check",
             );
         } else {
-            addBlockedTime({
-                title:      form.title.trim(),
-                date:       form.date,
-                start_time: form.startTime,
-                end_time:   form.endTime,
-                note:       form.note.trim(),
-                staff_ids:  form.staffIds,
-                branch_id:  finalBranchId,
-            });
-            // Figma 7413:257605 — success copy verbatim.
+            addBlockedTime(rowShape);
             showToast(
                 "Time off added successfully",
                 "The time off has been added and staff schedules have been updated.",
@@ -416,28 +449,52 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                         <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
                             <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Time off details</h2>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Title (optional) */}
-                                <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[#344054]">Title (optional)</label>
-                                    <input
-                                        type="text" value={form.title}
-                                        onChange={e => set({ title: e.target.value })}
-                                        placeholder="Enter title"
-                                        className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
-                                    />
-                                </div>
+                            {/* Reason category (Sick / Vacation / Training /
+                                Other). Client 2026-07-22 replaced the
+                                free-text-only title — reason drives
+                                payroll classification + the list chip. */}
+                            <div className="flex flex-col gap-[6px]">
+                                <label className="text-[14px] font-medium text-[#344054]">Reason</label>
+                                <SelectInput
+                                    placeholder="Select a reason"
+                                    value={form.reason}
+                                    onChange={v => set({ reason: v as FormValue["reason"] })}
+                                    options={REASON_OPTIONS}
+                                    width="w-full"
+                                />
+                            </div>
 
-                                {/* Date — uses the canonical DatePicker so the
-                                    blocked-time form has the same calendar
-                                    chrome as every other date input across
-                                    the app (native browser pickers vary by
-                                    OS/locale and don't match the design). */}
+                            {/* Title (optional) — carries the fixed
+                                categories' short descriptor for the list.
+                                Kept optional; the reason chip is the
+                                primary signal on the row. */}
+                            <div className="flex flex-col gap-[6px]">
+                                <label className="text-[14px] font-medium text-[#344054]">Title (optional)</label>
+                                <input
+                                    type="text" value={form.title}
+                                    onChange={e => set({ title: e.target.value })}
+                                    placeholder="Enter title"
+                                    className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                />
+                            </div>
+
+                            {/* Date range — two DatePickers. Same
+                                DatePicker every other date input across
+                                the app uses. `dateTo` is bounded by
+                                `dateFrom` so an inverted range never
+                                submits (belt + suspenders alongside the
+                                `isRangeInverted` validation flag). */}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[#344054]">Date</label>
+                                    <label className="text-[14px] font-medium text-[#344054]">From</label>
                                     <DatePicker
-                                        value={form.date}
-                                        onChange={iso => set({ date: iso })}
+                                        value={form.dateFrom}
+                                        onChange={iso => {
+                                            // Keep dateTo ≥ dateFrom whenever the
+                                            // start moves forward past the current end.
+                                            const nextTo = form.dateTo && form.dateTo < iso ? iso : form.dateTo || iso;
+                                            set({ dateFrom: iso, dateTo: nextTo });
+                                        }}
                                         placeholder="Select date"
                                         minDate={todayDate}
                                     />
@@ -445,52 +502,105 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                         <p className="text-[13px] text-[#b42318]">Date can't be in the past.</p>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Start / End time */}
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[#344054]">Start time</label>
-                                    <SelectInput
-                                        triggerIcon={<Clock className="w-4 h-4" />}
-                                        placeholder="Select time"
-                                        value={form.startTime}
-                                        onChange={v => set({ startTime: v })}
-                                        options={startOptions}
-                                        width="w-full"
+                                    <label className="text-[14px] font-medium text-[#344054]">To</label>
+                                    <DatePicker
+                                        value={form.dateTo}
+                                        onChange={iso => set({ dateTo: iso })}
+                                        placeholder="Select date"
+                                        minDate={form.dateFrom || todayDate}
                                     />
-                                </div>
-                                <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[#344054]">End time</label>
-                                    <SelectInput
-                                        triggerIcon={<Clock className="w-4 h-4" />}
-                                        placeholder="Select time"
-                                        value={form.endTime}
-                                        onChange={v => set({ endTime: v })}
-                                        options={endOptions}
-                                        width="w-full"
-                                    />
+                                    {isRangeInverted && (
+                                        <p className="text-[13px] text-[#b42318]">End date must be on or after the start date.</p>
+                                    )}
                                 </div>
                             </div>
-                            {/* Window hint */}
-                            <p className="-mt-3 text-[13px] text-[#667085]">
-                                {timeWindow.source === "shift"
-                                    ? "Limited to the staff's shift hours."
-                                    : timeWindow.source === "branch"
-                                        ? "Limited to the branch's working hours."
-                                        : "Pick at least one staff member to set the time range."}
-                            </p>
 
-                            {/* Note */}
+                            {/* All-day toggle — when on, the entry covers
+                                the full range from 00:00 → 23:59 across
+                                every included day (`start_time`/`end_time`
+                                still write 00:00/23:59 for downstream
+                                consumers). Client 2026-07-22 vacation
+                                example: Maya Aug 3 → 9 all-day. */}
+                            <div className="flex items-center gap-3 rounded-[12px] border-1 border-[#e4e7ec] bg-white p-3">
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={form.allDay}
+                                    aria-label="All day"
+                                    onClick={() => set({ allDay: !form.allDay })}
+                                    className={cn(
+                                        "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
+                                        form.allDay ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                                    )}
+                                >
+                                    <span className={cn(
+                                        "w-5 h-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-transform",
+                                        form.allDay ? "translate-x-5" : "translate-x-0",
+                                    )} />
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[14px] font-semibold text-[#101828] leading-5">All day</p>
+                                    <p className="text-[13px] text-[#667085] leading-[18px] mt-0.5">Runs full days across the picked range. Turn off to set specific times.</p>
+                                </div>
+                            </div>
+
+                            {/* Start / End time — hidden when All-day is on. */}
+                            {!form.allDay && (
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex flex-col gap-[6px]">
+                                            <label className="text-[14px] font-medium text-[#344054]">Start time</label>
+                                            <SelectInput
+                                                triggerIcon={<Clock className="w-4 h-4" />}
+                                                placeholder="Select time"
+                                                value={form.startTime}
+                                                onChange={v => set({ startTime: v })}
+                                                options={startOptions}
+                                                width="w-full"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-[6px]">
+                                            <label className="text-[14px] font-medium text-[#344054]">End time</label>
+                                            <SelectInput
+                                                triggerIcon={<Clock className="w-4 h-4" />}
+                                                placeholder="Select time"
+                                                value={form.endTime}
+                                                onChange={v => set({ endTime: v })}
+                                                options={endOptions}
+                                                width="w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="-mt-3 text-[13px] text-[#667085]">
+                                        {timeWindow.source === "shift"
+                                            ? "Limited to the staff's shift hours."
+                                            : timeWindow.source === "branch"
+                                                ? "Limited to the branch's working hours."
+                                                : "Pick at least one staff member to set the time range."}
+                                    </p>
+                                </>
+                            )}
+
+                            {/* Note — becomes REQUIRED when reason=Other
+                                per client 2026-07-22 spec. */}
                             <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Note</label>
+                                <label className="text-[14px] font-medium text-[#344054]">
+                                    {form.reason === "other" ? "Note" : "Note (optional)"}
+                                </label>
                                 <textarea
                                     value={form.note}
                                     onChange={e => set({ note: e.target.value })}
-                                    placeholder="Enter note..."
+                                    placeholder={form.reason === "other"
+                                        ? "Describe the reason..."
+                                        : "Enter note..."
+                                    }
                                     rows={3}
                                     className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
                                 />
+                                {missingOtherNote && (
+                                    <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
+                                )}
                             </div>
 
                             {/* Staffs */}

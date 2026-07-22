@@ -1899,33 +1899,57 @@ export interface Shift {
     created_at: string;       // ISO 8601
 }
 
-// ─── Blocked time (Staff & shift module) ──────────────────────────────────
+// ─── Time off (Staff & shift module — was "Blocked time") ─────────────────
 //
-// One row per blocked-time entry — a single date window when one or more
-// staff are unavailable (sick day, training, personal appointment, etc.).
-// Drives the Staff & shift module's Blocked time tab (Figma 7413:239407)
-// and a future schedule grid overlay.
+// Renamed from `blocked_time` to `time off` per client 2026-07-22 —
+// "it's people being away, not calendar admin". The type name
+// `BlockedTime` is preserved for back-compat with import paths + store
+// action signatures, but the fields + semantics moved to the "time off"
+// model:
 //
-// Rules:
-//   • `title` is OPTIONAL (admin can leave it blank — defaults to "Blocked"
-//     in the table).
-//   • `date` is an ISO date string ("YYYY-MM-DD"). Admins can only pick
-//     today or a future date in the form, but past entries are still
-//     historically valid and shown in the list.
-//   • `staff_ids` is multi-select — one blocked-time entry can cover one
-//     or many staff (e.g. branch-wide training session).
-//   • Branch is derived at read time from the assigned staff so it stays
-//     in sync if a staff member moves branches.
+//   • Every entry spans a DATE RANGE (was single-day). `date_from_iso`
+//     and `date_to_iso` bracket the range; a single-day off still writes
+//     the SAME ISO to both.
+//   • `all_day` flag — when true, `start_time`/`end_time` are ignored
+//     (a vacation isn't 09:00–17:00; it's the whole day, potentially
+//     spanning multiple days).
+//   • `reason` is a fixed category (Sick / Vacation / Training / Other) —
+//     drives payroll classification + widget grouping. `note` is now
+//     free-text on the "Other" branch only, and optional context for
+//     the fixed categories.
+//   • Legacy `date` column KEPT for back-compat during migration + as a
+//     denorm of `date_from_iso` (store rehydrate mirrors them). Existing
+//     consumers reading `.date` continue to work.
+//   • Rules unchanged: `staff_ids` is multi-select; `branch_id` is a
+//     denormed convenience for the branch filter.
+
+export type TimeOffReason = "sick" | "vacation" | "training" | "other";
 
 export interface BlockedTime {
-    /** e.g. "blocked_2025_03_18" */
+    /** e.g. "blocked_2025_03_18". Legacy id scheme kept so existing
+     *  seeded ids stay valid. New entries use "time_off_*". */
     id: string;
     /** Optional label — leave blank for a generic block. */
     title: string;
+    /** Legacy single-day column — mirrors `date_from_iso` for callers
+     *  that haven't migrated yet. */
     date: string;             // "2025-03-18"
+    /** Range start (inclusive). "YYYY-MM-DD". Client 2026-07-22. */
+    date_from_iso: string;
+    /** Range end (inclusive). Equal to `date_from_iso` for single-day
+     *  entries. Client 2026-07-22. */
+    date_to_iso: string;
+    /** When true, the entry runs from 00:00 → 23:59 across the whole
+     *  range (`start_time`/`end_time` ignored). Client 2026-07-22. */
+    all_day: boolean;
     start_time: string;       // "13:00"
     end_time: string;         // "14:00"
-    /** Free-text reason / context. Empty string when unused. */
+    /** Reason category — Sick / Vacation / Training / Other. Drives
+     *  payroll reporting + the reason chip on the list. Client
+     *  2026-07-22. */
+    reason: TimeOffReason;
+    /** Free-text reason / context. Required only when `reason === "other"`;
+     *  optional context otherwise. Empty string when unused. */
     note: string;
     /** FK array → staff.id. At least one entry. */
     staff_ids: string[];

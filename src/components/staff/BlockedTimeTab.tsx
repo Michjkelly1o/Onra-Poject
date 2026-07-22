@@ -47,6 +47,47 @@ function fmtDate(iso: string): string {
     return date.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }
 
+/** Whole-day span between two ISO dates (inclusive). Single-day = 1. */
+function spanDays(fromISO: string, toISO: string): number {
+    const [fy, fm, fd] = fromISO.split("-").map(Number);
+    const [ty, tm, td] = toISO.split("-").map(Number);
+    const from = new Date(fy, fm - 1, fd);
+    const to   = new Date(ty, tm - 1, td);
+    return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
+}
+
+/** "YYYY-MM-DD" for local today — matches the form's `todayISO`. */
+function todayISO(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Reason-chip palette + label. Matches the form's REASON_OPTIONS.
+ *  Palette pulls the same tag colours used across the app (sage green,
+ *  blue, purple, amber) so the tone reads consistent with sibling
+ *  chrome (StatusBadge / SessionTypeTag). */
+const REASON_STYLE: Record<
+    "sick" | "vacation" | "training" | "other",
+    { label: string; className: string }
+> = {
+    sick:     { label: "Sick",     className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
+    vacation: { label: "Vacation", className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
+    training: { label: "Training", className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
+    other:    { label: "Other",    className: "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]" },
+};
+
+function ReasonChip({ reason }: { reason: BlockedTime["reason"] | undefined }) {
+    const spec = REASON_STYLE[reason ?? "other"];
+    return (
+        <span className={cn(
+            "inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap",
+            spec.className,
+        )}>
+            {spec.label}
+        </span>
+    );
+}
+
 // Stacked avatars — leftmost on top, capped at MAX_VISIBLE; rest summarised.
 const MAX_VISIBLE = 3;
 function StackedAvatars({ staffList }: { staffList: Staff[] }) {
@@ -196,17 +237,30 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                 return false;
             })
             .sort((a, b) => {
-                if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-                return a.start_time < b.start_time ? 1 : -1;
+                // Client 2026-07-22: upcoming shown first, past collapses
+                // below. "Upcoming" = the range's END is today or later.
+                // Within each group we sort chronologically ASC for
+                // upcoming (nearest first), DESC for past (most recent
+                // past first).
+                const today = todayISO();
+                const aFrom = a.date_from_iso ?? a.date;
+                const aTo   = a.date_to_iso   ?? a.date;
+                const bFrom = b.date_from_iso ?? b.date;
+                const bTo   = b.date_to_iso   ?? b.date;
+                const aUpcoming = aTo >= today;
+                const bUpcoming = bTo >= today;
+                if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+                if (aUpcoming) return aFrom.localeCompare(bFrom);
+                return bFrom.localeCompare(aFrom);
             });
     }, [blockedTimes, branchId, search, staffById]);
 
-    // ── Blocked time sort — Date & time / Title / Staff count / Note. ──
+    // ── Time off sort — Date & time / Reason / Staff count / Note. ─────
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<BlockedTime>(filtered, {
-        date:  (a, b) => `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`),
-        title: (a, b) => (a.title.trim() || "Blocked").localeCompare(b.title.trim() || "Blocked"),
-        staff: (a, b) => a.staff_ids.length - b.staff_ids.length,
-        note:  (a, b) => a.note.localeCompare(b.note),
+        date:   (a, b) => `${a.date_from_iso ?? a.date} ${a.start_time}`.localeCompare(`${b.date_from_iso ?? b.date} ${b.start_time}`),
+        reason: (a, b) => (REASON_STYLE[a.reason ?? "other"].label).localeCompare(REASON_STYLE[b.reason ?? "other"].label),
+        staff:  (a, b) => a.staff_ids.length - b.staff_ids.length,
+        note:   (a, b) => a.note.localeCompare(b.note),
     });
 
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
@@ -282,17 +336,17 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                                                 ariaLabel="Select all time off entries"
                                             />
                                         </th>
-                                        <th className={cn(TH, "w-[200px]")}>
-                                            <SortableHeader sortKey="date"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
+                                        <th className={cn(TH, "w-[240px]")}>
+                                            <SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>
+                                            <SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Reason</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[200px]")}>
-                                            <SortableHeader sortKey="title" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Title</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[200px]")}>
-                                            <SortableHeader sortKey="staff" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staff</SortableHeader>
+                                            <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staff</SortableHeader>
                                         </th>
                                         <th className={TH}>
-                                            <SortableHeader sortKey="note"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Note</SortableHeader>
+                                            <SortableHeader sortKey="note"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Note / Impact</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
@@ -303,8 +357,18 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                                         const staffList = b.staff_ids
                                             .map(id => staffById.get(id))
                                             .filter((s): s is Staff => Boolean(s));
-                                        const title = b.title.trim() || "Blocked";
+                                        const title = b.title.trim() || REASON_STYLE[b.reason ?? "other"].label;
                                         const note = b.note.trim() || "–";
+                                        // Client 2026-07-22: date cell now
+                                        // renders a RANGE for multi-day
+                                        // entries and shows either the
+                                        // "All day · N days" descriptor or
+                                        // the time bounds beneath.
+                                        const fromISO = b.date_from_iso ?? b.date;
+                                        const toISO   = b.date_to_iso   ?? b.date;
+                                        const days = spanDays(fromISO, toISO);
+                                        const isRange = days > 1;
+                                        const isAllDay = b.all_day ?? false;
                                         return (
                                             <tr key={b.id}
                                                 className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
@@ -313,17 +377,28 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                                                         ariaLabel={`Select ${title}`} />
                                                 </td>
                                                 <td className={TD}>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
-                                                            {fmtDate(b.date)}
-                                                        </span>
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
+                                                                {isRange
+                                                                    ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
+                                                                    : fmtDate(fromISO)}
+                                                            </span>
+                                                            {isRange && (
+                                                                <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-semibold uppercase tracking-wider bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
+                                                                    Range
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <span className="text-[13px] text-[#667085] whitespace-nowrap">
-                                                            {fmtTime12(b.start_time)} – {fmtTime12(b.end_time)}
+                                                            {isAllDay
+                                                                ? `All day${isRange ? ` · ${days} days` : ""}`
+                                                                : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "font-medium text-[#101828]")}>
-                                                    {title}
+                                                <td className={TD}>
+                                                    <ReasonChip reason={b.reason} />
                                                 </td>
                                                 <td className={TD}>
                                                     {staffList.length === 0

@@ -1,104 +1,120 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — `blocked_times` seed (Staff & shift module → Blocked time)
+// Onra Studio — `blocked_times` seed (Staff & shift module → Time off)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Six demo blocked-time entries so the Blocked time tab renders on first
-// load and the demo exercises every column variant:
+// Client 2026-07-22 renamed "Blocked time" → "Time off". Seed rewritten
+// to match the mockup: 5 entries covering every shape the list needs to
+// render — multi-day vacation range, overlapping vacation, single-day
+// with time bounds, multi-staff training. Every column variant covered:
 //
-//   • Single-staff blocks (most common — sick day, training, appointment)
-//   • Multi-staff blocks (branch-wide event, group training)
-//   • Entries with a note + entries without (the "Note" column should
-//     render "—" when blank)
-//   • Entries with a title + untitled (table shows "Blocked" fallback)
-//   • Mixed dates — past, today-ish, future — so the demo shows history.
+//   • Range vs single-day
+//   • Reason: sick / vacation / training / other
+//   • Note filled vs empty
+//   • Single-staff vs multi-staff
+//   • Upcoming vs past
+//
+// Fields carry both the legacy `date`+`start_time`+`end_time` triple
+// (kept as denorm for consumers that haven't migrated) AND the new
+// `date_from_iso` / `date_to_iso` / `all_day` / `reason` fields. The
+// store's rehydrate migration backfills the new fields for any pre-v81
+// snapshot; new entries write both.
 //
 // FKs:  staff_ids → staff.id (≥1) · branch_id → branches.id
 
 import type { BlockedTime } from "./_types";
 
 export const blocked_times: BlockedTime[] = [
-    // ── Single-staff blocks (sick day / appointment) ─────────────────────
+    // ── Maya vacation — 7-day range (Aug 3 → 9) ──────────────────────────
     {
-        id: "bt_maya_sick_feb_27",
-        title: "Sick day",
-        date: "2026-06-27",
-        start_time: "07:00",
-        end_time:   "12:00",
-        note: "Out for the day — covered by Liam Chen.",
+        id: "time_off_maya_vacation_aug_3",
+        title: "Vacation",
+        date: "2026-08-03",
+        date_from_iso: "2026-08-03",
+        date_to_iso:   "2026-08-09",
+        all_day: true,
+        start_time: "00:00",
+        end_time:   "23:59",
+        reason: "vacation",
+        note: "",
         staff_ids: ["staff_maya_johnson"],
         branch_id: "branch_forma_south",
-        created_at: "2026-06-26T18:30:00Z",
-    },
-    {
-        id: "bt_liam_appointment_jun_28",
-        title: "",
-        date: "2026-06-28",
-        start_time: "10:00",
-        end_time:   "11:30",
-        note: "",
-        staff_ids: ["staff_liam_chen"],
-        branch_id: "branch_forma_south",
-        created_at: "2026-06-22T09:00:00Z",
+        created_at: "2026-07-01T09:00:00Z",
     },
 
-    // ── Multi-staff training session ─────────────────────────────────────
+    // ── Sara vacation — 6-day range (Aug 7 → 12), overlaps Maya's ──────
     {
-        id: "bt_south_training_jul_2",
-        title: "Pilates training",
-        date: "2026-07-02",
-        start_time: "13:00",
-        end_time:   "14:00",
-        note: "Quarterly Pilates form review — mandatory.",
-        staff_ids: [
-            "staff_maya_johnson",
-            "staff_sara_al_rashid",
-            "staff_olivia_rhye",
-        ],
-        branch_id: "branch_forma_south",
-        created_at: "2026-06-15T08:00:00Z",
-    },
-
-    // ── Generic "Blocked" — no title, no note (Figma chrome demo) ────────
-    {
-        id: "bt_phoenix_blocked_jul_4",
-        title: "",
-        date: "2026-07-04",
-        start_time: "18:00",
-        end_time:   "19:00",
-        note: "",
-        staff_ids: ["staff_phoenix_baker", "staff_lana_steiner"],
-        branch_id: "branch_forma_south",
-        created_at: "2026-06-29T10:00:00Z",
-    },
-
-    // ── East branch event ────────────────────────────────────────────────
-    {
-        id: "bt_east_event_jul_5",
-        title: "Open house",
-        date: "2026-07-05",
-        start_time: "09:00",
-        end_time:   "12:00",
-        note: "All East-branch staff joining the open house tour.",
-        staff_ids: [
-            "staff_lucy_hale",
-            "staff_demi_wilkinson",
-            "staff_candice_wu",
-            "staff_natali_craig",
-        ],
-        branch_id: "branch_forma_east",
-        created_at: "2026-06-20T11:00:00Z",
-    },
-
-    // ── Past entry — historical reference ────────────────────────────────
-    {
-        id: "bt_sara_past_jun_10",
-        title: "Personal",
-        date: "2026-06-10",
-        start_time: "07:00",
-        end_time:   "09:00",
+        id: "time_off_sara_vacation_aug_7",
+        title: "Vacation",
+        date: "2026-08-07",
+        date_from_iso: "2026-08-07",
+        date_to_iso:   "2026-08-12",
+        all_day: true,
+        start_time: "00:00",
+        end_time:   "23:59",
+        reason: "vacation",
         note: "",
         staff_ids: ["staff_sara_al_rashid"],
         branch_id: "branch_forma_south",
-        created_at: "2026-06-09T14:00:00Z",
+        created_at: "2026-07-05T10:00:00Z",
+    },
+
+    // ── Liam physio — single day with time bounds ────────────────────────
+    {
+        id: "time_off_liam_physio_jul_23",
+        title: "Physio appointment",
+        date: "2026-07-23",
+        date_from_iso: "2026-07-23",
+        date_to_iso:   "2026-07-23",
+        all_day: false,
+        start_time: "10:00",
+        end_time:   "13:00",
+        reason: "other",
+        note: "Physio appointment",
+        staff_ids: ["staff_liam_chen"],
+        branch_id: "branch_forma_south",
+        created_at: "2026-07-15T09:00:00Z",
+    },
+
+    // ── Training (multi-staff — 4 instructors, single day + time bounds) ─
+    {
+        id: "time_off_team_training_aug_21",
+        title: "Team training — all instructors",
+        date: "2026-08-21",
+        date_from_iso: "2026-08-21",
+        date_to_iso:   "2026-08-21",
+        all_day: false,
+        start_time: "13:00",
+        end_time:   "15:00",
+        reason: "training",
+        note: "Team training — all instructors",
+        staff_ids: [
+            "staff_maya_johnson",
+            "staff_sara_al_rashid",
+            "staff_liam_chen",
+            "staff_nadia_hassan",
+        ],
+        branch_id: "branch_forma_south",
+        created_at: "2026-07-10T08:00:00Z",
+    },
+
+    // ── Quarterly Pilates review (multi-staff, past week, mandatory) ─────
+    {
+        id: "time_off_pilates_review_jul_31",
+        title: "Quarterly Pilates form review — mandatory",
+        date: "2026-07-31",
+        date_from_iso: "2026-07-31",
+        date_to_iso:   "2026-07-31",
+        all_day: false,
+        start_time: "13:00",
+        end_time:   "15:00",
+        reason: "training",
+        note: "Quarterly Pilates form review — mandatory",
+        staff_ids: [
+            "staff_maya_johnson",
+            "staff_sara_al_rashid",
+            "staff_nadia_hassan",
+        ],
+        branch_id: "branch_forma_south",
+        created_at: "2026-07-15T08:00:00Z",
     },
 ];

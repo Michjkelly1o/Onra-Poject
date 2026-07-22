@@ -9317,7 +9317,17 @@ export const useAppStore = create<AppState>()(persist(
         //   payloads to reseed so testers pick up the new customer
         //   distribution — otherwise a persisted v79 snapshot keeps the
         //   old 2024 dates and the widget reads as almost empty.
-        version: 80,
+        // v81 (2026-07-22 admin): Staff/Time-off Phase 2 — BlockedTime
+        //   extended with `date_from_iso` / `date_to_iso` / `all_day` /
+        //   `reason: "sick" | "vacation" | "training" | "other"` per the
+        //   client's rename to "Time off". Old entries lack the new
+        //   fields; the onRehydrateStorage migration below backfills
+        //   them so persisted v80 snapshots stay valid. Fresh seed
+        //   ships the mockup entries (Maya vacation Aug 3-9, Sara
+        //   Aug 7-12, Liam physio Jul 23, team training Aug 21,
+        //   Pilates review Jul 31). Bump forces stale seed to
+        //   reseed cleanly.
+        version: 81,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -9376,6 +9386,29 @@ export const useAppStore = create<AppState>()(persist(
                 // grep/audit tools + tempt callers to use the stale name.
                 delete (fp as { allow_exceptions?: boolean }).allow_exceptions;
                 state.freezePolicy = fp;
+            }
+            // v81 (2026-07-22) — Time off Phase 2 migration.
+            //
+            // BlockedTime rows written pre-v81 lack `date_from_iso`,
+            // `date_to_iso`, `all_day`, and `reason`. Backfill from the
+            // legacy `date` column so the list + form render without
+            // undefined-access errors: a legacy single-day entry becomes
+            // a single-day range (from = to = date), timed by default
+            // (all_day=false), and lands under `reason: "other"` with
+            // the existing `note` preserved. Fresh v81 seed already
+            // carries every field so it's a no-op there.
+            if (Array.isArray(state.blockedTimes)) {
+                state.blockedTimes = state.blockedTimes.map(bt => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const b = bt as any;
+                    return {
+                        ...b,
+                        date_from_iso: b.date_from_iso ?? b.date,
+                        date_to_iso:   b.date_to_iso   ?? b.date,
+                        all_day:       b.all_day       ?? false,
+                        reason:        b.reason        ?? "other",
+                    } as typeof bt;
+                });
             }
             // v78 (2026-07-21) — Freeze policy v2 Phase 4.
             // Auto-resume + reminder sweep. Runs at hydrate so an
