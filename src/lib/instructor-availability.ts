@@ -18,7 +18,66 @@
 // Inputs come straight from the Zustand store slices — `staff`, `shifts`,
 // `blockedTimes`, `classCategories` — so every caller picks live data.
 
-import type { Staff, Shift, BlockedTime, ClassCategory } from "@/lib/store";
+import type { Staff, Shift, ShiftAssignment, BlockedTime, ClassCategory } from "@/lib/store";
+
+// ─── Shift-window resolver ────────────────────────────────────────────────
+//
+// Client 2026-07-22 introduced the M2M `shift_assignments` table so a single
+// staff member can carry multiple shifts (e.g. Morning shift Mon–Sat AND
+// Afternoon shift Tue+Thu), each assignment carrying its own subset of the
+// shift's `working_days`. Availability gating needs the UNION of every one
+// of the staff's shift windows on the given weekday, not just the legacy
+// `Staff.shift_id` single-shift lookup.
+
+interface ShiftWindow { start: string; end: string }
+
+/** Return every shift window covering `(staffId, dow)`. Reads the M2M
+ *  `shiftAssignments` slice first; if the staff has zero rows there (pre-v82
+ *  hydrations, seed staff still on the legacy single-shift field) falls back
+ *  to `Staff.shift_id` so nothing regresses.
+ *
+ *  A window contributes only when its parent shift is `status: "active"` AND
+ *  the assignment's own `days_of_week[dow]` is true.
+ */
+function resolveShiftWindows(
+    staff: Staff,
+    dow: number,
+    shifts: Shift[],
+    shiftAssignments: ShiftAssignment[] | undefined,
+): ShiftWindow[] {
+    const shiftById = new Map(shifts.map(s => [s.id, s] as const));
+    const windows: ShiftWindow[] = [];
+    let matched = false;
+    if (shiftAssignments && shiftAssignments.length > 0) {
+        for (const a of shiftAssignments) {
+            if (a.staff_id !== staff.id) continue;
+            matched = true;
+            if (!a.days_of_week[dow]) continue;
+            const sh = shiftById.get(a.shift_id);
+            if (!sh || sh.status !== "active") continue;
+            windows.push({ start: sh.start_time, end: sh.end_time });
+        }
+    }
+    if (!matched && staff.shiftId) {
+        const sh = shiftById.get(staff.shiftId);
+        if (sh && sh.status === "active" && sh.working_days[dow]) {
+            windows.push({ start: sh.start_time, end: sh.end_time });
+        } else if (sh && sh.status === "active" && !sh.working_days[dow]) {
+            // Legacy field present but day is off — signal "has shift, off today".
+            return [];
+        }
+    }
+    return windows;
+}
+
+/** True when the staff has ANY shift binding at all (M2M row OR legacy field). */
+function staffHasAnyShift(
+    staff: Staff,
+    shiftAssignments: ShiftAssignment[] | undefined,
+): boolean {
+    if (shiftAssignments && shiftAssignments.some(a => a.staff_id === staff.id)) return true;
+    return !!staff.shiftId;
+}
 
 // ─── Time math ────────────────────────────────────────────────────────────
 
@@ -95,16 +154,25 @@ export function gateSlotsByInstructor(
         durationMins: number;
         staffById: Map<string, Staff>;
         shifts: Shift[];
+        /** M2M shift assignments — client 2026-07-22. When provided the gate
+         *  UNIONS every one of the staff's shift windows on the day; when
+         *  omitted it falls back to the legacy single-shift field so callers
+         *  that have not been migrated yet keep their old behavior. */
+        shiftAssignments?: ShiftAssignment[];
         blockedTimes: BlockedTime[];
     },
 ): string[] {
-    const { instructorId, durationMins, staffById, shifts, blockedTimes } = options;
+    const { instructorId, durationMins, staffById, shifts, shiftAssignments, blockedTimes } = options;
     if (!instructorId || !iso) return slots;
     const s = staffById.get(instructorId);
     if (!s) return slots;
     const dow = new Date(iso + "T00:00:00Z").getUTCDay();   // 0..6
-    const shift = s.shiftId ? shifts.find(x => x.id === s.shiftId) : undefined;
-    if (shift && !shift.working_days[dow]) return [];
+    // Audit fix 2026-07-22 — resolve UNION of every shift window covering
+    // (staff, dow). If the staff has shift bindings at all but none cover
+    // this weekday, that's a hard "off today" → return no slots.
+    const windows = resolveShiftWindows(s, dow, shifts, shiftAssignments);
+    const hasShift = staffHasAnyShift(s, shiftAssignments);
+    if (hasShift && windows.length === 0) return [];
     // Audit fix 2026-07-22 — Phase 2 introduced date_from_iso /
     // date_to_iso for multi-day time-off ranges. The old check
     // (`b.date === iso`) only matched single-day entries; a Maya vacation
@@ -117,9 +185,10 @@ export function gateSlotsByInstructor(
     });
     return slots.filter(start => {
         const end = addMinutesToTime(start, durationMins);
-        if (shift) {
-            if (start < shift.start_time) return false;
-            if (end   > shift.end_time)   return false;
+        if (hasShift) {
+            // Slot [start, end) must fit inside ≥1 shift window.
+            const covered = windows.some(w => start >= w.start && end <= w.end);
+            if (!covered) return false;
         }
         for (const blk of blocks) {
             // Overlap when [start, end) intersects [blk.start, blk.end).
@@ -142,21 +211,23 @@ export function gateSlotsByShift(
         durationMins: number;
         staffById: Map<string, Staff>;
         shifts: Shift[];
+        /** M2M shift assignments — client 2026-07-22. See `gateSlotsByInstructor`. */
+        shiftAssignments?: ShiftAssignment[];
     },
 ): string[] {
-    const { instructorId, durationMins, staffById, shifts } = options;
+    const { instructorId, durationMins, staffById, shifts, shiftAssignments } = options;
     if (!instructorId || !iso) return slots;
     const s = staffById.get(instructorId);
     if (!s) return slots;
     const dow = new Date(iso + "T00:00:00Z").getUTCDay();
-    const shift = s.shiftId ? shifts.find(x => x.id === s.shiftId) : undefined;
-    if (shift && !shift.working_days[dow]) return [];
-    if (!shift) return slots;
+    // Audit fix 2026-07-22 — union of shift windows, not just single shift.
+    const windows = resolveShiftWindows(s, dow, shifts, shiftAssignments);
+    const hasShift = staffHasAnyShift(s, shiftAssignments);
+    if (hasShift && windows.length === 0) return [];
+    if (!hasShift) return slots;
     return slots.filter(start => {
         const end = addMinutesToTime(start, durationMins);
-        if (start < shift.start_time) return false;
-        if (end   > shift.end_time)   return false;
-        return true;
+        return windows.some(w => start >= w.start && end <= w.end);
     });
 }
 
@@ -214,6 +285,9 @@ export function instructorBlockedSlots(
 export function eligibleInstructorsForSlot(args: {
     staffPool: Staff[];
     shifts: Shift[];
+    /** M2M shift assignments — client 2026-07-22. Optional so pre-migration
+     *  callers keep working; when omitted the gate reads `Staff.shift_id`. */
+    shiftAssignments?: ShiftAssignment[];
     blockedTimes: BlockedTime[];
     categoryId: string | null;
     iso: string;
@@ -221,13 +295,17 @@ export function eligibleInstructorsForSlot(args: {
     durationMins: number;
     branchId?: string;
 }): string[] {
-    const { staffPool, shifts, blockedTimes, categoryId, iso, startTime, durationMins, branchId } = args;
+    const { staffPool, shifts, shiftAssignments, blockedTimes, categoryId, iso, startTime, durationMins, branchId } = args;
     const endTime = addMinutesToTime(startTime, durationMins);
     const dow = new Date(iso + "T00:00:00Z").getUTCDay();
     const blockedSet = new Set<string>();
     for (const b of blockedTimes) {
-        if (b.date !== iso) continue;
-        // Overlap check vs the candidate slot.
+        // Audit fix 2026-07-22 — range-inclusive comparison so multi-day
+        // ranges (Phase 2 date_from_iso / date_to_iso) block every day
+        // they cover, not just the anchor day. Matches the other 4 sites.
+        const from = b.date_from_iso ?? b.date;
+        const to   = b.date_to_iso   ?? b.date;
+        if (iso < from || iso > to) continue;
         if (startTime < b.end_time && endTime > b.start_time) {
             for (const sid of b.staff_ids) blockedSet.add(sid);
         }
@@ -237,13 +315,14 @@ export function eligibleInstructorsForSlot(args: {
         .filter(s => !branchId || s.branchId === branchId)
         .filter(s => instructorTeachesCategory(s, categoryId))
         .filter(s => {
-            if (!s.shiftId) return true;
-            const shift = shifts.find(x => x.id === s.shiftId);
-            if (!shift) return true;
-            if (!shift.working_days[dow]) return false;
-            if (startTime < shift.start_time) return false;
-            if (endTime   > shift.end_time)   return false;
-            return true;
+            // Audit fix 2026-07-22 — union of every shift window on this
+            // weekday, not just the legacy single-shift lookup. A second
+            // assignment (Afternoon on Tue) is now honoured.
+            const hasShift = staffHasAnyShift(s, shiftAssignments);
+            if (!hasShift) return true;
+            const windows = resolveShiftWindows(s, dow, shifts, shiftAssignments);
+            if (windows.length === 0) return false;
+            return windows.some(w => startTime >= w.start && endTime <= w.end);
         })
         .filter(s => !blockedSet.has(s.id))
         .map(s => s.id);

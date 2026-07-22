@@ -1056,8 +1056,9 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Instructors with no shift fall back to branch working hours, same as
     // before this revision.
     const staffSlice        = useAppStore(s => s.staff);
-    const shiftsSlice       = useAppStore(s => s.shifts);
-    const blockedTimesSlice = useAppStore(s => s.blockedTimes);
+    const shiftsSlice            = useAppStore(s => s.shifts);
+    const shiftAssignmentsSlice  = useAppStore(s => s.shiftAssignments);
+    const blockedTimesSlice      = useAppStore(s => s.blockedTimes);
     const membershipItems = useMemo(
         () => buildMembershipItems(allMemberships, allPackages),
         [allMemberships, allPackages],
@@ -1512,6 +1513,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
             durationMins: duration,
             staffById,
             shifts: shiftsSlice,
+            shiftAssignments: shiftAssignmentsSlice,
         });
     }
 
@@ -1551,7 +1553,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         // TimeDropdown's `unavailable` prop so the admin sees blocked
         // slots greyed out rather than as silent gaps.
         return gateSlotsByShift(slots, selectedDate);
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
@@ -1574,7 +1576,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
             map[label] = gateSlotsByShift(baseSlots, iso);
         }
         return map;
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice]);
 
     // True when a recurring slot's FIRST occurrence lands on today AND its
     // start time has already passed the current live time. Drives the

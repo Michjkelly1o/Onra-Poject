@@ -61,6 +61,7 @@ export function useAvailableSlots(
 ): AvailableSlot[] {
     const businessHours = useAppStore((s) => s.businessHours);
     const shifts = useAppStore((s) => s.shifts);
+    const shiftAssignments = useAppStore((s) => s.shiftAssignments);
     const staff = useAppStore((s) => s.staff);
     const blockedTimes = useAppStore((s) => s.blockedTimes);
     const classSchedules = useAppStore((s) => s.classSchedules);
@@ -82,17 +83,51 @@ export function useAvailableSlots(
         // ── 1) Working window (in minutes-from-midnight) ─────────────────────
         let open: number;
         let close: number;
+        // Windows carrying every valid [start, end) the instructor can teach
+        // during today. Populated in the M2M branch below; empty when the
+        // caller is an open-session (branch-hours only) or a staff with no
+        // shift binding. A slot must fit inside ≥1 window (see loop step 4).
+        const shiftWindows: Array<{ start: number; end: number }> = [];
         if (isPrivate) {
             const st = staff.find((s) => s.id === instructorId);
-            const shift = st?.shiftId ? shifts.find((sh) => sh.id === st.shiftId && sh.status === "active") : null;
-            if (shift) {
-                if (!shift.working_days[utcDow(dateISO)]) return []; // instructor off that weekday
-                open = toMin(shift.start_time);
-                close = toMin(shift.end_time);
-                if (branchHours) {
-                    open = Math.max(open, toMin(branchHours.open));
-                    close = Math.min(close, toMin(branchHours.close));
+            // Audit fix 2026-07-22 — union every one of the instructor's
+            // shift windows on this weekday (M2M `shiftAssignments`). Was
+            // reading `st.shiftId` only; a second shift assignment (e.g.
+            // Afternoon Tue+Thu on top of Morning Mon–Sat) was ignored.
+            const dow = utcDow(dateISO);
+            const myAssignments = st ? shiftAssignments.filter(a => a.staff_id === st.id) : [];
+            const hasShift = myAssignments.length > 0 || !!st?.shiftId;
+            if (myAssignments.length > 0) {
+                for (const a of myAssignments) {
+                    if (!a.days_of_week[dow]) continue;
+                    const sh = shifts.find(x => x.id === a.shift_id && x.status === "active");
+                    if (!sh) continue;
+                    shiftWindows.push({ start: toMin(sh.start_time), end: toMin(sh.end_time) });
                 }
+            } else if (st?.shiftId) {
+                const sh = shifts.find(x => x.id === st.shiftId && x.status === "active");
+                if (sh && sh.working_days[dow]) {
+                    shiftWindows.push({ start: toMin(sh.start_time), end: toMin(sh.end_time) });
+                }
+            }
+            if (hasShift && shiftWindows.length === 0) return []; // has shift but off today
+            if (shiftWindows.length > 0) {
+                // Clip every window to the branch's open→close so a shift
+                // that spills past business hours can't leak slots.
+                if (branchHours) {
+                    const bo = toMin(branchHours.open);
+                    const bc = toMin(branchHours.close);
+                    for (let i = 0; i < shiftWindows.length; i++) {
+                        shiftWindows[i].start = Math.max(shiftWindows[i].start, bo);
+                        shiftWindows[i].end   = Math.min(shiftWindows[i].end,   bc);
+                    }
+                }
+                // Wall for the slot generation loop — the FILTER step
+                // below rejects slots that fall in a gap between windows
+                // (e.g. Morning 07–12 + Evening 17–21 must not offer
+                // 13:00), so `open`/`close` are just the outer range.
+                open  = Math.min(...shiftWindows.map(w => w.start));
+                close = Math.max(...shiftWindows.map(w => w.end));
             } else if (branchHours) {
                 open = toMin(branchHours.open);
                 close = toMin(branchHours.close);
@@ -177,6 +212,10 @@ export function useAvailableSlots(
             // The customer is already booked (class or appointment) at this time.
             if (customerBusy.some(([bS, bE]) => overlaps(m, m + dur, bS, bE))) continue;
             if (isPrivate) {
+                // Audit fix 2026-07-22 — with the M2M shift-window union
+                // the slot must fit inside ≥1 window (rejects slots that
+                // fall in a gap between Morning + Evening bindings).
+                if (shiftWindows.length > 0 && !shiftWindows.some(w => m >= w.start && m + dur <= w.end)) continue;
                 if (busy.some(([bS, bE]) => overlaps(m, m + dur, bS, bE))) continue;
                 out.push({ time: toHHMM(m), spotsLeft: null, capacity: null, booked: null });
             } else {
@@ -187,5 +226,5 @@ export function useAvailableSlots(
             }
         }
         return out;
-    }, [appointment, instructorId, dateISO, businessHours, shifts, staff, blockedTimes, classSchedules, adminAppointments, classBookings, customerAppointments, member]);
+    }, [appointment, instructorId, dateISO, businessHours, shifts, shiftAssignments, staff, blockedTimes, classSchedules, adminAppointments, classBookings, customerAppointments, member]);
 }

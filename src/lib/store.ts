@@ -81,6 +81,7 @@ import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
 import { commissionForPeriod } from "./payroll-calc";
+import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
 //
@@ -3886,7 +3887,7 @@ export interface AppState {
     // ── Customer plans (customer-detail Plan tab) ──────────────────────────
     /** Freeze a plan — status → frozen, freeze window stored, and the expiry
      *  date pushed back by the freeze duration so frozen days aren't lost. */
-    freezeCustomerPlan: (planId: string, startISO: string, endISO: string, source?: CustomerPlan["freezeSource"], reason?: string) => void;
+    freezeCustomerPlan: (planId: string, startISO: string, endISO: string, source?: CustomerPlan["freezeSource"], reason?: string) => { fee: number };
     /** Unfreeze a plan — status → active. The extended expiry date is kept. */
     unfreezeCustomerPlan: (planId: string) => void;
     /** Customer-portal membership freeze — freezes the plan (customer_portal
@@ -5372,6 +5373,21 @@ export const useAppStore = create<AppState>()(persist(
         // invite) — no member plan, no member credit. EXCEPT when the booker chose
         // "use my class credits" (chargeBookerCredit), then it's on the booker's plan.
         const usesBookerPlan = !guestName || !!chargeBookerCredit;
+
+        // Audit fix 2026-07-22 — defence-in-depth against frozen-plan bookings.
+        // The 4 known callers (admin schedule detail + 3 customer routes) gate
+        // on getFrozenActiveMembership BEFORE reaching this action. This is a
+        // silent-fail backstop so any NEW caller can't accidentally book a
+        // class against a paused membership.
+        if (usesBookerPlan && customer) {
+            const frozen = getFrozenActiveMembership(customer.id, s0.customerPlans);
+            if (frozen) {
+                console.warn(
+                    `[addClassBooking] Refusing booking for ${customer.id}: plan "${frozen.planName}" is frozen (resumes ${frozen.resumeISO}).`,
+                );
+                return "";
+            }
+        }
         const planKindUsed = usesBookerPlan ? (customer?.planKind ?? undefined) : undefined;
         const planId = !usesBookerPlan
             ? ""
@@ -5907,6 +5923,17 @@ export const useAppStore = create<AppState>()(persist(
         const isUnlimited = customer.planKind === "membership"
             && state.memberships.find(m => m.name === customer.planName)?.credits === "unlimited";
         if (!isUnlimited) return { applies: false, amountAed: 0, scenario };
+        // Audit fix 2026-07-22 — a frozen (or freeze-pending) membership is
+        // on pause. Charging a cancellation penalty against a plan the
+        // customer paid to suspend contradicts the freeze policy. Skip.
+        const activePlan = state.customerPlans.find(
+            p => p.customerId === customerId
+                && p.planTypeLabel === "Membership"
+                && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
+        );
+        if (activePlan?.status === "frozen" || activePlan?.status === "freeze_requested") {
+            return { applies: false, amountAed: 0, scenario };
+        }
         // Gate 4: the customer's LIFETIME late-cancel + no-show count
         // (including the pending cancellation the caller is about to
         // commit) must be STRICTLY GREATER than the threshold. Design
@@ -6249,9 +6276,16 @@ export const useAppStore = create<AppState>()(persist(
                     freezeReason: reason ?? undefined,
                     // Option A: expiry shifts by frozenDays. Option B:
                     // expiry stays put; the renewal picks up the prorate.
+                    // Audit fix — the shared convention is
+                    // next-charge = expiry - 1 day (see computeNextCharge L2191),
+                    // so the new expiry is nextCharge + 1 day. Assigning it
+                    // straight to `newNextChargeISO` shifted expiry by
+                    // `frozenDays - 1` (one day short).
                     expiryISO:
                         policy.billing_behavior === "pause"
-                            ? new Date(preview.newNextChargeISO + "T00:00:00Z").toISOString()
+                            ? new Date(
+                                  Date.parse(preview.newNextChargeISO + "T00:00:00Z") + 86_400_000,
+                              ).toISOString()
                             : p.expiryISO,
                     // Option B only — stashed for the renewal cycle.
                     nextChargeAdjustmentAed:
@@ -6274,6 +6308,36 @@ export const useAppStore = create<AppState>()(persist(
             const customerName = customer ? capitalizeName(`${customer.firstName} ${customer.lastName}`) : "a customer";
             get().recordAudit(`Froze ${customerName}'s plan`, "customer_plan", planId, target.name, { from: startISO, to: endISO });
         }
+        // Audit fix — emit the freeze fee here (shared) so every entry point
+        // (admin CustomerDetailPage, customer portal, approval flow) charges
+        // consistently. The customer-portal + approval wrappers used to
+        // duplicate this block; an admin-initiated freeze had NO fee at all.
+        // `waivesFee` on the picked reason skips the charge (Medical / Injury
+        // etc. — client 2026-07-20 intent).
+        const target2 = get().customerPlans.find(p => p.id === planId);
+        const customer2 = target2 ? get().customers.find(c => c.id === target2.customerId) : undefined;
+        const fee = policy.fee_enabled && !bypass.waivesFee ? Math.max(0, policy.fee_amount_aed) : 0;
+        if (customer2 && fee > 0) {
+            const nowISO = new Date().toISOString();
+            const txnId = `txn_${customer2.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            const feeTxn: CustomerTransaction = {
+                id: txnId,
+                customerId: customer2.id,
+                branchId: customer2.branchId,
+                kind: "freeze_fee",
+                productId: planId,
+                name: policy.fee_type === "recurring" ? "Membership freeze fee (recurring)" : "Membership freeze fee",
+                amountAed: fee,
+                status: "complete",
+                paymentMethod: "card",
+                paymentSource: source === "customer_portal" ? "customer_portal" : "admin",
+                createdAtISO: nowISO,
+                transactionType: "sale",
+                isRefundable: false,
+            };
+            set(state => ({ customerTransactions: [...state.customerTransactions, feeTxn] }));
+        }
+        return { fee };
     },
 
     freezeMembershipByCustomer: (planId, startISO, endISO, reason) => {
@@ -6281,8 +6345,10 @@ export const useAppStore = create<AppState>()(persist(
         if (!plan) return { fee: 0 };
         const customer = get().customers.find(c => c.id === plan.customerId);
         // Freeze via the shared action — handles status, expiry extension,
-        // freezeCount++, the reason, and the audit entry (customer_portal).
-        get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal", reason);
+        // freezeCount++, the reason, the audit entry (customer_portal), and
+        // (audit fix 2026-07-22) the freeze-fee transaction. We just fan out
+        // the notifications below and pass the fee back for the receipt UI.
+        const { fee } = get().freezeCustomerPlan(planId, startISO, endISO, "customer_portal", reason);
         // Phase 4 — customer bell + admin bell notifications on self-freeze.
         // Customer sees "Membership frozen" in their bookings tab; admin sees
         // a bell row on the notifications page so the studio knows a member
@@ -6315,36 +6381,8 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
-        // Charge-now: emit a non-refundable freeze-fee row when the studio
-        // policy configures a fee (mirrors the cancellation-penalty pattern).
-        // Audit fix — a reason with `waivesFee` enabled skips the charge
-        // entirely (client 2026-07-20 intent: Medical / Injury etc.
-        // freezes don't cost the member anything).
-        const policy = get().freezePolicy;
-        const bypass = resolveReasonExceptions(policy, reason);
-        const fee = policy.fee_enabled && !bypass.waivesFee ? Math.max(0, policy.fee_amount_aed) : 0;
-        if (customer && fee > 0) {
-            const now = new Date().toISOString();
-            const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-            const feeTxn: CustomerTransaction = {
-                id: txnId,
-                customerId: customer.id,
-                branchId: customer.branchId,
-                kind: "freeze_fee",
-                productId: planId,
-                name: policy.fee_type === "recurring" ? "Membership freeze fee (recurring)" : "Membership freeze fee",
-                amountAed: fee,
-                status: "complete",
-                paymentMethod: "card",
-                paymentSource: "customer_portal",
-                createdAtISO: now,
-                // Ledger classification — a fee charged (money-in), never a
-                // refund/void, and never refundable.
-                transactionType: "sale",
-                isRefundable: false,
-            };
-            set(state => ({ customerTransactions: [...state.customerTransactions, feeTxn] }));
-        }
+        // Fee transaction — now emitted inside freezeCustomerPlan (audit fix
+        // 2026-07-22). Pass the amount up so the receipt UI can render it.
         return { fee };
     },
 
@@ -6448,35 +6486,10 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
-        // Charge-now: emit the freeze-fee row on approval (same charge-now
-        // pattern as the direct-freeze path — the fee is tied to the
-        // freeze STARTING, not to the request being submitted).
-        // Audit fix — respect `waivesFee` on the requested reason so an
-        // approved medical-request skips the charge, same as a direct
-        // medical freeze.
-        const policy = get().freezePolicy;
-        const bypass = resolveReasonExceptions(policy, target.freezeRequestReason);
-        const fee = policy.fee_enabled && !bypass.waivesFee ? Math.max(0, policy.fee_amount_aed) : 0;
-        if (customer && fee > 0) {
-            const nowISO = new Date().toISOString();
-            const txnId = `txn_${customer.id}_freeze_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-            const feeTxn: CustomerTransaction = {
-                id: txnId,
-                customerId: customer.id,
-                branchId: customer.branchId,
-                kind: "freeze_fee",
-                productId: planId,
-                name: policy.fee_type === "recurring" ? "Membership freeze fee (recurring)" : "Membership freeze fee",
-                amountAed: fee,
-                status: "complete",
-                paymentMethod: "card",
-                paymentSource: "customer_portal",
-                createdAtISO: nowISO,
-                transactionType: "sale",
-                isRefundable: false,
-            };
-            set(state => ({ customerTransactions: [...state.customerTransactions, feeTxn] }));
-        }
+        // Fee transaction — now emitted inside freezeCustomerPlan (audit fix
+        // 2026-07-22). The approval fires the shared action above, which
+        // charges the fee tied to the freeze STARTING, respecting
+        // `waivesFee` on the requested reason.
     },
 
     rejectFreezeRequest: (planId, note) => {
