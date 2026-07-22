@@ -29,7 +29,7 @@ import {
     SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronDown,
     MarkerPin01, FilterLines, XClose, Eye, Edit02, Archive, Trash01,
     Trash02, RefreshCcw01, SlashCircle01, Check, User01, Send01, UserPlus01,
-    UserSquare, ClockPlus, AlarmClockOff,
+    UserSquare, ClockPlus, AlarmClockOff, AlertTriangle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -465,6 +465,74 @@ function RoleRowActions({ role, staffCount, onAction }: {
     );
 }
 
+// ─── Shift chip cell (Phase 4 — client 2026-07-22) ────────────────────────
+//
+// One pill per shift assignment, stacked vertically when a staff member
+// holds multiple shifts (Liam Chen's Morning + Afternoon Tue/Thu is the
+// canonical case from the mockup). Pill shape matches the ROLE and
+// STAFF_STATUS pills already used on the same row so the table reads
+// with one voice — never a rectangle.
+//
+// Chip format: "{Shift name} · {Days} · {HH-HH}". Days summary uses the
+// same "contiguous run" heuristic the Shift management tab already uses
+// (`daysSummary`) so both surfaces speak identically.
+//
+// Empty state (no assignments) shows an amber warning pill using the
+// same tone family as the Understaffed pill on the shift list. This is
+// the "gap flag" the mockup called out: "Staff with no shift can't be
+// scheduled, so the gap is flagged here."
+
+/** "Mon", "Tue"… labels for the daysSummary output. Sun-first to match
+ *  the seed's 7-bit `working_days` array. */
+const DAY_LABELS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Same contiguous-run logic the ShiftManagementTab uses. Duplicated
+ *  inline (very small) to avoid a shared-util expansion in this pass —
+ *  keep the seed identical. */
+function shiftDaysSummary(workingDays: boolean[]): string {
+    const picked = workingDays.flatMap((on, i) => on ? [i] : []);
+    if (picked.length === 0) return "—";
+    if (picked.length === 7) return "Every day";
+    const min = picked[0];
+    const max = picked[picked.length - 1];
+    const contiguous = picked.length === (max - min + 1);
+    if (contiguous && picked.length >= 3) return `${DAY_LABELS_SHORT[min]} - ${DAY_LABELS_SHORT[max]}`;
+    return picked.map(i => DAY_LABELS_SHORT[i]).join(", ");
+}
+
+/** "07:00" → "07". The mockup abbreviates times to hours-only so the chip
+ *  never overflows on the directory row. */
+function toHour(hhmm: string): string {
+    const [h] = hhmm.split(":");
+    return h;
+}
+
+/** Small pill chip per assignment. Uses the mint tone that already
+ *  represents "instructor" / "active" throughout the app so a shift
+ *  assignment reads as a positive signal. */
+function ShiftAssignmentChip({ label }: { label: string }) {
+    return (
+        <span
+            className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#f0faf3] border-1 border-[#c7e5d1] text-[#3b5446] max-w-full truncate"
+            title={label}
+        >
+            {label}
+        </span>
+    );
+}
+
+/** Empty-state warning pill — same amber tone family as the
+ *  Understaffed pill (`bg-[#fef4e1] border-[#fecc85] text-[#b54708]`) so
+ *  the "staffing gap" signal speaks one voice across surfaces. */
+function NoShiftWarningPill() {
+    return (
+        <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            No shift yet — can&apos;t be scheduled
+        </span>
+    );
+}
+
 // ─── Staff row actions ─────────────────────────────────────────────────────
 //
 // Action gating (matches the audited customer-module pattern):
@@ -585,6 +653,12 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const roles            = useAppStore(s => s.roles);
     const staff            = useAppStore(s => s.staff);
     const branches         = useAppStore(s => s.branches);
+    // Client 2026-07-22 Phase 4 — staff directory now shows a Shift
+    // column. Reads the shifts + assignments slices to compute one
+    // chip per assignment or a "No shift yet" warning when a staff
+    // member has none.
+    const shifts           = useAppStore(s => s.shifts);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const setRolesStatus   = useAppStore(s => s.setRolesStatus);
     const deleteRolesAction = useAppStore(s => s.deleteRoles);
     const setStaffStatus   = useAppStore(s => s.setStaffStatus);
@@ -636,6 +710,32 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         return m;
     }, [staff, rolesById]);
 
+    // Client 2026-07-22 Phase 4 — shift chips on the staff directory.
+    // Build the (staffId → assignments[]) map once so each row's chip
+    // cell is a simple lookup. Assignments are sorted by shift start
+    // time so multi-shift rows read chronologically (Morning above
+    // Afternoon above Evening).
+    const shiftsById = useMemo(() => new Map(shifts.map(sh => [sh.id, sh] as const)), [shifts]);
+    const assignmentsByStaff = useMemo(() => {
+        const m = new Map<string, typeof shiftAssignments>();
+        for (const a of shiftAssignments) {
+            const list = m.get(a.staff_id) ?? [];
+            list.push(a);
+            m.set(a.staff_id, list);
+        }
+        // Sort each list in-place (using `.forEach` avoids the
+        // downlevelIteration target-flag issue that the `for..of` on a
+        // Map entries iterator raised on tsconfig target=es5).
+        m.forEach(list => {
+            list.sort((x, y) => {
+                const xs = shiftsById.get(x.shift_id)?.start_time ?? "";
+                const ys = shiftsById.get(y.shift_id)?.start_time ?? "";
+                return xs.localeCompare(ys);
+            });
+        });
+        return m;
+    }, [shiftAssignments, shiftsById]);
+
     // ─── Filtered roles ────────────────────────────────────────────────────
     const filteredRoles = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -679,6 +779,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             return an.localeCompare(bn);
         },
         branch: (a, b) => branchSortName(a.branchId).localeCompare(branchSortName(b.branchId)),
+        // Shift sort — no-assignment rows sink to the BOTTOM (so the
+        // gap is easy to spot from the top), then sort by the FIRST
+        // assigned shift's name for a stable read.
+        shift:  (a, b) => {
+            const la = assignmentsByStaff.get(a.id) ?? [];
+            const lb = assignmentsByStaff.get(b.id) ?? [];
+            if (la.length === 0 && lb.length === 0) return 0;
+            if (la.length === 0) return  1;
+            if (lb.length === 0) return -1;
+            const na = shiftsById.get(la[0].shift_id)?.name ?? "";
+            const nb = shiftsById.get(lb[0].shift_id)?.name ?? "";
+            return na.localeCompare(nb);
+        },
         status: (a, b) => STAFF_STATUS_ORDER[a.status] - STAFF_STATUS_ORDER[b.status],
     });
 
@@ -1250,14 +1363,29 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 ariaLabel="Select all staff on this page"
                                             />
                                         </th>
+                                        {/* Client 2026-07-22 Phase 4: SHIFT column
+                                            inserted between Branch and Status.
+                                            Column widths tuned so:
+                                              checkbox 44 · role 160 · branch 180
+                                              · shift 260 · status 120 · actions 52
+                                              = 816 px of fixed columns; Name gets
+                                              the remaining flex width. On a
+                                              1200-1440 px chrome that leaves
+                                              384-624 px for Name — plenty for
+                                              "Firstname Lastname" + email line
+                                              without wrapping either the name
+                                              cell OR the shift chips. */}
                                         <th className={TH}>
                                             <SortableHeader sortKey="name" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Name</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[180px]")}>
+                                        <th className={cn(TH, "w-[160px]")}>
                                             <SortableHeader sortKey="role" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Role</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[220px]")}>
+                                        <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[260px]")}>
+                                            <SortableHeader sortKey="shift" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Shift</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
@@ -1302,6 +1430,41 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     )}
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
+                                                {/* Shift column — client 2026-07-22 Phase 4.
+                                                    One pill per assignment stacked in a
+                                                    column (up to 4 gap); "No shift yet"
+                                                    warning when the staff member holds
+                                                    zero assignments. Owner has no branch/
+                                                    shift concept so we render a dash. */}
+                                                <td className={TD}>
+                                                    {(() => {
+                                                        // Owner + roles that are branch-agnostic → em dash.
+                                                        // The mockup shows Alex Owen as "—".
+                                                        const role = rolesById.get(s.roleId);
+                                                        if (role?.type === "owner") {
+                                                            return <span className="text-[#98a2b3]">—</span>;
+                                                        }
+                                                        const list = assignmentsByStaff.get(s.id) ?? [];
+                                                        if (list.length === 0) return <NoShiftWarningPill />;
+                                                        return (
+                                                            <div className="flex flex-col gap-1.5 max-w-[240px]">
+                                                                {list.map(a => {
+                                                                    const sh = shiftsById.get(a.shift_id);
+                                                                    if (!sh) return null;
+                                                                    // Chip: "{Shift name} · {Days} · {HH-HH}"
+                                                                    // Days summary uses the per-assignment
+                                                                    // days_of_week (may be narrower than the
+                                                                    // parent shift's working_days).
+                                                                    const label =
+                                                                        `${sh.name.replace(/ shift$/i, "")}` +
+                                                                        ` · ${shiftDaysSummary(a.days_of_week)}` +
+                                                                        ` · ${toHour(sh.start_time)}-${toHour(sh.end_time)}`;
+                                                                    return <ShiftAssignmentChip key={a.id} label={label} />;
+                                                                })}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
                                                         {STAFF_STATUS_LABEL[s.status]}
