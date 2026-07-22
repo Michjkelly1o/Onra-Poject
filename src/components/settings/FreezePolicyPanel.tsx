@@ -121,13 +121,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     );
 }
 
-/** Boxed toggle row (title + subtitle + switch) — the Booking Rules panel card. */
+/** Boxed toggle row (title + optional subtitle + switch) — the Booking
+ *  Rules panel card. `subtitle` is optional per client 2026-07-22 (the
+ *  freeze-duration + freeze-limit rows dropped their explanatory line;
+ *  the title alone reads clearly enough). Center-aligns when subtitle
+ *  is absent so the switch sits mid-row instead of top-aligned. */
 function ToggleCard({ title, subtitle, on, onChange, helpIcon }: {
-    title: string; subtitle: string; on: boolean; onChange: (next: boolean) => void; helpIcon?: boolean;
+    title: string; subtitle?: string; on: boolean; onChange: (next: boolean) => void; helpIcon?: boolean;
 }) {
     return (
         <div className={cn(
-            "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 bg-white transition-colors",
+            "rounded-[12px] border-1 px-4 py-3 flex gap-4 bg-white transition-colors",
+            subtitle ? "items-start" : "items-center",
             on ? "border-[#7ba08c]" : "border-[#e4e7ec]",
         )}>
             <div className="flex-1 flex flex-col gap-1 min-w-0">
@@ -135,7 +140,9 @@ function ToggleCard({ title, subtitle, on, onChange, helpIcon }: {
                     {title}
                     {helpIcon && <HelpCircle className="w-3.5 h-3.5 text-[#98a2b3]" />}
                 </p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                {subtitle && (
+                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                )}
             </div>
             <Toggle on={on} onChange={onChange} ariaLabel={title} />
         </div>
@@ -446,9 +453,11 @@ export function FreezePolicyPanel({ open, onClose }: {
                                     />
                                 </Field>
 
+                                {/* Subtitle removed per client 2026-07-22 —
+                                    the toggle title alone explains the
+                                    control; the extra help line was noise. */}
                                 <ToggleCard
                                     title="Set maximum freeze duration"
-                                    subtitle="Cap how long a single freeze can last."
                                     on={form.max_duration_enabled}
                                     onChange={v => patch({ max_duration_enabled: v })}
                                 />
@@ -469,26 +478,25 @@ export function FreezePolicyPanel({ open, onClose }: {
                                     </Field>
                                 )}
 
+                                {/* Client 2026-07-22 — window flipped from
+                                    calendar year → rolling 12 months, and
+                                    the subtitle was removed. The eligibility
+                                    gate counts freeze START dates in the
+                                    trailing 365 days (via
+                                    `CustomerPlan.freezeHistoryISO`), so
+                                    any two freezes within any 365-day span
+                                    trip the cap. */}
                                 <ToggleCard
-                                    title="Limit freezes per calendar year"
-                                    subtitle="Cap how many times one membership can be frozen in a year (resets Jan 1)."
+                                    title="Limit freezes per rolling 12 months"
                                     on={form.limit_freezes_enabled}
                                     onChange={v => patch({ limit_freezes_enabled: v })}
                                 />
                                 {form.limit_freezes_enabled && (
-                                    /* v2 — Renamed from "Maximum freezes
-                                       per membership" per client
-                                       2026-07-20. Field enforces a
-                                       per-calendar-year cap; the
-                                       max_freezes_period enum is fixed
-                                       at "calendar_year" for now (a
-                                       future rolling-window option would
-                                       be additive). */
-                                    <Field label="Maximum freezes per calendar year">
+                                    <Field label="Maximum freezes per rolling 12 months">
                                         <NumberField
                                             value={form.max_freezes}
                                             onChange={v => patch({ max_freezes: v })}
-                                            ariaLabel="Maximum freezes per calendar year"
+                                            ariaLabel="Maximum freezes per rolling 12 months"
                                         />
                                     </Field>
                                 )}

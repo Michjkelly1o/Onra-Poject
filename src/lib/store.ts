@@ -1848,8 +1848,16 @@ export interface CustomerPlan {
     freezeSource?: "customer_portal" | "admin" | "front_desk";
     /** Lifetime count of times this plan has been frozen — enforces the
      *  freeze policy's "max freezes per membership" on the customer side.
-     *  Incremented on every freeze (admin + customer). */
+     *  Incremented on every freeze (admin + customer). Kept for legacy
+     *  paths + reporting; the rolling-12-months window uses
+     *  `freezeHistoryISO` below. */
     freezeCount?: number;
+    /** Every freeze START date (YYYY-MM-DD) for this plan, appended on
+     *  each freeze. Enforces the rolling-12-months freeze cap — the
+     *  eligibility check counts entries whose iso is ≥ (today − 365d).
+     *  Never cleared on unfreeze so past freezes still count against
+     *  the window. Client 2026-07-22. */
+    freezeHistoryISO?: string[];
     /** Reason the member gave when self-freezing (from the freeze policy's
      *  allowed reasons). Surfaced admin-side so the studio sees WHY the
      *  membership was paused. Cleared on unfreeze. */
@@ -6212,6 +6220,14 @@ export const useAppStore = create<AppState>()(persist(
                     freezeCount: bypass.ignoresFreezeLimit
                         ? (p.freezeCount ?? 0)
                         : (p.freezeCount ?? 0) + 1,
+                    // Rolling-12-months history (client 2026-07-22).
+                    // Every freeze appends its startISO so the eligibility
+                    // check can count freezes in the trailing 365 days.
+                    // Bypassed reasons (Medical / Injury etc.) don't
+                    // append so genuine health freezes stay off the cap.
+                    freezeHistoryISO: bypass.ignoresFreezeLimit
+                        ? (p.freezeHistoryISO ?? [])
+                        : [...(p.freezeHistoryISO ?? []), startISO.slice(0, 10)],
                     // Reason (customer self-freeze) — surfaced admin-side.
                     freezeReason: reason ?? undefined,
                     // Option A: expiry shifts by frozenDays. Option B:
@@ -9330,7 +9346,14 @@ export const useAppStore = create<AppState>()(persist(
                 if (fp.who_can_freeze === undefined)     fp.who_can_freeze = "members_and_admins";
                 if (fp.min_duration_value === undefined) fp.min_duration_value = 7;
                 if (fp.min_duration_unit === undefined)  fp.min_duration_unit = "days";
-                if (fp.max_freezes_period === undefined) fp.max_freezes_period = "calendar_year";
+                // Client 2026-07-22 flipped the default window from
+                // "calendar_year" to "rolling_12m". Migration rewrites
+                // any pre-existing seed (undefined OR the legacy value)
+                // so every studio lands on the new behavior on next
+                // rehydrate without a version bump.
+                if (fp.max_freezes_period === undefined || (fp.max_freezes_period as string) === "calendar_year") {
+                    fp.max_freezes_period = "rolling_12m";
+                }
                 if (fp.require_reason === undefined)     fp.require_reason = true;
                 // Reasons array — every reason gets the exceptions
                 // field defaulted to undefined (no bypass), so per-

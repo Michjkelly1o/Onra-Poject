@@ -336,16 +336,20 @@ export interface FreezePolicy {
     max_duration_value: number;
     max_duration_unit: "days" | "weeks" | "months";
     /** Cap how many times ONE membership can be frozen inside a given
-     *  window. When OFF, unlimited freezes. The window is fixed at
-     *  "per calendar year" (resets Jan 1) per client 2026-07-20 — the
-     *  rolling-window rendering shown in the Figma was superseded by
-     *  the written brief. */
+     *  window. When OFF, unlimited freezes. Client 2026-07-22 flipped
+     *  the default window from "calendar year" (resets Jan 1) to
+     *  "rolling 12 months" (counts every freeze in the trailing
+     *  365 days) — matches the Figma rendering + is the industry
+     *  standard for membership freezes. The migration in store.ts
+     *  rewrites any pre-existing `calendar_year` seed to `rolling_12m`
+     *  on rehydrate. */
     limit_freezes_enabled: boolean;
     max_freezes: number;
-    /** The window `max_freezes` counts against. Currently only
-     *  `calendar_year` is supported; the enum is kept explicit so a
-     *  future "rolling_12m" option can land as an additive change. */
-    max_freezes_period: "calendar_year";
+    /** Window `max_freezes` counts against. `rolling_12m` looks at
+     *  `CustomerPlan.freezeHistoryISO` entries in the trailing 365
+     *  days; `calendar_year` is a legacy value the migration replaces
+     *  but the type keeps for backwards compatibility. */
+    max_freezes_period: "rolling_12m" | "calendar_year";
 
     /** Charge a fee to freeze. `recurring` = per billing cycle while frozen;
      *  `one_time` = charged once at freeze time. Amount in AED. */

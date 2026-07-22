@@ -71,6 +71,33 @@ export function resolveReasonExceptions(
     };
 }
 
+/** Count freezes on this plan inside the policy's cap window.
+ *
+ *  `rolling_12m` — counts entries in `plan.freezeHistoryISO` whose ISO
+ *  falls on or after (today − 365 days). This is the client 2026-07-22
+ *  default: any two freezes within any 365-day span trip the cap,
+ *  matching the industry norm.
+ *
+ *  `calendar_year` — legacy value. Falls back to `plan.freezeCount`
+ *  (which was ever-only incrementing pre-2026-07-22, so on a stale
+ *  seed it approximates the intent). The migration in store.ts
+ *  rewrites live snapshots to `rolling_12m`, so this branch is only
+ *  hit on unmigrated data — kept defensive to avoid NaN comparisons. */
+export function countFreezesInWindow(
+    plan: import("@/lib/store").CustomerPlan,
+    policy: FreezePolicy,
+): number {
+    if (policy.max_freezes_period === "rolling_12m") {
+        const history = plan.freezeHistoryISO ?? [];
+        if (history.length === 0) return 0;
+        const now = new Date();
+        const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 365);
+        const cutoffISO = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+        return history.filter(iso => iso >= cutoffISO).length;
+    }
+    return plan.freezeCount ?? 0;
+}
+
 /** True when AT LEAST ONE enabled reason carries the given bypass flag.
  *  Used by decideFreezeCta to loosen the annual-cap gate — a member who's
  *  hit their limit can still freeze via a bypassing reason. */
@@ -236,20 +263,27 @@ export function decideFreezeCta(
     ) {
         return { mode: "hidden", reason: "out_of_scope" };
     }
-    // Freeze-limit ceiling (per calendar year, per Q1). Freeze count is
-    // maintained on the plan row every time freezeCustomerPlan fires.
+    // Freeze-limit ceiling. Client 2026-07-22 pinned the window at
+    // rolling 12 months (was calendar year). The count of freezes
+    // in the trailing 365 days comes from `plan.freezeHistoryISO`
+    // (a lifetime list of every start-ISO). Legacy `calendar_year`
+    // still falls back to `freezeCount` so a stale seed doesn't
+    // crash.
     // Loosened per audit fix: if ANY enabled reason has
-    // `ignoresFreezeLimit` on, a limit-reached customer can still freeze
-    // via that reason, so the CTA stays visible. If no bypass exists,
-    // the gate blocks as before.
+    // `ignoresFreezeLimit` on, a limit-reached customer can still
+    // freeze via that reason, so the CTA stays visible.
+    const freezesInWindow = countFreezesInWindow(plan, policy);
     if (
         policy.limit_freezes_enabled &&
-        (plan.freezeCount ?? 0) >= policy.max_freezes &&
+        freezesInWindow >= policy.max_freezes &&
         !anyReasonHasBypass(policy, "ignoresFreezeLimit")
     ) {
         return { mode: "hidden", reason: "freeze_limit_reached" };
     }
-    // First-cycle gate (Q5).
+    // First-cycle gate (Q5). This IS the "no freeze during a trial /
+    // first billing cycle" guardrail the client 2026-07-22 asked for —
+    // the demo has no separate `isTrial` flag; a plan is "in trial"
+    // exactly when the first billed transaction hasn't cleared yet.
     if (isPlanInFirstBillingCycle(plan, transactions)) {
         return { mode: "hidden", reason: "first_billing_cycle" };
     }

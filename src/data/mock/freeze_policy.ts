@@ -62,9 +62,11 @@ export const freeze_policy: FreezePolicy = {
 
     limit_freezes_enabled: true,
     max_freezes: 2,
-    // v2 — Fixed at "calendar_year" per client written brief (won over
-    // the Figma "rolling 12 months" label — see plan doc Q1).
-    max_freezes_period: "calendar_year",
+    // Client 2026-07-22 flipped this to rolling 12 months — the cap
+    // now counts every freeze in the trailing 365 days (via
+    // `CustomerPlan.freezeHistoryISO`) instead of resetting on
+    // Jan 1. Matches the Figma rendering + is the industry norm.
+    max_freezes_period: "rolling_12m",
 
     fee_enabled: false,
     fee_type: "one_time",
