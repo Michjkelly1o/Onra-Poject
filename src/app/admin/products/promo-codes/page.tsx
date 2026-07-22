@@ -218,14 +218,19 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
                 "transition-all duration-150",
                 "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
-            {/* Banner — fixed 4:3 so the artwork stays the same shape at
-                every screen width instead of stretching wide on large monitors. */}
-            <div className={cn("relative aspect-[4/3] shrink-0 overflow-hidden", bannerClass)}>
+            {/* Banner — matches the customer-side PromoCard ratio
+                (aspect-[343/140]) so the artwork the customer sees is the
+                same shape admins preview here. `object-contain` on a
+                letterbox-tinted background so uploads that don't hit the
+                exact ratio never crop / cut the voucher copy off (client
+                2026-07-22). Was `aspect-[4/3] + object-cover` which
+                cropped 12:5 uploads down to a square. */}
+            <div className={cn("relative aspect-[343/140] shrink-0 overflow-hidden", bannerClass)}>
                 {/* Image-only banner — the voucher artwork carries all copy.
                     Inactive / archived / expired promos render grayscale. */}
                 {promo.banner_image_url && (
                     <img src={promo.banner_image_url} alt={promo.name ?? promo.code}
-                        className={cn("absolute inset-0 w-full h-full object-cover", status !== "active" && "grayscale")} />
+                        className={cn("absolute inset-0 w-full h-full object-contain", status !== "active" && "grayscale")} />
                 )}
                 {/* Status badge — top right (system status, not voucher copy) */}
                 <div className="absolute top-3 right-3 z-10">
