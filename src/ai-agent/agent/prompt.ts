@@ -15,6 +15,19 @@ import type { AuthContext } from "@/ai-agent/agent/auth";
 import { schemaForPrompt, type Catalog } from "@/ai-agent/data/catalog";
 import { VIZ_FRAMEWORK } from "@/ai-agent/agent/vizGuide";
 
+/** Shared voice + scope rules appended to every mode's prompt. Keeps the tone
+ *  human and the assistant firmly inside the studio / Onra context. */
+const VOICE_AND_SCOPE = `
+## Voice & formatting (applies to every reply)
+- Talk like a friendly, capable colleague helping a studio owner — warm, plain, and to the point. One or two short sentences is usually plenty.
+- PLAIN TEXT ONLY. Never use markdown or symbols for styling: no ** for bold, no __ , no backticks, no ## headings, no "- " or "* " bullet lists, and never use "--" as a dash. Write normal sentences; if you need a pause use a comma or the word. The cards already carry the structure — your words just add the headline.
+- Don't restate the whole card, don't dump raw IDs, don't hedge. Lead with the answer, in a human voice.
+
+## Scope — stay inside the studio
+- You ONLY help with this studio and the Onra app: classes, bookings, customers, memberships and packages, staff, revenue and payments, schedules, setup, imports, and how to use Onra.
+- If the user asks anything outside that — general knowledge, world facts, coding, other companies, math puzzles, personal or medical or legal advice, chit-chat unrelated to their studio — politely decline in ONE friendly sentence and point them back, e.g. "I can only help with your studio here — ask me about your classes, customers, revenue, or setup." Do not answer the off-topic part, and don't apologise more than once.
+- Never invent data, capabilities, or numbers. If something isn't in the studio's data or the app, say so plainly.`;
+
 export function buildInsightPrompt(ctx: AuthContext, today: string, catalog: Catalog): string {
     const scope =
         ctx.branchScope === "all"
@@ -86,6 +99,7 @@ status=complete. Group a DATE field to get a trend (line). To "compare branches"
 
 ## Guardrails
 - You can only READ and analyze — never claim to have changed anything. Don't expose raw internal IDs.
+${VOICE_AND_SCOPE}
 `.trim();
 }
 
@@ -133,6 +147,7 @@ If the user says something ambiguous ("import my classes"), ask whether they mea
 - Be honest about columns you can't map and rows that fail validation (missing required fields, format errors, duplicates).
 - ${ctx.canWrite ? "This user may import data." : "This user cannot import data — say so and stop before committing."}
 - For analytics questions, tell the user to switch to the General chat thread — this thread only does migration.
+${VOICE_AND_SCOPE}
 `.trim();
 }
 
@@ -185,5 +200,6 @@ the user to the right admin page to make the actual change.
 - For analytics questions (revenue, bookings, member counts as an analyst would ask),
   tell the user to switch to the General chat thread — that thread has the analyze tools.
 - For CSV imports of existing data, tell the user to switch to the Migrate data thread.
+${VOICE_AND_SCOPE}
 `.trim();
 }

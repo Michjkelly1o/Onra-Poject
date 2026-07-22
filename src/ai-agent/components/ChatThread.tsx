@@ -79,6 +79,22 @@ const ParticleOrb = dynamic(
 const DM_SANS_STACK =
     "var(--font-brand-dm-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
+/** Safety-net that strips any markdown the model still emits so the bubble
+ *  reads as plain, human text — the prompt already forbids markdown, this
+ *  catches leftovers (**bold**, __x__, `code`, ## headings, "- " bullets,
+ *  and "--" dashes). */
+function humanizeAgentText(s: string): string {
+    return s
+        .replace(/\*\*/g, "")            // bold markers
+        .replace(/__/g, "")              // bold markers
+        .replace(/`/g, "")               // inline-code ticks
+        .replace(/^#{1,6}\s+/gm, "")     // ## headings → plain
+        .replace(/^\s*[-*]\s+/gm, "")    // "- " / "* " bullets → plain
+        .replace(/\s*--\s*/g, " — ")     // "--" → em dash
+        .replace(/[ \t]{2,}/g, " ")      // collapse runs of spaces
+        .trim();
+}
+
 /** Snapshot exactly the store slices `buildCatalog` reads. Any wider and
  *  the request payload balloons for nothing; any narrower and the server
  *  can't build the catalog. Kept in sync with
@@ -1033,10 +1049,14 @@ function QuestionStepCard({
                 </span>
             )}
             {data.title && (
-                <p className="text-[16px] font-semibold text-[#101828] leading-6">{data.title}</p>
+                <p className="text-[16px] font-semibold text-[#101828] leading-6">
+                    {humanizeAgentText(data.title)}
+                </p>
             )}
             {data.message && (
-                <p className="text-[14px] text-[#475467] leading-5">{data.message}</p>
+                <p className="text-[14px] text-[#475467] leading-5">
+                    {humanizeAgentText(data.message)}
+                </p>
             )}
         </div>
     );
@@ -1094,10 +1114,11 @@ function MessageRow({
                         );
                     })}
                     {/* Free-text response (interpretation line under a card,
-                        or a plain-text answer when no tool was called) */}
+                        or a plain-text answer when no tool was called).
+                        Sanitised so any stray markdown reads as plain text. */}
                     {m.content && (
                         <div className="text-[14px] text-[#344054] leading-6 whitespace-pre-wrap">
-                            {m.content}
+                            {humanizeAgentText(m.content)}
                         </div>
                     )}
                 </div>
