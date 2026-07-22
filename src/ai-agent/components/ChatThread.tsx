@@ -458,10 +458,12 @@ export function ChatThread({
                 </div>
             )}
 
-            {/* Docked composer — live conversation only. */}
+            {/* Docked composer — live conversation only. Client 2026-07-22:
+                no top border, full-width input (spans the canvas, no 720
+                cap) so it reads as an integrated bar over the gradient. */}
             {!empty && (
-                <div className="shrink-0 border-t border-[#eaecf0] bg-white/80 backdrop-blur-sm">
-                    <div className="w-full max-w-[720px] mx-auto px-6 py-4">{composerNode}</div>
+                <div className="shrink-0 bg-transparent">
+                    <div className="w-full px-6 py-4">{composerNode}</div>
                 </div>
             )}
         </div>
