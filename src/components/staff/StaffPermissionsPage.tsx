@@ -521,12 +521,12 @@ function ShiftAssignmentChip({ label }: { label: string }) {
     );
 }
 
-/** Empty-state warning pill — same amber tone family as the
- *  Understaffed pill (`bg-[#fef4e1] border-[#fecc85] text-[#b54708]`) so
- *  the "staffing gap" signal speaks one voice across surfaces. */
-function NoShiftWarningPill() {
+/** Empty-state warning — plain amber text with icon (client 2026-07-22
+ *  clarified: no badge box, just a flagged line). Same amber tone family
+ *  as the Understaffed pill so the "staffing gap" signal still reads. */
+function NoShiftWarning() {
     return (
-        <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
+        <span className="inline-flex items-center gap-1 text-[13px] text-[#b54708] whitespace-nowrap">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             No shift yet — can&apos;t be scheduled
         </span>
@@ -676,6 +676,12 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const [branchId, setBranchId] = useState<string>("");
     const [search, setSearch] = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
+    // Client 2026-07-22 audit fix — inner List/Week + List/Month toggle
+    // lifted UP to the sub-tab row (was inside the child tab body). One
+    // state per sub-tab so switching Shifts→Time off→Shifts remembers the
+    // previously picked view.
+    const [shiftsViewMode,  setShiftsViewMode]  = useState<"list" | "week">("list");
+    const [timeOffViewMode, setTimeOffViewMode] = useState<"list" | "month">("list");
     const [roleFilter,  setRoleFilter]  = useState<RoleFilter>(EMPTY_ROLE_FILTER);
     const [staffFilter, setStaffFilter] = useState<StaffFilter>(EMPTY_STAFF_FILTER);
     const [page, setPage] = useState(1);
@@ -1133,6 +1139,13 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         width="w-[180px]"
                     />
                 )}
+                {/* Filter button — lifted from the sub-tab row up here
+                    (client 2026-07-22). Hidden on empty/placeholder
+                    sub-tabs where filter has no effect. */}
+                {forceTab !== "roles" &&
+                 (forceTab !== "staff" || staffSubTab === "staff" || staffSubTab === "shift-management") && (
+                    <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                )}
                 <AddNewMenu
                     variant={forceTab === "roles" ? "role-only" : forceTab === "staff" ? "staff-only" : "combined"}
                     onAddRole={handleAddRole}
@@ -1198,14 +1211,28 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             />
                         )}
                         <div className="flex-1" />
-                        {/* Filter button — visible on every populated sub-tab.
-                            Hidden only on the Blocked time placeholder (no
-                            data to filter yet). Shift management is wired:
-                            its FilterPanel renders inside the table component
-                            and reads `filterOpen` + `onCloseFilter` through
-                            the prop pair. */}
-                        {(forceTab !== "staff" || staffSubTab === "staff" || staffSubTab === "shift-management") && (
-                            <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                        {/* Per-sub-tab view toggle — lifted up here from the
+                            child tab body (client 2026-07-22). Shifts gets
+                            List / Week; Time off gets List / Month. */}
+                        {forceTab === "staff" && staffSubTab === "shift-management" && (
+                            <SegmentedTabs
+                                tabs={[
+                                    { key: "list", label: "List" },
+                                    { key: "week", label: "Week" },
+                                ]}
+                                activeKey={shiftsViewMode}
+                                onChange={k => setShiftsViewMode(k as "list" | "week")}
+                            />
+                        )}
+                        {forceTab === "staff" && staffSubTab === "blocked-time" && (
+                            <SegmentedTabs
+                                tabs={[
+                                    { key: "list",  label: "List"  },
+                                    { key: "month", label: "Month" },
+                                ]}
+                                activeKey={timeOffViewMode}
+                                onChange={k => setTimeOffViewMode(k as "list" | "month")}
+                            />
                         )}
                     </div>
                 )}
@@ -1228,13 +1255,14 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         filterOpen={filterOpen}
                         onCloseFilter={() => setFilterOpen(false)}
                         onFilterStateChange={setShiftFilterActive}
+                        viewMode={shiftsViewMode}
                     />
                 )}
                 {/* Blocked time sub-tab — fully wired (Figma 7413:239407). Same
                     branchId + search inputs from the toolbar drive this table
                     the way they drive Staff + Shift management. */}
                 {forceTab === "staff" && staffSubTab === "blocked-time" && (
-                    <BlockedTimeTab branchId={branchId} search={search} />
+                    <BlockedTimeTab branchId={branchId} search={search} viewMode={timeOffViewMode} />
                 )}
                 {/* Table — roles
                     Padding model matches /admin/products (membership/packages):
@@ -1445,7 +1473,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                             return <span className="text-[#98a2b3]">—</span>;
                                                         }
                                                         const list = assignmentsByStaff.get(s.id) ?? [];
-                                                        if (list.length === 0) return <NoShiftWarningPill />;
+                                                        if (list.length === 0) return <NoShiftWarning />;
                                                         return (
                                                             <div className="flex flex-col gap-1.5 max-w-[240px]">
                                                                 {list.map(a => {

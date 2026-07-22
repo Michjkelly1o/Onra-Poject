@@ -501,10 +501,15 @@ export interface ShiftManagementTabProps {
      *  Filter button click handler. */
     filterOpen: boolean;
     onCloseFilter: () => void;
+    /** View mode driven by the parent's List / Week SegmentedTabs on the
+     *  sub-tab row (client 2026-07-22 lifted from inline). Defaults to
+     *  "list" so the tab still renders standalone. */
+    viewMode?: "list" | "week";
 }
 
 export function ShiftManagementTab({
     returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange,
+    viewMode = "list",
 }: ShiftManagementTabProps) {
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
@@ -520,12 +525,6 @@ export function ShiftManagementTab({
     const deleteShifts      = useAppStore(s => s.deleteShifts);
     const updateShift       = useAppStore(s => s.updateShift);
     const showToast         = useAppStore(s => s.showToast);
-
-    // Client 2026-07-22 Phase 5 — inner List / Week toggle. `viewMode`
-    // gates whether the tab renders the existing table (list) or the
-    // new read-only computed grid (week).
-    type ViewMode = "list" | "week";
-    const [viewMode, setViewMode] = useState<ViewMode>("list");
 
     const [appliedStatuses, setAppliedStatuses] = useState<StatusFilter>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -733,21 +732,6 @@ export function ShiftManagementTab({
 
     return (
         <>
-            {/* Client 2026-07-22 Phase 5 — List / Week sub-toggle. The
-                Week view is a read-only computed grid that answers
-                "who's in on Thursday, and where are the holes?" (see
-                ShiftsWeekView). List keeps the existing table + row
-                expand behavior unchanged. */}
-            <div className="shrink-0 px-6 pb-3 flex items-center gap-3">
-                <SegmentedTabs
-                    tabs={[
-                        { key: "list", label: "List" },
-                        { key: "week", label: "Week" },
-                    ]}
-                    activeKey={viewMode}
-                    onChange={k => setViewMode(k as ViewMode)}
-                />
-            </div>
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1">
                     <ShiftsWeekView branchId={branchId} search={search} />
@@ -864,7 +848,7 @@ export function ShiftManagementTab({
                                                     </span>
                                                     <span className="text-[13px] text-[#667085]">/ {target} needed</span>
                                                     {isUnderstaffed && (
-                                                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-semibold uppercase tracking-wider bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
+                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
                                                             Understaffed
                                                         </span>
                                                     )}

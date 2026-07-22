@@ -235,39 +235,35 @@ export function ShiftsWeekView({ branchId, search }: ShiftsWeekViewProps) {
     // ── Render ────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col gap-4 px-6 py-4">
-            {/* What-changed banner — matches the mockup's copy so the client
-                sees the intent inline. Info tone matches other admin banners. */}
-            <div className="rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec] px-4 py-3 text-[13px] leading-[18px] text-[#475467]">
-                <span className="font-semibold text-[#101828]">Week view — read-only.</span>{" "}
-                Computed from the List rules plus time off: shift bars, striped time off, class dots. Nothing is created here; clicking jumps to the edit flows. Answers &quot;who&apos;s in on Thursday, and where are the holes?&quot;
-            </div>
-
-            {/* Date navigator — prev / range / next. Matches the schedule
-                page's date pill styling for consistency. */}
-            <div className="flex items-center gap-3">
-                <button
-                    type="button"
-                    aria-label="Previous week"
-                    onClick={() => setWeekStart(d => addDays(d, -7))}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors text-[#475467]"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setWeekStart(mondayOfWeek(new Date()))}
-                    className="px-3 h-9 rounded-[8px] bg-[#f2f4f7] text-[14px] font-semibold text-[#344054] hover:bg-[#e4e7ec] transition-colors"
-                >
-                    {weekRangeLabel(weekStart)}
-                </button>
-                <button
-                    type="button"
-                    aria-label="Next week"
-                    onClick={() => setWeekStart(d => addDays(d, 7))}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors text-[#475467]"
-                >
-                    <ChevronRight className="w-4 h-4" />
-                </button>
+            {/* Date navigator — center-aligned, uses the SAME date-pill
+                chrome the /admin/schedule Week view uses so both surfaces
+                read as one voice (client 2026-07-22). */}
+            <div className="relative flex items-center h-9">
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+                    <button
+                        type="button"
+                        aria-label="Previous week"
+                        onClick={() => setWeekStart(d => addDays(d, -7))}
+                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setWeekStart(mondayOfWeek(new Date()))}
+                        className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[168px] text-center hover:bg-[#e4e7ec] transition-colors"
+                    >
+                        {weekRangeLabel(weekStart)}
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Next week"
+                        onClick={() => setWeekStart(d => addDays(d, 7))}
+                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             {/* Grid */}
@@ -289,7 +285,7 @@ export function ShiftsWeekView({ branchId, search }: ShiftsWeekViewProps) {
                                     {WEEKDAY_HEAD[i]} {d.getDate()}
                                 </span>
                                 {isToday && (
-                                    <span className="inline-flex items-center px-1.5 py-[1px] rounded-full text-[10px] font-semibold uppercase tracking-wider bg-[#e7f2eb] border-1 border-[#c7e5d1] text-[#3b5446]">
+                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#e7f2eb] border-[#c7e5d1] text-[#3b5446] whitespace-nowrap">
                                         Today
                                     </span>
                                 )}
@@ -372,7 +368,7 @@ export function ShiftsWeekView({ branchId, search }: ShiftsWeekViewProps) {
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
-                                                className="px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px]"
+                                                className="px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
                                                 {/* Shift bars */}
                                                 {dayShifts.map(({ shift, assignment }) => (

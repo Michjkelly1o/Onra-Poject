@@ -251,6 +251,18 @@ const DYNAMIC_LABELS: Record<string, (id: string, s: AppState) => string> = {
         const sh = s.shifts.find(x => x.id === id);
         return sh?.name ?? "Shift";
     },
+    // Client 2026-07-22 audit fix — the /staff/blocked-time detail
+    // route used to fall through to the default resolver (which just
+    // showed the raw id "time_off_liam_physio_jul_23"). Now looks up
+    // the entry and returns its title, or the reason label, or a
+    // generic fallback.
+    "/staff/blocked-time": (id, s) => {
+        const bt = s.blockedTimes.find(x => x.id === id);
+        if (!bt) return "Time off";
+        if (bt.title.trim()) return bt.title.trim();
+        if (bt.reason) return `${bt.reason[0].toUpperCase()}${bt.reason.slice(1)}`;
+        return "Time off";
+    },
     "/compensation": (id, s) => {
         const st = s.staff.find(x => x.id === id);
         return st ? `${st.firstName ?? ""} ${st.lastName ?? ""}`.trim() || "Payroll" : "Payroll";

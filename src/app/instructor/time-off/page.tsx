@@ -4,27 +4,15 @@
 // Onra Studio — Instructor Time off (/instructor/time-off)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Client 2026-07-22 Phase 7: instructor self-serve time off. Instructors
-// log their own annual leave / sick days / training here without waiting
-// for admin. Entries land in the admin Time off tab IMMEDIATELY (no
-// approval flow, per client's spec).
-//
-// ──────────────────────────────────────────────────────────────────
-// ROLE-SCOPED VIEW — reads the SAME centralized `blockedTimes` slice
-// as admin. Instructor scoping is a `.filter(bt =>
-// bt.staff_ids.includes(me))` client-side. Add / edit / delete route
-// through the same store actions the admin form uses so both surfaces
-// stay in sync automatically.
-// ──────────────────────────────────────────────────────────────────
-//
-// Page composition (uses our DS shell — no new chrome):
-//   • Header — page title + subtitle + primary "Add time off" button
-//   • Table — one row per entry, upcoming shown first + past below.
-//     Row action menu (Edit / Delete).
-//   • Add / edit modal — date range + all-day toggle + reason
-//     dropdown + note (required on Other). Same rules the admin
-//     form uses; instructor doesn't pick staff (auto-set to self).
-//   • Delete confirm — reused `<ConfirmModal>` chrome.
+// Client 2026-07-22 revision — audit feedback:
+//   • Page title reads "Time off" (was falling through to a generic
+//     Dashboard title).
+//   • Banner subtitle removed.
+//   • Add / edit surface is a SlidePanel (matches every filter/panel
+//     across admin, not a modal that steals focus).
+//   • List rewritten as a real TABLE with proper column separation.
+//   • Reason / Range / Group / Past pills all use the same fit-width
+//     pill shape the app uses everywhere (rounded-full, non-uppercase).
 
 import { useEffect, useMemo, useState } from "react";
 import { Plus, XClose, Edit02, Trash01, Clock, DotsVertical } from "@untitledui/icons";
@@ -35,8 +23,11 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
+import { SlidePanel } from "@/components/ui/SlidePanel";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore, type BlockedTime } from "@/lib/store";
 import { instructor_profile } from "@/data/mock/instructor_profile";
+import { useRef } from "react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -81,7 +72,7 @@ function ReasonChip({ reason }: { reason: Reason | undefined }) {
     const spec = REASON_STYLE[reason ?? "other"];
     return (
         <span className={cn(
-            "inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap",
+            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap",
             spec.className,
         )}>
             {spec.label}
@@ -96,7 +87,7 @@ const REASON_OPTIONS: { value: Reason; label: string }[] = [
     { value: "other",    label: "Other"    },
 ];
 
-// ─── Form modal ───────────────────────────────────────────────────────────
+// ─── Form panel (SlidePanel) ─────────────────────────────────────────────
 
 interface FormValue {
     title: string;
@@ -130,9 +121,10 @@ const TIME_OPTIONS: { value: string; label: string }[] = (() => {
     return out;
 })();
 
-function TimeOffModal({
-    mode, existing, onClose, onSubmit,
+function TimeOffPanel({
+    open, mode, existing, onClose, onSubmit,
 }: {
+    open: boolean;
     mode: "create" | "edit";
     existing?: BlockedTime;
     onClose: () => void;
@@ -153,9 +145,10 @@ function TimeOffModal({
 
     const [form, setForm] = useState<FormValue>(seedFromExisting);
     useEffect(() => {
-        if (mode === "edit" && existing) setForm(seedFromExisting());
+        if (!open) return;
+        setForm(seedFromExisting());
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [existing?.id, mode]);
+    }, [existing?.id, open, mode]);
 
     function set(patch: Partial<FormValue>) {
         setForm(prev => ({ ...prev, ...patch }));
@@ -177,165 +170,154 @@ function TimeOffModal({
     })();
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-            <div className="bg-white rounded-[16px] w-full max-w-[560px] max-h-[90vh] overflow-hidden flex flex-col shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)]">
-                {/* Header */}
-                <div className="shrink-0 px-6 py-4 border-b border-[#e4e7ec] flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828]">
-                            {mode === "edit" ? "Edit time off" : "Add time off"}
-                        </p>
-                        <p className="text-[13px] text-[#667085] mt-0.5">
-                            Log your annual leave, sick days, or training. Admin sees it right away.
-                        </p>
-                    </div>
-                    <button type="button" onClick={onClose} aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
-                        <XClose className="w-5 h-5" />
-                    </button>
+        <SlidePanel open={open} onClose={onClose} width={440}>
+            {/* Header */}
+            <div className="shrink-0 px-6 py-4 border-b border-[#e4e7ec] flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[18px] font-semibold text-[#101828]">
+                        {mode === "edit" ? "Edit time off" : "Add time off"}
+                    </p>
+                </div>
+                <button type="button" onClick={onClose} aria-label="Close"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    <XClose className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+                <div className="flex flex-col gap-[6px]">
+                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
+                    <SelectInput
+                        placeholder="Select a reason"
+                        value={form.reason}
+                        onChange={v => set({ reason: v as Reason })}
+                        options={REASON_OPTIONS}
+                        width="w-full"
+                    />
                 </div>
 
-                {/* Body */}
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-                    {/* Reason */}
+                <div className="flex flex-col gap-[6px]">
+                    <label className="text-[14px] font-medium text-[#344054]">Title (optional)</label>
+                    <input
+                        type="text" value={form.title}
+                        onChange={e => set({ title: e.target.value })}
+                        placeholder="Enter title"
+                        className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[#344054]">Reason</label>
-                        <SelectInput
-                            placeholder="Select a reason"
-                            value={form.reason}
-                            onChange={v => set({ reason: v as Reason })}
-                            options={REASON_OPTIONS}
-                            width="w-full"
+                        <label className="text-[14px] font-medium text-[#344054]">From</label>
+                        <DatePicker
+                            value={form.dateFrom}
+                            onChange={iso => {
+                                const nextTo = form.dateTo && form.dateTo < iso ? iso : form.dateTo || iso;
+                                set({ dateFrom: iso, dateTo: nextTo });
+                            }}
+                            placeholder="Select date"
+                            minDate={today}
                         />
+                        {isPast && (
+                            <p className="text-[13px] text-[#b42318]">Date can&apos;t be in the past.</p>
+                        )}
                     </div>
-
-                    {/* Title */}
                     <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[#344054]">Title (optional)</label>
-                        <input
-                            type="text" value={form.title}
-                            onChange={e => set({ title: e.target.value })}
-                            placeholder="Enter title"
-                            className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                        <label className="text-[14px] font-medium text-[#344054]">To</label>
+                        <DatePicker
+                            value={form.dateTo}
+                            onChange={iso => set({ dateTo: iso })}
+                            placeholder="Select date"
+                            minDate={form.dateFrom || today}
                         />
-                    </div>
-
-                    {/* Date range */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054]">From</label>
-                            <DatePicker
-                                value={form.dateFrom}
-                                onChange={iso => {
-                                    const nextTo = form.dateTo && form.dateTo < iso ? iso : form.dateTo || iso;
-                                    set({ dateFrom: iso, dateTo: nextTo });
-                                }}
-                                placeholder="Select date"
-                                minDate={today}
-                            />
-                            {isPast && (
-                                <p className="text-[13px] text-[#b42318]">Date can&apos;t be in the past.</p>
-                            )}
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054]">To</label>
-                            <DatePicker
-                                value={form.dateTo}
-                                onChange={iso => set({ dateTo: iso })}
-                                placeholder="Select date"
-                                minDate={form.dateFrom || today}
-                            />
-                            {isInverted && (
-                                <p className="text-[13px] text-[#b42318]">End date must be on or after the start date.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* All-day toggle */}
-                    <div className="flex items-center gap-3 rounded-[12px] border-1 border-[#e4e7ec] bg-white p-3">
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={form.allDay}
-                            aria-label="All day"
-                            onClick={() => set({ allDay: !form.allDay })}
-                            className={cn(
-                                "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                                form.allDay ? "bg-[#658774]" : "bg-[#f2f4f7]",
-                            )}
-                        >
-                            <span className={cn(
-                                "w-5 h-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-transform",
-                                form.allDay ? "translate-x-5" : "translate-x-0",
-                            )} />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-[#101828] leading-5">All day</p>
-                            <p className="text-[13px] text-[#667085] leading-[18px] mt-0.5">Runs full days across the picked range. Turn off to set specific times.</p>
-                        </div>
-                    </div>
-
-                    {/* Time bounds — hidden when All-day */}
-                    {!form.allDay && (
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Start time</label>
-                                <SelectInput
-                                    triggerIcon={<Clock className="w-4 h-4" />}
-                                    placeholder="Select time"
-                                    value={form.startTime}
-                                    onChange={v => set({ startTime: v })}
-                                    options={TIME_OPTIONS}
-                                    width="w-full"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">End time</label>
-                                <SelectInput
-                                    triggerIcon={<Clock className="w-4 h-4" />}
-                                    placeholder="Select time"
-                                    value={form.endTime}
-                                    onChange={v => set({ endTime: v })}
-                                    options={TIME_OPTIONS}
-                                    width="w-full"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Note */}
-                    <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[#344054]">
-                            {form.reason === "other" ? "Note" : "Note (optional)"}
-                        </label>
-                        <textarea
-                            value={form.note}
-                            onChange={e => set({ note: e.target.value })}
-                            placeholder={form.reason === "other"
-                                ? "Describe the reason..."
-                                : "Enter note..."
-                            }
-                            rows={3}
-                            className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
-                        />
-                        {missingOtherNote && (
-                            <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
+                        {isInverted && (
+                            <p className="text-[13px] text-[#b42318]">End date must be on or after the start date.</p>
                         )}
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="shrink-0 px-6 py-4 border-t border-[#e4e7ec] flex justify-end gap-3">
-                    <Button variant="secondary-gray" size="md" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button variant="primary" size="md" disabled={!isValid}
-                        onClick={() => onSubmit(form)}>
-                        {mode === "edit" ? "Save changes" : "Add time off"}
-                    </Button>
+                <div className="flex items-center gap-3 rounded-[12px] border-1 border-[#e4e7ec] bg-white p-3">
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={form.allDay}
+                        aria-label="All day"
+                        onClick={() => set({ allDay: !form.allDay })}
+                        className={cn(
+                            "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
+                            form.allDay ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                        )}
+                    >
+                        <span className={cn(
+                            "w-5 h-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-transform",
+                            form.allDay ? "translate-x-5" : "translate-x-0",
+                        )} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-[#101828] leading-5">All day</p>
+                        <p className="text-[13px] text-[#667085] leading-[18px] mt-0.5">Runs full days across the picked range.</p>
+                    </div>
+                </div>
+
+                {!form.allDay && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[#344054]">Start time</label>
+                            <SelectInput
+                                triggerIcon={<Clock className="w-4 h-4" />}
+                                placeholder="Select time"
+                                value={form.startTime}
+                                onChange={v => set({ startTime: v })}
+                                options={TIME_OPTIONS}
+                                width="w-full"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[#344054]">End time</label>
+                            <SelectInput
+                                triggerIcon={<Clock className="w-4 h-4" />}
+                                placeholder="Select time"
+                                value={form.endTime}
+                                onChange={v => set({ endTime: v })}
+                                options={TIME_OPTIONS}
+                                width="w-full"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-[6px]">
+                    <label className="text-[14px] font-medium text-[#344054]">
+                        {form.reason === "other" ? "Note" : "Note (optional)"}
+                    </label>
+                    <textarea
+                        value={form.note}
+                        onChange={e => set({ note: e.target.value })}
+                        placeholder={form.reason === "other"
+                            ? "Describe the reason..."
+                            : "Enter note..."
+                        }
+                        rows={3}
+                        className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
+                    />
+                    {missingOtherNote && (
+                        <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
+                    )}
                 </div>
             </div>
-        </div>
+
+            {/* Footer */}
+            <div className="shrink-0 px-6 py-4 border-t border-[#e4e7ec] flex justify-end gap-3">
+                <Button variant="secondary-gray" size="md" onClick={onClose}>
+                    Cancel
+                </Button>
+                <Button variant="primary" size="md" disabled={!isValid}
+                    onClick={() => onSubmit(form)}>
+                    {mode === "edit" ? "Save changes" : "Add time off"}
+                </Button>
+            </div>
+        </SlidePanel>
     );
 }
 
@@ -343,15 +325,15 @@ function TimeOffModal({
 
 function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
     const [open, setOpen] = useState(false);
-    const [btnRef, setBtnRef] = useState<HTMLButtonElement | null>(null);
+    const btnRef = useRef<HTMLButtonElement>(null);
     return (
         <>
-            <button ref={setBtnRef} type="button" onClick={() => setOpen(p => !p)}
+            <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                 aria-label="Row actions"
                 className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[#667085] hover:bg-[#f9fafb] transition-colors">
                 <DotsVertical className="w-4 h-4" />
             </button>
-            <FixedDropdown triggerRef={{ current: btnRef }} open={open} onClose={() => setOpen(false)} minWidth={160}>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={160}>
                 <div className="py-1.5">
                     <button type="button"
                         onClick={() => { setOpen(false); onEdit(); }}
@@ -372,9 +354,6 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 // ─── Page ────────────────────────────────────────────────────────────────
 
 export default function InstructorTimeOffPage() {
-    // Instructor persona — Liam Chen. Every read/write on this page is
-    // scoped to this staff id. Add / edit go through the SAME store
-    // actions the admin form uses so admin surfaces sync automatically.
     const meStaffId = instructor_profile.staff_profile_id;
 
     const blockedTimes       = useAppStore(s => s.blockedTimes);
@@ -389,11 +368,10 @@ export default function InstructorTimeOffPage() {
         return me?.branchId ?? "";
     }, [staff, meStaffId]);
 
-    const [modal, setModal] = useState<{ mode: "create" } | { mode: "edit"; row: BlockedTime } | null>(null);
+    const [panel, setPanel] = useState<{ open: boolean; mode: "create" | "edit"; row?: BlockedTime }>({ open: false, mode: "create" });
     const [pendingDelete, setPendingDelete] = useState<BlockedTime | null>(null);
 
-    // Scope to me — one row per entry that includes me. Upcoming first,
-    // then past. Matches the admin list's sort order (Phase 2).
+    // Scope to me — upcoming first, then past.
     const myEntries = useMemo(() => {
         return blockedTimes
             .filter(b => b.staff_ids.includes(meStaffId))
@@ -427,8 +405,8 @@ export default function InstructorTimeOffPage() {
             staff_ids:     [meStaffId],
             branch_id:     myBranchId,
         };
-        if (modal?.mode === "edit") {
-            updateBlockedTime(modal.row.id, row);
+        if (panel.mode === "edit" && panel.row) {
+            updateBlockedTime(panel.row.id, row);
             showToast("Time off updated", "Admin can see your update right away.", "success", "check");
         } else {
             addBlockedTime(row);
@@ -438,7 +416,7 @@ export default function InstructorTimeOffPage() {
                 "success", "check",
             );
         }
-        setModal(null);
+        setPanel({ open: false, mode: "create" });
     }
 
     function handleDelete() {
@@ -450,21 +428,19 @@ export default function InstructorTimeOffPage() {
 
     return (
         <div className="flex flex-col gap-5 h-full">
-            {/* Page header */}
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                    <h1 className="text-[24px] font-semibold text-[#101828] leading-[32px]">Time off</h1>
-                    <p className="text-[14px] text-[#667085] leading-[20px] mt-1">
-                        Log your annual leave, sick days, or training. Admin sees your entries as soon as you save them — no approval needed.
-                    </p>
-                </div>
+            {/* Toolbar — page title comes from the layout Header, not
+                repeated here (client 2026-07-22 audit fix). Right-side
+                Add button opens the SlidePanel. */}
+            <div className="flex items-center justify-end gap-3">
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => setModal({ mode: "create" })}>
+                    onClick={() => setPanel({ open: true, mode: "create" })}>
                     Add time off
                 </Button>
             </div>
 
-            {/* List */}
+            {/* Table card — matches admin table chrome (border + rounded).
+                Client 2026-07-22 audit: was a stacked list of soft cards;
+                a real table is easier to scan and matches the admin. */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 {myEntries.length === 0 ? (
                     <div className="relative min-h-[400px]">
@@ -475,91 +451,99 @@ export default function InstructorTimeOffPage() {
                         />
                     </div>
                 ) : (
-                    <div className="divide-y divide-[#e4e7ec]">
-                        {myEntries.map(b => {
-                            const fromISO = b.date_from_iso ?? b.date;
-                            const toISO   = b.date_to_iso   ?? b.date;
-                            const days = spanDays(fromISO, toISO);
-                            const isRange = days > 1;
-                            const isPast = toISO < todayISO();
-                            // Bug fix (audit 2026-07-22): a time-off entry
-                            // that lists MULTIPLE staff ids is a shared
-                            // event (e.g. team training with 4 instructors).
-                            // Editing / deleting it here would mutate the
-                            // row for EVERY staff on it — silently removing
-                            // Maya + Sara + Nadia from the same training
-                            // when Liam clicks Delete. The instructor page
-                            // is meant for MY OWN entries; shared events
-                            // are managed by admin. So on shared rows we:
-                            //   • Show a "Group entry" chip so it's clear
-                            //     the row isn't Liam-only.
-                            //   • Hide the Edit / Delete row menu.
-                            //   • Leave the row visible as read-only so
-                            //     the instructor still sees "I have team
-                            //     training on Aug 21".
-                            const isShared = b.staff_ids.length > 1;
-                            const otherCount = b.staff_ids.length - 1;
-                            return (
-                                <div key={b.id} className={cn("px-5 py-4 flex items-center gap-4", isPast && "opacity-70")}>
-                                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-[15px] font-semibold text-[#101828] whitespace-nowrap">
-                                                {isRange
-                                                    ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
-                                                    : fmtDate(fromISO)}
-                                            </span>
-                                            {isRange && (
-                                                <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-semibold uppercase tracking-wider bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
-                                                    Range
-                                                </span>
-                                            )}
-                                            <ReasonChip reason={b.reason} />
-                                            {isPast && (
-                                                <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[11px] font-medium bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#475467]">
-                                                    Past
-                                                </span>
-                                            )}
-                                            {isShared && (
-                                                <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[11px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]">
-                                                    Group · with {otherCount} other{otherCount === 1 ? "" : "s"}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-[13px] text-[#667085]">
-                                            {b.all_day
-                                                ? `All day${isRange ? ` · ${days} days` : ""}`
-                                                : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
-                                            {b.note.trim() && ` · ${b.note.trim()}`}
-                                            {isShared && " · Managed by admin"}
-                                        </p>
-                                    </div>
-                                    {/* Row menu — hidden on shared entries. */}
-                                    {!isShared && (
-                                        <RowMenu
-                                            onEdit={() => setModal({ mode: "edit", row: b })}
-                                            onDelete={() => setPendingDelete(b)}
-                                        />
-                                    )}
-                                </div>
-                            );
-                        })}
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className={cn(TH, "w-[280px]")}>Date &amp; time</th>
+                                    <th className={cn(TH, "w-[120px]")}>Reason</th>
+                                    <th className={TH}>Note</th>
+                                    <th className={cn(TH, "w-[52px]")} />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {myEntries.map(b => {
+                                    const fromISO = b.date_from_iso ?? b.date;
+                                    const toISO   = b.date_to_iso   ?? b.date;
+                                    const days = spanDays(fromISO, toISO);
+                                    const isRange = days > 1;
+                                    const isPast = toISO < todayISO();
+                                    const isShared = b.staff_ids.length > 1;
+                                    const otherCount = b.staff_ids.length - 1;
+                                    return (
+                                        <tr key={b.id} className={cn("transition-colors hover:bg-[#f9fafb]", isPast && "opacity-70")}>
+                                            <td className={TD}>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
+                                                            {isRange
+                                                                ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
+                                                                : fmtDate(fromISO)}
+                                                        </span>
+                                                        {isRange && (
+                                                            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
+                                                                Range
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[13px] text-[#667085] whitespace-nowrap">
+                                                        {b.all_day
+                                                            ? `All day${isRange ? ` · ${days} days` : ""}`
+                                                            : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className={TD}>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <ReasonChip reason={b.reason} />
+                                                    {isPast && (
+                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#f2f4f7] border-[#e4e7ec] text-[#475467] whitespace-nowrap">
+                                                            Past
+                                                        </span>
+                                                    )}
+                                                    {isShared && (
+                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#eff8ff] border-[#b2ddff] text-[#175cd3] whitespace-nowrap">
+                                                            Group · {otherCount} other{otherCount === 1 ? "" : "s"}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className={cn(TD, "text-[#667085] max-w-[400px] truncate")}>
+                                                {b.note.trim() || "—"}
+                                                {isShared && (
+                                                    <span className="ml-1 text-[#98a2b3]">· Managed by admin</span>
+                                                )}
+                                            </td>
+                                            <td className={TD}>
+                                                {!isShared && (
+                                                    <RowMenu
+                                                        onEdit={() => setPanel({ open: true, mode: "edit", row: b })}
+                                                        onDelete={() => setPendingDelete(b)}
+                                                    />
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
 
-            {/* Add / edit modal */}
-            {modal && (
-                <TimeOffModal
-                    mode={modal.mode}
-                    existing={modal.mode === "edit" ? modal.row : undefined}
-                    onClose={() => setModal(null)}
-                    onSubmit={handleSubmit}
-                />
-            )}
+            {/* Slide panel — replaces the earlier centered modal
+                (client 2026-07-22 audit: side panel, not modal). */}
+            <TimeOffPanel
+                open={panel.open}
+                mode={panel.mode}
+                existing={panel.row}
+                onClose={() => setPanel({ open: false, mode: "create" })}
+                onSubmit={handleSubmit}
+            />
 
             {/* Delete confirm */}
             {pendingDelete && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+                <div className="fixed inset-0 z-[300] bg-black/40 flex items-center justify-center px-4">
                     <div className="bg-white rounded-[16px] w-full max-w-[420px] overflow-hidden flex flex-col shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)]">
                         <div className="px-6 py-5 flex flex-col gap-2">
                             <p className="text-[18px] font-semibold text-[#101828]">Delete this time off?</p>

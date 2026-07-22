@@ -223,38 +223,35 @@ export function TimeOffMonthView({ branchId, search }: TimeOffMonthViewProps) {
 
     return (
         <div className="flex flex-col gap-4 px-6 py-4">
-            {/* What-changed banner — mockup copy verbatim so the intent
-                lands inline. */}
-            <div className="rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec] px-4 py-3 text-[13px] leading-[18px] text-[#475467]">
-                <span className="font-semibold text-[#101828]">Month view — read-only.</span>{" "}
-                The same entries laid on a calendar, so overlapping absences are visible before they&apos;re a problem. Ranges draw as bars; overlaps get flagged.
-            </div>
-
-            {/* Month navigator */}
-            <div className="flex items-center gap-3">
-                <button
-                    type="button"
-                    aria-label="Previous month"
-                    onClick={prevMonth}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors text-[#475467]"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                    type="button"
-                    onClick={jumpToday}
-                    className="px-3 h-9 rounded-[8px] bg-[#f2f4f7] text-[14px] font-semibold text-[#344054] hover:bg-[#e4e7ec] transition-colors min-w-[160px] text-center"
-                >
-                    {MONTH_LABELS[cursor.month]} {cursor.year}
-                </button>
-                <button
-                    type="button"
-                    aria-label="Next month"
-                    onClick={nextMonth}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors text-[#475467]"
-                >
-                    <ChevronRight className="w-4 h-4" />
-                </button>
+            {/* Month navigator — center-aligned, uses the SAME date-pill
+                chrome the /admin/schedule Month view uses (client
+                2026-07-22). */}
+            <div className="relative flex items-center h-9">
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+                    <button
+                        type="button"
+                        aria-label="Previous month"
+                        onClick={prevMonth}
+                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={jumpToday}
+                        className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[160px] text-center hover:bg-[#e4e7ec] transition-colors"
+                    >
+                        {MONTH_LABELS[cursor.month]} {cursor.year}
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Next month"
+                        onClick={nextMonth}
+                        className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             {/* Calendar frame */}
@@ -305,14 +302,14 @@ export function TimeOffMonthView({ branchId, search }: TimeOffMonthViewProps) {
                                                 {day.getDate()}
                                             </span>
                                             {isToday && (
-                                                <span className="inline-flex items-center px-1.5 py-[0.5px] rounded-full text-[9px] font-semibold uppercase tracking-wider bg-[#e7f2eb] border-1 border-[#c7e5d1] text-[#3b5446]">
+                                                <span className="inline-flex items-center px-[8px] py-[1px] rounded-full text-[11px] font-medium border-1 bg-[#e7f2eb] border-[#c7e5d1] text-[#3b5446] whitespace-nowrap">
                                                     Today
                                                 </span>
                                             )}
                                         </div>
                                         {showOverlap && (
                                             <div className="mt-1">
-                                                <span className="inline-flex items-center gap-1 px-1.5 py-[0.5px] rounded-full text-[10px] font-semibold bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708] whitespace-nowrap">
+                                                <span className="inline-flex items-center gap-1 px-[8px] py-[1px] rounded-full text-[11px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
                                                     <AlertTriangle className="w-3 h-3 shrink-0" />
                                                     {awayCount} staff away
                                                 </span>

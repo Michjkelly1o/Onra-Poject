@@ -56,6 +56,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/instructor/dashboard": "Dashboard",
     "/instructor/schedule": "Schedule",
     "/instructor/earnings": "Earnings",
+    "/instructor/time-off": "Time off",
     "/instructor/account": "Profile",
 };
 

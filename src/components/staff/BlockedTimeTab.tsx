@@ -204,20 +204,17 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
 export interface BlockedTimeTabProps {
     branchId: string;
     search: string;
+    /** View mode driven by the parent's List / Month SegmentedTabs on
+     *  the sub-tab row (client 2026-07-22 lifted from inline). */
+    viewMode?: "list" | "month";
 }
 
-export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
+export function BlockedTimeTab({ branchId, search, viewMode = "list" }: BlockedTimeTabProps) {
     const router = useRouter();
     const blockedTimes      = useAppStore(s => s.blockedTimes);
     const staff             = useAppStore(s => s.staff);
     const deleteBlockedTimes = useAppStore(s => s.deleteBlockedTimes);
     const showToast         = useAppStore(s => s.showToast);
-
-    // Client 2026-07-22 Phase 6 — inner List / Month toggle. `viewMode`
-    // gates whether the tab renders the existing table (list) or the
-    // read-only calendar (month).
-    type ViewMode = "list" | "month";
-    const [viewMode, setViewMode] = useState<ViewMode>("list");
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingDelete, setPendingDelete] = useState<
@@ -319,17 +316,6 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
 
     return (
         <>
-            {/* Client 2026-07-22 Phase 6 — List / Month sub-toggle. */}
-            <div className="shrink-0 px-6 pb-3 flex items-center gap-3">
-                <SegmentedTabs
-                    tabs={[
-                        { key: "list",  label: "List"  },
-                        { key: "month", label: "Month" },
-                    ]}
-                    activeKey={viewMode}
-                    onChange={k => setViewMode(k as ViewMode)}
-                />
-            </div>
             {viewMode === "month" ? (
                 <TimeOffMonthView branchId={branchId ?? ""} search={search} />
             ) : (
@@ -407,7 +393,7 @@ export function BlockedTimeTab({ branchId, search }: BlockedTimeTabProps) {
                                                                     : fmtDate(fromISO)}
                                                             </span>
                                                             {isRange && (
-                                                                <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-semibold uppercase tracking-wider bg-[#fef4e1] border-1 border-[#fecc85] text-[#b54708]">
+                                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
                                                                     Range
                                                                 </span>
                                                             )}
