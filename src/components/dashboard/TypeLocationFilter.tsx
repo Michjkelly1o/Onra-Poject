@@ -1,39 +1,32 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Dashboard · Type + Location combined filter
+// Onra Studio — Dashboard · Type + Locations filters (split into two dropdowns)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Client feedback (2026-07-20): the Today and Coming Up tabs' separate
-// session-type pills row + "All locations" dropdown collapse into a single
-// combined popover — same trigger chrome as the Performance-tab
-// `DateRangeFilter` (h-40 white pill with icon + label + chevron). No more
-// pills.
+// Client 2026-07-22 asked to split the previously-combined Type + Locations
+// dropdown into TWO separate dropdown inputs so each filter dimension gets
+// its own affordance. This file now exports:
 //
-// Panel layout — two columns, matching the client's design:
-//   • LEFT · TYPE       — single-select row list. "All types" plus one row
-//                          per SessionType. Active row highlights (grey
-//                          bg + Check on the right). Each specific type
-//                          carries its session-type-colored dot so the
-//                          palette stays consistent with schedule tag chips.
-//   • RIGHT · LOCATIONS — TRUE multi-select checkboxes. "All locations"
-//                          is a master toggle that checks / unchecks every
-//                          branch; individual branches toggle in / out of
-//                          the `locations` array. Downstream widgets +
-//                          modals consume `branchIds: string[] | null`
-//                          (converted in the dashboard's `branchScopeIds`
-//                          derivation, which treats empty-array AND
-//                          all-branches-selected as identical no-filter
-//                          state).
+//   • TypeFilter      — single-select popover. "All types" + one row per
+//                        SessionType. Trigger reads the picked type (with
+//                        its session-type colored dot).
+//   • LocationsFilter — multi-select popover. "All locations" master +
+//                        one checkbox row per branch. Trigger reads
+//                        "N locations", the single branch name, or
+//                        "All locations".
 //
-// Multi-branch scoping IS wired end-to-end as of the 2026-07-20 audit
-// pass — every dashboard scope memo (schedules, sessions, bookings,
-// customers, transactions, plans, appointments) filters by Set-based
-// `branchIds.includes(...)`, and every Needs-Attention modal + the
-// DashboardWidgetCard's branchScale accept a `branchIds` array.
+// Both share the same 40px pill trigger (icon + label + chevron) matching
+// the DateRangeFilter chrome, so the whole dashboard toolbar reads with
+// one voice.
+//
+// Multi-branch scoping wiring — the dashboard's `branchScopeIds` derivation
+// still treats empty-array AND all-branches-selected as identical no-filter
+// state, and every downstream memo / modal accepts the array shape. Nothing
+// changed there; only the trigger UI split.
 
-import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown } from "@untitledui/icons";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Check, ChevronDown, MarkerPin01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import {
     SESSION_TYPE_LABEL,
@@ -47,18 +40,6 @@ export interface LocationOption {
     name: string;
 }
 
-export interface TypeLocationFilterProps {
-    /** "" = All types. Single-select. */
-    type: SessionType | "";
-    onTypeChange: (next: SessionType | "") => void;
-    /** Multi-select branch ids. Empty array = "All locations". */
-    locations: string[];
-    onLocationsChange: (next: string[]) => void;
-    /** Real branches only. The panel renders "All locations" itself. */
-    options: LocationOption[];
-    className?: string;
-}
-
 /** Session-type dot color for the trigger pill + type-row bullets. Uses the
  *  `bar` tone (mid-saturation) from the session-type palette so a small dot
  *  reads cleanly at 8×8, matching the schedule cards. */
@@ -66,136 +47,185 @@ function typeDotColor(t: SessionType): string {
     return SESSION_TYPE_TAG_COLORS[t].bar;
 }
 
-export function TypeLocationFilter({
-    type,
-    onTypeChange,
-    locations,
-    onLocationsChange,
-    options,
+// ── Shared trigger pill ─────────────────────────────────────────────────────
+
+function FilterTrigger({
+    open,
+    onToggle,
+    icon,
+    label,
     className,
-}: TypeLocationFilterProps) {
+}: {
+    open: boolean;
+    onToggle: () => void;
+    /** Optional leading glyph — dot for Type, MarkerPin01 for Locations. */
+    icon?: ReactNode;
+    label: string;
+    className?: string;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            className={cn(
+                "flex items-center gap-[8px] h-[40px] px-[14px]",
+                "bg-white border-1 border-[#d0d5dd] rounded-[8px] whitespace-nowrap",
+                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
+                "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
+                className,
+            )}
+        >
+            {icon}
+            <span className="text-[14px] font-semibold text-[#344054]">{label}</span>
+            <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+        </button>
+    );
+}
+
+// ── TypeFilter ──────────────────────────────────────────────────────────────
+
+export interface TypeFilterProps {
+    /** "" = All types. Single-select. */
+    value: SessionType | "";
+    onChange: (next: SessionType | "") => void;
+    className?: string;
+}
+
+export function TypeFilter({ value, onChange, className }: TypeFilterProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
         function handler(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
         }
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    // Trigger label — type · location(s).
-    const typeLabel = type === "" ? "All types" : SESSION_TYPE_LABEL[type];
-    // "All locations" is CHECKED only when every branch is in the array.
-    // Empty array is treated as "no filter" downstream, and the label falls
-    // back to "All locations" so the trigger reads sensibly on a fresh load.
-    const allChecked = options.length > 0 && locations.length === options.length;
-    const locationLabel =
-        locations.length === 0 || allChecked
-            ? "All locations"
-            : locations.length === 1
-              ? options.find((o) => o.id === locations[0])?.name ?? "1 location"
-              : `${locations.length} locations`;
-
-    function toggleLocation(id: string) {
-        if (locations.includes(id)) onLocationsChange(locations.filter((x) => x !== id));
-        else onLocationsChange([...locations, id]);
-    }
-
-    // Master checkbox — clicking "All locations" fills or clears the array.
-    // Individual branch clicks feed this back automatically: unchecking any
-    // one branch drops `allChecked` false and unchecks the master.
-    function toggleAll() {
-        if (allChecked) onLocationsChange([]);
-        else onLocationsChange(options.map((o) => o.id));
-    }
+    const label = value === "" ? "All types" : SESSION_TYPE_LABEL[value];
+    const dot =
+        value !== "" ? (
+            <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: typeDotColor(value) }}
+                aria-hidden
+            />
+        ) : undefined;
 
     return (
         <div ref={ref} className={cn("relative", className)}>
-            <button
-                type="button"
-                onClick={() => setOpen((p) => !p)}
-                className={cn(
-                    "flex items-center gap-[8px] h-[40px] px-[14px]",
-                    "bg-white border-1 border-[#d0d5dd] rounded-[8px] whitespace-nowrap",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
-                )}
-            >
-                {type !== "" && (
-                    <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: typeDotColor(type) }}
-                        aria-hidden
-                    />
-                )}
-                <span className="text-[14px] font-semibold text-[#344054]">
-                    {typeLabel} · {locationLabel}
-                </span>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
-            </button>
-
-            {/* ── Dropdown panel ──────────────────────────────────────────
-                Right-anchored so it never overflows past the toolbar edge on
-                narrower viewports (same pattern as DateRangeFilter). Two
-                columns with a divider between them; column widths chosen to
-                keep the longest labels ("Recovery & wellness", "All
-                locations") on one line without wrapping. */}
+            <FilterTrigger open={open} onToggle={() => setOpen((p) => !p)} icon={dot} label={label} />
             {open && (
                 <div
                     className={cn(
                         "absolute right-0 top-[calc(100%+4px)] z-50",
                         "bg-white border-1 border-[#e4e7ec] rounded-[12px]",
                         "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
-                        "flex items-stretch",
+                        "flex flex-col gap-[4px] px-[16px] py-[12px] min-w-[220px]",
                     )}
                 >
-                    {/* ─── Type column ─── */}
-                    <div className="flex flex-col gap-[4px] px-[16px] py-[12px] border-r border-[#e4e7ec] shrink-0 min-w-[220px]">
-                        <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
-                            Type
-                        </p>
+                    <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
+                        Type
+                    </p>
+                    <TypeRow
+                        active={value === ""}
+                        label="All types"
+                        onClick={() => {
+                            onChange("");
+                            setOpen(false);
+                        }}
+                    />
+                    {SESSION_TYPE_ORDER.map((t) => (
                         <TypeRow
-                            active={type === ""}
-                            label="All types"
-                            onClick={() => onTypeChange("")}
+                            key={t}
+                            active={value === t}
+                            label={SESSION_TYPE_LABEL[t]}
+                            dot={typeDotColor(t)}
+                            onClick={() => {
+                                onChange(t);
+                                setOpen(false);
+                            }}
                         />
-                        {SESSION_TYPE_ORDER.map((t) => (
-                            <TypeRow
-                                key={t}
-                                active={type === t}
-                                label={SESSION_TYPE_LABEL[t]}
-                                dot={typeDotColor(t)}
-                                onClick={() => onTypeChange(t)}
-                            />
-                        ))}
-                    </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
-                    {/* ─── Locations column ─── multi-select checkboxes */}
-                    <div className="flex flex-col gap-[4px] px-[16px] py-[12px] shrink-0 min-w-[220px]">
-                        <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
-                            Locations
-                        </p>
-                        {/* Master checkbox — clicking fills or clears every
-                            branch. Reflects checked only when every branch is
-                            individually in the array. */}
+// ── LocationsFilter ─────────────────────────────────────────────────────────
+
+export interface LocationsFilterProps {
+    /** Multi-select branch ids. Empty array = "All locations". */
+    value: string[];
+    onChange: (next: string[]) => void;
+    /** Real branches only. The panel renders "All locations" itself. */
+    options: LocationOption[];
+    className?: string;
+}
+
+export function LocationsFilter({ value, onChange, options, className }: LocationsFilterProps) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    // "All locations" is CHECKED only when every branch is in the array.
+    // Empty array is treated as "no filter" downstream, and the label falls
+    // back to "All locations" so the trigger reads sensibly on a fresh load.
+    const allChecked = options.length > 0 && value.length === options.length;
+    const label =
+        value.length === 0 || allChecked
+            ? "All locations"
+            : value.length === 1
+              ? options.find((o) => o.id === value[0])?.name ?? "1 location"
+              : `${value.length} locations`;
+
+    function toggleOne(id: string) {
+        if (value.includes(id)) onChange(value.filter((x) => x !== id));
+        else onChange([...value, id]);
+    }
+    function toggleAll() {
+        if (allChecked) onChange([]);
+        else onChange(options.map((o) => o.id));
+    }
+
+    return (
+        <div ref={ref} className={cn("relative", className)}>
+            <FilterTrigger
+                open={open}
+                onToggle={() => setOpen((p) => !p)}
+                icon={<MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />}
+                label={label}
+            />
+            {open && (
+                <div
+                    className={cn(
+                        "absolute right-0 top-[calc(100%+4px)] z-50",
+                        "bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                        "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
+                        "flex flex-col gap-[4px] px-[16px] py-[12px] min-w-[220px]",
+                    )}
+                >
+                    <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
+                        Locations
+                    </p>
+                    {/* Master checkbox — clicking fills or clears every branch. */}
+                    <LocationRow active={allChecked} label="All locations" onClick={toggleAll} />
+                    {options.map((o) => (
                         <LocationRow
-                            active={allChecked}
-                            label="All locations"
-                            onClick={toggleAll}
+                            key={o.id}
+                            active={value.includes(o.id)}
+                            label={o.name}
+                            onClick={() => toggleOne(o.id)}
                         />
-                        {options.map((o) => (
-                            <LocationRow
-                                key={o.id}
-                                active={locations.includes(o.id)}
-                                label={o.name}
-                                onClick={() => toggleLocation(o.id)}
-                            />
-                        ))}
-                    </div>
+                    ))}
                 </div>
             )}
         </div>
@@ -205,12 +235,7 @@ export function TypeLocationFilter({
 // ─── Row primitives ──────────────────────────────────────────────────────────
 
 /** Left-column row. Text with an optional colored dot on the left; when
- *  active, the label bolds and a Check appears flush right. Divider under
- *  the "All types" row per the client design — added via a wrapper class on
- *  the first row (`TypeRow` reuses the same body, the divider is a border
- *  on the surrounding column, applied only to the first row via CSS
- *  first-child selectors would be brittle here; instead we render the "All
- *  types" row separately above with a bottom border). */
+ *  active, the label bolds and a Check appears flush right. */
 function TypeRow({
     active,
     label,

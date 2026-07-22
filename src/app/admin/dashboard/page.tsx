@@ -36,7 +36,7 @@ import { SelectInput } from "@/components/ui/select-input"; // used for location
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
 import { AddWidgetModal } from "@/components/dashboard/AddWidgetModal";
-import { TypeLocationFilter } from "@/components/dashboard/TypeLocationFilter";
+import { TypeFilter, LocationsFilter } from "@/components/dashboard/TypeLocationFilter";
 import { ComingUpTab } from "@/components/dashboard/ComingUpTab";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import {
@@ -1497,30 +1497,36 @@ export default function AdminDashboard() {
                         so the toolbar's own border-1 rows don't visually
                         collide with the strip's border-b. */}
                     <div className="flex gap-2 items-center pb-2">
-                        {/* Merged Type + Locations filter — Today tab. */}
+                        {/* Type + Locations — split into two dropdowns per
+                            client 2026-07-22 so each dimension gets its own
+                            affordance. `locations` state is shared across
+                            tabs (single source of truth for branch scope);
+                            `typeFilter` / `comingType` stay per-tab so a
+                            pick on Today doesn't silently re-scope Coming
+                            Up's cards. */}
                         {activeTab === "today" && (
-                            <TypeLocationFilter
-                                type={typeFilter}
-                                onTypeChange={setTypeFilter}
-                                locations={locations}
-                                onLocationsChange={setLocations}
-                                options={branches
-                                    .filter(b => b.status === "active")
-                                    .map(b => ({ id: b.id, name: b.name }))}
-                            />
+                            <>
+                                <TypeFilter value={typeFilter} onChange={setTypeFilter} />
+                                <LocationsFilter
+                                    value={locations}
+                                    onChange={setLocations}
+                                    options={branches
+                                        .filter(b => b.status === "active")
+                                        .map(b => ({ id: b.id, name: b.name }))}
+                                />
+                            </>
                         )}
-
-                        {/* Merged Type + Locations filter — Coming Up tab. */}
                         {activeTab === "coming" && (
-                            <TypeLocationFilter
-                                type={comingType}
-                                onTypeChange={setComingType}
-                                locations={locations}
-                                onLocationsChange={setLocations}
-                                options={branches
-                                    .filter(b => b.status === "active")
-                                    .map(b => ({ id: b.id, name: b.name }))}
-                            />
+                            <>
+                                <TypeFilter value={comingType} onChange={setComingType} />
+                                <LocationsFilter
+                                    value={locations}
+                                    onChange={setLocations}
+                                    options={branches
+                                        .filter(b => b.status === "active")
+                                        .map(b => ({ id: b.id, name: b.name }))}
+                                />
+                            </>
                         )}
 
                         {/* Location picker — Performance tab only. */}
