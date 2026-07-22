@@ -58,6 +58,8 @@ import type {
     MigrationCard,
     ParsedFile,
 } from "@/ai-agent/migration/migration-cards";
+import type { EntityKey } from "@/ai-agent/migration/entities";
+import { applyImportToStore } from "@/ai-agent/migration/apply-import";
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
@@ -183,6 +185,23 @@ export function ChatThread({
     // effect below writes on every change.
     const initialMessages = useRef<UIMessage[]>(loadPersistedMessages(storageKey));
 
+    // Migration import applier — track which import_result cards we've already
+    // written to the store so a card is applied exactly once. Seeded from the
+    // HYDRATED history so a page reload never re-imports past commits.
+    const appliedImportsRef = useRef<Set<string>>(
+        new Set(
+            initialMessages.current.flatMap((mm) =>
+                (mm.toolInvocations ?? [])
+                    .filter(
+                        (ti) =>
+                            ti.state === "result" &&
+                            (ti.result as { card?: string } | undefined)?.card === "import_result",
+                    )
+                    .map((ti) => ti.toolCallId),
+            ),
+        ),
+    );
+
     const {
         messages,
         input,
@@ -226,6 +245,35 @@ export function ChatThread({
 
     const isBusy = status === "submitted" || status === "streaming";
     const empty = messages.length === 0;
+
+    // Migration — when a confirmed `import_result` lands, write the rows into
+    // the live store + drop a Migrations-module history row. Runs once per card
+    // (appliedImportsRef guards re-runs, including across reloads). Only the
+    // migration thread ever emits import_result, so this is inert elsewhere.
+    useEffect(() => {
+        if (mode !== "migration") return;
+        for (const mm of messages) {
+            if (mm.role !== "assistant" || !mm.toolInvocations) continue;
+            for (const ti of mm.toolInvocations) {
+                if (ti.state !== "result") continue;
+                const res = ti.result as { card?: string; entity?: string } | undefined;
+                if (res?.card !== "import_result" || !res.entity) continue;
+                if (appliedImportsRef.current.has(ti.toolCallId)) continue;
+                appliedImportsRef.current.add(ti.toolCallId);
+                const st = useAppStore.getState();
+                applyImportToStore(
+                    res.entity as EntityKey,
+                    parsedFileRef.current,
+                    parsedFileRef.current?.filename ?? "Imported file.csv",
+                    {
+                        addCustomer: st.addCustomer,
+                        addImportHistory: st.addImportHistory,
+                        branchId: st.branches[0]?.id ?? "",
+                    },
+                );
+            }
+        }
+    }, [messages, mode]);
 
     const endRef = useRef<HTMLDivElement>(null);
     useEffect(() => {

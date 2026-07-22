@@ -206,3 +206,39 @@ export function commit(
         failed: p.totals.invalid,
     };
 }
+
+/** Materialize — the VALID, deduped rows the client should actually write,
+ *  each keyed by TARGET field (e.g. { first_name, last_name, email, ... }).
+ *  Applies exactly the same validate + dedupe rules as `preview` / `commit`,
+ *  so `materialize(...).length` equals the `created` count those return. This
+ *  is the pure bridge the client-side import applier uses to insert real rows
+ *  into the Zustand store. */
+export function materialize(
+    entity: EntityKey,
+    file: ParsedFile,
+    mapping?: Record<string, string | null>,
+): Record<string, string>[] {
+    const def = ENTITIES[entity];
+    const effectiveMapping = mapping ?? proposeMapping(entity, file).mapping;
+    const inv: Record<string, string> = {};
+    for (const [src, tgt] of Object.entries(effectiveMapping)) {
+        if (tgt) inv[tgt] = src;
+    }
+    const seen = new Set<string>();
+    const out: Record<string, string>[] = [];
+    for (const r of file.rows) {
+        if (!def.validate(r, inv)) continue;
+        const key = def.dedupeKey?.(r, inv);
+        if (key) {
+            if (seen.has(key)) continue;
+            seen.add(key);
+        }
+        // Build a record keyed by the entity's TARGET field names.
+        const rec: Record<string, string> = {};
+        for (const [tgt, src] of Object.entries(inv)) {
+            rec[tgt] = (r[src] ?? "").trim();
+        }
+        out.push(rec);
+    }
+    return out;
+}
