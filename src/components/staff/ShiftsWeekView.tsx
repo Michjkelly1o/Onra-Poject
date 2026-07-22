@@ -241,13 +241,22 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
     }
 
     // ── Render ────────────────────────────────────────────────────────────
+    //
+    // The parent `StaffPermissionsPage` already frames the tab body with a
+    // bordered rounded card. Rendering another border+rounded frame here
+    // (plus `px-6` padding) pushed every row's `border-b` line 24 px in
+    // from the parent's edge — that's the "line not full width" the
+    // client flagged in round 3. Now the grid sits FLUSH inside the
+    // parent card; rows extend to the parent card's inner edges, and
+    // horizontal scroll happens on the grid wrapper itself if the grid
+    // still overflows on very narrow viewports.
     return (
-        <div className="flex flex-col gap-4 px-6 py-4">
+        <div className="flex flex-col h-full">
             {/* Date navigator lifted to the parent sub-tab row
                 (StaffPermissionsPage → ShiftsDateNav). */}
 
-            {/* Grid */}
-            <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white overflow-x-auto">
+            {/* Grid — flush, no inner frame */}
+            <div className="overflow-x-auto">
                 {/* Column header row — sticky left rail + 7 day columns */}
                 <div className="grid w-full" style={{ gridTemplateColumns: "200px repeat(7, minmax(140px, 1fr))" }}>
                     <div className="border-b border-[#e4e7ec] bg-[#fafbfa] px-4 py-3 text-[12px] font-semibold tracking-wide uppercase text-[#98a2b3]">

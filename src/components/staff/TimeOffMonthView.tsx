@@ -213,13 +213,18 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
         return `${firstName}${extra} · ${title}`;
     }
 
+    // Same rationale as ShiftsWeekView (audit round 4): the parent
+    // already frames the tab with a bordered rounded card, so we drop
+    // this component's own frame + `px-6` padding. Weeks now extend
+    // to the parent card's inner edges, matching the client's request
+    // that the horizontal separator lines "fill full width".
     return (
-        <div className="flex flex-col gap-4 px-6 py-4">
+        <div className="flex flex-col h-full">
             {/* Month navigator lifted to the parent sub-tab row
                 (StaffPermissionsPage → TimeOffDateNav). */}
 
-            {/* Calendar frame */}
-            <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white overflow-hidden">
+            {/* Calendar — flush, no inner frame */}
+            <div className="overflow-hidden">
                 {/* Weekday header */}
                 <div className="grid grid-cols-7 border-b border-[#e4e7ec] bg-[#fafbfa]">
                     {WEEKDAY_HEAD.map(w => (
