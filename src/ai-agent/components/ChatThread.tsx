@@ -40,6 +40,9 @@ import {
     AlertCircle,
     RefreshCw01,
     UploadCloud02,
+    Copy03,
+    Edit02,
+    Check,
 } from "@untitledui/icons";
 import Image from "next/image";
 import { useAppStore, type AppState } from "@/lib/store";
@@ -164,6 +167,7 @@ export function ChatThread({
     const {
         messages,
         input,
+        setMessages,
         handleInputChange,
         handleSubmit,
         append,
@@ -343,6 +347,22 @@ export function ChatThread({
         append({ role: "user", content: text });
     };
 
+    // Inline edit (Claude-style): editing a user message truncates the thread
+    // back to just before it, then re-sends the edited text so the assistant
+    // regenerates its answer from the new prompt. Only offered on the LAST
+    // user message (see `lastUserId` below).
+    const submitEdit = (messageId: string, nextText: string) => {
+        const clean = nextText.trim();
+        if (!clean || isBusy) return;
+        const idx = messages.findIndex((mm) => mm.id === messageId);
+        if (idx === -1) return;
+        // Drop the edited message and everything after it, then re-send.
+        setMessages(messages.slice(0, idx));
+        append({ role: "user", content: clean });
+    };
+    // The id of the most recent user message — the only one that's editable.
+    const lastUserId = [...messages].reverse().find((mm) => mm.role === "user")?.id ?? null;
+
     const openUpload = () => fileInputRef.current?.click();
 
     async function uploadFile(file: File) {
@@ -429,7 +449,14 @@ export function ChatThread({
                 <div className="flex-1 min-h-0 overflow-y-auto">
                     <div className="w-full max-w-[720px] mx-auto px-6 py-8 flex flex-col gap-6">
                         {messages.map((m) => (
-                            <MessageRow key={m.id} message={m} mode={mode} act={act} />
+                            <MessageRow
+                                key={m.id}
+                                message={m}
+                                mode={mode}
+                                act={act}
+                                isLastUser={m.role === "user" && m.id === lastUserId && !isBusy}
+                                onSubmitEdit={(text) => submitEdit(m.id, text)}
+                            />
                         ))}
                         {isBusy && messages[messages.length - 1]?.role === "user" && (
                             <div className="flex items-start gap-3">
@@ -711,28 +738,155 @@ function SuggestionCard({
 // Message rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** User message bubble — Figma 18669:24877. Brand-200 (#c4edd6) fill,
+ *  brand-300 (#aad4bd) border, tail notch on the top-right, right-aligned.
+ *  On hover a copy + edit action pair reveals to the LEFT of the bubble.
+ *  When `editable` (the LAST user message only, Claude-style), the edit icon
+ *  turns the bubble into an inline textarea — saving resubmits the edited
+ *  prompt and regenerates the answer. */
+function UserMessageBubble({
+    text,
+    editable = false,
+    onSubmitEdit,
+}: {
+    text: string;
+    editable?: boolean;
+    onSubmitEdit?: (t: string) => void;
+}) {
+    const [copied, setCopied] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(text);
+
+    const copy = () => {
+        try {
+            navigator.clipboard?.writeText(text);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+        } catch {
+            /* clipboard unavailable — no-op */
+        }
+    };
+
+    const startEdit = () => {
+        setDraft(text);
+        setEditing(true);
+    };
+    const cancelEdit = () => {
+        setDraft(text);
+        setEditing(false);
+    };
+    const saveEdit = () => {
+        const clean = draft.trim();
+        if (!clean) return;
+        setEditing(false);
+        if (clean !== text) onSubmitEdit?.(clean);
+    };
+
+    // ── Editing state — inline textarea styled as the bubble ──────────────────
+    if (editing) {
+        return (
+            <div className="flex justify-end">
+                <div
+                    className={cn(
+                        "w-full max-w-[520px] p-3 flex flex-col gap-3",
+                        "bg-[#c4edd6] border border-[#aad4bd]",
+                        "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
+                        "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
+                    )}
+                >
+                    <textarea
+                        autoFocus
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                saveEdit();
+                            } else if (e.key === "Escape") {
+                                cancelEdit();
+                            }
+                        }}
+                        rows={Math.min(6, Math.max(1, draft.split("\n").length))}
+                        className="w-full resize-none bg-transparent text-[14px] font-medium leading-5 text-[#344054] outline-none placeholder:text-[#658774]"
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={cancelEdit}
+                            className="h-8 px-3 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white/70 border border-[#aad4bd] hover:bg-white transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={saveEdit}
+                            disabled={!draft.trim()}
+                            className="h-8 px-3 rounded-[8px] text-[14px] font-semibold text-[#101828] bg-[#658774] text-white hover:bg-[#577665] disabled:opacity-50 transition-colors"
+                        >
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Default state — bubble + hover actions ────────────────────────────────
+    return (
+        <div className="group flex items-end justify-end gap-2">
+            <div className="flex items-center gap-4 self-center opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                    type="button"
+                    onClick={copy}
+                    aria-label={copied ? "Copied" : "Copy message"}
+                    className="text-[#667085] hover:text-[#344054] transition-colors"
+                >
+                    {copied ? <Check className="size-5 text-[#658774]" /> : <Copy03 className="size-5" />}
+                </button>
+                {editable && onSubmitEdit && (
+                    <button
+                        type="button"
+                        onClick={startEdit}
+                        aria-label="Edit message"
+                        className="text-[#667085] hover:text-[#344054] transition-colors"
+                    >
+                        <Edit02 className="size-5" />
+                    </button>
+                )}
+            </div>
+            <div
+                className={cn(
+                    "min-h-[56px] max-w-[400px] p-4 flex items-center",
+                    "bg-[#c4edd6] border border-[#aad4bd]",
+                    "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
+                    "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
+                )}
+            >
+                <p className="text-[14px] font-medium leading-5 text-[#344054] whitespace-pre-wrap [word-break:break-word]">
+                    {text}
+                </p>
+            </div>
+        </div>
+    );
+}
+
 function MessageRow({
     message: m,
     mode,
     act,
+    isLastUser = false,
+    onSubmitEdit,
 }: {
     message: UIMessage;
     mode: AiAgentMode;
     act: MigActions;
+    /** True only for the most recent user message — the one that can be
+     *  edited inline (Claude-style). */
+    isLastUser?: boolean;
+    onSubmitEdit?: (text: string) => void;
 }) {
     if (m.role === "user") {
-        return (
-            <div className="flex items-start justify-end gap-3">
-                <div
-                    className={cn(
-                        "max-w-[78%] px-4 py-2.5 rounded-xl",
-                        "bg-[#c4edd6] text-[#101828] text-[14px] leading-6 whitespace-pre-wrap",
-                    )}
-                >
-                    {m.content}
-                </div>
-            </div>
-        );
+        return <UserMessageBubble text={m.content} editable={isLastUser} onSubmitEdit={onSubmitEdit} />;
     }
 
     if (m.role === "assistant") {

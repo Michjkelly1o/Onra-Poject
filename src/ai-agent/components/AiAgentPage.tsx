@@ -411,7 +411,7 @@ function AgentSidebar({
     const list = showArchived ? archivedConvos : activeConvos;
 
     return (
-        <aside className="w-[288px] max-w-[288px] flex-shrink-0 h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
+        <aside className="flex-none w-[288px] min-w-[288px] max-w-[288px] h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
             {/* Search input */}
             <div className="p-4 border-b border-[#e4e7ec]">
                 <div className="flex items-center gap-2 h-10 px-4 rounded-lg border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
@@ -603,18 +603,25 @@ function RecentRow({
                 onClick={onOpen}
                 className="flex-1 min-w-0 flex items-center gap-3 text-left"
             >
-                {conv.pinned ? (
-                    <Pin01 className="size-4 flex-shrink-0 text-[#658774]" />
-                ) : (
-                    <MessageSquare02 className="size-4 flex-shrink-0 text-[#667085]" />
-                )}
+                <MessageSquare02 className="size-4 flex-shrink-0 text-[#667085]" />
                 <span className="flex-1 text-[14px] font-normal text-[#182230] leading-5 truncate">
                     {conv.title}
                 </span>
             </button>
 
-            {/* 3-dot trigger — always visible when the menu is open, otherwise
-                reveals on row hover. */}
+            {/* Right side: a pin marker (always visible on pinned rows) and the
+                3-dot trigger (reveals on hover / while its menu is open) —
+                matches the client mockup where pinned chats show the pin on
+                the right and sit at the top of the list. */}
+            {conv.pinned && (
+                <Pin01
+                    className={cn(
+                        "size-4 flex-shrink-0 text-[#658774] transition-opacity",
+                        // Hidden under the 3-dot on hover so they don't crowd.
+                        menuOpen ? "hidden" : "group-hover:hidden",
+                    )}
+                />
+            )}
             <button
                 ref={triggerRef}
                 type="button"
@@ -821,14 +828,15 @@ function AgentChatSurface({
                     into the surface toward the foot. */}
                 <ConcentricSquaresDecoration />
                 {/* Mint gradient — full-width, rising softly from the foot
-                    (Figma 783:53147). A gentle pale-mint wash: transparent
-                    at the top, easing into a soft #e0f4e8 toward the foot —
-                    subtle, never saturated (client reference 2026-07-22). */}
+                    (Figma 783:53147). Uses the brand mint (#c4edd6 =
+                    rgb(196,237,214)) so it reads clearly against the white
+                    canvas while staying a gentle wash — transparent at the
+                    top, easing to ~70% mint at the foot. */}
                 <div
-                    className="absolute inset-x-0 bottom-0 h-[55%]"
+                    className="absolute inset-x-0 bottom-0 h-[58%]"
                     style={{
                         background:
-                            "linear-gradient(to bottom, rgba(224,244,232,0) 0%, rgba(224,244,232,0.85) 100%)",
+                            "linear-gradient(to bottom, rgba(196,237,214,0) 0%, rgba(196,237,214,0.35) 55%, rgba(196,237,214,0.72) 100%)",
                     }}
                 />
             </div>

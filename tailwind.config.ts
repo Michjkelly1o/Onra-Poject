@@ -6,6 +6,10 @@ const config: Config = {
 		"./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
 		"./src/components/**/*.{js,ts,jsx,tsx,mdx}",
 		"./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+		// The AI Agent lives under src/ai-agent — MUST be scanned or its
+		// arbitrary classes (w-[288px] sidebar lock, h-[58%] gradient band,
+		// pattern sizing, etc.) generate no CSS and silently no-op.
+		"./src/ai-agent/**/*.{js,ts,jsx,tsx,mdx}",
 	],
 	theme: {
 		extend: {
