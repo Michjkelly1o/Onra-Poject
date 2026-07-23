@@ -3956,6 +3956,10 @@ export interface AppState {
             createdAtISO?: string;
         },
     ) => string;
+    /** Append a customer referral — used by the AI Agent migration importer. */
+    addCustomerReferral: (
+        input: Omit<CustomerReferral, "id"> & { id?: string },
+    ) => string;
     /** Approve a pending refund request (dashboard Needs-attention). Refunds
      *  the transaction (status → refunded) so it drops from the queue. */
     approveRefundRequest: (id: string) => void;
@@ -6845,6 +6849,12 @@ export const useAppStore = create<AppState>()(persist(
             createdAtISO: input.createdAtISO ?? new Date().toISOString(),
         };
         set(state => ({ walletTransactions: [...state.walletTransactions, next] }));
+        return id;
+    },
+    addCustomerReferral: (input) => {
+        const id = input.id ?? `ref_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: CustomerReferral = { ...input, id };
+        set(state => ({ customerReferrals: [...state.customerReferrals, next] }));
         return id;
     },
     refundTransaction: (id, method) => {

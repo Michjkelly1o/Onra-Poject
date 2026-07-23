@@ -2943,7 +2943,8 @@ export interface ImportHistorySeed {
         | "customer_transactions"
         | "class_bookings"
         | "wallet_transactions"
-        | "issued_gift_cards";
+        | "issued_gift_cards"
+        | "customer_referrals";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;

@@ -40,6 +40,7 @@ import type {
     CustomerTransaction,
     ClassBooking,
     WalletTransaction,
+    CustomerReferral,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -190,6 +191,9 @@ export interface ImportDeps {
     } & { id?: string }) => string;
     /** Live gift-card designs slice (for the issued-cards adapter). */
     giftCardDesigns: { id: string; name: string; validity_days: number }[];
+    addCustomerReferral: (
+        input: Omit<CustomerReferral, "id"> & { id?: string },
+    ) => string;
     /** Live class schedules the class_bookings adapter looks up by
      *  (template name × date). Required for that adapter only. */
     classSchedules: ClassSchedule[];
@@ -222,7 +226,8 @@ export interface ImportDeps {
             | "customer_transactions"
             | "class_bookings"
             | "wallet_transactions"
-            | "issued_gift_cards";
+            | "issued_gift_cards"
+            | "customer_referrals";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -423,6 +428,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     class_bookings: "class_bookings",
     wallet_transactions: "wallet_transactions",
     issued_gift_cards: "issued_gift_cards",
+    customer_referrals: "customer_referrals",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -686,6 +692,49 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "customer_referrals") {
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const records = materialize("customer_referrals", file);
+        let created = 0;
+        for (const rec of records) {
+            const refEmail = (rec.referrer_email ?? "").trim().toLowerCase();
+            const refName = (rec.referred_name ?? "").trim();
+            if (!refEmail || !refName) continue;
+            const referrer = custByEmail.get(refEmail);
+            if (!referrer) continue;
+            const btRaw = (rec.benefit_type ?? "").toLowerCase();
+            const benefitType: "free_credits" | "wallet_credit" | "discount" =
+                /wallet|aed|credit.aed|money|cash/.test(btRaw)
+                    ? "wallet_credit"
+                    : /discount/.test(btRaw)
+                      ? "discount"
+                      : "free_credits";
+            const benefitAmount = toNumber(rec.benefit_amount, 0);
+            const benefitCredits =
+                benefitType === "free_credits"
+                    ? toNumber(rec.benefit_credits, benefitAmount)
+                    : toNumber(rec.benefit_credits, 0);
+            const referredAt = toISODate(rec.referred_at) ?? todayISO;
+            deps.addCustomerReferral({
+                referrerCustomerId: referrer.id,
+                referredName: refName,
+                referredEmail: (rec.referred_email ?? "").trim(),
+                benefitCredits,
+                benefitType,
+                benefitAmount,
+                referredAtISO: `${referredAt}T09:00:00Z`,
             });
             created++;
         }
