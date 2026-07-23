@@ -47,6 +47,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
+import { findShiftConflict } from "@/lib/staff/shift-conflict";
 import {
     useAppStore,
     type Shift, type Staff, type StaffStatus, type Role,
@@ -165,14 +166,35 @@ function ChangeShiftModal({ staffMember, onClose, onConfirmed }: {
     onClose: () => void;
     onConfirmed: (nextShift: Shift | null) => void;
 }) {
-    const shifts      = useAppStore(s => s.shifts);
-    const updateStaff = useAppStore(s => s.updateStaff);
+    const shifts           = useAppStore(s => s.shifts);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
+    const updateStaff      = useAppStore(s => s.updateStaff);
+    const showToast        = useAppStore(s => s.showToast);
 
     const [picked, setPicked] = useState<string>(staffMember.shiftId ?? "");
 
     const options = shifts.filter(s => s.status === "active" && s.branch_id === staffMember.branchId);
 
     function handleSave() {
+        if (picked !== "") {
+            const pickedShift = shifts.find(s => s.id === picked);
+            // Overlap guard — mirror the assign surfaces. The new primary must
+            // not clash on the same weekday + time with a shift the staff still
+            // holds. Exclude the current primary (`staffMember.shiftId`) since
+            // the non-destructive mirror is about to swap it out.
+            const others = shiftAssignments.filter(
+                a => a.staff_id === staffMember.id && a.shift_id !== staffMember.shiftId,
+            );
+            const clash = pickedShift ? findShiftConflict(pickedShift, others, id => shifts.find(s => s.id === id)) : null;
+            if (pickedShift && clash) {
+                showToast(
+                    "Shift conflict",
+                    `${staffMember.fullName} is already on ${clash.name}, which overlaps ${pickedShift.name}.`,
+                    "error", "alert",
+                );
+                return;
+            }
+        }
         updateStaff(staffMember.id, { shiftId: picked === "" ? undefined : picked });
         const nextShift = picked ? shifts.find(s => s.id === picked) ?? null : null;
         onConfirmed(nextShift);

@@ -71,6 +71,12 @@ export interface ScheduleCardClass {
     instructorColor: string;
     /** Optional portrait. */
     instructorImageUrl?: string;
+    /** Optional override for the xs card's lead chip. When set, the xs
+     *  month-cell pill shows this text in place of the formatted start
+     *  time — used by the Time-off month view to surface the absence
+     *  reason ("Vacation") on an all-day block that has no meaningful
+     *  clock time. Falls back to the start time when unset. */
+    leadLabel?: string;
     room?: string;
     booked: number;
     capacity: number;
@@ -320,7 +326,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 "w-full rounded-[4px] px-1.5 py-[3px] flex items-center gap-1 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
                 className,
             )}>
-            <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: cls.color.border }}>{startLabel}</span>
+            <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: cls.color.border }}>{cls.leadLabel ?? startLabel}</span>
             <span className="text-[11px] text-[#98a2b3] shrink-0">•</span>
             <span className="text-[11px] font-medium truncate" style={{ color: cls.color.text }}>{cls.name}</span>
         </button>

@@ -8,33 +8,40 @@
 // recognise the interaction immediately (same header layout, same search
 // + list rows + per-row primary action).
 //
-// Per the brief — "Assign staff is JUST a list of staff, no logic." So
-// the modal lists every ACTIVE staff member at the shift's branch
-// (regardless of role) and shows badges for the staff member's current
-// assignment state so the admin understands the consequence of clicking
-// Assign:
+// The modal lists every ACTIVE staff member at the shift's branch (regardless
+// of role) and shows badges for the staff member's current assignment state so
+// the admin understands the consequence of clicking Assign:
 //
 //   • "Assigned" — already on THIS shift (button shows "Assigned",
 //                  disabled).
-//   • "Other shift: <name>" — currently on a different shift; clicking
-//                  Assign re-assigns them to this one.
+//   • "On <name>" — currently on another shift; clicking Assign ADDS this
+//                  shift on top (a staff member can hold multiple shifts).
 //   • No badge — staff has no shift; clicking Assign places them.
+//
+// Client 2026-07-23 — assignment is now ADDITIVE and goes through the M2M
+// `shiftAssignments` slice (`addShiftAssignment`), matching the week-view
+// picker. It previously wrote the legacy single `staff.shiftId` via
+// `updateStaff`, which destructively collapsed a staff member's multi-shift
+// assignments down to one. It also enforces the same overlap rule as the week
+// view: a staff member can't be added to a shift that clashes on the same
+// weekday + time with one they already hold.
 
 import { useState, useEffect } from "react";
 import { XClose, SearchMd, UserPlus01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type Shift } from "@/lib/store";
+import { findShiftConflict } from "@/lib/staff/shift-conflict";
 
 export function AssignStaffModal({ shift, onClose }: {
     shift: Shift;
     onClose: () => void;
 }) {
-    const staff             = useAppStore(s => s.staff);
-    const shifts            = useAppStore(s => s.shifts);
-    const shiftAssignments  = useAppStore(s => s.shiftAssignments);
-    const updateStaff       = useAppStore(s => s.updateStaff);
-    const showToast         = useAppStore(s => s.showToast);
+    const staff              = useAppStore(s => s.staff);
+    const shifts             = useAppStore(s => s.shifts);
+    const shiftAssignments   = useAppStore(s => s.shiftAssignments);
+    const addShiftAssignment = useAppStore(s => s.addShiftAssignment);
+    const showToast          = useAppStore(s => s.showToast);
 
     const [search, setSearch] = useState("");
     useEffect(() => { setSearch(""); }, [shift.id]);
@@ -55,7 +62,21 @@ export function AssignStaffModal({ shift, onClose }: {
         });
 
     function handleAssign(staffId: string, staffName: string) {
-        updateStaff(staffId, { shiftId: shift.id });
+        // Overlap guard — mirror the week-view picker. A staff member can hold
+        // multiple shifts, but not two that collide on the same weekday + time.
+        const mine = shiftAssignments.filter(a => a.staff_id === staffId);
+        const clash = findShiftConflict(shift, mine, (id) => shifts.find(s => s.id === id));
+        if (clash) {
+            showToast(
+                "Shift conflict",
+                `${staffName} is already on ${clash.name}, which overlaps ${shift.name}.`,
+                "error", "alert",
+            );
+            return;
+        }
+        // Additive — adds this shift to the staff member's assignments without
+        // touching any they already hold.
+        addShiftAssignment({ shift_id: shift.id, staff_id: staffId });
         showToast(
             "Staff assigned",
             `${staffName} has been assigned to ${shift.name}.`,
@@ -106,15 +127,28 @@ export function AssignStaffModal({ shift, onClose }: {
                     ) : (
                         <div className="flex flex-col">
                             {available.map((s, i) => {
-                                // Audit fix 2026-07-22 — a staff already
-                                // assigned to this shift via the M2M table
-                                // also counts as "on this shift", not just
-                                // when the legacy shiftId matches.
+                                // A staff already assigned to this shift via
+                                // the M2M table (or the legacy shiftId) counts
+                                // as "on this shift".
+                                const myAssignments = shiftAssignments.filter(a => a.staff_id === s.id);
                                 const onThisShift = s.shiftId === shift.id
-                                    || shiftAssignments.some(a => a.staff_id === s.id && a.shift_id === shift.id);
-                                const otherShift  = !onThisShift && s.shiftId
-                                    ? shifts.find(x => x.id === s.shiftId)
-                                    : undefined;
+                                    || myAssignments.some(a => a.shift_id === shift.id);
+                                // Client 2026-07-23 — the "On <shifts>" hint now
+                                // lists every OTHER shift the staff holds (M2M),
+                                // not just the legacy primary, so the multi-shift
+                                // reality reads correctly. Falls back to the
+                                // legacy shiftId when there are no M2M rows.
+                                const otherShiftNames = (() => {
+                                    const names = myAssignments
+                                        .filter(a => a.shift_id !== shift.id)
+                                        .map(a => shifts.find(x => x.id === a.shift_id)?.name)
+                                        .filter((n): n is string => !!n);
+                                    if (names.length === 0 && s.shiftId && s.shiftId !== shift.id) {
+                                        const legacy = shifts.find(x => x.id === s.shiftId)?.name;
+                                        if (legacy) names.push(legacy);
+                                    }
+                                    return names;
+                                })();
                                 return (
                                     <div key={s.id}
                                         className={cn(
@@ -135,8 +169,11 @@ export function AssignStaffModal({ shift, onClose }: {
                                             <div className="min-w-0">
                                                 <p className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</p>
                                                 <p className="text-[13px] text-[#667085] truncate">
-                                                    {otherShift ? <>On <span className="text-[#344054] font-medium">{otherShift.name}</span></>
-                                                                : s.email}
+                                                    {onThisShift
+                                                        ? s.email
+                                                        : otherShiftNames.length > 0
+                                                            ? <>On <span className="text-[#344054] font-medium">{otherShiftNames.join(", ")}</span></>
+                                                            : s.email}
                                                 </p>
                                             </div>
                                         </div>

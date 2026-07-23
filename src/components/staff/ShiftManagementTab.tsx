@@ -541,6 +541,8 @@ export function ShiftManagementTab({
         | null
     >(null);
     const [assignTarget, setAssignTarget] = useState<Shift | null>(null);
+    // List-view remove-from-shift confirmation.
+    const [removeAssignmentId, setRemoveAssignmentId] = useState<string | null>(null);
 
     // Reset page when filters / search / branch / sub-tab state change so
     // the admin lands on page 1 of the new result set.
@@ -893,7 +895,7 @@ export function ShiftManagementTab({
                                                         assignments={assignmentsByShift.get(s.id) ?? []}
                                                         staffById={staffById}
                                                         onChangeDays={(assignmentId, days) => updateShiftAssignmentDays(assignmentId, days)}
-                                                        onRemoveAssignment={(assignmentId) => removeShiftAssignment(assignmentId)}
+                                                        onRemoveAssignment={(assignmentId) => setRemoveAssignmentId(assignmentId)}
                                                         onChangeTarget={(nextTarget) => updateShift(s.id, { staffing_target: Math.max(0, nextTarget) })}
                                                     />
                                                 </td>
@@ -962,6 +964,21 @@ export function ShiftManagementTab({
                     />
                 );
             })()}
+
+            {/* Remove-from-shift confirmation (list view). */}
+            <ConfirmModal
+                open={!!removeAssignmentId}
+                onClose={() => setRemoveAssignmentId(null)}
+                icon={Trash01}
+                tone="danger"
+                title="Unassign staff shift?"
+                description="Are you sure you want to unassign selected staff shift? They can be assigned again later."
+                confirmLabel="Unassign"
+                onConfirm={() => {
+                    if (removeAssignmentId) removeShiftAssignment(removeAssignmentId);
+                    setRemoveAssignmentId(null);
+                }}
+            />
 
             {/* The empty-states already suppress duplicate states; this
                 kept here so the parent can know if a filter narrowed

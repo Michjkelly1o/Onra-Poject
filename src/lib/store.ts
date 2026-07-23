@@ -8163,9 +8163,27 @@ export const useAppStore = create<AppState>()(persist(
         return id;
     },
     removeShiftAssignment: (id) => {
-        set(state => ({
-            shiftAssignments: state.shiftAssignments.filter(a => a.id !== id),
-        }));
+        set(state => {
+            const row = state.shiftAssignments.find(a => a.id === id);
+            const shiftAssignments = state.shiftAssignments.filter(a => a.id !== id);
+            if (!row) return { shiftAssignments };
+            // Keep the legacy `shiftId` in sync — if we just removed the row
+            // backing a staff member's PRIMARY shift, clear the primary too.
+            // Otherwise the availability readers (customer slot picker,
+            // instructor gating) fall back to `staff.shiftId` once the staff
+            // has zero M2M rows and would keep honouring a shift they no
+            // longer hold. Client 2026-07-23.
+            const owner = state.staff.find(s => s.id === row.staff_id);
+            if (!owner || owner.shiftId !== row.shift_id) return { shiftAssignments };
+            const nextStaff = state.staff.map(s =>
+                s.id === row.staff_id ? { ...s, shiftId: undefined } : s,
+            );
+            return {
+                shiftAssignments,
+                staff: nextStaff,
+                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [row.staff_id]),
+            };
+        });
     },
     updateShiftAssignmentDays: (id, days) => {
         set(state => ({
@@ -8439,26 +8457,35 @@ export const useAppStore = create<AppState>()(persist(
             };
         });
 
-        // Audit fix 2026-07-22 — mirror the legacy `shiftId` change into
-        // the M2M `shiftAssignments` slice so availability gates
-        // (schedule form + customer slot picker) see the current shift.
-        // Without this sync, the M2M row stays pointed at the OLD shift
-        // and resolveShiftWindows returns stale windows (never falling
-        // through to the legacy fallback because `matched=true`).
+        // Mirror the legacy `shiftId` change into the M2M `shiftAssignments`
+        // slice so availability gates (schedule form + customer slot picker)
+        // see the current shift.
         //
-        // Rule:
-        //   • If shiftId was set to a value → drop every existing
-        //     assignment for this staff and insert one new row for the
-        //     new shift with the shift's full `working_days` as the
-        //     default day mask (mirrors what `addShiftAssignment` does).
-        //   • If shiftId was cleared (undefined) → drop every assignment
-        //     for this staff. The staff has no shift binding at all.
+        // Client 2026-07-23 — this reconcile is NON-DESTRUCTIVE to sibling
+        // rows. `shiftId` is the staff member's PRIMARY (legacy single) shift;
+        // a staff can hold additional shifts via the M2M week-view picker.
+        // Editing the primary must NOT wipe those. The previous version dropped
+        // EVERY row for the staff and inserted one — which silently collapsed
+        // multi-shift assignments whenever the staff form or the "Change shift"
+        // modal ran. Now:
+        //   • Drop only the row for the shift being moved AWAY from
+        //     (prevShiftId) — the swap's old side.
+        //   • Upsert a row for the new primary (nextShiftId), if any, without
+        //     duplicating an existing row or touching the staff's other shifts.
+        //   • If shiftId was cleared (undefined) → drop only the prevShiftId
+        //     row; any separately-assigned shifts remain.
         if (shiftActuallyChanged) {
             set(state => {
-                const withoutStaffRows = state.shiftAssignments.filter(a => a.staff_id !== id);
-                if (!nextShiftId) return { shiftAssignments: withoutStaffRows };
+                let rows = state.shiftAssignments;
+                if (prevShiftId) {
+                    rows = rows.filter(a => !(a.staff_id === id && a.shift_id === prevShiftId));
+                }
+                if (!nextShiftId) return { shiftAssignments: rows };
+                if (rows.some(a => a.staff_id === id && a.shift_id === nextShiftId)) {
+                    return { shiftAssignments: rows };
+                }
                 const parent = state.shifts.find(s => s.id === nextShiftId);
-                if (!parent) return { shiftAssignments: withoutStaffRows };
+                if (!parent) return { shiftAssignments: rows };
                 const nextRow: ShiftAssignment = {
                     id: `sa_${nextShiftId}_${id}`,
                     shift_id: nextShiftId,
@@ -8466,7 +8493,7 @@ export const useAppStore = create<AppState>()(persist(
                     days_of_week: [...parent.working_days],
                     created_at: new Date().toISOString(),
                 };
-                return { shiftAssignments: [...withoutStaffRows, nextRow] };
+                return { shiftAssignments: [...rows, nextRow] };
             });
         }
 

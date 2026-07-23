@@ -420,7 +420,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                 </td>
                                                 <td className={TD}>
                                                     <RowMenu
-                                                        onEdit={() => router.push(`/staff/blocked-time/${b.id}/edit?returnTo=/admin/staff`)}
+                                                        onEdit={() => router.push(`/staff/blocked-time/${b.id}/edit?returnTo=${encodeURIComponent("/admin/staff?subtab=blocked-time")}`)}
                                                         onDelete={() => setPendingDelete({ mode: "row", row: b })}
                                                     />
                                                 </td>
