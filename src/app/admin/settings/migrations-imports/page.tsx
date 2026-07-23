@@ -75,6 +75,7 @@ const DATA_TYPE_LABEL: Record<ImportHistorySeed["data_type"], string> = {
     campaigns:        "Campaign",
     tax_rates:        "Tax rate",
     agreements:       "Agreement",
+    class_categories: "Class category",
 };
 
 const DATA_TYPE_KEYS = Object.keys(DATA_TYPE_LABEL) as ImportHistorySeed["data_type"][];

@@ -282,6 +282,7 @@ export function ChatThread({
                         addTaxRate: st.addTaxRate,
                         addAgreement: st.addAgreement,
                         addAgreementVersion: st.addAgreementVersion,
+                        addClassCategory: st.addClassCategory,
                         classCategories: st.classCategories,
                         classTemplates: st.classTemplates,
                         instructors: st.instructors,

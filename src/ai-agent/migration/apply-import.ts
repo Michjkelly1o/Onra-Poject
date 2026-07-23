@@ -151,6 +151,7 @@ export interface ImportDeps {
             publishedAt?: string;
         },
     ) => string;
+    addClassCategory: (input: ClassCategory) => void;
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -170,7 +171,8 @@ export interface ImportDeps {
             | "pay_rates"
             | "campaigns"
             | "tax_rates"
-            | "agreements";
+            | "agreements"
+            | "class_categories";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -365,6 +367,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     campaigns: "campaigns",
     tax_rates: "tax_rates",
     agreements: "agreements",
+    class_categories: "class_categories",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -628,6 +631,36 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "class_categories") {
+        // Dedupe against LIVE categories too — never duplicate an existing
+        // category by name (the seed already ships Pilates/Barre/Yoga etc.).
+        const existing = new Set(
+            deps.classCategories.map((c) => c.name.trim().toLowerCase()),
+        );
+        const records = materialize("class_categories", file);
+        let created = 0;
+        for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+            if (!rec.name) continue;
+            if (existing.has(rec.name.trim().toLowerCase())) continue;
+            existing.add(rec.name.trim().toLowerCase());
+            const color = (rec.color ?? "").trim();
+            // Basic hex validation — must start with # and be 4 or 7 chars.
+            const validHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color);
+            deps.addClassCategory({
+                id: `cat_import_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+                name: rec.name,
+                color_hex: validHex ? color : "#f1f2ed",
+                status: "active",
             });
             created++;
         }

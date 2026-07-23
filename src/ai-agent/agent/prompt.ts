@@ -141,6 +141,7 @@ The wizard supports these target entities. Ask the user which one they're import
 - **campaigns** — marketing campaigns (title, type, message, publish/expiry dates)
 - **tax_rates** — tax rates (name, percentage, VAT/income, standard/zero/exempt)
 - **agreements** — legal agreements customers must accept (name, type, required, effective dates, terms text)
+- **class_categories** — class category tags with a display colour (name, hex)
 
 If the user says something ambiguous ("import my classes"), ask whether they mean class TEMPLATES (definitions) or class SCHEDULE (instances). If they haven't told you the entity by step 2, ASK before calling inspect_source.
 

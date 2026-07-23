@@ -35,6 +35,7 @@ import { payRatesEntity } from "@/ai-agent/migration/entities/pay-rates";
 import { campaignsEntity } from "@/ai-agent/migration/entities/campaigns";
 import { taxRatesEntity } from "@/ai-agent/migration/entities/tax-rates";
 import { agreementsEntity } from "@/ai-agent/migration/entities/agreements";
+import { classCategoriesEntity } from "@/ai-agent/migration/entities/class-categories";
 
 /** One target field the wizard maps a source column to. */
 export interface EntityField {
@@ -96,7 +97,8 @@ export type EntityKey =
     | "pay_rates"
     | "campaigns"
     | "tax_rates"
-    | "agreements";
+    | "agreements"
+    | "class_categories";
 
 /** The registry itself. Ordered — the model's system prompt lists them
  *  in this order when asking the user "which entity are you migrating?" */
@@ -117,6 +119,7 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
     campaigns:       campaignsEntity,
     tax_rates:       taxRatesEntity,
     agreements:      agreementsEntity,
+    class_categories: classCategoriesEntity,
 };
 
 /** Human-readable menu the migration prompt lists for the AI to pick from. */
