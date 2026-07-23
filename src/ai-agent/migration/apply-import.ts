@@ -33,6 +33,10 @@ import type {
     MarketingItem,
     Agreement,
     AgreementVersion,
+    Customer,
+    Membership,
+    Package,
+    CustomerPlan,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -152,6 +156,11 @@ export interface ImportDeps {
         },
     ) => string;
     addClassCategory: (input: ClassCategory) => void;
+    addCustomerPlan: (input: Omit<CustomerPlan, "id"> & { id?: string }) => string;
+    /** Live customer + product slices for FK resolution. */
+    customers: Customer[];
+    memberships: Membership[];
+    packages: Package[];
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -172,7 +181,8 @@ export interface ImportDeps {
             | "campaigns"
             | "tax_rates"
             | "agreements"
-            | "class_categories";
+            | "class_categories"
+            | "customer_plans";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -368,6 +378,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     tax_rates: "tax_rates",
     agreements: "agreements",
     class_categories: "class_categories",
+    customer_plans: "customer_plans",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -631,6 +642,93 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "customer_plans") {
+        // Hard FKs: customer by email, product by name (memberships then
+        // packages). Rows whose customer or product can't resolve are skipped
+        // (counted failed) so the store never carries a dangling plan.
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        const memByName = new Map(
+            deps.memberships.map((m) => [m.name.trim().toLowerCase(), m]),
+        );
+        const pkgByName = new Map(
+            deps.packages.map((p) => [p.name.trim().toLowerCase(), p]),
+        );
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const records = materialize("customer_plans", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.customer_email ?? "").trim().toLowerCase();
+            const productName = (rec.product_name ?? "").trim().toLowerCase();
+            if (!email || !productName) continue;
+            const cust = custByEmail.get(email);
+            if (!cust) continue;
+            const mem = memByName.get(productName);
+            const pkg = mem ? undefined : pkgByName.get(productName);
+            if (!mem && !pkg) continue;
+            const isMembership = !!mem;
+            const purchased = toISODate(rec.purchased_at) ?? todayISO;
+            const expiry =
+                toISODate(rec.expiry_date) ??
+                (isMembership && mem
+                    ? new Date(
+                          Date.parse(`${purchased}T00:00:00Z`) +
+                              (mem.duration_months ?? 1) * 30 * 86_400_000,
+                      )
+                          .toISOString()
+                          .slice(0, 10)
+                    : pkg
+                      ? new Date(
+                            Date.parse(`${purchased}T00:00:00Z`) +
+                                (pkg.validity_days ?? 30) * 86_400_000,
+                        )
+                            .toISOString()
+                            .slice(0, 10)
+                      : purchased);
+            // Status snap — default active when today ≤ expiry, else expired.
+            const statusRaw = (rec.status ?? "").toLowerCase();
+            const status: CustomerPlan["status"] = /cancel/.test(statusRaw)
+                ? "cancelled"
+                : /freeze|frozen/.test(statusRaw)
+                  ? "frozen"
+                  : /expir|expired/.test(statusRaw) || todayISO > expiry
+                    ? "expired"
+                    : "active";
+            const credits = mem
+                ? mem.credits === "unlimited"
+                    ? "Unlimited"
+                    : `${toNumber(rec.credits_left, mem.credits)} / ${mem.credits} credits`
+                : pkg
+                  ? `${toNumber(rec.credits_left, pkg.credits)} / ${pkg.credits} credits`
+                  : "";
+            const price = rec.price_aed
+                ? toNumber(rec.price_aed, 0)
+                : isMembership && mem
+                  ? mem.price_aed
+                  : pkg
+                    ? pkg.price_aed
+                    : undefined;
+            deps.addCustomerPlan({
+                customerId: cust.id,
+                kind: isMembership ? "membership" : "package",
+                productId: (mem?.id ?? pkg?.id) ?? undefined,
+                name: mem?.name ?? pkg?.name ?? productName,
+                planTypeLabel: isMembership ? "Membership" : "Credit package",
+                creditsLabel: credits,
+                status,
+                purchasedAtISO: `${purchased}T00:00:00Z`,
+                expiryISO: `${expiry}T22:00:00Z`,
+                priceAed: price,
             });
             created++;
         }

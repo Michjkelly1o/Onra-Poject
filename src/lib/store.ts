@@ -3919,6 +3919,11 @@ export interface AppState {
     removeComplimentaryPlan: (planId: string, reason: string, removedBy: string, removedByRole: string) => void;
     /** Append a complimentary grant as a new plan row (from the add-credit flow). */
     addComplimentaryPlan: (input: Omit<CustomerPlan, "id" | "kind" | "status" | "planTypeLabel">) => string;
+    /** Append a full CustomerPlan record — used by the AI Agent migration
+     *  importer to bring across a customer's currently-held membership /
+     *  package. Distinct from `addComplimentaryPlan` (which is for gifted
+     *  credit only). */
+    addCustomerPlan: (input: Omit<CustomerPlan, "id"> & { id?: string }) => string;
 
     // ── Customer transactions (customer-detail Payments tab) ───────────────
     /** Refund a completed transaction — status → refunded, with the refund
@@ -6758,6 +6763,15 @@ export const useAppStore = create<AppState>()(persist(
         const targetCustomer = get().customers.find(c => c.id === input.customerId);
         const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });
+        return id;
+    },
+    addCustomerPlan: (input) => {
+        const id = input.id ?? `cp_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const plan: CustomerPlan = { ...input, id };
+        set(state => ({ customerPlans: [plan, ...state.customerPlans] }));
+        const target = get().customers.find(c => c.id === input.customerId);
+        const customerName = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
+        get().recordAudit(`Imported plan for ${customerName}`, "customer_plan", id, input.name);
         return id;
     },
 
