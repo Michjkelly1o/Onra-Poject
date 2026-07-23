@@ -3948,6 +3948,14 @@ export interface AppState {
             createdAtISO?: string;
         },
     ) => string;
+    /** Append a wallet transaction — used by the AI Agent migration importer
+     *  to carry across account-credit balances. */
+    addWalletTransaction: (
+        input: Omit<WalletTransaction, "id" | "createdAtISO"> & {
+            id?: string;
+            createdAtISO?: string;
+        },
+    ) => string;
     /** Approve a pending refund request (dashboard Needs-attention). Refunds
      *  the transaction (status → refunded) so it drops from the queue. */
     approveRefundRequest: (id: string) => void;
@@ -6827,6 +6835,16 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().customers.find(c => c.id === input.customerId);
         const who = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
         get().recordAudit(`Imported transaction for ${who}`, "customer", input.customerId, next.name);
+        return id;
+    },
+    addWalletTransaction: (input) => {
+        const id = input.id ?? `wtxn_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: WalletTransaction = {
+            ...input,
+            id,
+            createdAtISO: input.createdAtISO ?? new Date().toISOString(),
+        };
+        set(state => ({ walletTransactions: [...state.walletTransactions, next] }));
         return id;
     },
     refundTransaction: (id, method) => {

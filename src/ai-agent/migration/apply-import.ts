@@ -39,6 +39,7 @@ import type {
     CustomerPlan,
     CustomerTransaction,
     ClassBooking,
+    WalletTransaction,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -171,6 +172,12 @@ export interface ImportDeps {
             bookingTime?: string;
         },
     ) => string;
+    addWalletTransaction: (
+        input: Omit<WalletTransaction, "id" | "createdAtISO"> & {
+            id?: string;
+            createdAtISO?: string;
+        },
+    ) => string;
     /** Live class schedules the class_bookings adapter looks up by
      *  (template name × date). Required for that adapter only. */
     classSchedules: ClassSchedule[];
@@ -201,7 +208,8 @@ export interface ImportDeps {
             | "class_categories"
             | "customer_plans"
             | "customer_transactions"
-            | "class_bookings";
+            | "class_bookings"
+            | "wallet_transactions";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -400,6 +408,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     customer_plans: "customer_plans",
     customer_transactions: "customer_transactions",
     class_bookings: "class_bookings",
+    wallet_transactions: "wallet_transactions",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -663,6 +672,47 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "wallet_transactions") {
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        const records = materialize("wallet_transactions", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.customer_email ?? "").trim().toLowerCase();
+            if (!email) continue;
+            const cust = custByEmail.get(email);
+            if (!cust) continue;
+            const raw = toNumber(rec.amount, 0);
+            const typeRaw = (rec.type ?? "").toLowerCase();
+            // Type: explicit cell wins; else negative amount → debit, positive → credit.
+            const type: "credit" | "debit" =
+                /debit|withdraw|deduct/.test(typeRaw)
+                    ? "debit"
+                    : /credit|deposit|top.?up/.test(typeRaw)
+                      ? "credit"
+                      : raw < 0
+                        ? "debit"
+                        : "credit";
+            const createdIso = toISODate(rec.created_at) ?? new Date().toISOString().slice(0, 10);
+            deps.addWalletTransaction({
+                customerId: cust.id,
+                branchId: cust.branchId,
+                type,
+                amountAed: Math.abs(raw),
+                reason: (rec.reason ?? "").trim() || "Imported balance carry-over",
+                referenceType: "manual",
+                createdAtISO: `${createdIso}T09:00:00Z`,
+                createdBy: "AI Agent (imported)",
             });
             created++;
         }

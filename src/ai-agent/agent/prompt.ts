@@ -145,6 +145,7 @@ The wizard supports these target entities. Ask the user which one they're import
 - **customer_plans** — which customer holds which membership/package (customer email, product name, expiry, credits)
 - **customer_transactions** — historical payments (customer email, amount, item, date, payment method)
 - **class_bookings** — historical bookings (customer email, class name, class date, attendance)
+- **wallet_transactions** — account-credit balances carried over (customer email, amount, type)
 
 If the user says something ambiguous ("import my classes"), ask whether they mean class TEMPLATES (definitions) or class SCHEDULE (instances). If they haven't told you the entity by step 2, ASK before calling inspect_source.
 

@@ -39,6 +39,7 @@ import { classCategoriesEntity } from "@/ai-agent/migration/entities/class-categ
 import { customerPlansEntity } from "@/ai-agent/migration/entities/customer-plans";
 import { customerTransactionsEntity } from "@/ai-agent/migration/entities/customer-transactions";
 import { classBookingsEntity } from "@/ai-agent/migration/entities/class-bookings";
+import { walletTransactionsEntity } from "@/ai-agent/migration/entities/wallet-transactions";
 
 /** One target field the wizard maps a source column to. */
 export interface EntityField {
@@ -104,7 +105,8 @@ export type EntityKey =
     | "class_categories"
     | "customer_plans"
     | "customer_transactions"
-    | "class_bookings";
+    | "class_bookings"
+    | "wallet_transactions";
 
 /** The registry itself. Ordered — the model's system prompt lists them
  *  in this order when asking the user "which entity are you migrating?" */
@@ -129,6 +131,7 @@ export const ENTITIES: Record<EntityKey, EntityDef> = {
     customer_plans:  customerPlansEntity,
     customer_transactions: customerTransactionsEntity,
     class_bookings:  classBookingsEntity,
+    wallet_transactions: walletTransactionsEntity,
 };
 
 /** Human-readable menu the migration prompt lists for the AI to pick from. */
