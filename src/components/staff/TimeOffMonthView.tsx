@@ -1,148 +1,154 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Time off Month view (client 2026-07-22 Phase 6)
+// Onra Studio — Time off Month view (client 2026-07-23)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Read-only calendar view of the Time off table. Answers "are we running
-// into any overlapping absences before they're a problem?" The same
-// entries the List view already shows, laid out on a Mon-first month
-// grid:
+// Read-only-ish calendar view of the Time off table. Rebuilt to REUSE the
+// Schedule module's month-view chrome so both surfaces read as siblings:
 //
-//   • Multi-day entries render as horizontal BARS spanning their day
-//     range. A range that spills across a week boundary is split into
-//     TWO segments — the first ends with a "→" continuation marker,
-//     the second starts with one — so the demo reads exactly like the
-//     mockup ("Sara Al-Rashid · Vacation →" on week 1, "→ Sara Al-Rashid
-//     · Vacation" on week 2).
-//   • Single-day entries render as a compact pill in that day cell,
-//     showing the title + staff count.
-//   • When ≥ 2 staff are off on the same day, a small amber "⚠ N staff
-//     away" chip is shown at the top of that day's cell — the "overlap
-//     warning" from the mockup.
+//   • Same Monday-first 42-cell grid via the shared `buildMonthGrid` util
+//     (the exact helper /admin/schedule's MonthView uses).
+//   • Same day-cell layout — MON…SUN header row, centered date circle
+//     (today gets the sage `#658774` fill), `min-h-[110px]` tiles, and the
+//     shared `ScheduleMorePill` "+N more" overflow affordance.
+//   • Same event card component — `ScheduleClassCard` size="xs" — so a
+//     time-off entry renders with the identical pill structure a class does.
 //
-// Everything is read-only. Bar tone matches the List view's REASON
-// palette so the same signal reads consistent across surfaces.
+// The one deliberate divergence is COLOUR: schedule cards are tinted by
+// class category (greens/etc). Time off is tinted by REASON (Sick = red,
+// Vacation = blue, Training = purple, Other = gray) so the two modules
+// never visually collide. Each card's lead chip shows the reason label in
+// place of a clock time (via the card's `leadLabel` override), because an
+// all-day absence has no meaningful start time.
+//
+// Interaction parity: clicking a card opens that entry's Edit page; the
+// "+N more" pill opens a floating day list (same pattern as the schedule
+// month view's day popup), each row of which also opens Edit.
 
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, AlertTriangle } from "@untitledui/icons";
+import { useMemo, useRef, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { buildMonthGrid } from "@/lib/calendar-utils";
 import { useAppStore, type BlockedTime } from "@/lib/store";
+import { ScheduleClassCard, ScheduleMorePill } from "@/components/schedule/ScheduleClassCard";
 
-// ─── Date helpers ─────────────────────────────────────────────────────────
+// ─── Date helper ─────────────────────────────────────────────────────────
 
 function isoDayLocal(d: Date): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function addDays(d: Date, n: number): Date {
-    const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    out.setDate(out.getDate() + n);
-    return out;
-}
+// ─── Reason palette (DISTINCT from the schedule category palette) ──────────
+//
+// Fed straight into ScheduleClassCard's `color` prop { bg, border, text }.
+// The saturated `border` doubles as the card's left accent stripe + the
+// lead-chip text colour.
 
-function mondayIndex(d: Date): number {
-    // JS Sun=0..Sat=6 → Mon=0..Sun=6
-    return (d.getDay() + 6) % 7;
-}
-
-const MONTH_LABELS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-];
-const WEEKDAY_HEAD = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-
-/** All the days visible in the calendar for `year/month` — 6 weeks worth,
- *  Mon-first, leading + trailing days from adjacent months included. */
-function buildCalendarDays(year: number, month: number): Date[] {
-    const first = new Date(year, month, 1);
-    const start = new Date(year, month, 1 - mondayIndex(first));
-    return Array.from({ length: 42 }, (_, i) => addDays(start, i));
-}
-
-/** Slice a flat 42-day list into 6 weeks × 7 days. */
-function toWeeks(days: Date[]): Date[][] {
-    return Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
-}
-
-// ─── Reason tint (matches BlockedTimeTab's ReasonChip palette) ───────────
-
-const REASON_BAR_STYLE: Record<BlockedTime["reason"], string> = {
-    sick:     "bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
-    vacation: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]",
-    training: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]",
-    other:    "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]",
+const REASON_COLOR: Record<BlockedTime["reason"], { bg: string; border: string; text: string }> = {
+    sick:     { bg: "#fef3f2", border: "#f04438", text: "#b42318" },
+    vacation: { bg: "#eff8ff", border: "#2e90fa", text: "#175cd3" },
+    training: { bg: "#f4f3ff", border: "#7a5af8", text: "#5925dc" },
+    other:    { bg: "#f2f4f7", border: "#98a2b3", text: "#475467" },
 };
 
-// ─── Bar layout ─────────────────────────────────────────────────────────
-//
-// For each week, compute per-entry segments (startCol, endCol,
-// continuesLeft, continuesRight). Then assign each segment a
-// "level" (row within the week's bar stack) using a greedy
-// interval-packing algorithm so segments that share a column don't
-// visually overlap.
+const REASON_LABEL: Record<BlockedTime["reason"], string> = {
+    sick:     "Sick",
+    vacation: "Vacation",
+    training: "Training",
+    other:    "Other",
+};
 
-interface BarSegment {
-    entry: BlockedTime;
-    /** 0-6 within the week (Mon = 0). */
-    startCol: number;
-    /** Inclusive, 0-6. */
-    endCol: number;
-    /** True when the entry started BEFORE this week. */
-    continuesLeft: boolean;
-    /** True when the entry continues AFTER this week. */
-    continuesRight: boolean;
-    /** Row index (0-based) assigned by the packer. */
-    level: number;
+const WEEKDAY_HEAD = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+// ─── Edit-route helper — mirrors the returnTo the list-view Edit uses ─────
+
+function editHref(id: string): string {
+    return `/staff/blocked-time/${id}/edit?returnTo=${encodeURIComponent("/admin/staff?subtab=blocked-time")}`;
 }
 
-function packBars(entries: BlockedTime[], weekDays: Date[]): BarSegment[] {
-    const weekStartISO = isoDayLocal(weekDays[0]);
-    const weekEndISO   = isoDayLocal(weekDays[6]);
-    const dayISOs      = weekDays.map(isoDayLocal);
+// ─── Day "+N more" popup — lean sibling of the schedule DayClassListPopup ──
 
-    // Compute a raw segment for every entry that TOUCHES this week.
-    const raw: Omit<BarSegment, "level">[] = [];
-    for (const e of entries) {
-        const from = e.date_from_iso ?? e.date;
-        const to   = e.date_to_iso   ?? e.date;
-        if (to < weekStartISO || from > weekEndISO) continue;
-        // Clip to this week's bounds; find the column indices.
-        const clippedFrom = from < weekStartISO ? weekStartISO : from;
-        const clippedTo   = to   > weekEndISO   ? weekEndISO   : to;
-        const startCol = dayISOs.indexOf(clippedFrom);
-        const endCol   = dayISOs.indexOf(clippedTo);
-        if (startCol < 0 || endCol < 0) continue;
-        raw.push({
-            entry: e,
-            startCol,
-            endCol,
-            continuesLeft:  from < weekStartISO,
-            continuesRight: to   > weekEndISO,
-        });
-    }
+function DayTimeOffPopup({ dateISO, entries, anchor, staffLabel, onClose, onPick }: {
+    dateISO: string;
+    entries: BlockedTime[];
+    anchor: { x: number; y: number };
+    staffLabel: (e: BlockedTime) => string;
+    onClose: () => void;
+    onPick: (e: BlockedTime) => void;
+}) {
+    const popupRef = useRef<HTMLDivElement>(null);
+    const WIDTH = 320;
+    const MAX_H = 460;
 
-    // Greedy pack — sort by (startCol asc, span desc) and assign the
-    // lowest free level per segment.
-    raw.sort((a, b) => a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
-    const perLevel: number[][] = []; // perLevel[level] = list of endCols already occupied
-    const out: BarSegment[] = [];
-    for (const seg of raw) {
-        let level = 0;
-        for (; ; level++) {
-            const row = perLevel[level] ?? [];
-            // Check if any occupant on this row's window overlaps [startCol, endCol].
-            // We only need to remember the RIGHTMOST endCol per row + start of that
-            // occupant — but for simplicity iterate.
-            const clash = row.some(occupantEnd => occupantEnd >= seg.startCol);
-            if (!clash) {
-                (perLevel[level] ??= []).push(seg.endCol);
-                break;
-            }
+    const left = anchor.x + 12 + WIDTH > window.innerWidth - 16
+        ? Math.max(8, anchor.x - WIDTH - 12)
+        : anchor.x + 12;
+    const top = Math.min(anchor.y, window.innerHeight - MAX_H - 16);
+
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+        function handleClick(e: MouseEvent) {
+            if (popupRef.current && !popupRef.current.contains(e.target as Node)) onClose();
         }
-        out.push({ ...seg, level });
-    }
-    return out;
+        document.addEventListener("keydown", handleKey);
+        document.addEventListener("mousedown", handleClick);
+        return () => {
+            document.removeEventListener("keydown", handleKey);
+            document.removeEventListener("mousedown", handleClick);
+        };
+    }, [onClose]);
+
+    const dateLabel = (() => {
+        const d = new Date(`${dateISO}T00:00:00`);
+        const day = d.toLocaleDateString("en-US", { weekday: "short" });
+        const month = d.toLocaleDateString("en-US", { month: "short" });
+        return `${day}, ${month} ${d.getDate()}`;
+    })();
+
+    return (
+        <div ref={popupRef}
+            style={{ position: "fixed", top, left, width: WIDTH, maxHeight: MAX_H, zIndex: 9999 }}
+            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+        >
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e4e7ec]">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-[#101828] truncate">{dateLabel}</p>
+                    <p className="text-[12px] text-[#667085] leading-[16px]">
+                        {entries.length} {entries.length === 1 ? "entry" : "entries"}
+                    </p>
+                </div>
+                <button type="button" onClick={onClose} aria-label="Close"
+                    className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085] shrink-0">
+                    <XClose className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-2 flex flex-col gap-1">
+                {entries.map(e => {
+                    const col = REASON_COLOR[e.reason ?? "other"];
+                    return (
+                        <button key={e.id} type="button"
+                            onClick={() => { onClose(); onPick(e); }}
+                            className="w-full flex items-start gap-3 px-2 py-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left"
+                        >
+                            <span className="mt-1.5 w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: col.border }} aria-hidden />
+                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                <span className="text-[13px] font-semibold text-[#101828] truncate">
+                                    {staffLabel(e)}
+                                </span>
+                                <span className="text-[12px] font-medium" style={{ color: col.text }}>
+                                    {REASON_LABEL[e.reason ?? "other"]}
+                                    {e.title.trim() ? ` · ${e.title.trim()}` : ""}
+                                </span>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
 // ─── Component ───────────────────────────────────────────────────────────
@@ -152,16 +158,18 @@ interface TimeOffMonthViewProps {
     branchId: string;
     /** Search filter from the parent toolbar. */
     search: string;
-    /** Month cursor from the parent's date navigator on the sub-tab
-     *  row (client 2026-07-22). Falls back to this month if the parent
-     *  doesn't pass one. */
+    /** Month cursor from the parent's date navigator (month is 0-based). */
     monthCursor?: { year: number; month: number };
 }
 
 export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonthViewProps) {
+    const router = useRouter();
     const blockedTimes = useAppStore(s => s.blockedTimes);
     const staff        = useAppStore(s => s.staff);
     const staffById = useMemo(() => new Map(staff.map(s => [s.id, s] as const)), [staff]);
+
+    // "+N more" day popup — anchored near the clicked pill.
+    const [dayPopup, setDayPopup] = useState<{ iso: string; entries: BlockedTime[]; anchor: { x: number; y: number } } | null>(null);
 
     // Cursor falls back to this month when the parent doesn't provide one.
     const cursor = monthCursor ?? (() => {
@@ -169,13 +177,14 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
         return { year: d.getFullYear(), month: d.getMonth() };
     })();
 
-    const days = useMemo(() => buildCalendarDays(cursor.year, cursor.month), [cursor]);
-    const weeks = useMemo(() => toWeeks(days), [days]);
+    // Same grid the schedule month view uses. `buildMonthGrid` takes a
+    // "YYYY-MM" string with a 1-based month; our cursor month is 0-based.
+    const monthYear = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}`;
+    const grid = useMemo(() => buildMonthGrid(monthYear), [monthYear]);
     const todayISO = isoDayLocal(new Date());
 
-    // Filter entries by branch + search. Search matches title / note /
-    // staff name so the month view honors the same toolbar shape the
-    // list view does.
+    // Filter entries by branch + search (title / note / staff name), matching
+    // the list view's toolbar shape.
     const filteredEntries = useMemo(() => {
         const q = search.trim().toLowerCase();
         return blockedTimes.filter(e => {
@@ -188,166 +197,109 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
         });
     }, [blockedTimes, branchId, search, staffById]);
 
-    /** Count of entries that TOUCH each day (any-day-overlap). Feeds
-     *  the "⚠ N staff away" chip when count ≥ 2. */
-    const staffAwayByDay = useMemo(() => {
-        const m = new Map<string, number>();
+    // Bucket entries onto each day they TOUCH (inclusive range).
+    const entriesByDay = useMemo(() => {
+        const m = new Map<string, BlockedTime[]>();
         for (const e of filteredEntries) {
             const from = e.date_from_iso ?? e.date;
             const to   = e.date_to_iso   ?? e.date;
-            for (let d = new Date(from + "T00:00:00"); isoDayLocal(d) <= to; d = addDays(d, 1)) {
+            for (let d = new Date(`${from}T00:00:00`); isoDayLocal(d) <= to; d.setDate(d.getDate() + 1)) {
                 const iso = isoDayLocal(d);
-                m.set(iso, (m.get(iso) ?? 0) + e.staff_ids.length);
+                (m.get(iso) ?? m.set(iso, []).get(iso)!).push(e);
             }
         }
+        // Stable order within a day — sick → vacation → training → other,
+        // then by staff name, so the two visible cards are deterministic.
+        const order: Record<BlockedTime["reason"], number> = { sick: 0, vacation: 1, training: 2, other: 3 };
+        for (const list of Array.from(m.values())) {
+            list.sort((a: BlockedTime, b: BlockedTime) =>
+                order[a.reason ?? "other"] - order[b.reason ?? "other"]
+                || (staffById.get(a.staff_ids[0])?.fullName ?? "").localeCompare(staffById.get(b.staff_ids[0])?.fullName ?? ""));
+        }
         return m;
-    }, [filteredEntries]);
+    }, [filteredEntries, staffById]);
 
-    /** Bar name — first assigned staff's full name + reason label.
-     *  If multiple staff, appended with "(+N)" so the demo reads
-     *  cleanly. */
-    function barLabel(e: BlockedTime): string {
+    /** Card main text — first staff's full name + "(+N)" when multiple. */
+    function staffLabel(e: BlockedTime): string {
         const firstName = staffById.get(e.staff_ids[0])?.fullName ?? "Staff";
         const extra = e.staff_ids.length > 1 ? ` (+${e.staff_ids.length - 1})` : "";
-        const title = e.title.trim() || (e.reason ? `${e.reason[0].toUpperCase()}${e.reason.slice(1)}` : "Off");
-        return `${firstName}${extra} · ${title}`;
+        return `${firstName}${extra}`;
     }
 
-    // Same rationale as ShiftsWeekView (audit round 4): the parent
-    // already frames the tab with a bordered rounded card, so we drop
-    // this component's own frame + `px-6` padding. Weeks now extend
-    // to the parent card's inner edges, matching the client's request
-    // that the horizontal separator lines "fill full width".
-    //
-    // Round 6 (2026-07-22): dropped `h-full` on the outer wrapper +
-    // `overflow-hidden` on the calendar wrapper. Those two capped the
-    // component's height at the parent card's height and clipped
-    // anything taller — so the 6-row × 7-col grid (~720 px tall) was
-    // getting chopped and the parent's `overflow-y-auto` never fired
-    // because MY wrapper wasn't actually overflowing. Now the wrapper
-    // takes natural height, the parent scrolls when content exceeds
-    // its viewport.
+    function openEdit(e: BlockedTime) {
+        router.push(editHref(e.id));
+    }
+
     return (
         <div className="flex flex-col">
-            {/* Month navigator lifted to the parent sub-tab row
-                (StaffPermissionsPage → TimeOffDateNav). */}
+            {/* Weekday header — same MON…SUN row as the schedule month view. */}
+            <div className="grid grid-cols-7 border-b border-[#e4e7ec] shrink-0">
+                {WEEKDAY_HEAD.map(d => (
+                    <div key={d} className="py-3 text-[11px] font-semibold text-[#667085] tracking-wider text-center">{d}</div>
+                ))}
+            </div>
 
-            {/* Calendar — flush, no inner frame, no height cap */}
-            <div>
-                {/* Weekday header */}
-                <div className="grid grid-cols-7 border-b border-[#e4e7ec] bg-[#fafbfa]">
-                    {WEEKDAY_HEAD.map(w => (
-                        <div key={w} className="px-3 py-2 text-[11px] font-semibold tracking-wide uppercase text-[#98a2b3]">
-                            {w}
-                        </div>
-                    ))}
-                </div>
-
-                {/* Weeks */}
-                {weeks.map((weekDays, wi) => {
-                    const bars = packBars(filteredEntries, weekDays);
-                    // Track the max level so the row grows tall enough to
-                    // fit every bar without overlapping the day-numbers.
-                    const barRows = bars.reduce((mx, b) => Math.max(mx, b.level + 1), 0);
-                    const BAR_ROW_HEIGHT = 22; // px per bar row
-                    const barsAreaHeight = Math.max(0, barRows * BAR_ROW_HEIGHT + (barRows > 0 ? 4 : 0));
+            {/* Calendar grid — 42 cells, same tile chrome as the schedule. */}
+            <div className="grid grid-cols-7">
+                {grid.map((day, i) => {
+                    const dayEntries: BlockedTime[] = day ? (entriesByDay.get(day.iso) ?? []) : [];
+                    const isToday = day?.iso === todayISO;
                     return (
-                        <div
-                            key={wi}
-                            className={cn("grid grid-cols-7 relative", wi < weeks.length - 1 && "border-b border-[#e4e7ec]")}
-                        >
-                            {/* Day cells — day number + optional overlap chip */}
-                            {weekDays.map(day => {
-                                const iso = isoDayLocal(day);
-                                const isOutsideMonth = day.getMonth() !== cursor.month;
-                                const isToday = iso === todayISO;
-                                const awayCount = staffAwayByDay.get(iso) ?? 0;
-                                const showOverlap = awayCount >= 2;
-                                return (
-                                    <div
-                                        key={iso}
-                                        className={cn(
-                                            "border-r border-[#e4e7ec] last:border-r-0 px-2 pt-2",
-                                            isOutsideMonth ? "bg-[#fafafa]" : "bg-white",
+                        <div key={i} className={cn("border-r border-b border-[#f2f4f7] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
+                            {day && (
+                                <>
+                                    {/* Date number — centered circle, today = sage fill. */}
+                                    <div className="flex justify-center mb-1.5">
+                                        <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold",
+                                            isToday ? "bg-[#658774] text-white" : "text-[#344054]")}>
+                                            {day.num}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        {dayEntries.slice(0, 2).map(e => (
+                                            <ScheduleClassCard key={e.id}
+                                                size="xs"
+                                                cls={{
+                                                    name: staffLabel(e),
+                                                    color: REASON_COLOR[e.reason ?? "other"],
+                                                    leadLabel: REASON_LABEL[e.reason ?? "other"],
+                                                    startTime: e.start_time || "00:00",
+                                                    instructorName: staffLabel(e),
+                                                    instructorInitials: "",
+                                                    instructorColor: REASON_COLOR[e.reason ?? "other"].border,
+                                                    booked: 0,
+                                                    capacity: 0,
+                                                }}
+                                                onClick={(ev) => { ev.stopPropagation(); openEdit(e); }}
+                                            />
+                                        ))}
+                                        {dayEntries.length > 2 && (
+                                            <ScheduleMorePill
+                                                count={dayEntries.length - 2}
+                                                onClick={(ev) => {
+                                                    ev.stopPropagation();
+                                                    setDayPopup({ iso: day.iso, entries: dayEntries, anchor: { x: ev.clientX, y: ev.clientY } });
+                                                }}
+                                            />
                                         )}
-                                        style={{ minHeight: 96 + barsAreaHeight }}
-                                    >
-                                        {/* Day number — turns amber + gets a
-                                            small AlertTriangle when ≥ 2 staff are
-                                            away that day. Bars already visualize
-                                            the overlap by stacking; the chip
-                                            (which used to render below the day
-                                            number) was colliding with the bar
-                                            area at `top: 34 + N * 22`, so we
-                                            collapsed the two signals into one
-                                            colored day number. Client 2026-07-22
-                                            audit. */}
-                                        <div className="flex items-center gap-1">
-                                            <span className={cn(
-                                                "text-[13px] font-semibold",
-                                                isOutsideMonth
-                                                    ? "text-[#d0d5dd]"
-                                                    : showOverlap
-                                                        ? "text-[#b54708]"
-                                                        : isToday
-                                                            ? "text-[#3b5446]"
-                                                            : "text-[#344054]",
-                                            )}>
-                                                {day.getDate()}
-                                            </span>
-                                            {showOverlap && !isOutsideMonth && (
-                                                <AlertTriangle className="w-3.5 h-3.5 text-[#b54708] shrink-0"
-                                                    aria-label={`${awayCount} staff away`} />
-                                            )}
-                                            {isToday && (
-                                                <span className="inline-flex items-center px-[8px] py-[1px] rounded-full text-[11px] font-medium border-1 bg-[#e7f2eb] border-[#c7e5d1] text-[#3b5446] whitespace-nowrap">
-                                                    Today
-                                                </span>
-                                            )}
-                                        </div>
                                     </div>
-                                );
-                            })}
-
-                            {/* Bars overlay — absolute-positioned inside the
-                                relative week grid. Each bar sits under the
-                                day number row, spanning grid columns
-                                proportionally. */}
-                            {bars.map((b, bi) => {
-                                const startPct = (b.startCol / 7) * 100;
-                                const widthPct = ((b.endCol - b.startCol + 1) / 7) * 100;
-                                const top = 34 + b.level * BAR_ROW_HEIGHT;
-                                const style = REASON_BAR_STYLE[b.entry.reason ?? "other"];
-                                return (
-                                    <div
-                                        key={`${b.entry.id}-${wi}-${bi}`}
-                                        className="absolute px-1"
-                                        style={{
-                                            top,
-                                            left:  `calc(${startPct}% + 4px)`,
-                                            width: `calc(${widthPct}% - 8px)`,
-                                        }}
-                                    >
-                                        <div
-                                            className={cn(
-                                                "flex items-center gap-1 px-2 h-[18px] rounded-full border-1 text-[11px] font-medium whitespace-nowrap overflow-hidden",
-                                                style,
-                                            )}
-                                            title={barLabel(b.entry)}
-                                        >
-                                            {b.continuesLeft && <span aria-hidden>→</span>}
-                                            <span className="truncate">
-                                                {barLabel(b.entry)}
-                                            </span>
-                                            {b.continuesRight && <span className="ml-auto" aria-hidden>→</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                </>
+                            )}
                         </div>
                     );
                 })}
             </div>
+
+            {dayPopup && (
+                <DayTimeOffPopup
+                    dateISO={dayPopup.iso}
+                    entries={dayPopup.entries}
+                    anchor={dayPopup.anchor}
+                    staffLabel={staffLabel}
+                    onClose={() => setDayPopup(null)}
+                    onPick={openEdit}
+                />
+            )}
         </div>
     );
 }

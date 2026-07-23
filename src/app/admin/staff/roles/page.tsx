@@ -10,8 +10,15 @@
 // archive / deactivate / delete) still flows through the same code path
 // as the staff route.
 
+import { Suspense } from "react";
 import { StaffPermissionsPage } from "@/components/staff/StaffPermissionsPage";
 
 export default function RolesPermissionsRoute() {
-    return <StaffPermissionsPage forceTab="roles" />;
+    // Suspense boundary required now that StaffPermissionsPage reads
+    // useSearchParams() for sub-tab deep-linking.
+    return (
+        <Suspense fallback={null}>
+            <StaffPermissionsPage forceTab="roles" />
+        </Suspense>
+    );
 }

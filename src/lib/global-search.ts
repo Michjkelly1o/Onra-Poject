@@ -93,9 +93,9 @@ const PAGES: PageEntry[] = [
     // Staff group — Sidebar parent is Users01; Pay rate + Payroll keep
     // money-specific glyphs (CoinsHand / CreditCard02) so they're
     // distinguishable at a glance.
-    { title: "Role & permissions",     href: "/admin/staff/roles",                icon: Users01 },
+    { title: "Roles & permissions",    href: "/admin/staff/roles",                icon: Users01 },
     { title: "Staff & shift",          href: "/admin/staff",                      icon: Users01 },
-    { title: "Pay rate",               href: "/admin/staff/pay-rate",             icon: CoinsHand },
+    { title: "Pay rates",              href: "/admin/staff/pay-rate",             icon: CoinsHand },
     { title: "Payroll",                href: "/admin/compensation",               icon: CreditCard02 },
     // Notifications top-level
     { title: "Notifications",          href: "/admin/notifications",              icon: Bell01 },

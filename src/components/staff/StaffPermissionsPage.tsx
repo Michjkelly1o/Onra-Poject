@@ -24,7 +24,7 @@
 // State source of truth: useAppStore(s => s.roles) + useAppStore(s => s.staff).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronRight, ChevronDown,
     MarkerPin01, FilterLines, XClose, Eye, Edit02, Archive, Trash01,
@@ -548,12 +548,6 @@ const MONTH_LABELS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-/** Local yyyy-mm-dd for a Date. */
-function fmtDayLocal(d: Date): string {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-void fmtDayLocal;
-
 /** "20 – 26 Jul 2026" / "27 Jul – 2 Aug 2026". */
 function weekRangeLabel(start: Date): string {
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
@@ -763,7 +757,13 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const showToast        = useAppStore(s => s.showToast);
 
     const [tab, setTab] = useState<TabId>(forceTab ?? "roles");
-    const [staffSubTab, setStaffSubTab] = useState<StaffSubTab>("staff");
+    const searchParams = useSearchParams();
+    // Deep-link back to a specific sub-tab (e.g. edit-time-off Back → Time off).
+    const initialSubTab = ((): StaffSubTab => {
+        const v = searchParams?.get("subtab");
+        return v === "shift-management" || v === "blocked-time" || v === "staff" ? v : "staff";
+    })();
+    const [staffSubTab, setStaffSubTab] = useState<StaffSubTab>(initialSubTab);
     /** Shift management's filter applies the green dot to the toolbar
      *  Filter button. Lifted up so the existing toolbar code path can
      *  read it without re-subscribing inside the table component. */
@@ -1259,8 +1259,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     variant={forceTab === "roles" ? "role-only" : forceTab === "staff" ? "staff-only" : "combined"}
                     onAddRole={handleAddRole}
                     onAddStaff={handleAddStaff}
-                    onAddShift={() => router.push(`/staff/shifts/new?returnTo=${encodeURIComponent(returnTo)}`)}
-                    onAddBlockedTime={() => router.push(`/staff/blocked-time/new?returnTo=${encodeURIComponent(returnTo)}`)}
+                    onAddShift={() => router.push(`/staff/shifts/new?returnTo=${encodeURIComponent("/admin/staff?subtab=shift-management")}`)}
+                    onAddBlockedTime={() => router.push(`/staff/blocked-time/new?returnTo=${encodeURIComponent("/admin/staff?subtab=blocked-time")}`)}
                 />
             </div>
 

@@ -23,10 +23,15 @@
 // EVERYTHING renders read-only. Click behaviors (jump to edit) land in
 // a follow-up so the read-only surface is stable first.
 
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "@untitledui/icons";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { useAppStore, type Staff, type Shift, type ShiftAssignment, type BlockedTime, type ClassSchedule } from "@/lib/store";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import { DotsVertical, ClockPlus, RefreshCcw01, Trash01, SearchLg, Eye } from "@untitledui/icons";
+import { Modal } from "@/components/modals/Modal";
+import { Button } from "@/components/ui/button";
+import { useAppStore, type Staff, type Shift, type ShiftAssignment } from "@/lib/store";
+import { findShiftConflict } from "@/lib/staff/shift-conflict";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
 //
@@ -55,22 +60,24 @@ function addDays(d: Date, n: number): Date {
 }
 
 const WEEKDAY_HEAD = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-const MONTH_SHORT_LABEL = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** Range header text — "20 – 26 Jul 2026". Same-month collapses; a
- *  cross-month week reads "27 Jul – 2 Aug 2026". */
-function weekRangeLabel(start: Date): string {
-    const end = addDays(start, 6);
-    const y = end.getFullYear();
-    if (start.getMonth() === end.getMonth()) {
-        return `${start.getDate()} – ${end.getDate()} ${MONTH_SHORT_LABEL[end.getMonth()]} ${y}`;
-    }
-    return `${start.getDate()} ${MONTH_SHORT_LABEL[start.getMonth()]} – ${end.getDate()} ${MONTH_SHORT_LABEL[end.getMonth()]} ${y}`;
+/** "07:00" → "07:00 AM"; "12:00" → "12:00 PM". */
+function to12h(hhmm: string): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const period = h < 12 ? "AM" : "PM";
+    const hr = h % 12 === 0 ? 12 : h % 12;
+    return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-function toHour(hhmm: string): string {
-    return hhmm.split(":")[0];
+/** Range label from a 7-bit [Sun..Sat] working-days array → "Monday - Saturday". */
+function workingDaysLabel(days: boolean[]): string {
+    const NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const on = days.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
+    if (on.length === 0) return "No days";
+    if (on.length === 1) return NAMES[on[0]];
+    return `${NAMES[on[0]]} - ${NAMES[on[on.length - 1]]}`;
 }
+
 
 /** JS getDay() index (0=Sun..6=Sat) for the passed Date. Matches the
  *  seed's 7-bit `days_of_week` layout, so a booleanArray[getDay()]
@@ -82,41 +89,257 @@ function jsDayIndex(d: Date): number {
 // ─── Cell content chips ──────────────────────────────────────────────────
 
 /** Shift bar — mint pill, same tone as the directory chip. */
-function ShiftBar({ label }: { label: string }) {
-    return (
-        <span className="inline-flex items-center px-2 py-[1px] rounded-full text-[11px] font-semibold bg-[#f0faf3] border-1 border-[#c7e5d1] text-[#3b5446] whitespace-nowrap max-w-full truncate"
-            title={label}>
-            {label}
-        </span>
-    );
+/** Shift palette — Morning (green) / Afternoon (blue) / Evening (purple),
+ *  matching the shift-picker chips. Falls back to green by name, else by
+ *  index so any custom shift still reads as a distinct colour. */
+const SHIFT_PALETTE = [
+    { stripe: "#7ba08c", bg: "#f0faf3", border: "#dcefe3", name: "#101828", time: "#667085" }, // green
+    { stripe: "#7cb9d6", bg: "#eef8fc", border: "#d8eef7", name: "#101828", time: "#667085" }, // blue
+    { stripe: "#b89bd0", bg: "#f6f1fb", border: "#eaddf5", name: "#101828", time: "#667085" }, // purple
+];
+function shiftPalette(shift: Shift, index: number) {
+    const n = shift.name.toLowerCase();
+    if (n.includes("morning")) return SHIFT_PALETTE[0];
+    if (n.includes("afternoon")) return SHIFT_PALETTE[1];
+    if (n.includes("evening")) return SHIFT_PALETTE[2];
+    return SHIFT_PALETTE[index % SHIFT_PALETTE.length];
 }
 
-/** Class dot line — small green bullet + "HH:MM Name" text.
- *  `min-w-0` on the flex row lets the text truncate cleanly instead of
- *  overflowing into the neighboring day column. */
-function ClassDot({ time, name }: { time: string; name: string }) {
+/** Shift card — reuses the schedule class-card visual language: a coloured
+ *  left stripe, tinted body, shift name + time range. */
+function ShiftCard({ shift, index }: { shift: Shift; index: number }) {
+    const c = shiftPalette(shift, index);
+    const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
     return (
-        <p className="flex items-center gap-1 text-[10px] leading-[14px] text-[#475467] min-w-0" title={`${time} ${name}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#7ba08c] shrink-0" aria-hidden />
-            <span className="truncate min-w-0">{time} {name}</span>
-        </p>
-    );
-}
-
-/** Time off stripe — amber pill with a diagonal-line background so the
- *  "away" signal reads distinct from a shift bar (mint) at a glance. */
-function TimeOffStripe({ label }: { label: string }) {
-    return (
-        <span
-            className="inline-flex items-center px-2 py-[1px] rounded-full text-[11px] font-semibold text-[#b54708] border-1 border-[#fecc85] whitespace-nowrap max-w-full truncate"
-            style={{
-                backgroundImage:
-                    "repeating-linear-gradient(-45deg, #fef4e1 0px, #fef4e1 6px, #fde5b8 6px, #fde5b8 12px)",
-            }}
-            title={label}
+        <div
+            className="relative w-full overflow-hidden rounded-[8px] border pl-[10px] pr-2 py-1.5"
+            style={{ backgroundColor: c.bg, borderColor: c.border }}
+            title={`${shift.name} · ${time}`}
         >
-            {label}
-        </span>
+            <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[8px]" style={{ backgroundColor: c.stripe }} aria-hidden />
+            <p className="truncate text-[12px] font-semibold leading-4" style={{ color: c.name }}>{shift.name}</p>
+            <p className="truncate text-[11px] leading-4" style={{ color: c.time }}>{time}</p>
+        </div>
+    );
+}
+
+// ─── Per-staff shift action menu (3-dot → action list → shift picker) ────────
+
+/** Small shift chip used inside the picker list (Figma: coloured stripe +
+ *  name + "Mon - Sat • 07:00 AM - 12:00 AM"). */
+function PickerShiftRow({ shift, index, onPick }: { shift: Shift; index: number; onPick: () => void }) {
+    const c = shiftPalette(shift, index);
+    const dayLabel = workingDaysLabel(shift.working_days);
+    const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
+    return (
+        <button
+            type="button"
+            onClick={onPick}
+            className="relative w-full overflow-hidden rounded-[10px] border px-3 py-2.5 text-left transition-colors hover:brightness-[0.98]"
+            style={{ backgroundColor: c.bg, borderColor: c.border }}
+        >
+            <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[10px]" style={{ backgroundColor: c.stripe }} aria-hidden />
+            <p className="pl-1 text-[14px] font-semibold leading-5 text-[#101828]">{shift.name}</p>
+            <p className="pl-1 text-[12px] leading-4 text-[#667085]">{dayLabel} • {time}</p>
+        </button>
+    );
+}
+
+/** 3-dot menu anchored to a staff row. Portalled + fixed-positioned so it
+ *  escapes the grid's overflow. Two side-by-side panels: the action list, and
+ *  (on Assign / Change) the searchable shift picker. */
+function StaffShiftMenu({
+    isInstructor,
+    hasShift,
+    assignedShiftIds,
+    staffBranchId,
+    shifts,
+    onAssign,
+    onUnassign,
+    onViewSchedule,
+}: {
+    isInstructor: boolean;
+    hasShift: boolean;
+    /** Shift ids the staff already holds — excluded from the Assign picker so
+     *  every pick adds a NEW shift (staff can hold multiple). */
+    assignedShiftIds: Set<string>;
+    /** The staff member's home branch. The Assign picker only offers shifts
+     *  from THIS branch — shifts are per-branch, so a South staffer can't be
+     *  put on a North shift. `null` (all-branch personas like Owner) lifts the
+     *  constraint. Mirrors AssignStaffModal, which scopes the reverse direction
+     *  by `staff.branchId === shift.branch_id`. */
+    staffBranchId: string | null;
+    shifts: Shift[];
+    onAssign: (shiftId: string) => void;
+    onUnassign: () => void;
+    onViewSchedule: () => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [picker, setPicker] = useState(false);
+    const [query, setQuery] = useState("");
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const popRef = useRef<HTMLDivElement>(null);
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+    useEffect(() => {
+        if (!open) { setPicker(false); setQuery(""); return; }
+        const r = btnRef.current?.getBoundingClientRect();
+        if (r) setPos({ top: r.bottom + 4, left: r.left });
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        const onDoc = (e: MouseEvent) => {
+            if (popRef.current?.contains(e.target as Node) || btnRef.current?.contains(e.target as Node)) return;
+            setOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+        document.addEventListener("mousedown", onDoc);
+        document.addEventListener("keydown", onKey);
+        return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+    }, [open]);
+
+    // Assign picker only offers ACTIVE shifts, from the staff member's OWN
+    // branch, that they do NOT already hold:
+    //   • status === "active"  — mirrors the list-view row menu, which hides
+    //     "Assign staff" on inactive/archived shifts (ShiftManagementTab).
+    //   • branch match          — shifts are per-branch; a staffer can only be
+    //     put on a shift at their own branch (null branch = no constraint).
+    //   • not already assigned  — every pick adds a NEW shift.
+    const branchActive = shifts.filter(sh =>
+        sh.status === "active" && (staffBranchId == null || sh.branch_id === staffBranchId),
+    );
+    const available = branchActive.filter(sh => !assignedShiftIds.has(sh.id));
+    const q = query.trim().toLowerCase();
+    const filtered = q ? available.filter(sh => sh.name.toLowerCase().includes(q)) : available;
+
+    return (
+        <>
+            <button
+                ref={btnRef}
+                type="button"
+                aria-label="Staff shift actions"
+                onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                className={cn(
+                    "shrink-0 flex size-6 items-center justify-center rounded-md text-[#667085] transition-colors",
+                    "opacity-0 group-hover:opacity-100 hover:bg-[#f2f4f7]",
+                    open && "opacity-100 bg-[#f2f4f7]",
+                )}
+            >
+                <DotsVertical className="size-4" />
+            </button>
+
+            {open && pos && createPortal(
+                <div ref={popRef} className="fixed z-[80] flex items-start gap-3" style={{ top: pos.top, left: pos.left }}>
+                    {/* Action list */}
+                    <div className="w-[220px] rounded-[12px] border border-[#e4e7ec] bg-white p-1.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+                        {/* View schedule — instructors only (they have classes to view). */}
+                        {isInstructor && (
+                            <button type="button" onClick={() => { setOpen(false); onViewSchedule(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb]">
+                                <Eye className="size-4 text-[#667085]" /> View schedule
+                            </button>
+                        )}
+                        {/* Assign shift — always available; adds another shift. */}
+                        <button type="button" onClick={() => setPicker(true)} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb]">
+                            <ClockPlus className="size-4 text-[#667085]" /> Assign shift
+                        </button>
+                        {/* Unassign — only when the staff holds a shift. */}
+                        {hasShift && (
+                            <button type="button" onClick={() => { setOpen(false); onUnassign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb]">
+                                <Trash01 className="size-4 text-[#667085]" /> Unassign shift
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Shift picker */}
+                    {picker && (
+                        <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-[12px] border border-[#e4e7ec] bg-white p-3 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+                            <div className="mb-3 flex items-center gap-2 rounded-[8px] border border-[#d0d5dd] px-3 py-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                <SearchLg className="size-4 shrink-0 text-[#667085]" />
+                                <input
+                                    autoFocus
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Search..."
+                                    className="min-w-0 flex-1 bg-transparent text-[14px] text-[#101828] outline-none placeholder:text-[#667085]"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2.5">
+                                {filtered.length === 0 ? (
+                                    <p className="px-1 py-4 text-center text-[13px] text-[#98a2b3]">
+                                        {available.length > 0
+                                            ? "No shifts found."
+                                            : branchActive.length === 0
+                                                ? "No active shifts at this branch."
+                                                : "All shifts already assigned."}
+                                    </p>
+                                ) : filtered.map((sh, i) => (
+                                    <PickerShiftRow key={sh.id} shift={sh} index={i} onPick={() => { setOpen(false); onAssign(sh.id); }} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>,
+                document.body,
+            )}
+        </>
+    );
+}
+
+/** Unassign modal — lists the staff member's assigned shifts so the admin can
+ *  remove one at a time, plus an "Unassign all shifts" action. */
+function UnassignShiftsModal({
+    open,
+    onClose,
+    staffName,
+    rows,
+    onUnassignOne,
+    onUnassignAll,
+}: {
+    open: boolean;
+    onClose: () => void;
+    staffName: string;
+    rows: { assignmentId: string; shift: Shift; index: number }[];
+    onUnassignOne: (assignmentId: string) => void;
+    onUnassignAll: () => void;
+}) {
+    return (
+        <Modal open={open} onClose={onClose} maxWidth={480}>
+            <Modal.Header title="Unassign shift" subtitle={`Select a shift to remove from ${staffName}.`} onClose={onClose} />
+            <div className="flex flex-col gap-2.5 px-6 py-2 max-h-[360px] overflow-y-auto">
+                {rows.length === 0 ? (
+                    <p className="py-6 text-center text-[13px] text-[#98a2b3]">No shifts assigned.</p>
+                ) : rows.map(({ assignmentId, shift, index }) => {
+                    const c = shiftPalette(shift, index);
+                    const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
+                    return (
+                        <div
+                            key={assignmentId}
+                            className="relative flex items-center gap-3 overflow-hidden rounded-[10px] border px-3 py-2.5"
+                            style={{ backgroundColor: c.bg, borderColor: c.border }}
+                        >
+                            <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[10px]" style={{ backgroundColor: c.stripe }} aria-hidden />
+                            <div className="min-w-0 flex-1 pl-1">
+                                <p className="truncate text-[14px] font-semibold leading-5 text-[#101828]">{shift.name}</p>
+                                <p className="truncate text-[12px] leading-4 text-[#667085]">{workingDaysLabel(shift.working_days)} • {time}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => onUnassignOne(assignmentId)}
+                                aria-label={`Unassign ${shift.name}`}
+                                className="shrink-0 flex size-8 items-center justify-center rounded-[8px] text-[#98a2b3] transition-colors hover:bg-white/70 hover:text-[#b42318]"
+                            >
+                                <Trash01 className="size-4" />
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+            <Modal.Footer layout="full" className="pt-4">
+                <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
+                <Button variant="destructive" size="md" onClick={onUnassignAll} disabled={rows.length === 0}>Unassign all shifts</Button>
+            </Modal.Footer>
+        </Modal>
     );
 }
 
@@ -138,11 +361,15 @@ interface ShiftsWeekViewProps {
 
 export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
+    const router = useRouter();
+    const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
+    const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
+    const showToast             = useAppStore(s => s.showToast);
+    // Unassign confirmation target — { assignmentId, staffName }.
+    const [unassignTarget, setUnassignTarget] = useState<{ staffId: string; staffName: string } | null>(null);
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
-    const blockedTimes     = useAppStore(s => s.blockedTimes);
-    const classSchedules   = useAppStore(s => s.classSchedules);
 
     // Falls back to this Monday when the parent doesn't provide one.
     const weekStart = externalWeekStart ?? mondayOfWeek(new Date());
@@ -221,23 +448,32 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
         return out;
     }
 
-    /** Classes this instructor teaches on the given day. */
-    function classesForStaffOnDay(staffId: string, day: Date): ClassSchedule[] {
-        const iso = isoDayLocal(day);
-        return classSchedules
-            .filter(c => c.dateISO === iso && c.instructorId === staffId)
-            .sort((a, b) => a.startTime.localeCompare(b.startTime));
-    }
-
-    /** Time off entries that INCLUDE the given day + include this staff. */
-    function timeOffForStaffOnDay(staffId: string, day: Date): BlockedTime[] {
-        const iso = isoDayLocal(day);
-        return blockedTimes.filter(bt => {
-            if (!bt.staff_ids.includes(staffId)) return false;
-            const from = bt.date_from_iso ?? bt.date;
-            const to   = bt.date_to_iso   ?? bt.date;
-            return iso >= from && iso <= to;
-        });
+    /** Assign `shiftId` to `staff` — but first guard against a same-day time
+     *  overlap with any shift they already hold. A staff member can hold
+     *  multiple shifts, but not two that collide on the same weekday and
+     *  clock time (that would be a double-booking). On conflict we surface an
+     *  error toast naming the clash and skip the assignment; otherwise we add
+     *  it and confirm with a success toast (Build Convention 4 — every action
+     *  emits a toast). */
+    function assignShiftToStaff(staffMember: Staff, shiftId: string) {
+        const newShift = shiftsById.get(shiftId);
+        if (!newShift) return;
+        const mine = assignmentsByStaff.get(staffMember.id) ?? [];
+        const clash = findShiftConflict(newShift, mine, (id) => shiftsById.get(id));
+        if (clash) {
+            showToast(
+                "Shift conflict",
+                `${staffMember.fullName} is already on ${clash.name}, which overlaps ${newShift.name}.`,
+                "error", "alert",
+            );
+            return;
+        }
+        addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id });
+        showToast(
+            "Shift assigned",
+            `${newShift.name} assigned to ${staffMember.fullName}.`,
+            "success", "check",
+        );
     }
 
     // ── Render ────────────────────────────────────────────────────────────
@@ -264,28 +500,44 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                 overflow wrapper so its content extends to the parent
                 card's inner edges even when the grid's `1fr` tracks
                 don't push a natural content width. */}
-            <div className="overflow-x-auto w-full">
+            {/* No inner scroll wrapper — the 7 day columns are minmax(0,1fr)
+                so the grid never overflows horizontally, and vertical scroll
+                is owned by the parent card's scroll container. This lets the
+                header row below `sticky top-0` pin to that parent scroller
+                (same behavior as /admin/schedule), instead of pinning to a
+                nested scroller that would itself scroll out of view. */}
+            <div className="w-full">
                 {/* Column header row — sticky left rail + 7 day columns */}
-                <div className="grid w-full" style={{ gridTemplateColumns: "minmax(180px, 200px) repeat(7, minmax(0, 1fr))" }}>
-                    <div className="border-b border-[#e4e7ec] bg-[#fafbfa] px-4 py-3 text-[12px] font-semibold tracking-wide uppercase text-[#98a2b3]">
-                        Staff
-                    </div>
+                <div className="grid w-full sticky top-0 z-30 bg-white" style={{ gridTemplateColumns: "minmax(180px, 200px) repeat(7, minmax(0, 1fr))" }}>
+                    {/* Left header cell — empty (no "Staff" label, no bg), matching
+                        the Schedule module week header. Sticky so it stays put on
+                        horizontal scroll. */}
+                    <div className="sticky left-0 top-0 z-40 bg-white border-b border-[#e4e7ec] px-4 py-3" />
                     {days.map((d, i) => {
                         const dateISO = isoDayLocal(d);
                         const isToday = dateISO === todayISO;
+                        // Schedule module week-header style: centred day-of-week
+                        // over a date circle; today gets the brand-green circle.
                         return (
-                            <div key={dateISO} className="border-b border-l border-[#e4e7ec] bg-[#fafbfa] px-3 py-3 flex flex-col items-start gap-0.5">
-                                <span className={cn(
-                                    "text-[11px] font-semibold tracking-wide uppercase",
-                                    isToday ? "text-[#3b5446]" : "text-[#98a2b3]",
-                                )}>
-                                    {WEEKDAY_HEAD[i]} {d.getDate()}
-                                </span>
-                                {isToday && (
-                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#e7f2eb] border-[#c7e5d1] text-[#3b5446] whitespace-nowrap">
-                                        Today
-                                    </span>
+                            <div
+                                key={dateISO}
+                                className={cn(
+                                    "border-b border-l border-[#e4e7ec] px-3 py-3 flex flex-col items-center bg-white",
+                                    isToday && "bg-[#f5fffa]",
                                 )}
+                            >
+                                <p className={cn(
+                                    "text-[11px] font-semibold uppercase tracking-wider",
+                                    isToday ? "text-[#658774]" : "text-[#667085]",
+                                )}>
+                                    {WEEKDAY_HEAD[i]}
+                                </p>
+                                <div className={cn(
+                                    "w-8 h-8 rounded-full flex items-center justify-center text-[16px] font-semibold mt-0.5",
+                                    isToday ? "bg-[#658774] text-white" : "text-[#101828]",
+                                )}>
+                                    {d.getDate()}
+                                </div>
                             </div>
                         );
                     })}
@@ -301,7 +553,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                         {/* Section header is a plain full-width div, not a
                             grid — no need to wrap in a grid just to span
                             all columns. */}
-                        <div className="w-full px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-[#98a2b3] bg-[#fafafa] border-b border-[#e4e7ec]">
+                        <div className="sticky left-0 z-10 w-full px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-[#98a2b3] bg-[#fafafa] border-b border-[#e4e7ec]">
                             {g.title}
                         </div>
                         {g.rows.length === 0 ? (
@@ -317,8 +569,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                                 >
                                     {/* Left rail — avatar + name + (specialty
                                         subtitle for instructors, role subtitle
-                                        for ops). */}
-                                    <div className="px-4 py-3 flex items-center gap-3 bg-white">
+                                        for ops) + hover 3-dot menu. */}
+                                    <div className="group sticky left-0 z-10 px-4 py-3 flex items-center gap-3 bg-white">
                                         {s.imageUrl ? (
                                             <img src={s.imageUrl} alt={s.fullName}
                                                 className="w-8 h-8 rounded-full object-cover shrink-0" />
@@ -328,7 +580,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                                                 {s.initials}
                                             </div>
                                         )}
-                                        <div className="flex flex-col min-w-0">
+                                        <div className="flex flex-1 min-w-0 flex-col">
                                             <span className="text-[13px] font-semibold text-[#101828] truncate">{s.fullName}</span>
                                             {/* Subtitle — role name for ops
                                                 staff; comma-joined specialties
@@ -350,42 +602,38 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                                                     : null;
                                             })()}
                                         </div>
+                                        {(() => {
+                                            const myAssignments = shiftAssignments.filter(a => a.staff_id === s.id);
+                                            const assignedShiftIds = new Set(myAssignments.map(a => a.shift_id));
+                                            const isInstructor = roleTypeById.get(s.roleId) === "instructor";
+                                            return (
+                                                <StaffShiftMenu
+                                                    isInstructor={isInstructor}
+                                                    hasShift={myAssignments.length > 0}
+                                                    assignedShiftIds={assignedShiftIds}
+                                                    staffBranchId={s.branchId}
+                                                    shifts={shifts}
+                                                    onAssign={(shiftId) => assignShiftToStaff(s, shiftId)}
+                                                    onUnassign={() => setUnassignTarget({ staffId: s.id, staffName: s.fullName })}
+                                                    onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}`)}
+                                                />
+                                            );
+                                        })()}
                                     </div>
                                     {/* Day cells */}
                                     {days.map(day => {
-                                        const dayShifts   = shiftsForStaffOnDay(s.id, day);
-                                        const dayClasses  = classesForStaffOnDay(s.id, day);
-                                        const dayTimeOff  = timeOffForStaffOnDay(s.id, day);
-                                        const hasAnything = dayShifts.length > 0 || dayClasses.length > 0 || dayTimeOff.length > 0;
+                                        // Week view shows SHIFTS ONLY (client
+                                        // 2026-07-23) — class schedules + time off
+                                        // are viewed via the "View schedule" action.
+                                        const dayShifts = shiftsForStaffOnDay(s.id, day);
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
                                                 className="px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
-                                                {/* Shift bars */}
-                                                {dayShifts.map(({ shift, assignment }) => (
-                                                    <div key={assignment.id} className="flex justify-start">
-                                                        <ShiftBar label={`${toHour(shift.start_time)}-${toHour(shift.end_time)}`} />
-                                                    </div>
+                                                {dayShifts.map(({ shift, assignment }, si) => (
+                                                    <ShiftCard key={assignment.id} shift={shift} index={si} />
                                                 ))}
-                                                {/* Time off stripes */}
-                                                {dayTimeOff.map(bt => {
-                                                    const label = bt.all_day
-                                                        ? "All day"
-                                                        : `${toHour(bt.start_time)}-${toHour(bt.end_time)} ${bt.title || bt.note || "Off"}`;
-                                                    return (
-                                                        <div key={bt.id} className="flex justify-start">
-                                                            <TimeOffStripe label={label} />
-                                                        </div>
-                                                    );
-                                                })}
-                                                {/* Class dots — instructor's classes on this day */}
-                                                {dayClasses.map(c => (
-                                                    <ClassDot key={c.id} time={c.startTime} name={c.name} />
-                                                ))}
-                                                {!hasAnything && (
-                                                    <span className="text-[11px] text-[#d0d5dd]">—</span>
-                                                )}
                                             </div>
                                         );
                                     })}
@@ -395,6 +643,31 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                     </div>
                 ))}
             </div>
+
+            {/* Unassign — lists the staff's shifts to remove one, or all. */}
+            <UnassignShiftsModal
+                open={!!unassignTarget}
+                onClose={() => setUnassignTarget(null)}
+                staffName={unassignTarget?.staffName ?? ""}
+                rows={
+                    unassignTarget
+                        ? shiftAssignments
+                              .filter(a => a.staff_id === unassignTarget.staffId)
+                              .map((a, i) => ({ assignmentId: a.id, shift: shifts.find(sh => sh.id === a.shift_id)!, index: i }))
+                              .filter(r => r.shift)
+                        : []
+                }
+                onUnassignOne={(assignmentId) => {
+                    removeShiftAssignment(assignmentId);
+                    // Close if that was the last one.
+                    const left = shiftAssignments.filter(a => a.staff_id === unassignTarget?.staffId && a.id !== assignmentId);
+                    if (left.length === 0) setUnassignTarget(null);
+                }}
+                onUnassignAll={() => {
+                    if (unassignTarget) shiftAssignments.filter(a => a.staff_id === unassignTarget.staffId).forEach(a => removeShiftAssignment(a.id));
+                    setUnassignTarget(null);
+                }}
+            />
         </div>
     );
 }
