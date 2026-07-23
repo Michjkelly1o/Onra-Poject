@@ -766,7 +766,6 @@ export function ChatThread({
                     {
                         id: "__global_branch",
                         label: "Global — apply to branches later",
-                        subtitle: "For records like tax rates that are set on the admin side after import.",
                     },
                     // "+ Add new branch" sits LAST — a create-new action per
                     // client 2026-07-24 review; the branch picks + Global

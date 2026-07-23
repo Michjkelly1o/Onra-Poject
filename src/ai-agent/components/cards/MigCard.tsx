@@ -384,7 +384,49 @@ function MappingIntroBubble({
 // Figma 214:258065. The bubble carries the friendly recap + Download
 // pre-import report affordance; the panel underneath renders the count
 // tiles and the mapped/skipped field breakdown that shipped in Phase 4.
-function MappingSummaryBubble({ step }: { step: number }) {
+function MappingSummaryBubble({
+    step,
+    data,
+}: {
+    step: number;
+    data: Extract<MigrationCard, { card: "mapping_summary" }>;
+}) {
+    // Client 2026-07-24 — the "Download pre-import report" link was a
+    // visual stub in Phase 4. It now generates a CSV summarising the
+    // mapping run (counts + every incoming column ↔ Onra field) and
+    // triggers a browser download. No server round-trip, no persisted
+    // artefact — the report is built from the tool result already in
+    // memory.
+    const csvEscape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const handleDownload = () => {
+        const lines: string[] = [];
+        lines.push("Section,Metric,Value");
+        lines.push(`Summary,Entity,${csvEscape(labelOf(data.entity))}`);
+        lines.push(`Summary,Total rows,${data.totals.total}`);
+        lines.push(`Summary,Valid rows,${data.totals.valid}`);
+        lines.push(`Summary,Invalid rows,${data.totals.invalid}`);
+        lines.push(`Summary,Duplicate rows,${data.totals.duplicate}`);
+        lines.push("");
+        lines.push("Section,Incoming field,Onra field");
+        for (const f of data.fields) {
+            lines.push(
+                `Mapping,${csvEscape(f.source)},${csvEscape(f.target ?? "Skipped this column")}`,
+            );
+        }
+        const csv = lines.join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        // Stable, human-readable filename — includes the entity so
+        // testers can tell reports apart when they run several imports
+        // back to back.
+        a.download = `pre-import-report-${data.entity}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
     return (
         <div
             className={cn(
@@ -405,12 +447,9 @@ function MappingSummaryBubble({ step }: { step: number }) {
                     </p>
                 </div>
             </div>
-            {/* Download link — client 2026-07-23 wanted this as a visual
-                affordance in the summary bubble. The report itself is
-                out of scope for this UI phase; the CSV export lands in
-                a follow-up alongside the fullscreen import loader. */}
             <button
                 type="button"
+                onClick={handleDownload}
                 className="self-start inline-flex items-center gap-1.5 text-[14px] font-semibold leading-5 text-[#475467] hover:text-[#344054] transition-colors"
             >
                 <Download01 className="size-5 shrink-0" />
@@ -817,7 +856,7 @@ export function MigCard({
         // land in Onra. Action buttons live above the composer per Rule 5.
         return (
             <div className="flex flex-col gap-4">
-                <MappingSummaryBubble step={data.step} />
+                <MappingSummaryBubble step={data.step} data={data} />
                 <MappingSummaryPanel data={data} />
             </div>
         );
