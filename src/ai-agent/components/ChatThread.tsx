@@ -609,11 +609,21 @@ export function ChatThread({
         return ti.result as Extract<MigrationCard, { card: "column_mapping" }>;
     })();
 
+    // Phase 5 — fullscreen "Checking & importing data…" screen. Flipped on
+    // when the user picks "Yes, start import" from the Step-4 chips, and
+    // cleared as soon as the model stops streaming. This gives us a clean
+    // takeover of the message list from the moment the user commits until
+    // commit_import lands (or errors), without wrestling with per-tool
+    // invocation state that the AI SDK doesn't expose cleanly.
+    const [isCommitInFlight, setIsCommitInFlight] = useState(false);
+    useEffect(() => {
+        if (!isBusy) setIsCommitInFlight(false);
+    }, [isBusy]);
+
     // Step-4 mapping_summary chips — mirrors pendingMapping but for the
     // Yes/No import-confirmation moment. Only one of the two panels is ever
-    // visible at once (Step 3 vs Step 4). The commit flow lives in Phase 5;
-    // for now "Yes, start import" sends the confirmation message and the
-    // AI calls commit_import as it does today.
+    // visible at once (Step 3 vs Step 4). When user picks Yes we also flip
+    // the fullscreen loader on so it covers the commit_import round-trip.
     const pendingSummary = (() => {
         if (isBusy) return null;
         if (mode !== "migration") return null;
@@ -678,6 +688,16 @@ export function ChatThread({
                         <InsightEmptyState onSend={send} composer={composerNode} query={input} />
                     )}
                 </div>
+            ) : isCommitInFlight ? (
+                // Migration commit round-trip — replace the whole content
+                // area with the fullscreen "Checking & importing data…"
+                // takeover per client 2026-07-23 review of Flow A image 22.
+                // The composer + chip panels also drop out (see the
+                // `!empty && !isCommitInFlight` guard on the composer block
+                // below) so the user can't queue a second message mid-flight.
+                <div className="flex-1 min-h-0 flex items-center justify-center">
+                    <ImportingScreen />
+                </div>
             ) : (
                 <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                     <div className="w-full max-w-[720px] mx-auto px-6 py-8 flex flex-col gap-6">
@@ -722,8 +742,10 @@ export function ChatThread({
                 720px chat column (client 2026-07-23) so the input aligns with
                 the message list instead of spanning the full canvas. When the
                 agent has asked a question, its options panel floats directly
-                above the input, matching the same width. */}
-            {!empty && (
+                above the input, matching the same width. Hidden during the
+                Phase-5 commit takeover so the user can't queue a second
+                message while the loader is up. */}
+            {!empty && !isCommitInFlight && (
                 <div className="shrink-0 bg-transparent">
                     {pendingQuestions && (
                         <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
@@ -793,9 +815,10 @@ export function ChatThread({
                     {pendingSummary && (
                         <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
                             <SummaryActionChips
-                                onStartImport={() =>
-                                    send("Yes, start the import.")
-                                }
+                                onStartImport={() => {
+                                    setIsCommitInFlight(true);
+                                    send("Yes, start the import.");
+                                }}
                                 onBackToMapping={() =>
                                     send("No, take me back to mapping.")
                                 }
@@ -1351,6 +1374,35 @@ function MappingActionChips({
             >
                 Done manual mapping
             </button>
+        </div>
+    );
+}
+
+// Phase 5 — fullscreen "Checking & importing data…" takeover shown while the
+// commit round-trip is in flight. Matches Flow A image 22: a small twinkle
+// cluster on the left with the copy sitting to its right, both dark-green
+// against the standard migration canvas background. The parent container
+// centres this in the message-list slot so the sidebar stays visible.
+function ImportingScreen() {
+    return (
+        <div className="flex items-center gap-3">
+            <div className="relative w-8 h-8 shrink-0">
+                <Stars02
+                    className="absolute top-0 right-0 size-4 text-[#4f6e5d]"
+                    aria-hidden="true"
+                />
+                <Stars02
+                    className="absolute bottom-0 left-0 size-6 text-[#4f6e5d]"
+                    aria-hidden="true"
+                />
+            </div>
+            <span
+                className="text-[16px] font-semibold text-[#101828]"
+                role="status"
+                aria-live="polite"
+            >
+                Checking &amp; importing data...
+            </span>
         </div>
     );
 }
