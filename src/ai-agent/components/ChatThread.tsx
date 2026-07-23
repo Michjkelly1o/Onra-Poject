@@ -169,6 +169,11 @@ export function ChatThread({
 }) {
     const currentUser = useAppStore((s) => s.currentUser);
     const currentRole = useAppStore((s) => s.currentRole);
+    // Phase 6 — the Flow B branch picker reads the live branches slice so
+    // the chip list stays in sync with Settings > Branches. Filtered to
+    // active + role-scope (Owner sees every branch; Branch Admin sees only
+    // their own).
+    const allBranches = useAppStore((s) => s.branches);
 
     // Migration only — the parsed CSV lives in local state and travels
     // with every request. Persisting to Zustand would put a fat blob in
@@ -638,6 +643,33 @@ export function ChatThread({
         return ti.result as Extract<MigrationCard, { card: "mapping_summary" }>;
     })();
 
+    // Phase 6 — Flow B / Flow C branch picker. Fires when the latest tool
+    // result is a `branch_assignment` card with no detected rows: either
+    // status "none" (branches exist, no branch column in the CSV) or
+    // `blocked.reason === "no_branches"` (no branches at all). In both
+    // cases the chip panel shows above the composer per Rule 5. Flow B
+    // shows every active branch as a pickable chip PLUS "+ Add new
+    // branch"; Flow C shows ONLY "+ Add new branch".
+    const pendingBranchPicker = (() => {
+        if (isBusy) return null;
+        if (mode !== "migration") return null;
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "assistant") return null;
+        const ti = last.toolInvocations?.find(
+            (t) =>
+                t.state === "result" &&
+                (t.result as MigrationCard | undefined)?.card === "branch_assignment",
+        );
+        if (!ti || ti.state !== "result") return null;
+        const ba = ti.result as Extract<
+            MigrationCard,
+            { card: "branch_assignment" }
+        >;
+        // Detected rows path already resolves the branch — no picker needed.
+        if (ba.rows.length > 0) return null;
+        return ba;
+    })();
+
     // Shared composer — centered in the empty hero, docked in a conversation.
     const composerNode = (
         <Composer
@@ -821,6 +853,53 @@ export function ChatThread({
                                 }}
                                 onBackToMapping={() =>
                                     send("No, take me back to mapping.")
+                                }
+                            />
+                        </div>
+                    )}
+                    {pendingBranchPicker && (
+                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
+                            <BranchPickerChips
+                                branches={(() => {
+                                    // Role scope: Branch Admin sees only
+                                    // their assigned branch; Owner sees
+                                    // every active branch. Archived and
+                                    // inactive branches never appear.
+                                    const activeBranches = allBranches.filter(
+                                        (b) => b.status === "active",
+                                    );
+                                    if (currentUser?.branch_id) {
+                                        return activeBranches.filter(
+                                            (b) => b.id === currentUser.branch_id,
+                                        );
+                                    }
+                                    return activeBranches;
+                                })()}
+                                showBranchOptions={
+                                    pendingBranchPicker.blocked?.reason !==
+                                    "no_branches"
+                                }
+                                onPickBranch={(branch) => {
+                                    // Persist the pick on parsedFile so the
+                                    // server-side tools + client apply-import
+                                    // both see it, then nudge the AI onward.
+                                    setParsedFile((prev) => {
+                                        if (!prev) return prev;
+                                        const next: ParsedFile = {
+                                            ...prev,
+                                            defaultBranchId: branch.id,
+                                        };
+                                        parsedFileRef.current = next;
+                                        return next;
+                                    });
+                                    send(
+                                        `Use ${branch.name} for all imported records — proceed to mapping.`,
+                                    );
+                                }}
+                                onAddNewBranch={() =>
+                                    send(
+                                        "I'll add a new branch first — direct me to the branches settings.",
+                                    )
                                 }
                             />
                         </div>
@@ -1373,6 +1452,60 @@ function MappingActionChips({
                 )}
             >
                 Done manual mapping
+            </button>
+        </div>
+    );
+}
+
+// Phase 6 — Flow B / Flow C chip panel that lands above the composer when
+// the CSV had no branch column. Renders one chip per existing active
+// branch (Flow B only) plus a trailing "+ Add new branch" affordance.
+// Reuses the same DS chip styling as MappingActionChips /
+// SummaryActionChips so the three pending panels stay visually consistent.
+function BranchPickerChips({
+    branches,
+    showBranchOptions,
+    onPickBranch,
+    onAddNewBranch,
+}: {
+    branches: { id: string; name: string }[];
+    /** False in Flow C (no branches at all) — hides the branch chips and
+     *  leaves just the "+ Add new branch" affordance. */
+    showBranchOptions: boolean;
+    onPickBranch: (branch: { id: string; name: string }) => void;
+    onAddNewBranch: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap gap-2 items-center">
+            {showBranchOptions &&
+                branches.map((b) => (
+                    <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => onPickBranch(b)}
+                        className={cn(
+                            "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                            "bg-white text-[#344054] text-[13px] font-medium",
+                            "border-1 border-[#d0d5dd]",
+                            "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                            "hover:bg-[#f9fafb] transition-colors",
+                        )}
+                    >
+                        {b.name}
+                    </button>
+                ))}
+            <button
+                type="button"
+                onClick={onAddNewBranch}
+                className={cn(
+                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                    "bg-white text-[#344054] text-[13px] font-medium",
+                    "border-1 border-[#d0d5dd]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#f9fafb] transition-colors",
+                )}
+            >
+                + Add new branch
             </button>
         </div>
     );

@@ -26,7 +26,6 @@ import {
     ChevronDown,
     ChevronUp,
     Download01,
-    AlertTriangle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import type { MigrationCard } from "@/ai-agent/migration/migration-cards";
@@ -525,6 +524,51 @@ function MappingSummaryPanel({
     );
 }
 
+// ─── Chat-bubble used when the branch column is missing (Flow B & Flow C) ──
+// Same asymmetric-radius chat bubble shape as the detected variant so the
+// three branch outcomes read as a family. Copy switches on the variant:
+// - "no-column"    → CSV has no branch column but branches exist. User must
+//                    pick one. Chips render above the composer.
+// - "no-branches"  → CSV has no branch column AND no branches exist. Hard
+//                    block — user must create one first (chip: "+ Add new
+//                    branch" above the composer).
+function BranchMissingBubble({
+    variant,
+}: {
+    variant: "no-column" | "no-branches";
+}) {
+    return (
+        <div
+            className={cn(
+                "bg-white border border-[#e4e7ec]",
+                "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
+                "p-4 flex flex-col gap-2 max-w-[612px]",
+                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+            )}
+        >
+            {variant === "no-column" ? (
+                <>
+                    <p className="text-[14px] leading-5 text-[#344054]">
+                        I couldn&apos;t find a branch column in your file.
+                    </p>
+                    <p className="text-[14px] leading-5 text-[#344054]">
+                        To continue, select a branch for all imported records.
+                    </p>
+                </>
+            ) : (
+                <>
+                    <p className="text-[14px] leading-5 text-[#344054]">
+                        I couldn&apos;t find a branch column in your file, and no studio branches have been created yet.
+                    </p>
+                    <p className="text-[14px] leading-5 text-[#344054]">
+                        Create a branch first to continue assigning imported records.
+                    </p>
+                </>
+            )}
+        </div>
+    );
+}
+
 // ─── Chat-bubble variant used by the branch-detected step ──────────────────
 // Figma 154:576479 — asymmetric-radius speech bubble with the greeting on
 // top and a compact branch list below. No step badge, no file-preview
@@ -625,27 +669,14 @@ export function MigCard({
 
     // ─── Step 2: branch_assignment ─────────────────────────────────────────
     if (data.card === "branch_assignment") {
+        // Flow C — no branches exist yet. Chat-bubble rendition matches
+        // the same asymmetric-radius bubble the detected path uses. Copy
+        // hardened per client 2026-07-23 review (Flow "no branch, add
+        // new branch" folder, images 27–28). The "+ Add new branch" chip
+        // lives ABOVE the composer (see BranchPickerChips in ChatThread)
+        // per Rule 5.
         if (data.blocked?.reason === "no_branches") {
-            return (
-                <CardShell>
-                    <StepBadge step={data.step} />
-                    <div className="flex items-start gap-2">
-                        <AlertTriangle className="size-5 text-[#b54708] shrink-0 mt-0.5" />
-                        <CardBody>
-                            I couldn&apos;t find a branch column, and no
-                            studio branches exist yet. Create a branch first
-                            to continue assigning imported records.
-                        </CardBody>
-                    </div>
-                    <div className="mt-1">
-                        <PrimaryButton
-                            onClick={() => act.send("Add a new branch")}
-                        >
-                            + Add new branch
-                        </PrimaryButton>
-                    </div>
-                </CardShell>
-            );
+            return <BranchMissingBubble variant="no-branches" />;
         }
         // Detected path — chat-bubble rendition (Figma 154:576479).
         // Copy is deliberately static per Figma; the row-count/branch-list
@@ -657,24 +688,10 @@ export function MigCard({
                 <BranchDetectedBubble rows={data.rows} />
             );
         }
-        // status === "none" (branches exist, but no branch column was found)
-        // — Flow B. Left in the legacy card shell until Phase 6 wires the
-        // branch-picker chips.
-        return (
-            <CardShell>
-                <StepBadge step={data.step} />
-                {data.note && <CardBody>{data.note}</CardBody>}
-                <div className="mt-1">
-                    <PrimaryButton
-                        onClick={() =>
-                            act.send("Looks good — map the columns.")
-                        }
-                    >
-                        Continue to mapping
-                    </PrimaryButton>
-                </div>
-            </CardShell>
-        );
+        // status === "none" — branches exist, but no branch column found
+        // (Flow B). Matches Flow "no branch column" images 23–26. Branch
+        // options + "+ Add new branch" chip render above the composer.
+        return <BranchMissingBubble variant="no-column" />;
     }
 
     // ─── Step 3: column_mapping ───────────────────────────────────────────

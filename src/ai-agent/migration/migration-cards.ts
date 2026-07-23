@@ -32,6 +32,12 @@ export interface ParsedFile {
      *  proposeMapping. Absent field / empty object = user hasn't touched the
      *  dropdowns yet and the server uses the auto-map. */
     mapping?: Record<string, string | null>;
+    /** Flow B fallback (Phase 6): when the CSV has no branch column and the
+     *  user picks a target branch from the chip picker, we stash the picked
+     *  branch id here so the model + downstream tools know every row of the
+     *  file should land on that branch. Only meaningful for entities whose
+     *  EntityDef has a `branch_id` field. */
+    defaultBranchId?: string;
 }
 
 /** Result of `branchAssignment()` — visible on the branch-assignment card

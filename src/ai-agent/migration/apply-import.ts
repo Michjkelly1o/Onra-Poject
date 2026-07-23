@@ -486,8 +486,12 @@ export function applyImportToStore(
                 city: rec.city || undefined,
                 postalCode: rec.postal_code || undefined,
                 streetAddress: rec.street_address || undefined,
-                // branch left to the store's default so imported customers
-                // always land on a valid branch.
+                // Phase 6 — when the CSV had no branch column and the user
+                // picked one from the branch-picker chips, pin every new
+                // customer to that branch id. Absent value falls back to
+                // addCustomer's DEFAULT_BRANCH_ID so unaffected imports
+                // still land on a valid branch.
+                branchId: file.defaultBranchId,
             });
             created++;
         }
