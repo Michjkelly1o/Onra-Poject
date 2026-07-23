@@ -617,23 +617,11 @@ export function ChatThread({
             const parsed = (await res.json()) as ParsedFile;
             setParsedFile(parsed);
             parsedFileRef.current = parsed;
-            // Client 2026-07-23 (revised) — for migration mode, kick the AI
-            // off automatically once a CSV finishes parsing so the user
-            // doesn't have to type "help me import this". The canned line
-            // is short and neutral; the model still asks for the entity if
-            // it can't infer it from filename / columns. In non-migration
-            // modes we still wait for the user to type (a file in general
-            // chat is more likely context for a specific question).
-            if (mode === "migration") {
-                pendingAttachmentRef.current = {
-                    fileId: parsed.fileId,
-                    filename: parsed.filename,
-                };
-                append({
-                    role: "user",
-                    content: `I've attached my file (${parsed.filename}) — help me import it.`,
-                });
-            }
+            // Client 2026-07-23 (revised) — do NOT auto-send. The user
+            // wants to hit Send themselves. The composer treats a lone
+            // attached file (no typed text) as a valid submit and
+            // handleFileOnlySubmit substitutes a short canned kickoff
+            // message so the model has something to reply to.
         } catch (e) {
             setUploadError(
                 e instanceof Error ? e.message : "Upload failed unexpectedly.",
@@ -746,6 +734,12 @@ export function ChatThread({
     // is still in flight; without the guard the message would land
     // before parsedFile is populated and the model would ask the user
     // to upload the file again.
+    //
+    // Client 2026-07-23 (revised) — if the user has a file attached but
+    // hasn't typed anything, the Send button is still active. In that
+    // case we swallow the form submit and `append` a canned kickoff
+    // message so the composer's blank input isn't sent as-is (useChat
+    // silently drops empty content anyway).
     const wrappedHandleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         if (isUploading) {
             e.preventDefault();
@@ -757,6 +751,18 @@ export function ChatThread({
                 fileId: attached.fileId,
                 filename: attached.filename,
             };
+        }
+        // File-only send path — user hit Send with an attachment but no
+        // typed text. Substitute a short, neutral kickoff line so the
+        // model has something to reply to. We use `append` + prevent
+        // default to avoid useChat pushing an empty message.
+        if (!input.trim() && attached) {
+            e.preventDefault();
+            append({
+                role: "user",
+                content: `I've attached my file (${attached.filename}) — help me import it.`,
+            });
+            return;
         }
         handleSubmit(e);
     };
@@ -1891,7 +1897,11 @@ function Composer({
      *  them to upload it again. Client 2026-07-23. */
     isUploading?: boolean;
 }) {
-    const canSend = value.trim().length > 0 && !isBusy && !isUploading;
+    // Client 2026-07-23 (revised) — Send is active EITHER when the user
+    // typed something OR when a file is attached (they can send the file
+    // on its own). Upload still-in-flight always disables send so the
+    // request goes out with parsedFile populated.
+    const canSend = (value.trim().length > 0 || !!attachedFileName) && !isBusy && !isUploading;
     // Attach a file in EVERY mode (client 2026-07-22) — the paperclip used to
     // be migration-only, which read as "broken" in general/studio chat.
     const attachActive = true;
