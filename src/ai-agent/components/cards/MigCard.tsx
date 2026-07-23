@@ -19,7 +19,6 @@
 
 import {
     Upload01,
-    File04,
     Building01,
     CheckCircle,
     XCircle,
@@ -168,6 +167,45 @@ function Tile({
     );
 }
 
+// ─── Chat-bubble variant used by the branch-detected step ──────────────────
+// Figma 154:576479 — asymmetric-radius speech bubble with the greeting on
+// top and a compact branch list below. No step badge, no file-preview
+// block, no in-card action buttons per client 2026-07-23 review of the
+// migration flow images.
+function BranchDetectedBubble({
+    rows,
+}: {
+    rows: { branch_name: string; count: number }[];
+}) {
+    return (
+        <div
+            className={cn(
+                "bg-white border border-[#e4e7ec]",
+                "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
+                "p-4 flex flex-col gap-4 max-w-[612px]",
+                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+            )}
+        >
+            <p className="text-[14px] leading-5 text-[#344054]">
+                I found branch data in your file and assigned records automatically.
+            </p>
+            <div className="flex flex-col gap-1">
+                {rows.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2 py-px">
+                        <Building01 className="size-4 text-[#344054] shrink-0" />
+                        <span className="text-[14px] font-medium text-[#344054] leading-5">
+                            {r.branch_name}
+                        </span>
+                        <span className="text-[14px] text-[#667085] leading-5 tabular-nums">
+                            : {r.count.toLocaleString("en-US")} rows
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main dispatcher
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,93 +289,23 @@ export function MigCard({
                 </CardShell>
             );
         }
+        // Detected path — chat-bubble rendition (Figma 154:576479).
+        // Copy is deliberately static per Figma; the row-count/branch-list
+        // below carries the dynamic detail. StepBadge, file preview and the
+        // "Continue to mapping" button are removed — the AI auto-chains
+        // propose_mapping on the same turn (see buildMigrationPrompt).
+        if (data.rows.length > 0) {
+            return (
+                <BranchDetectedBubble rows={data.rows} />
+            );
+        }
+        // status === "none" (branches exist, but no branch column was found)
+        // — Flow B. Left in the legacy card shell until Phase 6 wires the
+        // branch-picker chips.
         return (
             <CardShell>
                 <StepBadge step={data.step} />
-                {data.filename && (
-                    <div className="rounded-lg border border-[#eaecf0] bg-[#f9fafb] p-3 flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                            <File04 className="size-4 text-[#667085]" />
-                            <span className="text-[14px] font-medium text-[#101828] truncate flex-1">
-                                {data.filename}
-                            </span>
-                            <span className="text-[12px] text-[#667085] tabular-nums shrink-0">
-                                {data.rowCount} rows ·{" "}
-                                {data.columns?.length ?? 0} columns
-                            </span>
-                        </div>
-                        {data.columns && (
-                            <div className="flex flex-wrap gap-1">
-                                {data.columns.map((c) => (
-                                    <span
-                                        key={c}
-                                        className="text-[11px] leading-4 px-2 py-0.5 rounded-full bg-white border border-[#eaecf0] text-[#475467]"
-                                    >
-                                        {c}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                        {data.sample && data.sample.length > 0 && (
-                            <div className="overflow-x-auto rounded border border-[#eaecf0] bg-white">
-                                <table className="w-full text-[12px] border-collapse">
-                                    <thead>
-                                        <tr>
-                                            {data.columns
-                                                ?.slice(0, 5)
-                                                .map((c) => (
-                                                    <th
-                                                        key={c}
-                                                        className="text-left font-medium text-[#667085] py-1.5 px-2 whitespace-nowrap border-b border-[#eaecf0]"
-                                                    >
-                                                        {c}
-                                                    </th>
-                                                ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.sample.map((row, i) => (
-                                            <tr
-                                                key={i}
-                                                className="border-b border-[#f2f4f7] last:border-b-0"
-                                            >
-                                                {row.map((cell, j) => (
-                                                    <td
-                                                        key={j}
-                                                        className="text-[#344054] py-1.5 px-2 whitespace-nowrap"
-                                                    >
-                                                        {cell}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
                 {data.note && <CardBody>{data.note}</CardBody>}
-                {data.rows.length > 0 && (
-                    <div className="flex flex-col gap-1">
-                        {data.rows.map((r, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-[#f9fafb] border border-[#eaecf0]"
-                            >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <Building01 className="size-4 text-[#667085] shrink-0" />
-                                    <span className="text-[13px] font-medium text-[#101828] truncate">
-                                        {r.branch_name}
-                                    </span>
-                                </div>
-                                <span className="text-[13px] text-[#667085] tabular-nums shrink-0">
-                                    {r.count} rows
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                )}
                 <div className="mt-1">
                     <PrimaryButton
                         onClick={() =>
