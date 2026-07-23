@@ -83,6 +83,7 @@ const DATA_TYPE_LABEL: Record<ImportHistorySeed["data_type"], string> = {
     customer_referrals: "Referral",
     class_ratings:    "Class rating",
     payroll_entries:  "Payroll entry",
+    staff_attendance_log: "Staff attendance",
 };
 
 const DATA_TYPE_KEYS = Object.keys(DATA_TYPE_LABEL) as ImportHistorySeed["data_type"][];

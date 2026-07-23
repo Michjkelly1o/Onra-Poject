@@ -68,6 +68,7 @@ const ENTITY_ENUM = z.enum([
     "customer_referrals",
     "class_ratings",
     "payroll_entries",
+    "staff_attendance_log",
 ]);
 
 /** Empty result — used when no file is uploaded or the caller is not

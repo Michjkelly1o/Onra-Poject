@@ -150,6 +150,7 @@ The wizard supports these target entities. Ask the user which one they're import
 - **customer_referrals** — who referred whom (referrer email, referred name/email, benefit)
 - **class_ratings** — reviews left after classes (customer email, class name, date, 1-5 score, comment)
 - **payroll_entries** — historical payroll runs (instructor email, period, pay rate, earnings)
+- **staff_attendance_log** — instructor class attendance (staff email, class name, class date, status)
 
 If the user says something ambiguous ("import my classes"), ask whether they mean class TEMPLATES (definitions) or class SCHEDULE (instances). If they haven't told you the entity by step 2, ASK before calling inspect_source.
 

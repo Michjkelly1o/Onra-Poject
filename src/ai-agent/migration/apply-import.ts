@@ -43,6 +43,7 @@ import type {
     CustomerReferral,
     ClassRating,
     PayrollEntry,
+    StaffAttendanceLog,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -205,8 +206,13 @@ export interface ImportDeps {
     addPayrollEntry: (
         input: Omit<PayrollEntry, "id"> & { id?: string },
     ) => string;
+    addStaffAttendanceLog: (
+        input: Omit<StaffAttendanceLog, "id"> & { id?: string },
+    ) => string;
     /** Live pay-rate name → id map (for the payroll adapter). */
     payRates: { id: string; name: string }[];
+    /** Live staff slice by email (for the staff-attendance adapter). */
+    staff: { id: string; email: string }[];
     /** Live class schedules the class_bookings adapter looks up by
      *  (template name × date). Required for that adapter only. */
     classSchedules: ClassSchedule[];
@@ -242,7 +248,8 @@ export interface ImportDeps {
             | "issued_gift_cards"
             | "customer_referrals"
             | "class_ratings"
-            | "payroll_entries";
+            | "payroll_entries"
+            | "staff_attendance_log";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -446,6 +453,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     customer_referrals: "customer_referrals",
     class_ratings: "class_ratings",
     payroll_entries: "payroll_entries",
+    staff_attendance_log: "staff_attendance_log",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -709,6 +717,64 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "staff_attendance_log") {
+        const staffByEmail = new Map(
+            deps.staff.map((s) => [s.email.trim().toLowerCase(), s]),
+        );
+        const schedByNameDate = new Map<string, Map<string, ClassSchedule>>();
+        for (const s of deps.classSchedules) {
+            const nameKey = s.name.trim().toLowerCase();
+            let m = schedByNameDate.get(nameKey);
+            if (!m) { m = new Map(); schedByNameDate.set(nameKey, m); }
+            m.set(s.dateISO, s);
+        }
+        const records = materialize("staff_attendance_log", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.staff_email ?? "").trim().toLowerCase();
+            const name = (rec.class_name ?? "").trim().toLowerCase();
+            const dateISO = toISODate(rec.class_date);
+            if (!email || !name || !dateISO) continue;
+            const staff = staffByEmail.get(email);
+            const sched = schedByNameDate.get(name)?.get(dateISO);
+            if (!staff || !sched) continue;
+            const asRaw = (rec.attendance_status ?? "").toLowerCase();
+            const attendance_status: "taught" | "substituted" | "no-show" =
+                /sub/.test(asRaw)
+                    ? "substituted"
+                    : /no.?show|absent/.test(asRaw)
+                      ? "no-show"
+                      : "taught";
+            const scheduledHours = toNumber(
+                rec.scheduled_hours,
+                // Fall back to the schedule's class-hour duration (default 1h).
+                Math.max(
+                    0.25,
+                    (Date.parse(`${sched.dateISO}T${sched.endTime}:00Z`) -
+                        Date.parse(`${sched.dateISO}T${sched.startTime}:00Z`)) /
+                        3_600_000,
+                ),
+            );
+            const actualHours =
+                attendance_status === "no-show"
+                    ? 0
+                    : toNumber(rec.actual_hours, scheduledHours);
+            deps.addStaffAttendanceLog({
+                staff_id: staff.id,
+                class_schedule_id: sched.id,
+                attendance_status,
+                late_start_minutes: toNumber(rec.late_minutes, 0),
+                scheduled_hours: scheduledHours,
+                actual_hours: actualHours,
             });
             created++;
         }

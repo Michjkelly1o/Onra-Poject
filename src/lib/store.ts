@@ -3971,6 +3971,12 @@ export interface AppState {
     addPayrollEntry: (
         input: Omit<PayrollEntry, "id"> & { id?: string },
     ) => string;
+    /** Append a staff attendance log entry — used by the AI Agent migration
+     *  importer to bring across instructor attendance history alongside the
+     *  boot-time derived rows. */
+    addStaffAttendanceLog: (
+        input: Omit<StaffAttendanceLog, "id"> & { id?: string },
+    ) => string;
     /** Approve a pending refund request (dashboard Needs-attention). Refunds
      *  the transaction (status → refunded) so it drops from the queue. */
     approveRefundRequest: (id: string) => void;
@@ -6882,6 +6888,12 @@ export const useAppStore = create<AppState>()(persist(
         const id = input.id ?? `payroll_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         const next: PayrollEntry = { ...input, id };
         set(state => ({ payrollEntries: [...state.payrollEntries, next] }));
+        return id;
+    },
+    addStaffAttendanceLog: (input) => {
+        const id = input.id ?? `att_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: StaffAttendanceLog = { ...input, id };
+        set(state => ({ staffAttendanceLog: [...state.staffAttendanceLog, next] }));
         return id;
     },
     refundTransaction: (id, method) => {
