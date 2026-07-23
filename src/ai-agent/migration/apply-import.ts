@@ -42,6 +42,7 @@ import type {
     WalletTransaction,
     CustomerReferral,
     ClassRating,
+    PayrollEntry,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -201,6 +202,11 @@ export interface ImportDeps {
             submittedAt?: string;
         },
     ) => string;
+    addPayrollEntry: (
+        input: Omit<PayrollEntry, "id"> & { id?: string },
+    ) => string;
+    /** Live pay-rate name → id map (for the payroll adapter). */
+    payRates: { id: string; name: string }[];
     /** Live class schedules the class_bookings adapter looks up by
      *  (template name × date). Required for that adapter only. */
     classSchedules: ClassSchedule[];
@@ -235,7 +241,8 @@ export interface ImportDeps {
             | "wallet_transactions"
             | "issued_gift_cards"
             | "customer_referrals"
-            | "class_ratings";
+            | "class_ratings"
+            | "payroll_entries";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -438,6 +445,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     issued_gift_cards: "issued_gift_cards",
     customer_referrals: "customer_referrals",
     class_ratings: "class_ratings",
+    payroll_entries: "payroll_entries",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -701,6 +709,57 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "payroll_entries") {
+        // Instructor by email — resolve against the LIVE instructors slice.
+        // Instructor branch is inherited from that record. Pay-rate is a SOFT
+        // FK matched by name; unresolved rows still write with blank payRateId
+        // + the raw name so the ledger stays complete.
+        const instByEmail = new Map(
+            deps.instructors.map((i) => [i.email.trim().toLowerCase(), i]),
+        );
+        const rateByName = new Map(
+            deps.payRates.map((r) => [r.name.trim().toLowerCase(), r]),
+        );
+        const records = materialize("payroll_entries", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.instructor_email ?? "").trim().toLowerCase();
+            if (!email) continue;
+            const inst = instByEmail.get(email);
+            if (!inst) continue;
+            const from = toISODate(rec.period_start);
+            const to = toISODate(rec.period_end);
+            if (!from || !to) continue;
+            const rateName = (rec.pay_rate_name ?? "").trim();
+            const rate = rateByName.get(rateName.toLowerCase());
+            const base = toNumber(rec.base_earnings, 0);
+            const adj = toNumber(rec.adjustment_amount, 0);
+            const total = rec.total_earnings ? toNumber(rec.total_earnings, base + adj) : base + adj;
+            deps.addPayrollEntry({
+                instructorId: inst.id,
+                branchId: inst.branchId,
+                payRateId: rate?.id ?? "",
+                payRateName: rate?.name ?? rateName,
+                periodStart: from,
+                periodEnd: to,
+                classesCount: toNumber(rec.classes_count, 0),
+                totalAttendees: toNumber(rec.total_attendees, 0),
+                totalHours: toNumber(rec.total_hours, 0),
+                grossRevenue: 0,
+                baseEarnings: base,
+                adjustmentAmount: adj,
+                adjustmentReason: (rec.adjustment_reason ?? "").trim() || undefined,
+                totalEarnings: total,
+                status: "paid",
             });
             created++;
         }

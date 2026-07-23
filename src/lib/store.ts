@@ -3967,6 +3967,10 @@ export interface AppState {
             submittedAt?: string;
         },
     ) => string;
+    /** Append a payroll entry — used by the AI Agent migration importer. */
+    addPayrollEntry: (
+        input: Omit<PayrollEntry, "id"> & { id?: string },
+    ) => string;
     /** Approve a pending refund request (dashboard Needs-attention). Refunds
      *  the transaction (status → refunded) so it drops from the queue. */
     approveRefundRequest: (id: string) => void;
@@ -6872,6 +6876,12 @@ export const useAppStore = create<AppState>()(persist(
             submittedAt: input.submittedAt ?? new Date().toISOString(),
         };
         set(state => ({ classRatings: [...state.classRatings, next] }));
+        return id;
+    },
+    addPayrollEntry: (input) => {
+        const id = input.id ?? `payroll_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: PayrollEntry = { ...input, id };
+        set(state => ({ payrollEntries: [...state.payrollEntries, next] }));
         return id;
     },
     refundTransaction: (id, method) => {

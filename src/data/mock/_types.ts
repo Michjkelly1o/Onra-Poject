@@ -2945,7 +2945,8 @@ export interface ImportHistorySeed {
         | "wallet_transactions"
         | "issued_gift_cards"
         | "customer_referrals"
-        | "class_ratings";
+        | "class_ratings"
+        | "payroll_entries";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;

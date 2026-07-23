@@ -291,6 +291,8 @@ export function ChatThread({
                         giftCardDesigns: st.giftCardDesigns,
                         addCustomerReferral: st.addCustomerReferral,
                         addClassRating: st.addClassRating,
+                        addPayrollEntry: st.addPayrollEntry,
+                        payRates: st.payRates,
                         customers: st.customers,
                         memberships: st.memberships,
                         packages: st.packages,
