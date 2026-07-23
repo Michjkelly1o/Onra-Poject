@@ -548,23 +548,11 @@ export function ChatThread({
         if (!ti || ti.state !== "result") return null;
         return ti.result as Extract<InsightCard, { card: "questions" }>;
     })();
-    // Compose the picked answers into one readable reply and send it.
-    const answerQuestions = (
-        spec: Extract<InsightCard, { card: "questions" }>["questions"],
-        answers: AiQuestionAnswer[],
-    ) => {
-        const parts = answers
-            .map((a, i) => {
-                if (a.kind === "option") {
-                    const opt = spec[i]?.options.find((o) => o.id === a.optionId);
-                    return opt ? `${spec[i].title}: ${opt.label}` : null;
-                }
-                if (a.kind === "other") return `${spec[i]?.title}: ${a.text}`;
-                return null;
-            })
-            .filter((x): x is string => !!x);
-        send(parts.join("\n") || "Skip");
-    };
+    // The old `answerQuestions` handler that composed a single reply from
+    // insight `ask_questions` answers has been folded into
+    // `onMigQuestionsComplete` below — every source (insight, branch,
+    // mapping, summary) is dispatched from the same walk so ONE panel
+    // renders and ONE combined reply goes out.
 
     const openUpload = () => fileInputRef.current?.click();
 
@@ -728,14 +716,13 @@ export function ChatThread({
         return ba;
     })();
 
-    // Client 2026-07-23 (revised UX pass) — replace the three ad-hoc chip
-    // rows (mapping / summary / branch) with the same vertical
-    // AiQuestionPrompt panel used elsewhere. Multiple pending prompts in
-    // the same assistant turn (e.g. AI just asked for a branch AND for a
-    // mapping decision) render as a pager — user answers question 1 → 2
-    // → and only THEN does a combined reply go to the model. Compact
-    // mode auto-advances on click; onComplete fires once every step is
-    // answered.
+    // Client 2026-07-23 (revised UX pass) — ONE AiQuestionPrompt panel for
+    // every question the assistant surfaces in this turn, no matter the
+    // source. Insight/general `ask_questions` cards AND migration branch/
+    // mapping/summary prompts all funnel through the same combined
+    // entries array so the panel renders a single pager (1 of N) instead
+    // of stacking multiple boxes. The user answers step 1 → auto-advances
+    // → answers step N → onComplete fires ONE combined reply.
     const activeBranchesForPicker = allBranches.filter(
         (b) => b.status === "active" && (
             !currentUser?.branch_id || b.id === currentUser.branch_id
@@ -743,9 +730,17 @@ export function ChatThread({
     );
     // Kind + spec pairs so onComplete can dispatch side effects per row.
     const migQuestionEntries: Array<{
-        kind: "branch" | "mapping" | "summary";
+        kind: "insight" | "branch" | "mapping" | "summary";
         spec: import("@/ai-agent/components/AiQuestionPrompt").AiQuestionSpec;
     }> = [];
+    // Insight / general / studio-setup ask_questions results come first so
+    // they read as the leading step whenever both an ask_questions card
+    // AND a migration prompt are pending in the same turn.
+    if (pendingQuestions) {
+        for (const q of pendingQuestions.questions) {
+            migQuestionEntries.push({ kind: "insight", spec: q });
+        }
+    }
     if (pendingBranchPicker) {
         const isFlowC = pendingBranchPicker.blocked?.reason === "no_branches";
         migQuestionEntries.push({
@@ -797,13 +792,23 @@ export function ChatThread({
 
     const onMigQuestionsComplete = (answers: AiQuestionAnswer[]) => {
         // Apply the state effects for each answer + collect the message
-        // chunk the AI will see. Walked in order so branch-first, then
-        // mapping, then summary — matches the entries array above.
+        // chunk the AI will see. Walked in step order — insight/general
+        // questions first, then branch, mapping, summary.
         const chunks: string[] = [];
         for (let i = 0; i < migQuestionEntries.length; i++) {
             const entry = migQuestionEntries[i];
             const answer = answers[i];
-            if (!answer || answer.kind !== "option") continue;
+            if (!answer) continue;
+            if (entry.kind === "insight") {
+                if (answer.kind === "option") {
+                    const opt = entry.spec.options.find((o) => o.id === answer.optionId);
+                    if (opt) chunks.push(`${entry.spec.title ?? "Question"}: ${opt.label}`);
+                } else if (answer.kind === "other") {
+                    chunks.push(`${entry.spec.title ?? "Question"}: ${answer.text}`);
+                }
+                continue;
+            }
+            if (answer.kind !== "option") continue;
             const optId = answer.optionId;
             if (entry.kind === "branch") {
                 if (optId === "__add_new_branch") {
@@ -1050,15 +1055,11 @@ export function ChatThread({
                 message while the loader is up. */}
             {!empty && !isCommitInFlight && (
                 <div className="shrink-0 bg-transparent">
-                    {pendingQuestions && (
-                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
-                            <AiQuestionPrompt
-                                compact
-                                questions={pendingQuestions.questions}
-                                onComplete={(answers) => answerQuestions(pendingQuestions.questions, answers)}
-                            />
-                        </div>
-                    )}
+                    {/* Client 2026-07-23 — single question panel above the
+                        composer. Migration branch/mapping/summary AND
+                        insight-mode ask_questions results all funnel into
+                        `migQuestionEntries` so the panel renders one card
+                        with a pager instead of two stacked cards. */}
                     {migQuestionsPanel}
                     <div className="w-full max-w-[720px] mx-auto px-6 py-4">{composerNode}</div>
                 </div>
