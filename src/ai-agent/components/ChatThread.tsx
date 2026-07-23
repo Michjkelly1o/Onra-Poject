@@ -440,9 +440,19 @@ export function ChatThread({
         if (!clean || isBusy) return;
         const idx = messages.findIndex((mm) => mm.id === messageId);
         if (idx === -1) return;
-        // Drop the edited message and everything after it, then re-send.
-        setMessages(messages.slice(0, idx));
-        append({ role: "user", content: clean });
+        // Atomic swap so the typing indicator (which anchors below the LAST
+        // user message) always lands under the freshly-edited bubble instead
+        // of momentarily under a stale earlier message. Truncate + append the
+        // new user message in ONE setMessages, then trigger reload so the
+        // model regenerates from the new prompt.
+        const editedUser: UIMessage = {
+            id: `edit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            role: "user",
+            content: clean,
+            parts: [{ type: "text", text: clean }],
+        };
+        setMessages([...messages.slice(0, idx), editedUser]);
+        reload();
     };
     // The id of the most recent user message — the only one that's editable.
     const lastUserId = [...messages].reverse().find((mm) => mm.role === "user")?.id ?? null;
@@ -482,6 +492,32 @@ export function ChatThread({
 
     async function uploadFile(file: File) {
         setUploadError(null);
+        // Client 2026-07-23 — widen upload beyond CSV to images / PDFs / docs.
+        // Non-CSV files skip the server parser (which only handles CSV) and
+        // just attach as a chip with filename + size so the model has context.
+        // The migration flow keeps its full CSV path (server-parsed rows so
+        // inspect_source has real data).
+        const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
+        const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+        if (file.size > MAX_BYTES) {
+            setUploadError(
+                `File is too large — max ${MAX_BYTES / 1024 / 1024}MB.`,
+            );
+            return;
+        }
+        if (!isCsv) {
+            // Attach-only path: no server call, just a chip. Empty `rows` and
+            // `columns` mean the migration inspect flow won't try to parse it.
+            const attached: ParsedFile = {
+                fileId: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                filename: file.name,
+                columns: [],
+                rows: [],
+            };
+            setParsedFile(attached);
+            parsedFileRef.current = attached;
+            return;
+        }
         const fd = new FormData();
         fd.append("file", file);
         fd.append("role", currentRole ?? "");
@@ -544,7 +580,7 @@ export function ChatThread({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,text/csv,image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx"
                 className="hidden"
                 onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -983,10 +1019,13 @@ function UserMessageBubble({
     //    Cancel / Send actions sitting OUTSIDE (below) the bubble. ─────────────
     if (editing) {
         return (
-            <div className="flex flex-col items-end gap-2">
+            // Full column-width edit surface (client 2026-07-23): the bubble
+            // stretches to the chat column instead of the narrow 400/520 read
+            // width, so long prompts don't wrap awkwardly during editing.
+            <div className="w-full flex flex-col items-end gap-2">
                 <div
                     className={cn(
-                        "w-full max-w-[520px] p-4 flex",
+                        "w-full p-4 flex",
                         "bg-[#c4edd6] border border-[#aad4bd]",
                         "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
                         "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",

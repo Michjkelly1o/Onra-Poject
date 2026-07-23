@@ -780,7 +780,9 @@ function RenameConversationDialog({
     return (
         <Modal open={!!conv} onClose={onClose} maxWidth={440}>
             <Modal.Header title="Rename chat" subtitle="Give this conversation a clear name." onClose={onClose} />
-            <Modal.Body>
+            {/* Modal.Body has no horizontal padding — add px-6 so the input
+                sits inside the modal's rounded frame (was flush to the edge). */}
+            <Modal.Body className="px-6">
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[14px] font-medium text-[#344054]">Chat name</label>
                     <input
@@ -789,7 +791,9 @@ function RenameConversationDialog({
                         onChange={(e) => setValue(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === "Enter") submit();
+                            else if (e.key === "Escape") onClose();
                         }}
+                        onFocus={(e) => e.currentTarget.select()}
                         placeholder="e.g. Create a class schedule"
                         className="h-10 w-full px-3.5 rounded-lg border border-[#d0d5dd] bg-white text-[16px] text-[#101828] placeholder:text-[#667085] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none focus:border-[#7ba08c] focus:ring-2 focus:ring-[#aad4bd] transition-all"
                     />
