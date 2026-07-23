@@ -107,7 +107,19 @@ export async function POST(req: Request) {
             parsedFile ?? null,
             storeSnapshot.branches,
         );
-        system = buildMigrationPrompt(ctx, today);
+        // Client 2026-07-23 — the migration prompt needs to know about the
+        // attached file so the model stops asking the user to upload one
+        // that's already on the wire. Only file *metadata* travels into
+        // the prompt (filename + row count + column list); raw rows stay
+        // in the tools where inspect_source can read them.
+        const attachedForPrompt = parsedFile
+            ? {
+                  filename: parsedFile.filename,
+                  rowCount: parsedFile.rows.length,
+                  columns: parsedFile.columns,
+              }
+            : null;
+        system = buildMigrationPrompt(ctx, today, attachedForPrompt);
     } else if (activeMode === "studio_setup") {
         tools = setupTools(ctx, storeSnapshot);
         system = buildStudioSetupPrompt(ctx, today);

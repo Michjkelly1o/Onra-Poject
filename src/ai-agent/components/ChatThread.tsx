@@ -617,11 +617,23 @@ export function ChatThread({
             const parsed = (await res.json()) as ParsedFile;
             setParsedFile(parsed);
             parsedFileRef.current = parsed;
-            // Client 2026-07-23 — every upload is now attach-only, in every
-            // mode (including migration). The AI never starts generating on
-            // its own; it waits for the user to type + press Send. This makes
-            // the flow feel intentional (no surprise responses) and gives the
-            // user room to ask a specific question about the file.
+            // Client 2026-07-23 (revised) — for migration mode, kick the AI
+            // off automatically once a CSV finishes parsing so the user
+            // doesn't have to type "help me import this". The canned line
+            // is short and neutral; the model still asks for the entity if
+            // it can't infer it from filename / columns. In non-migration
+            // modes we still wait for the user to type (a file in general
+            // chat is more likely context for a specific question).
+            if (mode === "migration") {
+                pendingAttachmentRef.current = {
+                    fileId: parsed.fileId,
+                    filename: parsed.filename,
+                };
+                append({
+                    role: "user",
+                    content: `I've attached my file (${parsed.filename}) — help me import it.`,
+                });
+            }
         } catch (e) {
             setUploadError(
                 e instanceof Error ? e.message : "Upload failed unexpectedly.",
