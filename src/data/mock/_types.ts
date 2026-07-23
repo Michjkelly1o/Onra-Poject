@@ -2944,7 +2944,8 @@ export interface ImportHistorySeed {
         | "class_bookings"
         | "wallet_transactions"
         | "issued_gift_cards"
-        | "customer_referrals";
+        | "customer_referrals"
+        | "class_ratings";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;

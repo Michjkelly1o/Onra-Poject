@@ -41,6 +41,7 @@ import type {
     ClassBooking,
     WalletTransaction,
     CustomerReferral,
+    ClassRating,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -194,6 +195,12 @@ export interface ImportDeps {
     addCustomerReferral: (
         input: Omit<CustomerReferral, "id"> & { id?: string },
     ) => string;
+    addClassRating: (
+        input: Omit<ClassRating, "id" | "submittedAt"> & {
+            id?: string;
+            submittedAt?: string;
+        },
+    ) => string;
     /** Live class schedules the class_bookings adapter looks up by
      *  (template name × date). Required for that adapter only. */
     classSchedules: ClassSchedule[];
@@ -227,7 +234,8 @@ export interface ImportDeps {
             | "class_bookings"
             | "wallet_transactions"
             | "issued_gift_cards"
-            | "customer_referrals";
+            | "customer_referrals"
+            | "class_ratings";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -429,6 +437,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     wallet_transactions: "wallet_transactions",
     issued_gift_cards: "issued_gift_cards",
     customer_referrals: "customer_referrals",
+    class_ratings: "class_ratings",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -692,6 +701,47 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "class_ratings") {
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        const schedByNameDate = new Map<string, Map<string, ClassSchedule>>();
+        for (const s of deps.classSchedules) {
+            const nameKey = s.name.trim().toLowerCase();
+            let m = schedByNameDate.get(nameKey);
+            if (!m) { m = new Map(); schedByNameDate.set(nameKey, m); }
+            m.set(s.dateISO, s);
+        }
+        const records = materialize("class_ratings", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.customer_email ?? "").trim().toLowerCase();
+            const name = (rec.class_name ?? "").trim().toLowerCase();
+            const dateISO = toISODate(rec.class_date);
+            if (!email || !name || !dateISO) continue;
+            const cust = custByEmail.get(email);
+            const sched = schedByNameDate.get(name)?.get(dateISO);
+            if (!cust || !sched) continue;
+            // Clamp score to 1-5.
+            const rawScore = toNumber(rec.score, 0);
+            const score = Math.max(1, Math.min(5, Math.round(rawScore)));
+            const submittedISO = toISODate(rec.submitted_at) ?? dateISO;
+            deps.addClassRating({
+                classScheduleId: sched.id,
+                customerId: cust.id,
+                instructorId: sched.instructorId,
+                score,
+                comment: (rec.comment ?? "").trim(),
+                submittedAt: `${submittedISO}T09:00:00Z`,
             });
             created++;
         }

@@ -290,6 +290,7 @@ export function ChatThread({
                         addIssuedGiftCard: st.addIssuedGiftCard,
                         giftCardDesigns: st.giftCardDesigns,
                         addCustomerReferral: st.addCustomerReferral,
+                        addClassRating: st.addClassRating,
                         customers: st.customers,
                         memberships: st.memberships,
                         packages: st.packages,

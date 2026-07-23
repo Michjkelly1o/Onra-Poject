@@ -3960,6 +3960,13 @@ export interface AppState {
     addCustomerReferral: (
         input: Omit<CustomerReferral, "id"> & { id?: string },
     ) => string;
+    /** Append a class rating — used by the AI Agent migration importer. */
+    addClassRating: (
+        input: Omit<ClassRating, "id" | "submittedAt"> & {
+            id?: string;
+            submittedAt?: string;
+        },
+    ) => string;
     /** Approve a pending refund request (dashboard Needs-attention). Refunds
      *  the transaction (status → refunded) so it drops from the queue. */
     approveRefundRequest: (id: string) => void;
@@ -6855,6 +6862,16 @@ export const useAppStore = create<AppState>()(persist(
         const id = input.id ?? `ref_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         const next: CustomerReferral = { ...input, id };
         set(state => ({ customerReferrals: [...state.customerReferrals, next] }));
+        return id;
+    },
+    addClassRating: (input) => {
+        const id = input.id ?? `rating_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: ClassRating = {
+            ...input,
+            id,
+            submittedAt: input.submittedAt ?? new Date().toISOString(),
+        };
+        set(state => ({ classRatings: [...state.classRatings, next] }));
         return id;
     },
     refundTransaction: (id, method) => {
