@@ -667,16 +667,6 @@ export function MigCard({
 
     // ─── Step 2: branch_assignment ─────────────────────────────────────────
     if (data.card === "branch_assignment") {
-        // Client 2026-07-24 — n/a path. The entity carries no branch
-        // dimension at all (tax_rates, class_categories, agreements,
-        // promo_codes, campaigns, pay_rates, staff, services, rooms,
-        // gift_cards, and every customer-derived history entity).
-        // The branch step is skipped entirely — no bubble, no picker —
-        // and the AI auto-chains propose_mapping on the same turn
-        // (see buildMigrationPrompt). Returning null keeps the message
-        // list clean; the mapping card rendered right after IS the
-        // visible result of Step 2.
-        if (data.status === "n_a") return null;
         // Flow C — no branches exist yet. Chat-bubble rendition matches
         // the same asymmetric-radius bubble the detected path uses. Copy
         // hardened per client 2026-07-23 review (Flow "no branch, add

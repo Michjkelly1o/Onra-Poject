@@ -136,9 +136,7 @@ export function migrationTools(
                     note:
                         ba.status === "detected"
                             ? `I found a branch column and assigned all ${parsedFile.rows.length} ${def.label} to your branches automatically.`
-                            : ba.status === "n_a"
-                                ? `${def.label} don't carry a branch on import — they're applied to branches later on the admin side.`
-                                : `I didn't find a branch column — you can pick a branch for these ${def.label} during mapping.`,
+                            : `I didn't find a branch column — you can pick a branch for these ${def.label} during mapping.`,
                 };
             },
         }),
