@@ -3857,6 +3857,17 @@ export interface AppState {
      *  Bookings list, and the class detail state in the same render cycle.
      *  Returns the new booking id. */
     addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; chargeBookerCredit?: boolean }) => string;
+    /** Insert a booking VERBATIM — no frozen-plan guard, no credit deduction,
+     *  no notifications. Used by the AI Agent migration importer to bring
+     *  across historical bookings without triggering the "you're frozen" gate
+     *  or double-charging credits already spent in the source platform.
+     *  Auto id + bookingTime (if not supplied). */
+    addImportedClassBooking: (
+        input: Omit<ClassBooking, "id" | "bookingTime"> & {
+            id?: string;
+            bookingTime?: string;
+        },
+    ) => string;
     /** Member-portal: mark this customer's outstanding (unsigned) booking-waiver
      *  agreements as signed — the first-time waiver gate. */
     signWaiver: (customerId: string, guardianConsent?: boolean) => void;
@@ -5773,6 +5784,26 @@ export const useAppStore = create<AppState>()(persist(
         }));
         // Re-offer each affected class to the next person in line.
         Array.from(new Set(lapsed.map(l => l.classScheduleId))).forEach(id => get().offerFreedWaitlistSpot(id));
+    },
+    addImportedClassBooking: (input) => {
+        const id = input.id ?? `bk-import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        const bookingTime = input.bookingTime ?? new Date().toISOString();
+        const booking: ClassBooking = { ...input, id, bookingTime };
+        // Verbatim insert — no frozen-plan guard, no credit deduction, no
+        // notifications (historical bookings shouldn't fire "class scheduled"
+        // events or debit credits already spent in the source platform).
+        // Bump the schedule.booked counter for actively-booked seats so the
+        // roster reflects the seat, mirroring what a normal booking does.
+        set(state => ({
+            classBookings: [...state.classBookings, booking],
+            classSchedules:
+                booking.status === "booked"
+                    ? state.classSchedules.map(x =>
+                          x.id === booking.classScheduleId ? { ...x, booked: x.booked + 1 } : x,
+                      )
+                    : state.classSchedules,
+        }));
+        return id;
     },
 
     cancelClassBooking: (id, reason, refund, source) => {

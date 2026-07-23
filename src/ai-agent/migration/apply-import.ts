@@ -38,6 +38,7 @@ import type {
     Package,
     CustomerPlan,
     CustomerTransaction,
+    ClassBooking,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -164,6 +165,15 @@ export interface ImportDeps {
             createdAtISO?: string;
         },
     ) => string;
+    addImportedClassBooking: (
+        input: Omit<ClassBooking, "id" | "bookingTime"> & {
+            id?: string;
+            bookingTime?: string;
+        },
+    ) => string;
+    /** Live class schedules the class_bookings adapter looks up by
+     *  (template name × date). Required for that adapter only. */
+    classSchedules: ClassSchedule[];
     /** Live customer + product slices for FK resolution. */
     customers: Customer[];
     memberships: Membership[];
@@ -190,7 +200,8 @@ export interface ImportDeps {
             | "agreements"
             | "class_categories"
             | "customer_plans"
-            | "customer_transactions";
+            | "customer_transactions"
+            | "class_bookings";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -388,6 +399,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     class_categories: "class_categories",
     customer_plans: "customer_plans",
     customer_transactions: "customer_transactions",
+    class_bookings: "class_bookings",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -651,6 +663,71 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "class_bookings") {
+        // Two hard FKs — customer by email + schedule by (class name × date).
+        // The schedule index groups schedules by lowercase name; a booking's
+        // date must match a schedule's dateISO exactly.
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        // Nested map: name → dateISO → schedule
+        const schedByNameDate = new Map<string, Map<string, ClassSchedule>>();
+        for (const s of deps.classSchedules) {
+            const nameKey = s.name.trim().toLowerCase();
+            let m = schedByNameDate.get(nameKey);
+            if (!m) { m = new Map(); schedByNameDate.set(nameKey, m); }
+            m.set(s.dateISO, s);
+        }
+        const records = materialize("class_bookings", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.customer_email ?? "").trim().toLowerCase();
+            const name = (rec.class_name ?? "").trim().toLowerCase();
+            const dateISO = toISODate(rec.class_date);
+            if (!email || !name || !dateISO) continue;
+            const cust = custByEmail.get(email);
+            if (!cust) continue;
+            const sched = schedByNameDate.get(name)?.get(dateISO);
+            if (!sched) continue;
+            // Status snap.
+            const stRaw = (rec.status ?? "").toLowerCase();
+            const status: "booked" | "waitlisted" | "cancelled" =
+                /wait/.test(stRaw)
+                    ? "waitlisted"
+                    : /cancel/.test(stRaw)
+                      ? "cancelled"
+                      : "booked";
+            // Attendance snap.
+            const atRaw = (rec.attendance ?? "").toLowerCase();
+            const attendance: "pending" | "present" | "no_show" | "late_cancel" =
+                /present|attend/.test(atRaw)
+                    ? "present"
+                    : /no.?show|missed/.test(atRaw)
+                      ? "no_show"
+                      : /late.?cancel/.test(atRaw)
+                        ? "late_cancel"
+                        : "pending";
+            const bookedAt = toISODate(rec.booking_date) ?? dateISO;
+            deps.addImportedClassBooking({
+                classScheduleId: sched.id,
+                customerId: cust.id,
+                branchId: sched.branchId,
+                planId: cust.membershipId ?? "",
+                planName: cust.planName ?? "",
+                planKindUsed: cust.planKind === "membership" ? "membership" : cust.planKind === "package" ? "package" : undefined,
+                status,
+                attendanceStatus: attendance,
+                bookingSource: "admin",
+                bookingTime: `${bookedAt}T09:00:00Z`,
             });
             created++;
         }

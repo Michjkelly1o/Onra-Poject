@@ -2940,7 +2940,8 @@ export interface ImportHistorySeed {
         | "tax_rates"
         | "agreements"
         | "class_categories"
-        | "customer_transactions";
+        | "customer_transactions"
+        | "class_bookings";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;
