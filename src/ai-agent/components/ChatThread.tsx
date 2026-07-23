@@ -39,7 +39,6 @@ import {
     User01,
     AlertCircle,
     RefreshCw01,
-    UploadCloud02,
     Copy03,
     Edit02,
     Check,
@@ -749,21 +748,6 @@ function StudioSetupEmptyState({
                         also show you what&apos;s already configured.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() =>
-                        onStart("What's set up in my studio and what should I do next?")
-                    }
-                    className={cn(
-                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
-                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
-                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                        "hover:bg-[#aad4bd] transition-colors",
-                    )}
-                >
-                    <Stars02 className="size-4" />
-                    Show me what&apos;s missing
-                </button>
                 {/* Composer + typeahead suggestions (floating, only while typing). */}
                 <div className="relative w-full">
                     {composer}
@@ -808,19 +792,6 @@ function MigrationEmptyState({
                         export. Attach a CSV any time with the paperclip.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => onStart("I want to migrate my customer data into Onra.")}
-                    className={cn(
-                        "h-10 px-4 rounded-md inline-flex items-center gap-2",
-                        "bg-[#c4edd6] text-[#0c2d34] text-[14px] font-medium border-1 border-white/[0.12]",
-                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                        "hover:bg-[#aad4bd] transition-colors",
-                    )}
-                >
-                    <UploadCloud02 className="size-4" />
-                    Start migration
-                </button>
                 {/* Composer + typeahead suggestions (floating, only while typing). */}
                 <div className="relative w-full">
                     {composer}
