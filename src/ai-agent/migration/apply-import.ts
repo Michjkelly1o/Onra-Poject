@@ -31,6 +31,8 @@ import type {
     Role,
     PromoCode,
     MarketingItem,
+    Agreement,
+    AgreementVersion,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -136,6 +138,19 @@ export interface ImportDeps {
         validFromISO?: string;
         validUntilISO?: string;
     }) => string;
+    addAgreement: (
+        input: Omit<Agreement, "id" | "createdAt" | "updatedAt"> & {
+            id?: string;
+            createdAt?: string;
+            updatedAt?: string;
+        },
+    ) => string;
+    addAgreementVersion: (
+        input: Omit<AgreementVersion, "id" | "publishedAt"> & {
+            id?: string;
+            publishedAt?: string;
+        },
+    ) => string;
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -154,7 +169,8 @@ export interface ImportDeps {
             | "promo_codes"
             | "pay_rates"
             | "campaigns"
-            | "tax_rates";
+            | "tax_rates"
+            | "agreements";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -348,6 +364,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     pay_rates: "pay_rates",
     campaigns: "campaigns",
     tax_rates: "tax_rates",
+    agreements: "agreements",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -611,6 +628,70 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "agreements") {
+        // Full agreement import: the metadata row PLUS its first Version so
+        // the terms body from the CSV lands on a real, signable version.
+        // Missing content is allowed — the version still gets created, empty,
+        // so the admin can paste the text in later without re-importing.
+        const records = materialize("agreements", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            // Type — snap free-text to the AgreementType union.
+            const t = (rec.type ?? "").toLowerCase();
+            const type:
+                | "liability_waiver"
+                | "consent_form"
+                | "terms_and_conditions"
+                | "health_declaration"
+                | "other" = /waiv|liab/.test(t)
+                ? "liability_waiver"
+                : /consent/.test(t)
+                  ? "consent_form"
+                  : /terms|t&c|policy/.test(t)
+                    ? "terms_and_conditions"
+                    : /health|medical|paq/.test(t)
+                      ? "health_declaration"
+                      : "other";
+            // Required — default true (most legal agreements gate booking).
+            const requiredRaw = (rec.required ?? "").trim();
+            const required = requiredRaw === "" ? true : toBool(requiredRaw);
+            // Effective mode — "expiry" only if BOTH dates are present.
+            const from = toISODate(rec.effective_from) ?? "";
+            const until = toISODate(rec.effective_until) ?? "";
+            const mode: "ongoing" | "expiry" = from && until ? "expiry" : "ongoing";
+            const agreementId = deps.addAgreement({
+                name: rec.name,
+                type,
+                description: rec.description || undefined,
+                required,
+                currentVersion: 1,
+                allLocations: true,
+                locationIds: [],
+                applicableClassTemplateIds: [],
+                effectiveDatesMode: mode,
+                effectiveFrom: from,
+                effectiveUntil: until,
+                requireReAcceptance: false,
+                requireGuardianConsent: false,
+                status: "active",
+            });
+            // v1 version with the terms body (or empty when absent).
+            deps.addAgreementVersion({
+                agreementId,
+                versionNumber: 1,
+                contentType: "text",
+                contentText: (rec.content ?? "").trim() || undefined,
+                publishedBy: "AI Agent (imported)",
             });
             created++;
         }

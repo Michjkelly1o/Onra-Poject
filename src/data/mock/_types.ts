@@ -2937,7 +2937,8 @@ export interface ImportHistorySeed {
         | "promo_codes"
         | "pay_rates"
         | "campaigns"
-        | "tax_rates";
+        | "tax_rates"
+        | "agreements";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;

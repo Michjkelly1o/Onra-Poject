@@ -280,6 +280,8 @@ export function ChatThread({
                         addPayRate: st.addPayRate,
                         addMarketingItem: st.addMarketingItem,
                         addTaxRate: st.addTaxRate,
+                        addAgreement: st.addAgreement,
+                        addAgreementVersion: st.addAgreementVersion,
                         classCategories: st.classCategories,
                         classTemplates: st.classTemplates,
                         instructors: st.instructors,
