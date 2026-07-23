@@ -47,7 +47,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
-    Edit02, SearchLg, Plus, ChevronDown, ChevronRight,
+    Edit02, Plus, ChevronDown, ChevronRight,
     DotsVertical, Building01, LayoutGrid01, Image01, Eye, Archive,
     Pencil01, Trash04, Check, XClose, SlashCircle01, RefreshCcw01,
 } from "@untitledui/icons";
@@ -60,6 +60,7 @@ import { RoomDetailModal } from "@/components/settings/rooms/RoomDetailModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { timezoneLabel, resolveBranchTimezone } from "@/lib/data/locales";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
@@ -298,7 +299,11 @@ export default function BusinessLocationsPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                        <SearchInput value={searchQuery} onChange={setSearchQuery} />
+                        <ToolbarSearch
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder="Search location..."
+                        />
                         <FilterDropdown
                             open={filterOpen}
                             onToggle={() => setFilterOpen(o => !o)}
@@ -514,21 +519,6 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 }
 
 // ─── Header controls ────────────────────────────────────────────────────────
-
-function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    return (
-        <div className="w-[220px] h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] flex items-center gap-2 px-[14px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
-            <SearchLg className="w-5 h-5 text-[#667085] shrink-0" />
-            <input
-                type="text"
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                placeholder="Search location..."
-                className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none min-w-0"
-            />
-        </div>
-    );
-}
 
 function FilterDropdown({ open, onToggle, onClose, value, onPick }: {
     open: boolean;
