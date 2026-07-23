@@ -17,7 +17,6 @@ import {
     BarChartSquare01,
     Users01,
     Settings01,
-    Gift01,
     ChevronDown,
     ChevronUp,
     ChevronLeftDouble,
@@ -92,6 +91,7 @@ const NAV_ITEMS: NavItemDef[] = [
         sectionLabel: "Studio",
         children: [
             { label: "Memberships & packages", href: "/admin/products"                },
+            { label: "Gift cards",             href: "/admin/products/gift-cards"     },
             { label: "Private sessions",       href: "/admin/services?type=private"   },
             { label: "Recovery & wellness",    href: "/admin/services?type=recovery"  },
         ],
@@ -104,14 +104,13 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Categories", href: "/admin/categories"  },
         ],
     },
-    { label: "Gift cards", href: "/admin/products/gift-cards", icon: Gift01, permission: "manage_products" },
     {
         label: "Staff", icon: Users01, permission: "manage_instructors",
         children: [
-            { label: "Role & permissions", href: "/admin/staff/roles"    },
-            { label: "Staff & shift",      href: "/admin/staff"          },
-            { label: "Pay rate",           href: "/admin/staff/pay-rate" },
-            { label: "Payroll",            href: "/admin/compensation"   },
+            { label: "Roles & permissions", href: "/admin/staff/roles"    },
+            { label: "Staff & shift",       href: "/admin/staff"          },
+            { label: "Pay rates",           href: "/admin/staff/pay-rate" },
+            { label: "Payroll",             href: "/admin/compensation"   },
         ],
     },
     // Settings does NOT live in the scrollable nav — it's rendered as

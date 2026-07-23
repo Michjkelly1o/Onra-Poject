@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Six categories per the Excel spec's Sheet 1:
-//   Financial · Membership & Package · Client / Customer ·
+//   Financial · Membership & Package · Customer ·
 //   Activity / Class · Staff / Instructor · Marketing
 //
 // Every item is a plain link. Clicking navigates to /reports/{slug}.
@@ -105,7 +105,7 @@ const CATEGORIES: ReportCategory[] = [
     },
     {
         id: "customer",
-        title: "Client / Customer",
+        title: "Customer",
         description:
             "How customers interact with the studio — active vs inactive, sign-ups, churn, retention, win-back.",
         icon: User01,

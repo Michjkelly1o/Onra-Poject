@@ -78,7 +78,7 @@ const TABS: TabConfig[] = [
     },
     {
         key: "client",
-        label: "Client",
+        label: "Customer",
         // Phase 3 hero charts — reuse existing Memberships widgets that
         // map cleanly to the PDF's Client charts:
         //   active-memberships   → Active members trend

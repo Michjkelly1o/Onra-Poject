@@ -27,8 +27,8 @@ const PAGE_TITLES: Record<string, string> = {
     // during the redirect frame.
     "/admin/instructors": "Staff & Permissions",
     "/admin/staff": "Staff & shift",
-    "/admin/staff/roles": "Role & permissions",
-    "/admin/staff/pay-rate": "Pay rate",
+    "/admin/staff/roles": "Roles & permissions",
+    "/admin/staff/pay-rate": "Pay rates",
     "/admin/compensation": "Payroll",
     // Client Jul 2026: legacy /admin/insights archived (404'd); KPI page
     // now carries the "Insights" title so the header reads consistently

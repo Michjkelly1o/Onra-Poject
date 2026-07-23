@@ -234,7 +234,7 @@ export const CATEGORY_META: CategoryMeta[] = [
     },
     {
         id: "customer",
-        label: "Client / Customer",
+        label: "Customer",
         description: "Customer lifecycle — active vs inactive, sign-ups, churn, retention, win-back.",
     },
     {
