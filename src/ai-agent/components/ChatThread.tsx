@@ -747,7 +747,7 @@ export function ChatThread({
             kind: "branch",
             spec: {
                 title: isFlowC
-                    ? "Create a branch to continue"
+                    ? "Create a branch, or import as global?"
                     : "Which branch should we use?",
                 allowOther: false,
                 options: [
@@ -758,6 +758,17 @@ export function ChatThread({
                               label: b.name,
                           }))),
                     { id: "__add_new_branch", label: "+ Add new branch" },
+                    // Client 2026-07-24 — "Global" numbered option: the user
+                    // is telling us these records don't belong to any single
+                    // branch at import time (tax rates being the canonical
+                    // example). The row's branch is left null; the admin
+                    // applies branch(es) later in the entity's own module
+                    // (Apply tax rates / edit the record).
+                    {
+                        id: "__global_branch",
+                        label: "Global — apply to branches later",
+                        subtitle: "For records like tax rates that are set on the admin side after import.",
+                    },
                 ],
             },
         });
@@ -814,6 +825,22 @@ export function ChatThread({
                 if (optId === "__add_new_branch") {
                     chunks.push(
                         "I'll add a new branch first — direct me to the branches settings.",
+                    );
+                } else if (optId === "__global_branch") {
+                    // Client 2026-07-24 — user picked "Global — apply to
+                    // branches later". Clear any prior defaultBranchId so
+                    // apply-import doesn't pin these rows to a specific
+                    // branch. Admin will apply branch(es) later in the
+                    // entity's own module.
+                    setParsedFile((prev) => {
+                        if (!prev) return prev;
+                        const next: ParsedFile = { ...prev };
+                        delete next.defaultBranchId;
+                        parsedFileRef.current = next;
+                        return next;
+                    });
+                    chunks.push(
+                        "Import these records as global — I'll apply branches later on the admin side. Proceed to mapping.",
                     );
                 } else {
                     const branch = activeBranchesForPicker.find((b) => b.id === optId);
