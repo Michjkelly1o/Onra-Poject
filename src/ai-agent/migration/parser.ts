@@ -141,14 +141,20 @@ export function proposeMapping(
 
 /** Dry-run: apply the mapping, validate every row, count valid /
  *  invalid / duplicate. Never mutates anything. Validation + dedupe
- *  rules come from the entity's EntityDef. */
+ *  rules come from the entity's EntityDef.
+ *
+ *  Mapping resolution — auto-map FIRST, user overrides second. Passing
+ *  a partial `mapping` (only the columns the user edited) merges cleanly
+ *  on top of the entity dict's suggestions, so callers never need to send
+ *  a complete mapping. `null` values are respected as an explicit "skip". */
 export function preview(
     entity: EntityKey,
     file: ParsedFile,
     mapping?: Record<string, string | null>,
 ): MappingPreview {
     const def = ENTITIES[entity];
-    const effectiveMapping = mapping ?? proposeMapping(entity, file).mapping;
+    const auto = proposeMapping(entity, file).mapping;
+    const effectiveMapping = mapping ? { ...auto, ...mapping } : auto;
     const inv: Record<string, string> = {};
     for (const [src, tgt] of Object.entries(effectiveMapping)) {
         if (tgt) inv[tgt] = src;
@@ -219,7 +225,8 @@ export function materialize(
     mapping?: Record<string, string | null>,
 ): Record<string, string>[] {
     const def = ENTITIES[entity];
-    const effectiveMapping = mapping ?? proposeMapping(entity, file).mapping;
+    const auto = proposeMapping(entity, file).mapping;
+    const effectiveMapping = mapping ? { ...auto, ...mapping } : auto;
     const inv: Record<string, string> = {};
     for (const [src, tgt] of Object.entries(effectiveMapping)) {
         if (tgt) inv[tgt] = src;

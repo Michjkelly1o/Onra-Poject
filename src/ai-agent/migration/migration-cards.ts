@@ -25,6 +25,13 @@ export interface ParsedFile {
     filename: string;
     columns: string[];
     rows: Record<string, string>[];
+    /** User's per-column mapping overrides (Phase 3). Keys are SOURCE column
+     *  names verbatim; values are TARGET field keys (from EntityDef.fields) or
+     *  `null` to explicitly skip that column. Any key absent from this map
+     *  falls back to the entity dict's auto-suggestion inside
+     *  proposeMapping. Absent field / empty object = user hasn't touched the
+     *  dropdowns yet and the server uses the auto-map. */
+    mapping?: Record<string, string | null>;
 }
 
 /** Result of `branchAssignment()` — visible on the branch-assignment card

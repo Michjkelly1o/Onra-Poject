@@ -568,7 +568,46 @@ export function ChatThread({
         }
     }
 
-    const act: MigActions = { send, openUpload };
+    // Phase 3 — per-column mapping picks. Written to parsedFile.mapping so
+    // they travel with every request; preview_import + commit_import merge
+    // these on top of the entity dict's auto-map (see parser.ts). Skip is
+    // encoded as `null`; absent keys fall back to the auto-suggestion.
+    const onMappingChange = (source: string, target: string | null) => {
+        setParsedFile((prev) => {
+            if (!prev) return prev;
+            const nextMapping = { ...(prev.mapping ?? {}), [source]: target };
+            const next: ParsedFile = { ...prev, mapping: nextMapping };
+            parsedFileRef.current = next;
+            return next;
+        });
+    };
+
+    const act: MigActions = {
+        send,
+        openUpload,
+        mappingOverrides: parsedFile?.mapping ?? undefined,
+        onMappingChange,
+    };
+
+    // Pending column-mapping chips — when the last assistant turn's tool
+    // result is a `column_mapping` card AND the model isn't currently
+    // streaming, float "Accept all / Skip / Done manual mapping" chips above
+    // the composer per the client's chip-panel pattern. Once the user picks
+    // any chip (a new user message lands), this clears itself just like
+    // `pendingQuestions` above.
+    const pendingMapping = (() => {
+        if (isBusy) return null;
+        if (mode !== "migration") return null;
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "assistant") return null;
+        const ti = last.toolInvocations?.find(
+            (t) =>
+                t.state === "result" &&
+                (t.result as MigrationCard | undefined)?.card === "column_mapping",
+        );
+        if (!ti || ti.state !== "result") return null;
+        return ti.result as Extract<MigrationCard, { card: "column_mapping" }>;
+    })();
 
     // Shared composer — centered in the empty hero, docked in a conversation.
     const composerNode = (
@@ -673,6 +712,62 @@ export function ChatThread({
                                 compact
                                 questions={pendingQuestions.questions}
                                 onComplete={(answers) => answerQuestions(pendingQuestions.questions, answers)}
+                            />
+                        </div>
+                    )}
+                    {pendingMapping && (
+                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
+                            <MappingActionChips
+                                onAcceptAll={() => {
+                                    // Wipe user overrides so the server re-runs
+                                    // pure auto-map on preview_import.
+                                    setParsedFile((prev) => {
+                                        if (!prev) return prev;
+                                        const next: ParsedFile = { ...prev };
+                                        delete next.mapping;
+                                        parsedFileRef.current = next;
+                                        return next;
+                                    });
+                                    send(
+                                        "Accept all suggested mappings and preview the import.",
+                                    );
+                                }}
+                                onSkipUnmatched={() => {
+                                    // Explicitly null out every column that
+                                    // still has no target — the user is
+                                    // telling us to drop them from the import.
+                                    setParsedFile((prev) => {
+                                        if (!prev) return prev;
+                                        const merged = {
+                                            ...(prev.mapping ?? {}),
+                                        };
+                                        for (const m of pendingMapping.mappings) {
+                                            const cur = Object.prototype.hasOwnProperty.call(
+                                                merged,
+                                                m.source,
+                                            )
+                                                ? merged[m.source]
+                                                : m.target;
+                                            if (cur === null) {
+                                                merged[m.source] = null;
+                                            }
+                                        }
+                                        const next: ParsedFile = {
+                                            ...prev,
+                                            mapping: merged,
+                                        };
+                                        parsedFileRef.current = next;
+                                        return next;
+                                    });
+                                    send(
+                                        "Skip the unmatched columns and preview the import.",
+                                    );
+                                }}
+                                onDoneManual={() =>
+                                    send(
+                                        "I'm done with the manual mapping — preview the import.",
+                                    )
+                                }
                             />
                         </div>
                     )}
@@ -1165,6 +1260,66 @@ function QuestionStepCard({
                     {humanizeAgentText(data.message)}
                 </p>
             )}
+        </div>
+    );
+}
+
+// Chip panel floating above the composer when the Step-3 column_mapping card
+// is the most recent tool result. Sits in the same slot as the pending-
+// questions panel so the composer stays visually anchored while the user
+// resolves the mapping. Buttons are quick-replies — clicks fire the parent's
+// onAccept / onSkip / onDone handlers, which coordinate parsedFile.mapping
+// tweaks with the outgoing message.
+function MappingActionChips({
+    onAcceptAll,
+    onSkipUnmatched,
+    onDoneManual,
+}: {
+    onAcceptAll: () => void;
+    onSkipUnmatched: () => void;
+    onDoneManual: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap gap-2 items-center">
+            <button
+                type="button"
+                onClick={onAcceptAll}
+                className={cn(
+                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                    "bg-[#c4edd6] text-[#0c2d34] text-[13px] font-medium",
+                    "border-1 border-white/[0.12]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#aad4bd] transition-colors",
+                )}
+            >
+                Accept all suggestion
+            </button>
+            <button
+                type="button"
+                onClick={onSkipUnmatched}
+                className={cn(
+                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                    "bg-white text-[#344054] text-[13px] font-medium",
+                    "border-1 border-[#d0d5dd]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#f9fafb] transition-colors",
+                )}
+            >
+                Skip suggestion field
+            </button>
+            <button
+                type="button"
+                onClick={onDoneManual}
+                className={cn(
+                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                    "bg-white text-[#344054] text-[13px] font-medium",
+                    "border-1 border-[#d0d5dd]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#f9fafb] transition-colors",
+                )}
+            >
+                Done manual mapping
+            </button>
         </div>
     );
 }

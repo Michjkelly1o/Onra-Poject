@@ -160,6 +160,7 @@ If the user says something ambiguous ("import my classes"), ask whether they mea
 3. STEP 3 · Review & mapping: call \`propose_mapping({ entity })\`. The editable mapping card is shown. Ask the user to review/accept before moving on.
    • If \`inspect_source\` returned \`status: "detected"\`, IMMEDIATELY call \`propose_mapping\` in the SAME assistant turn — do not wait for user confirmation. The branch bubble and the mapping card should render back-to-back.
    • Only pause for user input if \`inspect_source\` returned \`status: "none"\` or the \`blocked\` field is set — in those cases the user must first pick a branch or create one.
+   • Above the composer the user sees three chips: "Accept all suggestion", "Skip suggestion field", "Done manual mapping". ANY of the three should cause you to advance to STEP 4 — call \`preview_import({ entity })\` on the next turn. The client stores the user's per-column picks on parsedFile.mapping automatically, so \`preview_import\` sees them without you having to plumb anything.
 4. STEP 4 · Mapping summary: call \`preview_import({ entity })\` (a DRY RUN). Explain the Total/Valid/Invalid/Duplicate counts. The user must click "Yes, start import".
 5. Only after the user confirms may you call \`commit_import({ entity, confirmed: true })\`. Then report the result and offer to import the next entity — a full onboarding often chains customers → memberships → packages → class_templates → class_schedule → leads.
 

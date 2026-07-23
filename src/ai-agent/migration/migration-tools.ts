@@ -167,13 +167,13 @@ export function migrationTools(
 
         preview_import: tool({
             description:
-                "STEP 4 of 4. DRY RUN — validate and dedupe against the auto-mapping, returning Total / Valid / Invalid / Duplicate counts and the field summary. NO data is written. The user must approve before committing.",
+                "STEP 4 of 4. DRY RUN — validate and dedupe against the mapping, returning Total / Valid / Invalid / Duplicate counts and the field summary. NO data is written. The user must approve before committing. If the user picked their own column mapping in Step 3, that pick lives on parsedFile.mapping and this tool honours it automatically — no need to re-supply anything.",
             parameters: z.object({
                 entity: ENTITY_ENUM,
             }),
             execute: async ({ entity }) => {
                 if (!parsedFile) return emptyResult(entity);
-                const p = preview(entity, parsedFile);
+                const p = preview(entity, parsedFile, parsedFile.mapping);
                 return {
                     card: "mapping_summary" as const,
                     step: 4,
@@ -187,7 +187,7 @@ export function migrationTools(
 
         commit_import: tool({
             description:
-                "Commit the validated records into Onra. Idempotent. Requires write permission AND that the user has explicitly approved the step-4 summary (e.g. clicked 'Yes, start import'). Never call this without that approval.",
+                "Commit the validated records into Onra. Idempotent. Requires write permission AND that the user has explicitly approved the step-4 summary (e.g. clicked 'Yes, start import'). Never call this without that approval. Uses parsedFile.mapping when the user edited the Step-3 dropdowns; falls back to the auto-map otherwise.",
             parameters: z.object({
                 entity: ENTITY_ENUM,
                 confirmed: z
@@ -200,7 +200,7 @@ export function migrationTools(
                 if (!ctx.canWrite) return emptyResult(entity);
                 if (!confirmed) return emptyResult(entity);
                 if (!parsedFile) return emptyResult(entity);
-                const r = commit(entity, parsedFile);
+                const r = commit(entity, parsedFile, parsedFile.mapping);
                 return {
                     card: "import_result" as const,
                     entity,

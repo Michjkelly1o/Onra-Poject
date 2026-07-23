@@ -17,10 +17,14 @@
 
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
     Upload01,
     Building01,
+    Check,
     CheckCircle,
+    ChevronDown,
+    ChevronUp,
     XCircle,
     AlertTriangle,
 } from "@untitledui/icons";
@@ -40,10 +44,19 @@ function labelOf(entityKey: string): string {
 
 /** Callbacks the cards trigger. `send(text)` pushes a user message into
  *  the thread (which drives the model's next tool call); `openUpload()`
- *  fires the hidden file input in the composer. */
+ *  fires the hidden file input in the composer.
+ *
+ *  Phase 3 — the Step-3 column-mapping card needs to persist the user's
+ *  dropdown picks so they survive back into the tool calls that follow.
+ *  Picks live on `parsedFile.mapping` in ChatThread state; the card
+ *  reads the current value via `mappingOverrides` and writes changes
+ *  via `onMappingChange`. Both are optional so non-migration MigCards
+ *  keep working unchanged. */
 export type MigActions = {
     send: (text: string) => void;
     openUpload: () => void;
+    mappingOverrides?: Record<string, string | null>;
+    onMappingChange?: (source: string, target: string | null) => void;
 };
 
 function CardShell({
@@ -166,6 +179,142 @@ function Tile({
                 {value.toLocaleString("en-US")}
             </div>
         </div>
+    );
+}
+
+// ─── Styled dropdown for the column-mapping grid ───────────────────────────
+// Figma 214:259141 — replaces the native <select> with a DS-matching
+// button + floating menu so we can (a) style it exactly, (b) show
+// the warning border/text tokens when a row still needs review, and
+// (c) actually fire an onChange (the native <select> in the previous
+// build used defaultValue and never notified the parent, so user
+// picks were silently thrown away).
+const SKIP_KEY = "__skip";
+type DropdownOption = { key: string; label: string };
+function MappingDropdown({
+    value,
+    options,
+    needsReview,
+    onChange,
+}: {
+    /** Current target: an EntityDef field key, or null = "Skip this column".*/
+    value: string | null;
+    /** Every valid Onra field for this entity, from EntityDef.fields. */
+    options: DropdownOption[];
+    /** Renders the warning border + amber text when true (unmatched column). */
+    needsReview: boolean;
+    onChange: (next: string | null) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
+    // Close the menu when the user clicks anywhere outside its bounds.
+    useEffect(() => {
+        if (!open) return;
+        const onDoc = (e: MouseEvent) => {
+            if (!rootRef.current) return;
+            if (!rootRef.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", onDoc);
+        return () => document.removeEventListener("mousedown", onDoc);
+    }, [open]);
+    // Close on Escape for keyboard users.
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setOpen(false);
+        };
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [open]);
+    const selectedLabel =
+        value === null
+            ? "Skip this column"
+            : options.find((o) => o.key === value)?.label ?? value;
+    const Chevron = open ? ChevronUp : ChevronDown;
+    return (
+        <div ref={rootRef} className="relative w-full max-w-[282px]">
+            <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                className={cn(
+                    "flex w-full items-center gap-2 px-3.5 py-2.5 rounded-md bg-white",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "text-left text-[16px] leading-6",
+                    needsReview
+                        ? "border border-[#fec84b] text-[#dc6803]"
+                        : "border border-[#d0d5dd] text-[#101828]",
+                )}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+            >
+                <span className="flex-1 min-w-0 truncate">{selectedLabel}</span>
+                <Chevron className="size-5 shrink-0 text-[#667085]" />
+            </button>
+            {open && (
+                <div
+                    className={cn(
+                        "absolute left-0 right-0 top-full mt-1 z-40",
+                        "bg-white border border-[#e4e7ec] rounded-md py-1",
+                        "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
+                        "max-h-[280px] overflow-y-auto",
+                    )}
+                    role="listbox"
+                >
+                    <DropdownItem
+                        label="Skip this column"
+                        selected={value === null}
+                        onSelect={() => {
+                            onChange(null);
+                            setOpen(false);
+                        }}
+                    />
+                    {options.map((o) => (
+                        <DropdownItem
+                            key={o.key}
+                            label={o.label}
+                            selected={value === o.key}
+                            onSelect={() => {
+                                onChange(o.key);
+                                setOpen(false);
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+function DropdownItem({
+    label,
+    selected,
+    onSelect,
+}: {
+    label: string;
+    selected: boolean;
+    onSelect: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onSelect}
+            className="w-full flex items-center gap-2 px-1.5 py-px"
+            role="option"
+            aria-selected={selected}
+        >
+            <span
+                className={cn(
+                    "flex-1 flex items-center gap-2 rounded-md py-2.5 pl-2 pr-2.5",
+                    selected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                )}
+            >
+                <span className="flex-1 text-left text-[14px] leading-5 font-medium text-[#344054]">
+                    {label}
+                </span>
+                {selected && (
+                    <Check className="size-5 shrink-0 text-[#344054]" />
+                )}
+            </span>
+        </button>
     );
 }
 
@@ -389,87 +538,112 @@ export function MigCard({
         // Figma 214:260316 — the friendly "Review & mapping" intro bubble
         // renders ABOVE the dropdown grid so the user reads the situation
         // before being asked to review the rows.
-        const unmatchedSources = data.mappings
-            .filter((m) => m.status === "needs_review")
-            .map((m) => m.source);
-        const totalCount = data.mappings.length;
+        //
+        // Figma 214:259141 — the grid itself uses the DS "Migrate data /
+        // Column mapping" panel: title + counts on top, an internal
+        // scrolling table below. Each row's dropdown is now backed by
+        // parsedFile.mapping (via MigActions.mappingOverrides + onMappingChange)
+        // so user picks actually persist and thread through to
+        // preview_import / commit_import. Action buttons live above the
+        // composer per the client's chip-panel pattern — see the pending
+        // panel in ChatThread.
+        const overrides = act.mappingOverrides ?? {};
+        // Effective mapping = server auto-map overridden by user picks.
+        // Rows are `needs_review` when the effective target is still null.
+        const rowsWithEffective = data.mappings.map((m) => {
+            const hasOverride = Object.prototype.hasOwnProperty.call(
+                overrides,
+                m.source,
+            );
+            const target = hasOverride ? overrides[m.source] : m.target;
+            return {
+                source: m.source,
+                target,
+                needsReview: target === null,
+            };
+        });
+        const mappedCount = rowsWithEffective.filter((r) => !r.needsReview).length;
+        const needsReviewCount = rowsWithEffective.length - mappedCount;
+        const unmatchedSources = rowsWithEffective
+            .filter((r) => r.needsReview)
+            .map((r) => r.source);
         return (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
                 <MappingIntroBubble
                     step={data.step}
-                    mappedCount={data.summary.mapped}
-                    totalCount={totalCount}
+                    mappedCount={mappedCount}
+                    totalCount={rowsWithEffective.length}
                     unmatchedSources={unmatchedSources}
                 />
-            <CardShell>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <CardTitle>Column mapping</CardTitle>
-                    <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[11px] font-medium text-[#067647]">
-                            <CheckCircle className="size-3" />
-                            {data.summary.mapped} mapped
-                        </span>
-                        {data.summary.needs_review > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fffaeb] border border-[#fedf89] text-[11px] font-medium text-[#b54708]">
-                                <AlertTriangle className="size-3" />
-                                {data.summary.needs_review} need review
+                <div
+                    className={cn(
+                        "bg-white border border-[#e4e7ec] rounded-2xl p-4",
+                        "flex flex-col gap-4 max-w-[720px] w-full",
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    )}
+                >
+                    <div className="flex items-center gap-4 w-full">
+                        <div className="flex-1 min-w-0">
+                            <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                                Column mapping
+                            </h4>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[12px] font-medium leading-[18px] text-[#067647]">
+                                {mappedCount} mapped
                             </span>
+                            {needsReviewCount > 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#fffaeb] border border-[#fedf89] text-[12px] font-medium leading-[18px] text-[#b54708]">
+                                    {needsReviewCount} need review
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <div
+                        className={cn(
+                            "bg-white border border-[#e4e7ec] rounded-xl overflow-hidden",
+                            "max-h-[428px] overflow-y-auto",
                         )}
+                    >
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                        Incoming fields
+                                    </th>
+                                    <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                        Onra fields
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rowsWithEffective.map((r) => (
+                                    <tr
+                                        key={r.source}
+                                        className="border-b border-[#e4e7ec] last:border-b-0"
+                                    >
+                                        <td className="px-6 py-4 text-[14px] leading-5 text-[#475467] align-middle whitespace-nowrap">
+                                            {r.source}
+                                        </td>
+                                        <td className="px-6 py-4 align-middle">
+                                            <MappingDropdown
+                                                value={r.target}
+                                                options={data.targetOptions}
+                                                needsReview={r.needsReview}
+                                                onChange={(next) =>
+                                                    act.onMappingChange?.(
+                                                        r.source,
+                                                        next,
+                                                    )
+                                                }
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                    {data.mappings.map((m, i) => (
-                        <div
-                            key={i}
-                            className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1"
-                        >
-                            <div className="text-[13px] font-medium text-[#344054] truncate">
-                                {m.source}
-                            </div>
-                            <div className="text-[#98a2b3] text-[12px]">→</div>
-                            <select
-                                defaultValue={m.target ?? "__skip"}
-                                className={cn(
-                                    "h-9 px-2 rounded-md text-[13px] bg-white border",
-                                    m.status === "needs_review"
-                                        ? "border-[#fedf89] text-[#b54708]"
-                                        : "border-[#d0d5dd] text-[#344054]",
-                                )}
-                            >
-                                <option value="__skip">
-                                    Skip this column
-                                </option>
-                                {data.targetOptions.map((o) => (
-                                    <option key={o.key} value={o.key}>
-                                        {o.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    ))}
-                </div>
-                <div className="flex gap-2 mt-1">
-                    <PrimaryButton
-                        onClick={() =>
-                            act.send(
-                                "Accept all suggested mappings and preview the import.",
-                            )
-                        }
-                    >
-                        <CheckCircle className="size-4" />
-                        Accept all suggestions
-                    </PrimaryButton>
-                    <SecondaryButton
-                        onClick={() =>
-                            act.send(
-                                "Skip the unmatched columns and preview the import.",
-                            )
-                        }
-                    >
-                        Skip unmatched
-                    </SecondaryButton>
-                </div>
-            </CardShell>
             </div>
         );
     }
