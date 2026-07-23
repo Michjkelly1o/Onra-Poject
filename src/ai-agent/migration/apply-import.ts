@@ -37,6 +37,7 @@ import type {
     Membership,
     Package,
     CustomerPlan,
+    CustomerTransaction,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -157,6 +158,12 @@ export interface ImportDeps {
     ) => string;
     addClassCategory: (input: ClassCategory) => void;
     addCustomerPlan: (input: Omit<CustomerPlan, "id"> & { id?: string }) => string;
+    addCustomerTransaction: (
+        input: Omit<CustomerTransaction, "id" | "createdAtISO"> & {
+            id?: string;
+            createdAtISO?: string;
+        },
+    ) => string;
     /** Live customer + product slices for FK resolution. */
     customers: Customer[];
     memberships: Membership[];
@@ -182,7 +189,8 @@ export interface ImportDeps {
             | "tax_rates"
             | "agreements"
             | "class_categories"
-            | "customer_plans";
+            | "customer_plans"
+            | "customer_transactions";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -379,6 +387,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     agreements: "agreements",
     class_categories: "class_categories",
     customer_plans: "customer_plans",
+    customer_transactions: "customer_transactions",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -642,6 +651,77 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "customer_transactions") {
+        // Customer FK by email — skip rows whose customer can't resolve.
+        // Product is optional (many exports lack it); when the name matches a
+        // live membership/package it links, else we still write the row with
+        // a blank productId + kind "membership" (a broad neutral choice for
+        // the ledger) so revenue history survives.
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        const memByName = new Map(
+            deps.memberships.map((m) => [m.name.trim().toLowerCase(), m]),
+        );
+        const pkgByName = new Map(
+            deps.packages.map((p) => [p.name.trim().toLowerCase(), p]),
+        );
+        const records = materialize("customer_transactions", file);
+        let created = 0;
+        for (const rec of records) {
+            const email = (rec.customer_email ?? "").trim().toLowerCase();
+            if (!email) continue;
+            const cust = custByEmail.get(email);
+            if (!cust) continue;
+            const itemName = (rec.name ?? "").trim();
+            const mem = memByName.get(itemName.toLowerCase());
+            const pkg = mem ? undefined : pkgByName.get(itemName.toLowerCase());
+            // Kind snap.
+            const kRaw = (rec.kind ?? "").toLowerCase();
+            const kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" =
+                mem
+                    ? "membership"
+                    : pkg
+                      ? "package"
+                      : /penal|cancel/.test(kRaw)
+                        ? "cancellation_penalty"
+                        : /freeze/.test(kRaw)
+                          ? "freeze_fee"
+                          : "membership";
+            // Payment method + status.
+            const pmRaw = (rec.payment_method ?? "").toLowerCase();
+            const paymentMethod: "card" | "cash" = /cash/.test(pmRaw) ? "cash" : "card";
+            const stRaw = (rec.status ?? "").toLowerCase();
+            const status: "complete" | "pending" | "failed" | "refunded" =
+                /refund/.test(stRaw)
+                    ? "refunded"
+                    : /pend/.test(stRaw)
+                      ? "pending"
+                      : /fail/.test(stRaw)
+                        ? "failed"
+                        : "complete";
+            const createdIso = toISODate(rec.created_at) ?? new Date().toISOString().slice(0, 10);
+            deps.addCustomerTransaction({
+                customerId: cust.id,
+                branchId: cust.branchId,
+                kind,
+                productId: mem?.id ?? pkg?.id ?? "",
+                name: itemName || (kind === "membership" ? "Membership" : "Purchase"),
+                amountAed: toNumber(rec.amount, 0),
+                status,
+                paymentMethod,
+                createdAtISO: `${createdIso}T09:00:00Z`,
+                transactionType: status === "refunded" ? "refund" : "sale",
+                isRefundable: kind === "membership" || kind === "package",
             });
             created++;
         }

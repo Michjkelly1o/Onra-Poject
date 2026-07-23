@@ -3929,6 +3929,14 @@ export interface AppState {
     /** Refund a completed transaction — status → refunded, with the refund
      *  method + timestamp recorded. Only `complete` transactions are eligible. */
     refundTransaction: (id: string, method: "cash" | "card") => void;
+    /** Append a customer transaction — used by the AI Agent migration importer
+     *  to bring across historical payments. Auto id + createdAtISO. */
+    addCustomerTransaction: (
+        input: Omit<CustomerTransaction, "id" | "createdAtISO"> & {
+            id?: string;
+            createdAtISO?: string;
+        },
+    ) => string;
     /** Approve a pending refund request (dashboard Needs-attention). Refunds
      *  the transaction (status → refunded) so it drops from the queue. */
     approveRefundRequest: (id: string) => void;
@@ -6777,6 +6785,19 @@ export const useAppStore = create<AppState>()(persist(
 
     // ── Customer transactions ──────────────────────────────────────────────
 
+    addCustomerTransaction: (input) => {
+        const id = input.id ?? `txn_import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: CustomerTransaction = {
+            ...input,
+            id,
+            createdAtISO: input.createdAtISO ?? new Date().toISOString(),
+        };
+        set(state => ({ customerTransactions: [...state.customerTransactions, next] }));
+        const target = get().customers.find(c => c.id === input.customerId);
+        const who = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
+        get().recordAudit(`Imported transaction for ${who}`, "customer", input.customerId, next.name);
+        return id;
+    },
     refundTransaction: (id, method) => {
         const target = get().customerTransactions.find(t => t.id === id);
         // Belt-and-braces guard — even if a future UI surface skips
