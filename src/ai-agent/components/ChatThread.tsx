@@ -757,7 +757,6 @@ export function ChatThread({
                               id: b.id,
                               label: b.name,
                           }))),
-                    { id: "__add_new_branch", label: "+ Add new branch" },
                     // Client 2026-07-24 — "Global" numbered option: the user
                     // is telling us these records don't belong to any single
                     // branch at import time (tax rates being the canonical
@@ -769,6 +768,11 @@ export function ChatThread({
                         label: "Global — apply to branches later",
                         subtitle: "For records like tax rates that are set on the admin side after import.",
                     },
+                    // "+ Add new branch" sits LAST — a create-new action per
+                    // client 2026-07-24 review; the branch picks + Global
+                    // read first, and the escape hatch to Settings comes
+                    // after them.
+                    { id: "__add_new_branch", label: "+ Add new branch" },
                 ],
             },
         });
