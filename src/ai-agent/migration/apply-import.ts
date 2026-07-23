@@ -178,6 +178,18 @@ export interface ImportDeps {
             createdAtISO?: string;
         },
     ) => string;
+    addIssuedGiftCard: (input: {
+        design_id: string;
+        customer_id: string;
+        code: string;
+        face_value_aed: number;
+        current_balance_aed: number;
+        issued_at: string;
+        expires_at: string;
+        status: "active" | "redeemed" | "expired";
+    } & { id?: string }) => string;
+    /** Live gift-card designs slice (for the issued-cards adapter). */
+    giftCardDesigns: { id: string; name: string; validity_days: number }[];
     /** Live class schedules the class_bookings adapter looks up by
      *  (template name × date). Required for that adapter only. */
     classSchedules: ClassSchedule[];
@@ -209,7 +221,8 @@ export interface ImportDeps {
             | "customer_plans"
             | "customer_transactions"
             | "class_bookings"
-            | "wallet_transactions";
+            | "wallet_transactions"
+            | "issued_gift_cards";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -409,6 +422,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     customer_transactions: "customer_transactions",
     class_bookings: "class_bookings",
     wallet_transactions: "wallet_transactions",
+    issued_gift_cards: "issued_gift_cards",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -672,6 +686,62 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "issued_gift_cards") {
+        // Two hard FKs — design by name, customer by email.
+        const designByName = new Map(
+            deps.giftCardDesigns.map((d) => [d.name.trim().toLowerCase(), d]),
+        );
+        const custByEmail = new Map(
+            deps.customers.map((c) => [c.email.trim().toLowerCase(), c]),
+        );
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const records = materialize("issued_gift_cards", file);
+        let created = 0;
+        for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+            const email = (rec.customer_email ?? "").trim().toLowerCase();
+            const designName = (rec.design_name ?? "").trim().toLowerCase();
+            if (!email || !designName) continue;
+            const design = designByName.get(designName);
+            const cust = custByEmail.get(email);
+            if (!design || !cust) continue;
+            const faceValue = toNumber(rec.face_value, 0);
+            const balance = rec.current_balance
+                ? toNumber(rec.current_balance, faceValue)
+                : faceValue;
+            const issuedISO = toISODate(rec.issued_at) ?? todayISO;
+            const expiresISO =
+                toISODate(rec.expires_at) ??
+                new Date(
+                    Date.parse(`${issuedISO}T00:00:00Z`) +
+                        (design.validity_days ?? 365) * 86_400_000,
+                )
+                    .toISOString()
+                    .slice(0, 10);
+            const status: "active" | "redeemed" | "expired" =
+                todayISO > expiresISO
+                    ? "expired"
+                    : balance <= 0
+                      ? "redeemed"
+                      : "active";
+            deps.addIssuedGiftCard({
+                design_id: design.id,
+                customer_id: cust.id,
+                code: (rec.code ?? `GC-IMP-${Date.now()}-${i}`).trim(),
+                face_value_aed: faceValue,
+                current_balance_aed: balance,
+                issued_at: `${issuedISO}T09:00:00Z`,
+                expires_at: `${expiresISO}T23:59:59Z`,
+                status,
             });
             created++;
         }

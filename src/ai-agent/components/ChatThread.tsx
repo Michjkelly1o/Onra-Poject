@@ -287,6 +287,8 @@ export function ChatThread({
                         addCustomerTransaction: st.addCustomerTransaction,
                         addImportedClassBooking: st.addImportedClassBooking,
                         addWalletTransaction: st.addWalletTransaction,
+                        addIssuedGiftCard: st.addIssuedGiftCard,
+                        giftCardDesigns: st.giftCardDesigns,
                         customers: st.customers,
                         memberships: st.memberships,
                         packages: st.packages,
