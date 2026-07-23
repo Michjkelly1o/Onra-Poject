@@ -728,6 +728,166 @@ export function ChatThread({
         return ba;
     })();
 
+    // Client 2026-07-23 (revised UX pass) — replace the three ad-hoc chip
+    // rows (mapping / summary / branch) with the same vertical
+    // AiQuestionPrompt panel used elsewhere. Multiple pending prompts in
+    // the same assistant turn (e.g. AI just asked for a branch AND for a
+    // mapping decision) render as a pager — user answers question 1 → 2
+    // → and only THEN does a combined reply go to the model. Compact
+    // mode auto-advances on click; onComplete fires once every step is
+    // answered.
+    const activeBranchesForPicker = allBranches.filter(
+        (b) => b.status === "active" && (
+            !currentUser?.branch_id || b.id === currentUser.branch_id
+        ),
+    );
+    // Kind + spec pairs so onComplete can dispatch side effects per row.
+    const migQuestionEntries: Array<{
+        kind: "branch" | "mapping" | "summary";
+        spec: import("@/ai-agent/components/AiQuestionPrompt").AiQuestionSpec;
+    }> = [];
+    if (pendingBranchPicker) {
+        const isFlowC = pendingBranchPicker.blocked?.reason === "no_branches";
+        migQuestionEntries.push({
+            kind: "branch",
+            spec: {
+                title: isFlowC
+                    ? "Create a branch to continue"
+                    : "Which branch should we use?",
+                allowOther: false,
+                options: [
+                    ...(isFlowC
+                        ? []
+                        : activeBranchesForPicker.map((b) => ({
+                              id: b.id,
+                              label: b.name,
+                          }))),
+                    { id: "__add_new_branch", label: "+ Add new branch" },
+                ],
+            },
+        });
+    }
+    if (pendingMapping) {
+        migQuestionEntries.push({
+            kind: "mapping",
+            spec: {
+                title: "How should we handle the column mapping?",
+                allowOther: false,
+                options: [
+                    { id: "accept_all", label: "Accept all suggestion" },
+                    { id: "skip_unmatched", label: "Skip suggestion field" },
+                    { id: "done_manual", label: "Done manual mapping" },
+                ],
+            },
+        });
+    }
+    if (pendingSummary) {
+        migQuestionEntries.push({
+            kind: "summary",
+            spec: {
+                title: "Ready to start the import?",
+                allowOther: false,
+                options: [
+                    { id: "yes_start", label: "Yes, start import" },
+                    { id: "no_back",   label: "No, back to mapping" },
+                ],
+            },
+        });
+    }
+
+    const onMigQuestionsComplete = (answers: AiQuestionAnswer[]) => {
+        // Apply the state effects for each answer + collect the message
+        // chunk the AI will see. Walked in order so branch-first, then
+        // mapping, then summary — matches the entries array above.
+        const chunks: string[] = [];
+        for (let i = 0; i < migQuestionEntries.length; i++) {
+            const entry = migQuestionEntries[i];
+            const answer = answers[i];
+            if (!answer || answer.kind !== "option") continue;
+            const optId = answer.optionId;
+            if (entry.kind === "branch") {
+                if (optId === "__add_new_branch") {
+                    chunks.push(
+                        "I'll add a new branch first — direct me to the branches settings.",
+                    );
+                } else {
+                    const branch = activeBranchesForPicker.find((b) => b.id === optId);
+                    if (branch) {
+                        setParsedFile((prev) => {
+                            if (!prev) return prev;
+                            const next: ParsedFile = {
+                                ...prev,
+                                defaultBranchId: branch.id,
+                            };
+                            parsedFileRef.current = next;
+                            return next;
+                        });
+                        chunks.push(
+                            `Use ${branch.name} for all imported records — proceed to mapping.`,
+                        );
+                    }
+                }
+            } else if (entry.kind === "mapping") {
+                if (optId === "accept_all") {
+                    setParsedFile((prev) => {
+                        if (!prev) return prev;
+                        const next: ParsedFile = { ...prev };
+                        delete next.mapping;
+                        parsedFileRef.current = next;
+                        return next;
+                    });
+                    chunks.push(
+                        "Accept all suggested mappings and preview the import.",
+                    );
+                } else if (optId === "skip_unmatched") {
+                    if (pendingMapping) {
+                        setParsedFile((prev) => {
+                            if (!prev) return prev;
+                            const merged = { ...(prev.mapping ?? {}) };
+                            for (const m of pendingMapping.mappings) {
+                                const cur = Object.prototype.hasOwnProperty.call(
+                                    merged,
+                                    m.source,
+                                )
+                                    ? merged[m.source]
+                                    : m.target;
+                                if (cur === null) merged[m.source] = null;
+                            }
+                            const next: ParsedFile = { ...prev, mapping: merged };
+                            parsedFileRef.current = next;
+                            return next;
+                        });
+                    }
+                    chunks.push(
+                        "Skip the unmatched columns and preview the import.",
+                    );
+                } else if (optId === "done_manual") {
+                    chunks.push(
+                        "I'm done with the manual mapping — preview the import.",
+                    );
+                }
+            } else if (entry.kind === "summary") {
+                if (optId === "yes_start") {
+                    setIsCommitInFlight(true);
+                    chunks.push("Yes, start the import.");
+                } else if (optId === "no_back") {
+                    chunks.push("No, take me back to mapping.");
+                }
+            }
+        }
+        if (chunks.length > 0) send(chunks.join(" "));
+    };
+
+    const migQuestionsPanel = migQuestionEntries.length > 0 ? (
+        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
+            <AiQuestionPrompt
+                compact
+                questions={migQuestionEntries.map((e) => e.spec)}
+                onComplete={onMigQuestionsComplete}
+            />
+        </div>
+    ) : null;
+
     // Wrapper around useChat's handleSubmit — same "mark the outgoing
     // user message with the current composer attachment" pattern as
     // `send` uses (see above). Blocks the submit if the upload parse
@@ -899,122 +1059,7 @@ export function ChatThread({
                             />
                         </div>
                     )}
-                    {pendingMapping && (
-                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
-                            <MappingActionChips
-                                onAcceptAll={() => {
-                                    // Wipe user overrides so the server re-runs
-                                    // pure auto-map on preview_import.
-                                    setParsedFile((prev) => {
-                                        if (!prev) return prev;
-                                        const next: ParsedFile = { ...prev };
-                                        delete next.mapping;
-                                        parsedFileRef.current = next;
-                                        return next;
-                                    });
-                                    send(
-                                        "Accept all suggested mappings and preview the import.",
-                                    );
-                                }}
-                                onSkipUnmatched={() => {
-                                    // Explicitly null out every column that
-                                    // still has no target — the user is
-                                    // telling us to drop them from the import.
-                                    setParsedFile((prev) => {
-                                        if (!prev) return prev;
-                                        const merged = {
-                                            ...(prev.mapping ?? {}),
-                                        };
-                                        for (const m of pendingMapping.mappings) {
-                                            const cur = Object.prototype.hasOwnProperty.call(
-                                                merged,
-                                                m.source,
-                                            )
-                                                ? merged[m.source]
-                                                : m.target;
-                                            if (cur === null) {
-                                                merged[m.source] = null;
-                                            }
-                                        }
-                                        const next: ParsedFile = {
-                                            ...prev,
-                                            mapping: merged,
-                                        };
-                                        parsedFileRef.current = next;
-                                        return next;
-                                    });
-                                    send(
-                                        "Skip the unmatched columns and preview the import.",
-                                    );
-                                }}
-                                onDoneManual={() =>
-                                    send(
-                                        "I'm done with the manual mapping — preview the import.",
-                                    )
-                                }
-                            />
-                        </div>
-                    )}
-                    {pendingSummary && (
-                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
-                            <SummaryActionChips
-                                onStartImport={() => {
-                                    setIsCommitInFlight(true);
-                                    send("Yes, start the import.");
-                                }}
-                                onBackToMapping={() =>
-                                    send("No, take me back to mapping.")
-                                }
-                            />
-                        </div>
-                    )}
-                    {pendingBranchPicker && (
-                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
-                            <BranchPickerChips
-                                branches={(() => {
-                                    // Role scope: Branch Admin sees only
-                                    // their assigned branch; Owner sees
-                                    // every active branch. Archived and
-                                    // inactive branches never appear.
-                                    const activeBranches = allBranches.filter(
-                                        (b) => b.status === "active",
-                                    );
-                                    if (currentUser?.branch_id) {
-                                        return activeBranches.filter(
-                                            (b) => b.id === currentUser.branch_id,
-                                        );
-                                    }
-                                    return activeBranches;
-                                })()}
-                                showBranchOptions={
-                                    pendingBranchPicker.blocked?.reason !==
-                                    "no_branches"
-                                }
-                                onPickBranch={(branch) => {
-                                    // Persist the pick on parsedFile so the
-                                    // server-side tools + client apply-import
-                                    // both see it, then nudge the AI onward.
-                                    setParsedFile((prev) => {
-                                        if (!prev) return prev;
-                                        const next: ParsedFile = {
-                                            ...prev,
-                                            defaultBranchId: branch.id,
-                                        };
-                                        parsedFileRef.current = next;
-                                        return next;
-                                    });
-                                    send(
-                                        `Use ${branch.name} for all imported records — proceed to mapping.`,
-                                    );
-                                }}
-                                onAddNewBranch={() =>
-                                    send(
-                                        "I'll add a new branch first — direct me to the branches settings.",
-                                    )
-                                }
-                            />
-                        </div>
-                    )}
+                    {migQuestionsPanel}
                     <div className="w-full max-w-[720px] mx-auto px-6 py-4">{composerNode}</div>
                 </div>
             )}
@@ -1535,120 +1580,6 @@ function QuestionStepCard({
     );
 }
 
-// Chip panel floating above the composer when the Step-3 column_mapping card
-// is the most recent tool result. Sits in the same slot as the pending-
-// questions panel so the composer stays visually anchored while the user
-// resolves the mapping. Buttons are quick-replies — clicks fire the parent's
-// onAccept / onSkip / onDone handlers, which coordinate parsedFile.mapping
-// tweaks with the outgoing message.
-function MappingActionChips({
-    onAcceptAll,
-    onSkipUnmatched,
-    onDoneManual,
-}: {
-    onAcceptAll: () => void;
-    onSkipUnmatched: () => void;
-    onDoneManual: () => void;
-}) {
-    return (
-        <div className="flex flex-wrap gap-2 items-center">
-            <button
-                type="button"
-                onClick={onAcceptAll}
-                className={cn(
-                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                    "bg-[#c4edd6] text-[#0c2d34] text-[13px] font-medium",
-                    "border-1 border-white/[0.12]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#aad4bd] transition-colors",
-                )}
-            >
-                Accept all suggestion
-            </button>
-            <button
-                type="button"
-                onClick={onSkipUnmatched}
-                className={cn(
-                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                    "bg-white text-[#344054] text-[13px] font-medium",
-                    "border-1 border-[#d0d5dd]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                )}
-            >
-                Skip suggestion field
-            </button>
-            <button
-                type="button"
-                onClick={onDoneManual}
-                className={cn(
-                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                    "bg-white text-[#344054] text-[13px] font-medium",
-                    "border-1 border-[#d0d5dd]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                )}
-            >
-                Done manual mapping
-            </button>
-        </div>
-    );
-}
-
-// Phase 6 — Flow B / Flow C chip panel that lands above the composer when
-// the CSV had no branch column. Renders one chip per existing active
-// branch (Flow B only) plus a trailing "+ Add new branch" affordance.
-// Reuses the same DS chip styling as MappingActionChips /
-// SummaryActionChips so the three pending panels stay visually consistent.
-function BranchPickerChips({
-    branches,
-    showBranchOptions,
-    onPickBranch,
-    onAddNewBranch,
-}: {
-    branches: { id: string; name: string }[];
-    /** False in Flow C (no branches at all) — hides the branch chips and
-     *  leaves just the "+ Add new branch" affordance. */
-    showBranchOptions: boolean;
-    onPickBranch: (branch: { id: string; name: string }) => void;
-    onAddNewBranch: () => void;
-}) {
-    return (
-        <div className="flex flex-wrap gap-2 items-center">
-            {showBranchOptions &&
-                branches.map((b) => (
-                    <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => onPickBranch(b)}
-                        className={cn(
-                            "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                            "bg-white text-[#344054] text-[13px] font-medium",
-                            "border-1 border-[#d0d5dd]",
-                            "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                            "hover:bg-[#f9fafb] transition-colors",
-                        )}
-                    >
-                        {b.name}
-                    </button>
-                ))}
-            <button
-                type="button"
-                onClick={onAddNewBranch}
-                className={cn(
-                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                    "bg-white text-[#344054] text-[13px] font-medium",
-                    "border-1 border-[#d0d5dd]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                )}
-            >
-                + Add new branch
-            </button>
-        </div>
-    );
-}
-
 // Phase 5 — fullscreen "Checking & importing data…" takeover shown while the
 // commit round-trip is in flight. Matches Flow A image 22: a small twinkle
 // cluster on the left with the copy sitting to its right, both dark-green
@@ -1678,49 +1609,6 @@ function ImportingScreen() {
     );
 }
 
-// Step-4 chip panel — mirrors MappingActionChips shape/tokens so the two
-// pending panels are visually consistent. Yes = primary green, No =
-// secondary white. Advancing to Step 4 or bouncing back to mapping is a
-// single-message affair — the model decides which tool to invoke next
-// based on the reply text.
-function SummaryActionChips({
-    onStartImport,
-    onBackToMapping,
-}: {
-    onStartImport: () => void;
-    onBackToMapping: () => void;
-}) {
-    return (
-        <div className="flex flex-wrap gap-2 items-center">
-            <button
-                type="button"
-                onClick={onStartImport}
-                className={cn(
-                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                    "bg-[#c4edd6] text-[#0c2d34] text-[13px] font-medium",
-                    "border-1 border-white/[0.12]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#aad4bd] transition-colors",
-                )}
-            >
-                Yes, start import
-            </button>
-            <button
-                type="button"
-                onClick={onBackToMapping}
-                className={cn(
-                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
-                    "bg-white text-[#344054] text-[13px] font-medium",
-                    "border-1 border-[#d0d5dd]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                )}
-            >
-                No, back to mapping
-            </button>
-        </div>
-    );
-}
 
 function MessageRow({
     message: m,
