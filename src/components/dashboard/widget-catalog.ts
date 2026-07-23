@@ -21,11 +21,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type WidgetCategory =
-    // Live 6-category set — client 2026-07-20.
-    | "Financial" | "Customer" | "Class" | "Private sessions" | "Recovery" | "Marketing"
+    // Live 6-category set — client 2026-07-23: "Class" pluralised to
+    // "Classes" so the Add-widget library heading and the /admin/kpi
+    // "Insights" tab of the same name read identically.
+    | "Financial" | "Customer" | "Classes" | "Private sessions" | "Recovery" | "Marketing"
     // Legacy KPI-page categories kept for backwards compatibility with the
-    // KPI module's own widget grid. KPI-only widgets still declare these.
-    | "Finance" | "Memberships" | "Classes" | "Client";
+    // archived /admin/insights module. Not used by dashboard or KPI today.
+    | "Finance" | "Memberships" | "Client";
 
 export interface WidgetMeta {
     id: string;
@@ -81,24 +83,24 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // Returning vs new customers — client (9b). Two-series line.
     { id: "returning-vs-new",    title: "Returning vs new customers",        description: "", category: "Customer" },
     // ─── Class ──────────────────────────────────────────────────────────
-    { id: "class-bookings",      title: "Class bookings",                    description: "", category: "Class" },
-    { id: "bookings-by-source",  title: "Bookings by source",                description: "", category: "Class" },
-    { id: "bookings-vs-visits",  title: "Bookings vs visits",                description: "", category: "Class",
+    { id: "class-bookings",      title: "Class bookings",                    description: "", category: "Classes" },
+    { id: "bookings-by-source",  title: "Bookings by source",                description: "", category: "Classes" },
+    { id: "bookings-vs-visits",  title: "Bookings vs visits",                description: "", category: "Classes",
       info: "Spots booked vs people who showed up." },
-    { id: "attendance-overview", title: "Attendance overview",               description: "", category: "Class",
+    { id: "attendance-overview", title: "Attendance overview",               description: "", category: "Classes",
       info: "Visits, cancellations and no-shows." },
-    { id: "class-by-popularity", title: "Class by popularity",               description: "", category: "Class",
+    { id: "class-by-popularity", title: "Class by popularity",               description: "", category: "Classes",
       info: "Classes ranked by bookings; occupancy = booked ÷ capacity." },
     // Attendance heatmap — 4 time-of-day rows × 7 weekday cols, cells
     // shaded by attendance %. Respects the header date filter.
-    { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "", category: "Class",
+    { id: "attendance-heatmap",  title: "Attendance heatmap",                description: "", category: "Classes",
       info: "How full classes ran by time of day; darker = fuller." },
     // No-show rate — client (9e). Single line, y-axis %.
-    { id: "no-show-rate",        title: "No-show rate",                      description: "", category: "Class",
+    { id: "no-show-rate",        title: "No-show rate",                      description: "", category: "Classes",
       info: "No-shows ÷ booked spots." },
     // Under-filled classes trend — client (9e). Single line, count. Info
     // copy corrected 2026-07-23 (was the no-show-rate formula by mistake).
-    { id: "underfilled-trend",   title: "Under-filled classes trend",        description: "", category: "Class",
+    { id: "underfilled-trend",   title: "Under-filled classes trend",        description: "", category: "Classes",
       info: "Classes that ran less than half full." },
     // ─── Private sessions ──────────────────────────────────────────────
     // All 3 land under client (9c). Utilization = booked/available %,

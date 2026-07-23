@@ -14,7 +14,7 @@ import { DashboardWidgetCard } from "./DashboardWidgetCard";
 const TABS: WidgetCategory[] = [
     "Financial",
     "Customer",
-    "Class",
+    "Classes",
     "Private sessions",
     "Recovery",
     "Marketing",

@@ -1773,7 +1773,7 @@ export default function AdminDashboard() {
                         // once EVERY dashboard widget is on the grid.
                         (() => {
                             const DASHBOARD_CATS: WidgetCategory[] = [
-                                "Financial", "Customer", "Class",
+                                "Financial", "Customer", "Classes",
                                 "Private sessions", "Recovery", "Marketing",
                             ];
                             const eligible = WIDGET_CATALOG

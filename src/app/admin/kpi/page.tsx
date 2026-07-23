@@ -46,7 +46,13 @@ import { computeMarketingKpis } from "@/lib/kpi/marketing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabKey = "financial" | "client" | "class" | "marketing";
+type TabKey =
+    | "financial"
+    | "client"
+    | "class"
+    | "private-sessions"
+    | "recovery"
+    | "marketing";
 
 interface TabConfig {
     key: TabKey;
@@ -89,13 +95,27 @@ const TABS: TabConfig[] = [
     },
     {
         key: "class",
-        label: "Class",
+        label: "Classes",
         // Phase 4 hero charts — reuse existing Classes widgets:
         //   class-bookings       → Bookings over time
         //   bookings-by-source   → Where bookings come from (grouped bar)
         //   attendance-overview  → Attendance vs cancellations vs no-shows
         //   class-by-popularity  → Class popularity ranked
         widgetIds: ["class-bookings", "bookings-by-source", "attendance-overview", "class-by-popularity"],
+    },
+    {
+        // Client 2026-07-23 — new tab. Reuses the widgets already tagged
+        // "Private sessions" in the widget catalog, so the same visuals
+        // that appear under Add-widget on the dashboard render here.
+        key: "private-sessions",
+        label: "Private sessions",
+        widgetIds: ["private-utilization", "private-rebooking", "private-top-trainers"],
+    },
+    {
+        // Client 2026-07-23 — new tab, sibling of Private sessions.
+        key: "recovery",
+        label: "Recovery",
+        widgetIds: ["recovery-top-services", "recovery-bookings", "recovery-attach-rate"],
     },
     {
         key: "marketing",
@@ -199,6 +219,13 @@ export default function KpiPage() {
         financial: withRange(financialKpis),
         client:    withRange(clientKpis),
         class:     withRange(classKpis),
+        // Client 2026-07-23 — Private sessions + Recovery are new tabs
+        // whose KPI cards ship in a follow-up. Empty arrays here surface
+        // the existing "coming soon" copy for the metrics row while the
+        // hero widget grid below (already filterable by the header
+        // period + location controls) renders normally.
+        "private-sessions": [],
+        recovery:           [],
         marketing: withRange(marketingKpis),
     };
 
