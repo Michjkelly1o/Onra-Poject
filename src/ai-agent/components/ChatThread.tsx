@@ -606,15 +606,15 @@ export function ChatThread({
                 </div>
             )}
 
-            {/* Docked composer — live conversation only. Client 2026-07-22:
-                no top border, full-width input (spans the canvas, no 720
-                cap) so it reads as an integrated bar over the gradient. When
-                the agent has asked a question, its options panel floats
-                directly above the input. */}
+            {/* Docked composer — live conversation only. Constrained to the
+                720px chat column (client 2026-07-23) so the input aligns with
+                the message list instead of spanning the full canvas. When the
+                agent has asked a question, its options panel floats directly
+                above the input, matching the same width. */}
             {!empty && (
                 <div className="shrink-0 bg-transparent">
                     {pendingQuestions && (
-                        <div className="w-full px-6 pb-2">
+                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
                             <AiQuestionPrompt
                                 compact
                                 questions={pendingQuestions.questions}
@@ -622,7 +622,7 @@ export function ChatThread({
                             />
                         </div>
                     )}
-                    <div className="w-full px-6 py-4">{composerNode}</div>
+                    <div className="w-full max-w-[720px] mx-auto px-6 py-4">{composerNode}</div>
                 </div>
             )}
         </div>
