@@ -22,7 +22,9 @@ import {
     UserX01,
     UserCheck01,
     ClockFastForward,
+    InfoCircle,
 } from "@untitledui/icons";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
@@ -117,6 +119,9 @@ interface DashboardMetric {
     /** Optional click handler. When set, the whole card becomes a button
      *  (used by the Coming-up tab to open the needs-attention modals). */
     onClick?: () => void;
+    /** Optional info-tooltip copy — surfaces as the "i" hover on the tile
+     *  when set. Client 2026-07-23 added copy to all 4 Performance tiles. */
+    info?: string;
 }
 
 // ─── CSV export — Performance snapshot ──────────────────────────────────────
@@ -429,9 +434,26 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
             )}
         >
             <div className="flex flex-1 flex-col gap-1.5 items-start min-w-0 relative">
-                <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
-                    {metric.label}
-                </p>
+                <div className="flex items-center gap-1 min-w-0">
+                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
+                        {metric.label}
+                    </p>
+                    {/* Info glyph — client 2026-07-23 added tooltip copy to
+                        every Performance-tab KPI tile. Hover surfaces the
+                        one-line definition via the shared DS tooltip. */}
+                    {metric.info && (
+                        <IconTooltip label={metric.info}>
+                            <span
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`About ${metric.label}`}
+                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] transition-colors"
+                            >
+                                <InfoCircle className="w-3.5 h-3.5" />
+                            </span>
+                        </IconTooltip>
+                    )}
+                </div>
                 <p className="font-semibold text-xl text-[#101828] leading-[28px] whitespace-nowrap">
                     {metric.value}
                 </p>
@@ -568,6 +590,10 @@ export default function AdminDashboard() {
     //   • packages — is_intro_offer flag for the Trials-ending card
     const appointmentBookings = useAppStore(s => s.appointmentBookings);
     const packages            = useAppStore(s => s.packages);
+    // memberships slice — needed alongside `packages` for the accrual-based
+    // Revenue KPI (client 2026-07-23). Membership revenue is spread across
+    // the plan's duration; package revenue is per-credit-used.
+    const memberships         = useAppStore(s => s.memberships);
     // Coming Up v3 (client 2026-07-21) — the new tab reads blockedTimes +
     // staff for the "Sara A. away" event chip on the revenue chart.
     const blockedTimes        = useAppStore(s => s.blockedTimes);
@@ -847,9 +873,16 @@ export default function AdminDashboard() {
             return !Number.isNaN(t) && t >= prevFromMs && t <= prevToMs;
         };
 
-        // Sales — COUNT of completed billable-sale transactions in the
-        // period (client 2026-07-20 asked for a Sales tile alongside
-        // Revenue — same predicate, different reducer).
+        // Client feedback 2026-07-23 — Sales ≠ Revenue.
+        //
+        // Sales = the AED total sold in the period. Counted in FULL at the
+        // moment of purchase (cash-basis). A package of 10 for AED 1000 sold
+        // today = AED 1000 in Sales today.
+        //
+        // Revenue = the AED value EARNED as customers use what they bought
+        // (accrual). Same package: revenue is AED 100 each time a class is
+        // booked (1000 ÷ 10 credits). Memberships accrue per day across their
+        // duration.
         const isBillableSale = (t: typeof scopedTransactions[number]): boolean =>
             t.status === "complete"
             && (t.transactionType === undefined || t.transactionType === "sale")
@@ -857,12 +890,70 @@ export default function AdminDashboard() {
             && t.kind !== "freeze_fee";
         const salesInPeriod = scopedTransactions.filter(t => isBillableSale(t) && inRangeMs(t.createdAtISO));
         const salesInPrior  = scopedTransactions.filter(t => isBillableSale(t) && inPrevRangeMs(t.createdAtISO));
-        const salesPeriod = salesInPeriod.length;
-        const salesPrior  = salesInPrior.length;
-        // Revenue = AED total of that same set. Sums stay in sync with the
-        // count above so a filter change moves both tiles in lockstep.
-        const revenuePeriod = salesInPeriod.reduce((sum, t) => sum + t.amountAed, 0);
-        const revenuePrior  = salesInPrior.reduce((sum, t) => sum + t.amountAed, 0);
+        // Sales = sum of purchase amounts landing in the window.
+        const salesPeriod = salesInPeriod.reduce((sum, t) => sum + t.amountAed, 0);
+        const salesPrior  = salesInPrior.reduce((sum, t) => sum + t.amountAed, 0);
+
+        // Revenue accrual — walks EVERY billable transaction (not just those
+        // that landed in the window) because a package sold last month whose
+        // credits are used this month accrues into THIS month's revenue.
+        const DAY_MS = 86_400_000;
+        const accrueRevenue = (rangeFromMs: number, rangeToMs: number): number => {
+            let revenue = 0;
+            for (const t of scopedTransactions) {
+                if (!isBillableSale(t)) continue;
+                const purchaseMs = new Date(t.createdAtISO).getTime();
+                if (Number.isNaN(purchaseMs)) continue;
+
+                if (t.kind === "membership") {
+                    // Time-based allocation across the membership's duration.
+                    // Falls back to 30 days when duration or product missing.
+                    const mem = memberships.find(m => m.id === t.productId);
+                    const durationDays = Math.max(1, (mem?.duration_months ?? 1) * 30);
+                    const expiryMs = purchaseMs + durationDays * DAY_MS;
+                    const overlap = Math.max(
+                        0,
+                        Math.min(expiryMs, rangeToMs) - Math.max(purchaseMs, rangeFromMs),
+                    );
+                    if (overlap > 0) {
+                        revenue += t.amountAed * (overlap / (durationDays * DAY_MS));
+                    }
+                    continue;
+                }
+
+                if (t.kind === "package") {
+                    // Per-credit allocation. Revenue accrues each time the
+                    // customer books a class against this package (a credit
+                    // is spent). Booking is the recognition event — matches
+                    // the client's "uses one class" phrasing.
+                    const pkg = packages.find(p => p.id === t.productId);
+                    const totalCredits = Math.max(1, pkg?.credits ?? 1);
+                    const revPerCredit = t.amountAed / totalCredits;
+                    // Credits used in [rangeFrom, rangeTo] against THIS
+                    // customer's THIS package. planId on a booking is the
+                    // product id used (memberships.id / packages.id), so we
+                    // match on t.productId. Cancelled bookings return the
+                    // credit, so they don't count as revenue.
+                    const creditsUsedInRange = scopedBookings.filter(b =>
+                        b.customerId === t.customerId
+                        && b.planKindUsed === "package"
+                        && b.planId === t.productId
+                        && b.status !== "cancelled"
+                        && inRangeMsGeneric(b.bookingTime, rangeFromMs, rangeToMs),
+                    ).length;
+                    revenue += creditsUsedInRange * revPerCredit;
+                }
+            }
+            return revenue;
+        };
+        // Local range helper — same shape as the outer `inRangeMs` but takes
+        // the bounds explicitly so we can reuse it for prior windows too.
+        function inRangeMsGeneric(iso: string, fromMs: number, toMs: number): boolean {
+            const t = new Date(iso).getTime();
+            return !Number.isNaN(t) && t >= fromMs && t <= toMs;
+        }
+        const revenuePeriod = accrueRevenue(fromMs, toMs);
+        const revenuePrior  = accrueRevenue(prevFromMs, prevToMs);
 
         // New customers — active customers that JOINED in the period. Client
         // 2026-07-20 clarified label to "New customers" (was ambiguous
@@ -908,30 +999,34 @@ export default function AdminDashboard() {
         return [
             {
                 label: "Sales",
-                value: salesPeriod.toLocaleString("en-US"),
+                value: `AED ${Math.round(salesPeriod).toLocaleString("en-US")}`,
                 change: salD.change, positive: salD.positive, comparison: suffix,
                 icon: ShoppingBag01,
+                info: "Value of what was sold, counted in full when bought.",
             },
             {
                 label: "Revenue",
-                value: `AED ${revenuePeriod.toLocaleString("en-US")}`,
+                value: `AED ${Math.round(revenuePeriod).toLocaleString("en-US")}`,
                 change: revD.change, positive: revD.positive, comparison: suffix,
                 icon: CurrencyDollar,
+                info: "Value earned as customers use what they bought.",
             },
             {
                 label: "New customers",
                 value: newCustomersPeriod.toLocaleString("en-US"),
                 change: custD.change, positive: custD.positive, comparison: suffix,
                 icon: UserCheck01,
+                info: "First-ever bookings or purchases.",
             },
             {
                 label: "Bookings",
                 value: bookingsPeriod.toLocaleString("en-US"),
                 change: bkgD.change, positive: bkgD.positive, comparison: suffix,
                 icon: TrendUp01,
+                info: "Number of spots booked: classes, private sessions and recovery.",
             },
         ];
-    }, [period, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings]);
+    }, [period, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, memberships, packages]);
 
     // ── Coming-up metrics — 6 KPI cards per Figma 7823:53746 ──
     //
