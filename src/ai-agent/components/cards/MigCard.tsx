@@ -68,9 +68,11 @@ function CardShell({
 }
 
 function StepBadge({ step }: { step: number }) {
+    // Green pill per client 2026-07-23 migration UI review (Figma 214:260316).
+    // utility-brand-50 bg / utility-brand-200 border / utility-brand-700 text.
     return (
-        <div className="self-start inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#f9fafb] border border-[#eaecf0] text-[11px] font-medium text-[#475467]">
-            Step {step} of 4
+        <div className="self-start inline-flex items-center px-2 py-0.5 rounded-full bg-[#e9fff3] border border-[#c4edd6] text-[12px] font-medium leading-[18px] text-[#4f6e5d]">
+            {step} of 4 steps
         </div>
     );
 }
@@ -162,6 +164,69 @@ function Tile({
                 style={{ color }}
             >
                 {value.toLocaleString("en-US")}
+            </div>
+        </div>
+    );
+}
+
+// ─── Chat-bubble variant used by the mapping intro (Step 3) ────────────────
+// Figma 214:260316 — the friendly "Review & mapping" text that lands BEFORE
+// the actual dropdown grid. Copy is derived from the propose_mapping result:
+// mapped count, total column count, and the list of unmatched source
+// headers get inlined into the sentence.
+function MappingIntroBubble({
+    step,
+    mappedCount,
+    totalCount,
+    unmatchedSources,
+}: {
+    step: number;
+    mappedCount: number;
+    totalCount: number;
+    unmatchedSources: string[];
+}) {
+    const needsReview = unmatchedSources.length;
+    // Human-friendly enumeration: "a", "a and b", "a, b, and c".
+    const enumerate = (items: string[]) => {
+        if (items.length === 0) return "";
+        if (items.length === 1) return items[0];
+        if (items.length === 2) return `${items[0]} and ${items[1]}`;
+        return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+    };
+    return (
+        <div
+            className={cn(
+                "bg-white border border-[#e4e7ec]",
+                "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
+                "p-4 flex flex-col gap-4 max-w-[612px] min-h-[56px]",
+                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+            )}
+        >
+            <div className="flex flex-col gap-2 w-full">
+                <StepBadge step={step} />
+                <div className="flex flex-col gap-1 w-full">
+                    <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                        Review &amp; mapping
+                    </h4>
+                    <div className="flex flex-col gap-3 text-[14px] leading-5 text-[#344054]">
+                        {needsReview > 0 ? (
+                            <p>
+                                I&rsquo;ve mapped {mappedCount} of {totalCount} columns automatically. What would you like to do with the {needsReview} unmatched column{needsReview === 1 ? "" : "s"} (
+                                <span className="font-semibold">
+                                    {enumerate(unmatchedSources)}
+                                </span>
+                                )?
+                            </p>
+                        ) : (
+                            <p>
+                                I&rsquo;ve mapped all {totalCount} column{totalCount === 1 ? "" : "s"} automatically.
+                            </p>
+                        )}
+                        <p>
+                            You can review and map them manually, or continue with the recommended mappings.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -321,9 +386,22 @@ export function MigCard({
 
     // ─── Step 3: column_mapping ───────────────────────────────────────────
     if (data.card === "column_mapping") {
+        // Figma 214:260316 — the friendly "Review & mapping" intro bubble
+        // renders ABOVE the dropdown grid so the user reads the situation
+        // before being asked to review the rows.
+        const unmatchedSources = data.mappings
+            .filter((m) => m.status === "needs_review")
+            .map((m) => m.source);
+        const totalCount = data.mappings.length;
         return (
+            <div className="flex flex-col gap-3">
+                <MappingIntroBubble
+                    step={data.step}
+                    mappedCount={data.summary.mapped}
+                    totalCount={totalCount}
+                    unmatchedSources={unmatchedSources}
+                />
             <CardShell>
-                <StepBadge step={data.step} />
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle>Column mapping</CardTitle>
                     <div className="flex items-center gap-1.5">
@@ -392,6 +470,7 @@ export function MigCard({
                     </SecondaryButton>
                 </div>
             </CardShell>
+            </div>
         );
     }
 
