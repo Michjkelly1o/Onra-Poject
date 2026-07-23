@@ -713,6 +713,12 @@ export function ChatThread({
         >;
         // Detected rows path already resolves the branch — no picker needed.
         if (ba.rows.length > 0) return null;
+        // Client 2026-07-24 — entities without a branch dimension (tax_rates,
+        // categories, agreements, promo codes, campaigns, pay rates, staff,
+        // services, rooms, gift-card designs, customer-history entities)
+        // short-circuit to status "n_a" upstream. No branch picker in that
+        // case — the AI proceeds straight to mapping in the same turn.
+        if (ba.status === "n_a") return null;
         return ba;
     })();
 

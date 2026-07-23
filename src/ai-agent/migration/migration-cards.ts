@@ -41,9 +41,16 @@ export interface ParsedFile {
 }
 
 /** Result of `branchAssignment()` — visible on the branch-assignment card
- *  after upload. */
+ *  after upload.
+ *
+ *  Client 2026-07-24 — added `"n_a"` for entities that don't carry a
+ *  branch dimension at all (tax_rates, class_categories, agreements,
+ *  promo_codes, campaigns, etc. — anything whose EntityDef.fields lacks
+ *  a `branch_id` entry). For those imports the "which branch?" question
+ *  is meaningless; the AI skips the picker and goes straight to mapping.
+ *  A branch is applied later on the admin side (e.g. Apply tax rates). */
 export interface BranchAssignment {
-    status: "detected" | "none";
+    status: "detected" | "none" | "n_a";
     rows: { branch_name: string; count: number }[];
     blocked?: { reason: "no_branches" };
 }
@@ -72,7 +79,7 @@ export type MigrationCard =
           card: "branch_assignment";
           step: number;
           entity: string;
-          status: "detected" | "none";
+          status: "detected" | "none" | "n_a";
           rows: { branch_name: string; count: number }[];
           blocked?: { reason: "no_branches" };
           note?: string;

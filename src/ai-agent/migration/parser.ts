@@ -69,13 +69,28 @@ export function branchAssignment(
     knownBranches: { id: string; name: string; status: string }[],
 ): BranchAssignment {
     const def = ENTITIES[entity];
+    // Client 2026-07-24 — SHORT-CIRCUIT for entities that carry no branch
+    // dimension at all. tax_rates, class_categories, agreements, promo_codes,
+    // campaigns, pay_rates, staff, services, rooms, gift_cards, and every
+    // customer-derived history entity (customer_plans / transactions /
+    // bookings / ratings / referrals, wallet_transactions,
+    // issued_gift_cards, payroll_entries, staff_attendance_log) are all
+    // GLOBAL at import time — the admin decides which branch(es) they apply
+    // to later (Apply tax rates, per-branch assignment UIs, etc.). Asking
+    // "which branch?" during migration is meaningless and confusing. The
+    // signal is `def.fields` — if no field carries key `branch_id`, the
+    // entity has no branch column to import, so skip the whole branch step.
+    const hasBranchField = def.fields.some((f) => f.key === "branch_id");
+    if (!hasBranchField) {
+        return { status: "n_a", rows: [] };
+    }
     const allowed = knownBranches.filter(
         (b) => ctx.branchScope === "all" || ctx.branchScope.includes(b.id),
     );
     // Find the source column that maps to this entity's branch field.
-    // The branch field key varies by entity (customers use branch_id;
-    // most others too — but the lookup goes through the entity's dict
-    // regardless, keeping this fn generic).
+    // Only reached for entities that HAVE branch_id in their fields
+    // (customers, leads, memberships, packages, class_templates,
+    // class_schedule).
     const branchCol = file.columns.find((c) => {
         const target = def.dict[normHeader(c)];
         return target === "branch_id";
