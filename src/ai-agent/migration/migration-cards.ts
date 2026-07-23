@@ -42,10 +42,13 @@ export interface BranchAssignment {
     blocked?: { reason: "no_branches" };
 }
 
-/** Result of `preview()` — the dry-run counts + field summary. */
+/** Result of `preview()` — the dry-run counts + field summary. `target`
+ *  is `null` when the source column is explicitly skipped (Phase 4) so
+ *  the Step-4 summary can render a "Skipped this column" pill instead
+ *  of dropping the row entirely. */
 export interface MappingPreview {
     totals: { total: number; valid: number; invalid: number; duplicate: number };
-    fields: { source: string; target: string }[];
+    fields: { source: string; target: string | null }[];
     columnsNote: string;
 }
 

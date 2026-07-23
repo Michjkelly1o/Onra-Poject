@@ -25,7 +25,7 @@ import {
     CheckCircle,
     ChevronDown,
     ChevronUp,
-    XCircle,
+    Download01,
     AlertTriangle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -381,6 +381,150 @@ function MappingIntroBubble({
     );
 }
 
+// ─── Step 4: the "Mapping summary" intro bubble + summary panel ────────────
+// Figma 214:258065. The bubble carries the friendly recap + Download
+// pre-import report affordance; the panel underneath renders the count
+// tiles and the mapped/skipped field breakdown that shipped in Phase 4.
+function MappingSummaryBubble({ step }: { step: number }) {
+    return (
+        <div
+            className={cn(
+                "bg-white border border-[#e4e7ec]",
+                "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
+                "p-4 flex flex-col gap-4 max-w-[612px] min-h-[56px]",
+                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+            )}
+        >
+            <div className="flex flex-col gap-2 w-full">
+                <StepBadge step={step} />
+                <div className="flex flex-col gap-1 w-full">
+                    <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                        Mapping summary
+                    </h4>
+                    <p className="text-[14px] leading-5 text-[#344054]">
+                        Everything looks great. Your columns have been mapped successfully and the data is ready for import. Would you like to start the import now?
+                    </p>
+                </div>
+            </div>
+            {/* Download link — client 2026-07-23 wanted this as a visual
+                affordance in the summary bubble. The report itself is
+                out of scope for this UI phase; the CSV export lands in
+                a follow-up alongside the fullscreen import loader. */}
+            <button
+                type="button"
+                className="self-start inline-flex items-center gap-1.5 text-[14px] font-semibold leading-5 text-[#475467] hover:text-[#344054] transition-colors"
+            >
+                <Download01 className="size-5 shrink-0" />
+                Download pre-import report
+            </button>
+        </div>
+    );
+}
+
+function SummaryMetricTile({
+    label,
+    value,
+    color,
+}: {
+    label: string;
+    value: number;
+    /** Text colour for the numeric value. */
+    color: string;
+}) {
+    return (
+        <div className="flex-1 min-w-0 bg-white border border-[#e4e7ec] rounded-2xl p-4 flex flex-col gap-1">
+            <div className="text-[14px] leading-5 text-[#667085]">
+                {label}
+            </div>
+            <div
+                className="text-[16px] font-semibold leading-6 tabular-nums"
+                style={{ color }}
+            >
+                {value.toLocaleString("en-US")}
+            </div>
+        </div>
+    );
+}
+
+function MappingSummaryPanel({
+    data,
+}: {
+    data: Extract<MigrationCard, { card: "mapping_summary" }>;
+}) {
+    const t = data.totals;
+    // Value tokens per Figma: neutral for total, success-600 for valid,
+    // error-700 for invalid, warning-600 for duplicate. When the count is
+    // zero the semantic tone is dropped so an all-zero row doesn't shout.
+    const validColor = t.valid > 0 ? "#079455" : "#101828";
+    const invalidColor = t.invalid > 0 ? "#b42318" : "#101828";
+    const duplicateColor = t.duplicate > 0 ? "#dc6803" : "#101828";
+    return (
+        <div
+            className={cn(
+                "bg-white border border-[#e4e7ec] rounded-2xl p-4",
+                "flex flex-col gap-4 max-w-[612px] w-full",
+                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+            )}
+        >
+            <div className="flex items-center gap-4 w-full">
+                <div className="flex-1 min-w-0">
+                    <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                        Summary
+                    </h4>
+                </div>
+                <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[12px] font-medium leading-[18px] text-[#067647]">
+                    {data.columnsNote}
+                </span>
+            </div>
+            <div className="flex flex-wrap gap-4 w-full">
+                <SummaryMetricTile label="Total rows" value={t.total} color="#101828" />
+                <SummaryMetricTile label="Valid rows" value={t.valid} color={validColor} />
+                <SummaryMetricTile label="Invalid rows" value={t.invalid} color={invalidColor} />
+                <SummaryMetricTile label="Duplicate rows" value={t.duplicate} color={duplicateColor} />
+            </div>
+            {data.fields.length > 0 && (
+                <div className="bg-white border border-[#e4e7ec] rounded-xl overflow-hidden max-h-[320px] overflow-y-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr>
+                                <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                    Incoming fields
+                                </th>
+                                <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                    Onra fields
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.fields.map((f, i) => (
+                                <tr
+                                    key={`${f.source}-${i}`}
+                                    className="border-b border-[#e4e7ec] last:border-b-0"
+                                >
+                                    <td className="px-6 py-3 text-[14px] leading-5 text-[#475467] align-middle whitespace-nowrap">
+                                        {f.source}
+                                    </td>
+                                    <td className="px-6 py-3 align-middle">
+                                        {f.target ? (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#ecfdf3] border border-[#abefc6] text-[12px] font-medium leading-[18px] text-[#067647]">
+                                                {f.target}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#f9fafb] border border-[#e4e7ec] text-[12px] font-medium leading-[18px] text-[#344054]">
+                                                Skipped this column
+                                            </span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Chat-bubble variant used by the branch-detected step ──────────────────
 // Figma 154:576479 — asymmetric-radius speech bubble with the greeting on
 // top and a compact branch list below. No step badge, no file-preview
@@ -650,85 +794,17 @@ export function MigCard({
 
     // ─── Step 4: mapping_summary ──────────────────────────────────────────
     if (data.card === "mapping_summary") {
-        const t = data.totals;
+        // Figma 214:258065 — pairs a friendly "Mapping summary" chat bubble
+        // (with the Download pre-import report link) with a bordered panel
+        // holding 4 count tiles and a scrolling Incoming/Onra table. Mapped
+        // rows carry a green pill; skipped rows carry a neutral "Skipped
+        // this column" pill so the user can see exactly which columns will
+        // land in Onra. Action buttons live above the composer per Rule 5.
         return (
-            <CardShell>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <StepBadge step={data.step} />
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#f9fafb] border border-[#eaecf0] text-[11px] font-medium text-[#475467] capitalize">
-                        {labelOf(data.entity)}
-                    </span>
-                </div>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <CardTitle>Summary</CardTitle>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[11px] font-medium text-[#067647]">
-                        {data.columnsNote}
-                    </span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Tile label="Total rows" value={t.total} />
-                    <Tile label="Valid rows" value={t.valid} tone="green" />
-                    <Tile
-                        label="Invalid rows"
-                        value={t.invalid}
-                        tone={t.invalid ? "red" : undefined}
-                    />
-                    <Tile
-                        label="Duplicate rows"
-                        value={t.duplicate}
-                        tone={t.duplicate ? "amber" : undefined}
-                    />
-                </div>
-                {data.fields.length > 0 && (
-                    <div className="overflow-x-auto rounded border border-[#eaecf0]">
-                        <table className="w-full text-[13px] border-collapse">
-                            <thead>
-                                <tr className="bg-[#f9fafb]">
-                                    <th className="text-left font-medium text-[#667085] py-2 px-3 border-b border-[#eaecf0]">
-                                        Incoming field
-                                    </th>
-                                    <th className="text-left font-medium text-[#667085] py-2 px-3 border-b border-[#eaecf0]">
-                                        Onra field
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.fields.map((f, i) => (
-                                    <tr
-                                        key={i}
-                                        className="border-b border-[#f2f4f7] last:border-b-0"
-                                    >
-                                        <td className="text-[#344054] py-2 px-3">
-                                            {f.source}
-                                        </td>
-                                        <td className="py-2 px-3">
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[11px] font-medium text-[#067647]">
-                                                {f.target}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-                <div className="flex gap-2 mt-1">
-                    <PrimaryButton
-                        onClick={() => act.send("Yes, start the import.")}
-                    >
-                        <CheckCircle className="size-4" />
-                        Yes, start import
-                    </PrimaryButton>
-                    <SecondaryButton
-                        onClick={() =>
-                            act.send("No, take me back to mapping.")
-                        }
-                    >
-                        <XCircle className="size-4" />
-                        No, back to mapping
-                    </SecondaryButton>
-                </div>
-            </CardShell>
+            <div className="flex flex-col gap-4">
+                <MappingSummaryBubble step={data.step} />
+                <MappingSummaryPanel data={data} />
+            </div>
         );
     }
 

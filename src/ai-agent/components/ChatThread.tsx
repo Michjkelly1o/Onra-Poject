@@ -609,6 +609,25 @@ export function ChatThread({
         return ti.result as Extract<MigrationCard, { card: "column_mapping" }>;
     })();
 
+    // Step-4 mapping_summary chips — mirrors pendingMapping but for the
+    // Yes/No import-confirmation moment. Only one of the two panels is ever
+    // visible at once (Step 3 vs Step 4). The commit flow lives in Phase 5;
+    // for now "Yes, start import" sends the confirmation message and the
+    // AI calls commit_import as it does today.
+    const pendingSummary = (() => {
+        if (isBusy) return null;
+        if (mode !== "migration") return null;
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "assistant") return null;
+        const ti = last.toolInvocations?.find(
+            (t) =>
+                t.state === "result" &&
+                (t.result as MigrationCard | undefined)?.card === "mapping_summary",
+        );
+        if (!ti || ti.state !== "result") return null;
+        return ti.result as Extract<MigrationCard, { card: "mapping_summary" }>;
+    })();
+
     // Shared composer — centered in the empty hero, docked in a conversation.
     const composerNode = (
         <Composer
@@ -767,6 +786,18 @@ export function ChatThread({
                                     send(
                                         "I'm done with the manual mapping — preview the import.",
                                     )
+                                }
+                            />
+                        </div>
+                    )}
+                    {pendingSummary && (
+                        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
+                            <SummaryActionChips
+                                onStartImport={() =>
+                                    send("Yes, start the import.")
+                                }
+                                onBackToMapping={() =>
+                                    send("No, take me back to mapping.")
                                 }
                             />
                         </div>
@@ -1319,6 +1350,50 @@ function MappingActionChips({
                 )}
             >
                 Done manual mapping
+            </button>
+        </div>
+    );
+}
+
+// Step-4 chip panel — mirrors MappingActionChips shape/tokens so the two
+// pending panels are visually consistent. Yes = primary green, No =
+// secondary white. Advancing to Step 4 or bouncing back to mapping is a
+// single-message affair — the model decides which tool to invoke next
+// based on the reply text.
+function SummaryActionChips({
+    onStartImport,
+    onBackToMapping,
+}: {
+    onStartImport: () => void;
+    onBackToMapping: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap gap-2 items-center">
+            <button
+                type="button"
+                onClick={onStartImport}
+                className={cn(
+                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                    "bg-[#c4edd6] text-[#0c2d34] text-[13px] font-medium",
+                    "border-1 border-white/[0.12]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#aad4bd] transition-colors",
+                )}
+            >
+                Yes, start import
+            </button>
+            <button
+                type="button"
+                onClick={onBackToMapping}
+                className={cn(
+                    "h-10 px-3 rounded-md inline-flex items-center gap-1.5",
+                    "bg-white text-[#344054] text-[13px] font-medium",
+                    "border-1 border-[#d0d5dd]",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[#f9fafb] transition-colors",
+                )}
+            >
+                No, back to mapping
             </button>
         </div>
     );

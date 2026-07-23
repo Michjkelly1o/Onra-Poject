@@ -181,13 +181,19 @@ export function preview(
     }
 
     const mappedCount = Object.values(effectiveMapping).filter(Boolean).length;
-    const fields = Object.entries(effectiveMapping)
-        .filter(([, t]) => t)
-        .map(([src, t]) => ({
+    // Include EVERY source column — skipped ones surface as `target: null`
+    // so the Step-4 summary can render a "Skipped this column" pill for
+    // them (Phase 4). Walk the file's columns rather than the effective
+    // mapping so the display order matches the CSV.
+    const fields = file.columns.map((src) => {
+        const t = effectiveMapping[src] ?? null;
+        return {
             source: src,
-            target:
-                def.fields.find((f) => f.key === t)?.label ?? String(t),
-        }));
+            target: t
+                ? def.fields.find((f) => f.key === t)?.label ?? String(t)
+                : null,
+        };
+    });
     return {
         totals: { total: file.rows.length, valid, invalid, duplicate },
         fields,
