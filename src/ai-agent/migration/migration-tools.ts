@@ -30,14 +30,14 @@ import {
 } from "@/ai-agent/migration/parser";
 import { ENTITIES, type EntityKey } from "@/ai-agent/migration/entities";
 
+// Client 2026-07-23 — the source-of-import step now shows a single
+// "Upload file" affordance. Legacy platform chips (Mindbody / Glofox /
+// ClassPass / Kenko / Momence / Mariana Tek) were placeholders that
+// wouldn't ship in the prototype anyway; keeping them on the card was
+// only confusing users. Renderer keeps its `platforms` prop for shape
+// safety.
 const PLATFORMS = [
     { slug: "upload",     name: "Upload file" },
-    { slug: "mindbody",   name: "Mindbody" },
-    { slug: "glofox",     name: "Glofox" },
-    { slug: "classpass",  name: "ClassPass" },
-    { slug: "kenko",      name: "Kenko" },
-    { slug: "momence",    name: "Momence" },
-    { slug: "mariana",    name: "Mariana Tek" },
 ];
 
 /** Zod enum matching EntityKey. Passed to every tool so the model has

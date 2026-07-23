@@ -183,6 +183,24 @@ export function ChatThread({
     parsedFileRef.current = parsedFile;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    // Client 2026-07-23 — while /api/ai-agent/upload is round-tripping
+    // the CSV parse, gate the send button. Otherwise the user can hit
+    // Send before parsedFile is populated → the server sees no file →
+    // the model asks them to upload it. `isUploading` also drives a
+    // spinner state on the paperclip so the user has a clear signal
+    // that the file is being read.
+    const [isUploading, setIsUploading] = useState(false);
+    // The list of file-ids that were "consumed" by an outgoing user
+    // message. Rendered as a chip on that user's bubble so the file
+    // visibly leaves the composer and joins the conversation log. The
+    // chip on the composer clears when its file id lands here.
+    const [attachmentsByMessageId, setAttachmentsByMessageId] = useState<
+        Record<string, { fileId: string; filename: string }>
+    >({});
+    // Marker set on send: identifies which parsedFile.fileId should be
+    // pinned onto the next user message that lands in `messages`. Cleared
+    // once the useEffect below sees the new message and records it.
+    const pendingAttachmentRef = useRef<{ fileId: string; filename: string } | null>(null);
 
     // Phase 10 — persist chat history to localStorage per thread. Hydrate
     // ONCE on mount (initialMessages is a stable snapshot); the persist
@@ -453,8 +471,43 @@ export function ChatThread({
 
     const send = (text: string) => {
         if (!text.trim() || isBusy) return;
+        // Client 2026-07-23 — if a file is currently attached to the
+        // composer, mark it as being "handed off" to the next user
+        // message. The effect below (once `messages` grows) pins the
+        // attachment metadata onto that new message id and clears the
+        // composer chip so the file visibly moves into the chat log.
+        const attached = parsedFileRef.current;
+        if (attached && attached.filename) {
+            pendingAttachmentRef.current = {
+                fileId: attached.fileId,
+                filename: attached.filename,
+            };
+        }
         append({ role: "user", content: text });
     };
+
+    // Once the freshly-appended user message shows up in `messages`,
+    // pin the attachment metadata onto its id. That's what the message
+    // bubble renders as a file chip so the file visibly moves from
+    // the composer into the chat log.
+    useEffect(() => {
+        const pending = pendingAttachmentRef.current;
+        if (!pending) return;
+        // Walk newest→oldest for the first user message we haven't yet
+        // recorded. Handles both `send(text)` and `wrappedHandleSubmit`
+        // paths without race-conditioning against the async append.
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const m = messages[i];
+            if (m.role !== "user") continue;
+            if (attachmentsByMessageId[m.id]) break;
+            setAttachmentsByMessageId((prev) => ({
+                ...prev,
+                [m.id]: pending,
+            }));
+            pendingAttachmentRef.current = null;
+            break;
+        }
+    }, [messages, attachmentsByMessageId]);
 
     // Inline edit (Claude-style): editing a user message truncates the thread
     // back to just before it, then re-sends the edited text so the assistant
@@ -517,6 +570,7 @@ export function ChatThread({
 
     async function uploadFile(file: File) {
         setUploadError(null);
+        setIsUploading(true);
         // Client 2026-07-23 — widen upload beyond CSV to images / PDFs / docs.
         // Non-CSV files skip the server parser (which only handles CSV) and
         // just attach as a chip with filename + size so the model has context.
@@ -528,6 +582,7 @@ export function ChatThread({
             setUploadError(
                 `File is too large — max ${MAX_BYTES / 1024 / 1024}MB.`,
             );
+            setIsUploading(false);
             return;
         }
         if (!isCsv) {
@@ -541,6 +596,7 @@ export function ChatThread({
             };
             setParsedFile(attached);
             parsedFileRef.current = attached;
+            setIsUploading(false);
             return;
         }
         const fd = new FormData();
@@ -570,6 +626,8 @@ export function ChatThread({
             setUploadError(
                 e instanceof Error ? e.message : "Upload failed unexpectedly.",
             );
+        } finally {
+            setIsUploading(false);
         }
     }
 
@@ -670,18 +728,52 @@ export function ChatThread({
         return ba;
     })();
 
+    // Wrapper around useChat's handleSubmit — same "mark the outgoing
+    // user message with the current composer attachment" pattern as
+    // `send` uses (see above). Blocks the submit if the upload parse
+    // is still in flight; without the guard the message would land
+    // before parsedFile is populated and the model would ask the user
+    // to upload the file again.
+    const wrappedHandleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        if (isUploading) {
+            e.preventDefault();
+            return;
+        }
+        const attached = parsedFileRef.current;
+        if (attached && attached.filename) {
+            pendingAttachmentRef.current = {
+                fileId: attached.fileId,
+                filename: attached.filename,
+            };
+        }
+        handleSubmit(e);
+    };
+
     // Shared composer — centered in the empty hero, docked in a conversation.
     const composerNode = (
         <Composer
             mode={mode}
             value={input}
             onChange={handleInputChange}
-            onSubmit={handleSubmit}
+            onSubmit={wrappedHandleSubmit}
             onAttach={openUpload}
             isBusy={isBusy}
             onStop={stop}
-            attachedFileName={parsedFile?.filename ?? null}
+            // Composer chip: shown ONLY while the file hasn't yet been
+            // handed off to a user message. Once send fires (see
+            // `attachmentsByMessageId` below), the file id lands in
+            // the map and this line hides the chip so it visibly
+            // moves into the chat log.
+            attachedFileName={
+                parsedFile &&
+                !Object.values(attachmentsByMessageId).some(
+                    (a) => a.fileId === parsedFile.fileId,
+                )
+                    ? parsedFile.filename
+                    : null
+            }
             onRemoveFile={() => setParsedFile(null)}
+            isUploading={isUploading}
         />
     );
 
@@ -741,6 +833,7 @@ export function ChatThread({
                                 act={act}
                                 isLastUser={m.role === "user" && m.id === lastUserId && !isBusy}
                                 onSubmitEdit={(text) => submitEdit(m.id, text)}
+                                attachment={attachmentsByMessageId[m.id]}
                             />
                         ))}
                         {isBusy && messages[messages.length - 1]?.role === "user" && (
@@ -1227,10 +1320,15 @@ function UserMessageBubble({
     text,
     editable = false,
     onSubmitEdit,
+    attachment,
 }: {
     text: string;
     editable?: boolean;
     onSubmitEdit?: (t: string) => void;
+    /** Client 2026-07-23 — if the message was sent with an attached file,
+     *  its filename lands here. Rendered as a compact chip above the bubble
+     *  so the user visually sees the file joined the conversation. */
+    attachment?: { filename: string };
 }) {
     const [copied, setCopied] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -1331,38 +1429,60 @@ function UserMessageBubble({
 
     // ── Default state — bubble + hover actions ────────────────────────────────
     return (
-        <div className="group flex items-end justify-end gap-2">
-            <div className="flex items-center gap-4 self-center opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                    type="button"
-                    onClick={copy}
-                    aria-label={copied ? "Copied" : "Copy message"}
-                    className="text-[#667085] hover:text-[#344054] transition-colors"
-                >
-                    {copied ? <Check className="size-5 text-[#658774]" /> : <Copy03 className="size-5" />}
-                </button>
-                {editable && onSubmitEdit && (
+        <div className="group flex flex-col items-end gap-2">
+            {attachment && (
+                <div className="flex justify-end">
+                    <div
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg max-w-[400px]",
+                            "bg-white border border-[#e4e7ec]",
+                            "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                        )}
+                    >
+                        <div className="size-8 rounded-md bg-[#ecfdf3] border border-[#abefc6] flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-semibold text-[#067647] tracking-wide">
+                                CSV
+                            </span>
+                        </div>
+                        <span className="text-[13px] font-medium text-[#344054] truncate">
+                            {attachment.filename}
+                        </span>
+                    </div>
+                </div>
+            )}
+            <div className="flex items-end justify-end gap-2 self-end">
+                <div className="flex items-center gap-4 self-center opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                         type="button"
-                        onClick={startEdit}
-                        aria-label="Edit message"
+                        onClick={copy}
+                        aria-label={copied ? "Copied" : "Copy message"}
                         className="text-[#667085] hover:text-[#344054] transition-colors"
                     >
-                        <Edit02 className="size-5" />
+                        {copied ? <Check className="size-5 text-[#658774]" /> : <Copy03 className="size-5" />}
                     </button>
-                )}
-            </div>
-            <div
-                className={cn(
-                    "min-h-[56px] max-w-[400px] p-4 flex items-center",
-                    "bg-[#c4edd6] border border-[#aad4bd]",
-                    "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
-                    "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
-                )}
-            >
-                <p className="text-[14px] font-medium leading-5 text-[#344054] whitespace-pre-wrap [word-break:break-word]">
-                    {text}
-                </p>
+                    {editable && onSubmitEdit && (
+                        <button
+                            type="button"
+                            onClick={startEdit}
+                            aria-label="Edit message"
+                            className="text-[#667085] hover:text-[#344054] transition-colors"
+                        >
+                            <Edit02 className="size-5" />
+                        </button>
+                    )}
+                </div>
+                <div
+                    className={cn(
+                        "min-h-[56px] max-w-[400px] p-4 flex items-center",
+                        "bg-[#c4edd6] border border-[#aad4bd]",
+                        "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
+                        "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
+                    )}
+                >
+                    <p className="text-[14px] font-medium leading-5 text-[#344054] whitespace-pre-wrap [word-break:break-word]">
+                        {text}
+                    </p>
+                </div>
             </div>
         </div>
     );
@@ -1590,6 +1710,7 @@ function MessageRow({
     act,
     isLastUser = false,
     onSubmitEdit,
+    attachment,
 }: {
     message: UIMessage;
     mode: AiAgentMode;
@@ -1598,9 +1719,19 @@ function MessageRow({
      *  edited inline (Claude-style). */
     isLastUser?: boolean;
     onSubmitEdit?: (text: string) => void;
+    /** If this user message was sent with a file attached, its filename
+     *  lands here so the bubble renders the file chip. */
+    attachment?: { filename: string };
 }) {
     if (m.role === "user") {
-        return <UserMessageBubble text={m.content} editable={isLastUser} onSubmitEdit={onSubmitEdit} />;
+        return (
+            <UserMessageBubble
+                text={m.content}
+                editable={isLastUser}
+                onSubmitEdit={onSubmitEdit}
+                attachment={attachment}
+            />
+        );
     }
 
     if (m.role === "assistant") {
@@ -1728,6 +1859,7 @@ function Composer({
     onStop,
     attachedFileName = null,
     onRemoveFile,
+    isUploading = false,
 }: {
     mode: AiAgentMode;
     value: string;
@@ -1741,8 +1873,13 @@ function Composer({
      *  brand-green — Figma 18716:5616 "Added file" state. */
     attachedFileName?: string | null;
     onRemoveFile?: () => void;
+    /** True while the server is still parsing the just-uploaded CSV. Gates
+     *  the send button so the user can't fire a message with a null
+     *  parsedFile — otherwise the server sees no file and the model asks
+     *  them to upload it again. Client 2026-07-23. */
+    isUploading?: boolean;
 }) {
-    const canSend = value.trim().length > 0 && !isBusy;
+    const canSend = value.trim().length > 0 && !isBusy && !isUploading;
     // Attach a file in EVERY mode (client 2026-07-22) — the paperclip used to
     // be migration-only, which read as "broken" in general/studio chat.
     const attachActive = true;
@@ -1769,6 +1906,15 @@ function Composer({
             {hasFile && (
                 <div className="flex flex-wrap items-start gap-3">
                     <FileChip name={attachedFileName as string} onRemove={onRemoveFile} />
+                </div>
+            )}
+            {isUploading && !hasFile && (
+                <div className="flex items-center gap-2 text-[13px] text-[#667085]">
+                    <RefreshCw01
+                        className="size-4 animate-spin text-[#4f6e5d]"
+                        aria-hidden="true"
+                    />
+                    <span>Reading your CSV…</span>
                 </div>
             )}
 

@@ -628,35 +628,33 @@ export function MigCard({
                 <StepBadge step={data.step} />
                 <CardTitle>{data.title}</CardTitle>
                 <CardBody>{data.body}</CardBody>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-1">
+                <div className="flex flex-wrap gap-2 mt-1">
                     {data.platforms.map((p) => {
-                        const isUpload = p.slug === "upload";
+                        // Every entry is now the Upload affordance per
+                        // client 2026-07-23 — legacy platform chips were
+                        // pruned in migration-tools.ts. Rendered in a
+                        // single-column-friendly wrap so it doesn't feel
+                        // like the card has empty grid slots.
                         return (
                             <button
                                 key={p.slug}
                                 type="button"
-                                onClick={() =>
-                                    isUpload
-                                        ? act.openUpload()
-                                        : act.send(
-                                              `I'm migrating from ${p.name}. I'll upload my customer export.`,
-                                          )
-                                }
+                                onClick={() => act.openUpload()}
                                 className={cn(
                                     "h-10 px-3 rounded-md inline-flex items-center justify-center gap-2 text-[13px] font-medium transition-colors",
-                                    isUpload
-                                        ? "bg-[#c4edd6] text-[#0c2d34] border-1 border-white/[0.12] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]"
-                                        : "bg-white text-[#344054] border border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb]",
+                                    "bg-[#c4edd6] text-[#0c2d34] border-1 border-white/[0.12]",
+                                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                                    "hover:bg-[#aad4bd]",
                                 )}
                             >
-                                {isUpload && <Upload01 className="size-4" />}
+                                <Upload01 className="size-4" />
                                 {p.name}
                             </button>
                         );
                     })}
                 </div>
                 <div className="text-[12px] text-[#667085] leading-4 mt-1">
-                    Choose your platform, then click{" "}
+                    Click{" "}
                     <span className="font-semibold text-[#344054]">
                         Upload file
                     </span>{" "}
