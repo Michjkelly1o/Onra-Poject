@@ -989,6 +989,18 @@ function UserMessageBubble({
     const [copied, setCopied] = useState(false);
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(text);
+    const editRef = useRef<HTMLTextAreaElement>(null);
+
+    // When edit mode starts, focus the textarea AND park the caret at the end
+    // (autoFocus alone puts it at index 0). Runs only on the editing→true edge.
+    useEffect(() => {
+        if (!editing) return;
+        const el = editRef.current;
+        if (!el) return;
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+    }, [editing]);
 
     const copy = () => {
         try {
@@ -1032,7 +1044,7 @@ function UserMessageBubble({
                     )}
                 >
                     <textarea
-                        autoFocus
+                        ref={editRef}
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         onKeyDown={(e) => {

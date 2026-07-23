@@ -780,9 +780,10 @@ function RenameConversationDialog({
     return (
         <Modal open={!!conv} onClose={onClose} maxWidth={440}>
             <Modal.Header title="Rename chat" subtitle="Give this conversation a clear name." onClose={onClose} />
-            {/* Modal.Body has no horizontal padding — add px-6 so the input
-                sits inside the modal's rounded frame (was flush to the edge). */}
-            <Modal.Body className="px-6">
+            {/* Padded body + overflow-visible so the input's focus ring
+                (extends 2px outside the border) doesn't get clipped on the
+                sides of the modal frame. */}
+            <Modal.Body scrollable={false} className="px-6 pb-1 overflow-visible">
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[14px] font-medium text-[#344054]">Chat name</label>
                     <input
