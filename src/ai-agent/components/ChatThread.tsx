@@ -279,6 +279,7 @@ export function ChatThread({
                         addPromoCode: st.addPromoCode,
                         addPayRate: st.addPayRate,
                         addMarketingItem: st.addMarketingItem,
+                        addTaxRate: st.addTaxRate,
                         classCategories: st.classCategories,
                         classTemplates: st.classTemplates,
                         instructors: st.instructors,
@@ -536,13 +537,11 @@ export function ChatThread({
             const parsed = (await res.json()) as ParsedFile;
             setParsedFile(parsed);
             parsedFileRef.current = parsed;
-            // Migration auto-kicks the inspect step; other modes just attach
-            // the file (shown as a chip) and let the user type their question.
-            if (mode === "migration") {
-                send(
-                    `I've uploaded my file (${parsed.filename}, ${parsed.rows.length} rows). Please inspect it.`,
-                );
-            }
+            // Client 2026-07-23 — every upload is now attach-only, in every
+            // mode (including migration). The AI never starts generating on
+            // its own; it waits for the user to type + press Send. This makes
+            // the flow feel intentional (no surprise responses) and gives the
+            // user room to ask a specific question about the file.
         } catch (e) {
             setUploadError(
                 e instanceof Error ? e.message : "Upload failed unexpectedly.",

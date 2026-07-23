@@ -125,6 +125,17 @@ export interface ImportDeps {
         usageCount: number;
     }) => string;
     addMarketingItem: (input: Omit<MarketingItem, "id"> & { id?: string }) => string;
+    addTaxRate: (input: {
+        name: string;
+        ratePercentage: number;
+        kind: "vat" | "income";
+        type: "default" | "zero_rated" | "exempt";
+        description?: string;
+        calculationMode: "exclusive" | "inclusive";
+        status: "active" | "inactive" | "archived";
+        validFromISO?: string;
+        validUntilISO?: string;
+    }) => string;
     /** Live roles, for resolving a CSV role name → its FK. */
     roles: Role[];
     addImportHistory: (input: {
@@ -142,7 +153,8 @@ export interface ImportDeps {
             | "staff"
             | "promo_codes"
             | "pay_rates"
-            | "campaigns";
+            | "campaigns"
+            | "tax_rates";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -335,6 +347,7 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     promo_codes: "promo_codes",
     pay_rates: "pay_rates",
     campaigns: "campaigns",
+    tax_rates: "tax_rates",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -598,6 +611,45 @@ export function applyImportToStore(
                 roomId: room?.id ?? "",
                 status: "Active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
+            });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "tax_rates") {
+        const records = materialize("tax_rates", file);
+        let created = 0;
+        for (const rec of records) {
+            if (!rec.name) continue;
+            // Kind — income if the cell says income/withholding/paye, else VAT.
+            const k = (rec.kind ?? "").toLowerCase();
+            const kind: "vat" | "income" = /income|paye|withhold/.test(k) ? "income" : "vat";
+            // Type — zero_rated / exempt / default.
+            const t = (rec.type ?? "").toLowerCase();
+            const type: "default" | "zero_rated" | "exempt" = /zero|0.?rat/.test(t)
+                ? "zero_rated"
+                : /exempt/.test(t)
+                  ? "exempt"
+                  : "default";
+            // Calculation — inclusive if the cell says so, else exclusive.
+            const calc = (rec.calculation_mode ?? "").toLowerCase();
+            const calculationMode: "inclusive" | "exclusive" = /inclusive|incl\b/.test(calc)
+                ? "inclusive"
+                : "exclusive";
+            deps.addTaxRate({
+                name: rec.name,
+                ratePercentage: toNumber(rec.rate_percentage, 0),
+                kind,
+                type,
+                description: rec.description || undefined,
+                calculationMode,
+                status: "active",
+                validFromISO: toISODate(rec.valid_from) ?? undefined,
+                validUntilISO: toISODate(rec.valid_until) ?? undefined,
             });
             created++;
         }
