@@ -286,6 +286,7 @@ export function Card({ data }: { data: InsightCard }) {
                 title={data.title}
                 rowCount={data.rowCount}
                 columns={data.columns}
+                format={data.format}
             />
         );
     }

@@ -428,7 +428,7 @@ export function insightTools(
 
         export_report: tool({
             description:
-                "Export data to a downloadable CSV or PDF. Use whenever the user asks to export / download / 'save as CSV' / 'give me a PDF' / 'send me a report'. Describe the data to export like an analyze/list query: dataset + filters, and EITHER a group_by (+metric) for an aggregated report (e.g. revenue by branch) OR columns for a record list (e.g. all active customers). The card gives the user Download CSV and Download PDF buttons — you don't choose the format, both are offered.",
+                "Export data to a downloadable file. Use whenever the user asks to export / download / 'save as CSV' / 'give me an XLSX' / 'send me a report'. Describe the data like an analyze/list query: dataset + filters, and EITHER a group_by (+metric) for an aggregated report (e.g. revenue by branch) OR columns for a record list (e.g. all active customers). Client 2026-07-24 flow: BEFORE calling this tool, first call `ask_questions` with TWO steps — (1) 'Anything you'd like to do with this?' with options 'Export report' + 'Send report to email', then (2) 'Which format would you like for the report?' with options 'PDF', 'CSV', 'XLSX'. Only after the user picks a format do you call this tool with the corresponding `format` param. XLSX and CSV both work today; if the user picks PDF, tell them PDF is coming soon and offer CSV or XLSX instead. If the user picks 'Send report to email', acknowledge and tell them email delivery is coming soon.",
             parameters: z.object({
                 dataset: z.enum(DATASETS),
                 filters: z.array(filter).optional(),
@@ -443,6 +443,9 @@ export function insightTools(
                 sort: z.enum(["asc", "desc"]).optional(),
                 limit: z.number().optional(),
                 title: z.string().describe("report title, e.g. 'Active customers' or 'Revenue by branch'"),
+                format: z
+                    .enum(["csv", "xlsx"])
+                    .describe("File format the user picked in the preceding ask_questions step. PDF is not yet available — if the user asked for PDF, apologise and offer csv or xlsx instead."),
             }),
             execute: async (spec) =>
                 guard(() => {
@@ -457,6 +460,7 @@ export function insightTools(
                         title: table.title,
                         rowCount: table.rows.length,
                         columns: table.columns,
+                        format: spec.format,
                     };
                 }),
         }),
