@@ -114,17 +114,11 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Payroll",             href: "/admin/compensation"   },
         ],
     },
-    // AI Agent — client 2026-07-24. Sits at the bottom of the scrollable
-    // nav so it lands directly above the Settings footer chip. Role gating
-    // is handled by `isAiAgentEnabled` on the page + API surfaces; the
-    // sidebar entry itself is left ungated so any admin persona can see
-    // and open it.
-    { label: "AI Agent", href: "/ai-agent", icon: Stars02 },
-    // Settings does NOT live in the scrollable nav — it's rendered as
-    // a footer chip (see `SidebarSettingsChip` below) that opens a
-    // right-side popover with the 3 grouped children (Business /
-    // Operations / Customer). Matches the profile-chip dropdown
-    // pattern per the client's latest ask.
+    // AI Agent + Settings do NOT live in the scrollable nav — both are
+    // rendered as FOOTER chips below (SidebarAiAgentChip +
+    // SidebarSettingsChip). AI Agent sits directly above Settings per
+    // client 2026-07-24 revision; role gating still handled by
+    // isAiAgentEnabled on the page + API.
 ];
 
 // Among a parent's children, pick the SINGLE child whose href is the longest
@@ -590,12 +584,16 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                 block clear structure). Rule tone = #d0d5dd so it
                 stays visible without dominating. */}
             <div className="shrink-0 mt-1 px-3 pt-3 pb-3 flex flex-col gap-2">
-                {/* Settings chip + its divider render only on surfaces
-                 *  that HAVE an admin settings module (admin sidebar).
-                 *  The instructor layout passes showSettings={false}, so
-                 *  the footer collapses to just the profile chip. */}
+                {/* AI Agent + Settings + their divider render only on
+                 *  surfaces that HAVE an admin settings module (admin
+                 *  sidebar). The instructor layout passes
+                 *  showSettings={false}, so the footer collapses to
+                 *  just the profile chip. Client 2026-07-24 — AI Agent
+                 *  chip sits directly ABOVE Settings, both inside the
+                 *  footer group above the divider. */}
                 {showSettings && (
                     <>
+                        <SidebarAiAgentChip slim={slim} />
                         <SidebarSettingsChip slim={slim} />
                         {/* Inset horizontal margin so the divider matches
                          *  the section-break rule in the middle of the
@@ -615,6 +613,50 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                 />
             </div>
         </aside>
+    );
+}
+
+// ─── AI Agent chip (sidebar footer) ─────────────────────────────────────
+// Client 2026-07-24. Mirrors the Settings chip trigger styling but is a
+// plain link (no popover) — clicking navigates to /ai-agent with the
+// current path threaded through as `returnTo` so the AI Agent's close
+// button lands back on the page the admin left. Active state fires on
+// any `/ai-agent*` route so opening the panel highlights the chip.
+function SidebarAiAgentChip({ slim }: { slim: boolean }) {
+    const pathname = usePathname() ?? "";
+    const isActive = pathname === "/ai-agent" || pathname.startsWith("/ai-agent/");
+    // Same returnTo pattern FloatingAiButton uses — the AI Agent's X
+    // button closes back to where the admin was.
+    const returnTo = pathname && pathname !== "/ai-agent"
+        ? `/ai-agent?returnTo=${encodeURIComponent(pathname)}`
+        : "/ai-agent";
+    return (
+        <SlimNavItem label="AI Agent" enabled={slim}>
+            <Link
+                href={returnTo}
+                aria-label="Open AI Agent"
+                className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
+                    isActive
+                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
+                    slim && "justify-center",
+                )}
+            >
+                {isActive && (
+                    <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
+                )}
+                <Stars02 className={cn(
+                    "w-5 h-5 shrink-0",
+                    isActive ? "text-[#101828]" : "text-[#667085]",
+                )} />
+                {!slim && (
+                    <span className="flex-1 text-left text-sm font-medium truncate">
+                        AI Agent
+                    </span>
+                )}
+            </Link>
+        </SlimNavItem>
     );
 }
 
