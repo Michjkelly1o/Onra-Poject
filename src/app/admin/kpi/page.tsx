@@ -273,8 +273,11 @@ export default function KpiPage() {
                 search / date filter. Container's outer border-b removed
                 per client 2026-07-24 revision — the active tab's own
                 border-b-2 accent is enough visual structure without a
-                horizontal rule spanning the whole width. */}
-            <div>
+                horizontal rule spanning the whole width. Sticky so the
+                tabs + filters stay pinned while the widget grid scrolls;
+                the negative-y shadow extends the white background up 24px
+                to cover main's p-6 top padding as the strip freezes. */}
+            <div className="sticky top-0 z-30 w-full bg-white shadow-[0_-24px_0_0_#ffffff]">
                 <div className="flex gap-3 items-center justify-between">
                     {/* Left: tabs */}
                     <div className="flex gap-3 items-center flex-shrink-0">
