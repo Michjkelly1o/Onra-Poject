@@ -15,7 +15,6 @@
 
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { DeepLink as DeepLinkData, InsightCard } from "@/ai-agent/agent/cards";
 import { ArrowUpRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -89,7 +88,10 @@ function RankedListRow({
 }: {
     row: import("@/ai-agent/agent/cards").RankedRow;
 }) {
-    const router = useRouter();
+    // Client 2026-07-24 — every drill-through from an AI Agent card
+    // opens in a NEW tab so the chat stays put. Anchor + target="_blank"
+    // instead of router.push so middle-click / Ctrl-click / Cmd-click
+    // all work as expected too.
     const clickable = !!r.href;
     const body = (
         <>
@@ -122,16 +124,17 @@ function RankedListRow({
     );
     if (clickable) {
         return (
-            <button
-                type="button"
-                onClick={() => router.push(normalizeAdminHref(r.href!))}
+            <a
+                href={normalizeAdminHref(r.href!)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
                     "w-full text-left flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0 -mx-2 px-2 rounded-md",
                     "hover:bg-[#f9fafb] transition-colors",
                 )}
             >
                 {body}
-            </button>
+            </a>
         );
     }
     return (
@@ -146,17 +149,20 @@ function RankedListRow({
  *  (no full page reload). Backwards-compat: still accepts nothing (chip
  *  hidden). */
 function DeepLink({ link }: { link?: DeepLinkData }) {
-    const router = useRouter();
     if (!link || !link.label) return null;
+    // Client 2026-07-24 — DeepLink chips open in a NEW tab so the chat
+    // pane never gets nav'd away. Anchor + target="_blank" preserves
+    // middle-click / Ctrl-click / Cmd-click behaviour too.
     return (
-        <button
-            type="button"
-            onClick={() => router.push(normalizeAdminHref(link.href))}
+        <a
+            href={normalizeAdminHref(link.href)}
+            target="_blank"
+            rel="noopener noreferrer"
             className="self-start inline-flex items-center gap-1 text-[13px] font-medium text-[#4b8c9a] hover:text-[#306b78] hover:underline underline-offset-4"
         >
             <ArrowUpRight className="size-3.5" />
             {link.label}
-        </button>
+        </a>
     );
 }
 
