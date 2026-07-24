@@ -94,7 +94,7 @@ const PAGES: PageEntry[] = [
     // money-specific glyphs (CoinsHand / CreditCard02) so they're
     // distinguishable at a glance.
     { title: "Roles & permissions",    href: "/admin/staff/roles",                icon: Users01 },
-    { title: "Staff & shift",          href: "/admin/staff",                      icon: Users01 },
+    { title: "Staff & shifts",         href: "/admin/staff",                      icon: Users01 },
     { title: "Pay rates",              href: "/admin/staff/pay-rate",             icon: CoinsHand },
     { title: "Payroll",                href: "/admin/compensation",               icon: CreditCard02 },
     // Notifications top-level

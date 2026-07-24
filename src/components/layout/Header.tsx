@@ -26,7 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
     // /admin/instructors redirects to /admin/staff — kept for header fallback
     // during the redirect frame.
     "/admin/instructors": "Staff & Permissions",
-    "/admin/staff": "Staff & shift",
+    "/admin/staff": "Staff & shifts",
     "/admin/staff/roles": "Roles & permissions",
     "/admin/staff/pay-rate": "Pay rates",
     "/admin/compensation": "Payroll",

@@ -108,7 +108,7 @@ const NAV_ITEMS: NavItemDef[] = [
         label: "Staff", icon: Users01, permission: "manage_instructors",
         children: [
             { label: "Roles & permissions", href: "/admin/staff/roles"    },
-            { label: "Staff & shift",       href: "/admin/staff"          },
+            { label: "Staff & shifts",      href: "/admin/staff"          },
             { label: "Pay rates",           href: "/admin/staff/pay-rate" },
             { label: "Payroll",             href: "/admin/compensation"   },
         ],
