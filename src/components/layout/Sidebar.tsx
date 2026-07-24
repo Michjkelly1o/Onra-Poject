@@ -17,6 +17,7 @@ import {
     BarChartSquare01,
     Users01,
     Settings01,
+    Stars02,
     ChevronDown,
     ChevronUp,
     ChevronLeftDouble,
@@ -113,6 +114,12 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Payroll",             href: "/admin/compensation"   },
         ],
     },
+    // AI Agent — client 2026-07-24. Sits at the bottom of the scrollable
+    // nav so it lands directly above the Settings footer chip. Role gating
+    // is handled by `isAiAgentEnabled` on the page + API surfaces; the
+    // sidebar entry itself is left ungated so any admin persona can see
+    // and open it.
+    { label: "AI Agent", href: "/ai-agent", icon: Stars02 },
     // Settings does NOT live in the scrollable nav — it's rendered as
     // a footer chip (see `SidebarSettingsChip` below) that opens a
     // right-side popover with the 3 grouped children (Business /
