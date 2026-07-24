@@ -43,6 +43,8 @@ import { computeFinancialKpis } from "@/lib/kpi/financial";
 import { computeClientKpis } from "@/lib/kpi/client";
 import { computeClassKpis } from "@/lib/kpi/class";
 import { computeMarketingKpis } from "@/lib/kpi/marketing";
+import { computePrivateKpis } from "@/lib/kpi/private";
+import { computeRecoveryKpis } from "@/lib/kpi/recovery";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,14 +178,22 @@ export default function KpiPage() {
         [branches],
     );
 
+    // Private + Recovery tabs (client 2026-07-24) need appointments +
+    // appointmentBookings + services. Subscribe here so switching tabs
+    // never lags on first render.
+    const appointments        = useAppStore(s => s.appointments);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
+    const services            = useAppStore(s => s.services);
+
     // Pack the state slices into a single object for KPI helpers. Every
     // helper reads through the same shape so adding a new tab is a
     // one-import change.
     const kpiState = useMemo(() => ({
         customerTransactions, customerPlans, customers, customerReferrals,
         branches, staff, classSchedules, classBookings,
+        appointments, appointmentBookings, services,
     } as unknown as import("@/lib/store").AppState),
-    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings]);
+    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings, appointments, appointmentBookings, services]);
 
     // Marketing tab needs additional slices — subscribe once here so
     // switching to that tab doesn't lag on first render.
@@ -201,6 +211,8 @@ export default function KpiPage() {
     const financialKpis = useMemo(() => computeFinancialKpis(kpiState, range, branchFilter), [kpiState, range, branchFilter]);
     const clientKpis    = useMemo(() => computeClientKpis(kpiState, range, branchFilter),    [kpiState, range, branchFilter]);
     const classKpis     = useMemo(() => computeClassKpis(kpiState, range, branchFilter),     [kpiState, range, branchFilter]);
+    const privateKpis   = useMemo(() => computePrivateKpis(kpiState, range, branchFilter),   [kpiState, range, branchFilter]);
+    const recoveryKpis  = useMemo(() => computeRecoveryKpis(kpiState, range, branchFilter),  [kpiState, range, branchFilter]);
     const marketingKpis = useMemo(() => computeMarketingKpis(marketingState, range, branchFilter), [marketingState, range, branchFilter]);
 
     // KPI metrics are NOT clickable per client Jul 2026 — this module
@@ -219,13 +231,13 @@ export default function KpiPage() {
         financial: withRange(financialKpis),
         client:    withRange(clientKpis),
         class:     withRange(classKpis),
-        // Client 2026-07-23 — Private sessions + Recovery are new tabs
-        // whose KPI cards ship in a follow-up. Empty arrays here surface
-        // the existing "coming soon" copy for the metrics row while the
-        // hero widget grid below (already filterable by the header
-        // period + location controls) renders normally.
-        "private-sessions": [],
-        recovery:           [],
+        // Client 2026-07-24 — Private + Recovery tabs now surface their
+        // own KPI cards (Bookings / Utilization / Rebooking rate on
+        // Private; Revenue per appointment / Attachment rate / Bookings
+        // on Recovery). Computes live in ./private.ts / ./recovery.ts
+        // and honour the same period + location filters.
+        "private-sessions": withRange(privateKpis),
+        recovery:           withRange(recoveryKpis),
         marketing: withRange(marketingKpis),
     };
 
