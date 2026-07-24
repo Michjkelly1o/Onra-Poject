@@ -127,14 +127,9 @@ export function computeFinancialKpis(
     const refundsDiscountsCur   = refundsCur + discountsCur;
     const refundsDiscountsPrior = refundsPrior + discountsPrior;
 
-    // ── 5. Failed-payment recovery rate = recovered ÷ failed (in period) ──
-    const failedCur = payments
-        .filter(p => p.status === "failed" && inWindow(p.paymentDateISO, current))
-        .reduce((sum, p) => sum + p.paymentAmount, 0);
-    const recoveredCur = payments
-        .filter(p => p.status === "failed" && p.recovered && inWindow(p.paymentDateISO, current))
-        .reduce((sum, p) => sum + p.paymentAmount, 0);
-    const recoveryRateCur = failedCur > 0 ? (recoveredCur / failedCur) * 100 : 0;
+    // Client 2026-07-24 — Failed-payment recovery rate + Revenue from
+    // subscriptions removed from the Financial tab per feedback pass.
+    // Compute blocks kept intact for report drill-downs are elsewhere.
 
     // ── 6. Recurring revenue (MRR) — Snapshot ────────────────────────────
     // Sum of active membership monthly prices, as of TODAY, ignores date filter.
@@ -169,23 +164,25 @@ export function computeFinancialKpis(
     const revPerVisitCur   = attendsCur   > 0 ? netCur   / attendsCur   : 0;
     const revPerVisitPrior = attendsPrior > 0 ? netPrior / attendsPrior : 0;
 
-    // ── 10. Revenue from subscriptions (Membership kind) ─────────────────
-    const subsCur = sumSigned(ledger, current, branchFilter, r => r.kind === "membership" && r.transactionType === "sale");
-    const subsPrior = sumSigned(ledger, prior, branchFilter, r => r.kind === "membership" && r.transactionType === "sale");
-
+    // Client 2026-07-24 tile order — Sales · Gross revenue · Net revenue ·
+    // Recurring revenue · Avg revenue per member · Revenue per class ·
+    // Revenue per visit · Refunds & discounts · Payments collected. Failed-
+    // payment recovery + Revenue from subscriptions dropped per feedback.
+    //
+    // Sales vs Gross revenue — semantically distinct but numerically equal
+    // in this demo (both come from sale-side ledger rows). The tooltips
+    // do the disambiguation: "Sales" is the purchase-time headline;
+    // "Gross revenue" is the recognized revenue before refunds & discounts.
     return [
+        { label: "Sales",                        value: aed(grossCur),             change: delta(grossCur, grossPrior),                   period,
+          description: "Value of what was sold, counted in full when bought.",
+          drillTo: "/reports/total-sales" },
+        { label: "Gross revenue",                value: aed(grossCur),             change: delta(grossCur, grossPrior),                   period,
+          description: "Revenue earned (recognized) before refunds & discounts.",
+          drillTo: "/reports/total-sales" },
         { label: "Net revenue",                  value: aed(netCur),               change: delta(netCur, netPrior),                       period,
           description: "Revenue earned (recognized) after refunds & discounts.",
           drillTo: "/reports/total-sales" },
-        { label: "Gross revenue",                value: aed(grossCur),             change: delta(grossCur, grossPrior),                   period,
-          description: "Total billed before refunds & discounts.",
-          drillTo: "/reports/total-sales" },
-        { label: "Payments collected",           value: aed(paymentsCur),          change: delta(paymentsCur, paymentsPrior),             period,
-          description: "Payments successfully taken — most are paid upfront before the class.",
-          drillTo: "/reports/payments" },
-        { label: "Refunds & discounts",          value: aed(refundsDiscountsCur),  change: delta(refundsDiscountsCur, refundsDiscountsPrior), period,
-          description: "Total refunded + discounted in period.",
-          drillTo: "/reports/refunds" },
         { label: "Recurring revenue (MRR)",      value: aed(mrrNow),                                                                       period: "as of today",
           description: "Monthly recurring revenue from active subscriptions.",
           drillTo: "/reports/mrr" },
@@ -198,12 +195,12 @@ export function computeFinancialKpis(
         { label: "Revenue per visit",            value: aed(revPerVisitCur),       change: delta(revPerVisitCur, revPerVisitPrior),       period,
           description: "Revenue attributed ÷ attendees.",
           drillTo: "/reports/revenue-per-class" },
-        { label: "Failed-payment recovery rate", value: pct(recoveryRateCur),                                                             period: "in period",
-          description: "Recovered ÷ total failed value.",
+        { label: "Refunds & discounts",          value: aed(refundsDiscountsCur),  change: delta(refundsDiscountsCur, refundsDiscountsPrior), period,
+          description: "Total refunded + discounted in period.",
+          drillTo: "/reports/refunds" },
+        { label: "Payments collected",           value: aed(paymentsCur),          change: delta(paymentsCur, paymentsPrior),             period,
+          description: "Payments successfully taken — most are paid upfront before the class.",
           drillTo: "/reports/payments" },
-        { label: "Revenue from subscriptions",   value: aed(subsCur),              change: delta(subsCur, subsPrior),                     period,
-          description: "Revenue from membership-kind sales in period.",
-          drillTo: "/reports/sales-by-category" },
     ];
 }
 

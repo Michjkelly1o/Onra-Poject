@@ -138,10 +138,23 @@ export function AiAgentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const currentRole = useAppStore((s) => s.currentRole);
-    const returnTo = useMemo(
-        () => searchParams.get("returnTo") ?? "/admin/dashboard",
-        [searchParams],
-    );
+    // Client 2026-07-24 — harden the close-out target so a hand-crafted
+    // `?returnTo=…` can't push the user to an external URL or a JS pseudo-
+    // scheme. Only same-origin relative paths that start with a single `/`
+    // are accepted (protocol-relative `//evil.com` and absolute
+    // `https://…` are both rejected). Anything else falls back to the
+    // safe default. The sidebar chip + FloatingAiButton always send a
+    // clean usePathname() value, so this only matters when the URL is
+    // hand-crafted.
+    const returnTo = useMemo(() => {
+        const raw = searchParams.get("returnTo");
+        if (!raw) return "/admin/dashboard";
+        // Must start with a single slash AND not be protocol-relative.
+        if (raw.length < 1 || raw[0] !== "/" || raw.startsWith("//")) {
+            return "/admin/dashboard";
+        }
+        return raw;
+    }, [searchParams]);
 
     // Saved Recents (persisted). The active VIEW is deliberately NOT persisted,
     // so a refresh always lands on a fresh, empty entry point.

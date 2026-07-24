@@ -1,19 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/ai-agent/export?id=…&format=csv|json
+// GET /api/ai-agent/export?id=…&format=csv|xlsx|json
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Serves an ExportTable previously stashed by the `export_report` tool. CSV
-// downloads as an attachment; JSON is used client-side to render the PDF via
-// jspdf (Phase 5.5). The table lives entirely server-side (`export-store.ts`);
-// the model context never carries the tabular bytes.
+// Serves an ExportTable previously stashed by the `export_report` tool.
+//   csv  → downloaded as text/csv attachment (Excel-friendly BOM prefix)
+//   xlsx → downloaded as a real workbook, generated server-side via SheetJS
+//   json → used client-side by the (now legacy) jspdf PDF path
 //
-// Auth = capability: the exportId is unguessable and short-lived. If we ever
-// need to lock it to a user we can stamp `userId` onto ExportTable and check
-// against the session — not needed at Phase 3.
+// Client 2026-07-24 adds XLSX. PDF is out of scope for this pass but the
+// json path stays so any existing PDF flow keeps working.
 //
-// Ported from ONRA AI-Agent/app/api/export/route.ts.
+// Auth = capability: the exportId is unguessable and short-lived.
 
 import { exportStore } from "@/ai-agent/data/export-store";
+import * as XLSX from "xlsx";
 
 export const runtime = "nodejs";
 
@@ -38,6 +38,34 @@ export async function GET(req: Request) {
 
     if (format === "json") {
         return Response.json(table);
+    }
+
+    if (format === "xlsx") {
+        // Build a workbook from the columns + rows in the stashed table.
+        // Header row first, then every data row — matches the CSV layout.
+        const aoa = [table.columns, ...table.rows];
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        const workbook = XLSX.utils.book_new();
+        // Sheet name: max 31 chars per Excel spec, no forbidden chars.
+        const sheetName = (table.title || "Report")
+            .replace(/[\\/*?:[\]]/g, " ")
+            .slice(0, 31) || "Report";
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        const buffer: Buffer = XLSX.write(workbook, {
+            type: "buffer",
+            bookType: "xlsx",
+        });
+        // Copy into a fresh Uint8Array so its underlying ArrayBuffer is
+        // the plain (non-SharedArrayBuffer) variant Blob's BlobPart
+        // union expects on the Response type.
+        const bytes = new Uint8Array(buffer);
+        return new Response(bytes, {
+            headers: {
+                "Content-Type":
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Content-Disposition": `attachment; filename="${safeName}.xlsx"`,
+            },
+        });
     }
 
     // CSV — BOM prepended so Excel opens with UTF-8 encoding.

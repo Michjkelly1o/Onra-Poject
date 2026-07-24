@@ -59,7 +59,7 @@ export interface WidgetMeta {
 export const WIDGET_CATALOG: WidgetMeta[] = [
     // ─── Financial ──────────────────────────────────────────────────────
     { id: "payments-collected",  title: "Payments overview",                 description: "", category: "Financial",
-      info: "Payments collected; failed payments shown separately." },
+      info: "Collected payments in green; failed in red." },
     { id: "payments-by-source",  title: "Payments by source",                description: "", category: "Financial" },
     { id: "revenue-overview",    title: "Revenue overview",                  description: "", category: "Financial",
       info: "Net revenue, compared with the previous period." },

@@ -46,6 +46,14 @@ function activeAtStart(purchased: string, endDate: string, w: Window): boolean {
     return purchased.slice(0, 10) <= w.fromISO && endDate.slice(0, 10) >= w.fromISO;
 }
 
+/** Was the plan active AT ANY POINT during the window? Purchased on/before
+ *  the window's toISO AND end-date on/after fromISO. This is the semantic
+ *  the client asked for on 2026-07-24 — "Active customers as of THIS
+ *  PERIOD" reads the window, not the current wall-clock. */
+function activeDuring(purchased: string, endDate: string, w: Window): boolean {
+    return purchased.slice(0, 10) <= w.toISO && endDate.slice(0, 10) >= w.fromISO;
+}
+
 /** Was the plan lost within the window? end-date within [from, to]. */
 function lostWithin(endDate: string, w: Window): boolean {
     return inWindow(endDate, w);
@@ -72,8 +80,20 @@ export function computeClientKpis(
         return p.expiryISO;
     }
 
-    // ── 12. Active members (Snapshot) ────────────────────────────────────
-    const activeMembersNow = scopedPlans.filter(p => p.status === "active").length;
+    // ── 12. Active customers — period-scoped (client 2026-07-24) ────────
+    // Was: "as of today" snapshot. Now: DISTINCT customers whose plans
+    // were active at ANY point during the window, with prior for delta.
+    // Fixes the "value doesn't change when I move the date filter"
+    // regression the client called out.
+    const activeCustomerIdsFor = (w: Window): Set<string> => {
+        const s = new Set<string>();
+        for (const p of scopedPlans) {
+            if (activeDuring(p.purchasedAtISO, planEndDate(p), w)) s.add(p.customerId);
+        }
+        return s;
+    };
+    const activeCustomersCur   = activeCustomerIdsFor(current).size;
+    const activeCustomersPrior = activeCustomerIdsFor(prior).size;
 
     // ── 13. Net member change ───────────────────────────────────────────
     const newInCur = scopedPlans.filter(p => p.isFirstPlan && inWindow(p.purchasedAtISO, current)).length;
@@ -83,10 +103,18 @@ export function computeClientKpis(
     const lostInPrior = scopedPlans.filter(p => lostWithin(planEndDate(p), prior) && (p.status === "cancelled" || p.status === "expired" || p.status === "removed")).length;
     const netPrior = newInPrior - lostInPrior;
 
-    // ── 15/16/17. Active by kind (Snapshot) ──────────────────────────────
-    const activeMemberships = scopedPlans.filter(p => p.status === "active" && p.kind === "membership").length;
-    const activePackages    = scopedPlans.filter(p => p.status === "active" && p.kind === "package").length;
-    const activeIntroOffers = scopedPlans.filter(p => p.status === "active" && p.isFirstPlan && p.priceAed < 500).length;
+    // ── 15/16/17. Active by kind — period-scoped (client 2026-07-24) ────
+    // Same "as of this period" semantic as Active customers. Active
+    // recurring = memberships active during window; active intro =
+    // first-plan low-priced packages active during window. activePackages
+    // is no longer surfaced on the tile row but the compute stays for
+    // possible future use.
+    const activeMemberships    = scopedPlans.filter(p => p.kind === "membership" && activeDuring(p.purchasedAtISO, planEndDate(p), current)).length;
+    const activeMembershipsPrior = scopedPlans.filter(p => p.kind === "membership" && activeDuring(p.purchasedAtISO, planEndDate(p), prior)).length;
+    const activePackages       = scopedPlans.filter(p => p.kind === "package" && activeDuring(p.purchasedAtISO, planEndDate(p), current)).length;
+    const activeIntroOffers    = scopedPlans.filter(p => p.isFirstPlan && p.priceAed < 500 && activeDuring(p.purchasedAtISO, planEndDate(p), current)).length;
+    const activeIntroOffersPrior = scopedPlans.filter(p => p.isFirstPlan && p.priceAed < 500 && activeDuring(p.purchasedAtISO, planEndDate(p), prior)).length;
+    void activePackages;
 
     // ── 18/19. Churn / Retention ────────────────────────────────────────
     const activeAtStartCur = scopedPlans.filter(p => activeAtStart(p.purchasedAtISO, planEndDate(p), current)).length;
@@ -96,16 +124,8 @@ export function computeClientKpis(
     const churnRatePrior = activeAtStartPrior > 0 ? (lostInPrior / activeAtStartPrior) * 100 : 0;
     const retentionRatePrior = 100 - churnRatePrior;
 
-    // ── 20/21. Class cancellations (on-time / late) ─────────────────────
-    // Bookings booked in window with cancel outcome.
-    const bookingsInWin = (w: Window) => state.classBookings.filter(b => {
-        const bookedAt = b.bookingTime.slice(0, 10);
-        return bookedAt >= w.fromISO && bookedAt <= w.toISO;
-    });
-    const cancOnTimeCur = bookingsInWin(current).filter(b => b.status === "cancelled" && b.attendanceStatus !== "late_cancel").length;
-    const cancLateCur   = bookingsInWin(current).filter(b => b.attendanceStatus === "late_cancel").length;
-    const cancOnTimePrior = bookingsInWin(prior).filter(b => b.status === "cancelled" && b.attendanceStatus !== "late_cancel").length;
-    const cancLatePrior   = bookingsInWin(prior).filter(b => b.attendanceStatus === "late_cancel").length;
+    // Cancellations (on-time / late) moved to the Classes tab per client
+    // 2026-07-24 reassignment. See computeClassKpis in `./class.ts`.
 
     // ── 23. LTV (Snapshot) ──────────────────────────────────────────────
     // Average lifetimeValue across all customers with any spend.
@@ -163,24 +183,31 @@ export function computeClientKpis(
     const winbackTargetsCur = referrals.filter(r => inWindow(r.referredAtISO, current)).length;
     const winbackRateCur = winbackTargetsCur > 0 ? (winbackCur / winbackTargetsCur) * 100 : 0;
 
+    // Client 2026-07-24 tile order — Active customers · New customers ·
+    // Net customer change · Returning customers · Active recurring
+    // subscriptions · Active intro offers · Churn rate · Retention rate ·
+    // Lifetime value · Avg visits per client · Visit → customer conversion ·
+    // Win-back rate. Dropped: Active one-off packages, New sign-ups,
+    // First-time visitors, Intro → paid conversion. Cancellations (on time,
+    // late) moved to the Classes tab per the client's reassignment.
     return [
-        { label: "Active customers",               value: num(activeMembersNow),                                                              period: "as of today",
-          description: "Anyone holding a live plan — recurring subscription, one-off package, or intro.",
+        { label: "Active customers",               value: num(activeCustomersCur),                  change: delta(activeCustomersCur, activeCustomersPrior), period,
+          description: "Anyone holding a live plan — recurring subscription, one-off package, or intro — at any point during the period.",
           drillTo: "/reports/memberships-packages" },
+        { label: "New customers",                  value: num(newCustomersCur),                     change: delta(newCustomersCur, newCustomersPrior), period,
+          description: "First-time customers acquired in period.",
+          drillTo: "/reports/customer-data" },
         { label: "Net customer change",            value: (netCur >= 0 ? "+" : "") + num(netCur),   change: delta(netCur, netPrior),          period,
           description: "New − lost in period.",
           drillTo: "/reports/member-movement" },
-        { label: "New sign-ups",                   value: num(newInCur),                            change: delta(newInCur, newInPrior),      period,
-          description: "New customers acquired in period.",
-          drillTo: "/reports/member-movement" },
-        { label: "Active recurring subscriptions", value: num(activeMemberships),                                                             period: "as of today",
-          description: "Customers currently on a recurring plan.",
+        { label: "Returning customers",            value: num(returningCur),                        change: delta(returningCur, returningPrior), period,
+          description: "Repeat customers active in period.",
+          drillTo: "/reports/customer-data" },
+        { label: "Active recurring subscriptions", value: num(activeMemberships),                   change: delta(activeMemberships, activeMembershipsPrior), period,
+          description: "Recurring subscriptions active at any point during the period.",
           drillTo: "/reports/memberships-packages" },
-        { label: "Active one-off packages",        value: num(activePackages),                                                                period: "as of today",
-          description: "Customers currently on a one-off pack (e.g. 20-class).",
-          drillTo: "/reports/memberships-packages" },
-        { label: "Active intro offers",            value: num(activeIntroOffers),                                                             period: "as of today",
-          description: "Intro offers currently running.",
+        { label: "Active intro offers",            value: num(activeIntroOffers),                   change: delta(activeIntroOffers, activeIntroOffersPrior), period,
+          description: "Intro offers active at any point during the period.",
           drillTo: "/reports/intro-offers" },
         { label: "Churn rate",                     value: pct(churnRateCur),                        change: delta(churnRateCur, churnRatePrior), period,
           description: "Customers lost ÷ customers active at the start of the period.",
@@ -188,23 +215,8 @@ export function computeClientKpis(
         { label: "Retention rate",                 value: pct(retentionRateCur),                    change: delta(retentionRateCur, retentionRatePrior), period,
           description: "1 − churn rate (customers kept).",
           drillTo: "/reports/retention-churn" },
-        { label: "Cancellations — on time",        value: num(cancOnTimeCur),                       change: delta(cancOnTimeCur, cancOnTimePrior), period,
-          description: "Cancelled before the cutoff window — credit returned.",
-          drillTo: "/reports/cancellations-noshows" },
-        { label: "Cancellations — late",           value: num(cancLateCur),                         change: delta(cancLateCur, cancLatePrior), period,
-          description: "Cancelled after the cutoff window — credit lost.",
-          drillTo: "/reports/cancellations-noshows" },
         { label: "Lifetime value (LTV)",           value: aed(ltvAvg),                                                                        period: "all-time",
           description: "Avg total revenue per customer across the whole relationship.",
-          drillTo: "/reports/customer-data" },
-        { label: "New customers",                  value: num(newCustomersCur),                     change: delta(newCustomersCur, newCustomersPrior), period,
-          description: "First-time customers acquired in period.",
-          drillTo: "/reports/customer-data" },
-        { label: "Returning customers",            value: num(returningCur),                        change: delta(returningCur, returningPrior), period,
-          description: "Repeat customers active in period.",
-          drillTo: "/reports/customer-data" },
-        { label: "First-time visitors",            value: num(firstTimeCur),                        change: delta(firstTimeCur, firstTimePrior), period,
-          description: "People attending for the very first time.",
           drillTo: "/reports/customer-data" },
         { label: "Avg visits per client",          value: avgVisitsCur.toFixed(1),                  change: delta(avgVisitsCur, avgVisitsPrior), period,
           description: "Visits ÷ active clients in period.",
@@ -212,9 +224,6 @@ export function computeClientKpis(
         { label: "Visit → customer conversion",    value: pct(visitToMemberCur),                                                              period,
           description: "First-time visitors who go on to buy a plan.",
           drillTo: "/reports/lead-conversion" },
-        { label: "Intro → paid conversion",        value: pct(introToPaidPct),                                                                period,
-          description: "Intro buyers who bought a real package/membership vs one-and-done.",
-          drillTo: "/reports/intro-offers" },
         { label: "Win-back rate",                  value: pct(winbackRateCur),                                                                period,
           description: "Lapsed clients reactivated ÷ targeted.",
           drillTo: "/reports/win-back" },

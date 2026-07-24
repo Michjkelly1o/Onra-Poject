@@ -43,6 +43,8 @@ import { computeFinancialKpis } from "@/lib/kpi/financial";
 import { computeClientKpis } from "@/lib/kpi/client";
 import { computeClassKpis } from "@/lib/kpi/class";
 import { computeMarketingKpis } from "@/lib/kpi/marketing";
+import { computePrivateKpis } from "@/lib/kpi/private";
+import { computeRecoveryKpis } from "@/lib/kpi/recovery";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,14 +178,22 @@ export default function KpiPage() {
         [branches],
     );
 
+    // Private + Recovery tabs (client 2026-07-24) need appointments +
+    // appointmentBookings + services. Subscribe here so switching tabs
+    // never lags on first render.
+    const appointments        = useAppStore(s => s.appointments);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
+    const services            = useAppStore(s => s.services);
+
     // Pack the state slices into a single object for KPI helpers. Every
     // helper reads through the same shape so adding a new tab is a
     // one-import change.
     const kpiState = useMemo(() => ({
         customerTransactions, customerPlans, customers, customerReferrals,
         branches, staff, classSchedules, classBookings,
+        appointments, appointmentBookings, services,
     } as unknown as import("@/lib/store").AppState),
-    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings]);
+    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings, appointments, appointmentBookings, services]);
 
     // Marketing tab needs additional slices — subscribe once here so
     // switching to that tab doesn't lag on first render.
@@ -201,6 +211,8 @@ export default function KpiPage() {
     const financialKpis = useMemo(() => computeFinancialKpis(kpiState, range, branchFilter), [kpiState, range, branchFilter]);
     const clientKpis    = useMemo(() => computeClientKpis(kpiState, range, branchFilter),    [kpiState, range, branchFilter]);
     const classKpis     = useMemo(() => computeClassKpis(kpiState, range, branchFilter),     [kpiState, range, branchFilter]);
+    const privateKpis   = useMemo(() => computePrivateKpis(kpiState, range, branchFilter),   [kpiState, range, branchFilter]);
+    const recoveryKpis  = useMemo(() => computeRecoveryKpis(kpiState, range, branchFilter),  [kpiState, range, branchFilter]);
     const marketingKpis = useMemo(() => computeMarketingKpis(marketingState, range, branchFilter), [marketingState, range, branchFilter]);
 
     // KPI metrics are NOT clickable per client Jul 2026 — this module
@@ -219,13 +231,13 @@ export default function KpiPage() {
         financial: withRange(financialKpis),
         client:    withRange(clientKpis),
         class:     withRange(classKpis),
-        // Client 2026-07-23 — Private sessions + Recovery are new tabs
-        // whose KPI cards ship in a follow-up. Empty arrays here surface
-        // the existing "coming soon" copy for the metrics row while the
-        // hero widget grid below (already filterable by the header
-        // period + location controls) renders normally.
-        "private-sessions": [],
-        recovery:           [],
+        // Client 2026-07-24 — Private + Recovery tabs now surface their
+        // own KPI cards (Bookings / Utilization / Rebooking rate on
+        // Private; Revenue per appointment / Attachment rate / Bookings
+        // on Recovery). Computes live in ./private.ts / ./recovery.ts
+        // and honour the same period + location filters.
+        "private-sessions": withRange(privateKpis),
+        recovery:           withRange(recoveryKpis),
         marketing: withRange(marketingKpis),
     };
 
@@ -256,39 +268,50 @@ export default function KpiPage() {
 
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
-            {/* Tab strip */}
-            <div className="border-b border-[#e4e7ec]">
-                <div className="flex gap-3 items-start">
-                    {TABS.map(t => (
-                        <button key={t.key} type="button" onClick={() => setTab(t.key)}
-                            className={cn(
-                                "flex gap-2 h-8 items-center justify-center pb-3 px-1 transition-colors",
-                                tab === t.key
-                                    ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
-                                    : "text-[#667085] font-semibold hover:text-[#344054]",
-                            )}>
-                            <span className="text-sm">{t.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {/* Tab strip + toolbar on ONE row (client 2026-07-24) — same
+                pattern the Dashboard uses. Left = tabs, right = location /
+                search / date filter. Container's outer border-b removed
+                per client 2026-07-24 revision — the active tab's own
+                border-b-2 accent is enough visual structure without a
+                horizontal rule spanning the whole width. Sticky so the
+                tabs + filters stay pinned while the widget grid scrolls;
+                the negative-y shadow extends the white background up 24px
+                to cover main's p-6 top padding as the strip freezes. */}
+            <div className="sticky top-0 z-30 w-full bg-white shadow-[0_-24px_0_0_#ffffff]">
+                <div className="flex gap-3 items-center justify-between">
+                    {/* Left: tabs */}
+                    <div className="flex gap-3 items-center flex-shrink-0">
+                        {TABS.map(t => (
+                            <button key={t.key} type="button" onClick={() => setTab(t.key)}
+                                className={cn(
+                                    "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
+                                    tab === t.key
+                                        ? "border-[#101828] text-[#101828] font-semibold"
+                                        : "border-transparent text-[#667085] font-semibold hover:text-[#344054]",
+                                )}>
+                                <span className="text-sm">{t.label}</span>
+                            </button>
+                        ))}
+                    </div>
 
-            {/* Toolbar — order (client 2026-07-22 sweep): Locations →
-                Search → Filter (DateRangeFilter on this page). */}
-            <div className="flex items-center gap-3">
-                <div className="flex-1" />
-                {/* Location picker — reused from the dashboard header
-                    (same MarkerPin01 glyph + "All locations" sentinel). */}
-                <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-5 h-5" />}
-                    placeholder="Select location"
-                    options={[{ value: "", label: "All locations" }, ...locationOptions]}
-                    value={location}
-                    onChange={setLocation}
-                    width="w-[220px]"
-                />
-                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search KPI..." />
-                <DateRangeFilter value={period} onChange={setPeriod} />
+                    {/* Right: toolbar. Height locked to h-10 (40px) matching
+                        the tab row so the strip reads as one line. Pushed
+                        to the bottom via pb-2 so control borders sit clean
+                        against the tab strip's border-b. Order (client
+                        2026-07-22 sweep): Locations → Search → Filter. */}
+                    <div className="flex gap-2 items-center pb-2">
+                        <SelectInput
+                            triggerIcon={<MarkerPin01 className="w-5 h-5" />}
+                            placeholder="Select location"
+                            options={[{ value: "", label: "All locations" }, ...locationOptions]}
+                            value={location}
+                            onChange={setLocation}
+                            width="w-[220px]"
+                        />
+                        <ToolbarSearch value={search} onChange={setSearch} placeholder="Search KPI..." />
+                        <DateRangeFilter value={period} onChange={setPeriod} />
+                    </div>
+                </div>
             </div>
 
             {/* Metric grid */}
