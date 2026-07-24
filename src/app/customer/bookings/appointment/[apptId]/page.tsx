@@ -36,13 +36,22 @@ export default function AppointmentBookingDetailPage() {
     const router = useRouter();
     const { apptId } = useParams<{ apptId: string }>();
     const booking = useAppointmentBookingById(apptId);
-    // Cancelled appointments live in the Past tab — Back returns there.
-    const goBack = useCustomerBack(
-        booking?.status === "cancelled" ? "/customer/bookings/past" : "/customer/bookings/upcoming",
-    );
     // Hooks must run every render (before any early return) — Rules of Hooks.
     const branches = useAppStore(s => s.branches);
+    const services = useAppStore(s => s.services);
+    const rooms = useAppStore(s => s.rooms);
+    const appointments = useAppStore(s => s.appointments);
+    const cancelAdminAppointment = useAppStore(s => s.cancelAppointment);
     const showToast = useAppStore(s => s.showToast);
+    // Effectively cancelled if the customer cancelled OR an admin cancelled the
+    // linked shared appointment — drives the Back target (Past vs Upcoming).
+    const backIsCancelled =
+        booking?.status === "cancelled" ||
+        (booking?.adminAppointmentId != null &&
+            appointments.find(a => a.id === booking.adminAppointmentId)?.status === "Cancelled");
+    const goBack = useCustomerBack(
+        backIsCancelled ? "/customer/bookings/past" : "/customer/bookings/upcoming",
+    );
     const { timezone, localTimezone } = useCurrentCustomerContext();
     const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -70,15 +79,36 @@ export default function AppointmentBookingDetailPage() {
         );
     }
 
+    // Linked admin appointment (created at booking time). It's the shared source
+    // of truth for the instructor + cancellation, so an admin-side reassignment
+    // or cancellation reflects here without a second write to this store.
+    const adminAppt = booking.adminAppointmentId
+        ? appointments.find(a => a.id === booking.adminAppointmentId)
+        : undefined;
+    // Instructor — prefer the (possibly reassigned) admin appointment values.
+    const instructorId = adminAppt?.instructorId ?? booking.instructorId ?? "";
+    const instructorName = adminAppt?.instructorName ?? booking.instructorName ?? "";
+    const instructorInitials = adminAppt?.instructorInitials ?? booking.instructorInitials ?? "";
+    const instructorImageUrl = adminAppt?.instructorImageUrl ?? booking.instructorImageUrl;
+
     const isPrivate = booking.type === "private";
-    const isCancelled = booking.status === "cancelled";
+    // Cancelled if the customer cancelled OR an admin cancelled the linked appt.
+    const isCancelled = booking.status === "cancelled" || adminAppt?.status === "Cancelled";
     const startMs = new Date(`${booking.slotISO}T${booking.slotTime}:00`).getTime();
     const isUpcoming = !isCancelled && startMs > Date.now();
 
-    // Resolve the appointment's branch (by name — the UI-only booking store
-    // carries branchName only) → its TZ label. Stacked on its own line under
-    // the subtitle so members with cross-city bookings never have to guess.
-    const branch = branches.find(b => b.name === booking.branchName);
+    // Resolve the appointment's location from the LIVE service config (admin
+    // side) so it always reflects the current Private/Recovery setup:
+    //   • service assigned to a branch  → show that branch's full details.
+    //   • service also assigned a room  → prefix the room on the name line.
+    // Falls back to matching the branch by the snapshotted name if the service
+    // was archived/removed, so existing bookings still resolve a branch.
+    const service = services.find(s => s.id === booking.appointmentId);
+    const branch =
+        (service ? branches.find(b => b.id === service.branchId) : undefined) ??
+        branches.find(b => b.name === booking.branchName);
+    // Room name from the service's default room (empty when none configured).
+    const roomName = service?.roomId ? rooms.find(r => r.id === service.roomId)?.name ?? "" : "";
     // Dual-timezone Date & time for the info grid — same as the class detail.
     const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, timezone);
 
@@ -93,6 +123,11 @@ export default function AppointmentBookingDetailPage() {
     function confirmCancel() {
         if (!booking) return;
         cancelAppointmentBooking(apptId, isLate);
+        // Cascade to the linked admin appointment so it drops off the admin
+        // schedule / shows Cancelled in Appointment Details. Refund on-time.
+        if (booking.adminAppointmentId) {
+            cancelAdminAppointment(booking.adminAppointmentId, !isLate, "customer");
+        }
         addCustomerNotification({
             tab: "bookings",
             event: "appointment_cancelled",
@@ -119,14 +154,14 @@ export default function AppointmentBookingDetailPage() {
         category: booking.category,
         coverImage: booking.coverImage,
         coverColor: booking.coverColor,
-        instructorId: booking.instructorId ?? "",
-        instructorName: booking.instructorName ?? "",
-        instructorInitials: booking.instructorInitials ?? "",
+        instructorId,
+        instructorName,
+        instructorInitials,
         instructorColor: "#f2f4f7",
-        instructorImageUrl: booking.instructorImageUrl,
-        room: "",
-        branchId: "",
-        branchName: booking.branchName,
+        instructorImageUrl,
+        room: roomName,
+        branchId: branch?.id ?? "",
+        branchName: branch?.name ?? booking.branchName,
         dateISO: booking.slotISO,
         startTime: booking.slotTime,
         endTime: "",
@@ -218,22 +253,22 @@ export default function AppointmentBookingDetailPage() {
             <InfoRow icon={Coins01}>
                 <span>{isPrivate ? "Private" : "Open session"}</span>
             </InfoRow>
-            {isPrivate && booking.instructorName ? (
+            {isPrivate && instructorName ? (
                 <InfoRow icon={UserCheck01}>
                     <button
                         type="button"
-                        onClick={() => booking.instructorId && router.push(`/customer/instructors/${booking.instructorId}`)}
+                        onClick={() => instructorId && router.push(`/customer/instructors/${instructorId}`)}
                         className="flex min-w-0 items-center gap-1.5 text-left"
                     >
                         <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
-                            {booking.instructorImageUrl ? (
+                            {instructorImageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={booking.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
+                                <img src={instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                             ) : (
-                                <span className="text-[8px] font-semibold leading-none text-[#667085]">{booking.instructorInitials}</span>
+                                <span className="text-[8px] font-semibold leading-none text-[#667085]">{instructorInitials}</span>
                             )}
                         </span>
-                        <span className="truncate">{booking.instructorName}</span>
+                        <span className="truncate">{instructorName}</span>
                     </button>
                 </InfoRow>
             ) : (

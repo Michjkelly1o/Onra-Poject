@@ -21,7 +21,7 @@ import { useAppointment } from "@/lib/customer/appointments-data";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { useAppStore } from "@/lib/store";
-import { useAvailableSlots } from "@/lib/customer/slot-availability";
+import { useAvailableSlots, useFlexibleAvailableSlots } from "@/lib/customer/slot-availability";
 import { appointmentDraft, ensureAppointmentDraft, resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { AppointmentFlowHeader } from "@/components/customer/appointments/AppointmentFlowHeader";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
@@ -65,8 +65,15 @@ export default function SelectSlotPage() {
     const days = Array.from({ length: 7 }, (_, i) => addDaysISO(weekStartISO, i));
     const isOpen = appointment?.type === "open";
     const isPrivate = appointment?.type === "private";
+    const isFlexible = appointmentDraft.flexible;
     // Availability is derived live from the admin schedule / branch hours / bookings.
-    const slots = useAvailableSlots(appointment, appointmentDraft.instructorId, dateISO);
+    // "Preference: Flexible" uses the UNION of every qualified instructor's
+    // availability (so any offered slot has ≥1 instructor free); otherwise it's
+    // the single chosen instructor's availability. Both hooks run (hooks can't be
+    // conditional); we pick which result to show.
+    const singleSlots = useAvailableSlots(appointment, appointmentDraft.instructorId, dateISO);
+    const flexibleSlots = useFlexibleAvailableSlots(appointment, dateISO);
+    const slots = isFlexible ? flexibleSlots : singleSlots;
 
     // Month sheet bounds — today → +1 year (mirrors the Search date selector).
     const anchor = new Date(`${weekStartISO}T00:00:00`);
@@ -157,9 +164,11 @@ export default function SelectSlotPage() {
                         <SearchEmptyState
                             title="No available times"
                             description={
-                                isPrivate
-                                    ? "This instructor is fully booked on this day. Try another date."
-                                    : "There are no open sessions on this day. Try another date."
+                                isFlexible
+                                    ? "No instructors are available on this day. Try another date."
+                                    : isPrivate
+                                        ? "This instructor is fully booked on this day. Try another date."
+                                        : "There are no open sessions on this day. Try another date."
                             }
                         />
                     </div>

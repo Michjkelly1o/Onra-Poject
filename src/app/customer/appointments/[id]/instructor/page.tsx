@@ -11,7 +11,7 @@
 
 import { useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Check } from "@untitledui/icons";
+import { Check, Shuffle01 } from "@untitledui/icons";
 import { useCustomerInstructors } from "@/lib/customer/instructors";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { appointmentDraft, ensureAppointmentDraft, resetAppointmentDraft } from "@/lib/customer/booking-flow";
@@ -24,7 +24,12 @@ export default function SelectInstructorPage() {
     const instructors = useCustomerInstructors();
 
     ensureAppointmentDraft(id);
-    const [selected, setSelected] = useState<string | null>(appointmentDraft.instructorId);
+    // Selection is an instructor id, or the "__flexible__" sentinel for the
+    // "Preference: Flexible" option (studio auto-assigns an available instructor).
+    const FLEXIBLE = "__flexible__";
+    const [selected, setSelected] = useState<string | null>(
+        appointmentDraft.flexible ? FLEXIBLE : appointmentDraft.instructorId,
+    );
     const [fading, setFading] = useState(false);
     const advancingRef = useRef(false);
 
@@ -32,14 +37,25 @@ export default function SelectInstructorPage() {
         ? instructors.filter((i) => i.status === "active" && i.branchId === appointment.branchId)
         : [];
 
+    function advance() {
+        window.setTimeout(() => setFading(true), 400);
+        window.setTimeout(() => router.push(`/customer/appointments/${id}/slot`), 760);
+    }
     function pick(instructorId: string) {
         if (advancingRef.current) return; // guard double-taps during the hand-off
         advancingRef.current = true;
         setSelected(instructorId);
+        appointmentDraft.flexible = false;
         appointmentDraft.instructorId = instructorId;
-        // Let the selection register, then gently fade out before advancing.
-        window.setTimeout(() => setFading(true), 400);
-        window.setTimeout(() => router.push(`/customer/appointments/${id}/slot`), 760);
+        advance();
+    }
+    function pickFlexible() {
+        if (advancingRef.current) return;
+        advancingRef.current = true;
+        setSelected(FLEXIBLE);
+        appointmentDraft.flexible = true;
+        appointmentDraft.instructorId = null;
+        advance();
     }
 
     return (
@@ -57,6 +73,31 @@ export default function SelectInstructorPage() {
                 className="flex flex-1 flex-col gap-3 px-4 pb-6 pt-6"
                 style={{ opacity: fading ? 0 : 1, transition: "opacity 340ms ease-out" }}
             >
+                {/* Preference: Flexible — studio picks an available instructor.
+                    Pinned to the top so it reads as the "no preference" default. */}
+                <button
+                    type="button"
+                    onClick={pickFlexible}
+                    className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-all duration-300 ease-out active:bg-gray-50 ${
+                        selected === FLEXIBLE ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                    }`}
+                >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tertiary)]">
+                        <Shuffle01 className="size-4 text-[var(--brand-primary)]" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium leading-5 text-[#344054]">Preference: Flexible</span>
+                        <span className="block text-xs leading-4 text-[#667085]">Let the studio assign an available instructor</span>
+                    </span>
+                    {selected === FLEXIBLE ? (
+                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#d7ffe9]">
+                            <Check className="size-2.5 text-[#085d3a]" strokeWidth={3} aria-hidden />
+                        </span>
+                    ) : (
+                        <span className="size-4 shrink-0 rounded-full border border-[#d0d5dd]" />
+                    )}
+                </button>
+
                 {branchInstructors.map((i) => {
                     const isSel = selected === i.id;
                     return (

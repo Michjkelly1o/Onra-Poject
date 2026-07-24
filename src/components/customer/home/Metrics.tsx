@@ -63,7 +63,7 @@ export interface MetricsProps {
     totalClasses: number;
     classesThisMonth: number;
     dayStreak: number;
-    /** Display string for "Classes remaining" (e.g. "20", or "∞" for unlimited). */
+    /** Display string for the "Upcoming classes" tile (e.g. "20", or "∞" for unlimited). */
     classesRemaining: string;
 }
 
@@ -73,7 +73,7 @@ export function Metrics({ totalClasses, classesThisMonth, dayStreak, classesRema
             <MetricTile value={String(totalClasses)} label="Total classes" />
             <StreakTile days={dayStreak} />
             <MetricTile value={String(classesThisMonth)} label="Classes this month" />
-            <MetricTile value={classesRemaining} label="Classes remaining" />
+            <MetricTile value={classesRemaining} label="Upcoming classes" />
         </div>
     );
 }

@@ -52,16 +52,21 @@ export function ensureBookingDraft(classId: string): void {
 export const appointmentDraft: {
     appointmentId: string | null;
     instructorId: string | null;
+    /** "Preference: Flexible" — the customer let the studio pick the instructor.
+     *  When true, `instructorId` stays null through slot selection; an available
+     *  qualified instructor is auto-assigned at booking time. Client 2026-07-24. */
+    flexible: boolean;
     /** Local ISO day of the chosen slot. */
     slotISO: string | null;
     /** "HH:MM" of the chosen slot. */
     slotTime: string | null;
-} = { appointmentId: null, instructorId: null, slotISO: null, slotTime: null };
+} = { appointmentId: null, instructorId: null, flexible: false, slotISO: null, slotTime: null };
 
 export function ensureAppointmentDraft(appointmentId: string): void {
     if (appointmentDraft.appointmentId !== appointmentId) {
         appointmentDraft.appointmentId = appointmentId;
         appointmentDraft.instructorId = null;
+        appointmentDraft.flexible = false;
         appointmentDraft.slotISO = null;
         appointmentDraft.slotTime = null;
     }
@@ -73,6 +78,7 @@ export function ensureAppointmentDraft(appointmentId: string): void {
 export function resetAppointmentDraft(): void {
     appointmentDraft.appointmentId = null;
     appointmentDraft.instructorId = null;
+    appointmentDraft.flexible = false;
     appointmentDraft.slotISO = null;
     appointmentDraft.slotTime = null;
 }

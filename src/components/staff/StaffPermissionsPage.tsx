@@ -29,7 +29,7 @@ import {
     SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronRight, ChevronDown,
     MarkerPin01, FilterLines, XClose, Eye, Edit02, Archive, Trash01,
     Trash02, RefreshCcw01, SlashCircle01, Check, User01, Send01, UserPlus01,
-    UserSquare, ClockPlus, AlarmClockOff, AlertTriangle,
+    UserSquare, ClockPlus, AlarmClockOff,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -249,11 +249,14 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
 // ─── Filter side panel — handles both tabs ─────────────────────────────────
 
 // Roles are branch-agnostic — the Roles filter no longer has a branch field.
+// Staff filter (client 2026-07-24): Role is now MULTI-select; the Branch
+// field was removed — the module's global branch selector already scopes by
+// location, so filtering by branch twice was redundant.
 interface RoleFilter   { statuses: RoleStatus[]; }
-interface StaffFilter  { roleId: string; branchId: string; statuses: StaffStatus[]; }
+interface StaffFilter  { roleIds: string[]; statuses: StaffStatus[]; }
 
 const EMPTY_ROLE_FILTER:  RoleFilter  = { statuses: [] };
-const EMPTY_STAFF_FILTER: StaffFilter = { roleId: "", branchId: "", statuses: [] };
+const EMPTY_STAFF_FILTER: StaffFilter = { roleIds: [], statuses: [] };
 
 function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRole, onApplyStaff, roles, branches }: {
     open: boolean; onClose: () => void;
@@ -293,19 +296,20 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
             statuses: p.statuses.includes(s) ? p.statuses.filter(x => x !== s) : [...p.statuses, s],
         }));
     }
+    function toggleStaffRole(id: string) {
+        setPendingStaff(p => ({
+            ...p,
+            roleIds: p.roleIds.includes(id) ? p.roleIds.filter(x => x !== id) : [...p.roleIds, id],
+        }));
+    }
 
     const isRoleTab = tab === "roles";
     const hasAny = isRoleTab
         ? pendingRole.statuses.length > 0
-        : pendingStaff.branchId !== "" || pendingStaff.statuses.length > 0 || pendingStaff.roleId !== "";
+        : pendingStaff.statuses.length > 0 || pendingStaff.roleIds.length > 0;
 
-    const branchOptions = branches.filter(b => b.status === "active").map(b => ({
-        value: b.id, label: b.name,
-        icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
-    }));
-    const roleOptions = roles
-        .filter(r => r.status !== "archive")
-        .map(r => ({ value: r.id, label: r.name }));
+    const roleFilterOptions = roles.filter(r => r.status !== "archive");
+    void branches;
 
     function handleApply() {
         if (isRoleTab) onApplyRole(pendingRole);
@@ -328,39 +332,21 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                    {/* Staffs tab adds Role name filter */}
+                    {/* Staffs tab — Role name is a MULTI-select pill group
+                        (client 2026-07-24). Branch filter removed: the global
+                        branch selector already scopes the module by location. */}
                     {!isRoleTab && (
                         <>
                             <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Role name</p>
-                                <SelectInput
-                                    placeholder="Select role"
-                                    options={[{ value: "", label: "All roles" }, ...roleOptions]}
-                                    value={pendingStaff.roleId}
-                                    onChange={v => setPendingStaff(p => ({ ...p, roleId: v }))}
-                                    width="w-full"
-                                />
+                                <p className="text-[14px] font-medium text-[#344054]">Role</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {roleFilterOptions.map(r => (
+                                        <FilterPill key={r.id} label={r.name}
+                                            selected={pendingStaff.roleIds.includes(r.id)}
+                                            onClick={() => toggleStaffRole(r.id)} />
+                                    ))}
+                                </div>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
-                        </>
-                    )}
-
-                    {/* Branch filter — Staffs tab only. Roles are
-                        branch-agnostic, so there's no branch to filter on. */}
-                    {!isRoleTab && (
-                        <>
-                            <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
-                                <SelectInput
-                                    triggerIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
-                                    placeholder="Select location"
-                                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
-                                    value={pendingStaff.branchId}
-                                    onChange={v => setPendingStaff(p => ({ ...p, branchId: v }))}
-                                    width="w-full"
-                                />
-                            </div>
-
                             <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
                         </>
                     )}
@@ -462,77 +448,6 @@ function RoleRowActions({ role, staffCount, onAction }: {
             { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !(isArchived && !role.locked) },
             { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !canDelete },
         ]} />
-    );
-}
-
-// ─── Shift chip cell (Phase 4 — client 2026-07-22) ────────────────────────
-//
-// One pill per shift assignment, stacked vertically when a staff member
-// holds multiple shifts (Liam Chen's Morning + Afternoon Tue/Thu is the
-// canonical case from the mockup). Pill shape matches the ROLE and
-// STAFF_STATUS pills already used on the same row so the table reads
-// with one voice — never a rectangle.
-//
-// Chip format: "{Shift name} · {Days} · {HH-HH}". Days summary uses the
-// same "contiguous run" heuristic the Shift management tab already uses
-// (`daysSummary`) so both surfaces speak identically.
-//
-// Empty state (no assignments) shows an amber warning pill using the
-// same tone family as the Understaffed pill on the shift list. This is
-// the "gap flag" the mockup called out: "Staff with no shift can't be
-// scheduled, so the gap is flagged here."
-
-/** "Mon", "Tue"… labels for the daysSummary output. Sun-first to match
- *  the seed's 7-bit `working_days` array. */
-const DAY_LABELS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** Same contiguous-run logic the ShiftManagementTab uses. Duplicated
- *  inline (very small) to avoid a shared-util expansion in this pass —
- *  keep the seed identical. */
-function shiftDaysSummary(workingDays: boolean[]): string {
-    const picked = workingDays.flatMap((on, i) => on ? [i] : []);
-    if (picked.length === 0) return "—";
-    if (picked.length === 7) return "Every day";
-    const min = picked[0];
-    const max = picked[picked.length - 1];
-    const contiguous = picked.length === (max - min + 1);
-    if (contiguous && picked.length >= 3) return `${DAY_LABELS_SHORT[min]} - ${DAY_LABELS_SHORT[max]}`;
-    return picked.map(i => DAY_LABELS_SHORT[i]).join(", ");
-}
-
-/** "07:00" → "07". The mockup abbreviates times to hours-only so the chip
- *  never overflows on the directory row. */
-function toHour(hhmm: string): string {
-    const [h] = hhmm.split(":");
-    return h;
-}
-
-/** Small pill chip per assignment. Uses the mint tone that already
- *  represents "instructor" / "active" throughout the app so a shift
- *  assignment reads as a positive signal. */
-function ShiftAssignmentChip({ label }: { label: string }) {
-    // Fit-width pill — no `max-w-full truncate` so the chip hugs its
-    // content rather than stretching to the column width. Client
-    // 2026-07-22 audit.
-    return (
-        <span
-            className="inline-flex w-fit items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#f0faf3] border-1 border-[#c7e5d1] text-[#3b5446]"
-            title={label}
-        >
-            {label}
-        </span>
-    );
-}
-
-/** Empty-state warning — plain amber text with icon (client 2026-07-22
- *  clarified: no badge box, just a flagged line). Same amber tone family
- *  as the Understaffed pill so the "staffing gap" signal still reads. */
-function NoShiftWarning() {
-    return (
-        <span className="inline-flex items-center gap-1 text-[13px] text-[#b54708] whitespace-nowrap">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            No shift yet — can&apos;t be scheduled
-        </span>
     );
 }
 
@@ -742,12 +657,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const roles            = useAppStore(s => s.roles);
     const staff            = useAppStore(s => s.staff);
     const branches         = useAppStore(s => s.branches);
-    // Client 2026-07-22 Phase 4 — staff directory now shows a Shift
-    // column. Reads the shifts + assignments slices to compute one
-    // chip per assignment or a "No shift yet" warning when a staff
-    // member has none.
-    const shifts           = useAppStore(s => s.shifts);
-    const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const setRolesStatus   = useAppStore(s => s.setRolesStatus);
     const deleteRolesAction = useAppStore(s => s.deleteRoles);
     const setStaffStatus   = useAppStore(s => s.setStaffStatus);
@@ -825,32 +734,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         return m;
     }, [staff, rolesById]);
 
-    // Client 2026-07-22 Phase 4 — shift chips on the staff directory.
-    // Build the (staffId → assignments[]) map once so each row's chip
-    // cell is a simple lookup. Assignments are sorted by shift start
-    // time so multi-shift rows read chronologically (Morning above
-    // Afternoon above Evening).
-    const shiftsById = useMemo(() => new Map(shifts.map(sh => [sh.id, sh] as const)), [shifts]);
-    const assignmentsByStaff = useMemo(() => {
-        const m = new Map<string, typeof shiftAssignments>();
-        for (const a of shiftAssignments) {
-            const list = m.get(a.staff_id) ?? [];
-            list.push(a);
-            m.set(a.staff_id, list);
-        }
-        // Sort each list in-place (using `.forEach` avoids the
-        // downlevelIteration target-flag issue that the `for..of` on a
-        // Map entries iterator raised on tsconfig target=es5).
-        m.forEach(list => {
-            list.sort((x, y) => {
-                const xs = shiftsById.get(x.shift_id)?.start_time ?? "";
-                const ys = shiftsById.get(y.shift_id)?.start_time ?? "";
-                return xs.localeCompare(ys);
-            });
-        });
-        return m;
-    }, [shiftAssignments, shiftsById]);
-
     // ─── Filtered roles ────────────────────────────────────────────────────
     const filteredRoles = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -866,8 +749,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         const q = search.trim().toLowerCase();
         return staff.filter(s => {
             if (branchId && s.branchId !== null && s.branchId !== branchId) return false;
-            if (staffFilter.branchId && s.branchId !== null && s.branchId !== staffFilter.branchId) return false;
-            if (staffFilter.roleId && s.roleId !== staffFilter.roleId) return false;
+            if (staffFilter.roleIds.length > 0 && !staffFilter.roleIds.includes(s.roleId)) return false;
             if (staffFilter.statuses.length > 0 && !staffFilter.statuses.includes(s.status)) return false;
             if (q && !s.fullName.toLowerCase().includes(q) && !s.email.toLowerCase().includes(q)) return false;
             return true;
@@ -894,19 +776,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             return an.localeCompare(bn);
         },
         branch: (a, b) => branchSortName(a.branchId).localeCompare(branchSortName(b.branchId)),
-        // Shift sort — no-assignment rows sink to the BOTTOM (so the
-        // gap is easy to spot from the top), then sort by the FIRST
-        // assigned shift's name for a stable read.
-        shift:  (a, b) => {
-            const la = assignmentsByStaff.get(a.id) ?? [];
-            const lb = assignmentsByStaff.get(b.id) ?? [];
-            if (la.length === 0 && lb.length === 0) return 0;
-            if (la.length === 0) return  1;
-            if (lb.length === 0) return -1;
-            const na = shiftsById.get(la[0].shift_id)?.name ?? "";
-            const nb = shiftsById.get(lb[0].shift_id)?.name ?? "";
-            return na.localeCompare(nb);
-        },
         status: (a, b) => STAFF_STATUS_ORDER[a.status] - STAFF_STATUS_ORDER[b.status],
     });
 
@@ -1189,7 +1058,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         ? shiftFilterActive
         : tab === "roles"
             ? roleFilter.statuses.length > 0
-            : staffFilter.branchId !== "" || staffFilter.statuses.length > 0 || staffFilter.roleId !== "";
+            : staffFilter.statuses.length > 0 || staffFilter.roleIds.length > 0;
 
     return (
         <div className={cn(
@@ -1373,7 +1242,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     table. */}
                 {forceTab === "staff" && staffSubTab === "shift-management" && (
                     <ShiftManagementTab
-                        returnTo="/admin/staff"
+                        returnTo="/admin/staff?subtab=shift-management"
                         branchId={branchId}
                         search={search}
                         filterOpen={filterOpen}
@@ -1521,18 +1390,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 ariaLabel="Select all staff on this page"
                                             />
                                         </th>
-                                        {/* Client 2026-07-22 Phase 4: SHIFT column
-                                            inserted between Branch and Status.
-                                            Column widths tuned so:
-                                              checkbox 44 · role 160 · branch 180
-                                              · shift 260 · status 120 · actions 52
-                                              = 816 px of fixed columns; Name gets
-                                              the remaining flex width. On a
-                                              1200-1440 px chrome that leaves
-                                              384-624 px for Name — plenty for
-                                              "Firstname Lastname" + email line
-                                              without wrapping either the name
-                                              cell OR the shift chips. */}
                                         <th className={TH}>
                                             <SortableHeader sortKey="name" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Name</SortableHeader>
                                         </th>
@@ -1541,9 +1398,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         </th>
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[260px]")}>
-                                            <SortableHeader sortKey="shift" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Shift</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
@@ -1588,41 +1442,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     )}
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
-                                                {/* Shift column — client 2026-07-22 Phase 4.
-                                                    One pill per assignment stacked in a
-                                                    column (up to 4 gap); "No shift yet"
-                                                    warning when the staff member holds
-                                                    zero assignments. Owner has no branch/
-                                                    shift concept so we render a dash. */}
-                                                <td className={TD}>
-                                                    {(() => {
-                                                        // Owner + roles that are branch-agnostic → em dash.
-                                                        // The mockup shows Alex Owen as "—".
-                                                        const role = rolesById.get(s.roleId);
-                                                        if (role?.type === "owner") {
-                                                            return <span className="text-[#98a2b3]">—</span>;
-                                                        }
-                                                        const list = assignmentsByStaff.get(s.id) ?? [];
-                                                        if (list.length === 0) return <NoShiftWarning />;
-                                                        return (
-                                                            <div className="flex flex-col items-start gap-1.5">
-                                                                {list.map(a => {
-                                                                    const sh = shiftsById.get(a.shift_id);
-                                                                    if (!sh) return null;
-                                                                    // Chip: "{Shift name} · {Days} · {HH-HH}"
-                                                                    // Days summary uses the per-assignment
-                                                                    // days_of_week (may be narrower than the
-                                                                    // parent shift's working_days).
-                                                                    const label =
-                                                                        `${sh.name.replace(/ shift$/i, "")}` +
-                                                                        ` · ${shiftDaysSummary(a.days_of_week)}` +
-                                                                        ` · ${toHour(sh.start_time)}-${toHour(sh.end_time)}`;
-                                                                    return <ShiftAssignmentChip key={a.id} label={label} />;
-                                                                })}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
                                                         {STAFF_STATUS_LABEL[s.status]}

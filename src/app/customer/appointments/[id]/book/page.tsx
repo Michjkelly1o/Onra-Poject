@@ -133,6 +133,15 @@ export default function AppointmentReviewPage() {
                                 </span>
                             </>
                         )}
+                        {/* Flexible preference — instructor is auto-assigned at booking. */}
+                        {isPrivate && appointmentDraft.flexible && (
+                            <>
+                                <span className="text-sm leading-5 text-[#475467]" aria-hidden>•</span>
+                                <span className="text-sm font-medium leading-5 text-[var(--brand-primary)]">
+                                    Flexible — instructor assigned at booking
+                                </span>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

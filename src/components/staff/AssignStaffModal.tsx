@@ -95,7 +95,7 @@ export function AssignStaffModal({ shift, onClose }: {
                     <div className="flex flex-col gap-1 min-w-0">
                         <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Assign staff</p>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            Pick an instructor to assign to <span className="font-medium text-[#344054]">{shift.name}</span>.
+                            Pick a staff member to assign to <span className="font-medium text-[#344054]">{shift.name}</span>.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}

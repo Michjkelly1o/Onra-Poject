@@ -25,10 +25,11 @@
 // Past slots (today, before now) are always dropped.
 
 import { useMemo } from "react";
-import { useAppStore, getBusinessHours } from "@/lib/store";
+import { useAppStore, getBusinessHours, type BusinessHours, type Shift, type ShiftAssignment, type Staff, type BlockedTime, type ClassSchedule, type ClassBooking, type Appointment } from "@/lib/store";
 import { REAL_TODAY_ISO, nowHHMM } from "./dates";
-import { useAppointmentBookings } from "./appointment-bookings";
+import { useAppointmentBookings, type AppointmentBooking } from "./appointment-bookings";
 import { useCurrentCustomer } from "./context";
+import { useCustomerInstructors } from "./instructors";
 import type { AppointmentVM } from "./appointments-data";
 
 export interface AvailableSlot {
@@ -52,25 +53,49 @@ const toHHMM = (min: number): string =>
 const overlaps = (aS: number, aE: number, bS: number, bE: number): boolean => aS < bE && aE > bS;
 const utcDow = (dateISO: string): number => new Date(`${dateISO}T00:00:00Z`).getUTCDay();
 
-/** Available slots for an appointment on `dateISO`. `instructorId` is required for
- *  private appointments (chosen in the previous step); ignored for open sessions. */
-export function useAvailableSlots(
+/** Every store/customer slice the slot maths reads. Passed to the pure
+ *  `computeAvailableSlots` so it can run for one instructor at a time (the
+ *  Flexible flow unions many instructors). */
+interface SlotData {
+    businessHours: BusinessHours[];
+    shifts: Shift[];
+    shiftAssignments: ShiftAssignment[];
+    staff: Staff[];
+    blockedTimes: BlockedTime[];
+    classSchedules: ClassSchedule[];
+    adminAppointments: Appointment[];
+    classBookings: ClassBooking[];
+    customerAppointments: AppointmentBooking[];
+    member: { id: string } | null;
+}
+
+/** Read every slice the slot maths needs. Slice references are stable across
+ *  renders, so callers can memoize over them directly. */
+function useSlotData(): SlotData {
+    return {
+        businessHours: useAppStore((s) => s.businessHours),
+        shifts: useAppStore((s) => s.shifts),
+        shiftAssignments: useAppStore((s) => s.shiftAssignments),
+        staff: useAppStore((s) => s.staff),
+        blockedTimes: useAppStore((s) => s.blockedTimes),
+        classSchedules: useAppStore((s) => s.classSchedules),
+        adminAppointments: useAppStore((s) => s.appointments),
+        classBookings: useAppStore((s) => s.classBookings),
+        customerAppointments: useAppointmentBookings(),
+        member: useCurrentCustomer(),
+    };
+}
+
+/** Pure slot computation for ONE instructor (private) or the branch (open).
+ *  Extracted from the hook so the Flexible flow can call it per candidate
+ *  instructor and union the results (client 2026-07-24). */
+export function computeAvailableSlots(
     appointment: AppointmentVM | null,
     instructorId: string | null,
     dateISO: string,
+    data: SlotData,
 ): AvailableSlot[] {
-    const businessHours = useAppStore((s) => s.businessHours);
-    const shifts = useAppStore((s) => s.shifts);
-    const shiftAssignments = useAppStore((s) => s.shiftAssignments);
-    const staff = useAppStore((s) => s.staff);
-    const blockedTimes = useAppStore((s) => s.blockedTimes);
-    const classSchedules = useAppStore((s) => s.classSchedules);
-    const adminAppointments = useAppStore((s) => s.appointments);
-    const classBookings = useAppStore((s) => s.classBookings);
-    const customerAppointments = useAppointmentBookings();
-    const member = useCurrentCustomer();
-
-    return useMemo(() => {
+    const { businessHours, shifts, shiftAssignments, staff, blockedTimes, classSchedules, adminAppointments, classBookings, customerAppointments, member } = data;
         if (!appointment) return [];
         const isPrivate = appointment.type === "private";
         const dur = appointment.durationMins > 0 ? appointment.durationMins : 30;
@@ -226,5 +251,75 @@ export function useAvailableSlots(
             }
         }
         return out;
-    }, [appointment, instructorId, dateISO, businessHours, shifts, shiftAssignments, staff, blockedTimes, classSchedules, adminAppointments, classBookings, customerAppointments, member]);
+}
+
+/** Available slots for an appointment on `dateISO`. `instructorId` is required for
+ *  private appointments (chosen in the previous step); ignored for open sessions. */
+export function useAvailableSlots(
+    appointment: AppointmentVM | null,
+    instructorId: string | null,
+    dateISO: string,
+): AvailableSlot[] {
+    const data = useSlotData();
+    return useMemo(
+        () => computeAvailableSlots(appointment, instructorId, dateISO, data),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [appointment, instructorId, dateISO, data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member],
+    );
+}
+
+/** Qualified instructors for a private appointment — active + at the branch.
+ *  Mirrors the manual instructor list so Flexible considers the same pool. */
+function useQualifiedInstructorIds(appointment: AppointmentVM | null): string[] {
+    const instructors = useCustomerInstructors();
+    return useMemo(() => {
+        if (!appointment || appointment.type !== "private") return [];
+        return instructors
+            .filter((i) => i.status === "active" && i.branchId === appointment.branchId)
+            .map((i) => i.id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appointment, instructors]);
+}
+
+/** "Preference: Flexible" slots — the UNION of every qualified instructor's
+ *  available slots on `dateISO`. A slot appears only when ≥1 qualified
+ *  instructor is genuinely free (shift-covered, not in a class / blocked /
+ *  already booked), so the customer can never pick a time no instructor can
+ *  cover. Client 2026-07-24. */
+export function useFlexibleAvailableSlots(
+    appointment: AppointmentVM | null,
+    dateISO: string,
+): AvailableSlot[] {
+    const data = useSlotData();
+    const instructorIds = useQualifiedInstructorIds(appointment);
+    return useMemo(() => {
+        if (!appointment || appointment.type !== "private") return [];
+        const times = new Set<string>();
+        for (const id of instructorIds) {
+            for (const s of computeAvailableSlots(appointment, id, dateISO, data)) times.add(s.time);
+        }
+        return Array.from(times)
+            .sort()
+            .map((time) => ({ time, spotsLeft: null, capacity: null, booked: null }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appointment, dateISO, instructorIds, data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member]);
+}
+
+/** The qualified instructors who are genuinely FREE for a specific (date, time)
+ *  slot — used to auto-assign an instructor when a Flexible booking is
+ *  confirmed. Returns their ids (empty only if the slot is stale/unavailable). */
+export function useFlexibleInstructorsForSlot(
+    appointment: AppointmentVM | null,
+    dateISO: string | null,
+    slotTime: string | null,
+): string[] {
+    const data = useSlotData();
+    const instructorIds = useQualifiedInstructorIds(appointment);
+    return useMemo(() => {
+        if (!appointment || appointment.type !== "private" || !dateISO || !slotTime) return [];
+        return instructorIds.filter((id) =>
+            computeAvailableSlots(appointment, id, dateISO, data).some((s) => s.time === slotTime),
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appointment, dateISO, slotTime, instructorIds, data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member]);
 }

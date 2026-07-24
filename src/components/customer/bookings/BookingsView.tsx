@@ -65,12 +65,25 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
     // Booked appointments (UI-only store) show alongside class bookings: active
     // future ones under Upcoming, cancelled/past ones under Past.
     const apptBookings = useAppointmentBookings();
+    // An appointment booking is effectively cancelled if the customer cancelled
+    // it OR an admin cancelled the linked shared appointment. Join on the admin
+    // status so an admin-side cancellation moves the row to Past + shows the
+    // cancelled chip here, never leaving a stale "Booked" row in Upcoming.
+    const adminAppts = useAppStore((s) => s.appointments);
+    const adminApptStatusById = useMemo(
+        () => new Map(adminAppts.map((a) => [a.id, a.status] as const)),
+        [adminAppts],
+    );
+    const isApptCancelled = (a: (typeof apptBookings)[number]) =>
+        a.status === "cancelled" ||
+        (a.adminAppointmentId != null && adminApptStatusById.get(a.adminAppointmentId) === "Cancelled");
     const apptSplit = useMemo(() => {
         return {
-            upcoming: apptBookings.filter((a) => a.status !== "cancelled" && a.slotISO >= REAL_TODAY_ISO),
-            past: apptBookings.filter((a) => a.status === "cancelled" || a.slotISO < REAL_TODAY_ISO),
+            upcoming: apptBookings.filter((a) => !isApptCancelled(a) && a.slotISO >= REAL_TODAY_ISO),
+            past: apptBookings.filter((a) => isApptCancelled(a) || a.slotISO < REAL_TODAY_ISO),
         };
-    }, [apptBookings]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [apptBookings, adminApptStatusById]);
     const showAppts = tab === "upcoming" ? apptSplit.upcoming : apptSplit.past;
     const [, force] = useReducer((x) => x + 1, 0);
     // Draft + filterOpen persist in bookingsUi so they survive the "See all"
@@ -129,7 +142,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                     time={to12h(a.slotTime)}
                     location={a.branchName}
                     status={
-                        a.status === "cancelled"
+                        isApptCancelled(a)
                             ? {
                                   label: a.lateCancel ? "Cancelled (late)" : "Cancelled (no charge)",
                                   tone: "error" as const,
@@ -139,7 +152,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                               ? { label: "Completed", tone: "success" as const }
                               : { label: "Booked", tone: "success" as const }
                     }
-                    mutedCover={a.status === "cancelled"}
+                    mutedCover={isApptCancelled(a)}
                     image={a.coverImage}
                     imageColor={a.coverColor}
                     onClick={() => router.push(`/customer/bookings/appointment/${a.id}`)}
