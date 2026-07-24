@@ -626,14 +626,17 @@ function SidebarAiAgentChip({ slim }: { slim: boolean }) {
     const pathname = usePathname() ?? "";
     const isActive = pathname === "/ai-agent" || pathname.startsWith("/ai-agent/");
     // Same returnTo pattern FloatingAiButton uses — the AI Agent's X
-    // button closes back to where the admin was.
-    const returnTo = pathname && pathname !== "/ai-agent"
+    // button closes back to where the admin was. usePathname() gives a
+    // clean same-origin `/…` string, so the returnTo travelling through
+    // the URL is trusted; AiAgentPage.handleClose still validates it
+    // defensively before pushing.
+    const href = pathname && pathname !== "/ai-agent"
         ? `/ai-agent?returnTo=${encodeURIComponent(pathname)}`
         : "/ai-agent";
     return (
         <SlimNavItem label="AI Agent" enabled={slim}>
             <Link
-                href={returnTo}
+                href={href}
                 aria-label="Open AI Agent"
                 className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
